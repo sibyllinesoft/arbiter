@@ -1,0 +1,22 @@
+FROM oven/bun:1-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json bun.lock* ./
+
+# Install dependencies
+RUN bun install --frozen-lockfile --production
+
+# Copy example agent
+COPY examples/ ./examples/
+
+# Make agent executable
+RUN chmod +x examples/external-agent.ts
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD echo "Agent is running" || exit 1
+
+# Run the agent
+CMD ["bun", "examples/external-agent.ts"]

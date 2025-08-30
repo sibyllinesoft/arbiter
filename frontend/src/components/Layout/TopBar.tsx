@@ -1,0 +1,374 @@
+/**
+ * Top navigation bar with project controls - Enhanced with Graphite Design System
+ */
+
+import React, { useState, useCallback } from 'react';
+import { clsx } from 'clsx';
+import { 
+  Save, 
+  CheckCircle, 
+  AlertCircle, 
+  Loader2, 
+  Lock, 
+  RefreshCw,
+  ChevronDown,
+  Wifi,
+  WifiOff,
+  GitBranch,
+  Clock,
+  User
+} from 'lucide-react';
+import { useApp, useCurrentProject, useConnectionStatus, useValidationState } from '../../contexts/AppContext';
+import { apiService } from '../../services/api';
+import { toast } from 'react-toastify';
+import { Button, StatusBadge, cn } from '../../design-system';
+
+export interface TopBarProps {
+  className?: string;
+}
+
+export function TopBar({ className }: TopBarProps) {
+  const { 
+    state, 
+    setLoading, 
+    setError,
+    dispatch
+  } = useApp();
+  
+  const currentProject = useCurrentProject();
+  const { isConnected, reconnectAttempts, lastSync } = useConnectionStatus();
+  const { isValidating, errors, warnings, specHash } = useValidationState();
+
+  const [showProjectSelector, setShowProjectSelector] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isFreezing, setIsFreezing] = useState(false);
+
+  // Save all unsaved fragments
+  const handleSave = useCallback(async () => {
+    if (!currentProject || state.unsavedChanges.size === 0) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const savePromises = Array.from(state.unsavedChanges).map(async (fragmentId) => {
+        const content = state.editorContent[fragmentId];
+        if (content !== undefined) {
+          await apiService.updateFragment(currentProject.id, fragmentId, content);
+          dispatch({ type: 'MARK_SAVED', payload: fragmentId });
+        }
+      });
+
+      await Promise.all(savePromises);
+      
+      toast.success(`Saved ${savePromises.length} fragment(s)`, {
+        position: 'top-right',
+        autoClose: 2000,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save fragments';
+      setError(message);
+      toast.error(message, {
+        position: 'top-right',
+        autoClose: 5000,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentProject, state.unsavedChanges, state.editorContent, dispatch, setError]);
+
+  // Validate project
+  const handleValidate = useCallback(async () => {
+    if (!currentProject) return;
+
+    setLoading(true);
+    dispatch({
+      type: 'SET_VALIDATION_STATE',
+      payload: {
+        errors: [],
+        warnings: [],
+        isValidating: true,
+        lastValidation: null,
+        specHash: specHash,
+      }
+    });
+
+    try {
+      const result = await apiService.validateProject(currentProject.id, { force: true });
+      
+      dispatch({
+        type: 'SET_VALIDATION_STATE',
+        payload: {
+          errors: result.errors,
+          warnings: result.warnings,
+          isValidating: false,
+          lastValidation: new Date().toISOString(),
+          specHash: result.spec_hash,
+        }
+      });
+
+      if (result.success) {
+        toast.success('Validation completed successfully', {
+          position: 'top-right',
+          autoClose: 3000,
+        });
+      } else {
+        toast.warning(`Validation found ${result.errors.length} errors and ${result.warnings.length} warnings`, {
+          position: 'top-right',
+          autoClose: 5000,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Validation failed';
+      setError(message);
+      
+      dispatch({
+        type: 'SET_VALIDATION_STATE',
+        payload: {
+          errors: [],
+          warnings: [],
+          isValidating: false,
+          lastValidation: null,
+          specHash: specHash,
+        }
+      });
+      
+      toast.error(message, {
+        position: 'top-right',
+        autoClose: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [currentProject, setLoading, setError, dispatch, specHash]);
+
+  // Freeze current version
+  const handleFreeze = useCallback(async () => {
+    if (!currentProject) return;
+
+    const versionName = prompt('Enter version name:');
+    if (!versionName) return;
+
+    const description = prompt('Enter description (optional):') || undefined;
+
+    setIsFreezing(true);
+    try {
+      const result = await apiService.freezeVersion(currentProject.id, {
+        version_name: versionName,
+        description,
+      });
+
+      toast.success(`Version "${versionName}" frozen successfully`, {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+
+      console.log('Version frozen:', result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to freeze version';
+      setError(message);
+      toast.error(message, {
+        position: 'top-right',
+        autoClose: 5000,
+      });
+    } finally {
+      setIsFreezing(false);
+    }
+  }, [currentProject, setError]);
+
+  // Get validation status
+  const getValidationStatus = () => {
+    if (isValidating) {
+      return { icon: Loader2, text: 'Validating...', color: 'text-blue-600', spinning: true };
+    }
+    
+    if (errors.length > 0) {
+      return { 
+        icon: AlertCircle, 
+        text: `${errors.length} error${errors.length > 1 ? 's' : ''}`, 
+        color: 'text-red-600',
+        spinning: false
+      };
+    }
+    
+    if (warnings.length > 0) {
+      return { 
+        icon: AlertCircle, 
+        text: `${warnings.length} warning${warnings.length > 1 ? 's' : ''}`, 
+        color: 'text-yellow-600',
+        spinning: false
+      };
+    }
+    
+    return { 
+      icon: CheckCircle, 
+      text: 'Valid', 
+      color: 'text-green-600',
+      spinning: false
+    };
+  };
+
+  const validationStatus = getValidationStatus();
+  const hasUnsavedChanges = state.unsavedChanges.size > 0;
+
+  return (
+    <div className={cn(
+      'flex items-center justify-between h-16 px-6',
+      'bg-gradient-to-r from-white via-graphite-25 to-white',
+      'border-b border-graphite-200 shadow-sm',
+      'backdrop-blur-sm relative',
+      className
+    )}>
+      {/* Subtle top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent" />
+      
+      {/* Left section - Project & Status */}
+      <div className="flex items-center gap-6">
+        {/* Project selector */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-sm">
+            <GitBranch className="w-4 h-4 text-white" />
+          </div>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              rightIcon={<ChevronDown className="h-4 w-4 text-graphite-500" />}
+              onClick={() => setShowProjectSelector(!showProjectSelector)}
+              className={cn(
+                'font-semibold text-graphite-800 hover:text-graphite-900',
+                'hover:bg-graphite-100 border border-transparent hover:border-graphite-200',
+                'transition-all duration-200 rounded-lg px-3 py-2'
+              )}
+            >
+              {currentProject ? (
+                <span className="flex items-center gap-2">
+                  {currentProject.name}
+                  <span className="text-xs text-graphite-500 font-normal">spec</span>
+                </span>
+              ) : (
+                'Select Project'
+              )}
+            </Button>
+            
+            {/* Project selector dropdown would go here */}
+          </div>
+        </div>
+
+        {/* Status indicators */}
+        <div className="flex items-center gap-6 pl-6 border-l border-graphite-200">
+          {/* Connection status */}
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              'w-2 h-2 rounded-full transition-colors duration-300',
+              isConnected ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-red-500 shadow-sm shadow-red-500/50'
+            )} />
+            <StatusBadge
+              variant={isConnected ? 'success' : 'error'}
+              size="sm"
+              icon={isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
+              className="font-medium"
+            >
+              {isConnected ? 'Live' : 'Offline'}
+              {reconnectAttempts > 0 && ` (${reconnectAttempts})`}
+            </StatusBadge>
+          </div>
+          
+          {/* Last sync indicator */}
+          {isConnected && lastSync && (
+            <div className="flex items-center gap-1.5 text-xs text-graphite-500 bg-graphite-50 px-2 py-1 rounded-md">
+              <Clock className="w-3 h-3" />
+              <span>synced {new Date(lastSync).toLocaleTimeString([], { timeStyle: 'short' })}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right section - Validation & Actions */}
+      <div className="flex items-center gap-8">
+        {/* Validation status - Enhanced */}
+        <div className="flex items-center gap-4">
+          <StatusBadge
+            variant={
+              isValidating ? 'info' :
+              errors.length > 0 ? 'error' :
+              warnings.length > 0 ? 'warning' : 'success'
+            }
+            size="sm"
+            icon={
+              isValidating ? <Loader2 className="h-3 w-3 animate-spin" /> :
+              errors.length > 0 ? <AlertCircle className="h-3 w-3" /> :
+              warnings.length > 0 ? <AlertCircle className="h-3 w-3" /> :
+              <CheckCircle className="h-3 w-3" />
+            }
+            className="font-medium"
+          >
+            {validationStatus.text}
+          </StatusBadge>
+          
+          {/* Spec hash indicator */}
+          {specHash && (
+            <div className="text-xs text-graphite-400 font-mono bg-graphite-50 px-2 py-1 rounded border">
+              {specHash.substring(0, 8)}
+            </div>
+          )}
+        </div>
+
+        {/* Action buttons - Enhanced layout */}
+        <div className="flex items-center gap-3 pl-6 border-l border-graphite-200">
+          <Button
+            variant={hasUnsavedChanges ? 'primary' : 'secondary'}
+            size="sm"
+            leftIcon={isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            onClick={handleSave}
+            disabled={!hasUnsavedChanges || isSaving}
+            className={cn(
+              'min-w-[88px] font-medium transition-all duration-200',
+              hasUnsavedChanges && 'shadow-sm shadow-blue-500/20'
+            )}
+          >
+            Save {hasUnsavedChanges && (
+              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">
+                {state.unsavedChanges.size}
+              </span>
+            )}
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={isValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            onClick={handleValidate}
+            disabled={isValidating || !currentProject}
+            className="font-medium"
+          >
+            Validate
+          </Button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={isFreezing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+            onClick={handleFreeze}
+            disabled={isFreezing || !currentProject || errors.length > 0}
+            className={cn(
+              'font-medium',
+              errors.length === 0 && !isFreezing && 'hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700'
+            )}
+          >
+            Freeze
+          </Button>
+        </div>
+        
+        {/* User indicator */}
+        <div className="flex items-center gap-2 pl-4 border-l border-graphite-200">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-graphite-300 to-graphite-400 flex items-center justify-center shadow-sm">
+            <User className="w-4 h-4 text-white" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default TopBar;
