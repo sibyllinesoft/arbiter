@@ -1,166 +1,212 @@
-<!--
- Copyright 2018 The CUE Authors
+# Arbiter
 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+_Real-time collaborative specification development with live visualization_
 
-     http://www.apache.org/licenses/LICENSE-2.0
+Arbiter is a modern specification workbench that combines the power of CUE (Configure, Unify, Execute) with real-time collaboration features. Build, validate, and visualize specifications collaboratively with live feedback and instant validation.
 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
--->
-[![Go Reference](https://pkg.go.dev/badge/cuelang.org/go.svg)](https://pkg.go.dev/cuelang.org/go)
-[![Github](https://github.com/cue-lang/cue/actions/workflows/trybot.yml/badge.svg)](https://github.com/cue-lang/cue/actions/workflows/trybot.yml?query=branch%3Amaster+event%3Apush)
-[![Go 1.21+](https://img.shields.io/badge/go-1.21-9cf.svg)](https://golang.org/dl/)
-[![platforms](https://img.shields.io/badge/platforms-linux|windows|macos-inactive.svg)]()
-[![Docker Image](https://img.shields.io/docker/v/cuelang/cue?sort=semver&label=docker)](https://hub.docker.com/r/cuelang/cue)
+## ✨ Features
 
-# The CUE Data Constraint Language
+### 🚀 Real-time Collaboration
+- **Live editing** with WebSocket-based collaboration
+- **Instant validation** as you type
+- **Conflict resolution** with operational transforms
+- **Multi-user sessions** with role-based permissions
 
-_Configure, Unify, Execute_
+### 📊 Interactive Visualization  
+- **Live spec diagrams** that update as you edit
+- **Data flow visualization** showing relationships and dependencies
+- **Interactive charts** and graphs from your specifications
+- **Export capabilities** for documentation and presentations
 
-CUE is an open source data constraint language which aims
-to simplify tasks involving defining and using data.
+### 🛠️ Powerful CUE Integration
+- **Full CUE language support** with syntax highlighting
+- **Schema validation** with detailed error reporting
+- **Type inference** and auto-completion
+- **Import/export** from JSON, YAML, and other formats
 
-It is a superset of JSON,
-allowing users familiar with JSON to get started quickly.
+### 🎨 Modern Developer Experience
+- **Monaco editor** with CUE language support
+- **Component-based UI** built with React and TypeScript
+- **Design system** with comprehensive Storybook documentation
+- **Performance optimized** with Bun runtime
 
+## 🏗️ Architecture
 
-### What is it for?
+```
+┌─────────────────┐    WebSocket    ┌─────────────────┐
+│  React Frontend │ ←────────────→  │ Bun Backend     │
+│                 │                 │                 │
+│ • Monaco Editor │                 │ • CUE Engine    │
+│ • Visualization │                 │ • SQLite DB     │
+│ • Design System │                 │ • NATS Messaging│
+└─────────────────┘                 └─────────────────┘
+```
 
-You can use CUE to
+**Frontend Stack:**
+- React 18 with TypeScript
+- Monaco Editor for code editing
+- Mermaid for diagram rendering
+- Tailwind CSS + Design System
+- Vite for development and building
+- Comprehensive test suite with Vitest
 
-- define a detailed validation schema for your data (manually or automatically from data)
-- reduce boilerplate in your data (manually or automatically from schema)
-- extract a schema from code
-- generate type definitions and validation code
-- merge JSON in a principled way
-- define and run declarative scripts
+**Backend Stack:**  
+- Bun runtime for maximum performance
+- TypeScript for type safety
+- WebSocket for real-time updates
+- SQLite for data persistence
+- NATS for event streaming
+- Docker for containerization
 
+## 🚀 Quick Start
 
-### How?
+### Prerequisites
+- [Bun](https://bun.sh/) v1.0.0 or later
+- [Node.js](https://nodejs.org/) v18+ (for frontend)
+- Docker (optional, for containerized development)
 
-CUE merges the notion of schema and data.
-The same CUE definition can simultaneously be used for validating data
-and act as a template to reduce boilerplate.
-Schema definition is enriched with fine-grained value definitions
-and default values.
-At the same time,
-data can be simplified by removing values implied by such detailed definitions.
-The merging of these two concepts enables
-many tasks to be handled in a principled way.
+### Development Setup
 
-Constraints provide a simple and well-defined, yet powerful, alternative
-to inheritance,
-a common source of complexity with configuration languages.
+1. **Clone and setup dependencies:**
+   ```bash
+   git clone <repository-url>
+   cd arbiter
+   bun install
+   ```
 
+2. **Start the backend:**
+   ```bash
+   bun dev
+   ```
 
-### CUE Scripting
+3. **Start the frontend (in a new terminal):**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-The CUE scripting layer defines declarative scripting, expressed in CUE,
-on top of data.
-This solves three problems:
-working around the closedness of CUE definitions (we say CUE is hermetic),
-providing an easy way to share common scripts and workflows for using data,
-and giving CUE the knowledge of how data is used to optimize validation.
+4. **Access the application:**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:3000
+   - WebSocket: ws://localhost:3000/ws
 
-There are many tools that interpret data or use a specialized language for
-a specific domain (Kustomize, Ksonnet).
-This solves dealing with data on one level, but the problem it solves may repeat
-itself at a higher level when integrating other systems in a workflow.
-CUE scripting is generic and allows users to define any workflow.
+### Using Docker
 
+```bash
+# Build and start all services
+docker-compose up --build
 
-### Tooling
+# Development with hot reload
+docker-compose -f docker-compose.yml up
+```
 
-CUE is designed for automation.
-Some aspects of this are:
+## 📖 Usage
 
-- convert existing YAML and JSON
-- automatically simplify configurations
-- rich APIs designed for automated tooling
-- formatter
-- arbitrary-precision arithmetic
-- generate CUE templates from source code
-- generate source code from CUE definitions (TODO)
+### Creating a New Specification
 
+1. Open Arbiter in your browser
+2. Click "New Specification" 
+3. Start writing CUE definitions in the Monaco editor
+4. Watch real-time validation and visualization update as you type
 
-### Download and Install
+### Collaborative Editing
 
-#### Release builds
+1. Share your specification URL with team members
+2. Multiple users can edit simultaneously
+3. Changes are synchronized in real-time
+4. Conflicts are automatically resolved
 
-[Download](https://github.com/cue-lang/cue/releases) the latest release from GitHub.
+### Visualization Features
 
-#### Run with Docker
+- **Flow Diagrams**: Automatically generated from your CUE structure
+- **Data Relationships**: Visual representation of constraints and dependencies  
+- **Schema Browser**: Navigate complex specifications with an interactive tree
+- **Export Options**: Save diagrams as PNG, SVG, or embed in documentation
 
-The release binaries are published as a Docker image described by our [Dockerfile](Dockerfile):
+## 🧪 Development
 
-	docker run cuelang/cue version
+### Running Tests
 
-#### Install using Homebrew
+```bash
+# Backend tests
+bun test
 
-Using [Homebrew](https://brew.sh), you can install using the CUE Homebrew tap:
+# Frontend tests  
+cd frontend
+npm test
 
-	brew install cue-lang/tap/cue
+# End-to-end tests
+npm run test:e2e
+```
 
-#### Install from Source
+### Building for Production
 
-You need Go 1.21 or later to build CUE from source; follow the instructions at https://go.dev/doc/install.
+```bash
+# Build backend
+bun run build
 
-To download and install the `cue` command line tool, run:
+# Build frontend
+cd frontend
+npm run build
 
-	go install cuelang.org/go/cmd/cue@latest
+# Build Docker image
+docker build -t arbiter .
+```
 
-### Learning CUE
+### Code Quality
 
-The fastest way to learn the basics is to follow the
-[tutorial on basic language constructs](./doc/tutorial/basics/Readme.md).
+```bash
+# Type checking
+bun run typecheck
 
-A more elaborate tutorial demonstrating how to convert and restructure
-an existing set of Kubernetes configurations is available in
-[written form](./doc/tutorial/kubernetes/README.md).
+# Linting
+bun run lint
+cd frontend && npm run lint
 
-### References
+# Formatting
+bun run format
+cd frontend && npm run format
+```
 
-- [Language Specification](./doc/ref/spec.md): official CUE Language specification.
+## 📁 Project Structure
 
-- [API](https://pkg.go.dev/cuelang.org/go/cue): the API on pkg.go.dev
+```
+arbiter/
+├── src/                    # Backend TypeScript source
+│   ├── server.ts          # Main server with WebSocket
+│   ├── specEngine.ts      # CUE validation engine  
+│   ├── db.ts              # SQLite database layer
+│   └── types.ts           # Shared type definitions
+├── frontend/              # React frontend application
+│   ├── src/
+│   │   ├── components/    # React components
+│   │   ├── design-system/ # Reusable UI components
+│   │   └── services/      # API and WebSocket clients
+├── spec/                  # Example CUE specifications
+├── doc/                   # CUE language documentation
+└── examples/              # Usage examples
+```
 
-- [Builtin packages](https://pkg.go.dev/cuelang.org/go/pkg): builtins available from CUE programs
+## 🤝 Contributing
 
-- [`cue` Command line reference](./doc/cmd/cue.md): the `cue` command
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Go release support policy
+### Development Workflow
 
-As a general rule, we support the two most recent major releases of Go,
-matching Go's [security policy](https://go.dev/doc/security/policy).
-For example, if CUE v0.7.0 is released when Go's latest version is 1.21.5,
-v0.7.x including any following bugfix releases will require Go 1.20 or later.
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make your changes with tests
+4. Ensure all tests pass: `bun test && cd frontend && npm test`
+5. Submit a pull request
 
-### Contributing
+## 📄 License
 
-To contribute, please read the [Contribution Guide](CONTRIBUTING.md).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Code of Conduct
+## 🙏 Acknowledgments
 
-Guidelines for participating in CUE community spaces and a reporting process for
-handling issues can be found in the [Code of
-Conduct](https://cuelang.org/docs/contribution_guidelines/conduct).
-
-## Contact
-
-You can get in touch with the cuelang community in the following ways:
-
-- Ask questions via [GitHub Discussions](https://github.com/cue-lang/cue/discussions)
-- Chat with us on our [Slack workspace](https://join.slack.com/t/cuelang/shared_invite/enQtNzQwODc3NzYzNTA0LTAxNWQwZGU2YWFiOWFiOWQ4MjVjNGQ2ZTNlMmIxODc4MDVjMDg5YmIyOTMyMjQ2MTkzMTU5ZjA1OGE0OGE1NmE).
-- Subscribe to our [Community Calendar](https://cuelang.org/s/community-calendar) for community calls, demos, office hours, etc
-
----
-
-Unless otherwise noted, the CUE source files are distributed
-under the Apache 2.0 license found in the LICENSE file.
+- Built on the powerful [CUE language](https://cuelang.org/)
+- Inspired by collaborative editing tools like Figma and Notion  
+- Thanks to the CUE community for excellent documentation and examples
 
