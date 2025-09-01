@@ -20,4 +20,11 @@ echo "$TEST_FILES" | grep -v "^$" | sed 's/^/  /'
 # Run tests with proper timeout
 echo ""
 echo "🚀 Executing tests..."
-exec bun test --timeout 10000 $TEST_FILES
+
+# Check if coverage flag is passed
+if [ "$1" = "--coverage" ]; then
+    echo "📊 Running with coverage enabled..."
+    exec bun test --timeout 10000 --coverage --coverage-dir reports/cleanup/coverage --coverage-reporter lcov $TEST_FILES
+else
+    exec bun test --timeout 10000 $TEST_FILES
+fi

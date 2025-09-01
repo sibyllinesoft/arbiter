@@ -9,6 +9,7 @@
     "build": "bun run --cwd packages/shared build && bun run --cwd packages/sdk build && bun run --cwd packages/cli build && bun run --cwd packages/agent build && bun run --cwd apps/api build && bun run --cwd apps/web build",
     "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd packages/sdk typecheck && bun run --cwd packages/cli typecheck && bun run --cwd packages/agent typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
     "test": "./run-tests.sh",
+    "test:coverage": "./run-coverage.sh",
     "test:all": "bun run typecheck && bun run test && bun run test:tutorial && bun run test:e2e:headless",
     "test:tutorial": "bun run scripts/test-tutorial.mjs",
     "test:e2e": "playwright test",
