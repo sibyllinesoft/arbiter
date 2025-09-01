@@ -74,6 +74,12 @@ Arbiter is a modern web-based editor for CUE (Configure, Unify, Execute) configu
    cd arbiter
    bun install
    ```
+   
+   **Note**: Some CLI features may require additional dependencies. If you encounter missing package errors, install them in the specific package directories:
+   ```bash
+   cd packages/cli && bun install
+   cd packages/agent && bun install
+   ```
 
 2. **Start development servers:**
    ```bash
@@ -143,8 +149,13 @@ arbiter/
 │   └── web/                # React + Vite frontend
 │       └── src/App.tsx     # Main application component
 ├── packages/
-│   └── shared/             # Shared types and schemas
-│       └── src/schemas.ts  # Zod validation schemas
+│   ├── shared/             # Shared types and schemas
+│   ├── sdk/                # SDK for Arbiter API
+│   ├── cli/                # Command-line interface
+│   ├── agent/              # Agent system for CUE execution
+│   ├── benchmarks/         # Performance benchmarking
+│   ├── security/           # Security scanning tools  
+│   └── agentic-ci/         # CI/CD integration
 ├── docs/                   # Documentation
 │   ├── protocol.md         # WebSocket protocol spec
 │   └── ADR-0001-runtime.md # Architecture decisions
@@ -155,33 +166,39 @@ arbiter/
 ### Running Tests
 
 ```bash
-# Shared package tests (Zod schema validation)
+# Run curated test suite (recommended - avoids problematic tests)
+./run-tests.sh
+
+# Run with coverage reporting  
+bun run test:coverage
+# Alternative: ./run-coverage.sh
+
+# Individual package tests (may have failures)
 cd packages/shared && bun test
-
-# Integration tests (API endpoints)  
-cd apps/api && bun test
-
-# Frontend tests (React components)
+cd apps/api && bun test  
 cd apps/web && bun test
 
-# End-to-end tests
-bun run e2e
+# End-to-end tests (requires setup)
+bun run test:e2e
 ```
 
 ### Build Commands
 
 ```bash
-# Type checking across all packages
+# Type checking across all packages (may show errors)
 bun run typecheck
 
-# Linting
+# Linting with Biome
 bun run lint
+
+# Format code with Biome
+bun run format:write
+
+# Check formatting
+bun run format:check
 
 # Production build
 bun run build
-
-# Format code
-bun run format
 ```
 
 ### Development Scripts
@@ -201,13 +218,17 @@ bun run --cwd packages/shared build
 
 ### Environment Variables
 
-```bash
-# API Server
-PORT=3001                    # Server port
-DB_PATH=./data/arbiter.db   # SQLite database path
+See `.env.example` for available environment variables:
 
-# Development
-NODE_ENV=development        # Environment mode
+```bash
+# Copy example environment file
+cp .env.example .env
+
+# Edit configuration as needed
+# Common variables:
+# PORT=3001                    # Server port  
+# DB_PATH=./data/arbiter.db   # SQLite database path
+# NODE_ENV=development        # Environment mode
 ```
 
 ### CUE Analysis Settings
@@ -229,23 +250,18 @@ The Arbiter Agent makes CUE files executable contracts with deterministic code g
 ### Quick Start
 
 ```bash
-# Install and build the agent
+# Build the agent (requires dependencies)
 bun run agent:build
 
-# Scan repository for CUE projects
+# Note: CLI commands require missing dependencies (inquirer, glob)
+# Install missing packages first:
+# cd packages/agent && bun install
+# cd packages/cli && bun install
+
+# Once dependencies are available:
 bun run agent scan
-
-# Load assembly and upsert projects (dry-run)
 bun run agent assemble
-
-# Apply assembly changes to Arbiter
-bun run agent assemble --apply
-
-# Execute an epic (dry-run with diff)
-bun run agent execute epics/EPIC-NEW-SERVICE-001.cue
-
-# Apply epic changes
-bun run agent execute epics/EPIC-NEW-SERVICE-001.cue --apply
+bun run agent execute <epic-file>
 ```
 
 ### Core Commands
