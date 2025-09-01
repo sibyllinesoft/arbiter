@@ -1,0 +1,59 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Type checking
+        run: bun run typecheck
+        
+      - name: Linting (non-test files)
+        run: bunx @biomejs/biome lint src/server.ts src/db.ts src/specEngine.ts src/utils.ts src/nats.ts src/events.ts src/types.ts src/ir.ts
+        
+      - name: Format checking
+        run: bun run format:check
+        
+      - name: Run tests
+        run: bun test --reporter=junit --coverage --bail
+        env:
+          NODE_ENV: test
+          
+      - name: Build check
+        run: bun run build
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Audit dependencies
+        run: bun audit
+        continue-on-error: true
