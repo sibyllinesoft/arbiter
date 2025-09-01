@@ -1,0 +1,2 @@
+error: Cannot find package 'inquirer' from '/project/rootmedia/project/rootnathan/project/rootSeagate Hub/project/rootProjects/project/rootarbiter/project/rootpackages/project/rootcli/project/rootsrc/project/rootcommands/project/rootcreate.ts'
+Bun vX.X.X (Linux x64)
