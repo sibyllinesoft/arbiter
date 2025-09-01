@@ -177,6 +177,21 @@ export async function checkCompatibility(
   incomingVersions: Partial<VersionSet>,
   allowCompatFlag = false
 ): Promise<CompatibilityResult> {
+  // Handle null/undefined/invalid inputs gracefully
+  if (!incomingVersions || typeof incomingVersions !== 'object' || Array.isArray(incomingVersions)) {
+    return {
+      compatible: false,
+      version_mismatches: Object.entries(CURRENT_VERSIONS).map(([component, expectedVersion]) => ({
+        component,
+        expected: expectedVersion,
+        actual: 'invalid input',
+        severity: 'error' as const
+      })),
+      migration_required: false,
+      summary: 'Invalid version object provided'
+    };
+  }
+
   const mismatches: CompatibilityResult['version_mismatches'] = [];
   let compatible = true;
   let migrationRequired = false;

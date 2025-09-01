@@ -105,6 +105,7 @@ export function canonicalizePatch(patchContent: string): string {
 function sortPatchHunks(patch: string): string {
   const lines = patch.split('\n');
   const hunks: Array<{ header: string; lines: string[]; startLine: number }> = [];
+  const nonHunkLines: string[] = [];
   let currentHunk: { header: string; lines: string[]; startLine: number } | null = null;
   
   for (let i = 0; i < lines.length; i++) {
@@ -127,6 +128,9 @@ function sortPatchHunks(patch: string): string {
       };
     } else if (currentHunk) {
       currentHunk.lines.push(line);
+    } else {
+      // Content that's not part of a hunk (e.g., plain text, diff headers, etc.)
+      nonHunkLines.push(line);
     }
   }
   
@@ -134,11 +138,17 @@ function sortPatchHunks(patch: string): string {
     hunks.push(currentHunk);
   }
   
+  // If no hunks were found, return the original content
+  if (hunks.length === 0) {
+    return nonHunkLines.join('\n');
+  }
+  
   // Sort hunks by starting line number
   hunks.sort((a, b) => a.startLine - b.startLine);
   
-  // Reconstruct patch
+  // Reconstruct patch: non-hunk lines first, then sorted hunks
   const sortedLines: string[] = [];
+  sortedLines.push(...nonHunkLines);
   for (const hunk of hunks) {
     sortedLines.push(hunk.header);
     sortedLines.push(...hunk.lines);

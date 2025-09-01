@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="bun test" tests="32" assertions="400" failures="0" skipped="2" time="1.284786749">
+  <testsuite name="packages/shared/src/security.test.ts" file="packages/shared/src/security.test.ts" tests="32" assertions="400" failures="0" skipped="2" time="0" hostname="exnihilo">
+    <testsuite name="Security &amp; Ticket Hardening v1.0 RC" file="packages/shared/src/security.test.ts" line="20" tests="32" assertions="400" failures="0" skipped="2" time="0" hostname="exnihilo">
+      <testsuite name="Patch Canonicalization" file="packages/shared/src/security.test.ts" line="22" tests="5" assertions="13" failures="0" skipped="0" time="0" hostname="exnihilo">
+        <testcase name="normalizes line endings to LF" classname="Patch Canonicalization &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="23" assertions="6" />
+        <testcase name="removes BOM if present" classname="Patch Canonicalization &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="37" assertions="2" />
+        <testcase name="sorts patch hunks by starting line number" classname="Patch Canonicalization &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="44" assertions="3" />
+        <testcase name="ensures trailing newline" classname="Patch Canonicalization &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="66" assertions="1" />
+        <testcase name="handles empty patch" classname="Patch Canonicalization &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="72" assertions="1" />
+      </testsuite>
+      <testsuite name="HMAC Operations" file="packages/shared/src/security.test.ts" line="78" tests="4" assertions="9" failures="0" skipped="0" time="0" hostname="exnihilo">
+        <testcase name="generates consistent HMAC signatures" classname="HMAC Operations &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="88" assertions="2" />
+        <testcase name="verifies valid HMAC signatures" classname="HMAC Operations &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="111" assertions="1" />
+        <testcase name="rejects invalid HMAC signatures" classname="HMAC Operations &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="136" assertions="1" />
+        <testcase name="detects tampering with any component" classname="HMAC Operations &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="152" assertions="5" />
+      </testsuite>
+      <testsuite name="Key Management" file="packages/shared/src/security.test.ts" line="188" tests="5" assertions="22" failures="0" skipped="0" time="0" hostname="exnihilo">
+        <testcase name="generates valid keys" classname="Key Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="195" assertions="4" />
+        <testcase name="manages active keys correctly" classname="Key Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="205" assertions="3" />
+        <testcase name="rotates keys correctly" classname="Key Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="220" assertions="5" />
+        <testcase name="cleans up expired keys" classname="Key Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="238" assertions="3" />
+        <testcase name="exports and imports keys" classname="Key Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="253" assertions="7" />
+      </testsuite>
+      <testsuite name="Nonce Management" file="packages/shared/src/security.test.ts" line="274" tests="4" assertions="111" failures="0" skipped="0" time="0" hostname="exnihilo">
+        <testcase name="generates unique nonces" classname="Nonce Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="281" assertions="101" />
+        <testcase name="prevents nonce reuse" classname="Nonce Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="293" assertions="3" />
+        <testcase name="allows same nonce for different repos" classname="Nonce Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="306" assertions="2" />
+        <testcase name="cleans up expired nonces" classname="Nonce Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="314" assertions="5" />
+      </testsuite>
+      <testsuite name="Ticket Management" file="packages/shared/src/security.test.ts" line="347" tests="8" assertions="21" failures="0" skipped="2" time="0" hostname="exnihilo">
+        <testcase name="creates valid tickets" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="359" assertions="9" />
+        <testcase name="validates ticket TTL limits" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="377" assertions="1" />
+        <testcase name="verifies valid tickets" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="383" assertions="2" />
+        <testcase name="rejects expired tickets" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="396" assertions="0">
+          <skipped />
+        </testcase>
+        <testcase name="prevents replay attacks" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="415" assertions="3" />
+        <testcase name="rejects tickets with unknown keys" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="432" assertions="2" />
+        <testcase name="rejects non-canonical patches" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="448" assertions="0">
+          <skipped />
+        </testcase>
+        <testcase name="performs maintenance operations" classname="Ticket Management &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="466" assertions="4" />
+      </testsuite>
+      <testsuite name="Security Utilities" file="packages/shared/src/security.test.ts" line="476" tests="2" assertions="208" failures="0" skipped="0" time="0" hostname="exnihilo">
+        <testcase name="generates cryptographically secure random strings" classname="Security Utilities &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="477" assertions="201" />
+        <testcase name="performs constant-time string comparison" classname="Security Utilities &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0" file="packages/shared/src/security.test.ts" line="490" assertions="7" />
+      </testsuite>
+      <testsuite name="Performance Requirements" file="packages/shared/src/security.test.ts" line="508" tests="2" assertions="3" failures="0" skipped="0" time="0.002" hostname="exnihilo">
+        <testcase name="ticket creation performance" classname="Performance Requirements &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="509" assertions="1" />
+        <testcase name="ticket verification performance" classname="Performance Requirements &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.003" file="packages/shared/src/security.test.ts" line="532" assertions="2" />
+      </testsuite>
+      <testsuite name="Security Edge Cases" file="packages/shared/src/security.test.ts" line="564" tests="2" assertions="13" failures="0" skipped="0" time="0.002" hostname="exnihilo">
+        <testcase name="handles malformed tickets gracefully" classname="Security Edge Cases &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.003" file="packages/shared/src/security.test.ts" line="565" assertions="10" />
+        <testcase name="handles clock skew gracefully" classname="Security Edge Cases &amp;gt; Security &amp;amp; Ticket Hardening v1.0 RC" time="0.001" file="packages/shared/src/security.test.ts" line="583" assertions="3" />
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>

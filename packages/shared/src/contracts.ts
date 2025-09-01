@@ -15,7 +15,7 @@ export const LIMITS = {
 // HTTP API Schemas
 export const createProjectSchema = z.object({
   name: z.string().min(1).max(100),
-});
+}).strict();
 
 export const projectResponseSchema = z.object({
   id: z.string().uuid(),

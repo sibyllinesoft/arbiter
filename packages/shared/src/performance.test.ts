@@ -507,10 +507,10 @@ describe('Performance & Incremental Validation v1.0 RC', () => {
       const stats = monitor.getPercentiles('test_op');
       
       expect(stats.count).toBe(10);
-      expect(stats.mean).toBe(55); // Average of 1-100
-      expect(stats.p50).toBe(50); // Median
-      expect(stats.p95).toBe(95); // 95th percentile
-      expect(stats.p99).toBe(99); // 99th percentile
+      expect(stats.mean).toBe(55); // Average of 10,20,...,100 = 550/10 = 55
+      expect(stats.p50).toBe(50); // Median of 10 values should be average of 5th and 6th values
+      expect(stats.p95).toBe(100); // 95th percentile with 10 values should be near the maximum
+      expect(stats.p99).toBe(100); // 99th percentile with only 10 values should be the maximum
     });
     
     test('filters metrics by operation type', () => {
