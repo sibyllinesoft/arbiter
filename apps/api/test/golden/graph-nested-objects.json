@@ -1,0 +1,102 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "app": {
+      "config": {
+        "database": {
+          "host": "localhost",
+          "port": 5432
+        },
+        "server": {
+          "port": 8080
+        }
+      },
+      "metadata": {
+        "name": "MyApp",
+        "version": "1.0.0"
+      }
+    }
+  },
+  "hasGraph": true,
+  "graphNodeCount": 11,
+  "graph": [
+    {
+      "id": "app",
+      "label": "app",
+      "type": "object",
+      "children": [
+        "app.config",
+        "app.metadata"
+      ]
+    },
+    {
+      "id": "app.config",
+      "label": "config",
+      "type": "object",
+      "children": [
+        "app.config.database",
+        "app.config.server"
+      ]
+    },
+    {
+      "id": "app.config.database",
+      "label": "database",
+      "type": "object",
+      "children": [
+        "app.config.database.host",
+        "app.config.database.port"
+      ]
+    },
+    {
+      "id": "app.config.database.host",
+      "label": "host: \"localhost\"",
+      "type": "value"
+    },
+    {
+      "id": "app.config.database.port",
+      "label": "port: 5432",
+      "type": "value"
+    },
+    {
+      "id": "app.config.server",
+      "label": "server",
+      "type": "object",
+      "children": [
+        "app.config.server.port"
+      ]
+    },
+    {
+      "id": "app.config.server.port",
+      "label": "port: 8080",
+      "type": "value"
+    },
+    {
+      "id": "app.metadata",
+      "label": "metadata",
+      "type": "object",
+      "children": [
+        "app.metadata.name",
+        "app.metadata.version"
+      ]
+    },
+    {
+      "id": "app.metadata.name",
+      "label": "name: \"MyApp\"",
+      "type": "value"
+    },
+    {
+      "id": "app.metadata.version",
+      "label": "version: \"1.0.0\"",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.app"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "config": {
+      "name": "MyApp",
+      "port": 8080,
+      "enabled": true
+    }
+  },
+  "hasGraph": true,
+  "graphNodeCount": 5,
+  "graph": [
+    {
+      "id": "config",
+      "label": "config",
+      "type": "object",
+      "children": [
+        "config.name",
+        "config.port",
+        "config.enabled"
+      ]
+    },
+    {
+      "id": "config.enabled",
+      "label": "enabled: true",
+      "type": "value"
+    },
+    {
+      "id": "config.name",
+      "label": "name: \"MyApp\"",
+      "type": "value"
+    },
+    {
+      "id": "config.port",
+      "label": "port: 8080",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.config"
+      ]
+    }
+  ]
+}

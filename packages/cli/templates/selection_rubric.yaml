@@ -1,0 +1,54 @@
+name: selection_rubric
+description: Template for creating decision-making rubrics with weighted criteria and scoring
+category: decision_making
+tags:
+  - selection
+  - rubric
+  - criteria
+  - scoring
+  - decision
+  - evaluation
+  - ranking
+version: "1.0.0"
+author: Arbiter CLI
+usage: |
+  This template provides a structured approach for creating selection rubrics
+  that evaluate options against multiple weighted criteria. Use this for
+  decision-making processes like vendor selection, feature prioritization,
+  or resource allocation where multiple factors need to be considered.
+parameters:
+  - name: rubric_name
+    type: string
+    description: Name of the selection rubric
+    default: "vendor_selection"
+  - name: criteria_count
+    type: number
+    description: Number of evaluation criteria
+    default: 4
+  - name: scoring_scale
+    type: string
+    description: Scoring scale (1-5, 1-10, percentage)
+    default: "1-5"
+  - name: decision_threshold
+    type: number
+    description: Minimum score required for selection
+    default: 75
+examples:
+  - description: Cloud provider selection rubric
+    values:
+      rubric_name: "cloud_provider_selection"
+      criteria_count: 5
+      scoring_scale: "1-10"
+      decision_threshold: 7.5
+  - description: Feature prioritization matrix
+    values:
+      rubric_name: "feature_prioritization"
+      criteria_count: 3
+      scoring_scale: "percentage"
+      decision_threshold: 80
+  - description: Vendor evaluation framework
+    values:
+      rubric_name: "vendor_evaluation"
+      criteria_count: 6
+      scoring_scale: "1-5"
+      decision_threshold: 3.5

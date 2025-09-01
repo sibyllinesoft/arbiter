@@ -1,0 +1,45 @@
+# Rails & Guarantees Prometheus Configuration
+# Monitoring configuration for production deployment
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "rails_guarantees_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Rails & Guarantees Engine Metrics
+  - job_name: 'rails-guarantees-engine'
+    static_configs:
+      - targets: ['rails-guarantees-engine:9090']
+    scrape_interval: 5s
+    metrics_path: /metrics
+    scheme: http
+
+  # System Metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Redis Metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: /metrics
+
+  # PostgreSQL Metrics
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  # Self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

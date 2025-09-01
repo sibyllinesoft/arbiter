@@ -1,0 +1,38 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "hello": "world",
+    "number": 42,
+    "flag": true
+  },
+  "hasGraph": true,
+  "graphNodeCount": 4,
+  "graph": [
+    {
+      "id": "flag",
+      "label": "flag: true",
+      "type": "value"
+    },
+    {
+      "id": "hello",
+      "label": "hello: \"world\"",
+      "type": "value"
+    },
+    {
+      "id": "number",
+      "label": "number: 42",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.hello",
+        "root.number",
+        "root.flag"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "person": {
+      "name": "Alice",
+      "age": 30,
+      "address": {
+        "street": "123 Main St",
+        "city": "Anytown",
+        "coordinates": {
+          "lat": 40.7128,
+          "lng": -74.006
+        }
+      },
+      "hobbies": [
+        "reading",
+        "hiking",
+        "coding"
+      ]
+    }
+  },
+  "hasGraph": true,
+  "graphNodeCount": 14,
+  "graph": [
+    {
+      "id": "person",
+      "label": "person",
+      "type": "object",
+      "children": [
+        "person.name",
+        "person.age",
+        "person.address",
+        "person.hobbies"
+      ]
+    },
+    {
+      "id": "person.address",
+      "label": "address",
+      "type": "object",
+      "children": [
+        "person.address.street",
+        "person.address.city",
+        "person.address.coordinates"
+      ]
+    },
+    {
+      "id": "person.address.city",
+      "label": "city: \"Anytown\"",
+      "type": "value"
+    },
+    {
+      "id": "person.address.coordinates",
+      "label": "coordinates",
+      "type": "object",
+      "children": [
+        "person.address.coordinates.lat",
+        "person.address.coordinates.lng"
+      ]
+    },
+    {
+      "id": "person.address.coordinates.lat",
+      "label": "lat: 40.7128",
+      "type": "value"
+    },
+    {
+      "id": "person.address.coordinates.lng",
+      "label": "lng: -74.006",
+      "type": "value"
+    },
+    {
+      "id": "person.address.street",
+      "label": "street: \"123 Main St\"",
+      "type": "value"
+    },
+    {
+      "id": "person.age",
+      "label": "age: 30",
+      "type": "value"
+    },
+    {
+      "id": "person.hobbies",
+      "label": "hobbies",
+      "type": "array",
+      "children": [
+        "person.hobbies[0]",
+        "person.hobbies[1]",
+        "person.hobbies[2]"
+      ]
+    },
+    {
+      "id": "person.hobbies[0]",
+      "label": "hobbies[0]: \"reading\"",
+      "type": "value"
+    },
+    {
+      "id": "person.hobbies[1]",
+      "label": "hobbies[1]: \"hiking\"",
+      "type": "value"
+    },
+    {
+      "id": "person.hobbies[2]",
+      "label": "hobbies[2]: \"coding\"",
+      "type": "value"
+    },
+    {
+      "id": "person.name",
+      "label": "name: \"Alice\"",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.person"
+      ]
+    }
+  ]
+}

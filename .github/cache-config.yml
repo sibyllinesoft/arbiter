@@ -1,0 +1,265 @@
+# GitHub Actions Caching Strategy Configuration
+# This file documents the caching strategy used across all workflows
+
+version: 1.0
+
+# Global cache settings
+global:
+  cache_version: "v2" # Increment to bust all caches
+  retention_days: 7
+  max_cache_size: "5GB" # Per repository limit
+
+# Cache strategies by workflow
+workflows:
+  fast-feedback:
+    description: "Fast feedback loop - optimize for speed"
+    caches:
+      dependencies:
+        key: "${{ runner.os }}-bun-v2-${{ hashFiles('**/bun.lockb') }}"
+        restore_keys:
+          - "${{ runner.os }}-bun-v2-"
+          - "${{ runner.os }}-bun-"
+        paths:
+          - "~/.bun/install/cache"
+          - "node_modules"
+        strategy: "aggressive" # Cache everything possible
+        
+      typescript:
+        key: "${{ runner.os }}-tsc-v2-${{ hashFiles('**/tsconfig.json', '**/*.ts', '**/*.tsx') }}"
+        restore_keys:
+          - "${{ runner.os }}-tsc-v2-"
+        paths:
+          - "apps/*/dist"
+          - "packages/*/dist"
+          - ".tsbuildinfo"
+        strategy: "incremental" # Only cache compiled outputs
+        
+  integration-tests:
+    description: "Integration testing - balance speed and accuracy"
+    caches:
+      dependencies:
+        key: "${{ runner.os }}-bun-integration-v2-${{ hashFiles('**/bun.lockb') }}"
+        restore_keys:
+          - "${{ runner.os }}-bun-v2-"
+        paths:
+          - "~/.bun/install/cache"
+          - "node_modules"
+        strategy: "balanced"
+        
+      build_artifacts:
+        key: "${{ runner.os }}-build-v2-${{ github.sha }}"
+        restore_keys:
+          - "${{ runner.os }}-build-v2-"
+        paths:
+          - "apps/*/dist"
+          - "packages/*/dist"
+        strategy: "cross_workflow" # Share build artifacts across workflows
+        
+      cue_cli:
+        key: "${{ runner.os }}-cue-v2-${{ hashFiles('.tool-versions') }}"
+        restore_keys:
+          - "${{ runner.os }}-cue-v2-"
+        paths:
+          - "$HOME/.local/bin/cue"
+        strategy: "tool_cache"
+        
+  e2e-tests:
+    description: "E2E testing - cache browsers and test data"
+    caches:
+      dependencies:
+        key: "${{ runner.os }}-bun-e2e-v2-${{ hashFiles('**/bun.lockb') }}"
+        paths:
+          - "~/.bun/install/cache"
+          - "node_modules"
+        strategy: "balanced"
+        
+      playwright_browsers:
+        key: "${{ runner.os }}-playwright-v2-${{ hashFiles('package.json') }}"
+        restore_keys:
+          - "${{ runner.os }}-playwright-v2-"
+        paths:
+          - "~/.cache/ms-playwright"
+        strategy: "long_term" # Browsers change infrequently
+        
+      docker_cache:
+        key: "${{ runner.os }}-docker-v2-${{ hashFiles('Dockerfile*', 'docker-compose.yml') }}"
+        restore_keys:
+          - "${{ runner.os }}-docker-v2-"
+        paths:
+          - "/tmp/.buildx-cache"
+        strategy: "layer_cache"
+        
+  performance-security-gates:
+    description: "Quality gates - cache tools and baselines"
+    caches:
+      dependencies:
+        key: "${{ runner.os }}-bun-quality-v2-${{ hashFiles('**/bun.lockb') }}"
+        paths:
+          - "~/.bun/install/cache"
+          - "node_modules"
+        strategy: "balanced"
+        
+      security_tools:
+        key: "${{ runner.os }}-security-tools-v2"
+        paths:
+          - "~/.local/bin/semgrep"
+          - "~/.local/bin/syft"
+        strategy: "tool_cache"
+        
+      performance_baseline:
+        key: "performance-baseline-v2-${{ github.ref_name }}"
+        restore_keys:
+          - "performance-baseline-v2-main"
+        paths:
+          - "benchmarks/baseline.json"
+        strategy: "branch_specific"
+        
+  deployment:
+    description: "Deployment - cache Docker layers and kubectl"
+    caches:
+      docker_buildx:
+        key: "${{ runner.os }}-docker-buildx-v2-${{ hashFiles('Dockerfile*') }}"
+        paths:
+          - "/tmp/.buildx-cache"
+        strategy: "layer_cache"
+        
+      kubectl:
+        key: "${{ runner.os }}-kubectl-v2"
+        paths:
+          - "~/.local/bin/kubectl"
+        strategy: "tool_cache"
+
+# Cache optimization strategies
+strategies:
+  aggressive:
+    description: "Cache everything possible for maximum speed"
+    settings:
+      cache_on_fork: true
+      parallel_restore: true
+      compression: "fast"
+      
+  balanced:
+    description: "Balance between speed and cache size"
+    settings:
+      cache_on_fork: false
+      parallel_restore: true
+      compression: "balanced"
+      
+  conservative:
+    description: "Minimal caching for reliability"
+    settings:
+      cache_on_fork: false
+      parallel_restore: false
+      compression: "max"
+      
+  incremental:
+    description: "Cache only incremental build outputs"
+    settings:
+      include_source: false
+      only_outputs: true
+      
+  cross_workflow:
+    description: "Share caches between workflows"
+    settings:
+      scope: "repository"
+      sharing: "cross_workflow"
+      
+  long_term:
+    description: "Cache items that change infrequently"
+    settings:
+      retention_days: 30
+      eviction_policy: "lru"
+      
+  tool_cache:
+    description: "Cache downloaded tools and binaries"
+    settings:
+      retention_days: 30
+      compression: "max"
+      verify_checksum: true
+      
+  layer_cache:
+    description: "Docker layer caching strategy"
+    settings:
+      mode: "max"
+      inline_cache: true
+      
+  branch_specific:
+    description: "Cache per branch with fallback to main"
+    settings:
+      scope: "branch"
+      fallback: "main"
+
+# Cache warming jobs (optional scheduled jobs to pre-populate caches)
+cache_warming:
+  enabled: false # Enable if cache miss rates are high
+  schedule: "0 2 * * *" # Daily at 2 AM UTC
+  workflows:
+    - fast-feedback
+    - integration-tests
+  
+  warm_caches:
+    - dependencies
+    - typescript
+    - playwright_browsers
+    - security_tools
+
+# Cache monitoring and metrics
+monitoring:
+  enabled: true
+  metrics:
+    - cache_hit_rate
+    - cache_size_usage
+    - cache_restore_time
+    - cache_save_time
+  
+  alerts:
+    low_hit_rate: 70% # Alert if hit rate drops below 70%
+    high_size_usage: 4GB # Alert if cache usage exceeds 4GB
+    slow_restore: 60s # Alert if cache restore takes over 60s
+
+# Cache cleanup policies
+cleanup:
+  auto_cleanup: true
+  policies:
+    - name: "old_branches"
+      description: "Clean caches for deleted branches"
+      trigger: "branch_deletion"
+      action: "delete_all"
+      
+    - name: "large_caches"
+      description: "Clean caches larger than 1GB"
+      trigger: "size_threshold"
+      threshold: "1GB"
+      action: "compress_or_delete"
+      
+    - name: "unused_caches"
+      description: "Clean caches not accessed in 14 days"
+      trigger: "access_time"
+      threshold: "14d"
+      action: "delete"
+
+# Best practices documentation
+best_practices:
+  key_naming:
+    - "Include runner.os for cross-platform compatibility"
+    - "Use semantic versioning (v1, v2) for cache versions"
+    - "Include relevant file hashes for content-based invalidation"
+    - "Use hierarchical keys with restore-keys fallback"
+    
+  path_selection:
+    - "Cache only necessary files to minimize size"
+    - "Avoid caching logs, temporary files, or secrets"
+    - "Use absolute paths when possible"
+    - "Document what each cached path contains"
+    
+  invalidation:
+    - "Increment cache version when changing cache structure"
+    - "Use file hashes to automatically invalidate stale caches"
+    - "Consider manual invalidation for major dependency updates"
+    - "Test cache behavior with empty cache scenarios"
+    
+  performance:
+    - "Measure cache hit rates and optimization impact"
+    - "Balance cache size vs restore time"
+    - "Use parallel cache operations when safe"
+    - "Monitor for cache thrashing (frequent misses)"

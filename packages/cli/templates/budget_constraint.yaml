@@ -1,0 +1,46 @@
+name: budget_constraint
+description: Template for implementing budget and resource constraints in Arbiter schemas
+category: resource_management
+tags: 
+  - budget
+  - cost
+  - resource
+  - constraint
+  - limit
+version: "1.0.0"
+author: Arbiter CLI
+usage: |
+  This template provides a standard pattern for implementing budget constraints
+  that limit resource allocation based on cost thresholds, usage quotas, or
+  financial boundaries. Customize the constraint values and resource types
+  for your specific use case.
+parameters:
+  - name: budget_limit
+    type: number
+    description: Maximum budget allowance
+    default: 1000
+  - name: currency
+    type: string
+    description: Currency unit for budget calculations
+    default: "USD"
+  - name: resource_type
+    type: string
+    description: Type of resource being constrained
+    default: "compute"
+  - name: time_period
+    type: string
+    description: Budget period (monthly, weekly, daily)
+    default: "monthly"
+examples:
+  - description: Monthly compute budget constraint
+    values:
+      budget_limit: 5000
+      currency: "USD"
+      resource_type: "compute"
+      time_period: "monthly"
+  - description: Daily API usage budget
+    values:
+      budget_limit: 100
+      currency: "credits"
+      resource_type: "api_calls"
+      time_period: "daily"

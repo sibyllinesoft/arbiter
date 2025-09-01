@@ -1,0 +1,97 @@
+graph TB
+    %% External Systems
+    GitLab[GitLab Repository]
+    User[Software Engineer]
+    
+    %% Valhalla Core Components
+    subgraph Valhalla["Valhalla Agent Benchmarking Framework"]
+        subgraph Core["Core Orchestration Layer"]
+            Arbiter[Arbiter<br/>Spec Service<br/>CUE Validation]
+            Meta[Meta Management<br/>Versioning & Tracing]
+        end
+        
+        subgraph Agents["Agent Layer"]
+            Mimir[Mimir<br/>Codebase Insight<br/>Dependency Analysis]
+            Conclave[Conclave<br/>Debate Engine<br/>Decision Sites]
+            
+            subgraph SubAgents["Specialized Subagents"]
+                Tests[Tests Agent<br/>Oracle Generation]
+                Coding[Coding Agent<br/>Patch Generation]
+                Review[Review Agent<br/>Selection & Validation]
+                Repair[Repair Agent<br/>Guided Edit Search]
+                Merge[Merge Agent<br/>GitLab Integration]
+                Docs[Docs Agent<br/>Documentation]
+            end
+        end
+        
+        subgraph State["Execution State"]
+            Pipeline[Pipeline State<br/>Phase Tracking]
+            Budget[Budget Tracking<br/>Resource Management]
+            Quality[Quality Gates<br/>Circuit Breakers]
+        end
+        
+        subgraph Schema["CUE Schema Layer"]
+            Spec[Spec Schema<br/>Acceptance Criteria]
+            Policy[Policy Schema<br/>Governance Rules]
+            Rubric[Rubric Schema<br/>Success Metrics]
+            Brief[Brief Schema<br/>Codebase Insights]
+        end
+    end
+    
+    %% External AI Services
+    subgraph AIServices["AI Services"]
+        OpenAI[OpenAI GPT-4]
+        Anthropic[Anthropic Claude]
+        Google[Google Gemini]
+    end
+    
+    %% Data Flow - Reactive DAG
+    User -->|Requirements| Arbiter
+    GitLab -->|Codebase Access| Mimir
+    
+    Arbiter -->|Validates| Spec
+    Arbiter -->|Enforces| Policy
+    Arbiter -->|Coordinates| Agents
+    
+    Mimir -->|Analyzes| Brief
+    Brief -->|Informs| Conclave
+    Brief -->|Guides| SubAgents
+    
+    Spec -->|Defines| Tests
+    Tests -->|Oracle| Coding
+    Coding -->|Candidates| Review
+    Review -->|Selection| Repair
+    Repair -->|Validated| Merge
+    Merge -->|Integration| Docs
+    
+    Conclave -->|Debates| Policy
+    Conclave -->|Consensus| SubAgents
+    
+    %% External Service Integration
+    Conclave -.->|API Calls| AIServices
+    Coding -.->|Generation| AIServices
+    
+    Pipeline -->|Tracks| State
+    Budget -->|Limits| Agents
+    Quality -->|Gates| SubAgents
+    
+    Merge -->|MR Creation| GitLab
+    Docs -->|Documentation| GitLab
+    
+    %% Validation Flows (dotted)
+    Arbiter -.->|Validates| Pipeline
+    Policy -.->|Constrains| Budget
+    Rubric -.->|Measures| Quality
+    
+    %% Key Architectural Principles
+    classDef core fill:#ff9999,stroke:#333,stroke-width:3px
+    classDef agent fill:#99ccff,stroke:#333,stroke-width:2px
+    classDef schema fill:#99ff99,stroke:#333,stroke-width:2px
+    classDef external fill:#ffff99,stroke:#333,stroke-width:2px
+    classDef state fill:#ff99ff,stroke:#333,stroke-width:2px
+    
+    class Arbiter,Meta core
+    class Mimir,Conclave,Tests,Coding,Review,Repair,Merge,Docs agent
+    class Spec,Policy,Rubric,Brief schema
+    class GitLab,User,OpenAI,Anthropic,Google external
+    class Pipeline,Budget,Quality state

@@ -1,0 +1,131 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "items": [
+      "apple",
+      "banana",
+      "cherry"
+    ],
+    "numbers": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "mixed": [
+      1,
+      "two",
+      true,
+      null
+    ]
+  },
+  "hasGraph": true,
+  "graphNodeCount": 16,
+  "graph": [
+    {
+      "id": "items",
+      "label": "items",
+      "type": "array",
+      "children": [
+        "items[0]",
+        "items[1]",
+        "items[2]"
+      ]
+    },
+    {
+      "id": "items[0]",
+      "label": "items[0]: \"apple\"",
+      "type": "value"
+    },
+    {
+      "id": "items[1]",
+      "label": "items[1]: \"banana\"",
+      "type": "value"
+    },
+    {
+      "id": "items[2]",
+      "label": "items[2]: \"cherry\"",
+      "type": "value"
+    },
+    {
+      "id": "mixed",
+      "label": "mixed",
+      "type": "array",
+      "children": [
+        "mixed[0]",
+        "mixed[1]",
+        "mixed[2]",
+        "mixed[3]"
+      ]
+    },
+    {
+      "id": "mixed[0]",
+      "label": "mixed[0]: 1",
+      "type": "value"
+    },
+    {
+      "id": "mixed[1]",
+      "label": "mixed[1]: \"two\"",
+      "type": "value"
+    },
+    {
+      "id": "mixed[2]",
+      "label": "mixed[2]: true",
+      "type": "value"
+    },
+    {
+      "id": "mixed[3]",
+      "label": "mixed[3]: null",
+      "type": "value"
+    },
+    {
+      "id": "numbers",
+      "label": "numbers",
+      "type": "array",
+      "children": [
+        "numbers[0]",
+        "numbers[1]",
+        "numbers[2]",
+        "numbers[3]",
+        "numbers[4]"
+      ]
+    },
+    {
+      "id": "numbers[0]",
+      "label": "numbers[0]: 1",
+      "type": "value"
+    },
+    {
+      "id": "numbers[1]",
+      "label": "numbers[1]: 2",
+      "type": "value"
+    },
+    {
+      "id": "numbers[2]",
+      "label": "numbers[2]: 3",
+      "type": "value"
+    },
+    {
+      "id": "numbers[3]",
+      "label": "numbers[3]: 4",
+      "type": "value"
+    },
+    {
+      "id": "numbers[4]",
+      "label": "numbers[4]: 5",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.items",
+        "root.numbers",
+        "root.mixed"
+      ]
+    }
+  ]
+}

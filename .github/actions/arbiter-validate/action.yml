@@ -1,0 +1,53 @@
+name: 'Arbiter Architecture Validation'
+description: 'Validate architecture configurations with Arbiter and annotate PRs with violations'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  schema-path:
+    description: 'Path to the CUE schema file'
+    required: false
+    default: 'schema.cue'
+  config-path:
+    description: 'Path to the configuration file to validate'
+    required: false
+    default: 'config.cue'
+  arbiter-url:
+    description: 'Arbiter server URL'
+    required: false
+    default: 'http://localhost:3000'
+  fail-on:
+    description: 'Validation level to fail on: error, warning, or info'
+    required: false
+    default: 'error'
+  timeout:
+    description: 'Timeout for validation in seconds'
+    required: false
+    default: '30'
+  api-key:
+    description: 'API key for Arbiter server (if required)'
+    required: false
+  working-directory:
+    description: 'Working directory for validation'
+    required: false
+    default: '.'
+  output-format:
+    description: 'Output format: table, json, or github-actions'
+    required: false
+    default: 'github-actions'
+  export-formats:
+    description: 'Comma-separated list of export formats to generate (openapi,typescript,kubernetes)'
+    required: false
+
+outputs:
+  valid:
+    description: 'Whether the architecture validation passed'
+  violations-summary:
+    description: 'Summary of violations found'
+  export-artifacts:
+    description: 'Paths to generated export artifacts'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

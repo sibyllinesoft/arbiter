@@ -1,33 +1,61 @@
 {
-  "name": "spec-workbench-backend",
-  "version": "1.0.0",
-  "description": "Real-time collaborative spec validation backend built with Bun",
-  "main": "src/server.ts",
+  "name": "arbiter",
+  "version": "0.1.0",
+  "description": "Real-time collaborative CUE editor with analysis and visualization",
   "type": "module",
+  "private": true,
   "scripts": {
-    "dev": "bun --hot src/server.ts",
-    "start": "bun src/server.ts",
-    "build": "bun build src/server.ts --outdir=dist --target=bun",
-    "typecheck": "bun tsc --noEmit",
-    "migrate": "bun src/migrations/run.ts",
-    "test": "bun test",
-    "lint": "eslint src --ext .ts",
-    "format": "prettier --write src/**/*.ts"
+    "dev": "concurrently \"bun run --cwd apps/api dev\" \"bun run --cwd apps/web dev\"",
+    "build": "bun run --cwd packages/shared build && bun run --cwd packages/sdk build && bun run --cwd packages/cli build && bun run --cwd packages/agent build && bun run --cwd apps/api build && bun run --cwd apps/web build",
+    "typecheck": "bun run --cwd packages/shared typecheck && bun run --cwd packages/sdk typecheck && bun run --cwd packages/cli typecheck && bun run --cwd packages/agent typecheck && bun run --cwd apps/api typecheck && bun run --cwd apps/web typecheck",
+    "test": "./run-tests.sh",
+    "test:all": "bun run typecheck && bun run test && bun run test:tutorial && bun run test:e2e:headless",
+    "test:tutorial": "bun run scripts/test-tutorial.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:headless": "playwright test --reporter=list",
+    "test:chaos": "bash scripts/run-chaos-tests.sh",
+    "test:chaos:quick": "bash scripts/run-chaos-tests.sh --mode quick --headless",
+    "test:chaos:network": "bash scripts/run-chaos-tests.sh --mode network --headless",
+    "test:chaos:crdt": "bash scripts/run-chaos-tests.sh --mode crdt --headless",
+    "test:chaos:realworld": "bash scripts/run-chaos-tests.sh --mode realworld --headless",
+    "test:chaos:ci": "bash scripts/run-chaos-tests.sh --mode quick --headless --timeout 180000",
+    "lint": "biome lint .",
+    "format:check": "biome format --check .",
+    "format:write": "biome format --write .",
+    "generate:contracts": "bun run scripts/generate-contracts.mjs",
+    "sbom": "syft packages dir:. -o spdx-json > sbom.spdx.json",
+    "bench": "bash scripts/run-benchmarks.sh",
+    "bench:performance": "bash scripts/run-benchmarks.sh performance",
+    "bench:security": "bash scripts/run-benchmarks.sh security",
+    "bench:quick": "bash scripts/run-benchmarks.sh quick",
+    "security:scan": "bun run --cwd packages/security scan",
+    "performance:test": "bun run --cwd packages/benchmarks bench",
+    "quality:gates": "bun run bench && echo 'Quality gates evaluation complete'",
+    "cli:build": "bun run --cwd packages/cli build",
+    "cli:dev": "bun run --cwd packages/cli dev",
+    "cli:test": "bun run --cwd packages/cli test",
+    "cli:test:golden": "bun run --cwd packages/cli test:golden",
+    "arbiter": "bun run --cwd packages/cli src/cli.ts",
+    "arbiter:build": "bun run --cwd packages/cli build && bun --cwd packages/cli dist/cli.js",
+    "agent:build": "bun run --cwd packages/agent build",
+    "agent:dev": "bun run --cwd packages/agent dev",
+    "agent": "bun run --cwd packages/agent src/cli.ts",
+    "watch": "bun run src/watcher/cli.ts",
+    "watch:dev": "bun run --watch src/watcher/cli.ts"
   },
   "dependencies": {
-    "nats": "^2.28.2",
-    "playwright": "^1.55.0",
-    "ws": "^8.16.0"
+    "chokidar": "^4.0.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.4.1",
+    "@playwright/test": "^1.55.0",
     "@types/node": "^20.11.0",
-    "@types/ws": "^8.5.10",
-    "@typescript-eslint/eslint-plugin": "^6.19.1",
-    "@typescript-eslint/parser": "^6.19.1",
     "bun-types": "^1.2.21",
-    "eslint": "^8.56.0",
-    "prettier": "^3.2.4",
-    "typescript": "^5.3.3"
+    "concurrently": "^8.2.2",
+    "http-proxy-middleware": "^3.0.0",
+    "typescript": "^5.3.3",
+    "zod": "^3.22.4",
+    "zod-openapi": "^2.18.0"
   },
   "engines": {
     "bun": ">=1.0.0"
@@ -43,5 +71,8 @@
     "validation"
   ],
   "author": "Nathan Rice",
-  "license": "MIT"
+  "license": "MIT",
+  "optionalDependencies": {
+    "tree-sitter": "^0.25.0"
+  }
 }

@@ -1,0 +1,38 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "small": 1,
+    "large": 9223372036854776000,
+    "float": 1.7976931348623157e+308
+  },
+  "hasGraph": true,
+  "graphNodeCount": 4,
+  "graph": [
+    {
+      "id": "float",
+      "label": "float: 1.7976931348623157e+308",
+      "type": "value"
+    },
+    {
+      "id": "large",
+      "label": "large: 9223372036854776000",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.small",
+        "root.large",
+        "root.float"
+      ]
+    },
+    {
+      "id": "small",
+      "label": "small: 1",
+      "type": "value"
+    }
+  ]
+}

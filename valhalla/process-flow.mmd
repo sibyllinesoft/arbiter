@@ -1,0 +1,107 @@
+graph TD
+    %% Process Flow - Reactive DAG Execution
+    Start([User Request<br/>Requirements]) --> Spec{Spec<br/>Validation}
+    
+    Spec -->|Valid| Brief[Mimir Analysis<br/>Brief Generation]
+    Spec -->|Invalid| SpecError[❌ Spec Error<br/>Requirements Clarification]
+    
+    Brief --> PlanDecision{Plan Phase<br/>Enabled?}
+    
+    PlanDecision -->|Yes| ConclaveStrategy[Conclave Debate<br/>Strategy Selection]
+    PlanDecision -->|No| Tests[Tests Agent<br/>Oracle Generation]
+    
+    ConclaveStrategy --> Plan[Plan Validation<br/>Target Files & Strategy]
+    Plan --> Tests
+    
+    Tests --> TestsValidation{Tests<br/>Pass?}
+    TestsValidation -->|No| TestsRepair[Tests Repair<br/>Oracle Enhancement]
+    TestsValidation -->|Yes| Implementation[Implementation Phase<br/>Candidate Generation]
+    TestsRepair --> Implementation
+    
+    Implementation --> CandidateGen[Coding Agent<br/>Generate K Candidates]
+    CandidateGen --> TestExecution[Test Execution<br/>Parallel Validation]
+    
+    TestExecution --> Clustering[Duplicate Detection<br/>Candidate Clustering]
+    Clustering --> ReviewDecision{Review Phase<br/>Conclave Enabled?}
+    
+    ReviewDecision -->|Yes| ConclaveReview[Conclave Debate<br/>Candidate Selection]
+    ReviewDecision -->|No| AutoReview[Automated Review<br/>Heuristic Selection]
+    
+    ConclaveReview --> Selection[Selection Validation<br/>Best Candidate]
+    AutoReview --> Selection
+    
+    Selection --> QualityGate{Quality Gates<br/>Pass?}
+    
+    QualityGate -->|Pass| MergePhase[Merge Agent<br/>GitLab MR Creation]
+    QualityGate -->|Fail| RepairDecision{Repair<br/>Attempts Left?}
+    
+    RepairDecision -->|Yes| RepairAgent[Repair Agent<br/>Guided Edit Search]
+    RepairDecision -->|No| RepairFailure[❌ Repair Failure<br/>Human Intervention]
+    
+    RepairAgent --> RepairValidation{Repair<br/>Successful?}
+    RepairValidation -->|Yes| QualityGate
+    RepairValidation -->|No| RepairDecision
+    
+    MergePhase --> MRValidation{MR<br/>Created?}
+    MRValidation -->|Yes| DocsPhase[Docs Agent<br/>Documentation Generation]
+    MRValidation -->|No| MergeError[❌ Merge Error<br/>GitLab Integration Issue]
+    
+    DocsPhase --> Complete([✅ Pipeline Complete<br/>Success Metrics])
+    
+    %% Budget and Circuit Breaker Monitoring
+    subgraph Monitoring["Continuous Monitoring"]
+        BudgetCheck{Budget<br/>Exceeded?}
+        CircuitBreaker{Circuit<br/>Breaker Open?}
+        FlakeDetection{Flake Rate<br/>Above Threshold?}
+    end
+    
+    %% Budget monitoring connects to all phases
+    Brief -.-> BudgetCheck
+    Implementation -.-> BudgetCheck
+    ConclaveStrategy -.-> BudgetCheck
+    ConclaveReview -.-> BudgetCheck
+    
+    BudgetCheck -->|Yes| BudgetFailure[❌ Budget Exceeded<br/>Pipeline Termination]
+    CircuitBreaker -->|Yes| CircuitFailure[❌ Circuit Open<br/>Service Degradation]
+    FlakeDetection -->|Yes| FlakeHandling[Flake Handling<br/>Rerun Strategy]
+    
+    %% Error Recovery Paths
+    SpecError --> Spec
+    TestsRepair --> TestsValidation
+    RepairFailure --> Complete
+    MergeError --> Complete
+    BudgetFailure --> Complete
+    CircuitFailure --> Complete
+    FlakeHandling --> TestExecution
+    
+    %% State Persistence
+    subgraph StateManagement["State Management"]
+        PhaseTracking[Phase History<br/>Execution Telemetry]
+        MetricsCollection[Metrics Collection<br/>RED/USE Data]
+        TraceCorrelation[Trace Correlation<br/>Distributed Tracing]
+    end
+    
+    %% All phases update state
+    Brief --> PhaseTracking
+    Implementation --> PhaseTracking
+    Selection --> PhaseTracking
+    MergePhase --> PhaseTracking
+    DocsPhase --> PhaseTracking
+    
+    PhaseTracking --> MetricsCollection
+    MetricsCollection --> TraceCorrelation
+    
+    %% Styling
+    classDef success fill:#90EE90,stroke:#006400,stroke-width:2px
+    classDef error fill:#FFB6C1,stroke:#8B0000,stroke-width:2px
+    classDef process fill:#87CEEB,stroke:#4682B4,stroke-width:2px
+    classDef decision fill:#DDA0DD,stroke:#800080,stroke-width:2px
+    classDef agent fill:#F0E68C,stroke:#DAA520,stroke-width:2px
+    classDef monitoring fill:#FFA07A,stroke:#FF4500,stroke-width:2px
+    
+    class Complete success
+    class SpecError,TestsRepair,RepairFailure,MergeError,BudgetFailure,CircuitFailure error
+    class Brief,Implementation,CandidateGen,TestExecution,Clustering,Selection,MergePhase,DocsPhase process
+    class Spec,PlanDecision,TestsValidation,ReviewDecision,QualityGate,RepairDecision,MRValidation,RepairValidation decision
+    class Tests,Coding,Review,Repair,Merge,Docs,ConclaveStrategy,ConclaveReview agent
+    class BudgetCheck,CircuitBreaker,FlakeDetection,PhaseTracking,MetricsCollection,TraceCorrelation monitoring

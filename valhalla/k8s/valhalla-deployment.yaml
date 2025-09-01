@@ -1,0 +1,313 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valhalla-arbiter
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: arbiter
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valhalla
+      app.kubernetes.io/component: arbiter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valhalla
+        app.kubernetes.io/component: arbiter
+        app.kubernetes.io/part-of: valhalla-agent-benchmarking
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: valhalla-arbiter
+      containers:
+      - name: arbiter
+        image: valhalla/arbiter:v1.0.0
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: CONFIG_PATH
+          value: "/etc/valhalla/config"
+        - name: GITLAB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: gitlab-token
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: openai-api-key
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: anthropic-api-key
+        - name: POSTGRES_URL
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: postgres-url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: redis-url
+        volumeMounts:
+        - name: config
+          mountPath: /etc/valhalla/config
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: valhalla-config
+      - name: temp
+        emptyDir: {}
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valhalla-mimir
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: mimir
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valhalla
+      app.kubernetes.io/component: mimir
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valhalla
+        app.kubernetes.io/component: mimir
+        app.kubernetes.io/part-of: valhalla-agent-benchmarking
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: valhalla-mimir
+      containers:
+      - name: mimir
+        image: valhalla/mimir:v1.0.0
+        ports:
+        - containerPort: 8081
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: CONFIG_PATH
+          value: "/etc/valhalla/config"
+        - name: GITLAB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: gitlab-token
+        volumeMounts:
+        - name: config
+          mountPath: /etc/valhalla/config
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+        - name: analysis-cache
+          mountPath: /var/cache/analysis
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: valhalla-config
+      - name: temp
+        emptyDir: {}
+      - name: analysis-cache
+        emptyDir:
+          sizeLimit: 10Gi
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: valhalla-conclave
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: conclave
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valhalla
+      app.kubernetes.io/component: conclave
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valhalla
+        app.kubernetes.io/component: conclave
+        app.kubernetes.io/part-of: valhalla-agent-benchmarking
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: valhalla-conclave
+      containers:
+      - name: conclave
+        image: valhalla/conclave:v1.0.0
+        ports:
+        - containerPort: 8082
+          name: http
+        - containerPort: 9090
+          name: metrics
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: CONFIG_PATH
+          value: "/etc/valhalla/config"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: openai-api-key
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: anthropic-api-key
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: valhalla-secrets
+              key: google-api-key
+        volumeMounts:
+        - name: config
+          mountPath: /etc/valhalla/config
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "8Gi"
+            cpu: "4000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 45
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8082
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: config
+        configMap:
+          name: valhalla-config
+      - name: temp
+        emptyDir: {}
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"

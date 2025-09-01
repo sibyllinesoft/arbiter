@@ -1,0 +1,79 @@
+{
+  "version": "v1",
+  "kind": "Assembly",
+  "metadata": {
+    "name": "my-library",
+    "description": "Example library project configuration",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  "spec": {
+    "artifact": {
+      "kind": "library",
+      "language": "ts",
+      "build": {
+        "tool": "bun",
+        "targets": ["./src"],
+        "matrix": {
+          "node": ["18", "20", "22"],
+          "os": ["ubuntu-latest", "macos-latest", "windows-latest"]
+        }
+      },
+      "packaging": {
+        "registry": "npm",
+        "private": false,
+        "publishConfig": {
+          "access": "public"
+        }
+      }
+    },
+    "profiles": {
+      "library": {
+        "semver": "strict",
+        "surfaceConfig": {
+          "entryPoints": ["./src/index.ts"],
+          "includePrivate": false,
+          "extractorOptions": {
+            "followReferences": true,
+            "includeDocumentation": true,
+            "typeDepth": 3
+          }
+        },
+        "qualityGates": {
+          "minCoverage": 0.90,
+          "maxComplexity": 10,
+          "noBreakingChanges": true
+        },
+        "compatibility": {
+          "engines": {
+            "node": ">=18.0.0"
+          },
+          "browsers": "> 1%, not dead"
+        }
+      }
+    },
+    "validation": {
+      "schemas": ["./spec/spec/schema/artifact_spec.cue"],
+      "rules": [
+        "no-breaking-changes-without-major-bump",
+        "require-documentation-for-public-api",
+        "enforce-semantic-versioning"
+      ]
+    },
+    "ci": {
+      "triggers": ["push", "pull_request"],
+      "matrix": {
+        "os": ["ubuntu-latest", "macos-latest", "windows-latest"],
+        "node": ["18", "20", "22"]
+      },
+      "steps": [
+        "install-dependencies",
+        "type-check",
+        "lint",
+        "test",
+        "build",
+        "extract-api-surface",
+        "check-breaking-changes"
+      ]
+    }
+  }
+}

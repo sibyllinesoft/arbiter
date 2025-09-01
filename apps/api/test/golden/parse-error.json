@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "message": "expected label or ':', found 'IDENT' syntax:",
+      "line": 3,
+      "column": 9
+    }
+  ],
+  "hasValue": false,
+  "hasGraph": false,
+  "graphNodeCount": 0
+}

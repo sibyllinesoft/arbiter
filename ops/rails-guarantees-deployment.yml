@@ -1,0 +1,221 @@
+# Rails & Guarantees v1.0 RC Production Deployment Configuration
+# This configuration deploys the complete Rails & Guarantees implementation
+# with all phases 5-7 components for production use
+
+version: '3.8'
+
+services:
+  # Core Rails & Guarantees Engine
+  rails-guarantees-engine:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        SERVICE: rails-guarantees
+    image: arbiter/rails-guarantees:v1.0-rc
+    container_name: rails-guarantees-engine
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "9090:9090"  # Metrics endpoint
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - METRICS_ENABLED=true
+      - MONITORING_ENABLED=true
+      - SCHEMA_LOCK_ENABLED=true
+      - INVARIANT_VALIDATION_ENABLED=true
+      - SLO_MONITORING_ENABLED=true
+      - SECURITY_MONITORING_ENABLED=true
+      - PERFORMANCE_BUDGET_ENFORCEMENT=true
+      # SLO Configuration
+      - RESPONSE_TIME_P95_TARGET_MS=400
+      - TICKET_VERIFY_P95_TARGET_MS=25
+      - AVAILABILITY_TARGET=99.9
+      - ERROR_BUDGET_BURN_RATE_THRESHOLD=2.0
+      # Security Configuration
+      - NONCE_CLEANUP_INTERVAL_MS=300000  # 5 minutes
+      - MAX_TICKET_TTL_MS=86400000        # 24 hours
+      - SECURITY_EVENT_RETENTION_MS=604800000  # 7 days
+      # Performance Configuration
+      - PERFORMANCE_BUDGET_CPU_PERCENT=70
+      - PERFORMANCE_BUDGET_MEMORY_MB=512
+      - PERFORMANCE_BUDGET_DISK_MB=1024
+      # Artifacts Configuration
+      - ARTIFACTS_OUTPUT_DIR=/app/artifacts
+      - SBOM_FORMAT=spdx-2.3
+      - PROVENANCE_ENABLED=true
+    volumes:
+      - rails-guarantees-data:/app/data
+      - rails-guarantees-artifacts:/app/artifacts
+      - rails-guarantees-logs:/app/logs
+      - ./config:/app/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - rails-guarantees-network
+    depends_on:
+      - redis
+      - postgresql
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  # Redis for nonce tracking and caching
+  redis:
+    image: redis:7-alpine
+    container_name: rails-guarantees-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rails-guarantees-network
+
+  # PostgreSQL for persistent data storage
+  postgresql:
+    image: postgres:15-alpine
+    container_name: rails-guarantees-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=rails_guarantees
+      - POSTGRES_USER=rails_guarantees
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-rails_guarantees_secure_password}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./sql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rails_guarantees"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - rails-guarantees-network
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rails-guarantees-prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - rails-guarantees-network
+
+  # Grafana for monitoring dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rails-guarantees-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin_secure_password}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - rails-guarantees-network
+    depends_on:
+      - prometheus
+
+  # Alert Manager for SLO alerts
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: rails-guarantees-alertmanager
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - rails-guarantees-network
+
+  # Log aggregator for centralized logging
+  fluentd:
+    image: fluent/fluentd:v1.16-debian-1
+    container_name: rails-guarantees-fluentd
+    restart: unless-stopped
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    volumes:
+      - ./fluentd/fluent.conf:/fluentd/etc/fluent.conf:ro
+      - fluentd-logs:/fluentd/log
+    networks:
+      - rails-guarantees-network
+
+volumes:
+  rails-guarantees-data:
+    driver: local
+  rails-guarantees-artifacts:
+    driver: local
+  rails-guarantees-logs:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  alertmanager-data:
+    driver: local
+  fluentd-logs:
+    driver: local
+
+networks:
+  rails-guarantees-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Production deployment commands:
+# 1. docker-compose -f ops/rails-guarantees-deployment.yml up -d
+# 2. docker-compose -f ops/rails-guarantees-deployment.yml logs -f
+# 3. docker-compose -f ops/rails-guarantees-deployment.yml exec rails-guarantees-engine npm run health-check
+
+# Monitoring endpoints:
+# - Main service: http://localhost:8080
+# - Metrics: http://localhost:9090/metrics
+# - Prometheus: http://localhost:9091
+# - Grafana: http://localhost:3000
+# - AlertManager: http://localhost:9093

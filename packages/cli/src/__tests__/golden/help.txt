@@ -1,0 +1,45 @@
+Usage: arbiter [options] [command]
+
+Arbiter CLI for CUE validation and management
+
+Options:
+  -v, --version         display version number
+  -c, --config <path>   path to configuration file
+  --no-color            disable colored output
+  --api-url <url>       API server URL (default: "http://localhost:XXXX")
+  --timeout <ms>        request timeout in milliseconds (default: "XXXX")
+  -h, --help            display help for command
+
+Commands:
+  init [options] [project-name]  initialize a new CUE project with templates
+  check [options] [patterns...]  validate CUE files in the current directory
+  validate [options] <files...>  validate CUE files with explicit schema and configuration
+  export [options] <files...>    export CUE configurations to various formats
+  server [options]               start local Arbiter server (development)
+  config                         manage CLI configuration
+  health                         check Arbiter server health
+  help [command]                 display help for command
+
+Examples:
+  Initialize new project:
+    arbiter init my-project --template kubernetes
+    
+  Validate files:
+    arbiter check
+    arbiter check --format json
+    arbiter validate schema.cue values.cue --strict
+    
+  Export configurations:
+    arbiter export *.cue --format openapi,types
+    arbiter export . --format k8s --output manifests/
+    
+  Check server:
+    arbiter health
+    
+Configuration:
+  Create .arbiter.json in your project root:
+  {
+    "apiUrl": "http://localhost:XXXX",
+    "format": "table",
+    "color": true
+  }

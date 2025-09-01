@@ -1,0 +1,62 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "message": "Hello 世界 🌍",
+    "emoji": "🚀",
+    "unicode_key": "αβγ",
+    "nested": {
+      "🔑": "key with emoji",
+      "中文": "Chinese text"
+    }
+  },
+  "hasGraph": true,
+  "graphNodeCount": 7,
+  "graph": [
+    {
+      "id": "emoji",
+      "label": "emoji: \"🚀\"",
+      "type": "value"
+    },
+    {
+      "id": "message",
+      "label": "message: \"Hello 世界 🌍\"",
+      "type": "value"
+    },
+    {
+      "id": "nested",
+      "label": "nested",
+      "type": "object",
+      "children": [
+        "nested.🔑",
+        "nested.中文"
+      ]
+    },
+    {
+      "id": "nested.🔑",
+      "label": "🔑: \"key with emoji\"",
+      "type": "value"
+    },
+    {
+      "id": "nested.中文",
+      "label": "中文: \"Chinese text\"",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.message",
+        "root.emoji",
+        "root.unicode_key",
+        "root.nested"
+      ]
+    },
+    {
+      "id": "unicode_key",
+      "label": "unicode_key: \"αβγ\"",
+      "type": "value"
+    }
+  ]
+}

@@ -1,0 +1,416 @@
+name: Agentic CI Integration
+
+on:
+  workflow_run:
+    workflows: 
+      - "Workflow Orchestration"
+      - "Performance & Security Gates" 
+      - "Chaos Engineering"
+    types:
+      - completed
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+  push:
+    branches: [main]
+
+# Set permissions for auto-merge functionality
+permissions:
+  contents: write
+  pull-requests: write
+  checks: write
+  actions: read
+
+jobs:
+  # Integration with existing workflow orchestration
+  agentic-analysis:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion != 'skipped' || github.event_name != 'workflow_run'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: |
+          cd packages/agentic-ci
+          bun install
+          
+      - name: Build agentic CI system
+        run: |
+          cd packages/agentic-ci
+          bun run build
+          
+      - name: Initialize agentic CI
+        id: agentic-init
+        run: |
+          cd packages/agentic-ci
+          # Create configuration from environment
+          cat << EOF > agentic-ci.config.json
+          {
+            "github": {
+              "token": "${{ secrets.GITHUB_TOKEN }}",
+              "webhookSecret": "${{ secrets.AGENTIC_WEBHOOK_SECRET }}",
+              "repository": {
+                "owner": "${{ github.repository_owner }}",
+                "repo": "${{ github.event.repository.name }}"
+              }
+            },
+            "openai": {
+              "apiKey": "${{ secrets.OPENAI_API_KEY }}",
+              "model": "gpt-4",
+              "maxTokens": 8192,
+              "temperature": 0.3
+            },
+            "autoMerge": {
+              "enabled": ${{ vars.AUTO_MERGE_ENABLED || 'true' }},
+              "maxRiskScore": ${{ vars.AUTO_MERGE_MAX_RISK_SCORE || '30' }},
+              "requireApproval": true,
+              "minimumApprovals": 1
+            },
+            "safety": {
+              "emergencyStop": {
+                "enabled": true
+              },
+              "circuitBreaker": {
+                "failureThreshold": 5,
+                "timeout": 60000
+              }
+            }
+          }
+          EOF
+          
+          # Validate configuration
+          bun run cli config validate
+          
+      - name: Analyze workflow results
+        id: analyze
+        if: github.event.workflow_run.conclusion
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          cd packages/agentic-ci
+          
+          # Create analysis script
+          cat << 'EOF' > analyze_workflow.js
+          import { GitHubActionsIntegration } from './dist/integration/github-actions-integration.js';
+          import { FailureAnalyzer } from './dist/agents/failure-analyzer.js';
+          import { RiskAssessor } from './dist/agents/risk-assessor.js';
+          import { DecisionMaker } from './dist/agents/decision-maker.js';
+          import { ConfigManager } from './dist/config/agentic-ci-config.js';
+          
+          async function analyzeWorkflow() {
+            try {
+              const config = ConfigManager.getInstance('./agentic-ci.config.json').getConfig();
+              const github = new GitHubActionsIntegration(config.github.token);
+              
+              const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+              const runId = parseInt(process.env.WORKFLOW_RUN_ID || '${{ github.event.workflow_run.id }}', 10);
+              const conclusion = process.env.WORKFLOW_CONCLUSION || '${{ github.event.workflow_run.conclusion }}';
+              
+              console.log(`Analyzing workflow run ${runId} with conclusion: ${conclusion}`);
+              
+              // Get workflow details
+              const workflowDetails = await github.getWorkflowRunDetails(owner, repo, runId);
+              console.log(`Found ${workflowDetails.totalJobs} jobs, ${workflowDetails.failedJobs} failed`);
+              
+              // Analyze failures if any
+              let analysis = null;
+              if (workflowDetails.failedJobs > 0) {
+                const qualityGates = await github.analyzeWorkflowFailures(owner, repo, runId);
+                
+                const failureAnalyzer = new FailureAnalyzer(config.openai);
+                analysis = await failureAnalyzer.analyzeFailures(
+                  qualityGates.map(gate => ({
+                    type: gate.type,
+                    description: gate.details?.errorMessage || 'Unknown failure',
+                    severity: gate.severity,
+                    context: {
+                      jobName: gate.details?.jobName,
+                      step: gate.details?.failureStep,
+                      logs: gate.details?.logSnippet,
+                    }
+                  })),
+                  {
+                    repository: process.env.GITHUB_REPOSITORY,
+                    branch: process.env.GITHUB_REF_NAME,
+                    sha: process.env.GITHUB_SHA,
+                    eventType: 'workflow_run.completed',
+                    timestamp: new Date(),
+                    triggeredBy: 'github-actions'
+                  }
+                );
+              }
+              
+              // Assess risk for auto-merge if this is a PR
+              let riskAssessment = null;
+              if (process.env.GITHUB_EVENT_NAME === 'pull_request' && conclusion === 'success') {
+                const prNumber = parseInt(process.env.PR_NUMBER || '', 10);
+                if (prNumber) {
+                  const riskAssessor = new RiskAssessor(config.github.token, config.agents.riskAssessor);
+                  const mockPipelineStatus = {
+                    repository: process.env.GITHUB_REPOSITORY,
+                    branch: process.env.GITHUB_REF_NAME,
+                    sha: process.env.GITHUB_SHA,
+                    pullRequest: { number: prNumber },
+                    status: 'success',
+                    qualityGates: [],
+                    timestamp: new Date()
+                  };
+                  riskAssessment = await riskAssessor.assessRisk(mockPipelineStatus);
+                }
+              }
+              
+              // Make decision
+              const decisionMaker = new DecisionMaker(config.openai, config.agents.decisionMaker);
+              const mockPipelineStatus = {
+                repository: process.env.GITHUB_REPOSITORY,
+                branch: process.env.GITHUB_REF_NAME,
+                sha: process.env.GITHUB_SHA,
+                status: conclusion === 'success' ? 'success' : 'failed',
+                qualityGates: [],
+                failures: analysis ? [analysis] : [],
+                riskAssessment: riskAssessment || { score: 0, factors: [], recommendation: 'proceed' },
+                timestamp: new Date()
+              };
+              
+              const decision = await decisionMaker.makeDecision(mockPipelineStatus);
+              
+              // Output results
+              console.log('=== Agentic CI Analysis Results ===');
+              console.log(`Decision: ${decision.decision}`);
+              console.log(`Confidence: ${decision.confidence}`);
+              console.log(`Reasoning: ${decision.reasoning}`);
+              
+              if (riskAssessment) {
+                console.log(`Risk Score: ${riskAssessment.score}`);
+                console.log(`Risk Factors: ${riskAssessment.factors.join(', ')}`);
+              }
+              
+              // Set outputs for GitHub Actions
+              if (process.env.GITHUB_OUTPUT) {
+                const fs = await import('fs');
+                const outputs = [
+                  `decision=${decision.decision}`,
+                  `confidence=${decision.confidence}`,
+                  `risk_score=${riskAssessment?.score || 0}`,
+                  `can_auto_merge=${decision.decision === 'proceed' && (riskAssessment?.score || 0) < config.autoMerge.maxRiskScore}`
+                ].join('\n');
+                
+                fs.appendFileSync(process.env.GITHUB_OUTPUT, outputs + '\n');
+              }
+              
+            } catch (error) {
+              console.error('Analysis failed:', error);
+              process.exit(1);
+            }
+          }
+          
+          await analyzeWorkflow();
+          EOF
+          
+          bun run analyze_workflow.js
+          
+      - name: Update check run
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const conclusion = '${{ steps.analyze.outcome }}' === 'success' ? 'success' : 'failure';
+            const decision = '${{ steps.analyze.outputs.decision }}' || 'unknown';
+            const confidence = '${{ steps.analyze.outputs.confidence }}' || '0';
+            const riskScore = '${{ steps.analyze.outputs.risk_score }}' || '0';
+            
+            const summary = `**Agentic CI Analysis Complete**
+            
+            - **Decision**: ${decision}
+            - **Confidence**: ${(parseFloat(confidence) * 100).toFixed(1)}%
+            - **Risk Score**: ${riskScore}/100
+            - **Status**: ${conclusion}`;
+            
+            await github.rest.checks.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'Agentic CI Analysis',
+              head_sha: context.sha,
+              status: 'completed',
+              conclusion: conclusion,
+              output: {
+                title: 'AI-Powered CI/CD Analysis',
+                summary: summary,
+                text: `The agentic CI system has analyzed this workflow and made a ${decision} recommendation with ${(parseFloat(confidence) * 100).toFixed(1)}% confidence.`
+              }
+            });
+            
+  # Auto-merge job (only runs if analysis recommends it)
+  auto-merge:
+    needs: agentic-analysis
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' && 
+      needs.agentic-analysis.outputs.can_auto_merge == 'true' &&
+      needs.agentic-analysis.outputs.decision == 'proceed'
+    
+    steps:
+      - name: Auto-merge PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            // Final safety checks
+            if (!pr.mergeable) {
+              console.log('PR not mergeable, skipping auto-merge');
+              return;
+            }
+            
+            if (pr.draft) {
+              console.log('PR is draft, skipping auto-merge');
+              return;
+            }
+            
+            // Check for required approvals
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number
+            });
+            
+            const approvals = reviews.filter(review => review.state === 'APPROVED');
+            const requestedChanges = reviews.filter(review => review.state === 'CHANGES_REQUESTED');
+            
+            if (requestedChanges.length > 0) {
+              console.log('PR has requested changes, skipping auto-merge');
+              return;
+            }
+            
+            if (approvals.length === 0) {
+              console.log('PR needs approval, skipping auto-merge');
+              return;
+            }
+            
+            // Perform auto-merge
+            try {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                merge_method: 'squash',
+                commit_title: `Auto-merge: ${pr.title}`,
+                commit_message: `Automatically merged by Agentic CI system after successful analysis.
+                
+                Risk Score: ${{ needs.agentic-analysis.outputs.risk_score }}/100
+                Confidence: ${{ needs.agentic-analysis.outputs.confidence }}
+                
+                🤖 Agentic CI Auto-merge`
+              });
+              
+              console.log('✅ PR auto-merged successfully');
+              
+              // Add comment explaining the auto-merge
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body: `🤖 **Agentic CI Auto-merge**
+                
+                This pull request was automatically merged after passing all quality gates and safety checks.
+                
+                **Analysis Summary:**
+                - Risk Score: ${{ needs.agentic-analysis.outputs.risk_score }}/100 (max allowed: 30)
+                - AI Confidence: ${{ needs.agentic-analysis.outputs.confidence }}
+                - Decision: Proceed with auto-merge
+                
+                The AI system analyzed test results, code changes, and risk factors to make this decision safely.`
+              });
+              
+            } catch (error) {
+              console.error('Auto-merge failed:', error);
+              
+              // Create issue for failed auto-merge
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🚨 Agentic CI Auto-merge Failed - PR #${context.payload.pull_request.number}`,
+                body: `Auto-merge failed for PR #${context.payload.pull_request.number}: ${pr.title}
+                
+                **Error:** ${error.message}
+                
+                **Analysis Results:**
+                - Risk Score: ${{ needs.agentic-analysis.outputs.risk_score }}/100
+                - Confidence: ${{ needs.agentic-analysis.outputs.confidence }}
+                
+                Please investigate and merge manually if appropriate.`,
+                labels: ['agentic-ci', 'auto-merge-failed', 'needs-investigation']
+              });
+            }
+
+  # Monitoring and alerting
+  monitor-system:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [agentic-analysis]
+    
+    steps:
+      - name: Monitor agentic CI health
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Check if agentic CI analysis is consistently failing
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'agentic-ci.yml',
+              per_page: 10
+            });
+            
+            const recentFailures = runs.workflow_runs
+              .slice(0, 5)
+              .filter(run => run.conclusion === 'failure')
+              .length;
+              
+            if (recentFailures >= 3) {
+              console.log('🚨 High failure rate detected in agentic CI');
+              
+              // Create alert issue
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: '🚨 Agentic CI System Alert - High Failure Rate',
+                body: `**Alert:** Agentic CI system has experienced ${recentFailures}/5 failures in recent runs.
+                
+                This indicates a potential issue with:
+                - AI model availability or API limits
+                - Configuration problems
+                - Integration failures with GitHub Actions
+                
+                **Recommended Actions:**
+                1. Check OpenAI API status and limits
+                2. Verify GitHub token permissions
+                3. Review recent configuration changes
+                4. Consider temporarily disabling auto-merge
+                
+                This issue will auto-close when the failure rate decreases.`,
+                labels: ['agentic-ci', 'system-alert', 'high-priority']
+              });
+            }
+
+# Required secrets:
+# OPENAI_API_KEY - OpenAI API key for AI agents
+# AGENTIC_WEBHOOK_SECRET - Secret for webhook verification
+# GITHUB_TOKEN - Provided automatically by GitHub Actions
+
+# Optional variables:
+# AUTO_MERGE_ENABLED - Enable/disable auto-merge (default: true)  
+# AUTO_MERGE_MAX_RISK_SCORE - Maximum risk score for auto-merge (default: 30)

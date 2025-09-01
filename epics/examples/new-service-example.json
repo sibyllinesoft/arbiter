@@ -1,0 +1,113 @@
+{
+  "id": "EPIC-NEW-SERVICE-001",
+  "title": "Create user authentication microservice",
+  "owners": ["team-auth", "john.doe@company.com"],
+  "targets": [
+    {
+      "root": "services/auth",
+      "include": ["**/*.ts", "**/*.json", "**/*.md"],
+      "exclude": ["**/node_modules/**", "**/dist/**"]
+    }
+  ],
+  "generate": [
+    {
+      "path": "services/auth/package.json",
+      "mode": "create",
+      "template": "templates/service/package.json.t",
+      "data": {
+        "name": "auth-service",
+        "version": "1.0.0",
+        "description": "User authentication microservice",
+        "author": "Auth Team"
+      },
+      "guards": ["package.json already exists in services/auth"]
+    },
+    {
+      "path": "services/auth/src/index.ts",
+      "mode": "create",
+      "template": "templates/service/index.ts.t",
+      "data": {
+        "serviceName": "AuthService",
+        "port": 3001,
+        "database": "postgres"
+      },
+      "guards": ["src/index.ts already exists"]
+    },
+    {
+      "path": "services/auth/README.md",
+      "mode": "create",
+      "template": "# {{.serviceName}}\n\n{{.description}}\n\n## Installation\n\n```bash\nnpm install\nnpm run build\nnpm start\n```\n\n## Configuration\n\nService runs on port {{.port}}.\n\n## Features\n\n- JWT authentication\n- User registration\n- Password reset\n- Rate limiting",
+      "data": {
+        "serviceName": "Auth Service",
+        "description": "User authentication microservice with JWT support",
+        "port": 3001
+      },
+      "guards": ["README.md already exists"]
+    }
+  ],
+  "contracts": {
+    "types": [
+      "services.auth.exports.AuthService != _|_",
+      "services.auth.errorHandling.middleware != _|_"
+    ],
+    "invariants": [
+      "All API endpoints must be authenticated",
+      "All passwords must be hashed using bcrypt",
+      "JWT tokens must expire within 24 hours"
+    ]
+  },
+  "tests": {
+    "static": [
+      {
+        "selector": "services/auth/**/*.ts"
+      }
+    ],
+    "property": [
+      {
+        "name": "Service exports main class",
+        "cue": "true"
+      }
+    ],
+    "golden": [
+      {
+        "input": "services/auth/src/index.ts",
+        "want": "testdata/golden/auth-service-index.ts"
+      }
+    ],
+    "cli": [
+      {
+        "cmd": "echo 'test passed'",
+        "expectExit": 0,
+        "expectRE": "test passed"
+      }
+    ]
+  },
+  "rollout": {
+    "steps": [
+      "Create service directory structure",
+      "Generate service scaffolding",
+      "Run type checking and tests",
+      "Update docker-compose.yml",
+      "Add service to API gateway routing"
+    ],
+    "gates": [
+      {
+        "name": "TypeScript compilation succeeds",
+        "cue": "true"
+      },
+      {
+        "name": "All unit tests pass",
+        "cue": "true"
+      }
+    ]
+  },
+  "heuristics": {
+    "preferSmallPRs": true,
+    "maxFilesPerPR": 8
+  },
+  "metadata": {
+    "priority": "high",
+    "complexity": 7,
+    "tags": ["microservice", "authentication", "security", "typescript"]
+  }
+}

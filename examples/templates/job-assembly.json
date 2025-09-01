@@ -1,0 +1,299 @@
+{
+  "version": "v1",
+  "kind": "Assembly",
+  "metadata": {
+    "name": "my-data-processing-job",
+    "description": "Example batch job project configuration",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  "spec": {
+    "artifact": {
+      "kind": "job",
+      "language": "python",
+      "build": {
+        "tool": "uv",
+        "targets": ["./src/main.py"],
+        "matrix": {
+          "python": ["3.9", "3.10", "3.11", "3.12"]
+        }
+      },
+      "packaging": {
+        "containerImage": {
+          "registry": "ghcr.io",
+          "repository": "myorg/my-data-job",
+          "baseImage": "python:3.11-slim"
+        },
+        "dependencies": {
+          "system": ["curl", "jq"],
+          "runtime": ["requirements.txt"]
+        }
+      }
+    },
+    "profiles": {
+      "job": {
+        "resources": {
+          "requests": {
+            "cpu": "1000m",
+            "memory": "2Gi",
+            "disk": "5Gi"
+          },
+          "limits": {
+            "cpu": "2000m",
+            "memory": "4Gi",
+            "disk": "10Gi"
+          },
+          "scaling": {
+            "minReplicas": 1,
+            "maxReplicas": 5,
+            "targetCpuUtilization": 70
+          }
+        },
+        "io": {
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "dataSource": {
+                "type": "string",
+                "description": "Input data source URL or path"
+              },
+              "processingOptions": {
+                "type": "object",
+                "properties": {
+                  "batchSize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000,
+                    "default": 1000
+                  },
+                  "parallelWorkers": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 16,
+                    "default": 4
+                  },
+                  "outputFormat": {
+                    "type": "string",
+                    "enum": ["json", "csv", "parquet"],
+                    "default": "json"
+                  }
+                },
+                "required": ["batchSize"]
+              },
+              "filters": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {"type": "string"},
+                    "operator": {"type": "string", "enum": ["eq", "ne", "gt", "lt", "contains"]},
+                    "value": {"type": ["string", "number", "boolean"]}
+                  },
+                  "required": ["field", "operator", "value"]
+                }
+              }
+            },
+            "required": ["dataSource"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": ["success", "partial", "failed"]
+              },
+              "processedRecords": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skippedRecords": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "errorRecords": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "outputLocation": {
+                "type": "string",
+                "description": "Location of processed output"
+              },
+              "metrics": {
+                "type": "object",
+                "properties": {
+                  "processingTimeMs": {"type": "integer"},
+                  "throughputRecordsPerSec": {"type": "number"},
+                  "memoryUsageMB": {"type": "number"},
+                  "cpuUsagePercent": {"type": "number"}
+                }
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "timestamp": {"type": "string", "format": "date-time"},
+                    "level": {"type": "string", "enum": ["warning", "error", "critical"]},
+                    "message": {"type": "string"},
+                    "context": {"type": "object"}
+                  },
+                  "required": ["timestamp", "level", "message"]
+                }
+              }
+            },
+            "required": ["status", "processedRecords", "outputLocation"]
+          },
+          "environmentVariables": [
+            {
+              "name": "DATA_SOURCE_URL",
+              "description": "Primary data source URL",
+              "required": true
+            },
+            {
+              "name": "OUTPUT_BUCKET",
+              "description": "S3 bucket for output data",
+              "required": true
+            },
+            {
+              "name": "LOG_LEVEL",
+              "description": "Logging level",
+              "default": "INFO",
+              "enum": ["DEBUG", "INFO", "WARNING", "ERROR"]
+            },
+            {
+              "name": "MAX_RETRIES",
+              "description": "Maximum retry attempts",
+              "default": "3",
+              "type": "integer"
+            }
+          ]
+        },
+        "execution": {
+          "timeout": "1800s",
+          "retryPolicy": {
+            "maxRetries": 3,
+            "backoffMultiplier": 2.0,
+            "maxBackoffDelay": "300s"
+          },
+          "healthcheck": {
+            "command": ["python", "-c", "import requests; requests.get('http://localhost:8080/health')"],
+            "interval": "30s",
+            "timeout": "10s",
+            "retries": 3
+          },
+          "gracefulShutdown": {
+            "timeout": "60s",
+            "signals": ["SIGTERM", "SIGINT"]
+          }
+        },
+        "monitoring": {
+          "metrics": [
+            "processing_rate",
+            "error_rate",
+            "memory_usage",
+            "cpu_usage",
+            "disk_usage",
+            "network_io"
+          ],
+          "alerts": [
+            {
+              "name": "high_error_rate",
+              "condition": "error_rate > 0.05",
+              "severity": "warning"
+            },
+            {
+              "name": "memory_exhaustion",
+              "condition": "memory_usage > 0.9",
+              "severity": "critical"
+            },
+            {
+              "name": "job_timeout",
+              "condition": "execution_time > timeout * 0.8",
+              "severity": "warning"
+            }
+          ]
+        },
+        "testing": {
+          "unitTests": {
+            "framework": "pytest",
+            "coverage": {
+              "minimum": 80,
+              "excludes": ["tests/", "migrations/"]
+            }
+          },
+          "integrationTests": {
+            "fixtures": [
+              "./testdata/small_dataset.json",
+              "./testdata/large_dataset.json",
+              "./testdata/malformed_data.json"
+            ],
+            "expectations": [
+              {
+                "input": "./testdata/small_dataset.json",
+                "expectedRecords": 1000,
+                "maxDurationMs": 30000
+              }
+            ]
+          },
+          "loadTests": {
+            "scenarios": [
+              {
+                "name": "normal_load",
+                "inputSize": "1GB",
+                "expectedDuration": "10m",
+                "resourceUsage": {
+                  "cpu": "< 1500m",
+                  "memory": "< 3Gi"
+                }
+              },
+              {
+                "name": "peak_load",
+                "inputSize": "10GB",
+                "expectedDuration": "60m",
+                "resourceUsage": {
+                  "cpu": "< 2000m",
+                  "memory": "< 4Gi"
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "validation": {
+      "schemas": ["./spec/spec/schema/artifact_spec.cue"],
+      "rules": [
+        "validate-resource-limits",
+        "enforce-timeout-constraints",
+        "validate-io-schemas",
+        "require-health-checks"
+      ]
+    },
+    "deployment": {
+      "platforms": ["kubernetes", "docker-compose", "aws-batch"],
+      "environments": ["development", "staging", "production"],
+      "scheduling": {
+        "type": "cron",
+        "schedule": "0 2 * * *",
+        "timezone": "UTC"
+      }
+    },
+    "ci": {
+      "triggers": ["push", "pull_request", "schedule"],
+      "matrix": {
+        "python": ["3.9", "3.10", "3.11", "3.12"]
+      },
+      "steps": [
+        "setup-python",
+        "install-dependencies",
+        "lint",
+        "type-check",
+        "unit-tests",
+        "integration-tests",
+        "build-container",
+        "validate-resources",
+        "validate-io-schemas",
+        "load-tests"
+      ]
+    }
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "name": "valhalla-agent-benchmarking",
+  "version": "1.0.0",
+  "description": "SWE Agent Architecture for reactive DAG execution",
+  "main": "dist/index.js",
+  "types": "dist/types.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist/",
+    "validate": "cue vet spec.cue",
+    "validate-example": "cue vet spec.cue example.cue",
+    "export-openapi": "cue export openapi.cue > valhalla-openapi.yaml",
+    "export-example": "cue export example.cue > example.json",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "deploy:k8s": "kubectl apply -f k8s/",
+    "undeploy:k8s": "kubectl delete -f k8s/",
+    "status:k8s": "kubectl get all -n valhalla"
+  },
+  "keywords": [
+    "swe-agent",
+    "benchmarking",
+    "reactive-dag",
+    "constraint-driven",
+    "arbiter",
+    "cue-lang",
+    "kubernetes"
+  ],
+  "author": "Arbiter Framework",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arbiter-framework/valhalla"
+  },
+  "bugs": {
+    "url": "https://github.com/arbiter-framework/valhalla/issues"
+  },
+  "homepage": "https://github.com/arbiter-framework/valhalla#readme",
+  "engines": {
+    "node": ">=18.0.0",
+    "cue": ">=0.6.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.8",
+    "@types/node": "^20.8.10",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0",
+    "eslint": "^8.53.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "axios": "^1.6.0",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "prom-client": "^15.0.0",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4"
+  },
+  "files": [
+    "dist/",
+    "spec.cue",
+    "types.ts",
+    "k8s/",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

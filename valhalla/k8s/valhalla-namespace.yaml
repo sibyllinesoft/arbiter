@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: namespace
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking

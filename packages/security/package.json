@@ -1,0 +1,25 @@
+{
+  "name": "@arbiter/security",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Security scanning and analysis suite for Arbiter",
+  "scripts": {
+    "scan": "bun run src/scanner.ts",
+    "scan:sast": "bun run src/sast-scan.ts",
+    "scan:deps": "bun run src/dependency-scan.ts",
+    "scan:container": "bun run src/container-scan.ts",
+    "scan:secrets": "bun run src/secret-scan.ts",
+    "scan:api": "bun run src/api-security-scan.ts",
+    "report": "bun run src/security-reporter.ts",
+    "gate": "bun run src/security-gates.ts"
+  },
+  "dependencies": {
+    "@arbiter/shared": "workspace:*",
+    "zod": "^3.22.4",
+    "semgrep": "^1.45.0"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "bun-types": "latest"
+  }
+}

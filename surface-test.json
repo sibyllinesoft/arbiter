@@ -1,0 +1,7924 @@
+{
+  "metadata": {
+    "language": "typescript",
+    "extractedAt": "2025-08-31T23:47:19.766Z",
+    "includePrivate": false
+  },
+  "exports": [
+    {
+      "file": "apps/api/auth.ts",
+      "kind": "class",
+      "name": "AuthService",
+      "line": 0
+    },
+    {
+      "file": "apps/api/db.ts",
+      "kind": "class",
+      "name": "SpecWorkbenchDB",
+      "line": 0
+    },
+    {
+      "file": "apps/api/events.ts",
+      "kind": "class",
+      "name": "EventService",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "kind": "interface",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "kind": "type",
+      "name": "ExportFormat",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "kind": "interface",
+      "name": "ExportResult",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "kind": "class",
+      "name": "ExportEngine",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "kind": "function",
+      "name": "validateExportFormat",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "kind": "function",
+      "name": "getSupportedFormats",
+      "line": 0
+    },
+    {
+      "file": "apps/api/ir.ts",
+      "kind": "class",
+      "name": "IRGenerator",
+      "line": 0
+    },
+    {
+      "file": "apps/api/nats.ts",
+      "kind": "class",
+      "name": "NatsService",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "const",
+      "name": "CONFIG",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "interface",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "interface",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "function",
+      "name": "parseCueStderr",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "function",
+      "name": "buildGraph",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "function",
+      "name": "checkRateLimit",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "class",
+      "name": "DatabaseOperations",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "kind": "function",
+      "name": "createAnalysisQueue",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "kind": "const",
+      "name": "exportOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/api/specEngine.ts",
+      "kind": "class",
+      "name": "SpecEngine",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "const",
+      "name": "analyzeRequestSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "const",
+      "name": "analysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "const",
+      "name": "createProjectSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "const",
+      "name": "projectResponseSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "const",
+      "name": "saveRevisionSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "const",
+      "name": "wsMessageSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "type",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "type",
+      "name": "AnalysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "type",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "type",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "type",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "kind": "type",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "Project",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "Fragment",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "Version",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "Event",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "type",
+      "name": "EventType",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "CreateFragmentRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "CreateFragmentResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ResolvedSpecResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ValidationRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ValidationResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ValidationWarning",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "GapSet",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "TokenReference",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "CoverageGap",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "Duplicate",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "type",
+      "name": "IRKind",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "IRResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "FreezeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "FreezeResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "AuthContext",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ExternalToolResult",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "RateLimitBucket",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "WebSocketMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "NatsSpecEvent",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "NatsConfig",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ProblemDetails",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "kind": "interface",
+      "name": "ServerConfig",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "generateId",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "computeSpecHash",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "createProblemDetails",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "class",
+      "name": "TokenBucket",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "safeJsonParse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "validatePath",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "getCurrentTimestamp",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "const",
+      "name": "logger",
+      "line": 0
+    },
+    {
+      "file": "apps/api/utils.ts",
+      "kind": "function",
+      "name": "parseBearerToken",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "colors",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "typography",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "spacing",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "borderRadius",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "shadows",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "zIndex",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "breakpoints",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/tokens.ts",
+      "kind": "const",
+      "name": "transitions",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "baseClasses",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "buttonVariants",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "inputVariants",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "cardVariants",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "statusVariants",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "sizeVariants",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "const",
+      "name": "animationVariants",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "function",
+      "name": "createVariant",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/design-system/variants.ts",
+      "kind": "function",
+      "name": "cn",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/hooks/useWebSocket.ts",
+      "kind": "interface",
+      "name": "UseWebSocketOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/hooks/useWebSocket.ts",
+      "kind": "function",
+      "name": "useWebSocket",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/api.ts",
+      "kind": "class",
+      "name": "ApiError",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/api.ts",
+      "kind": "const",
+      "name": "apiService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "type",
+      "name": "WebSocketEventHandler",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "interface",
+      "name": "TimerService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "interface",
+      "name": "LocationService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "interface",
+      "name": "WebSocketFactory",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "interface",
+      "name": "WebSocketDependencies",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "interface",
+      "name": "WebSocketOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "function",
+      "name": "createWebSocketService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "kind": "const",
+      "name": "wsService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Button.stories.ts",
+      "kind": "const",
+      "name": "meta",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Button.stories.ts",
+      "kind": "const",
+      "name": "Primary",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Button.stories.ts",
+      "kind": "const",
+      "name": "Secondary",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Button.stories.ts",
+      "kind": "const",
+      "name": "Large",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Button.stories.ts",
+      "kind": "const",
+      "name": "Small",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Header.stories.ts",
+      "kind": "const",
+      "name": "LoggedIn",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Header.stories.ts",
+      "kind": "const",
+      "name": "LoggedOut",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Page.stories.ts",
+      "kind": "const",
+      "name": "LoggedOut",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Page.stories.ts",
+      "kind": "const",
+      "name": "LoggedIn",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateUsers",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateProjects",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateFragments",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateValidationResults",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateGapAnalysis",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateFileTree",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateCodeContent",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "LoginForm",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateWorkflowStates",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateNotifications",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateDiagramData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateLoadingStates",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "generateApiResponses",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "kind": "const",
+      "name": "storybookData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "Project",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "Fragment",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "Version",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "Event",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "type",
+      "name": "EventType",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "CreateFragmentRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "CreateFragmentResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ResolvedSpecResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ValidationRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ValidationResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ValidationWarning",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "GapSet",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "TokenReference",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "CoverageGap",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "Duplicate",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "type",
+      "name": "IRKind",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "IRResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FlowIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FlowNode",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FlowEdge",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FlowCluster",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "SiteIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "SiteRoute",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "SiteDependency",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FsmIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FsmState",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FsmTransition",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ViewIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ViewToken",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ViewConnection",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ViewLayout",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FreezeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "FreezeResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "WebSocketMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "WsEvent",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "type",
+      "name": "WsEventData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "WsFragmentUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "WsResolvedUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "WsGapsUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "WsIrUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "kind": "interface",
+      "name": "ProblemDetails",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "AppState",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "type",
+      "name": "DiagramTab",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "type",
+      "name": "AppAction",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "SplitPaneProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "TabsProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "TabItem",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "FileTreeItem",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "EditorProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "DiagramRendererProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "MermaidDiagramProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "GraphvizDiagramProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "ExcalidrawDiagramProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "ToastNotification",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "WebSocketState",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "WorkerMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "WorkerResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "CoverageMeterProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "GapItemProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "PerformanceMetrics",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "CacheEntry",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "CacheManager",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "ErrorInfo",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "kind": "interface",
+      "name": "ErrorBoundaryState",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "kind": "interface",
+      "name": "ConvergenceResult",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "kind": "interface",
+      "name": "SemanticIntegrityResult",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "kind": "interface",
+      "name": "DataIntegrityResult",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "kind": "class",
+      "name": "EventualConsistencyValidator",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "kind": "interface",
+      "name": "ConflictOperation",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "kind": "interface",
+      "name": "UserEdit",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "kind": "interface",
+      "name": "ConflictScenario",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "kind": "class",
+      "name": "CRDTConflictGenerator",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "kind": "interface",
+      "name": "NetworkConditions",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "kind": "interface",
+      "name": "MessageChaosConfig",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "kind": "interface",
+      "name": "NetworkPartition",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "kind": "class",
+      "name": "ChaosNetworkProxy",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "kind": "interface",
+      "name": "PerformanceMetrics",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "kind": "interface",
+      "name": "ConnectionMetrics",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "kind": "interface",
+      "name": "ConvergenceMetrics",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "kind": "interface",
+      "name": "DegradationPhase",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "kind": "interface",
+      "name": "ChaosReport",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "kind": "class",
+      "name": "PerformanceMonitor",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "kind": "type",
+      "name": "ConnectionPattern",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "kind": "type",
+      "name": "RealWorldPattern",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "kind": "interface",
+      "name": "ConnectionEvent",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "kind": "class",
+      "name": "WebSocketChaosInstrumentation",
+      "line": 0
+    },
+    {
+      "file": "final-acceptance-tests.ts",
+      "kind": "function",
+      "name": "testFunction",
+      "line": 0
+    },
+    {
+      "file": "final-acceptance-tests.ts",
+      "kind": "function",
+      "name": "testFunction",
+      "line": 0
+    },
+    {
+      "file": "final-acceptance-tests.ts",
+      "kind": "function",
+      "name": "newFunction",
+      "line": 0
+    },
+    {
+      "file": "final-acceptance-tests.ts",
+      "kind": "function",
+      "name": "add",
+      "line": 0
+    },
+    {
+      "file": "final-acceptance-tests.ts",
+      "kind": "function",
+      "name": "multiply",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/cli-adapter.ts",
+      "kind": "class",
+      "name": "CLIAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "interface",
+      "name": "ProfileAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "interface",
+      "name": "ExecutionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "interface",
+      "name": "ExecutionStep",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "interface",
+      "name": "TestVerdict",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "interface",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "const",
+      "name": "profileAdapters",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "function",
+      "name": "registerAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "function",
+      "name": "getAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "function",
+      "name": "getAdapterForAssembly",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "kind": "function",
+      "name": "validateAssemblyProfileSupport",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/job-adapter.ts",
+      "kind": "class",
+      "name": "JobAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/library-adapter.ts",
+      "kind": "class",
+      "name": "LibraryAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "kind": "interface",
+      "name": "AssembleOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "kind": "interface",
+      "name": "ProjectMapping",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "kind": "interface",
+      "name": "AssembleResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "ExecuteOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "FileOperation",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "ExecutionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "ExecutionResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "kind": "interface",
+      "name": "ScanOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "kind": "interface",
+      "name": "ScanResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoPackage",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoFunction",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoType",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoConstant",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoVariable",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoParameter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoReturn",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "interface",
+      "name": "GoField",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "class",
+      "name": "GoSurfaceExtractor",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "kind": "const",
+      "name": "docLines",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "kind": "interface",
+      "name": "GenericApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "TypeScriptApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "FunctionSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "ClassSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "InterfaceSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "TypeAliasSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "ConstantSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "EnumSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "PropertySignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "interface",
+      "name": "Parameter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "kind": "class",
+      "name": "TypeScriptSurfaceExtractor",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/rate-limiter.ts",
+      "kind": "class",
+      "name": "RateLimiter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "type",
+      "name": "ApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "interface",
+      "name": "BreakingChangeAnalysis",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "type",
+      "name": "SemverBump",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "type",
+      "name": "SemverPolicy",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "interface",
+      "name": "ApiChange",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "class",
+      "name": "SemverGate",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "kind": "function",
+      "name": "analyzeSemverCompatibility",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "CLITestConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "CLITestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "GoldenTestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "InteractiveTestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "InteractiveStep",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "CLITestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "CommandTreeNode",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "interface",
+      "name": "CommandFlag",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "class",
+      "name": "CLIContractHarness",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "kind": "function",
+      "name": "createOutputNormalizer",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "interface",
+      "name": "EnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "interface",
+      "name": "AssemblyV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "interface",
+      "name": "EpicV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "interface",
+      "name": "LegacyAssembly",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "interface",
+      "name": "LegacyEpic",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "const",
+      "name": "CURRENT_API_VERSION",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "const",
+      "name": "SUPPORTED_VERSIONS",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "function",
+      "name": "detectEnvelope",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "function",
+      "name": "migrateToLatest",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "interface",
+      "name": "MigrationPatch",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "function",
+      "name": "generateMigrationPatch",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "function",
+      "name": "validateEnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "function",
+      "name": "serializeResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "kind": "function",
+      "name": "loadAndMigrateResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/decision-maker.ts",
+      "kind": "class",
+      "name": "DecisionMaker",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/failure-analyzer.ts",
+      "kind": "class",
+      "name": "FailureAnalyzer",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/remediation-agent.ts",
+      "kind": "class",
+      "name": "RemediationAgent",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/risk-assessor.ts",
+      "kind": "class",
+      "name": "RiskAssessor",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/config/agentic-ci-config.ts",
+      "kind": "const",
+      "name": "AgenticCIConfigSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/config/agentic-ci-config.ts",
+      "kind": "type",
+      "name": "AgenticCIConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/config/agentic-ci-config.ts",
+      "kind": "class",
+      "name": "ConfigManager",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/core/orchestrator.ts",
+      "kind": "class",
+      "name": "AgenticCIOrchestrator",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/governance/audit-logger.ts",
+      "kind": "class",
+      "name": "AuditLogger",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "kind": "class",
+      "name": "GitHubActionsIntegration",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-webhook-handler.ts",
+      "kind": "class",
+      "name": "GitHubWebhookHandler",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/monitoring/metrics-collector.ts",
+      "kind": "class",
+      "name": "MetricsCollector",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/safety/safety-controller.ts",
+      "kind": "class",
+      "name": "SafetyController",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "PipelineContextSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "PipelineContext",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "QualityGateSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "QualityGate",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "FailureAnalysisSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "FailureAnalysis",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "RiskAssessmentSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "RiskAssessment",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "AgentDecisionSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "AgentDecision",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "PipelineStatusSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "PipelineStatus",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "AgentConfigSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "AutoMergeConfigSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "AgenticCIConfigSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "AgentConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "AutoMergeConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "AgenticCIConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "EventSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "Event",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "AuditEntrySchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "AuditEntry",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "const",
+      "name": "SystemMetricsSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "kind": "type",
+      "name": "SystemMetrics",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/api-bench.ts",
+      "kind": "interface",
+      "name": "ApiBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/cue-bench.ts",
+      "kind": "interface",
+      "name": "CueBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/memory-bench.ts",
+      "kind": "interface",
+      "name": "MemoryBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/quality-gates.ts",
+      "kind": "interface",
+      "name": "QualityGateResult",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/quality-gates.ts",
+      "kind": "interface",
+      "name": "QualityGatesEvaluation",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/quality-gates.ts",
+      "kind": "class",
+      "name": "QualityGates",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/reporter.ts",
+      "kind": "class",
+      "name": "BenchmarkReporter",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/runner.ts",
+      "kind": "class",
+      "name": "BenchmarkRunner",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "const",
+      "name": "BenchmarkResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "const",
+      "name": "BenchmarkSuiteSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "const",
+      "name": "PerformanceGateSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "const",
+      "name": "SecurityScanResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "type",
+      "name": "BenchmarkResult",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "type",
+      "name": "BenchmarkSuite",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "type",
+      "name": "PerformanceGate",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "type",
+      "name": "SecurityScanResult",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "kind": "interface",
+      "name": "BenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/websocket-bench.ts",
+      "kind": "interface",
+      "name": "WebSocketBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/api-client.ts",
+      "kind": "class",
+      "name": "ApiClient",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/create.ts",
+      "kind": "interface",
+      "name": "CreateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/create.ts",
+      "kind": "interface",
+      "name": "SchemaConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "kind": "interface",
+      "name": "DiffOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "kind": "interface",
+      "name": "SchemaChange",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "kind": "interface",
+      "name": "SchemaDiff",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/docs.ts",
+      "kind": "interface",
+      "name": "DocsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "interface",
+      "name": "ExamplesOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "interface",
+      "name": "LibraryConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "interface",
+      "name": "ProcessingOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "class",
+      "name": "ExampleProcessor",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "function",
+      "name": "createProcessor",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "type",
+      "name": "Result",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "interface",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "type",
+      "name": "ProcessingEvent",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "type",
+      "name": "ValidatedInput",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "function",
+      "name": "isValidatedInput",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "type",
+      "name": "NonEmpty",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "type",
+      "name": "Optional",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "kind": "interface",
+      "name": "HelloOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "Epic",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "FileOperation",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "ExecutionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "ExecutionSummary",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "kind": "interface",
+      "name": "ExecuteOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/explain.ts",
+      "kind": "interface",
+      "name": "ExplainOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/generate.ts",
+      "kind": "interface",
+      "name": "GenerateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/generate.ts",
+      "kind": "function",
+      "name": "main",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/import.ts",
+      "kind": "interface",
+      "name": "ImportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/import.ts",
+      "kind": "interface",
+      "name": "ImportRegistry",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/init.ts",
+      "kind": "function",
+      "name": "listTemplates",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/migrate.ts",
+      "kind": "interface",
+      "name": "MigrateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/migrate.ts",
+      "kind": "interface",
+      "name": "MigrationPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/preview.ts",
+      "kind": "interface",
+      "name": "PreviewOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/preview.ts",
+      "kind": "function",
+      "name": "main",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "kind": "interface",
+      "name": "SurfaceOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "kind": "interface",
+      "name": "APISymbol",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "kind": "interface",
+      "name": "APISurface",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/template.ts",
+      "kind": "interface",
+      "name": "TemplateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/template.ts",
+      "kind": "interface",
+      "name": "TemplateMetadata",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/test.ts",
+      "kind": "interface",
+      "name": "TestOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/test.ts",
+      "kind": "interface",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/test.ts",
+      "kind": "interface",
+      "name": "TestSuite",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "kind": "interface",
+      "name": "TestsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "kind": "interface",
+      "name": "Invariant",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "kind": "interface",
+      "name": "TestTemplate",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "kind": "interface",
+      "name": "CoverageReport",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "kind": "type",
+      "name": "VersionBump",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "kind": "interface",
+      "name": "VersionPlanOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "kind": "interface",
+      "name": "VersionReleaseOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "kind": "interface",
+      "name": "APIChange",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "kind": "interface",
+      "name": "VersionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "kind": "interface",
+      "name": "ManifestInfo",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/watch.ts",
+      "kind": "interface",
+      "name": "WatchOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/config.ts",
+      "kind": "const",
+      "name": "DEFAULT_CONFIG",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/config.ts",
+      "kind": "function",
+      "name": "getDefaultConfigPath",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "kind": "interface",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "kind": "interface",
+      "name": "AnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "kind": "interface",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "kind": "interface",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "CLIConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "CommandResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "type",
+      "name": "ExportFormat",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ProgressOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ProjectTemplate",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "InitOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "CheckOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ValidateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "TemplateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "CreateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ImportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "DiffOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "MigrateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ExecuteOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "TestOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "WatchOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "SurfaceOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "TestsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "VersionPlanOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "VersionReleaseOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "IDEOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "SyncOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "IntegrateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "DocsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ExamplesOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "ExplainOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "GenerateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "kind": "interface",
+      "name": "PreviewOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/debounce.ts",
+      "kind": "function",
+      "name": "debounce",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/debounce.ts",
+      "kind": "function",
+      "name": "throttle",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "kind": "interface",
+      "name": "FileWatcherOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "kind": "interface",
+      "name": "WatchEvent",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "kind": "interface",
+      "name": "WatchBatch",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "kind": "class",
+      "name": "FileWatcher",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatValidationTable",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatErrorDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatWarningDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatSummary",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatTime",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatJson",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatFileSize",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "createProgressBar",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/formatting.ts",
+      "kind": "function",
+      "name": "formatExitMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "class",
+      "name": "PerformanceTracker",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "function",
+      "name": "formatDuration",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "function",
+      "name": "measureSync",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "const",
+      "name": "PERFORMANCE_TARGETS",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "function",
+      "name": "checkPerformanceTargets",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "const",
+      "name": "globalTracker",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "function",
+      "name": "measured",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/performance.ts",
+      "kind": "class",
+      "name": "CLIBenchmark",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/progress.ts",
+      "kind": "class",
+      "name": "Progress",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/progress.ts",
+      "kind": "class",
+      "name": "MultiProgress",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/progress.ts",
+      "kind": "class",
+      "name": "SimpleProgress",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/progress.ts",
+      "kind": "function",
+      "name": "createProgress",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "formatError",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "showNextSteps",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "class",
+      "name": "ProgressIndicator",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "showSuccess",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "showWarning",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "showInfo",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "showBanner",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/ux-polish.ts",
+      "kind": "function",
+      "name": "showHints",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/client.ts",
+      "kind": "const",
+      "name": "PROTOCOL_VERSION",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/client.ts",
+      "kind": "const",
+      "name": "SDK_VERSION",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/client.ts",
+      "kind": "class",
+      "name": "ArbiterClient",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "kind": "class",
+      "name": "ArbiterError",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "kind": "class",
+      "name": "NetworkError",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "kind": "class",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "kind": "class",
+      "name": "TimeoutError",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "kind": "class",
+      "name": "CompatibilityError",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/errors.ts",
+      "kind": "class",
+      "name": "RateLimitError",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/retry.ts",
+      "kind": "class",
+      "name": "RetryConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/retry.ts",
+      "kind": "class",
+      "name": "ExponentialBackoff",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/retry.ts",
+      "kind": "function",
+      "name": "createExponentialBackoff",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "ClientOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "RetryOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "ValidateArchitectureOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "ExplainResult",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "ExportResult",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "CompatibilityInfo",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "WebSocketOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "kind": "interface",
+      "name": "EventHandlers",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/scanner.ts",
+      "kind": "class",
+      "name": "SecurityScanner",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/security-gates.ts",
+      "kind": "interface",
+      "name": "SecurityGatesEvaluation",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/security-gates.ts",
+      "kind": "class",
+      "name": "SecurityGates",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/security-reporter.ts",
+      "kind": "class",
+      "name": "SecurityReporter",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "const",
+      "name": "VulnerabilitySchema",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "const",
+      "name": "SecurityScanResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "const",
+      "name": "SecuritySuiteSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "const",
+      "name": "SecurityGateSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "const",
+      "name": "SecurityGateResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "type",
+      "name": "Vulnerability",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "type",
+      "name": "SecurityScanResult",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "type",
+      "name": "SecuritySuite",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "type",
+      "name": "SecurityGate",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "type",
+      "name": "SecurityGateResult",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "interface",
+      "name": "ScannerConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "kind": "interface",
+      "name": "SecurityConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "kind": "interface",
+      "name": "APISymbol",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "kind": "interface",
+      "name": "APISurface",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "kind": "interface",
+      "name": "APIExtractor",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "kind": "class",
+      "name": "TypeScriptExtractor",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "kind": "class",
+      "name": "GoExtractor",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "kind": "class",
+      "name": "APIExtractorFactory",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "interface",
+      "name": "GoldenTest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "interface",
+      "name": "PropertyTest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "interface",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "interface",
+      "name": "TestSuite",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "interface",
+      "name": "CLITestOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "class",
+      "name": "CLITestHarness",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "kind": "function",
+      "name": "generateTestReport",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "LIMITS",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "createProjectSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "projectResponseSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "analyzeRequestSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "cueErrorSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "graphNodeSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "analysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "saveRevisionSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "errorSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsHelloSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsWelcomeSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsJoinSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsUserJoinedSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsLeaveSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsUserLeftSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsCursorSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsCursorUpdateSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsSyncSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsSyncUpdateSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsAnalyzeSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsAnalysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsErrorSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsClientMessageSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsServerMessageSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/contracts.ts",
+      "kind": "const",
+      "name": "wsMessageSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "kind": "interface",
+      "name": "CueErrorDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "kind": "interface",
+      "name": "TranslatedCueError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "kind": "function",
+      "name": "parseEnhancedCueStderr",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "kind": "class",
+      "name": "CueErrorTranslator",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "kind": "function",
+      "name": "translateCueErrors",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "AnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "ErrorResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSClientMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSServerMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSHello",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSWelcome",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSJoin",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSUserJoined",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSLeave",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSUserLeft",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSCursor",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSCursorUpdate",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSSync",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSSyncUpdate",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSAnalyze",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSAnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "WSError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "kind": "type",
+      "name": "CursorPosition",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "interface",
+      "name": "Epic",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "interface",
+      "name": "Repository",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "class",
+      "name": "LibraryAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "class",
+      "name": "CLIAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "class",
+      "name": "ServiceAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "class",
+      "name": "JobAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "kind": "class",
+      "name": "ProfileAdapterFactory",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "WS_PROTOCOL_VERSION",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "MAX_TEXT_SIZE",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "MAX_EVAL_TIME",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "MAX_MEMORY",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "RATE_LIMIT_PER_SECOND",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "HTTP_ENDPOINTS",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "const",
+      "name": "WS_MESSAGE_TYPES",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/protocols.ts",
+      "kind": "function",
+      "name": "isYjsUpdate",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "createProjectSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "projectResponseSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "analyzeRequestSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "cueErrorSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "violationDataSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "analysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "saveRevisionSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsHelloSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsJoinSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsLeaveSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsCursorSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsSyncSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsAnalyzeSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "const",
+      "name": "wsMessageSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "type",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "type",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "type",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "type",
+      "name": "AnalysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "type",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "kind": "type",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "type",
+      "name": "VersionBump",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "type",
+      "name": "SemverPolicy",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "interface",
+      "name": "ChangeClassification",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "interface",
+      "name": "VersionRequirement",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "interface",
+      "name": "SemverValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "class",
+      "name": "SemverValidator",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "class",
+      "name": "SemverGate",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "function",
+      "name": "parseVersion",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "kind": "function",
+      "name": "bumpVersion",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "Project",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "Revision",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "AnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "CursorPosition",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "type",
+      "name": "ArtifactKind",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "type",
+      "name": "ArtifactLanguage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "type",
+      "name": "BuildTool",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "type",
+      "name": "ArtifactType",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "Artifact",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "LibraryProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "CLICommand",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "CLIProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "ServiceProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "JobProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "type",
+      "name": "ArtifactProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "ProjectAssembly",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "kind": "interface",
+      "name": "ProfileAdapter",
+      "line": 0
+    },
+    {
+      "file": "test-phase-1.ts",
+      "kind": "interface",
+      "name": "TestInterface",
+      "line": 0
+    },
+    {
+      "file": "test-phase-1.ts",
+      "kind": "function",
+      "name": "testFunction",
+      "line": 0
+    },
+    {
+      "file": "test-phase-1.ts",
+      "kind": "class",
+      "name": "TestClass",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Meta",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "GitlabContext",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Brief",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DependencyGraph",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DependencyNode",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DependencyEdge",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Hotspot",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ChangeHistory",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Commit",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "FailurePattern",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "TestCoverage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "FileCoverage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "FlakyTest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ArchitecturalConstraints",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "StyleViolation",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Spec",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Story",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "AcceptanceCriterion",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "FailingTest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "SuccessMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Constraints",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Policy",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Budget",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PhaseAllocations",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PhaseAllocation",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "StoppingRules",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "EditPrimitives",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "RiskLimits",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "SelectionRubric",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "SelectionWeights",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "SelectionCriteria",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "TestImprovementCriteria",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "CodeLocalityCriteria",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Rubric",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "RubricSuccessMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PhaseMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "BriefMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PlanMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ImplementationMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ReviewMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "RepairMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "QualityGate",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Benchmark",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "BaselineMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ImprovementDelta",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Plan",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Strategy",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Phase",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "EstimatedEffort",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Deliverable",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Risk",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "TargetFile",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Alternative",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PlanSuccessCriterion",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Conclave",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ConclaveConfig",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DecisionSites",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DebateParameters",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Diversity",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Adjudicator",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Gating",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Predictor",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DebateResult",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Participant",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Round",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Argument",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ConsensusMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Decision",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "DebateMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Implementation",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Candidate",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Patch",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PatchFile",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PatchMetadata",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "TestResults",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "TestFailure",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "QualityScores",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "GenerationContext",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Selection",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "Cluster",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "CandidateScore",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ComponentScores",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "RepairAttempt",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "SearchStrategy",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "EditConstraints",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "RepairResult",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "CostMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ExecutionState",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PhaseHistory",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "BudgetUsage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "PhaseBudgetUsage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "CircuitBreaker",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "QualityGateStatus",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ValhallaPipeline",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "CreatePipelineRequest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "CreatePipelineResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "GetPipelineStatusResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "UpdatePipelineRequest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "UpdatePipelineResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ErrorResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "kind": "interface",
+      "name": "ValidationWarning",
+      "line": 0
+    }
+  ],
+  "types": [
+    {
+      "file": ".github/actions/arbiter-validate/src/index.ts",
+      "name": "ActionInputs",
+      "line": 0
+    },
+    {
+      "file": ".github/actions/arbiter-validate/src/index.ts",
+      "name": "ActionResult",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-analysis.test.ts",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-analysis.test.ts",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-analysis.test.ts",
+      "name": "mismatch",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-analysis.test.ts",
+      "name": "mismatch",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-analysis.test.ts",
+      "name": "conflict",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-error-translator-integration.test.ts",
+      "name": "mismatch",
+      "line": 0
+    },
+    {
+      "file": "apps/api/cue-error-translator-integration.test.ts",
+      "name": "conflict",
+      "line": 0
+    },
+    {
+      "file": "apps/api/db.ts",
+      "name": "TEXT",
+      "line": 0
+    },
+    {
+      "file": "apps/api/events.ts",
+      "name": "WebSocketConnection",
+      "line": 0
+    },
+    {
+      "file": "apps/api/events.ts",
+      "name": "message",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "ExportFormat",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "ExportResult",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "SchemaTag",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "if",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "to",
+      "line": 0
+    },
+    {
+      "file": "apps/api/export-engine.ts",
+      "name": "definitions",
+      "line": 0
+    },
+    {
+      "file": "apps/api/http-endpoints.test.ts",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/http-endpoints.test.ts",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "apps/api/http-endpoints.test.ts",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "apps/api/integration.test.ts",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/migrations/run.ts",
+      "name": "Migration",
+      "line": 0
+    },
+    {
+      "file": "apps/api/migrations/run.ts",
+      "name": "TEXT",
+      "line": 0
+    },
+    {
+      "file": "apps/api/migrations/run.ts",
+      "name": "async",
+      "line": 0
+    },
+    {
+      "file": "apps/api/nats.ts",
+      "name": "to",
+      "line": 0
+    },
+    {
+      "file": "apps/api/security-validation.test.ts",
+      "name": "of",
+      "line": 0
+    },
+    {
+      "file": "apps/api/security-validation.test.ts",
+      "name": "of",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "name": "mismatch",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server-isolated.ts",
+      "name": "based",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "AnalysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "ExportFormat",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "ViolationData",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "with",
+      "line": 0
+    },
+    {
+      "file": "apps/api/server.ts",
+      "name": "WSConnection",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test/analyze.integration.spec.ts",
+      "name": "Subprocess",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test/analyze.integration.spec.ts",
+      "name": "mismatches",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "name": "AnalysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "apps/api/test-types.ts",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "Project",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "Fragment",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "Version",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "Event",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "EventType",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "CreateFragmentRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "CreateFragmentResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ResolvedSpecResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ValidationRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ValidationResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ValidationWarning",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "GapSet",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "TokenReference",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "CoverageGap",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "Duplicate",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "IRKind",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "IRResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "FreezeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "FreezeResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "AuthContext",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ExternalToolResult",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "RateLimitBucket",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "WebSocketMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "NatsSpecEvent",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "NatsConfig",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ProblemDetails",
+      "line": 0
+    },
+    {
+      "file": "apps/api/types.ts",
+      "name": "ServerConfig",
+      "line": 0
+    },
+    {
+      "file": "apps/api/violation-aware-diagrams.test.ts",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "apps/api/violation-aware-diagrams.test.ts",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "apps/api/websocket-protocol.test.ts",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/api/websocket-protocol.test.ts",
+      "name": "WSConnection",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/hooks/useWebSocket.ts",
+      "name": "WebSocketEventHandler",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/hooks/useWebSocket.ts",
+      "name": "UseWebSocketOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "name": "WebSocketEventHandler",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "name": "TimerService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "name": "LocationService",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "name": "WebSocketFactory",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "name": "WebSocketDependencies",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/services/websocket.ts",
+      "name": "WebSocketOptions",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Button.stories.ts",
+      "name": "Story",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Header.stories.ts",
+      "name": "Story",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/stories/Page.stories.ts",
+      "name": "Story",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/test/storybook-data.ts",
+      "name": "LoginFormProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "Project",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "Fragment",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "Version",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "Event",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "EventType",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "CreateFragmentRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "CreateFragmentResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ResolvedSpecResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ValidationRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ValidationResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ValidationWarning",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "GapSet",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "TokenReference",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "CoverageGap",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "Duplicate",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "IRKind",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "IRResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FlowIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FlowNode",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FlowEdge",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FlowCluster",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "SiteIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "SiteRoute",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "SiteDependency",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FsmIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FsmState",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FsmTransition",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ViewIR",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ViewToken",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ViewConnection",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ViewLayout",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FreezeRequest",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "FreezeResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WebSocketMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WsEvent",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WsEventData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WsFragmentUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WsResolvedUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WsGapsUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "WsIrUpdatedData",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/api.ts",
+      "name": "ProblemDetails",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "AppState",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "DiagramTab",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "AppAction",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "SplitPaneProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "TabsProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "TabItem",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "FileTreeItem",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "EditorProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "DiagramRendererProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "MermaidDiagramProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "GraphvizDiagramProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "ExcalidrawDiagramProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "ToastNotification",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "WebSocketState",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "WorkerMessage",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "WorkerResponse",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "CoverageMeterProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "GapItemProps",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "PerformanceMetrics",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "CacheEntry",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "CacheManager",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "ErrorInfo",
+      "line": 0
+    },
+    {
+      "file": "apps/web/src/types/ui.ts",
+      "name": "ErrorBoundaryState",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/chaos-testing.spec.ts",
+      "name": "Page",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/chaos-testing.spec.ts",
+      "name": "BrowserContext",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "name": "ConvergenceResult",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "name": "SemanticIntegrityResult",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "name": "DataIntegrityResult",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/consistency-validator.ts",
+      "name": "definitions",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "name": "ConflictOperation",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "name": "UserEdit",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/crdt-conflict-generator.ts",
+      "name": "ConflictScenario",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "name": "NetworkConditions",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "name": "MessageChaosConfig",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/network-chaos-proxy.ts",
+      "name": "NetworkPartition",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "name": "PerformanceMetrics",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "name": "ConnectionMetrics",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "name": "ConvergenceMetrics",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "name": "DegradationPhase",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "name": "ChaosReport",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/performance-monitor.ts",
+      "name": "errorRate",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "name": "ConnectionPattern",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "name": "RealWorldPattern",
+      "line": 0
+    },
+    {
+      "file": "e2e/chaos/websocket-chaos.ts",
+      "name": "ConnectionEvent",
+      "line": 0
+    },
+    {
+      "file": "e2e/collaboration.spec.ts",
+      "name": "Page",
+      "line": 0
+    },
+    {
+      "file": "e2e/collaboration.spec.ts",
+      "name": "BrowserContext",
+      "line": 0
+    },
+    {
+      "file": "e2e/collaboration.spec.ts",
+      "name": "simultaneously",
+      "line": 0
+    },
+    {
+      "file": "e2e/golden-path.spec.ts",
+      "name": "Page",
+      "line": 0
+    },
+    {
+      "file": "e2e/golden-path.spec.ts",
+      "name": "new",
+      "line": 0
+    },
+    {
+      "file": "e2e/guardrails.spec.ts",
+      "name": "Page",
+      "line": 0
+    },
+    {
+      "file": "e2e/guardrails.spec.ts",
+      "name": "responsively",
+      "line": 0
+    },
+    {
+      "file": "ecosystem-integration-demo.ts",
+      "name": "all",
+      "line": 0
+    },
+    {
+      "file": "examples/external-agent.ts",
+      "name": "NatsSpecEvent",
+      "line": 0
+    },
+    {
+      "file": "examples/external-agent.ts",
+      "name": "switch",
+      "line": 0
+    },
+    {
+      "file": "examples/external-agent.ts",
+      "name": "constraints",
+      "line": 0
+    },
+    {
+      "file": "final-acceptance-tests.ts",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/cli-adapter.ts",
+      "name": "CLITestConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/cli-adapter.ts",
+      "name": "CLICommandResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "name": "ProfileAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "name": "ExecutionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "name": "ExecutionStep",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "name": "TestVerdict",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/index.ts",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/adapters/job-adapter.ts",
+      "name": "JobExecutionResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "name": "EnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "name": "AssemblyV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "name": "AssembleOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "name": "ProjectMapping",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/assemble.ts",
+      "name": "AssembleResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "EnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "EpicV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "AssemblyV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "TestVerdict",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "ExecuteOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "FileOperation",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "ExecutionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/execute.ts",
+      "name": "ExecutionResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "name": "EnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "name": "AssemblyV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "name": "MigrationPatch",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "name": "ScanOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/commands/scan.ts",
+      "name": "ScanResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "definitions",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoPackage",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoFunction",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoType",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoConstant",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoVariable",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoParameter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoReturn",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "GoField",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "types",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "method",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "const",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/go-surface.ts",
+      "name": "complexity",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "TypeScriptApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "FunctionSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "ClassSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "InterfaceSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "TypeAliasSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "ConstantSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "EnumSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "PropertySignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "Parameter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoPackage",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoFunction",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoType",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoConstant",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoVariable",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoParameter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoReturn",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GoField",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/index.ts",
+      "name": "GenericApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "TypeScriptApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "FunctionSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "ClassSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "InterfaceSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "TypeAliasSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "ConstantSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "EnumSignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "PropertySignature",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "Parameter",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "body",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/extractors/typescript-surface.ts",
+      "name": "complexity",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/index.ts",
+      "name": "EnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/index.ts",
+      "name": "AssemblyV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/index.ts",
+      "name": "EpicV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/index.ts",
+      "name": "MigrationPatch",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "ApiSurface",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "BreakingChangeAnalysis",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "SemverBump",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "SemverPolicy",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "ApiChange",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "if",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "alias",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "alias",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "alias",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "changes",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "changed",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "changed",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "changes",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/semver/breaking-changes.ts",
+      "name": "changed",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "CLITestConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "CLITestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "GoldenTestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "InteractiveTestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "InteractiveStep",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "CLITestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "CommandTreeNode",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/cli-harness.ts",
+      "name": "CommandFlag",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "CLITestConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "CLITestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "GoldenTestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "InteractiveTestCase",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "InteractiveStep",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "CLITestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "CommandTreeNode",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/testing/index.ts",
+      "name": "CommandFlag",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "name": "EnvelopedResource",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "name": "AssemblyV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "name": "EpicV1",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "name": "LegacyAssembly",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "name": "LegacyEpic",
+      "line": 0
+    },
+    {
+      "file": "packages/agent/src/versioning.ts",
+      "name": "MigrationPatch",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/decision-maker.ts",
+      "name": "DecisionContext",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/decision-maker.ts",
+      "name": "RuleBasedDecision",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/decision-maker.ts",
+      "name": "AIDecision",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/decision-maker.ts",
+      "name": "CombinedDecision",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/remediation-agent.ts",
+      "name": "RemediationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/agents/remediation-agent.ts",
+      "name": "RemediationPattern",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/cli/agentic-ci-cli.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/config/agentic-ci-config.ts",
+      "name": "AgenticCIConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/governance/audit-logger.ts",
+      "name": "AuditSearchCriteria",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/governance/audit-logger.ts",
+      "name": "ComplianceReport",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/governance/audit-logger.ts",
+      "name": "AuditStatistics",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "const",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "from",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "and",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "WorkflowRunDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "FailureDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "PullRequestDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/integration/github-actions-integration.ts",
+      "name": "AutoMergeReadiness",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/monitoring/metrics-collector.ts",
+      "name": "MetricsReport",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/safety/safety-controller.ts",
+      "name": "SafetyCheck",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/safety/safety-controller.ts",
+      "name": "SafetyStatus",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "PipelineContext",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "QualityGate",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "FailureAnalysis",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "RiskAssessment",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "AgentDecision",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "PipelineStatus",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "AgentConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "AutoMergeConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "AgenticCIConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "Event",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "AuditEntry",
+      "line": 0
+    },
+    {
+      "file": "packages/agentic-ci/src/types/index.ts",
+      "name": "SystemMetrics",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/api-bench.ts",
+      "name": "ApiBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/cue-bench.ts",
+      "name": "CueBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/memory-bench.ts",
+      "name": "MemoryBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/quality-gates.ts",
+      "name": "QualityGateResult",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/quality-gates.ts",
+      "name": "QualityGatesEvaluation",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/quality-gates.ts",
+      "name": "const",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "name": "BenchmarkResult",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "name": "BenchmarkSuite",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "name": "PerformanceGate",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "name": "SecurityScanResult",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/types.ts",
+      "name": "BenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/benchmarks/src/websocket-bench.ts",
+      "name": "WebSocketBenchmarkConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/cli.ts",
+      "name": "pr",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/create.ts",
+      "name": "CreateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/create.ts",
+      "name": "SchemaConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/create.ts",
+      "name": "of",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/create.ts",
+      "name": "consistency",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "DiffOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "SchemaChange",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "SchemaDiff",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "changes",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "change",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "from",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/diff.ts",
+      "name": "and",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/docs.ts",
+      "name": "DocsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/docs.ts",
+      "name": "SchemaDoc",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/docs.ts",
+      "name": "FieldDoc",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "ExamplesOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "ExampleTemplate",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "as",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "LibraryConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "ProcessingOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "definitions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "Result",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "ProcessingEvent",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "ValidatedInput",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "NonEmpty",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "Optional",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "HelloOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "best",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/examples.ts",
+      "name": "Config",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "name": "Epic",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "name": "FileOperation",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "name": "ExecutionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "name": "ExecutionSummary",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "name": "ExecuteOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/execute.ts",
+      "name": "if",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/explain.ts",
+      "name": "ExplainOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/explain.ts",
+      "name": "AssemblyExplanation",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/explain.ts",
+      "name": "safety",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/explain.ts",
+      "name": "hints",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/export.ts",
+      "name": "definitions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/generate.ts",
+      "name": "GenerateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/ide.ts",
+      "name": "ProjectLanguage",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/import.ts",
+      "name": "ImportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/import.ts",
+      "name": "ImportRegistry",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/init.ts",
+      "name": "safety",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/init.ts",
+      "name": "safety",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/init.ts",
+      "name": "generation",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/integrate.ts",
+      "name": "BuildMatrix",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/integrate.ts",
+      "name": "ProjectLanguage",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/integrate.ts",
+      "name": "checking",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/integrate.ts",
+      "name": "checking",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/migrate.ts",
+      "name": "MigrateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/migrate.ts",
+      "name": "MigrationPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/preview.ts",
+      "name": "PreviewOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/preview.ts",
+      "name": "PreviewPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "name": "SurfaceOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "name": "APISymbol",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "name": "APISurface",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/surface.ts",
+      "name": "as",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/sync.ts",
+      "name": "ManifestFile",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/template.ts",
+      "name": "TemplateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/template.ts",
+      "name": "TemplateMetadata",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/test.ts",
+      "name": "TestOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/test.ts",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/test.ts",
+      "name": "TestSuite",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "name": "TestsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "name": "Invariant",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "name": "TestTemplate",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/tests.ts",
+      "name": "CoverageReport",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.test.ts",
+      "name": "VersionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.test.ts",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.test.ts",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.test.ts",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "VersionBump",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "VersionPlanOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "VersionReleaseOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "APIChange",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "VersionPlan",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "ManifestInfo",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "changes",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "changes",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/version.ts",
+      "name": "change",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/watch.ts",
+      "name": "WatchBatch",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/watch.ts",
+      "name": "WatchOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/commands/watch.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "name": "AnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/shared-types.ts",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "CLIConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "CommandResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ExportFormat",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ProgressOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ProjectTemplate",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "InitOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "CheckOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ValidateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "TemplateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "CreateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ImportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "DiffOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "MigrateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ExecuteOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "TestOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "WatchOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "SurfaceOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "TestsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "VersionPlanOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "VersionReleaseOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "IDEOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "to",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "SyncOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "IntegrateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "to",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "DocsOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ExamplesOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "ExplainOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "GenerateOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/types.ts",
+      "name": "PreviewOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "name": "FileWatcherOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "name": "WatchEvent",
+      "line": 0
+    },
+    {
+      "file": "packages/cli/src/utils/file-watcher.ts",
+      "name": "WatchBatch",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/client.test.ts",
+      "name": "definitions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "ClientOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "RetryOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "ValidateArchitectureOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "ExplainResult",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "ExportOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "ExportResult",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "CompatibilityInfo",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "WebSocketOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/sdk/src/types.ts",
+      "name": "EventHandlers",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/api-security-scan.ts",
+      "name": "sniffing",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/security-gates.ts",
+      "name": "SecurityGatesEvaluation",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "Vulnerability",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "SecurityScanResult",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "SecuritySuite",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "SecurityGate",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "SecurityGateResult",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "ScannerConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/security/src/types.ts",
+      "name": "SecurityConfig",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "name": "APISymbol",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "name": "APISurface",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/api-extractors.ts",
+      "name": "APIExtractor",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "name": "GoldenTest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "name": "PropertyTest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "name": "TestSuite",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cli-test-harness.ts",
+      "name": "CLITestOptions",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.test.ts",
+      "name": "mismatch",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.test.ts",
+      "name": "conflict",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "name": "CueErrorDetails",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "name": "TranslatedCueError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "name": "ErrorRule",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "name": "based",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/cue-error-translator.ts",
+      "name": "matches",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "AnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "ErrorResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSClientMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSServerMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSHello",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSWelcome",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSJoin",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSUserJoined",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSLeave",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSUserLeft",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSCursor",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSCursorUpdate",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSSync",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSSyncUpdate",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSAnalyze",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSAnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "WSError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/generated-types.ts",
+      "name": "CursorPosition",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "name": "Epic",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/profile-adapters.ts",
+      "name": "Repository",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "name": "CreateProject",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "name": "ProjectResponse",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "name": "AnalyzeRequest",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "name": "AnalysisResultSchema",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "name": "SaveRevision",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/schemas.ts",
+      "name": "WSMessage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "VersionBump",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "SemverPolicy",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "ChangeClassification",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "VersionRequirement",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "SemverValidationResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "changes",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/semver-gate.ts",
+      "name": "comparison",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "Project",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "Revision",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "CueError",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "AnalysisResult",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "GraphNode",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "User",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "CursorPosition",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ArtifactKind",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ArtifactLanguage",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "BuildTool",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ArtifactType",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "Artifact",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "LibraryProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "CLICommand",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "CLIProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ServiceProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "JobProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ArtifactProfile",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ProjectAssembly",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "for",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/src/types.ts",
+      "name": "ProfileAdapter",
+      "line": 0
+    },
+    {
+      "file": "packages/shared/test/contracts.spec.ts",
+      "name": "violations",
+      "line": 0
+    },
+    {
+      "file": "simple-invariant-demo.ts",
+      "name": "Invariant",
+      "line": 0
+    },
+    {
+      "file": "test-phase-1.ts",
+      "name": "TestResult",
+      "line": 0
+    },
+    {
+      "file": "test-phase-1.ts",
+      "name": "TestInterface",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Meta",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "GitlabContext",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Brief",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DependencyGraph",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DependencyNode",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DependencyEdge",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Hotspot",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ChangeHistory",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Commit",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "FailurePattern",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "TestCoverage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "FileCoverage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "FlakyTest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ArchitecturalConstraints",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "StyleViolation",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Spec",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Story",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "AcceptanceCriterion",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "FailingTest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "SuccessMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Constraints",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Policy",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Budget",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PhaseAllocations",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PhaseAllocation",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "StoppingRules",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "EditPrimitives",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "RiskLimits",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "SelectionRubric",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "SelectionWeights",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "SelectionCriteria",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "TestImprovementCriteria",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "CodeLocalityCriteria",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Rubric",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "RubricSuccessMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PhaseMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "BriefMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PlanMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ImplementationMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ReviewMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "RepairMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "QualityGate",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Benchmark",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "BaselineMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ImprovementDelta",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Plan",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Strategy",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Phase",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "EstimatedEffort",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Deliverable",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Risk",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "TargetFile",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Alternative",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PlanSuccessCriterion",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Conclave",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ConclaveConfig",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DecisionSites",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DebateParameters",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Diversity",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Adjudicator",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Gating",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Predictor",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DebateResult",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Participant",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Round",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Argument",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ConsensusMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Decision",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "DebateMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Implementation",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Candidate",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Patch",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PatchFile",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PatchMetadata",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "TestResults",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "TestFailure",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "QualityScores",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "GenerationContext",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Selection",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "Cluster",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "CandidateScore",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ComponentScores",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "RepairAttempt",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "SearchStrategy",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "EditConstraints",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "RepairResult",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "CostMetrics",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ExecutionState",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PhaseHistory",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "BudgetUsage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "PhaseBudgetUsage",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "CircuitBreaker",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "QualityGateStatus",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ValhallaPipeline",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "CreatePipelineRequest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "CreatePipelineResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "GetPipelineStatusResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "UpdatePipelineRequest",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "UpdatePipelineResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ErrorResponse",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ValidationResult",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ValidationError",
+      "line": 0
+    },
+    {
+      "file": "valhalla/types.ts",
+      "name": "ValidationWarning",
+      "line": 0
+    }
+  ],
+  "functions": []
+}

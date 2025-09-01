@@ -1,0 +1,293 @@
+{
+  "version": "v1",
+  "kind": "Assembly",
+  "metadata": {
+    "name": "my-cli-tool",
+    "description": "Example CLI project configuration",
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  "spec": {
+    "artifact": {
+      "kind": "cli",
+      "language": "go",
+      "build": {
+        "tool": "go",
+        "targets": ["./cmd/mycli"],
+        "matrix": {
+          "os": ["linux", "darwin", "windows"],
+          "arch": ["amd64", "arm64"]
+        }
+      },
+      "packaging": {
+        "binaries": [
+          {
+            "name": "mycli",
+            "path": "./bin/mycli"
+          }
+        ],
+        "distributions": ["github-releases", "homebrew", "apt"]
+      }
+    },
+    "profiles": {
+      "cli": {
+        "semver": "minor",
+        "commandTree": {
+          "name": "mycli",
+          "description": "A powerful CLI tool for managing projects",
+          "usage": "mycli [global options] command [command options] [arguments...]",
+          "version": "1.0.0",
+          "flags": [
+            {
+              "name": "--version",
+              "short": "-v",
+              "description": "Show version information",
+              "type": "boolean"
+            },
+            {
+              "name": "--verbose",
+              "description": "Enable verbose output",
+              "type": "boolean"
+            },
+            {
+              "name": "--config",
+              "short": "-c",
+              "description": "Configuration file path",
+              "type": "string",
+              "required": false,
+              "default": "~/.mycli/config.yaml"
+            },
+            {
+              "name": "--output",
+              "short": "-o",
+              "description": "Output format",
+              "type": "string",
+              "default": "text",
+              "enum": ["text", "json", "yaml"]
+            }
+          ],
+          "subcommands": [
+            {
+              "name": "init",
+              "description": "Initialize a new project",
+              "usage": "mycli init [options] [directory]",
+              "flags": [
+                {
+                  "name": "--name",
+                  "short": "-n",
+                  "description": "Project name",
+                  "type": "string",
+                  "required": true
+                },
+                {
+                  "name": "--template",
+                  "short": "-t",
+                  "description": "Project template",
+                  "type": "string",
+                  "default": "default",
+                  "enum": ["default", "minimal", "full"]
+                }
+              ],
+              "examples": [
+                "mycli init --name my-project",
+                "mycli init -n my-project -t minimal ./projects/new"
+              ]
+            },
+            {
+              "name": "build",
+              "description": "Build the project",
+              "usage": "mycli build [options]",
+              "flags": [
+                {
+                  "name": "--target",
+                  "short": "-t",
+                  "description": "Build target",
+                  "type": "string",
+                  "default": "production",
+                  "enum": ["development", "staging", "production"]
+                },
+                {
+                  "name": "--watch",
+                  "short": "-w",
+                  "description": "Watch for changes",
+                  "type": "boolean"
+                }
+              ],
+              "examples": [
+                "mycli build",
+                "mycli build --target development --watch"
+              ]
+            },
+            {
+              "name": "status",
+              "description": "Show project status",
+              "usage": "mycli status [options]",
+              "flags": [
+                {
+                  "name": "--format",
+                  "short": "-f",
+                  "description": "Output format",
+                  "type": "string",
+                  "default": "table",
+                  "enum": ["table", "json", "yaml"]
+                }
+              ]
+            }
+          ],
+          "examples": [
+            "mycli init --name my-project",
+            "mycli build --target development",
+            "mycli status --format json",
+            "mycli --version"
+          ]
+        },
+        "tests": {
+          "golden": [
+            {
+              "name": "Version Command",
+              "description": "Test version output format",
+              "cmd": "--version",
+              "wantCode": 0,
+              "normalize": {
+                "timestamps": ["buildTime", "releaseDate"],
+                "paths": ["buildPath", "installPath"],
+                "randoms": ["buildId", "commitHash"]
+              },
+              "ignoreFields": ["duration"],
+              "updateGolden": false
+            },
+            {
+              "name": "Help Output",
+              "description": "Test help text structure and content",
+              "cmd": "--help",
+              "wantCode": 0,
+              "wantRE": "Usage:\\s+mycli.*\\[global options\\].*command"
+            },
+            {
+              "name": "Init Command Help",
+              "description": "Test init subcommand help",
+              "cmd": "init --help",
+              "wantCode": 0,
+              "wantRE": "Initialize a new project"
+            },
+            {
+              "name": "Build Command Help",
+              "description": "Test build subcommand help",
+              "cmd": "build --help",
+              "wantCode": 0
+            },
+            {
+              "name": "Invalid Flag",
+              "description": "Test error handling for invalid flags",
+              "cmd": "--invalid-flag",
+              "wantCode": 2,
+              "wantRE": "(unknown flag|invalid option)"
+            },
+            {
+              "name": "Missing Required Argument",
+              "description": "Test error when required argument is missing",
+              "cmd": "init",
+              "wantCode": 1,
+              "wantRE": "required flag.*name"
+            },
+            {
+              "name": "Successful Init",
+              "description": "Test successful project initialization",
+              "cmd": "init --name test-project",
+              "wantCode": 0,
+              "normalize": {
+                "paths": ["projectPath", "configPath"],
+                "timestamps": ["createdAt", "modifiedAt"],
+                "randoms": ["projectId"]
+              }
+            },
+            {
+              "name": "JSON Output Format",
+              "description": "Test JSON output formatting",
+              "cmd": "status --format json",
+              "wantCode": 0,
+              "wantRE": "^\\{.*\\}$"
+            }
+          ],
+          "interactive": [
+            {
+              "name": "Interactive Init",
+              "description": "Test interactive project initialization",
+              "timeout": 30000,
+              "steps": [
+                {
+                  "send": "init",
+                  "expect": "Enter project name:",
+                  "delay": 500
+                },
+                {
+                  "send": "my-interactive-project",
+                  "expect": "Select template:",
+                  "delay": 1000
+                },
+                {
+                  "send": "default",
+                  "expect": "Project created successfully",
+                  "delay": 2000
+                },
+                {
+                  "send": "exit",
+                  "delay": 100
+                }
+              ]
+            },
+            {
+              "name": "Interactive Build with Watch",
+              "description": "Test interactive build process",
+              "timeout": 45000,
+              "steps": [
+                {
+                  "send": "build --watch",
+                  "expect": "Watching for changes",
+                  "delay": 1000
+                },
+                {
+                  "send": "q",
+                  "expect": "Build stopped",
+                  "delay": 500
+                }
+              ]
+            }
+          ]
+        },
+        "compatibility": {
+          "platforms": ["linux", "darwin", "windows"],
+          "architectures": ["amd64", "arm64"],
+          "minVersions": {
+            "glibc": "2.17"
+          }
+        }
+      }
+    },
+    "validation": {
+      "schemas": ["./spec/spec/schema/artifact_spec.cue"],
+      "rules": [
+        "consistent-command-naming",
+        "require-help-text-for-commands",
+        "validate-flag-types",
+        "ensure-exit-code-documentation"
+      ]
+    },
+    "ci": {
+      "triggers": ["push", "pull_request", "release"],
+      "matrix": {
+        "os": ["ubuntu-latest", "macos-latest", "windows-latest"],
+        "go": ["1.21", "1.22"]
+      },
+      "steps": [
+        "setup-go",
+        "install-dependencies",
+        "lint",
+        "test",
+        "build-binaries",
+        "run-golden-tests",
+        "run-interactive-tests",
+        "validate-command-tree"
+      ]
+    }
+  }
+}

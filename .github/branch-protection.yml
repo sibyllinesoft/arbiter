@@ -1,0 +1,307 @@
+# Branch Protection Rules Configuration
+# This file documents the recommended branch protection settings
+# Apply these rules through GitHub repository settings or API
+
+version: 1.0
+
+# Main branch protection (production)
+main:
+  protection_rules:
+    # Require status checks to pass before merging
+    required_status_checks:
+      strict: true # Require branches to be up to date before merging
+      checks:
+        # Fast feedback loop (critical)
+        - "Fast Feedback Summary" 
+        - "Lint & Format"
+        - "TypeScript Check" 
+        - "Unit Tests"
+        - "Build Check"
+        
+        # Integration tests (critical)
+        - "Integration Test Summary"
+        - "Contract Testing"
+        - "API Integration Tests" 
+        - "Tutorial Validation"
+        
+        # E2E tests (critical)
+        - "E2E Test Summary"
+        - "Playwright E2E Tests (chromium)"
+        - "Playwright E2E Tests (firefox)"
+        - "Chaos Engineering Tests (quick)"
+        - "Load & Performance Testing"
+        
+        # Quality gates (critical) 
+        - "Quality Gate Summary"
+        - "Performance Benchmarks"
+        - "Security Scans"
+        - "Dependency Audit"
+        
+        # Additional checks
+        - "Bundle Size Analysis" # Allow to fail with warning
+        - "Container Security Scan (api)" # Critical
+        - "Container Security Scan (web)" # Critical
+
+    # Require pull request reviews
+    required_pull_request_reviews:
+      required_approving_review_count: 2
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: true
+      require_last_push_approval: false # Allow authors to approve after addressing feedback
+      bypass_pull_request_allowances:
+        users: [] # Only in emergency situations
+        teams: ["platform-admin"] # Infrastructure emergencies
+        apps: ["dependabot[bot]"] # Automated dependency updates
+      
+    # Additional restrictions
+    restrictions:
+      # Only specific teams can push directly (emergency hotfixes)
+      push_allowances:
+        users: []
+        teams: ["platform-admin"] 
+        apps: []
+      
+    # Other settings
+    enforce_admins: false # Allow admins to bypass in emergencies
+    allow_force_pushes: false
+    allow_deletions: false
+    block_creations: false
+    required_linear_history: true # Require clean git history
+    require_signed_commits: true # Require GPG signed commits
+
+# Develop branch protection (staging/integration)  
+develop:
+  protection_rules:
+    required_status_checks:
+      strict: true
+      checks:
+        # Core quality checks (subset of main)
+        - "Fast Feedback Summary"
+        - "Lint & Format"
+        - "TypeScript Check"
+        - "Unit Tests" 
+        - "Build Check"
+        - "Integration Test Summary"
+        - "API Integration Tests"
+        
+        # Optional but recommended
+        - "Playwright E2E Tests (chromium)" # At least one browser
+        - "Performance Benchmarks" # Catch regressions early
+        - "Security Scans"
+
+    required_pull_request_reviews:
+      required_approving_review_count: 1
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: false # More permissive for development
+      require_last_push_approval: false
+      bypass_pull_request_allowances:
+        users: []
+        teams: ["developers", "platform-admin"]
+        apps: ["dependabot[bot]"]
+      
+    restrictions:
+      push_allowances:
+        users: []
+        teams: ["developers", "platform-admin"]
+        apps: []
+      
+    enforce_admins: false
+    allow_force_pushes: false
+    allow_deletions: false
+    required_linear_history: false # Allow merge commits in development
+    require_signed_commits: false # Optional in development
+
+# Feature branch protection (basic quality gates)
+feature_branches:
+  pattern: "feature/**"
+  protection_rules:
+    required_status_checks:
+      strict: false # Allow behind branches for faster iteration
+      checks:
+        # Minimal but essential checks
+        - "Lint & Format"
+        - "TypeScript Check" 
+        - "Unit Tests"
+        - "Build Check"
+        
+    required_pull_request_reviews:
+      required_approving_review_count: 0 # Self-merge allowed for drafts
+      dismiss_stale_reviews: false
+      require_code_owner_reviews: false
+      
+    enforce_admins: false
+    allow_force_pushes: true # Allow rebasing during development
+    allow_deletions: true
+    required_linear_history: false
+
+# Hotfix branch protection (expedited but safe)
+hotfix_branches:
+  pattern: "hotfix/**"
+  protection_rules:
+    required_status_checks:
+      strict: true
+      checks:
+        # Fast but essential checks for hotfixes
+        - "Fast Feedback Summary"
+        - "Security Scans" # Critical for hotfixes
+        - "API Integration Tests" # Ensure core functionality
+        
+    required_pull_request_reviews:
+      required_approving_review_count: 1 # Expedited review process
+      dismiss_stale_reviews: false
+      require_code_owner_reviews: true
+      bypass_pull_request_allowances:
+        teams: ["platform-admin"] # Emergency bypass
+        
+    enforce_admins: false
+    allow_force_pushes: false
+    allow_deletions: false
+
+# Status check configuration details
+status_checks:
+  # Critical checks that block merging
+  critical:
+    - name: "Fast Feedback Summary"
+      description: "Core code quality checks (lint, type, unit tests, build)"
+      timeout_minutes: 5
+      failure_action: "block_merge"
+      
+    - name: "Security Scans" 
+      description: "Security vulnerability scanning"
+      timeout_minutes: 10
+      failure_action: "block_merge"
+      
+    - name: "API Integration Tests"
+      description: "Core API functionality verification" 
+      timeout_minutes: 10
+      failure_action: "block_merge"
+      
+    - name: "Container Security Scan (api)"
+      description: "Production API container security scan"
+      timeout_minutes: 8
+      failure_action: "block_merge"
+      
+    - name: "Container Security Scan (web)"
+      description: "Production web container security scan" 
+      timeout_minutes: 8
+      failure_action: "block_merge"
+
+  # Important checks that should pass but can be bypassed
+  important:
+    - name: "E2E Test Summary"
+      description: "Full end-to-end testing suite"
+      timeout_minutes: 20
+      failure_action: "require_review" # Can bypass with approver override
+      
+    - name: "Performance Benchmarks" 
+      description: "Performance regression testing"
+      timeout_minutes: 12
+      failure_action: "require_review"
+      
+    - name: "Chaos Engineering Tests (quick)"
+      description: "System resilience testing"
+      timeout_minutes: 15 
+      failure_action: "require_review"
+
+  # Optional checks that provide information
+  informational:
+    - name: "Bundle Size Analysis"
+      description: "Frontend bundle size analysis"
+      timeout_minutes: 8
+      failure_action: "show_warning"
+      
+    - name: "Tutorial Validation"
+      description: "Documentation and tutorial validation"
+      timeout_minutes: 8
+      failure_action: "show_warning"
+
+# Auto-merge configuration for automated PRs
+auto_merge:
+  enabled: true
+  conditions:
+    # Dependabot PRs
+    dependabot:
+      enabled: true
+      requirements:
+        - all_required_checks_pass: true
+        - no_security_vulnerabilities: true
+        - version_change_type: ["patch", "minor"] # No major version auto-merge
+        - max_dependency_age_days: 30 # Don't auto-merge very old dependencies
+      
+    # Documentation-only changes
+    docs_only:
+      enabled: true
+      requirements:
+        - only_documentation_changes: true
+        - basic_checks_pass: true # lint, format
+        
+    # Minor configuration changes
+    config_only:
+      enabled: false # Require manual review for config changes
+
+# Merge strategies
+merge_strategies:
+  main:
+    allowed_methods: ["squash"] # Clean linear history
+    default_method: "squash"
+    require_commit_message_format: true
+    commit_message_template: |
+      {title} (#{number})
+      
+      {body}
+      
+      Co-authored-by: {co_authors}
+      
+  develop: 
+    allowed_methods: ["merge", "squash", "rebase"]
+    default_method: "merge" # Preserve branch structure
+    require_commit_message_format: false
+    
+  feature_branches:
+    allowed_methods: ["squash", "rebase"] 
+    default_method: "squash"
+    require_commit_message_format: false
+
+# Monitoring and alerts
+monitoring:
+  # Track bypass frequency
+  bypass_alerts:
+    enabled: true
+    frequency_threshold: 5 # Alert if >5 bypasses per week
+    notification_channels: ["slack://platform-team"]
+    
+  # Track failed check patterns
+  failure_pattern_analysis:
+    enabled: true
+    analysis_window: "7d"
+    min_failure_count: 10
+    
+  # Security scan compliance
+  security_compliance:
+    enabled: true
+    require_all_critical_scans: true
+    alert_on_scan_skip: true
+
+# Emergency procedures
+emergency_procedures:
+  hotfix_deployment:
+    description: "Expedited deployment for critical production issues"
+    steps:
+      - "Create hotfix branch from main" 
+      - "Implement minimal fix"
+      - "Run critical checks only (fast feedback + security)"
+      - "Get emergency approval from platform-admin"
+      - "Merge and deploy immediately"
+      - "Run full test suite post-deployment"
+      
+  bypass_approval:
+    description: "When to bypass protection rules"
+    conditions:
+      - "Production outage requiring immediate fix"
+      - "Security vulnerability requiring urgent patch"  
+      - "Critical infrastructure failure"
+    required_approvers: ["platform-admin"]
+    post_bypass_requirements:
+      - "Document bypass reason and approval"
+      - "Run full quality suite on next commit"
+      - "Review and improve protection rules if needed"

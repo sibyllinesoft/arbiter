@@ -1,0 +1,266 @@
+#!/bin/bash
+# Arbiter Pre-Receive Hook - Server-side Rails & Guarantees Enforcement
+# Optional but recommended for production repositories
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Configuration
+ARBITER_CLI="${ARBITER_CLI:-arbiter}"
+ARBITER_API_URL="${ARBITER_API_URL:-http://localhost:4001}"
+PROTECTED_BRANCHES="${ARBITER_PROTECTED_BRANCHES:-main master}"
+STRICT_MODE="${ARBITER_STRICT_MODE:-true}"
+
+echo -e "${BLUE}🔐 Arbiter server-side verification starting...${NC}"
+
+# Function to check if API server is available
+check_api_availability() {
+    if ! curl -s --max-time 5 "$ARBITER_API_URL/health" > /dev/null 2>&1; then
+        if [[ "$STRICT_MODE" == "true" ]]; then
+            echo -e "${RED}❌ Arbiter API server required but unreachable: $ARBITER_API_URL${NC}"
+            echo -e "${RED}Cannot perform server-side verification${NC}"
+            return 1
+        else
+            echo -e "${YELLOW}⚠️ Arbiter API server unreachable - allowing push${NC}"
+            return 2
+        fi
+    fi
+    return 0
+}
+
+# Function to verify stamps in a commit range
+verify_commit_range() {
+    local oldrev="$1"
+    local newrev="$2"
+    local refname="$3"
+    local has_failures=false
+    
+    echo -e "${BLUE}🔍 Verifying commits $oldrev..$newrev${NC}"
+    
+    # Get all commits in the range
+    mapfile -t commits < <(git rev-list "$oldrev..$newrev")
+    
+    for commit in "${commits[@]}"; do
+        echo -e "${YELLOW}📝 Checking commit: ${commit:0:8}${NC}"
+        
+        # Check commit message for Arbiter-Ticket trailer
+        local commit_msg
+        commit_msg=$(git log -1 --format=%B "$commit")
+        
+        # Get changed CUE files in this commit
+        mapfile -t cue_files < <(git diff-tree --no-commit-id --name-only -r "$commit" | grep '\.cue$' || true)
+        
+        if [[ ${#cue_files[@]} -gt 0 ]]; then
+            echo -e "${BLUE}  📋 Found ${#cue_files[@]} CUE file changes${NC}"
+            
+            # Verify ticket trailer exists
+            if ! echo "$commit_msg" | grep -q "^Arbiter-Ticket: tkn_[a-zA-Z0-9]{16}$"; then
+                echo -e "${RED}  ❌ Missing Arbiter-Ticket trailer in commit ${commit:0:8}${NC}"
+                has_failures=true
+                continue
+            fi
+            
+            local ticket_id
+            ticket_id=$(echo "$commit_msg" | grep "^Arbiter-Ticket:" | cut -d' ' -f2)
+            echo -e "${GREEN}  ✅ Valid ticket trailer found: $ticket_id${NC}"
+            
+            # Verify each CUE file has proper stamps
+            for file in "${cue_files[@]}"; do
+                if git show "$commit:$file" 2>/dev/null | grep -q "// ARBITER:BEGIN"; then
+                    echo -e "${GREEN}    ✅ Stamp found in: $file${NC}"
+                    
+                    # In a full implementation, verify the stamp HMAC here
+                    # This would extract stamp data and call the verification API
+                    
+                else
+                    echo -e "${RED}    ❌ Missing stamp in: $file${NC}"
+                    has_failures=true
+                fi
+            done
+        else
+            echo -e "${GREEN}  ✅ No CUE files changed${NC}"
+        fi
+        
+        # Additional security checks
+        if git show "$commit" | grep -iE "(password|secret|api[_-]?key|token)\s*[:=]\s*['\"][^'\"]*['\"]" > /dev/null; then
+            echo -e "${RED}  ❌ Potential secrets detected in commit ${commit:0:8}${NC}"
+            if [[ "$STRICT_MODE" == "true" ]]; then
+                has_failures=true
+            else
+                echo -e "${YELLOW}    ⚠️ Warning only - review manually${NC}"
+            fi
+        fi
+        
+        # Check for unsigned commits (if signing is required)
+        if [[ "${ARBITER_REQUIRE_SIGNED:-false}" == "true" ]]; then
+            if ! git verify-commit "$commit" 2>/dev/null; then
+                echo -e "${RED}  ❌ Unsigned commit detected: ${commit:0:8}${NC}"
+                has_failures=true
+            fi
+        fi
+    done
+    
+    if $has_failures; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to check branch protection
+is_protected_branch() {
+    local refname="$1"
+    local branch_name
+    branch_name=$(echo "$refname" | sed 's|^refs/heads/||')
+    
+    for protected in $PROTECTED_BRANCHES; do
+        if [[ "$branch_name" == "$protected" ]]; then
+            return 0
+        fi
+    done
+    
+    return 1
+}
+
+# Function to perform comprehensive verification
+perform_comprehensive_verification() {
+    local newrev="$1"
+    
+    echo -e "${BLUE}🔬 Performing comprehensive verification...${NC}"
+    
+    # Check out the new revision temporarily
+    local temp_dir
+    temp_dir=$(mktemp -d)
+    
+    # Export the tree for inspection
+    git archive "$newrev" | tar -x -C "$temp_dir"
+    
+    local verification_failed=false
+    
+    # Verify all CUE files have valid syntax
+    if find "$temp_dir" -name "*.cue" -type f | while read -r file; do
+        if ! cue vet "$file" 2>/dev/null; then
+            echo -e "${RED}❌ CUE syntax error in: ${file#$temp_dir/}${NC}"
+            exit 1
+        fi
+    done; then
+        :
+    else
+        verification_failed=true
+    fi
+    
+    # Check for assembly file consistency
+    if [[ -f "$temp_dir/arbiter.assembly.cue" ]]; then
+        if ! cue export "$temp_dir/arbiter.assembly.cue" > /dev/null 2>&1; then
+            echo -e "${RED}❌ Assembly file validation failed${NC}"
+            verification_failed=true
+        else
+            echo -e "${GREEN}✅ Assembly file is valid${NC}"
+        fi
+    fi
+    
+    # Cleanup
+    rm -rf "$temp_dir"
+    
+    if $verification_failed; then
+        return 1
+    fi
+    
+    return 0
+}
+
+# Function to log security event
+log_security_event() {
+    local event_type="$1"
+    local details="$2"
+    local timestamp
+    timestamp=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+    
+    # Log to system log
+    logger "ARBITER_SECURITY: $timestamp - $event_type - $details"
+    
+    # Log to Arbiter API if available
+    if curl -s --max-time 2 "$ARBITER_API_URL/health" > /dev/null 2>&1; then
+        curl -s -X POST "$ARBITER_API_URL/v1/audit/log" \
+            -H "Content-Type: application/json" \
+            -d "{\"event\":\"$event_type\",\"details\":\"$details\",\"timestamp\":\"$timestamp\"}" \
+            > /dev/null 2>&1 || true
+    fi
+}
+
+# Main execution
+main() {
+    local overall_exit_code=0
+    
+    # Check API availability
+    local api_status=0
+    check_api_availability || api_status=$?
+    
+    if [[ $api_status -eq 1 ]]; then
+        log_security_event "PUSH_BLOCKED" "API server unavailable in strict mode"
+        exit 1
+    fi
+    
+    # Process each ref being pushed
+    while read -r oldrev newrev refname; do
+        echo -e "${BLUE}🔍 Processing ref: $refname${NC}"
+        echo -e "${BLUE}   Range: $oldrev -> $newrev${NC}"
+        
+        # Check if this is a protected branch
+        if is_protected_branch "$refname"; then
+            echo -e "${YELLOW}🛡️ Protected branch detected - enhanced verification${NC}"
+            
+            # Verify commit range
+            if ! verify_commit_range "$oldrev" "$newrev" "$refname"; then
+                echo -e "${RED}❌ Commit verification failed for $refname${NC}"
+                log_security_event "PUSH_BLOCKED" "Stamp verification failed on $refname"
+                overall_exit_code=1
+                continue
+            fi
+            
+            # Perform comprehensive verification for new commits
+            if [[ $api_status -eq 0 ]]; then
+                if ! perform_comprehensive_verification "$newrev"; then
+                    echo -e "${RED}❌ Comprehensive verification failed${NC}"
+                    log_security_event "PUSH_BLOCKED" "Comprehensive verification failed on $refname"
+                    overall_exit_code=1
+                    continue
+                fi
+            fi
+            
+            echo -e "${GREEN}✅ All verifications passed for $refname${NC}"
+            log_security_event "PUSH_ALLOWED" "All verifications passed on $refname"
+        else
+            echo -e "${GREEN}✅ Non-protected branch - basic checks only${NC}"
+            
+            # Still check for obvious issues
+            mapfile -t commits < <(git rev-list "$oldrev..$newrev")
+            for commit in "${commits[@]}"; do
+                if git show "$commit" | grep -iE "(password|secret|api[_-]?key|token)\s*[:=]\s*['\"][^'\"]*['\"]" > /dev/null; then
+                    echo -e "${YELLOW}⚠️ Potential secrets in non-protected branch commit ${commit:0:8}${NC}"
+                    log_security_event "SECURITY_WARNING" "Potential secrets in commit ${commit:0:8} on $refname"
+                fi
+            done
+        fi
+    done
+    
+    if [[ $overall_exit_code -eq 0 ]]; then
+        echo -e "${GREEN}🎉 Server-side verification complete - push allowed${NC}"
+        log_security_event "PUSH_SUCCESS" "All server-side verifications passed"
+    else
+        echo -e "${RED}💥 Server-side verification failed - push rejected${NC}"
+        echo -e "${YELLOW}Contact your system administrator for assistance${NC}"
+        log_security_event "PUSH_REJECTED" "Server-side verification failures detected"
+    fi
+    
+    exit $overall_exit_code
+}
+
+# Execute main function with all input
+main

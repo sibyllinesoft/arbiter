@@ -1,0 +1,84 @@
+bun test v1.2.20 (6ad208bc)
+
+e2e/golden-path.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                 ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/media/nathan/Seagate Hub/Projects/arbiter/node_modules/playwright/lib/common/testType.js:74:13)
+      at _describe (/media/nathan/Seagate Hub/Projects/arbiter/node_modules/playwright/lib/common/testType.js:114:24)
+      at /media/nathan/Seagate Hub/Projects/arbiter/e2e/golden-path.spec.ts:8:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+e2e/collaboration.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                 ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/media/nathan/Seagate Hub/Projects/arbiter/node_modules/playwright/lib/common/testType.js:74:13)
+      at _describe (/media/nathan/Seagate Hub/Projects/arbiter/node_modules/playwright/lib/common/testType.js:114:24)
+      at /media/nathan/Seagate Hub/Projects/arbiter/e2e/collaboration.spec.ts:8:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+e2e/guardrails.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                 ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/media/nathan/Seagate Hub/Projects/arbiter/node_modules/playwright/lib/common/testType.js:74:13)
+      at _describe (/media/nathan/Seagate Hub/Projects/arbiter/node_modules/playwright/lib/common/testType.js:114:24)
+      at /media/nathan/Seagate Hub/Projects/arbiter/e2e/guardrails.spec.ts:8:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+tests/schema-validation.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+576 |       name: "valid...
+                  ^
+error: Unterminated string literal
+    at /media/nathan/Seagate Hub/Projects/arbiter/tests/schema-validation.test.ts:576:13
+-------------------------------
+

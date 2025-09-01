@@ -1,0 +1,54 @@
+name: dependency_chain
+description: Template for modeling sequential dependencies and workflow chains in constraints
+category: workflow_management
+tags:
+  - dependency
+  - chain
+  - sequence
+  - workflow
+  - pipeline
+  - ordering
+  - prerequisites
+version: "1.0.0"
+author: Arbiter CLI
+usage: |
+  This template provides patterns for modeling complex dependency relationships
+  where tasks, resources, or processes must be completed in a specific order.
+  Use this for workflow automation, deployment pipelines, or any scenario
+  where execution order matters and dependencies must be respected.
+parameters:
+  - name: chain_name
+    type: string
+    description: Name of the dependency chain
+    default: "deployment_pipeline"
+  - name: step_count
+    type: number
+    description: Number of steps in the chain
+    default: 4
+  - name: failure_handling
+    type: string
+    description: How to handle step failures
+    default: "halt"
+  - name: parallel_execution
+    type: boolean
+    description: Allow parallel execution where possible
+    default: true
+examples:
+  - description: CI/CD deployment pipeline
+    values:
+      chain_name: "cicd_pipeline"
+      step_count: 6
+      failure_handling: "rollback"
+      parallel_execution: true
+  - description: Data processing workflow
+    values:
+      chain_name: "data_pipeline"
+      step_count: 5
+      failure_handling: "retry"
+      parallel_execution: false
+  - description: Infrastructure provisioning chain
+    values:
+      chain_name: "infrastructure_setup"
+      step_count: 8
+      failure_handling: "halt"
+      parallel_execution: true

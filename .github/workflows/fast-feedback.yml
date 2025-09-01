@@ -1,0 +1,303 @@
+name: Fast Feedback Loop
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**', 'hotfix/**' ]
+  pull_request:
+    branches: [ main, develop ]
+
+# Cancel in-progress runs for same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Path filtering for intelligent execution
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      docs: ${{ steps.filter.outputs.docs }}
+      ci: ${{ steps.filter.outputs.ci }}
+      contracts: ${{ steps.filter.outputs.contracts }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'apps/**'
+              - 'packages/**'
+              - '*.ts'
+              - '*.js'
+              - '*.json'
+              - 'tsconfig.json'
+              - 'biome.json'
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+              - '*.md'
+            ci:
+              - '.github/workflows/**'
+            contracts:
+              - 'contracts/**'
+              - 'spec/**'
+
+  # Fast linting and formatting checks
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Check formatting
+        run: bun run format:check
+
+      - name: Lint code
+        run: bun run lint
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "## 🎨 Lint & Format Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ All files properly formatted and linted" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Formatting or linting issues found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # TypeScript compilation check
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: TypeScript compilation check
+        run: bun run typecheck
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "## 🔍 TypeScript Check Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ All TypeScript code compiles without errors" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ TypeScript compilation errors found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Fast unit tests
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true' }}
+    
+    strategy:
+      matrix:
+        bun-version: [latest]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ matrix.bun-version }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run unit tests
+        run: bun test --timeout 30000 --coverage
+        env:
+          NODE_ENV: test
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-${{ matrix.bun-version }}
+          path: coverage/
+          retention-days: 1
+
+      - name: Report test results
+        if: always()
+        run: |
+          echo "## 🧪 Unit Test Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ All unit tests passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Unit test failures detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Build verification
+  build:
+    name: Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build packages
+        run: bun run build
+
+      - name: Cache build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            apps/*/dist
+            packages/*/dist
+          key: ${{ runner.os }}-build-${{ github.sha }}
+
+      - name: Report build results
+        if: always()
+        run: |
+          echo "## 🏗️ Build Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ All packages built successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Build failures detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Fast feedback summary
+  fast-feedback-summary:
+    name: Fast Feedback Summary
+    runs-on: ubuntu-latest
+    needs: [changes, lint, typecheck, unit-tests, build]
+    if: always() && (needs.changes.outputs.code == 'true' || needs.changes.outputs.ci == 'true')
+    
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "# 🚀 Fast Feedback Loop Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Check individual job results
+          LINT_STATUS="${{ needs.lint.result }}"
+          TYPECHECK_STATUS="${{ needs.typecheck.result }}"
+          TESTS_STATUS="${{ needs.unit-tests.result }}"
+          BUILD_STATUS="${{ needs.build.result }}"
+          
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Lint & Format | $( [ "$LINT_STATUS" = "success" ] && echo "✅ Pass" || echo "❌ Fail" ) |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript | $( [ "$TYPECHECK_STATUS" = "success" ] && echo "✅ Pass" || echo "❌ Fail" ) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | $( [ "$TESTS_STATUS" = "success" ] && echo "✅ Pass" || echo "❌ Fail" ) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build | $( [ "$BUILD_STATUS" = "success" ] && echo "✅ Pass" || echo "❌ Fail" ) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          if [ "$LINT_STATUS" = "success" ] && [ "$TYPECHECK_STATUS" = "success" ] && [ "$TESTS_STATUS" = "success" ] && [ "$BUILD_STATUS" = "success" ]; then
+            echo "## ✅ Fast Feedback: All Checks Passed" >> $GITHUB_STEP_SUMMARY
+            echo "Ready for integration testing phase" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ Fast Feedback: Issues Found" >> $GITHUB_STEP_SUMMARY
+            echo "Please fix issues before proceeding to integration testing" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Set status
+        run: |
+          if [ "${{ needs.lint.result }}" != "success" ] || [ "${{ needs.typecheck.result }}" != "success" ] || [ "${{ needs.unit-tests.result }}" != "success" ] || [ "${{ needs.build.result }}" != "success" ]; then
+            echo "Fast feedback checks failed"
+            exit 1
+          fi
+          echo "Fast feedback checks passed"
+
+  # Documentation-only changes bypass
+  docs-only:
+    name: Documentation Only
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.docs == 'true' && needs.changes.outputs.code == 'false' && needs.changes.outputs.ci == 'false' }}
+    
+    steps:
+      - name: Skip intensive checks
+        run: |
+          echo "# 📚 Documentation-Only Changes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Detected documentation-only changes" >> $GITHUB_STEP_SUMMARY
+          echo "⏭️ Skipping code quality checks" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 Ready for merge" >> $GITHUB_STEP_SUMMARY

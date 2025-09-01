@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://arbiter.dev/schemas/websocket-messages.json",
+  "title": "Arbiter WebSocket Message Schema",
+  "description": "Schema defining all WebSocket message types and their transitions for real-time collaboration",
+  "type": "object",
+  "discriminator": {
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {"$ref": "#/$defs/HelloMessage"},
+    {"$ref": "#/$defs/JoinMessage"},
+    {"$ref": "#/$defs/LeaveMessage"},
+    {"$ref": "#/$defs/CursorMessage"},
+    {"$ref": "#/$defs/SyncMessage"},
+    {"$ref": "#/$defs/AnalyzeMessage"},
+    {"$ref": "#/$defs/WelcomeMessage"},
+    {"$ref": "#/$defs/UserJoinedMessage"},
+    {"$ref": "#/$defs/UserLeftMessage"},
+    {"$ref": "#/$defs/CursorUpdateMessage"},
+    {"$ref": "#/$defs/SyncUpdateMessage"},
+    {"$ref": "#/$defs/AnalysisResultMessage"},
+    {"$ref": "#/$defs/ErrorMessage"}
+  ],
+  "$defs": {
+    "HelloMessage": {
+      "title": "Hello Message",
+      "description": "Initial handshake message sent by client to establish connection",
+      "type": "object",
+      "properties": {
+        "type": {"const": "hello"},
+        "version": {
+          "type": "string",
+          "default": "1.0",
+          "pattern": "^\\d+\\.\\d+$",
+          "description": "Protocol version"
+        }
+      },
+      "required": ["type"],
+      "additionalProperties": false
+    },
+    "WelcomeMessage": {
+      "title": "Welcome Message", 
+      "description": "Server response to successful hello message",
+      "type": "object",
+      "properties": {
+        "type": {"const": "welcome"},
+        "sessionId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique session identifier"
+        },
+        "version": {
+          "type": "string",
+          "description": "Server protocol version"
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "maxTextSize": {"type": "integer", "minimum": 1},
+            "maxConcurrency": {"type": "integer", "minimum": 1},
+            "timeoutMs": {"type": "integer", "minimum": 100}
+          },
+          "required": ["maxTextSize", "maxConcurrency", "timeoutMs"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type", "sessionId", "version", "limits"],
+      "additionalProperties": false
+    },
+    "JoinMessage": {
+      "title": "Join Message",
+      "description": "Client message to join a project for collaboration",
+      "type": "object",
+      "properties": {
+        "type": {"const": "join"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The project ID to join"
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Unique user identifier"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "description": "User display name"
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9a-fA-F]{6}$",
+              "description": "User cursor/selection color in hex format"
+            }
+          },
+          "required": ["id", "name", "color"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type", "projectId", "user"],
+      "additionalProperties": false
+    },
+    "UserJoinedMessage": {
+      "title": "User Joined Message",
+      "description": "Server broadcast when a user joins a project",
+      "type": "object",
+      "properties": {
+        "type": {"const": "user-joined"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "string", "format": "uuid"},
+            "name": {"type": "string"},
+            "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}
+          },
+          "required": ["id", "name", "color"],
+          "additionalProperties": false
+        },
+        "activeUsers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string", "format": "uuid"},
+              "name": {"type": "string"},
+              "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}
+            },
+            "required": ["id", "name", "color"],
+            "additionalProperties": false
+          },
+          "description": "List of all currently active users in the project"
+        }
+      },
+      "required": ["type", "projectId", "user", "activeUsers"],
+      "additionalProperties": false
+    },
+    "LeaveMessage": {
+      "title": "Leave Message",
+      "description": "Client message to leave a project",
+      "type": "object", 
+      "properties": {
+        "type": {"const": "leave"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The project ID to leave"
+        }
+      },
+      "required": ["type", "projectId"],
+      "additionalProperties": false
+    },
+    "UserLeftMessage": {
+      "title": "User Left Message",
+      "description": "Server broadcast when a user leaves a project",
+      "type": "object",
+      "properties": {
+        "type": {"const": "user-left"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "ID of the user who left"
+        },
+        "activeUsers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {"type": "string", "format": "uuid"},
+              "name": {"type": "string"},
+              "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"}
+            },
+            "required": ["id", "name", "color"],
+            "additionalProperties": false
+          },
+          "description": "Updated list of active users"
+        }
+      },
+      "required": ["type", "projectId", "userId", "activeUsers"],
+      "additionalProperties": false
+    },
+    "CursorMessage": {
+      "title": "Cursor Message",
+      "description": "Client message to update cursor position",
+      "type": "object",
+      "properties": {
+        "type": {"const": "cursor"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "line": {"type": "integer", "minimum": 0},
+            "column": {"type": "integer", "minimum": 0},
+            "selectionStart": {
+              "type": "object",
+              "properties": {
+                "line": {"type": "integer", "minimum": 0},
+                "column": {"type": "integer", "minimum": 0}
+              },
+              "required": ["line", "column"],
+              "additionalProperties": false
+            },
+            "selectionEnd": {
+              "type": "object", 
+              "properties": {
+                "line": {"type": "integer", "minimum": 0},
+                "column": {"type": "integer", "minimum": 0}
+              },
+              "required": ["line", "column"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["line", "column"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type", "projectId", "position"],
+      "additionalProperties": false
+    },
+    "CursorUpdateMessage": {
+      "title": "Cursor Update Message",
+      "description": "Server broadcast of cursor position updates",
+      "type": "object",
+      "properties": {
+        "type": {"const": "cursor-update"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "userId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "position": {
+          "type": "object",
+          "properties": {
+            "line": {"type": "integer", "minimum": 0},
+            "column": {"type": "integer", "minimum": 0},
+            "selectionStart": {
+              "type": "object",
+              "properties": {
+                "line": {"type": "integer", "minimum": 0},
+                "column": {"type": "integer", "minimum": 0}
+              },
+              "required": ["line", "column"],
+              "additionalProperties": false
+            },
+            "selectionEnd": {
+              "type": "object",
+              "properties": {
+                "line": {"type": "integer", "minimum": 0},
+                "column": {"type": "integer", "minimum": 0}
+              },
+              "required": ["line", "column"], 
+              "additionalProperties": false
+            }
+          },
+          "required": ["line", "column"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type", "projectId", "userId", "position"],
+      "additionalProperties": false
+    },
+    "SyncMessage": {
+      "title": "Sync Message",
+      "description": "Client message with Y.js document updates for real-time synchronization",
+      "type": "object",
+      "properties": {
+        "type": {"const": "sync"},
+        "projectId": {
+          "type": "string", 
+          "format": "uuid"
+        },
+        "update": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+          "description": "Base64 encoded Y.js update"
+        }
+      },
+      "required": ["type", "projectId", "update"],
+      "additionalProperties": false
+    },
+    "SyncUpdateMessage": {
+      "title": "Sync Update Message",
+      "description": "Server broadcast of Y.js document updates",
+      "type": "object",
+      "properties": {
+        "type": {"const": "sync-update"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "update": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]*={0,2}$",
+          "description": "Base64 encoded Y.js update"
+        },
+        "origin": {
+          "type": "string",
+          "format": "uuid",
+          "description": "User ID who originated this update"
+        }
+      },
+      "required": ["type", "projectId", "update", "origin"],
+      "additionalProperties": false
+    },
+    "AnalyzeMessage": {
+      "title": "Analyze Message",
+      "description": "Client request to analyze current CUE content",
+      "type": "object",
+      "properties": {
+        "type": {"const": "analyze"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requestId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique request identifier for tracking"
+        }
+      },
+      "required": ["type", "projectId", "requestId"],
+      "additionalProperties": false
+    },
+    "AnalysisResultMessage": {
+      "title": "Analysis Result Message",
+      "description": "Server response with CUE analysis results",
+      "type": "object",
+      "properties": {
+        "type": {"const": "analysis-result"},
+        "projectId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "requestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "errors": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "message": {"type": "string"},
+                  "line": {"type": "integer", "minimum": 1},
+                  "column": {"type": "integer", "minimum": 1},
+                  "filename": {"type": "string"}
+                },
+                "required": ["message"],
+                "additionalProperties": false
+              }
+            },
+            "value": {
+              "description": "The evaluated CUE value (if no errors)"
+            },
+            "graph": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {"type": "string"},
+                  "label": {"type": "string"},
+                  "type": {"type": "string", "enum": ["object", "array", "value"]},
+                  "children": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                  }
+                },
+                "required": ["id", "label", "type"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["errors"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["type", "projectId", "requestId", "result"],
+      "additionalProperties": false
+    },
+    "ErrorMessage": {
+      "title": "Error Message",
+      "description": "Server error message",
+      "type": "object",
+      "properties": {
+        "type": {"const": "error"},
+        "code": {
+          "type": "string",
+          "enum": ["INVALID_MESSAGE", "PROJECT_NOT_FOUND", "RATE_LIMITED", "ANALYSIS_TIMEOUT", "INTERNAL_ERROR"],
+          "description": "Error code"
+        },
+        "message": {
+          "type": "string",
+          "description": "Human readable error message"
+        },
+        "details": {
+          "description": "Additional error context"
+        }
+      },
+      "required": ["type", "code", "message"],
+      "additionalProperties": false
+    }
+  }
+}

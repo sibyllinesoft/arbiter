@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: valhalla-arbiter
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: arbiter
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: valhalla-mimir
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: mimir
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: valhalla-conclave
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: conclave
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: valhalla
+  name: valhalla-pod-reader
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "pods/status"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: valhalla-arbiter-pod-reader
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+subjects:
+- kind: ServiceAccount
+  name: valhalla-arbiter
+  namespace: valhalla
+roleRef:
+  kind: Role
+  name: valhalla-pod-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: valhalla-mimir-pod-reader
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+subjects:
+- kind: ServiceAccount
+  name: valhalla-mimir
+  namespace: valhalla
+roleRef:
+  kind: Role
+  name: valhalla-pod-reader
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: valhalla-conclave-pod-reader
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+subjects:
+- kind: ServiceAccount
+  name: valhalla-conclave
+  namespace: valhalla
+roleRef:
+  kind: Role
+  name: valhalla-pod-reader
+  apiGroup: rbac.authorization.k8s.io

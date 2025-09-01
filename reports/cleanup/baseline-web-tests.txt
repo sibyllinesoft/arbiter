@@ -1,0 +1,2 @@
+timeout: failed to run command ‘vitest’: No such file or directory
+Exit code: 127

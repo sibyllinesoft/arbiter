@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # Main agentic CI service
+  agentic-ci:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentic-ci
+    restart: unless-stopped
+    ports:
+      - "${WEBHOOK_PORT:-3000}:3000"
+    environment:
+      # GitHub configuration
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET}
+      GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}
+      
+      # OpenAI configuration
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      
+      # Auto-merge settings
+      AUTO_MERGE_ENABLED: ${AUTO_MERGE_ENABLED:-true}
+      AUTO_MERGE_MAX_RISK_SCORE: ${AUTO_MERGE_MAX_RISK_SCORE:-30}
+      
+      # Safety settings
+      EMERGENCY_STOP_ENABLED: ${EMERGENCY_STOP_ENABLED:-true}
+      
+      # Application settings
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WEBHOOK_PORT: 3000
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config:/app/config:ro
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - agentic-ci-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.agentic-ci.rule=Host(`agentic-ci.localhost`)"
+      - "traefik.http.services.agentic-ci.loadbalancer.server.port=3000"
+
+  # Redis for caching and session storage
+  redis:
+    image: redis:7-alpine
+    container_name: agentic-ci-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-agenticCI2024}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agentic-ci-network
+
+  # PostgreSQL for audit logs and metrics storage
+  postgres:
+    image: postgres:16-alpine
+    container_name: agentic-ci-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agentic_ci}
+      POSTGRES_USER: ${POSTGRES_USER:-agentic_ci}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agenticCI2024}
+      POSTGRES_INITDB_ARGS: "--auth-local=trust --auth-host=md5"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-agentic_ci} -d ${POSTGRES_DB:-agentic_ci}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - agentic-ci-network
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: agentic-ci-prometheus
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=90d'
+      - '--web.enable-lifecycle'
+    profiles:
+      - monitoring
+    networks:
+      - agentic-ci-network
+
+  # Grafana for dashboards (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: agentic-ci-grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-agenticCI2024}
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    profiles:
+      - monitoring
+    depends_on:
+      - prometheus
+    networks:
+      - agentic-ci-network
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: agentic-ci-nginx
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    profiles:
+      - proxy
+    depends_on:
+      - agentic-ci
+    networks:
+      - agentic-ci-network
+
+volumes:
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  agentic-ci-network:
+    driver: bridge
+    name: agentic-ci-network

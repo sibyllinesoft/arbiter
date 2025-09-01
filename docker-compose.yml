@@ -1,76 +1,47 @@
 version: '3.8'
 
 services:
-  # Spec Workbench Backend
-  spec-workbench:
+  # Arbiter API Server (Bun-based)
+  api:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "4000:4000"
+      - "3001:3001"
     environment:
-      - NODE_ENV=development
-      - NATS_URL=nats://nats:4222
-      - DATABASE_PATH=/app/data/spec_workbench.db
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_PATH=/app/data/arbiter.db
     volumes:
       - ./data:/app/data
       - ./examples:/app/examples:ro
-    depends_on:
-      - nats
     networks:
-      - spec-workbench
+      - arbiter
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/projects"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # NATS Server for external agent communication
-  nats:
-    image: nats:2.10-alpine
-    ports:
-      - "4222:4222"    # Client connections
-      - "6222:6222"    # Cluster connections
-      - "8222:8222"    # HTTP monitoring
-    command:
-      - "--cluster_name=spec-workbench"
-      - "--cluster=nats://0.0.0.0:6222"
-      - "--http_port=8222"
-      - "--port=4222"
-      - "--server_name=nats-server"
-    networks:
-      - spec-workbench
-
-  # NATS Monitoring Dashboard (optional)
-  nats-surveyor:
-    image: natsio/nats-surveyor:latest
-    ports:
-      - "7777:7777"
-    command:
-      - "-s"
-      - "http://nats:8222"
-      - "-p"
-      - "7777"
-    depends_on:
-      - nats
-    networks:
-      - spec-workbench
-
-  # Example External Agent
-  example-agent:
+  # Arbiter Web Frontend (Static)
+  web:
     build:
       context: .
-      dockerfile: Dockerfile.agent
-    environment:
-      - NATS_URL=nats://nats:4222
-      - AGENT_NAME=ExampleAnalysisAgent
+      dockerfile: Dockerfile.web
+    ports:
+      - "5173:80"
     depends_on:
-      - nats
-      - spec-workbench
+      - api
     networks:
-      - spec-workbench
-    profiles:
-      - agents  # Only start with --profile agents
+      - arbiter
+    environment:
+      - VITE_API_URL=http://api:3001
+      - VITE_WS_URL=ws://api:3001
 
 networks:
-  spec-workbench:
+  arbiter:
     driver: bridge
 
 volumes:
-  spec-data:
+  arbiter-data:
     driver: local

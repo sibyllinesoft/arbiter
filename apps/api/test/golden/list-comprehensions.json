@@ -1,0 +1,131 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {
+    "numbers": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "squares": [
+      1,
+      4,
+      9,
+      16,
+      25
+    ],
+    "evens": [
+      2,
+      4
+    ]
+  },
+  "hasGraph": true,
+  "graphNodeCount": 16,
+  "graph": [
+    {
+      "id": "evens",
+      "label": "evens",
+      "type": "array",
+      "children": [
+        "evens[0]",
+        "evens[1]"
+      ]
+    },
+    {
+      "id": "evens[0]",
+      "label": "evens[0]: 2",
+      "type": "value"
+    },
+    {
+      "id": "evens[1]",
+      "label": "evens[1]: 4",
+      "type": "value"
+    },
+    {
+      "id": "numbers",
+      "label": "numbers",
+      "type": "array",
+      "children": [
+        "numbers[0]",
+        "numbers[1]",
+        "numbers[2]",
+        "numbers[3]",
+        "numbers[4]"
+      ]
+    },
+    {
+      "id": "numbers[0]",
+      "label": "numbers[0]: 1",
+      "type": "value"
+    },
+    {
+      "id": "numbers[1]",
+      "label": "numbers[1]: 2",
+      "type": "value"
+    },
+    {
+      "id": "numbers[2]",
+      "label": "numbers[2]: 3",
+      "type": "value"
+    },
+    {
+      "id": "numbers[3]",
+      "label": "numbers[3]: 4",
+      "type": "value"
+    },
+    {
+      "id": "numbers[4]",
+      "label": "numbers[4]: 5",
+      "type": "value"
+    },
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": [
+        "root.numbers",
+        "root.squares",
+        "root.evens"
+      ]
+    },
+    {
+      "id": "squares",
+      "label": "squares",
+      "type": "array",
+      "children": [
+        "squares[0]",
+        "squares[1]",
+        "squares[2]",
+        "squares[3]",
+        "squares[4]"
+      ]
+    },
+    {
+      "id": "squares[0]",
+      "label": "squares[0]: 1",
+      "type": "value"
+    },
+    {
+      "id": "squares[1]",
+      "label": "squares[1]: 4",
+      "type": "value"
+    },
+    {
+      "id": "squares[2]",
+      "label": "squares[2]: 9",
+      "type": "value"
+    },
+    {
+      "id": "squares[3]",
+      "label": "squares[3]: 16",
+      "type": "value"
+    },
+    {
+      "id": "squares[4]",
+      "label": "squares[4]: 25",
+      "type": "value"
+    }
+  ]
+}

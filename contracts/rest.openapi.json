@@ -1,0 +1,422 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Arbiter CUE Analysis API",
+    "description": "Real-time collaborative CUE editor with analysis and visualization",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Nathan Rice",
+      "email": "nathan.alexander.rice@gmail.com"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/api/projects": {
+      "post": {
+        "summary": "Create a new project",
+        "description": "Creates a new CUE project with a unique ID",
+        "operationId": "createProject",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}": {
+      "get": {
+        "summary": "Get project by ID",
+        "description": "Retrieves a project by its unique identifier",
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The project ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/projects/{projectId}/revisions": {
+      "post": {
+        "summary": "Save a revision",
+        "description": "Saves a new revision of the project's CUE content",
+        "operationId": "saveRevision",
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The project ID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRevision"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Revision saved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rev": {
+                      "type": "integer",
+                      "description": "The revision number"
+                    }
+                  },
+                  "required": ["rev"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Project not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content too large (>64KB)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analyze": {
+      "post": {
+        "summary": "Analyze CUE content",
+        "description": "Analyzes CUE content and returns errors, evaluation results, and graph representation",
+        "operationId": "analyzeContent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Analysis completed successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content too large (>64KB)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "408": {
+            "description": "Analysis timeout (>750ms)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateProject": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "The project name"
+          }
+        }
+      },
+      "ProjectResponse": {
+        "type": "object",
+        "required": ["id", "name", "createdAt", "updatedAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The project ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "The project name"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the project was created"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time", 
+            "description": "When the project was last updated"
+          }
+        }
+      },
+      "AnalyzeRequest": {
+        "type": "object",
+        "required": ["text", "requestId"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 65536,
+            "description": "The CUE content to analyze (max 64KB)"
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Unique request identifier for tracking"
+          }
+        }
+      },
+      "SaveRevision": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 65536,
+            "description": "The CUE content to save (max 64KB)"
+          }
+        }
+      },
+      "CueError": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "The error message"
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Line number where the error occurred"
+          },
+          "column": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Column number where the error occurred"
+          },
+          "filename": {
+            "type": "string",
+            "description": "The filename where the error occurred"
+          }
+        }
+      },
+      "GraphNode": {
+        "type": "object",
+        "required": ["id", "label", "type"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique node identifier"
+          },
+          "label": {
+            "type": "string",
+            "description": "Node display label"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["object", "array", "value"],
+            "description": "The type of the node"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of child node IDs"
+          }
+        }
+      },
+      "AnalysisResult": {
+        "type": "object",
+        "required": ["requestId", "errors"],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "description": "The request ID that was analyzed"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CueError"
+            },
+            "description": "Array of CUE validation errors"
+          },
+          "value": {
+            "description": "The evaluated CUE value (if no errors)"
+          },
+          "graph": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "description": "Graph representation of the CUE structure"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["message"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "code": {
+            "type": "string",
+            "description": "Error code"
+          },
+          "details": {
+            "description": "Additional error details"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'rails-guarantees-dashboards'
+    orgId: 1
+    folder: 'Rails & Guarantees'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

@@ -1,0 +1,15 @@
+{
+  "errors": [],
+  "hasValue": true,
+  "value": {},
+  "hasGraph": true,
+  "graphNodeCount": 1,
+  "graph": [
+    {
+      "id": "root",
+      "label": "root",
+      "type": "object",
+      "children": []
+    }
+  ]
+}

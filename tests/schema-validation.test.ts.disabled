@@ -1,0 +1,778 @@
+// Schema Validation Tests - Generated 2025-09-01T03:48:08.530Z
+// Tests for CUE schema compliance and validation
+
+import { describe, it, expect } from 'vitest';
+import { validate } from '../lib/validation'; // Assumes validation library
+
+describe('Schema Validation Tests', () => {
+
+  describe('build Schema', () => {
+    it('should accept valid build data', () => {
+      const validData = generateValidbuildData();
+      const result = validate('build', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid build data', () => {
+      const invalidData = generateInvalidbuildData();
+      const result = validate('build', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle build edge cases', () => {
+      const edgeCaseData = generateEdgeCasebuildData();
+      const result = validate('build', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('constraints Schema', () => {
+    it('should accept valid constraints data', () => {
+      const validData = generateValidconstraintsData();
+      const result = validate('constraints', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid constraints data', () => {
+      const invalidData = generateInvalidconstraintsData();
+      const result = validate('constraints', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle constraints edge cases', () => {
+      const edgeCaseData = generateEdgeCaseconstraintsData();
+      const result = validate('constraints', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('packaging Schema', () => {
+    it('should accept valid packaging data', () => {
+      const validData = generateValidpackagingData();
+      const result = validate('packaging', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid packaging data', () => {
+      const invalidData = generateInvalidpackagingData();
+      const result = validate('packaging', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle packaging edge cases', () => {
+      const edgeCaseData = generateEdgeCasepackagingData();
+      const result = validate('packaging', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('Profile Schema', () => {
+    it('should accept valid Profile data', () => {
+      const validData = generateValidProfileData();
+      const result = validate('Profile', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid Profile data', () => {
+      const invalidData = generateInvalidProfileData();
+      const result = validate('Profile', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle Profile edge cases', () => {
+      const edgeCaseData = generateEdgeCaseProfileData();
+      const result = validate('Profile', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('designTokens Schema', () => {
+    it('should accept valid designTokens data', () => {
+      const validData = generateValiddesignTokensData();
+      const result = validate('designTokens', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid designTokens data', () => {
+      const invalidData = generateInvaliddesignTokensData();
+      const result = validate('designTokens', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle designTokens edge cases', () => {
+      const edgeCaseData = generateEdgeCasedesignTokensData();
+      const result = validate('designTokens', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('spacing Schema', () => {
+    it('should accept valid spacing data', () => {
+      const validData = generateValidspacingData();
+      const result = validate('spacing', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid spacing data', () => {
+      const invalidData = generateInvalidspacingData();
+      const result = validate('spacing', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle spacing edge cases', () => {
+      const edgeCaseData = generateEdgeCasespacingData();
+      const result = validate('spacing', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('typography Schema', () => {
+    it('should accept valid typography data', () => {
+      const validData = generateValidtypographyData();
+      const result = validate('typography', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid typography data', () => {
+      const invalidData = generateInvalidtypographyData();
+      const result = validate('typography', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle typography edge cases', () => {
+      const edgeCaseData = generateEdgeCasetypographyData();
+      const result = validate('typography', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('contracts Schema', () => {
+    it('should accept valid contracts data', () => {
+      const validData = generateValidcontractsData();
+      const result = validate('contracts', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid contracts data', () => {
+      const invalidData = generateInvalidcontractsData();
+      const result = validate('contracts', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle contracts edge cases', () => {
+      const edgeCaseData = generateEdgeCasecontractsData();
+      const result = validate('contracts', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('resources Schema', () => {
+    it('should accept valid resources data', () => {
+      const validData = generateValidresourcesData();
+      const result = validate('resources', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid resources data', () => {
+      const invalidData = generateInvalidresourcesData();
+      const result = validate('resources', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle resources edge cases', () => {
+      const edgeCaseData = generateEdgeCaseresourcesData();
+      const result = validate('resources', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('ui_web_profile Schema', () => {
+    it('should accept valid ui_web_profile data', () => {
+      const validData = generateValidui_web_profileData();
+      const result = validate('ui_web_profile', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid ui_web_profile data', () => {
+      const invalidData = generateInvalidui_web_profileData();
+      const result = validate('ui_web_profile', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle ui_web_profile edge cases', () => {
+      const edgeCaseData = generateEdgeCaseui_web_profileData();
+      const result = validate('ui_web_profile', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('ux Schema', () => {
+    it('should accept valid ux data', () => {
+      const validData = generateValiduxData();
+      const result = validate('ux', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid ux data', () => {
+      const invalidData = generateInvaliduxData();
+      const result = validate('ux', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle ux edge cases', () => {
+      const edgeCaseData = generateEdgeCaseuxData();
+      const result = validate('ux', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('perf Schema', () => {
+    it('should accept valid perf data', () => {
+      const validData = generateValidperfData();
+      const result = validate('perf', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid perf data', () => {
+      const invalidData = generateInvalidperfData();
+      const result = validate('perf', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle perf edge cases', () => {
+      const edgeCaseData = generateEdgeCaseperfData();
+      const result = validate('perf', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('i18n Schema', () => {
+    it('should accept valid i18n data', () => {
+      const validData = generateValidi18nData();
+      const result = validate('i18n', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid i18n data', () => {
+      const invalidData = generateInvalidi18nData();
+      const result = validate('i18n', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle i18n edge cases', () => {
+      const edgeCaseData = generateEdgeCasei18nData();
+      const result = validate('i18n', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('tests Schema', () => {
+    it('should accept valid tests data', () => {
+      const validData = generateValidtestsData();
+      const result = validate('tests', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid tests data', () => {
+      const invalidData = generateInvalidtestsData();
+      const result = validate('tests', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle tests edge cases', () => {
+      const edgeCaseData = generateEdgeCasetestsData();
+      const result = validate('tests', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('data Schema', () => {
+    it('should accept valid data data', () => {
+      const validData = generateValiddataData();
+      const result = validate('data', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid data data', () => {
+      const invalidData = generateInvaliddataData();
+      const result = validate('data', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle data edge cases', () => {
+      const edgeCaseData = generateEdgeCasedataData();
+      const result = validate('data', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('ux Schema', () => {
+    it('should accept valid ux data', () => {
+      const validData = generateValiduxData();
+      const result = validate('ux', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid ux data', () => {
+      const invalidData = generateInvaliduxData();
+      const result = validate('ux', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle ux edge cases', () => {
+      const edgeCaseData = generateEdgeCaseuxData();
+      const result = validate('ux', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('perf Schema', () => {
+    it('should accept valid perf data', () => {
+      const validData = generateValidperfData();
+      const result = validate('perf', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid perf data', () => {
+      const invalidData = generateInvalidperfData();
+      const result = validate('perf', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle perf edge cases', () => {
+      const edgeCaseData = generateEdgeCaseperfData();
+      const result = validate('perf', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('i18n Schema', () => {
+    it('should accept valid i18n data', () => {
+      const validData = generateValidi18nData();
+      const result = validate('i18n', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid i18n data', () => {
+      const invalidData = generateInvalidi18nData();
+      const result = validate('i18n', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle i18n edge cases', () => {
+      const edgeCaseData = generateEdgeCasei18nData();
+      const result = validate('i18n', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+  describe('tests Schema', () => {
+    it('should accept valid tests data', () => {
+      const validData = generateValidtestsData();
+      const result = validate('tests', validData);
+      expect(result.isValid).toBe(true);
+    });
+    
+    it('should reject invalid tests data', () => {
+      const invalidData = generateInvalidtestsData();
+      const result = validate('tests', invalidData);
+      expect(result.isValid).toBe(false);
+      expect(result.errors).toHaveLength.greaterThan(0);
+    });
+    
+    it('should handle tests edge cases', () => {
+      const edgeCaseData = generateEdgeCasetestsData();
+      const result = validate('tests', edgeCaseData);
+      // Edge case validation logic here
+      expect(result).toBeDefined();
+    });
+  });
+
+});
+
+// Helper functions for test data generation
+
+function generateValidbuildData() {
+  // TODO: Generate valid test data for build
+  // Based on schema: build: {
+  //   tool: "bun"
+  //   targets: ["apps/cli", "apps/api", "packages/*"]
+  //   matrix: {
+  //     version: [...]
+  return {};
+}
+
+function generateInvalidbuildData() {
+  // TODO: Generate invalid test data for build
+  return {};
+}
+
+function generateEdgeCasebuildData() {
+  // TODO: Generate edge case test data for build
+  return {};
+}
+
+function generateValidconstraintsData() {
+  // TODO: Generate valid test data for constraints
+  // Based on schema: constraints: {
+      payload_kb: 64      // ≤ 64 KB payload
+      job_ms: 750         // ≤ 750 ms/jo...
+  return {};
+}
+
+function generateInvalidconstraintsData() {
+  // TODO: Generate invalid test data for constraints
+  return {};
+}
+
+function generateEdgeCaseconstraintsData() {
+  // TODO: Generate edge case test data for constraints
+  return {};
+}
+
+function generateValidpackagingData() {
+  // TODO: Generate valid test data for packaging
+  // Based on schema: packaging: {
+    publish: true
+    registry: "npm"
+    artifact: "npm"
+    // formats: ["cli", "docker", ...]
+  return {};
+}
+
+function generateInvalidpackagingData() {
+  // TODO: Generate invalid test data for packaging
+  return {};
+}
+
+function generateEdgeCasepackagingData() {
+  // TODO: Generate edge case test data for packaging
+  return {};
+}
+
+function generateValidProfileData() {
+  // TODO: Generate valid test data for Profile
+  // Based on schema: Profile: {
+  // Platform definition
+  ui: {
+    platform: "cli"
+    
+    // Complete command tree fr...
+  return {};
+}
+
+function generateInvalidProfileData() {
+  // TODO: Generate invalid test data for Profile
+  return {};
+}
+
+function generateEdgeCaseProfileData() {
+  // TODO: Generate edge case test data for Profile
+  return {};
+}
+
+function generateValiddesignTokensData() {
+  // TODO: Generate valid test data for designTokens
+  // Based on schema: designTokens: {
+  //   color: {
+  //     primary: "#2563eb"
+  //     success: "#16a34a" 
+  //     warning: "#d97..."
+  return {};
+}
+
+function generateInvaliddesignTokensData() {
+  // TODO: Generate invalid test data for designTokens
+  return {};
+}
+
+function generateEdgeCasedesignTokensData() {
+  // TODO: Generate edge case test data for designTokens
+  return {};
+}
+
+function generateValidspacingData() {
+  // TODO: Generate valid test data for spacing
+  // Based on schema: spacing: {
+  //   indent: "  "
+  //   section: "\n"
+  //   separator: "---"
+  // }
+  return {};
+}
+
+function generateInvalidspacingData() {
+  // TODO: Generate invalid test data for spacing
+  return {};
+}
+
+function generateEdgeCasespacingData() {
+  // TODO: Generate edge case test data for spacing
+  return {};
+}
+
+function generateValidtypographyData() {
+  // TODO: Generate valid test data for typography
+  // Based on schema: typography: {
+      header: "bold"
+      code: "monospace"
+      emphasis: "italic"
+    // }
+  return {};
+}
+
+function generateInvalidtypographyData() {
+  // TODO: Generate invalid test data for typography
+  return {};
+}
+
+function generateEdgeCasetypographyData() {
+  // TODO: Generate edge case test data for typography
+  return {};
+}
+
+function generateValidcontractsData() {
+  // TODO: Generate valid test data for contracts
+  // Based on schema: contracts: {
+  // Preconditions - inputs/config/state requirements
+  // pre: [
+  //   {
+  //     name: "valid..."
+  return {};
+}
+
+function generateInvalidcontractsData() {
+  // TODO: Generate invalid test data for contracts
+  return {};
+}
+
+function generateEdgeCasecontractsData() {
+  // TODO: Generate edge case test data for contracts
+  return {};
+}
+
+function generateValidresourcesData() {
+  // TODO: Generate valid test data for resources
+  // Based on schema: resources: {
+  //   cpu_ms: 750      // ≤ 750 ms/job
+  //   mem_mb: 64       // ≤ 64 MB memory  
+  //   wall_...
+  return {};
+}
+
+function generateInvalidresourcesData() {
+  // TODO: Generate invalid test data for resources
+  return {};
+}
+
+function generateEdgeCaseresourcesData() {
+  // TODO: Generate edge case test data for resources
+  return {};
+}
+
+function generateValidui_web_profileData() {
+  // TODO: Generate valid test data for ui_web_profile
+  // Based on schema: ui_web_profile: {
+  // platform: "web"
+  // routes: [
+  //   {
+  //     path: "/"
+  //     component: "Dashboard"
+  // ...
+  return {};
+}
+
+function generateInvalidui_web_profileData() {
+  // TODO: Generate invalid test data for ui_web_profile
+  return {};
+}
+
+function generateEdgeCaseui_web_profileData() {
+  // TODO: Generate edge case test data for ui_web_profile
+  return {};
+}
+
+function generateValiduxData() {
+  // TODO: Generate valid test data for ux
+  // Based on schema: ux: {
+        a11y: {aria: true, contrast: "AA"// }
+  return {};
+}
+
+function generateInvaliduxData() {
+  // TODO: Generate invalid test data for ux
+  return {};
+}
+
+function generateEdgeCaseuxData() {
+  // TODO: Generate edge case test data for ux
+  return {};
+}
+
+function generateValidperfData() {
+  // TODO: Generate valid test data for perf
+  // Based on schema: perf: {tti_ms: 2000, lcp_ms: 1500// }
+  return {};
+}
+
+function generateInvalidperfData() {
+  // TODO: Generate invalid test data for perf
+  return {};
+}
+
+function generateEdgeCaseperfData() {
+  // TODO: Generate edge case test data for perf
+  return {};
+}
+
+function generateValidi18nData() {
+  // TODO: Generate valid test data for i18n
+  // Based on schema: i18n: {requiredKeys: ["dashboard.title", "dashboard.import"]// }
+  return {};
+}
+
+function generateInvalidi18nData() {
+  // TODO: Generate invalid test data for i18n
+  return {};
+}
+
+function generateEdgeCasei18nData() {
+  // TODO: Generate edge case test data for i18n
+  return {};
+}
+
+function generateValidtestsData() {
+  // TODO: Generate valid test data for tests
+  // Based on schema: tests: {e2e: ["can_view_dashboard", "can_import_project"], a11y: true, visual: true// }
+  return {};
+}
+
+function generateInvalidtestsData() {
+  // TODO: Generate invalid test data for tests
+  return {};
+}
+
+function generateEdgeCasetestsData() {
+  // TODO: Generate edge case test data for tests
+  return {};
+}
+
+function generateValiddataData() {
+  // TODO: Generate valid test data for data
+  // Based on schema: data: {
+        read: [
+          {source: "/api/validate/:id", schema: "ValidationResult"// }
+  return {};
+}
+
+function generateInvaliddataData() {
+  // TODO: Generate invalid test data for data
+  return {};
+}
+
+function generateEdgeCasedataData() {
+  // TODO: Generate edge case test data for data
+  return {};
+}
+
+function generateValiduxData() {
+  // TODO: Generate valid test data for ux
+  // Based on schema: ux: {
+        a11y: {aria: true, contrast: "AA"// }
+  return {};
+}
+
+function generateInvaliduxData() {
+  // TODO: Generate invalid test data for ux
+  return {};
+}
+
+function generateEdgeCaseuxData() {
+  // TODO: Generate edge case test data for ux
+  return {};
+}
+
+function generateValidperfData() {
+  // TODO: Generate valid test data for perf
+  // Based on schema: perf: {tti_ms: 1000, lcp_ms: 800// }
+  return {};
+}
+
+function generateInvalidperfData() {
+  // TODO: Generate invalid test data for perf
+  return {};
+}
+
+function generateEdgeCaseperfData() {
+  // TODO: Generate edge case test data for perf
+  return {};
+}
+
+function generateValidi18nData() {
+  // TODO: Generate valid test data for i18n
+  // Based on schema: i18n: {requiredKeys: ["validation.title", "validation.results"]// }
+  return {};
+}
+
+function generateInvalidi18nData() {
+  // TODO: Generate invalid test data for i18n
+  return {};
+}
+
+function generateEdgeCasei18nData() {
+  // TODO: Generate edge case test data for i18n
+  return {};
+}
+
+function generateValidtestsData() {
+  // TODO: Generate valid test data for tests
+  // Based on schema: tests: {e2e: ["shows_validation_results", "handles_validation_errors"], a11y: true, visual: true// }
+  return {};
+}
+
+function generateInvalidtestsData() {
+  // TODO: Generate invalid test data for tests
+  return {};
+}
+
+function generateEdgeCasetestsData() {
+  // TODO: Generate edge case test data for tests
+  return {};
+}
+

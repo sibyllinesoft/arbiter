@@ -1,0 +1,116 @@
+{
+  "name": "@arbiter/agentic-ci",
+  "version": "1.0.0",
+  "description": "AI-powered CI/CD automation with auto-merge capabilities",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "agentic-ci": "./dist/cli/agentic-ci-cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./types": "./dist/types/index.js",
+    "./agents": "./dist/agents/index.js",
+    "./core": "./dist/core/index.js",
+    "./safety": "./dist/safety/index.js",
+    "./config": "./dist/config/index.js"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/cli/agentic-ci-cli.ts",
+    "build": "tsc && chmod +x dist/cli/agentic-ci-cli.js",
+    "start": "bun run cli start",
+    "cli": "bun run src/cli/agentic-ci-cli.ts",
+    "test": "vitest",
+    "test:unit": "vitest --grep 'unit'",
+    "test:integration": "vitest --grep 'integration'",
+    "test:e2e": "vitest --grep 'e2e'",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src/**/*.ts --fix",
+    "lint:check": "eslint src/**/*.ts",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write src/**/*.ts",
+    "format:check": "prettier --check src/**/*.ts",
+    "clean": "rm -rf dist coverage",
+    "docker:build": "docker build -t agentic-ci .",
+    "docker:run": "docker run --env-file .env -p 3000:3000 agentic-ci",
+    "compose:up": "docker-compose up -d",
+    "compose:down": "docker-compose down",
+    "compose:logs": "docker-compose logs -f agentic-ci",
+    "setup": "bun run cli config init && echo 'Please update .env with your configuration'",
+    "health": "curl -f http://localhost:3000/health || echo 'Service not running'",
+    "metrics": "bun run cli metrics show",
+    "status": "bun run cli status"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.0.2",
+    "@octokit/webhooks": "^12.0.10",
+    "commander": "^11.1.0",
+    "express": "^4.18.2",
+    "openai": "^4.20.1",
+    "winston": "^3.11.0",
+    "zod": "^3.22.4",
+    "redis": "^4.6.10",
+    "pg": "^8.11.3",
+    "node-cron": "^3.0.3",
+    "helmet": "^7.1.0",
+    "rate-limiter-flexible": "^3.0.8",
+    "axios": "^1.6.0",
+    "lodash": "^4.17.21",
+    "semver": "^7.5.0",
+    "yaml": "^2.3.0",
+    "dotenv": "^16.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.5",
+    "@types/pg": "^8.10.9",
+    "@types/node-cron": "^3.0.11",
+    "@types/lodash": "^4.17.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4",
+    "@vitest/coverage-v8": "^1.0.4",
+    "supertest": "^6.3.3",
+    "@types/supertest": "^6.0.2"
+  },
+  "keywords": [
+    "ci",
+    "cd",
+    "automation",
+    "ai",
+    "github",
+    "merge",
+    "testing",
+    "devops",
+    "quality-gates",
+    "safety",
+    "agent",
+    "intelligent"
+  ],
+  "author": "Arbiter Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/arbiter.git",
+    "directory": "packages/agentic-ci"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": ">=1.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    ".env.example",
+    "docker-compose.yml"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

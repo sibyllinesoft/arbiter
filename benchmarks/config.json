@@ -1,0 +1,135 @@
+{
+  "performance": {
+    "api": {
+      "baseUrl": "http://localhost:3001",
+      "concurrency": 10,
+      "duration": 10,
+      "endpoints": ["/projects", "/analyze"],
+      "timeout": 30000
+    },
+    "websocket": {
+      "url": "ws://localhost:3001",
+      "connections": 50,
+      "messagesPerConnection": 100,
+      "messageSize": 1024,
+      "timeout": 30000
+    },
+    "cue": {
+      "sampleFiles": ["./examples/basic.cue", "./examples/kubernetes.cue"],
+      "iterations": 100,
+      "timeout": 750,
+      "maxFileSize": 65536
+    },
+    "memory": {
+      "iterations": 1000,
+      "gcForce": true,
+      "leakThreshold": 10485760
+    },
+    "bundle": {
+      "buildTimeout": 300000,
+      "maxBundleSize": 2097152,
+      "compressionThreshold": 1.5
+    }
+  },
+  "gates": {
+    "performance": [
+      {
+        "name": "API Response Time P95",
+        "metric": "p95_latency_ms",
+        "operator": "lt",
+        "threshold": 500,
+        "baseline_comparison": false
+      },
+      {
+        "name": "API Throughput",
+        "metric": "total_rps",
+        "operator": "gt",
+        "threshold": 100,
+        "baseline_comparison": false
+      },
+      {
+        "name": "WebSocket Latency P95",
+        "metric": "p95_message_latency_ms",
+        "operator": "lt",
+        "threshold": 100,
+        "baseline_comparison": false
+      },
+      {
+        "name": "CUE Analysis Success Rate",
+        "metric": "success_rate_percent",
+        "operator": "gte",
+        "threshold": 95,
+        "baseline_comparison": false
+      },
+      {
+        "name": "Memory Leaks",
+        "metric": "potential_leaks",
+        "operator": "eq",
+        "threshold": 0,
+        "baseline_comparison": false
+      },
+      {
+        "name": "Bundle Size Regression",
+        "metric": "total_bundle_size_kb",
+        "operator": "lt",
+        "threshold": 2000,
+        "baseline_comparison": true,
+        "regression_threshold": 0.25
+      }
+    ]
+  },
+  "security": {
+    "scanners": {
+      "sast": {
+        "enabled": true,
+        "timeout_ms": 300000,
+        "additional_args": ["--config=auto", "--severity=INFO"]
+      },
+      "dependency": {
+        "enabled": true,
+        "timeout_ms": 180000
+      },
+      "container": {
+        "enabled": false,
+        "timeout_ms": 600000
+      },
+      "secrets": {
+        "enabled": true,
+        "timeout_ms": 120000
+      },
+      "api_security": {
+        "enabled": true,
+        "timeout_ms": 300000
+      }
+    },
+    "gates": [
+      {
+        "name": "No Critical Vulnerabilities",
+        "severity": "critical",
+        "max_count": 0,
+        "blocking": true
+      },
+      {
+        "name": "Limited High Severity Issues",
+        "severity": "high", 
+        "max_count": 5,
+        "blocking": true
+      },
+      {
+        "name": "No Secrets in Code",
+        "severity": "high",
+        "max_count": 0,
+        "scanner": "secrets",
+        "blocking": true
+      }
+    ],
+    "report_formats": ["json", "html", "sarif"],
+    "fail_on_error": false
+  },
+  "reporting": {
+    "formats": ["json", "html", "markdown", "junit"],
+    "retain_history": true,
+    "history_limit": 50,
+    "baseline_auto_update": false
+  }
+}

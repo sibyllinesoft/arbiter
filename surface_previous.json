@@ -1,0 +1,214 @@
+{
+  "timestamp": "2025-09-01T02:15:33.809Z",
+  "languages": {
+    "typescript": {
+      "language": "typescript",
+      "timestamp": "2025-09-01T02:15:30.210Z",
+      "extraction_method": "file_parsing",
+      "public_items": [],
+      "modules": [],
+      "types": []
+    },
+    "bash": {
+      "language": "bash",
+      "timestamp": "2025-09-01T02:15:30.592Z",
+      "extraction_method": "file_parsing",
+      "public_items": [
+        {
+          "name": "check_api_health",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "check_api_health() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 38
+          }
+        },
+        {
+          "name": "start_api_server",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "start_api_server() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 65
+          }
+        },
+        {
+          "name": "stop_api_server",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "stop_api_server() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 94
+          }
+        },
+        {
+          "name": "run_performance_benchmarks",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "run_performance_benchmarks() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 110
+          }
+        },
+        {
+          "name": "run_security_scans",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "run_security_scans() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 149
+          }
+        },
+        {
+          "name": "generate_final_report",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "generate_final_report() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 190
+          }
+        },
+        {
+          "name": "cleanup",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "cleanup() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 287
+          }
+        },
+        {
+          "name": "main",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "main() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 296
+          }
+        },
+        {
+          "name": "log_info",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_info() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 27
+          }
+        },
+        {
+          "name": "log_success",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_success() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 31
+          }
+        },
+        {
+          "name": "log_warning",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_warning() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 35
+          }
+        },
+        {
+          "name": "log_error",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_error() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 39
+          }
+        },
+        {
+          "name": "print_usage",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "print_usage() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 43
+          }
+        },
+        {
+          "name": "run_tests",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "run_tests() {",
+          "location": {
+            "file": "test-runner.sh",
+            "line": 12
+          }
+        }
+      ],
+      "scripts": [
+        {
+          "name": "demo-cli-workflow.sh",
+          "path": "demo-cli-workflow.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "demo-phase-5.sh",
+          "path": "demo-phase-5.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "install-deps.sh",
+          "path": "install-deps.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "integration-test-demo.sh",
+          "path": "integration-test-demo.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "run-benchmarks.sh",
+          "path": "scripts/run-benchmarks.sh",
+          "functions": 8,
+          "executable": true
+        },
+        {
+          "name": "run-chaos-tests.sh",
+          "path": "scripts/run-chaos-tests.sh",
+          "functions": 5,
+          "executable": true
+        },
+        {
+          "name": "start-server.sh",
+          "path": "start-server.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "test-runner.sh",
+          "path": "test-runner.sh",
+          "functions": 1,
+          "executable": true
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total_languages": 2,
+    "total_public_items": 14
+  }
+}

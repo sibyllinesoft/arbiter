@@ -1,0 +1,2 @@
+error: unrecognized reporter format: 'tap'. Currently, only 'junit' is supported
+Exit code: 1

@@ -1,0 +1,54 @@
+# Baseline Coverage Report - Phase 0
+
+**Status**: Coverage Missing - Unable to Execute
+
+**Timestamp**: 2025-01-09
+
+## Coverage Tools Available
+- `@vitest/coverage-v8` (apps/web)
+- `bun test --coverage` (apps/api) 
+- Potential Playwright coverage via test runner
+
+## Execution Attempts
+
+### API Coverage (bun test --coverage)
+- **Status**: Failed to execute 
+- **Issue**: Tests timeout after 2+ minutes
+- **Root Cause**: Configuration or dependency issues preventing test startup
+
+### Web Coverage (vitest)
+- **Status**: Failed to execute
+- **Issue**: Missing vite dependency for configuration loading
+- **Error**: `ERR_MODULE_NOT_FOUND: Cannot find package 'vite'`
+
+### Root Cause Analysis
+1. **Workspace Dependencies**: Workspace packages may not be properly installed
+2. **Test Configuration**: Mixed test environments causing conflicts
+3. **Build Dependencies**: Missing critical build-time dependencies
+
+## Baseline Coverage Status
+- **Line Coverage**: Unknown - coverage missing
+- **Branch Coverage**: Unknown - coverage missing  
+- **Function Coverage**: Unknown - coverage missing
+- **Statement Coverage**: Unknown - coverage missing
+
+## Test File Inventory (For Coverage Planning)
+Found 100+ test files across the repository:
+- **API Tests**: 7 test files in apps/api/
+- **Web Component Tests**: 25+ component test files in apps/web/src/
+- **Shared Package Tests**: 1 test file in packages/shared/
+- **E2E Tests**: Playwright tests in e2e/ (causing conflicts)
+
+## Next Steps for Coverage
+1. Fix dependency installation issues
+2. Separate test execution environments  
+3. Configure proper test isolation
+4. Re-run coverage collection once tests are working
+5. Establish coverage baselines for each package/app
+
+## Coverage Missing - Phase 1 Priority
+This should be addressed as a high priority in Phase 1 cleanup as coverage data is essential for:
+- Understanding test quality
+- Identifying untested code paths
+- Measuring cleanup progress
+- Ensuring regression prevention during refactoring

@@ -1,0 +1,134 @@
+# Rails & Guarantees AlertManager Configuration
+# Production alerting configuration with multiple notification channels
+
+global:
+  smtp_smarthost: 'localhost:587'
+  smtp_from: 'alerts@rails-guarantees.local'
+  resolve_timeout: 5m
+
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'default'
+  routes:
+    # Critical Security Alerts
+    - match:
+        severity: critical
+        category: security
+      receiver: 'security-team'
+      group_wait: 10s
+      repeat_interval: 5m
+
+    # SLO Violations
+    - match_re:
+        slo: response_time_p95|ticket_verify_p95|availability|error_budget
+      receiver: 'sre-team'
+      group_wait: 30s
+      repeat_interval: 30m
+
+    # Performance Issues
+    - match:
+        category: performance
+      receiver: 'performance-team'
+      group_wait: 2m
+      repeat_interval: 1h
+
+    # Invariant Violations
+    - match:
+        category: invariant
+      receiver: 'development-team'
+      group_wait: 1m
+      repeat_interval: 15m
+
+receivers:
+  - name: 'default'
+    email_configs:
+      - to: 'ops-team@rails-guarantees.local'
+        subject: '[Rails & Guarantees] {{ .GroupLabels.alertname }}'
+        body: |
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          {{ end }}
+
+  - name: 'security-team'
+    email_configs:
+      - to: 'security-team@rails-guarantees.local'
+        subject: '[SECURITY] Rails & Guarantees Alert: {{ .GroupLabels.alertname }}'
+        body: |
+          🚨 SECURITY ALERT 🚨
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Severity: {{ .Labels.severity }}
+          Time: {{ .StartsAt }}
+          {{ end }}
+          
+          Immediate action required!
+    webhook_configs:
+      - url: 'http://rails-guarantees-engine:8080/alerts/security'
+        send_resolved: true
+
+  - name: 'sre-team'
+    email_configs:
+      - to: 'sre-team@rails-guarantees.local'
+        subject: '[SLO] Rails & Guarantees {{ .GroupLabels.slo }} violation'
+        body: |
+          SLO Violation Detected
+          
+          {{ range .Alerts }}
+          SLO: {{ .Labels.slo }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Current Value: {{ .Annotations.current_value }}
+          {{ end }}
+    slack_configs:
+      - api_url: '${SLACK_WEBHOOK_URL}'
+        channel: '#sre-alerts'
+        title: 'Rails & Guarantees SLO Violation'
+        text: |
+          {{ range .Alerts }}
+          *SLO*: {{ .Labels.slo }}
+          *Alert*: {{ .Annotations.summary }}
+          *Description*: {{ .Annotations.description }}
+          {{ end }}
+
+  - name: 'performance-team'
+    email_configs:
+      - to: 'performance-team@rails-guarantees.local'
+        subject: '[PERFORMANCE] Rails & Guarantees Performance Issue'
+        body: |
+          Performance Issue Detected
+          
+          {{ range .Alerts }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          Resource: {{ .Labels.resource_type }}
+          {{ end }}
+
+  - name: 'development-team'
+    email_configs:
+      - to: 'dev-team@rails-guarantees.local'
+        subject: '[INVARIANT] Rails & Guarantees Invariant Violation'
+        body: |
+          Invariant Violation Detected
+          
+          {{ range .Alerts }}
+          Invariant: {{ .Labels.invariant_name }}
+          Alert: {{ .Annotations.summary }}
+          Description: {{ .Annotations.description }}
+          {{ end }}
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

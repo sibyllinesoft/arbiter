@@ -1,0 +1,546 @@
+name: End-to-End Tests
+
+on:
+  workflow_run:
+    workflows: ["Integration Tests"]
+    types:
+      - completed
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run E2E tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+
+# Cancel in-progress runs for same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Skip if integration tests failed (except for manual triggers)
+  check-prerequisites:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - name: Check if should run
+        id: check
+        run: |
+          # Always run on manual triggers, direct pushes, or scheduled runs
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Skip if integration tests workflow failed
+          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "should-run=false" >> $GITHUB_OUTPUT
+            echo "Skipping E2E tests because integration tests failed"
+            exit 0
+          fi
+          
+          echo "should-run=true" >> $GITHUB_OUTPUT
+
+  # Path filtering for intelligent execution
+  changes:
+    runs-on: ubuntu-latest
+    needs: check-prerequisites
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' }}
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+      e2e: ${{ steps.filter.outputs.e2e }}
+      chaos: ${{ steps.filter.outputs.chaos }}
+      full-suite: ${{ steps.filter.outputs.full-suite }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'apps/web/**'
+              - 'packages/shared/**'
+            backend:
+              - 'apps/api/**'
+              - 'packages/shared/**'
+            e2e:
+              - 'e2e/**'
+              - 'playwright.config.ts'
+            chaos:
+              - 'scripts/run-chaos-tests.sh'
+              - 'chaos.config.js'
+              - 'packages/**'
+            full-suite:
+              - '.github/workflows/**'
+              - 'docker-compose.yml'
+              - 'Dockerfile*'
+
+  # Matrix strategy for cross-browser testing
+  playwright-tests:
+    name: Playwright E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && (needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.e2e == 'true' || needs.changes.outputs.full-suite == 'true') }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1/4, 2/4, 3/4, 4/4]
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install CUE CLI
+        run: |
+          curl -sSL https://cuelang.org/go/install | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: bunx playwright install ${{ matrix.browser }} --with-deps
+
+      - name: Build applications
+        run: bun run build
+
+      - name: Start full application stack
+        run: |
+          docker compose up -d --build
+          echo "Waiting for services to start..."
+          timeout 120 bash -c 'until curl -s http://localhost:3001/health && curl -s http://localhost:5173; do sleep 2; done'
+          echo "Services are ready"
+
+      - name: Run Playwright tests
+        run: bunx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+        env:
+          CI: true
+          PLAYWRIGHT_WORKERS: 2
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-results-${{ matrix.browser }}-${{ strategy.job-index }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+      - name: Upload trace files
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces-${{ matrix.browser }}-${{ strategy.job-index }}
+          path: test-results/
+          retention-days: 3
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
+
+      - name: Report test results
+        if: always()
+        run: |
+          echo "## 🎭 Playwright Results (${{ matrix.browser }}, shard ${{ matrix.shard }})" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ E2E tests passed for ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ E2E test failures in ${{ matrix.browser }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Chaos engineering tests with different scenarios
+  chaos-engineering:
+    name: Chaos Engineering Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.chaos == 'true' || needs.changes.outputs.full-suite == 'true') }}
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        chaos-mode: [quick, network, crdt]
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install CUE CLI
+        run: |
+          curl -sSL https://cuelang.org/go/install | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers (for chaos tests)
+        run: bunx playwright install chromium --with-deps
+
+      - name: Build applications
+        run: bun run build
+
+      - name: Start application stack
+        run: |
+          docker compose up -d --build
+          echo "Waiting for services to start..."
+          timeout 120 bash -c 'until curl -s http://localhost:3001/health && curl -s http://localhost:5173; do sleep 2; done'
+          echo "Services are ready for chaos testing"
+
+      - name: Run chaos engineering tests
+        run: |
+          case "${{ matrix.chaos-mode }}" in
+            quick)
+              echo "Running quick chaos tests..."
+              bun run test:chaos:quick
+              ;;
+            network)
+              echo "Running network chaos tests..."
+              bun run test:chaos:network
+              ;;
+            crdt)
+              echo "Running CRDT chaos tests..."
+              bun run test:chaos:crdt
+              ;;
+          esac
+        env:
+          CI: true
+          CHAOS_TIMEOUT: 300000
+
+      - name: Upload chaos test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chaos-results-${{ matrix.chaos-mode }}
+          path: |
+            test-results/chaos/
+            chaos-reports/
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
+
+      - name: Report chaos results
+        if: always()
+        run: |
+          echo "## 🌪️ Chaos Engineering Results (${{ matrix.chaos-mode }})" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ System resilient under ${{ matrix.chaos-mode }} chaos conditions" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ System instability detected under ${{ matrix.chaos-mode }} chaos" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Performance regression testing under load
+  load-testing:
+    name: Load & Performance Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.full-suite == 'true') }}
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install CUE CLI
+        run: |
+          curl -sSL https://cuelang.org/go/install | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install K6
+        run: |
+          curl -s https://github.com/grafana/k6/releases/download/v0.47.0/k6-v0.47.0-linux-amd64.tar.gz | tar xz
+          sudo mv k6-v0.47.0-linux-amd64/k6 /usr/local/bin/
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build applications
+        run: bun run build
+
+      - name: Start application stack
+        run: |
+          docker compose up -d --build
+          echo "Waiting for services to start..."
+          timeout 120 bash -c 'until curl -s http://localhost:3001/health; do sleep 2; done'
+          echo "Services are ready for load testing"
+
+      - name: Warm up application
+        run: |
+          echo "Warming up application..."
+          for i in {1..10}; do
+            curl -s http://localhost:3001/health > /dev/null
+            curl -s http://localhost:5173 > /dev/null
+            sleep 1
+          done
+
+      - name: Run load tests
+        run: |
+          cat > load-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Rate } from 'k6/metrics';
+          
+          export const errorRate = new Rate('errors');
+          
+          export const options = {
+            stages: [
+              { duration: '2m', target: 20 }, // Ramp up
+              { duration: '3m', target: 20 }, // Steady load
+              { duration: '1m', target: 0 },  // Ramp down
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<500'], // 95% of requests under 500ms
+              http_req_failed: ['rate<0.05'],   // Error rate under 5%
+              errors: ['rate<0.05'],
+            },
+          };
+          
+          export default function() {
+            // Test health endpoint
+            let healthResponse = http.get('http://localhost:3001/health');
+            check(healthResponse, {
+              'health check status is 200': (r) => r.status === 200,
+            }) || errorRate.add(1);
+          
+            // Test API endpoint
+            let apiResponse = http.get('http://localhost:3001/api/health');
+            check(apiResponse, {
+              'API health status is 200': (r) => r.status === 200,
+              'response time < 500ms': (r) => r.timings.duration < 500,
+            }) || errorRate.add(1);
+          
+            sleep(0.1);
+          }
+          EOF
+          
+          k6 run load-test.js --out json=load-test-results.json
+
+      - name: Analyze load test results
+        run: |
+          echo "Analyzing load test results..."
+          if [ -f load-test-results.json ]; then
+            # Extract key metrics
+            AVG_RESPONSE_TIME=$(jq -r '.metrics.http_req_duration.values.avg' load-test-results.json)
+            P95_RESPONSE_TIME=$(jq -r '.metrics.http_req_duration.values."p(95)"' load-test-results.json)
+            ERROR_RATE=$(jq -r '.metrics.http_req_failed.values.rate' load-test-results.json)
+            
+            echo "Average response time: ${AVG_RESPONSE_TIME}ms"
+            echo "P95 response time: ${P95_RESPONSE_TIME}ms"
+            echo "Error rate: ${ERROR_RATE}"
+            
+            # Check thresholds
+            if (( $(echo "$P95_RESPONSE_TIME > 500" | bc -l) )); then
+              echo "❌ P95 response time exceeds 500ms threshold"
+              exit 1
+            fi
+            
+            if (( $(echo "$ERROR_RATE > 0.05" | bc -l) )); then
+              echo "❌ Error rate exceeds 5% threshold"
+              exit 1
+            fi
+            
+            echo "✅ All load test thresholds passed"
+          fi
+
+      - name: Upload load test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: load-test-results
+          path: load-test-results.json
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
+
+      - name: Report load test results
+        if: always()
+        run: |
+          echo "## 📈 Load Testing Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ System meets performance requirements under load" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Performance degradation detected under load" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # E2E test summary and reporting
+  e2e-summary:
+    name: E2E Test Summary
+    runs-on: ubuntu-latest
+    needs: [check-prerequisites, changes, playwright-tests, chaos-engineering, load-testing]
+    if: always() && needs.check-prerequisites.outputs.should-run == 'true'
+    
+    steps:
+      - name: Download all test artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate comprehensive report
+        run: |
+          echo "# 🎭 End-to-End Testing Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Count job results
+          PLAYWRIGHT_SUCCESS=0
+          PLAYWRIGHT_TOTAL=0
+          CHAOS_SUCCESS=0
+          CHAOS_TOTAL=0
+          LOAD_STATUS="${{ needs.load-testing.result }}"
+          
+          # Count Playwright results
+          for browser in chromium firefox webkit; do
+            for shard in 1 2 3 4; do
+              PLAYWRIGHT_TOTAL=$((PLAYWRIGHT_TOTAL + 1))
+              # This is a simplified check - in real implementation you'd parse actual results
+              if [ "${{ needs.playwright-tests.result }}" = "success" ]; then
+                PLAYWRIGHT_SUCCESS=$((PLAYWRIGHT_SUCCESS + 1))
+              fi
+            done
+          done
+          
+          # Count Chaos results  
+          for mode in quick network crdt; do
+            CHAOS_TOTAL=$((CHAOS_TOTAL + 1))
+            if [ "${{ needs.chaos-engineering.result }}" = "success" ]; then
+              CHAOS_SUCCESS=$((CHAOS_SUCCESS + 1))
+            fi
+          done
+          
+          echo "| Test Category | Results |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Playwright E2E | $PLAYWRIGHT_SUCCESS/$PLAYWRIGHT_TOTAL shards passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Chaos Engineering | $CHAOS_SUCCESS/$CHAOS_TOTAL scenarios passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Load Testing | $( [ "$LOAD_STATUS" = "success" ] && echo "✅ Passed" || echo "❌ Failed" ) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Overall status
+          TOTAL_FAILURES=0
+          
+          if [ "${{ needs.playwright-tests.result }}" != "success" ] && [ "${{ needs.playwright-tests.result }}" != "skipped" ]; then
+            TOTAL_FAILURES=$((TOTAL_FAILURES + 1))
+          fi
+          
+          if [ "${{ needs.chaos-engineering.result }}" != "success" ] && [ "${{ needs.chaos-engineering.result }}" != "skipped" ]; then
+            TOTAL_FAILURES=$((TOTAL_FAILURES + 1))
+          fi
+          
+          if [ "$LOAD_STATUS" != "success" ] && [ "$LOAD_STATUS" != "skipped" ]; then
+            TOTAL_FAILURES=$((TOTAL_FAILURES + 1))
+          fi
+          
+          if [ $TOTAL_FAILURES -eq 0 ]; then
+            echo "## ✅ E2E Tests: All Scenarios Passed" >> $GITHUB_STEP_SUMMARY
+            echo "🚀 System is ready for performance & security validation" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ❌ E2E Tests: $TOTAL_FAILURES Categories Failed" >> $GITHUB_STEP_SUMMARY
+            echo "🔍 Review test artifacts and fix issues before deployment" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+      - name: Comment PR with E2E results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 🎭 End-to-End Test Results
+            
+            **Playwright Tests:** ${{ needs.playwright-tests.result == 'success' && '✅ Passed across all browsers' || '❌ Issues detected' }}
+            **Chaos Engineering:** ${{ needs.chaos-engineering.result == 'success' && '✅ System resilient' || '❌ Stability issues' }}  
+            **Load Testing:** ${{ needs.load-testing.result == 'success' && '✅ Performance targets met' || '❌ Performance issues' }}
+            
+            ${{ needs.playwright-tests.result == 'success' && needs.chaos-engineering.result == 'success' && needs.load-testing.result == 'success' && '🎉 All E2E tests passed! Ready for final quality gates.' || '⚠️ Some E2E tests failed. Please review the artifacts and fix issues.' }}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

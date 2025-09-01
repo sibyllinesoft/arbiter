@@ -1,0 +1,68 @@
+{
+  "language": "go",
+  "timestamp": "2025-09-01T01:45:54.010Z",
+  "extraction_method": "file_parsing",
+  "public_items": [
+    {
+      "name": "TestLatest",
+      "kind": "function",
+      "visibility": "public",
+      "signature": "func TestLatest(t *testing.T) {",
+      "parameters": "t *testing.T",
+      "return_type": "",
+      "location": {
+        "file": "doc/tutorial/basics/script_test.go",
+        "line": 22
+      }
+    },
+    {
+      "name": "TestScript",
+      "kind": "function",
+      "visibility": "public",
+      "signature": "func TestScript(t *testing.T) {",
+      "parameters": "t *testing.T",
+      "return_type": "",
+      "location": {
+        "file": "doc/tutorial/basics/script_test.go",
+        "line": 54
+      }
+    },
+    {
+      "name": "TestMain",
+      "kind": "function",
+      "visibility": "public",
+      "signature": "func TestMain(m *testing.M) {",
+      "parameters": "m *testing.M",
+      "return_type": "",
+      "location": {
+        "file": "doc/tutorial/basics/script_test.go",
+        "line": 77
+      }
+    },
+    {
+      "name": "TestTutorial",
+      "kind": "function",
+      "visibility": "public",
+      "signature": "func TestTutorial(t *testing.T) {",
+      "parameters": "t *testing.T",
+      "return_type": "",
+      "location": {
+        "file": "doc/tutorial/kubernetes/tut_test.go",
+        "line": 47
+      }
+    },
+    {
+      "name": "TestEval",
+      "kind": "function",
+      "visibility": "public",
+      "signature": "func TestEval(t *testing.T) {",
+      "parameters": "t *testing.T",
+      "return_type": "",
+      "location": {
+        "file": "doc/tutorial/kubernetes/tut_test.go",
+        "line": 282
+      }
+    }
+  ],
+  "packages": []
+}

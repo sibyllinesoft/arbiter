@@ -1,0 +1,52 @@
+{
+  "name": "@arbiter/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Arbiter architecture validation",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "architecture",
+    "validation",
+    "cue",
+    "sdk",
+    "typescript"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@arbiter/shared": "workspace:*",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3",
+    "bun-types": "^1.2.21"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "author": "Nathan Rice",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nathanrice/arbiter.git",
+    "directory": "packages/sdk"
+  }
+}

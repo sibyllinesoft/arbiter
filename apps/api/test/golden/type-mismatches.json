@@ -1,0 +1,17 @@
+{
+  "errors": [
+    {
+      "message": "invalid_person.name: conflicting values string and 123 (mismatched types string and int):",
+      "line": 3,
+      "column": 9
+    },
+    {
+      "message": "invalid_person.age: conflicting values int and \"thirty\" (mismatched types int and string):",
+      "line": 4,
+      "column": 8
+    }
+  ],
+  "hasValue": false,
+  "hasGraph": false,
+  "graphNodeCount": 0
+}

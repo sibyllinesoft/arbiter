@@ -1,0 +1,12 @@
+{
+  "errors": [
+    {
+      "message": "missing ',' in struct literal:",
+      "line": 3,
+      "column": 16
+    }
+  ],
+  "hasValue": false,
+  "hasGraph": false,
+  "graphNodeCount": 0
+}

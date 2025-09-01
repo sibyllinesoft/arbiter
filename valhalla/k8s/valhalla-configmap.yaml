@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valhalla-config
+  namespace: valhalla
+  labels:
+    app.kubernetes.io/name: valhalla
+    app.kubernetes.io/component: config
+    app.kubernetes.io/part-of: valhalla-agent-benchmarking
+data:
+  # Default policy configuration
+  default-policy.yaml: |
+    budget:
+      total_usd: 100
+      total_minutes: 240
+      per_phase:
+        brief:
+          usd: 10
+          minutes: 24
+        plan:
+          usd: 15
+          minutes: 36
+        implementation:
+          usd: 50
+          minutes: 120
+        review:
+          usd: 15
+          minutes: 36
+        repair:
+          usd: 10
+          minutes: 24
+    stopping:
+      max_attempts_per_phase: 3
+      max_candidate_patches: 5
+      consecutive_failures_limit: 2
+      flake_rate_threshold: 0.1
+      cost_overrun_threshold: 1.5
+      minimum_test_improvement: 0.1
+      maximum_regression_tolerance: 0.05
+    edit_primitives:
+      allowed_operations: ["insert", "replace", "delete"]
+      max_edit_distance: 100
+      preserve_formatting: true
+      respect_syntax: true
+      checkpoint_frequency: 5
+    risk_limits:
+      max_cyclomatic_complexity_increase: 3
+      max_coupling_increase: 0.2
+      test_timeout_seconds: 300
+      max_flaky_test_reruns: 3
+      memory_usage_limit_mb: 1024
+      execution_time_limit_multiplier: 2.0
+      security_scan_required: true
+      vulnerability_threshold: "low"
+    selection_rubric:
+      weights:
+        test_delta: 0.4
+        locality: 0.2
+        minimal_touch: 0.2
+        code_quality: 0.1
+        performance: 0.1
+  
+  # Conclave configuration
+  conclave-config.yaml: |
+    decision_sites:
+      plan_enabled: false
+      implementation_enabled: false
+      review_enabled: true
+      repair_enabled: false
+    debate_parameters:
+      width: 3
+      depth: 2
+      diversity:
+        prompts: ["analytical", "creative", "systematic"]
+        models: ["gpt-4", "claude-3", "gemini-pro"]
+        temperatures: [0.3, 0.7, 1.0]
+      adjudicator:
+        type: "weighted"
+    gating:
+      complexity_threshold: 7
+      budget_threshold_usd: 50
+      confidence_threshold: 0.7
+  
+  # Environment configuration
+  app-config.yaml: |
+    server:
+      host: "0.0.0.0"
+      port: 8080
+      timeout: 300
+    
+    gitlab:
+      base_url: "https://gitlab.com"
+      api_version: "v4"
+    
+    metrics:
+      enabled: true
+      port: 9090
+      path: "/metrics"
+    
+    logging:
+      level: "info"
+      format: "json"
+      
+    tracing:
+      enabled: true
+      service_name: "valhalla-agent"
+      sample_rate: 0.1

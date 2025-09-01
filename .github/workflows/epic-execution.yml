@@ -1,0 +1,358 @@
+name: Epic Execution and Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'epics/**/*.json'
+      - 'epics/**/*.yaml'
+      - 'epics/**/*.yml'
+      - 'epics/**/*.cue'
+  push:
+    branches: [main]
+    paths:
+      - 'epics/**/*.json'
+      - 'epics/**/*.yaml'
+      - 'epics/**/*.yml'
+      - 'epics/**/*.cue'
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+env:
+  NODE_VERSION: '20'
+  BUN_VERSION: 'latest'
+
+jobs:
+  # Dry-run execution on pull requests with plan and score comment
+  dry-run:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd packages/cli && npm run build
+
+      - name: Start Arbiter server
+        run: |
+          # Start the API server in background
+          cd apps/api && bun run start &
+          echo $! > arbiter-server.pid
+          
+          # Wait for server to be ready
+          timeout 30 bash -c 'until curl -s http://localhost:8080/health; do sleep 1; done'
+        env:
+          NODE_ENV: test
+
+      - name: Find changed epics
+        id: changed-epics
+        run: |
+          # Find changed epic files
+          changed_files=$(git diff --name-only origin/main...HEAD | grep -E '^epics/.*\.(json|yaml|yml|cue)$' || true)
+          
+          if [ -z "$changed_files" ]; then
+            echo "No epic files changed"
+            echo "epics=" >> $GITHUB_OUTPUT
+          else
+            # Convert to JSON array for matrix
+            epics_json=$(echo "$changed_files" | jq -R -s 'split("\n") | map(select(length > 0))')
+            echo "epics=$epics_json" >> $GITHUB_OUTPUT
+            
+            echo "Changed epic files:"
+            echo "$changed_files"
+          fi
+
+      - name: Execute epics dry-run
+        id: execute-epics
+        if: steps.changed-epics.outputs.epics != ''
+        run: |
+          results_dir="./epic-results"
+          mkdir -p "$results_dir"
+          
+          echo "# Epic Execution Results" > "$results_dir/summary.md"
+          echo "" >> "$results_dir/summary.md"
+          
+          overall_success=true
+          
+          # Process each epic
+          echo '${{ steps.changed-epics.outputs.epics }}' | jq -r '.[]' | while read epic; do
+            echo "## Processing epic: $epic"
+            
+            # Run dry-run execution
+            if ./packages/cli/bin/arbiter execute "$epic" --dry-run --verbose --junit "$results_dir/$(basename "$epic" .json)-junit.xml" > "$results_dir/$(basename "$epic" .json)-output.txt" 2>&1; then
+              echo "✅ **$epic** - Dry-run successful" >> "$results_dir/summary.md"
+              echo "" >> "$results_dir/summary.md"
+              echo '```' >> "$results_dir/summary.md"
+              tail -n 20 "$results_dir/$(basename "$epic" .json)-output.txt" >> "$results_dir/summary.md"
+              echo '```' >> "$results_dir/summary.md"
+              echo "" >> "$results_dir/summary.md"
+            else
+              echo "❌ **$epic** - Dry-run failed" >> "$results_dir/summary.md"
+              echo "" >> "$results_dir/summary.md"
+              echo '```' >> "$results_dir/summary.md"
+              tail -n 20 "$results_dir/$(basename "$epic" .json)-output.txt" >> "$results_dir/summary.md"
+              echo '```' >> "$results_dir/summary.md"
+              echo "" >> "$results_dir/summary.md"
+              overall_success=false
+            fi
+            
+            # Run tests if epic has test configuration
+            if ./packages/cli/bin/arbiter test --epic "$epic" --junit "$results_dir/$(basename "$epic" .json)-test-junit.xml" > "$results_dir/$(basename "$epic" .json)-test-output.txt" 2>&1; then
+              echo "✅ **$epic** - Tests passed" >> "$results_dir/summary.md"
+            else
+              echo "❌ **$epic** - Tests failed" >> "$results_dir/summary.md"
+              overall_success=false
+            fi
+            echo "" >> "$results_dir/summary.md"
+          done
+          
+          # Set output for later steps
+          echo "success=$overall_success" >> $GITHUB_OUTPUT
+          
+          # Combine JUnit reports
+          if ls "$results_dir"/*-junit.xml 1> /dev/null 2>&1; then
+            echo "<?xml version='1.0' encoding='UTF-8'?>" > "$results_dir/combined-junit.xml"
+            echo "<testsuites>" >> "$results_dir/combined-junit.xml"
+            for file in "$results_dir"/*-junit.xml; do
+              # Extract testsuite content (skip XML declaration and root element)
+              sed -n '/<testsuite/,/<\/testsuite>/p' "$file" >> "$results_dir/combined-junit.xml"
+            done
+            echo "</testsuites>" >> "$results_dir/combined-junit.xml"
+          fi
+
+      - name: Upload test results
+        if: always() && steps.changed-epics.outputs.epics != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: epic-test-results-pr-${{ github.event.number }}
+          path: ./epic-results/
+
+      - name: Publish test results
+        if: always() && steps.changed-epics.outputs.epics != ''
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: ./epic-results/*-junit.xml
+          check_name: Epic Execution Tests
+          comment_mode: create new
+          job_summary: true
+
+      - name: Comment PR with results
+        if: always() && steps.changed-epics.outputs.epics != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = './epic-results/summary.md';
+            
+            if (!fs.existsSync(path)) {
+              console.log('No summary file found');
+              return;
+            }
+            
+            const summary = fs.readFileSync(path, 'utf8');
+            const success = '${{ steps.execute-epics.outputs.success }}' === 'true';
+            
+            const body = `
+            ## 🚀 Epic Execution Results
+            
+            ${success ? '✅ All epics executed successfully!' : '❌ Some epics failed execution.'}
+            
+            ${summary}
+            
+            ---
+            
+            <details>
+            <summary>💡 About Epic Execution</summary>
+            
+            This PR modifies Epic v2 files, which are executable contracts for agent-first code generation. The CI system automatically:
+            
+            1. **Validates** epic schema and guards
+            2. **Dry-runs** file generation to show planned changes
+            3. **Tests** using static analysis, property tests, golden files, and CLI tests
+            4. **Scores** the overall execution for acceptance criteria
+            
+            On merge to main, these epics will be executed to apply the planned changes.
+            </details>
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+      - name: Stop Arbiter server
+        if: always()
+        run: |
+          if [ -f arbiter-server.pid ]; then
+            kill $(cat arbiter-server.pid) || true
+            rm arbiter-server.pid
+          fi
+
+  # Full execution on push to main
+  execute:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd packages/cli && npm run build
+
+      - name: Start Arbiter server
+        run: |
+          # Start the API server in background
+          cd apps/api && bun run start &
+          echo $! > arbiter-server.pid
+          
+          # Wait for server to be ready
+          timeout 30 bash -c 'until curl -s http://localhost:8080/health; do sleep 1; done'
+        env:
+          NODE_ENV: production
+
+      - name: Find changed epics
+        id: changed-epics
+        run: |
+          # Find epic files changed in the last commit
+          changed_files=$(git diff --name-only HEAD~1 HEAD | grep -E '^epics/.*\.(json|yaml|yml|cue)$' || true)
+          
+          if [ -z "$changed_files" ]; then
+            echo "No epic files changed"
+            echo "epics=" >> $GITHUB_OUTPUT
+          else
+            # Convert to JSON array
+            epics_json=$(echo "$changed_files" | jq -R -s 'split("\n") | map(select(length > 0))')
+            echo "epics=$epics_json" >> $GITHUB_OUTPUT
+            
+            echo "Changed epic files:"
+            echo "$changed_files"
+          fi
+
+      - name: Execute epics
+        id: execute-epics
+        if: steps.changed-epics.outputs.epics != ''
+        run: |
+          results_dir="./epic-results"
+          mkdir -p "$results_dir"
+          
+          echo "🚀 Executing epics on main branch..."
+          overall_success=true
+          
+          # Process each epic
+          echo '${{ steps.changed-epics.outputs.epics }}' | jq -r '.[]' | while read epic; do
+            echo "## Executing epic: $epic"
+            
+            # Full execution (no dry-run)
+            if ./packages/cli/bin/arbiter execute "$epic" --verbose --junit "$results_dir/$(basename "$epic" .json)-junit.xml" > "$results_dir/$(basename "$epic" .json)-output.txt" 2>&1; then
+              echo "✅ Successfully executed: $epic"
+              
+              # Run tests to validate the changes
+              if ./packages/cli/bin/arbiter test --epic "$epic" --junit "$results_dir/$(basename "$epic" .json)-test-junit.xml" > "$results_dir/$(basename "$epic" .json)-test-output.txt" 2>&1; then
+                echo "✅ Tests passed for: $epic"
+              else
+                echo "❌ Tests failed for: $epic"
+                overall_success=false
+              fi
+            else
+              echo "❌ Failed to execute: $epic"
+              overall_success=false
+            fi
+          done
+          
+          echo "success=$overall_success" >> $GITHUB_OUTPUT
+
+      - name: Commit generated changes
+        if: steps.execute-epics.outputs.success == 'true'
+        run: |
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add any generated files
+          git add -A
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            # Create commit with epic execution results
+            epics_list=$(echo '${{ steps.changed-epics.outputs.epics }}' | jq -r 'join(", ")')
+            git commit -m "Execute epics: $epics_list
+            
+            🤖 Generated with Arbiter Epic v2 execution
+            
+            Epics executed:
+            $epics_list
+            
+            All tests passed and changes applied successfully."
+            
+            # Push changes back to main
+            git push
+          fi
+
+      - name: Upload execution results
+        if: always() && steps.changed-epics.outputs.epics != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: epic-execution-results-${{ github.sha }}
+          path: ./epic-results/
+
+      - name: Publish test results
+        if: always() && steps.changed-epics.outputs.epics != ''
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: ./epic-results/*-junit.xml
+          check_name: Epic Execution Tests (Main)
+          job_summary: true
+
+      - name: Stop Arbiter server
+        if: always()
+        run: |
+          if [ -f arbiter-server.pid ]; then
+            kill $(cat arbiter-server.pid) || true
+            rm arbiter-server.pid
+          fi
+
+      - name: Fail if execution failed
+        if: steps.execute-epics.outputs.success == 'false'
+        run: |
+          echo "❌ Epic execution failed. Check the logs for details."
+          exit 1

@@ -1,0 +1,3 @@
+# Tool versions for consistent development environment
+nodejs 20.11.0
+bun 1.2.21

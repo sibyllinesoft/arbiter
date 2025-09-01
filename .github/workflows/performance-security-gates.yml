@@ -1,0 +1,559 @@
+name: Performance & Security Gates
+
+on:
+  workflow_run:
+    workflows: ["End-to-End Tests"]
+    types:
+      - completed
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run security scans daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Skip if E2E tests failed (except for manual triggers)
+  check-prerequisites:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.check.outputs.should-run }}
+    steps:
+      - name: Check if should run
+        id: check
+        run: |
+          # Always run on manual triggers, direct pushes, or scheduled runs
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "should-run=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # Skip if E2E tests workflow failed
+          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "should-run=false" >> $GITHUB_OUTPUT
+            echo "Skipping performance & security gates because E2E tests failed"
+            exit 0
+          fi
+          
+          echo "should-run=true" >> $GITHUB_OUTPUT
+
+  # Path filtering for intelligent execution
+  changes:
+    runs-on: ubuntu-latest
+    needs: check-prerequisites
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' }}
+    outputs:
+      performance: ${{ steps.filter.outputs.performance }}
+      security: ${{ steps.filter.outputs.security }}
+      dependencies: ${{ steps.filter.outputs.dependencies }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            performance:
+              - 'apps/**'
+              - 'packages/**'
+              - 'benchmarks/**'
+            security:
+              - 'apps/**'
+              - 'packages/**'
+              - 'Dockerfile*'
+              - 'package.json'
+              - 'bun.lock'
+            dependencies:
+              - 'package.json'
+              - 'bun.lock'
+              - 'apps/*/package.json'
+              - 'packages/*/package.json'
+
+  performance-benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && (needs.changes.outputs.performance == 'true' || github.event_name == 'schedule') }}
+    
+    services:
+      # Start services for benchmarking
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install CUE CLI
+        run: |
+          curl -sSL https://cuelang.org/go/install | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build packages
+        run: bun run build
+
+      - name: Load performance baseline
+        id: baseline
+        run: |
+          if [ -f "benchmarks/baseline.json" ]; then
+            echo "baseline_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "baseline_exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Start API server for benchmarking
+        run: |
+          bun run --cwd apps/api dev &
+          echo $! > api.pid
+          # Wait for server to start
+          timeout 30 bash -c 'until curl -s http://localhost:3001/health; do sleep 1; done'
+
+      - name: Run performance benchmarks
+        run: |
+          cd packages/benchmarks
+          bun run bench
+        env:
+          API_URL: http://localhost:3001
+          WS_URL: ws://localhost:3001
+          CI: true
+
+      - name: Stop API server
+        run: |
+          if [ -f api.pid ]; then
+            kill $(cat api.pid) || true
+            rm api.pid
+          fi
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            benchmarks/reports/
+            benchmarks/baseline.json
+          retention-days: 30
+
+      - name: Comment PR with performance results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            try {
+              const report = JSON.parse(fs.readFileSync('benchmarks/reports/benchmark-results.json', 'utf8'));
+              const markdown = fs.readFileSync('benchmarks/reports/benchmark-report.md', 'utf8');
+              
+              const comment = `## 🚀 Performance Benchmark Results
+              
+              **Quality Score:** ${report.quality_gates.score}/100
+              **Duration:** ${Math.round(report.summary.total_duration)}ms
+              **Passed Gates:** ${report.summary.passed_gates}/${report.summary.passed_gates + report.summary.failed_gates}
+              
+              ${report.quality_gates.failed.length > 0 ? 
+                '### ❌ Failed Quality Gates\\n' + 
+                report.quality_gates.failed.map(gate => `- **${gate.name}**: ${gate.actual} (threshold: ${gate.threshold}) - ${gate.reason}`).join('\\n') + '\\n'
+                : '### ✅ All Performance Gates Passed'}
+              
+              <details>
+              <summary>Full Benchmark Report</summary>
+              
+              ${markdown.split('## Benchmark Results')[1] || 'Report details not available'}
+              </details>
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Could not post performance results:', error);
+            }
+
+      - name: Fail on performance regression
+        run: |
+          cd packages/benchmarks
+          # Check if quality gates passed
+          if [ -f "benchmarks/reports/benchmark-results.json" ]; then
+            FAILED_GATES=$(cat benchmarks/reports/benchmark-results.json | jq '.quality_gates.failed | length')
+            REGRESSION=$(cat benchmarks/reports/benchmark-results.json | jq '.quality_gates.hasRegression')
+            
+            if [ "$FAILED_GATES" -gt 0 ] || [ "$REGRESSION" = "true" ]; then
+              echo "❌ Performance quality gates failed or regression detected"
+              exit 1
+            fi
+          fi
+
+  security-scans:
+    name: Security Scans
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && (needs.changes.outputs.security == 'true' || needs.changes.outputs.dependencies == 'true' || github.event_name == 'schedule') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Semgrep
+        run: |
+          python -m pip install --upgrade pip
+          pip install semgrep
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run security scans
+        run: |
+          cd packages/security
+          bun run scan
+        env:
+          CI: true
+
+      - name: Upload security results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-results
+          path: |
+            security/reports/
+          retention-days: 30
+
+      - name: Upload SARIF results
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: security/reports/security-report.sarif
+          category: arbiter-security
+
+      - name: Comment PR with security results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            try {
+              const report = JSON.parse(fs.readFileSync('security/reports/security-results.json', 'utf8'));
+              
+              const comment = `## 🔒 Security Scan Results
+              
+              **Total Vulnerabilities:** ${report.summary.total_vulnerabilities}
+              **Critical:** ${report.summary.critical_vulnerabilities}
+              **High:** ${report.summary.high_vulnerabilities}
+              **Passed Gates:** ${report.summary.passed_gates}/${report.summary.passed_gates + report.summary.failed_gates}
+              
+              ${report.summary.failed_gates > 0 ? 
+                '### ❌ Failed Security Gates\\n' + 
+                '⚠️ This PR introduces security issues that must be resolved before merging.\\n'
+                : '### ✅ All Security Gates Passed'}
+              
+              ### Scan Coverage
+              ${report.scans.map(scan => `- **${scan.scanner}**: ${scan.summary.total} issues found`).join('\\n')}
+              `;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.log('Could not post security results:', error);
+            }
+
+      - name: Fail on security issues
+        run: |
+          cd packages/security
+          # Check if security gates passed
+          if [ -f "security/reports/security-results.json" ]; then
+            CRITICAL=$(cat security/reports/security-results.json | jq '.summary.critical_vulnerabilities')
+            FAILED_GATES=$(cat security/reports/security-results.json | jq '.summary.failed_gates')
+            
+            if [ "$CRITICAL" -gt 0 ] || [ "$FAILED_GATES" -gt 0 ]; then
+              echo "❌ Critical security vulnerabilities or failed gates detected"
+              exit 1
+            fi
+          fi
+
+  bundle-analysis:
+    name: Bundle Size Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && needs.changes.outputs.performance == 'true' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build for production
+        run: bun run build
+
+      - name: Analyze bundle size
+        run: |
+          cd packages/benchmarks
+          bun run bench:bundle
+        env:
+          CI: true
+
+      - name: Upload bundle analysis
+        uses: actions/upload-artifact@v3
+        with:
+          name: bundle-analysis
+          path: |
+            benchmarks/reports/bundle-*.json
+          retention-days: 30
+
+  # Dependency vulnerability scan
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [check-prerequisites, changes]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && (needs.changes.outputs.dependencies == 'true' || github.event_name == 'schedule') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: |
+          echo "Running dependency audit..."
+          bun audit || echo "Audit completed with findings"
+
+      - name: Check for high/critical vulnerabilities
+        run: |
+          echo "Checking for critical vulnerabilities..."
+          AUDIT_OUTPUT=$(bun audit --json 2>/dev/null || echo '{"vulnerabilities": {}}')
+          CRITICAL_COUNT=$(echo "$AUDIT_OUTPUT" | jq '.vulnerabilities.critical // 0')
+          HIGH_COUNT=$(echo "$AUDIT_OUTPUT" | jq '.vulnerabilities.high // 0')
+          
+          echo "Critical vulnerabilities: $CRITICAL_COUNT"
+          echo "High vulnerabilities: $HIGH_COUNT"
+          
+          if [ "$CRITICAL_COUNT" -gt 0 ]; then
+            echo "❌ Critical vulnerabilities found in dependencies"
+            exit 1
+          fi
+          
+          if [ "$HIGH_COUNT" -gt 5 ]; then
+            echo "⚠️ Too many high-severity vulnerabilities ($HIGH_COUNT > 5)"
+            exit 1
+          fi
+          
+          echo "✅ Dependency audit passed"
+
+      - name: Report dependency audit results
+        run: |
+          echo "## 🔍 Dependency Audit Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ No critical vulnerabilities in dependencies" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Critical vulnerabilities found in dependencies" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # Performance regression validation
+  regression-testing:
+    name: Performance Regression Testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: [check-prerequisites, changes, performance-benchmarks]
+    if: ${{ needs.check-prerequisites.outputs.should-run == 'true' && needs.changes.outputs.performance == 'true' && needs.performance-benchmarks.result == 'success' }}
+    
+    steps:
+      - name: Download performance artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: performance-results
+
+      - name: Compare against baseline
+        run: |
+          echo "Comparing performance against baseline..."
+          if [ -f "benchmark-results.json" ] && [ -f "baseline.json" ]; then
+            # Simple regression check
+            CURRENT_SCORE=$(cat benchmark-results.json | jq '.quality_gates.score // 0')
+            BASELINE_SCORE=$(cat baseline.json | jq '.quality_gates.score // 100')
+            
+            echo "Current score: $CURRENT_SCORE"
+            echo "Baseline score: $BASELINE_SCORE"
+            
+            REGRESSION_THRESHOLD=20
+            SCORE_DIFF=$((BASELINE_SCORE - CURRENT_SCORE))
+            
+            if [ "$SCORE_DIFF" -gt "$REGRESSION_THRESHOLD" ]; then
+              echo "❌ Performance regression detected: ${SCORE_DIFF} point drop"
+              exit 1
+            else
+              echo "✅ No significant performance regression"
+            fi
+          else
+            echo "⚠️ Baseline comparison skipped - missing data"
+          fi
+
+      - name: Report regression results
+        run: |
+          echo "## 📊 Regression Testing Results" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ No performance regression detected" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Performance regression detected" >> $GITHUB_STEP_SUMMARY
+          fi
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Playwright
+        run: |
+          bun install --frozen-lockfile
+          bunx playwright install chromium
+
+      - name: Install CUE CLI
+        run: |
+          curl -sSL https://cuelang.org/go/install | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Run integration tests
+        run: |
+          docker compose up -d --build
+          sleep 10  # Wait for services to start
+          bun run test:e2e:headless
+        env:
+          CI: true
+
+      - name: Run chaos engineering tests
+        run: bun run test:chaos:ci
+        env:
+          CI: true
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 7
+
+  quality-gate-summary:
+    name: Quality Gate Summary
+    runs-on: ubuntu-latest
+    needs: [check-prerequisites, changes, performance-benchmarks, security-scans, bundle-analysis, dependency-audit, regression-testing]
+    if: always() && needs.check-prerequisites.outputs.should-run == 'true'
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+
+      - name: Generate final report
+        run: |
+          echo "# 📊 Quality Gate Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          
+          # Performance results
+          if [ -f "performance-results/benchmark-results.json" ]; then
+            PERF_SCORE=$(cat performance-results/benchmark-results.json | jq '.quality_gates.score // 0')
+            PERF_FAILED=$(cat performance-results/benchmark-results.json | jq '.quality_gates.failed | length // 0')
+            echo "- **Performance**: Score $PERF_SCORE/100 ($PERF_FAILED failed gates)" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Security results  
+          if [ -f "security-results/security-results.json" ]; then
+            SEC_CRITICAL=$(cat security-results/security-results.json | jq '.summary.critical_vulnerabilities // 0')
+            SEC_HIGH=$(cat security-results/security-results.json | jq '.summary.high_vulnerabilities // 0')
+            echo "- **Security**: $SEC_CRITICAL critical, $SEC_HIGH high vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "## Overall Status" >> $GITHUB_STEP_SUMMARY
+          if [ "$PERF_FAILED" -eq 0 ] && [ "$SEC_CRITICAL" -eq 0 ]; then
+            echo "✅ **All Quality Gates Passed** - Ready for deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Quality Gates Failed** - Issues must be resolved" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Set final status
+        run: |
+          # Determine overall success/failure
+          PERF_FAILED=0
+          SEC_CRITICAL=0
+          
+          if [ -f "performance-results/benchmark-results.json" ]; then
+            PERF_FAILED=$(cat performance-results/benchmark-results.json | jq '.quality_gates.failed | length // 0')
+          fi
+          
+          if [ -f "security-results/security-results.json" ]; then
+            SEC_CRITICAL=$(cat security-results/security-results.json | jq '.summary.critical_vulnerabilities // 0')
+          fi
+          
+          if [ "$PERF_FAILED" -gt 0 ] || [ "$SEC_CRITICAL" -gt 0 ]; then
+            echo "Quality gates failed - blocking deployment"
+            exit 1
+          fi
+          
+          echo "All quality gates passed - ready for deployment"

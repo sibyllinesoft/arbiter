@@ -3,8 +3,11 @@
 
     import "strings"
 
-    // Top-level “AppSpec” schema. All fragments unify into this shape under /spec/app.
+    // Top-level "AppSpec" schema. All fragments unify into this shape under /spec/app.
+    // Now includes artifact profile specifications for build/test contracts.
     #AppSpec: {
+      // Artifact profile configuration (optional)
+      ...#ArtifactSpec
       product: {
         name:   #Human
         goals?: [...#Human]

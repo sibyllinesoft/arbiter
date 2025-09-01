@@ -1,0 +1,29 @@
+{
+  "name": "@arbiter/benchmarks",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Performance benchmarking suite for Arbiter",
+  "scripts": {
+    "bench": "bun run src/runner.ts",
+    "bench:api": "bun run src/api-bench.ts",
+    "bench:websocket": "bun run src/websocket-bench.ts",
+    "bench:cue": "bun run src/cue-bench.ts",
+    "bench:memory": "bun run src/memory-bench.ts",
+    "bench:ci": "bun run src/ci-runner.ts",
+    "report": "bun run src/reporter.ts",
+    "baseline": "bun run src/baseline.ts"
+  },
+  "dependencies": {
+    "@arbiter/shared": "workspace:*",
+    "autocannon": "^7.15.0",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4",
+    "tinybench": "^2.6.0",
+    "perf_hooks": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/ws": "^8.5.10",
+    "bun-types": "latest"
+  }
+}

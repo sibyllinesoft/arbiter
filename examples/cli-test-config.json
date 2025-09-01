@@ -1,0 +1,150 @@
+{
+  "spec": {
+    "artifact": {
+      "kind": "cli",
+      "language": "go",
+      "build": {
+        "tool": "go",
+        "targets": ["./cmd/mycli"]
+      }
+    },
+    "profiles": {
+      "cli": {
+        "semver": "strict",
+        "commandTree": {
+          "name": "mycli",
+          "description": "My CLI application",
+          "usage": "mycli [global options] command [command options] [arguments...]",
+          "flags": [
+            {
+              "name": "--version",
+              "short": "-v",
+              "description": "Show version information",
+              "type": "boolean"
+            },
+            {
+              "name": "--verbose",
+              "description": "Enable verbose output",
+              "type": "boolean"
+            },
+            {
+              "name": "--config",
+              "short": "-c",
+              "description": "Configuration file path",
+              "type": "string",
+              "required": false
+            }
+          ],
+          "subcommands": [
+            {
+              "name": "init",
+              "description": "Initialize a new project",
+              "flags": [
+                {
+                  "name": "--name",
+                  "short": "-n",
+                  "description": "Project name",
+                  "type": "string",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "build",
+              "description": "Build the project",
+              "flags": [
+                {
+                  "name": "--target",
+                  "short": "-t",
+                  "description": "Build target",
+                  "type": "string",
+                  "default": "production"
+                }
+              ]
+            }
+          ],
+          "examples": [
+            "mycli init --name my-project",
+            "mycli build --target development",
+            "mycli --version"
+          ]
+        },
+        "tests": {
+          "golden": [
+            {
+              "name": "Version Command",
+              "description": "Test version output format",
+              "cmd": "--version",
+              "wantCode": 0,
+              "normalize": {
+                "timestamps": ["buildTime"],
+                "paths": ["buildPath"]
+              },
+              "ignoreFields": ["duration"]
+            },
+            {
+              "name": "Help Output",
+              "description": "Test help text structure",
+              "cmd": "--help",
+              "wantCode": 0,
+              "wantRE": "Usage:\\s+mycli.*"
+            },
+            {
+              "name": "Init Command Help",
+              "description": "Test init subcommand help",
+              "cmd": "init --help",
+              "wantCode": 0
+            },
+            {
+              "name": "Invalid Flag",
+              "description": "Test error handling for invalid flags",
+              "cmd": "--invalid-flag",
+              "wantCode": 2,
+              "updateGolden": false
+            },
+            {
+              "name": "Missing Required Argument",
+              "description": "Test error when required argument is missing",
+              "cmd": "init",
+              "wantCode": 1,
+              "wantRE": "required flag.*name"
+            },
+            {
+              "name": "Successful Init",
+              "description": "Test successful project initialization",
+              "cmd": "init --name test-project",
+              "wantCode": 0,
+              "normalize": {
+                "paths": ["projectPath"],
+                "timestamps": ["createdAt"]
+              }
+            }
+          ],
+          "interactive": [
+            {
+              "name": "Interactive Init",
+              "description": "Test interactive project initialization",
+              "timeout": 30000,
+              "steps": [
+                {
+                  "send": "init",
+                  "expect": "Enter project name:",
+                  "delay": 500
+                },
+                {
+                  "send": "my-interactive-project",
+                  "expect": "Project created successfully",
+                  "delay": 1000
+                },
+                {
+                  "send": "exit",
+                  "delay": 100
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

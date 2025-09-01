@@ -1,0 +1,5687 @@
+{
+  "timestamp": "2025-09-01T13:11:19.993Z",
+  "languages": {
+    "typescript": {
+      "language": "typescript",
+      "timestamp": "2025-09-01T13:11:17.110Z",
+      "extraction_method": "file_parsing",
+      "public_items": [
+        {
+          "name": "createContractsCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createContractsCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/contracts.ts",
+            "line": 1194
+          }
+        },
+        {
+          "name": "createDocsCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createDocsCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/docs.ts",
+            "line": 68
+          }
+        },
+        {
+          "name": "executeWorkflowCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function executeWorkflowCommand(options: DocsWorkflowOptions): Promise<void> {",
+          "parameters": "options: DocsWorkflowOptions",
+          "return_type": "Promise<void>",
+          "location": {
+            "file": "src/commands/docs.ts",
+            "line": 224
+          }
+        },
+        {
+          "name": "executeExplainCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function executeExplainCommand(options: DocsExplainOptions): Promise<void> {",
+          "parameters": "options: DocsExplainOptions",
+          "return_type": "Promise<void>",
+          "location": {
+            "file": "src/commands/docs.ts",
+            "line": 299
+          }
+        },
+        {
+          "name": "executeAPICommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function executeAPICommand(options: DocsAPIOptions): Promise<void> {",
+          "parameters": "options: DocsAPIOptions",
+          "return_type": "Promise<void>",
+          "location": {
+            "file": "src/commands/docs.ts",
+            "line": 361
+          }
+        },
+        {
+          "name": "executeArchitectureCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function executeArchitectureCommand(options: DocsArchitectureOptions): Promise<void> {",
+          "parameters": "options: DocsArchitectureOptions",
+          "return_type": "Promise<void>",
+          "location": {
+            "file": "src/commands/docs.ts",
+            "line": 404
+          }
+        },
+        {
+          "name": "addNextStepHints",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function addNextStepHints(commandName: string, result: any): string {",
+          "parameters": "commandName: string, result: any",
+          "return_type": "string",
+          "location": {
+            "file": "src/commands/docs.ts",
+            "line": 1949
+          }
+        },
+        {
+          "name": "createGenerateTestsCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createGenerateTestsCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/tests-generate.ts",
+            "line": 30
+          }
+        },
+        {
+          "name": "createValidateTestsCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createValidateTestsCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/tests-generate.ts",
+            "line": 260
+          }
+        },
+        {
+          "name": "createHarnessCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createHarnessCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/tests-generate.ts",
+            "line": 294
+          }
+        },
+        {
+          "name": "createTestsCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createTestsCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/tests-generate.ts",
+            "line": 331
+          }
+        },
+        {
+          "name": "createUIScaffoldCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createUIScaffoldCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/ui-scaffold.ts",
+            "line": 52
+          }
+        },
+        {
+          "name": "createUICommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createUICommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/ui-scaffold.ts",
+            "line": 385
+          }
+        },
+        {
+          "name": "createUICommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createUICommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/ui.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "createVerifyCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createVerifyCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/verify.ts",
+            "line": 32
+          }
+        },
+        {
+          "name": "createStatusCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createStatusCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/verify.ts",
+            "line": 237
+          }
+        },
+        {
+          "name": "createTicketStatsCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createTicketStatsCommand(): Command {",
+          "parameters": "",
+          "return_type": "Command",
+          "location": {
+            "file": "src/commands/verify.ts",
+            "line": 295
+          }
+        },
+        {
+          "name": "createWatchCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createWatchCommand(): any {",
+          "parameters": "",
+          "return_type": "any",
+          "location": {
+            "file": "src/commands/watch.ts",
+            "line": 58
+          }
+        },
+        {
+          "name": "executeWatchCommand",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function executeWatchCommand(options: WatchCommandOptions): Promise<void> {",
+          "parameters": "options: WatchCommandOptions",
+          "return_type": "Promise<void>",
+          "location": {
+            "file": "src/commands/watch.ts",
+            "line": 86
+          }
+        },
+        {
+          "name": "getWatchCommandHelp",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function getWatchCommandHelp(): string {",
+          "parameters": "",
+          "return_type": "string",
+          "location": {
+            "file": "src/commands/watch.ts",
+            "line": 406
+          }
+        },
+        {
+          "name": "ContractEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractEngine {",
+          "location": {
+            "file": "src/contracts/engine.ts",
+            "line": 29
+          }
+        },
+        {
+          "name": "PropertyGenerator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class PropertyGenerator {",
+          "location": {
+            "file": "src/contracts/property-generator.ts",
+            "line": 19
+          }
+        },
+        {
+          "name": "TestRunConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestRunConfig {",
+          "location": {
+            "file": "src/contracts/runner.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "TestRunResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestRunResult {",
+          "location": {
+            "file": "src/contracts/runner.ts",
+            "line": 33
+          }
+        },
+        {
+          "name": "TestReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestReport {",
+          "location": {
+            "file": "src/contracts/runner.ts",
+            "line": 45
+          }
+        },
+        {
+          "name": "ContractTestRunner",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractTestRunner {",
+          "location": {
+            "file": "src/contracts/runner.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "CueValue",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CueValue {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 7
+          }
+        },
+        {
+          "name": "CueSchema",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CueSchema {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 11
+          }
+        },
+        {
+          "name": "ContractCondition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractCondition {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 26
+          }
+        },
+        {
+          "name": "MetamorphicLaw",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MetamorphicLaw {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 35
+          }
+        },
+        {
+          "name": "MetamorphicExample",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MetamorphicExample {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 45
+          }
+        },
+        {
+          "name": "ContractInvariant",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractInvariant {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 51
+          }
+        },
+        {
+          "name": "ContractDefinition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractDefinition {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "ContractViolation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractViolation {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 75
+          }
+        },
+        {
+          "name": "ContractExecutionResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractExecutionResult {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 91
+          }
+        },
+        {
+          "name": "ContractMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractMetrics {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 100
+          }
+        },
+        {
+          "name": "PropertyTestResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface PropertyTestResult {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 111
+          }
+        },
+        {
+          "name": "PropertyTestConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface PropertyTestConfig {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 121
+          }
+        },
+        {
+          "name": "ContractTestSuite",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractTestSuite {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 131
+          }
+        },
+        {
+          "name": "GeneratedProperty",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GeneratedProperty {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 137
+          }
+        },
+        {
+          "name": "ContractCoverage",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractCoverage {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 146
+          }
+        },
+        {
+          "name": "ContractExecutionContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractExecutionContext {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 154
+          }
+        },
+        {
+          "name": "ContractValidationOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractValidationOptions {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 165
+          }
+        },
+        {
+          "name": "ViolationReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ViolationReport {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 178
+          }
+        },
+        {
+          "name": "ViolationSummary",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ViolationSummary {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 188
+          }
+        },
+        {
+          "name": "ContractConditionSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const ContractConditionSchema = z.object({",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 198
+          }
+        },
+        {
+          "name": "MetamorphicLawSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const MetamorphicLawSchema = z.object({",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 207
+          }
+        },
+        {
+          "name": "ContractDefinitionSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const ContractDefinitionSchema = z.object({",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 221
+          }
+        },
+        {
+          "name": "ContractConditionType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ContractConditionType = z.infer<typeof ContractConditionSchema>;",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 243
+          }
+        },
+        {
+          "name": "MetamorphicLawType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type MetamorphicLawType = z.infer<typeof MetamorphicLawSchema>;",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 244
+          }
+        },
+        {
+          "name": "ContractDefinitionType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ContractDefinitionType = z.infer<typeof ContractDefinitionSchema>;",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 245
+          }
+        },
+        {
+          "name": "ContractError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractError extends Error {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 248
+          }
+        },
+        {
+          "name": "ContractParsingError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractParsingError extends ContractError {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 260
+          }
+        },
+        {
+          "name": "ContractValidationError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractValidationError extends ContractError {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 267
+          }
+        },
+        {
+          "name": "ContractExecutionError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractExecutionError extends ContractError {",
+          "location": {
+            "file": "src/contracts/types.ts",
+            "line": 274
+          }
+        },
+        {
+          "name": "ContractValidator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractValidator {",
+          "location": {
+            "file": "src/contracts/validator.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "BlockerConfiguration",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BlockerConfiguration {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 19
+          }
+        },
+        {
+          "name": "PlatformApiConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface PlatformApiConfig {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 32
+          }
+        },
+        {
+          "name": "BlockingRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BlockingRule {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 43
+          }
+        },
+        {
+          "name": "BlockingCondition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BlockingCondition {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "OverrideSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideSettings {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 69
+          }
+        },
+        {
+          "name": "OverrideExpiration",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideExpiration {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 82
+          }
+        },
+        {
+          "name": "OverridePermissions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverridePermissions {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 91
+          }
+        },
+        {
+          "name": "StatusCheckConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface StatusCheckConfig {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 100
+          }
+        },
+        {
+          "name": "StatusCheckDescriptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface StatusCheckDescriptions {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 111
+          }
+        },
+        {
+          "name": "MergeBlock",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MergeBlock {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 122
+          }
+        },
+        {
+          "name": "OverrideInfo",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideInfo {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 139
+          }
+        },
+        {
+          "name": "GitMergeBlocker",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class GitMergeBlocker implements MergeBlocker {",
+          "location": {
+            "file": "src/gates/blocker.ts",
+            "line": 163
+          }
+        },
+        {
+          "name": "GateConfigurationSet",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateConfigurationSet {",
+          "location": {
+            "file": "src/gates/config.ts",
+            "line": 17
+          }
+        },
+        {
+          "name": "GlobalSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GlobalSettings {",
+          "location": {
+            "file": "src/gates/config.ts",
+            "line": 30
+          }
+        },
+        {
+          "name": "ConfigurationOverride",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ConfigurationOverride {",
+          "location": {
+            "file": "src/gates/config.ts",
+            "line": 52
+          }
+        },
+        {
+          "name": "OverrideCondition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideCondition {",
+          "location": {
+            "file": "src/gates/config.ts",
+            "line": 61
+          }
+        },
+        {
+          "name": "TimeWindow",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TimeWindow {",
+          "location": {
+            "file": "src/gates/config.ts",
+            "line": 72
+          }
+        },
+        {
+          "name": "GateConfigurationManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class GateConfigurationManager {",
+          "location": {
+            "file": "src/gates/config.ts",
+            "line": 84
+          }
+        },
+        {
+          "name": "ContractGateSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractGateSettings {",
+          "location": {
+            "file": "src/gates/contract-gate.ts",
+            "line": 26
+          }
+        },
+        {
+          "name": "ContractValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractValidationResult {",
+          "location": {
+            "file": "src/gates/contract-gate.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "ContractSummary",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractSummary {",
+          "location": {
+            "file": "src/gates/contract-gate.ts",
+            "line": 79
+          }
+        },
+        {
+          "name": "ContractGate",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractGate implements GateExecutor {",
+          "location": {
+            "file": "src/gates/contract-gate.ts",
+            "line": 105
+          }
+        },
+        {
+          "name": "CoverageGateSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageGateSettings {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "CoverageTool",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageTool {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 50
+          }
+        },
+        {
+          "name": "CoverageReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageReport {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 61
+          }
+        },
+        {
+          "name": "FileCoverageMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FileCoverageMetrics extends CoverageMetrics {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 72
+          }
+        },
+        {
+          "name": "BranchInfo",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BranchInfo {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 83
+          }
+        },
+        {
+          "name": "FunctionInfo",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FunctionInfo {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 92
+          }
+        },
+        {
+          "name": "CoverageSummary",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageSummary {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 101
+          }
+        },
+        {
+          "name": "CoverageGate",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class CoverageGate implements GateExecutor {",
+          "location": {
+            "file": "src/gates/coverage-gate.ts",
+            "line": 115
+          }
+        },
+        {
+          "name": "GateRunnerOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateRunnerOptions {",
+          "location": {
+            "file": "src/gates/gate-runner.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "GateRunner",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class GateRunner extends EventEmitter implements GateScheduler {",
+          "location": {
+            "file": "src/gates/gate-runner.ts",
+            "line": 36
+          }
+        },
+        {
+          "name": "QualityGateSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityGateSettings {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "QualityAnalyzer",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityAnalyzer {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 56
+          }
+        },
+        {
+          "name": "QualityRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityRule {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 75
+          }
+        },
+        {
+          "name": "DocumentationRules",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface DocumentationRules {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 92
+          }
+        },
+        {
+          "name": "StyleRules",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface StyleRules {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 103
+          }
+        },
+        {
+          "name": "QualityIssue",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityIssue {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 114
+          }
+        },
+        {
+          "name": "ComplexityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ComplexityMetrics {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 139
+          }
+        },
+        {
+          "name": "HalsteadMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface HalsteadMetrics {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 154
+          }
+        },
+        {
+          "name": "MaintainabilityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MaintainabilityMetrics {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 167
+          }
+        },
+        {
+          "name": "QualityAnalysisResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityAnalysisResult {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 178
+          }
+        },
+        {
+          "name": "AnalyzerResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AnalyzerResult {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 193
+          }
+        },
+        {
+          "name": "FileQualityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FileQualityMetrics {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 208
+          }
+        },
+        {
+          "name": "QualityGate",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class QualityGate implements GateExecutor {",
+          "location": {
+            "file": "src/gates/quality-gate.ts",
+            "line": 228
+          }
+        },
+        {
+          "name": "SecurityGateSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityGateSettings {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "SecurityScanner",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityScanner {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 54
+          }
+        },
+        {
+          "name": "SecurityRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityRule {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 71
+          }
+        },
+        {
+          "name": "SecurityVulnerability",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityVulnerability {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 88
+          }
+        },
+        {
+          "name": "DependencyVulnerability",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface DependencyVulnerability {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 119
+          }
+        },
+        {
+          "name": "SecretDetection",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecretDetection {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 132
+          }
+        },
+        {
+          "name": "SecurityAnalysisResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityAnalysisResult {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 149
+          }
+        },
+        {
+          "name": "LicenseViolation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface LicenseViolation {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 164
+          }
+        },
+        {
+          "name": "SecurityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityMetrics {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 177
+          }
+        },
+        {
+          "name": "ScannerResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ScannerResult {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 196
+          }
+        },
+        {
+          "name": "SecurityGate",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class SecurityGate implements GateExecutor {",
+          "location": {
+            "file": "src/gates/security-gate.ts",
+            "line": 214
+          }
+        },
+        {
+          "name": "TraceabilityGateSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityGateSettings {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 19
+          }
+        },
+        {
+          "name": "TraceabilityAnnotationPatterns",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityAnnotationPatterns {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 46
+          }
+        },
+        {
+          "name": "TraceabilityArtifact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityArtifact {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "TraceabilityLink",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityLink {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 82
+          }
+        },
+        {
+          "name": "TraceabilityChain",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityChain {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 95
+          }
+        },
+        {
+          "name": "TraceabilityGap",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityGap {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 110
+          }
+        },
+        {
+          "name": "TraceabilityAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityAnalysis {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 123
+          }
+        },
+        {
+          "name": "LinkValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface LinkValidationResult {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 136
+          }
+        },
+        {
+          "name": "TraceabilityGate",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TraceabilityGate implements GateExecutor {",
+          "location": {
+            "file": "src/gates/traceability-gate.ts",
+            "line": 150
+          }
+        },
+        {
+          "name": "GateExecutionContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateExecutionContext {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 6
+          }
+        },
+        {
+          "name": "CIPlatformContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CIPlatformContext {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "GateResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateResult {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 38
+          }
+        },
+        {
+          "name": "GateDetails",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateDetails {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 68
+          }
+        },
+        {
+          "name": "GateFinding",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateFinding {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 79
+          }
+        },
+        {
+          "name": "GateError",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateError {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 96
+          }
+        },
+        {
+          "name": "GateConfiguration",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateConfiguration {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 107
+          }
+        },
+        {
+          "name": "RetryConfiguration",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface RetryConfiguration {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 137
+          }
+        },
+        {
+          "name": "GateExecutionReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateExecutionReport {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 146
+          }
+        },
+        {
+          "name": "ExecutionSummary",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ExecutionSummary {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 165
+          }
+        },
+        {
+          "name": "MergeRecommendation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MergeRecommendation {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 180
+          }
+        },
+        {
+          "name": "CoverageMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageMetrics {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 193
+          }
+        },
+        {
+          "name": "QualityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityMetrics {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 212
+          }
+        },
+        {
+          "name": "TraceabilityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityMetrics {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 231
+          }
+        },
+        {
+          "name": "GatePlugin",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GatePlugin {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 244
+          }
+        },
+        {
+          "name": "ValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationResult {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 259
+          }
+        },
+        {
+          "name": "OverrideRequest",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideRequest {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 268
+          }
+        },
+        {
+          "name": "OverrideScope",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideScope {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 281
+          }
+        },
+        {
+          "name": "HistoricalTrend",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface HistoricalTrend {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 292
+          }
+        },
+        {
+          "name": "GateExecutor",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateExecutor {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 307
+          }
+        },
+        {
+          "name": "MergeBlocker",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MergeBlocker {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 316
+          }
+        },
+        {
+          "name": "MergeStatus",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MergeStatus {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 325
+          }
+        },
+        {
+          "name": "OverrideOption",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OverrideOption {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 334
+          }
+        },
+        {
+          "name": "GateScheduler",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GateScheduler {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 343
+          }
+        },
+        {
+          "name": "ReportGenerator",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ReportGenerator {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 352
+          }
+        },
+        {
+          "name": "CIStatusUpdate",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CIStatusUpdate {",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 363
+          }
+        },
+        {
+          "name": "GateFactory",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type GateFactory = (id: string) => GateExecutor | undefined;",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 374
+          }
+        },
+        {
+          "name": "ConfigurationProvider",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ConfigurationProvider = () => Promise<GateConfiguration[]>;",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 375
+          }
+        },
+        {
+          "name": "MetricsCollector",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type MetricsCollector = (result: GateResult) => Promise<void>;",
+          "location": {
+            "file": "src/gates/types.ts",
+            "line": 376
+          }
+        },
+        {
+          "name": "VersionGateSettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionGateSettings {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 22
+          }
+        },
+        {
+          "name": "VersionBumpValidation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionBumpValidation {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 43
+          }
+        },
+        {
+          "name": "VersionBumpRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionBumpRule {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 54
+          }
+        },
+        {
+          "name": "ChangelogRequirements",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ChangelogRequirements {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 63
+          }
+        },
+        {
+          "name": "ApiCompatibilitySettings",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ApiCompatibilitySettings {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 74
+          }
+        },
+        {
+          "name": "ApiCompatibilityTool",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ApiCompatibilityTool {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 85
+          }
+        },
+        {
+          "name": "TagRequirements",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TagRequirements {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 94
+          }
+        },
+        {
+          "name": "BreakingChangeType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type BreakingChangeType =",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 105
+          }
+        },
+        {
+          "name": "VersionInfo",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionInfo {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 112
+          }
+        },
+        {
+          "name": "ParsedVersion",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ParsedVersion {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 123
+          }
+        },
+        {
+          "name": "VersionValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionValidationResult {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 138
+          }
+        },
+        {
+          "name": "VersionBumpAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionBumpAnalysis {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 153
+          }
+        },
+        {
+          "name": "CompatibilityAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CompatibilityAnalysis {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 166
+          }
+        },
+        {
+          "name": "BreakingChange",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BreakingChange {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 175
+          }
+        },
+        {
+          "name": "ApiCompatibilityResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ApiCompatibilityResult {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 190
+          }
+        },
+        {
+          "name": "ChangelogAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ChangelogAnalysis {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 201
+          }
+        },
+        {
+          "name": "MigrationAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationAnalysis {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 214
+          }
+        },
+        {
+          "name": "MigrationFile",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationFile {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 225
+          }
+        },
+        {
+          "name": "TagAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TagAnalysis {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 238
+          }
+        },
+        {
+          "name": "VersionGate",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class VersionGate implements GateExecutor {",
+          "location": {
+            "file": "src/gates/version-gate.ts",
+            "line": 254
+          }
+        },
+        {
+          "name": "GitVerificationOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GitVerificationOptions {",
+          "location": {
+            "file": "src/git/stamp-verifier.ts",
+            "line": 17
+          }
+        },
+        {
+          "name": "VerificationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VerificationResult {",
+          "location": {
+            "file": "src/git/stamp-verifier.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "GitViolation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GitViolation {",
+          "location": {
+            "file": "src/git/stamp-verifier.ts",
+            "line": 38
+          }
+        },
+        {
+          "name": "CommitInfo",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CommitInfo {",
+          "location": {
+            "file": "src/git/stamp-verifier.ts",
+            "line": 46
+          }
+        },
+        {
+          "name": "StampVerifier",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class StampVerifier {",
+          "location": {
+            "file": "src/git/stamp-verifier.ts",
+            "line": 58
+          }
+        },
+        {
+          "name": "BuildArtifact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BuildArtifact {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "SoftwareBillOfMaterials",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SoftwareBillOfMaterials {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 27
+          }
+        },
+        {
+          "name": "SBOMPackage",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SBOMPackage {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 43
+          }
+        },
+        {
+          "name": "SBOMRelationship",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SBOMRelationship {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 62
+          }
+        },
+        {
+          "name": "SBOMExternalRef",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SBOMExternalRef {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 68
+          }
+        },
+        {
+          "name": "ProvenanceStatement",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ProvenanceStatement {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 74
+          }
+        },
+        {
+          "name": "ReleaseMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ReleaseMetrics {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 114
+          }
+        },
+        {
+          "name": "ReleaseReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ReleaseReport {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 140
+          }
+        },
+        {
+          "name": "QualityGateResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityGateResult {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 160
+          }
+        },
+        {
+          "name": "ArtifactsEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ArtifactsEngine {",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 169
+          }
+        },
+        {
+          "name": "createArtifactsEngine",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createArtifactsEngine(workspaceDir: string, outputDir?: string): ArtifactsEngine {",
+          "parameters": "workspaceDir: string, outputDir?: string",
+          "return_type": "ArtifactsEngine",
+          "location": {
+            "file": "src/guarantees/artifacts-engine.ts",
+            "line": 807
+          }
+        },
+        {
+          "name": "ContractDefinition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractDefinition {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 7
+          }
+        },
+        {
+          "name": "MetamorphicLaw",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MetamorphicLaw {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 18
+          }
+        },
+        {
+          "name": "ResourceBudgets",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceBudgets {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 26
+          }
+        },
+        {
+          "name": "FaultScenario",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FaultScenario {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "ExecutionContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ExecutionContext {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 43
+          }
+        },
+        {
+          "name": "ResourceUsage",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceUsage {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 52
+          }
+        },
+        {
+          "name": "ContractResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractResult {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "ContractViolation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractViolation {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 68
+          }
+        },
+        {
+          "name": "CoverageMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageMetrics {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 75
+          }
+        },
+        {
+          "name": "TestCase",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestCase {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 82
+          }
+        },
+        {
+          "name": "QualityGateResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QualityGateResult {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 92
+          }
+        },
+        {
+          "name": "ContractRuntimeEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ContractRuntimeEngine {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 103
+          }
+        },
+        {
+          "name": "CoverageTracker",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class CoverageTracker {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 615
+          }
+        },
+        {
+          "name": "TestDerivationEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TestDerivationEngine {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 702
+          }
+        },
+        {
+          "name": "QualityGateEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class QualityGateEngine {",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 833
+          }
+        },
+        {
+          "name": "createContractRuntime",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createContractRuntime(cuePath?: string): {",
+          "parameters": "cuePath?: string",
+          "return_type": "",
+          "location": {
+            "file": "src/guarantees/contract-runtime.ts",
+            "line": 976
+          }
+        },
+        {
+          "name": "InvariantRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface InvariantRule {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 12
+          }
+        },
+        {
+          "name": "ValidationContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationContext {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 20
+          }
+        },
+        {
+          "name": "PerformanceMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface PerformanceMetrics {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 28
+          }
+        },
+        {
+          "name": "InvariantViolation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface InvariantViolation {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 36
+          }
+        },
+        {
+          "name": "ValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationResult {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 45
+          }
+        },
+        {
+          "name": "TicketTTLInvariant",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TicketTTLInvariant implements InvariantRule {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 53
+          }
+        },
+        {
+          "name": "NonceUniquenessInvariant",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class NonceUniquenessInvariant implements InvariantRule {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 136
+          }
+        },
+        {
+          "name": "CanonicalPatchFormatInvariant",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class CanonicalPatchFormatInvariant implements InvariantRule {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 228
+          }
+        },
+        {
+          "name": "PerformanceBudgetInvariant",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class PerformanceBudgetInvariant implements InvariantRule {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 379
+          }
+        },
+        {
+          "name": "IncrementalValidationInvariant",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class IncrementalValidationInvariant implements InvariantRule {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 460
+          }
+        },
+        {
+          "name": "InvariantEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class InvariantEngine {",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 622
+          }
+        },
+        {
+          "name": "createInvariantEngine",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createInvariantEngine(): InvariantEngine {",
+          "parameters": "",
+          "return_type": "InvariantEngine",
+          "location": {
+            "file": "src/guarantees/invariants-engine.ts",
+            "line": 764
+          }
+        },
+        {
+          "name": "SLODefinition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SLODefinition {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 12
+          }
+        },
+        {
+          "name": "MetricSample",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MetricSample {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 22
+          }
+        },
+        {
+          "name": "Alert",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Alert {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 29
+          }
+        },
+        {
+          "name": "IncidentReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface IncidentReport {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 43
+          }
+        },
+        {
+          "name": "IncidentEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface IncidentEvent {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "SecurityEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SecurityEvent {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 66
+          }
+        },
+        {
+          "name": "MonitoringEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class MonitoringEngine extends EventEmitter {",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 81
+          }
+        },
+        {
+          "name": "createMonitoringEngine",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createMonitoringEngine(logDir?: string): MonitoringEngine {",
+          "parameters": "logDir?: string",
+          "return_type": "MonitoringEngine",
+          "location": {
+            "file": "src/guarantees/monitoring-engine.ts",
+            "line": 671
+          }
+        },
+        {
+          "name": "SchemaDefinition",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaDefinition {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 13
+          }
+        },
+        {
+          "name": "ValidationRequest",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationRequest {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "ValidationOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationOptions {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 30
+          }
+        },
+        {
+          "name": "SchemaValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaValidationResult {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 37
+          }
+        },
+        {
+          "name": "ValidationError",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationError {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 45
+          }
+        },
+        {
+          "name": "ValidationWarning",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationWarning {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 53
+          }
+        },
+        {
+          "name": "ValidationMetadata",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationMetadata {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "SchemaLock",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaLock {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 72
+          }
+        },
+        {
+          "name": "SchemaValidationEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class SchemaValidationEngine {",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 285
+          }
+        },
+        {
+          "name": "createSchemaValidationEngine",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createSchemaValidationEngine(lockFile?: string): SchemaValidationEngine {",
+          "parameters": "lockFile?: string",
+          "return_type": "SchemaValidationEngine",
+          "location": {
+            "file": "src/guarantees/schema-validation-engine.ts",
+            "line": 659
+          }
+        },
+        {
+          "name": "OutputStreamerConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OutputStreamerConfig {",
+          "location": {
+            "file": "src/lib/output-streamer.ts",
+            "line": 13
+          }
+        },
+        {
+          "name": "NDJSONEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONEvent {",
+          "location": {
+            "file": "src/lib/output-streamer.ts",
+            "line": 22
+          }
+        },
+        {
+          "name": "ValidationPhaseEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationPhaseEvent extends NDJSONEvent {",
+          "location": {
+            "file": "src/lib/output-streamer.ts",
+            "line": 28
+          }
+        },
+        {
+          "name": "OutputStreamerEvents",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface OutputStreamerEvents {",
+          "location": {
+            "file": "src/lib/output-streamer.ts",
+            "line": 51
+          }
+        },
+        {
+          "name": "OutputStreamer",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class OutputStreamer extends EventEmitter {",
+          "location": {
+            "file": "src/lib/output-streamer.ts",
+            "line": 65
+          }
+        },
+        {
+          "name": "createOutputStreamer",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createOutputStreamer(config: OutputStreamerConfig): OutputStreamer {",
+          "parameters": "config: OutputStreamerConfig",
+          "return_type": "OutputStreamer",
+          "location": {
+            "file": "src/lib/output-streamer.ts",
+            "line": 393
+          }
+        },
+        {
+          "name": "ResourceLimits",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceLimits {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 11
+          }
+        },
+        {
+          "name": "ResourceManagerConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceManagerConfig extends ResourceLimits {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 17
+          }
+        },
+        {
+          "name": "ResourceUsage",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceUsage {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "ResourceWarning",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceWarning {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "ValidationMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationMetrics {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 40
+          }
+        },
+        {
+          "name": "ResourceManagerEvents",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ResourceManagerEvents {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 48
+          }
+        },
+        {
+          "name": "ResourceManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ResourceManager extends EventEmitter {",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "createResourceManager",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createResourceManager(config: ResourceManagerConfig): ResourceManager {",
+          "parameters": "config: ResourceManagerConfig",
+          "return_type": "ResourceManager",
+          "location": {
+            "file": "src/lib/resource-manager.ts",
+            "line": 430
+          }
+        },
+        {
+          "name": "ValidationPhase",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationPhase {",
+          "location": {
+            "file": "src/lib/validation-pipeline.ts",
+            "line": 14
+          }
+        },
+        {
+          "name": "BatchResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BatchResult {",
+          "location": {
+            "file": "src/lib/validation-pipeline.ts",
+            "line": 36
+          }
+        },
+        {
+          "name": "ValidationPipelineConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationPipelineConfig {",
+          "location": {
+            "file": "src/lib/validation-pipeline.ts",
+            "line": 48
+          }
+        },
+        {
+          "name": "ValidationPipelineEvents",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationPipelineEvents {",
+          "location": {
+            "file": "src/lib/validation-pipeline.ts",
+            "line": 57
+          }
+        },
+        {
+          "name": "ValidationPipeline",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ValidationPipeline extends EventEmitter {",
+          "location": {
+            "file": "src/lib/validation-pipeline.ts",
+            "line": 71
+          }
+        },
+        {
+          "name": "createValidationPipeline",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createValidationPipeline(config: ValidationPipelineConfig): ValidationPipeline {",
+          "parameters": "config: ValidationPipelineConfig",
+          "return_type": "ValidationPipeline",
+          "location": {
+            "file": "src/lib/validation-pipeline.ts",
+            "line": 586
+          }
+        },
+        {
+          "name": "createTicketEndpoints",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createTicketEndpoints() {",
+          "parameters": "",
+          "location": {
+            "file": "src/server/ticket-endpoints.ts",
+            "line": 47
+          }
+        },
+        {
+          "name": "requireValidTicket",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function requireValidTicket() {",
+          "parameters": "",
+          "location": {
+            "file": "src/server/ticket-endpoints.ts",
+            "line": 377
+          }
+        },
+        {
+          "name": "MutationTicket",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MutationTicket {",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 11
+          }
+        },
+        {
+          "name": "StampedPatch",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface StampedPatch {",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 20
+          }
+        },
+        {
+          "name": "TicketVerificationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TicketVerificationResult {",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 29
+          }
+        },
+        {
+          "name": "StampVerificationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface StampVerificationResult {",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 36
+          }
+        },
+        {
+          "name": "TicketSystem",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TicketSystem {",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 46
+          }
+        },
+        {
+          "name": "getTicketSystem",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function getTicketSystem(): TicketSystem {",
+          "parameters": "",
+          "return_type": "TicketSystem",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 431
+          }
+        },
+        {
+          "name": "initializeTicketSystem",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function initializeTicketSystem(serverKey: string, ttlMinutes?: number): TicketSystem {",
+          "parameters": "serverKey: string, ttlMinutes?: number",
+          "return_type": "TicketSystem",
+          "location": {
+            "file": "src/server/ticket-system.ts",
+            "line": 438
+          }
+        },
+        {
+          "name": "CUEExport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CUEExport {",
+          "location": {
+            "file": "src/test-generation/ir-converter.ts",
+            "line": 20
+          }
+        },
+        {
+          "name": "CUESchema",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CUESchema {",
+          "location": {
+            "file": "src/test-generation/ir-converter.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "IRConverter",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class IRConverter {",
+          "location": {
+            "file": "src/test-generation/ir-converter.ts",
+            "line": 46
+          }
+        },
+        {
+          "name": "TestGenerationIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestGenerationIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 8
+          }
+        },
+        {
+          "name": "ScenarioIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ScenarioIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "SchemaIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 29
+          }
+        },
+        {
+          "name": "ConstraintIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ConstraintIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 42
+          }
+        },
+        {
+          "name": "AssertionIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AssertionIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 53
+          }
+        },
+        {
+          "name": "SetupIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SetupIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 61
+          }
+        },
+        {
+          "name": "TeardownIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TeardownIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 67
+          }
+        },
+        {
+          "name": "FixtureIR",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FixtureIR {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 73
+          }
+        },
+        {
+          "name": "IRMetadata",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface IRMetadata {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 80
+          }
+        },
+        {
+          "name": "ValidationGate",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationGate {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 89
+          }
+        },
+        {
+          "name": "ValidatedTestArtifact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidatedTestArtifact {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 99
+          }
+        },
+        {
+          "name": "TestVector",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestVector {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 118
+          }
+        },
+        {
+          "name": "ImportResolver",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ImportResolver {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 131
+          }
+        },
+        {
+          "name": "TemplateContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TemplateContext {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 144
+          }
+        },
+        {
+          "name": "CUEConstructs",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CUEConstructs {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 162
+          }
+        },
+        {
+          "name": "IRProcessingError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class IRProcessingError extends Error {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 173
+          }
+        },
+        {
+          "name": "ValidationError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ValidationError extends Error {",
+          "location": {
+            "file": "src/test-generation/ir-types.ts",
+            "line": 184
+          }
+        },
+        {
+          "name": "NDJSONHarnessOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONHarnessOptions {",
+          "location": {
+            "file": "src/test-generation/ndjson-harness.ts",
+            "line": 14
+          }
+        },
+        {
+          "name": "NDJSONTestResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONTestResult {",
+          "location": {
+            "file": "src/test-generation/ndjson-harness.ts",
+            "line": 22
+          }
+        },
+        {
+          "name": "NDJSONHarnessReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONHarnessReport {",
+          "location": {
+            "file": "src/test-generation/ndjson-harness.ts",
+            "line": 31
+          }
+        },
+        {
+          "name": "NDJSONHarness",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class NDJSONHarness {",
+          "location": {
+            "file": "src/test-generation/ndjson-harness.ts",
+            "line": 49
+          }
+        },
+        {
+          "name": "TemplateRendererOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TemplateRendererOptions {",
+          "location": {
+            "file": "src/test-generation/template-renderer.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "TemplateRenderer",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TemplateRenderer {",
+          "location": {
+            "file": "src/test-generation/template-renderer.ts",
+            "line": 33
+          }
+        },
+        {
+          "name": "TestGenerationOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestGenerationOptions {",
+          "location": {
+            "file": "src/test-generation/test-generator.ts",
+            "line": 21
+          }
+        },
+        {
+          "name": "TestGenerationReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TestGenerationReport {",
+          "location": {
+            "file": "src/test-generation/test-generator.ts",
+            "line": 37
+          }
+        },
+        {
+          "name": "TestGenerator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TestGenerator {",
+          "location": {
+            "file": "src/test-generation/test-generator.ts",
+            "line": 71
+          }
+        },
+        {
+          "name": "AnalysisConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AnalysisConfig {",
+          "location": {
+            "file": "src/traceability/analyzer.ts",
+            "line": 33
+          }
+        },
+        {
+          "name": "HistoricalSnapshot",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface HistoricalSnapshot {",
+          "location": {
+            "file": "src/traceability/analyzer.ts",
+            "line": 63
+          }
+        },
+        {
+          "name": "TraceabilityAnalyzer",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TraceabilityAnalyzer {",
+          "location": {
+            "file": "src/traceability/analyzer.ts",
+            "line": 73
+          }
+        },
+        {
+          "name": "AnnotationFormat",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AnnotationFormat {",
+          "location": {
+            "file": "src/traceability/annotator.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "Annotation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Annotation {",
+          "location": {
+            "file": "src/traceability/annotator.ts",
+            "line": 44
+          }
+        },
+        {
+          "name": "AnnotationSuggestion",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AnnotationSuggestion {",
+          "location": {
+            "file": "src/traceability/annotator.ts",
+            "line": 64
+          }
+        },
+        {
+          "name": "AnnotationValidation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AnnotationValidation {",
+          "location": {
+            "file": "src/traceability/annotator.ts",
+            "line": 80
+          }
+        },
+        {
+          "name": "CodeAnnotator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class CodeAnnotator {",
+          "location": {
+            "file": "src/traceability/annotator.ts",
+            "line": 96
+          }
+        },
+        {
+          "name": "TraversalOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraversalOptions {",
+          "location": {
+            "file": "src/traceability/graph.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "ArtifactPath",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ArtifactPath {",
+          "location": {
+            "file": "src/traceability/graph.ts",
+            "line": 40
+          }
+        },
+        {
+          "name": "GraphStatistics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GraphStatistics {",
+          "location": {
+            "file": "src/traceability/graph.ts",
+            "line": 58
+          }
+        },
+        {
+          "name": "TraceabilityGraphManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TraceabilityGraphManager {",
+          "location": {
+            "file": "src/traceability/graph.ts",
+            "line": 82
+          }
+        },
+        {
+          "name": "GraphUtils",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class GraphUtils {",
+          "location": {
+            "file": "src/traceability/graph.ts",
+            "line": 878
+          }
+        },
+        {
+          "name": "DEFAULT_INCLUDE_PATTERNS",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const DEFAULT_INCLUDE_PATTERNS = [",
+          "location": {
+            "file": "src/traceability/index.ts",
+            "line": 109
+          }
+        },
+        {
+          "name": "DEFAULT_EXCLUDE_PATTERNS",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const DEFAULT_EXCLUDE_PATTERNS = [",
+          "location": {
+            "file": "src/traceability/index.ts",
+            "line": 116
+          }
+        },
+        {
+          "name": "createDefaultConfig",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createDefaultConfig(): import('./types.js').TraceabilityConfig {",
+          "parameters": "",
+          "return_type": "import('./types.js').TraceabilityConfig",
+          "location": {
+            "file": "src/traceability/index.ts",
+            "line": 128
+          }
+        },
+        {
+          "name": "VERSION",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const VERSION = '1.0.0';",
+          "location": {
+            "file": "src/traceability/index.ts",
+            "line": 255
+          }
+        },
+        {
+          "name": "SYSTEM_INFO",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const SYSTEM_INFO = {",
+          "location": {
+            "file": "src/traceability/index.ts",
+            "line": 260
+          }
+        },
+        {
+          "name": "ArtifactParser",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ArtifactParser {",
+          "location": {
+            "file": "src/traceability/parser.ts",
+            "line": 1012
+          }
+        },
+        {
+          "name": "ReportTemplate",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ReportTemplate {",
+          "location": {
+            "file": "src/traceability/reporter.ts",
+            "line": 30
+          }
+        },
+        {
+          "name": "MatrixCell",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MatrixCell {",
+          "location": {
+            "file": "src/traceability/reporter.ts",
+            "line": 52
+          }
+        },
+        {
+          "name": "TraceabilityMatrix",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityMatrix {",
+          "location": {
+            "file": "src/traceability/reporter.ts",
+            "line": 70
+          }
+        },
+        {
+          "name": "TraceabilityReporter",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TraceabilityReporter {",
+          "location": {
+            "file": "src/traceability/reporter.ts",
+            "line": 95
+          }
+        },
+        {
+          "name": "TraceabilityEvents",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityEvents {",
+          "location": {
+            "file": "src/traceability/tracer.ts",
+            "line": 37
+          }
+        },
+        {
+          "name": "EngineStatus",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface EngineStatus {",
+          "location": {
+            "file": "src/traceability/tracer.ts",
+            "line": 51
+          }
+        },
+        {
+          "name": "BatchOperationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BatchOperationResult {",
+          "location": {
+            "file": "src/traceability/tracer.ts",
+            "line": 73
+          }
+        },
+        {
+          "name": "TraceabilityEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TraceabilityEngine extends EventEmitter {",
+          "location": {
+            "file": "src/traceability/tracer.ts",
+            "line": 91
+          }
+        },
+        {
+          "name": "ArtifactType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ArtifactType = 'requirement' | 'scenario' | 'test' | 'code';",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 9
+          }
+        },
+        {
+          "name": "LinkType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type LinkType = 'implements' | 'tests' | 'validates' | 'derives_from' | 'references';",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 10
+          }
+        },
+        {
+          "name": "ChangeType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ChangeType = 'added' | 'modified' | 'deleted' | 'moved';",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 11
+          }
+        },
+        {
+          "name": "Artifact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Artifact {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "Location",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Location {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 42
+          }
+        },
+        {
+          "name": "Requirement",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Requirement extends Artifact {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "Scenario",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Scenario extends Artifact {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 79
+          }
+        },
+        {
+          "name": "Test",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Test extends Artifact {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 96
+          }
+        },
+        {
+          "name": "Code",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Code extends Artifact {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 115
+          }
+        },
+        {
+          "name": "Coverage",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Coverage {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 134
+          }
+        },
+        {
+          "name": "ComplexityMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ComplexityMetrics {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 148
+          }
+        },
+        {
+          "name": "TraceabilityLink",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityLink {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 162
+          }
+        },
+        {
+          "name": "TraceabilityGraph",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityGraph {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 188
+          }
+        },
+        {
+          "name": "GraphMetadata",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GraphMetadata {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 208
+          }
+        },
+        {
+          "name": "TraceabilityConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityConfig {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 224
+          }
+        },
+        {
+          "name": "ParserConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ParserConfig {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 244
+          }
+        },
+        {
+          "name": "LinkRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface LinkRule {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 256
+          }
+        },
+        {
+          "name": "AnnotationPattern",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AnnotationPattern {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 280
+          }
+        },
+        {
+          "name": "ExtractionPattern",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ExtractionPattern {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 296
+          }
+        },
+        {
+          "name": "FeatureFlags",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FeatureFlags {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 310
+          }
+        },
+        {
+          "name": "ParseResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ParseResult {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 328
+          }
+        },
+        {
+          "name": "ParseIssue",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ParseIssue {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 344
+          }
+        },
+        {
+          "name": "ParseMetadata",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ParseMetadata {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 360
+          }
+        },
+        {
+          "name": "ImpactAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ImpactAnalysis {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 376
+          }
+        },
+        {
+          "name": "ArtifactChange",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ArtifactChange {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 392
+          }
+        },
+        {
+          "name": "ChangeDetail",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ChangeDetail {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 406
+          }
+        },
+        {
+          "name": "ArtifactImpact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ArtifactImpact {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 420
+          }
+        },
+        {
+          "name": "RiskAssessment",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface RiskAssessment {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 436
+          }
+        },
+        {
+          "name": "RiskFactor",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface RiskFactor {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 450
+          }
+        },
+        {
+          "name": "Recommendation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Recommendation {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 468
+          }
+        },
+        {
+          "name": "CoverageAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageAnalysis {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 490
+          }
+        },
+        {
+          "name": "CoverageMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageMetrics {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 504
+          }
+        },
+        {
+          "name": "CoverageGap",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageGap {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 522
+          }
+        },
+        {
+          "name": "CoverageTrend",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CoverageTrend {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 540
+          }
+        },
+        {
+          "name": "TraceabilityReport",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityReport {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 552
+          }
+        },
+        {
+          "name": "ReportParameters",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ReportParameters {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 574
+          }
+        },
+        {
+          "name": "ReportSummary",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ReportSummary {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 593
+          }
+        },
+        {
+          "name": "TraceabilityQuery",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TraceabilityQuery {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 609
+          }
+        },
+        {
+          "name": "QueryResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface QueryResult {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 643
+          }
+        },
+        {
+          "name": "ExportOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ExportOptions {",
+          "location": {
+            "file": "src/traceability/types.ts",
+            "line": 659
+          }
+        },
+        {
+          "name": "CLIGenerator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class CLIGenerator implements UIGenerator {",
+          "location": {
+            "file": "src/ui/generators/cli-generator.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "DesktopGenerator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class DesktopGenerator implements UIGenerator {",
+          "location": {
+            "file": "src/ui/generators/desktop-generator.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "WindowOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface WindowOptions {",
+          "location": {
+            "file": "src/ui/generators/desktop-generator.ts",
+            "line": 481
+          }
+        },
+        {
+          "name": "WindowManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class WindowManager {",
+          "location": {
+            "file": "src/ui/generators/desktop-generator.ts",
+            "line": 493
+          }
+        },
+        {
+          "name": "setupIPCHandlers",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function setupIPCHandlers() {",
+          "parameters": "",
+          "location": {
+            "file": "src/ui/generators/desktop-generator.ts",
+            "line": 596
+          }
+        },
+        {
+          "name": "IPCService",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class IPCService {",
+          "location": {
+            "file": "src/ui/generators/desktop-generator.ts",
+            "line": 772
+          }
+        },
+        {
+          "name": "ElectronAPI",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ElectronAPI = typeof electronAPI;",
+          "location": {
+            "file": "src/ui/generators/desktop-generator.ts",
+            "line": 1705
+          }
+        },
+        {
+          "name": "TUIGenerator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TUIGenerator implements UIGenerator {",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "TUIApplication",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class TUIApplication {",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 247
+          }
+        },
+        {
+          "name": "main",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function main() {",
+          "parameters": "",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 379
+          }
+        },
+        {
+          "name": "TUIScreen",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TUIScreen {",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 410
+          }
+        },
+        {
+          "name": "NavigationManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class NavigationManager {",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 417
+          }
+        },
+        {
+          "name": "ThemeStyle",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ThemeStyle {",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 1371
+          }
+        },
+        {
+          "name": "ThemeManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ThemeManager {",
+          "location": {
+            "file": "src/ui/generators/tui-generator.ts",
+            "line": 1392
+          }
+        },
+        {
+          "name": "WebGenerator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class WebGenerator implements UIGenerator {",
+          "location": {
+            "file": "src/ui/generators/web-generator.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "AppRoutes",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function AppRoutes() {",
+          "parameters": "",
+          "location": {
+            "file": "src/ui/generators/web-generator.ts",
+            "line": 244
+          }
+        },
+        {
+          "name": "createFullScaffolder",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createFullScaffolder(options?: { verbose?: boolean }) {",
+          "parameters": "options?: { verbose?: boolean }",
+          "location": {
+            "file": "src/ui/index.ts",
+            "line": 31
+          }
+        },
+        {
+          "name": "createPlatformScaffolder",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createPlatformScaffolder(platform: Platform, options?: { verbose?: boolean }) {",
+          "parameters": "platform: Platform, options?: { verbose?: boolean }",
+          "location": {
+            "file": "src/ui/index.ts",
+            "line": 83
+          }
+        },
+        {
+          "name": "UIScaffolderEngine",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class UIScaffolderEngine implements UIScaffolder {",
+          "location": {
+            "file": "src/ui/scaffolder.ts",
+            "line": 41
+          }
+        },
+        {
+          "name": "Platform",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type Platform = 'web' | 'cli' | 'tui' | 'desktop';",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 11
+          }
+        },
+        {
+          "name": "ComponentType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ComponentType = 'form' | 'list' | 'detail' | 'navigation' | 'layout';",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 12
+          }
+        },
+        {
+          "name": "ValidationRule",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ValidationRule = 'required' | 'email' | 'min' | 'max' | 'pattern';",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 13
+          }
+        },
+        {
+          "name": "RouteSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const RouteSchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "Route",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type Route = z.infer<typeof RouteSchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "FormFieldSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const FormFieldSchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 28
+          }
+        },
+        {
+          "name": "FormField",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type FormField = z.infer<typeof FormFieldSchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 41
+          }
+        },
+        {
+          "name": "FormSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const FormSchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 44
+          }
+        },
+        {
+          "name": "Form",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type Form = z.infer<typeof FormSchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 52
+          }
+        },
+        {
+          "name": "ComponentSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const ComponentSchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 55
+          }
+        },
+        {
+          "name": "Component",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type Component = z.infer<typeof ComponentSchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 64
+          }
+        },
+        {
+          "name": "TestScenarioSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const TestScenarioSchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 67
+          }
+        },
+        {
+          "name": "TestScenario",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type TestScenario = z.infer<typeof TestScenarioSchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 79
+          }
+        },
+        {
+          "name": "TestDefinitionSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const TestDefinitionSchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 82
+          }
+        },
+        {
+          "name": "TestDefinition",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type TestDefinition = z.infer<typeof TestDefinitionSchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 89
+          }
+        },
+        {
+          "name": "ProfileUISchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const ProfileUISchema = z.object({",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 92
+          }
+        },
+        {
+          "name": "ProfileUI",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ProfileUI = z.infer<typeof ProfileUISchema>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 102
+          }
+        },
+        {
+          "name": "GeneratorOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GeneratorOptions {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 105
+          }
+        },
+        {
+          "name": "GeneratedArtifact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GeneratedArtifact {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 115
+          }
+        },
+        {
+          "name": "UIGenerator",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface UIGenerator {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 125
+          }
+        },
+        {
+          "name": "UIScaffolder",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface UIScaffolder {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 136
+          }
+        },
+        {
+          "name": "ScaffoldResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ScaffoldResult {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 145
+          }
+        },
+        {
+          "name": "ValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationResult {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 160
+          }
+        },
+        {
+          "name": "ValidationError",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationError {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 166
+          }
+        },
+        {
+          "name": "ValidationWarning",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationWarning {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 172
+          }
+        },
+        {
+          "name": "TemplateContext",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TemplateContext {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 179
+          }
+        },
+        {
+          "name": "WebGeneratorConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface WebGeneratorConfig {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 191
+          }
+        },
+        {
+          "name": "CLIGeneratorConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CLIGeneratorConfig {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 199
+          }
+        },
+        {
+          "name": "TUIGeneratorConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface TUIGeneratorConfig {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 205
+          }
+        },
+        {
+          "name": "DesktopGeneratorConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface DesktopGeneratorConfig {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 211
+          }
+        },
+        {
+          "name": "UIScaffoldError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class UIScaffoldError extends Error {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 219
+          }
+        },
+        {
+          "name": "ValidationError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ValidationError extends Error {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 231
+          }
+        },
+        {
+          "name": "GeneratorError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class GeneratorError extends Error {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 242
+          }
+        },
+        {
+          "name": "DeepPartial",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type DeepPartial<T> = {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 254
+          }
+        },
+        {
+          "name": "RequiredFields",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 258
+          }
+        },
+        {
+          "name": "OptionalFields",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type OptionalFields<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 260
+          }
+        },
+        {
+          "name": "SUPPORTED_PLATFORMS",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const SUPPORTED_PLATFORMS: readonly Platform[] = ['web', 'cli', 'tui', 'desktop'] as const;",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 263
+          }
+        },
+        {
+          "name": "DEFAULT_GENERATOR_OPTIONS",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const DEFAULT_GENERATOR_OPTIONS: Partial<GeneratorOptions> = {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 265
+          }
+        },
+        {
+          "name": "COMPONENT_TEMPLATES",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const COMPONENT_TEMPLATES = {",
+          "location": {
+            "file": "src/ui/types.ts",
+            "line": 271
+          }
+        },
+        {
+          "name": "DesignTokens",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface DesignTokens {",
+          "location": {
+            "file": "src/ui/ui-profile-enforcer.ts",
+            "line": 461
+          }
+        },
+        {
+          "name": "DesignTokenKey",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type DesignTokenKey = keyof DesignTokens;",
+          "location": {
+            "file": "src/ui/ui-profile-enforcer.ts",
+            "line": 465
+          }
+        },
+        {
+          "name": "UIProfileEnforcer",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class UIProfileEnforcer {",
+          "location": {
+            "file": "src/ui/ui-profile-enforcer.ts",
+            "line": 482
+          }
+        },
+        {
+          "name": "createUIProfileEnforcer",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createUIProfileEnforcer(logger?: Logger): UIProfileEnforcer {",
+          "parameters": "logger?: Logger",
+          "return_type": "UIProfileEnforcer",
+          "location": {
+            "file": "src/ui/ui-profile-enforcer.ts",
+            "line": 754
+          }
+        },
+        {
+          "name": "ArbiterStamp",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ArbiterStamp {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 40
+          }
+        },
+        {
+          "name": "GenerationMetadata",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GenerationMetadata {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 60
+          }
+        },
+        {
+          "name": "ComprehensiveScaffoldOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ComprehensiveScaffoldOptions extends GeneratorOptions {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 74
+          }
+        },
+        {
+          "name": "ComprehensiveUIScaffolder",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ComprehensiveUIScaffolder {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 115
+          }
+        },
+        {
+          "name": "AppRoute",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface AppRoute extends RouteObject {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 484
+          }
+        },
+        {
+          "name": "routes",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const routes: AppRoute[] = [",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 490
+          }
+        },
+        {
+          "name": "routeMetadata",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const routeMetadata = {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 497
+          }
+        },
+        {
+          "name": "Default",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const Default: Story = {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 858
+          }
+        },
+        {
+          "name": "Primary",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const Primary: Story = {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 864
+          }
+        },
+        {
+          "name": "Secondary",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const Secondary: Story = {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 871
+          }
+        },
+        {
+          "name": "Large",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const Large: Story = {",
+          "location": {
+            "file": "src/ui/ui-scaffolder.ts",
+            "line": 878
+          }
+        },
+        {
+          "name": "Logger",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface Logger {",
+          "location": {
+            "file": "src/utils/logger.ts",
+            "line": 5
+          }
+        },
+        {
+          "name": "logger",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const logger = new ConsoleLogger('arbiter');",
+          "location": {
+            "file": "src/utils/logger.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "VersionAnalyzer",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class VersionAnalyzer {",
+          "location": {
+            "file": "src/versions/analyzer.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "CompatibilityManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class CompatibilityManager {",
+          "location": {
+            "file": "src/versions/compatibility.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "basicVersionManagement",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function basicVersionManagement() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 22
+          }
+        },
+        {
+          "name": "breakingChangeExample",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function breakingChangeExample() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 106
+          }
+        },
+        {
+          "name": "compatibilityExample",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function compatibilityExample() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 190
+          }
+        },
+        {
+          "name": "versionHistoryExample",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function versionHistoryExample() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 242
+          }
+        },
+        {
+          "name": "semverOperationsExample",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function semverOperationsExample() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 277
+          }
+        },
+        {
+          "name": "schemaAnalysisExample",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function schemaAnalysisExample() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 330
+          }
+        },
+        {
+          "name": "runAllExamples",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export async function runAllExamples() {",
+          "parameters": "",
+          "location": {
+            "file": "src/versions/example.ts",
+            "line": 388
+          }
+        },
+        {
+          "name": "createVersionManager",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function createVersionManager(config?: Parameters<typeof VersionManager.prototype.constructor>[0]): VersionManager {",
+          "parameters": "config?: Parameters<typeof VersionManager.prototype.constructor>[0]",
+          "return_type": "VersionManager",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 38
+          }
+        },
+        {
+          "name": "parseVersion",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function parseVersion(version: string): SemanticVersion {",
+          "parameters": "version: string",
+          "return_type": "SemanticVersion",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 45
+          }
+        },
+        {
+          "name": "formatVersion",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function formatVersion(version: SemanticVersion): string {",
+          "parameters": "version: SemanticVersion",
+          "return_type": "string",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 52
+          }
+        },
+        {
+          "name": "compareVersions",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function compareVersions(a: SemanticVersion, b: SemanticVersion): number {",
+          "parameters": "a: SemanticVersion, b: SemanticVersion",
+          "return_type": "number",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "satisfiesConstraint",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function satisfiesConstraint(version: SemanticVersion, constraint: string): boolean {",
+          "parameters": "version: SemanticVersion, constraint: string",
+          "return_type": "boolean",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 66
+          }
+        },
+        {
+          "name": "incrementVersion",
+          "kind": "function",
+          "visibility": "export",
+          "signature": "export function incrementVersion(version: SemanticVersion, type: 'major' | 'minor' | 'patch' | 'prerelease'): SemanticVersion {",
+          "parameters": "version: SemanticVersion, type: 'major' | 'minor' | 'patch' | 'prerelease'",
+          "return_type": "SemanticVersion",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 74
+          }
+        },
+        {
+          "name": "VERSION_MANAGEMENT_CONSTANTS",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const VERSION_MANAGEMENT_CONSTANTS = {",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 79
+          }
+        },
+        {
+          "name": "VersionUtils",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const VersionUtils = {",
+          "location": {
+            "file": "src/versions/index.ts",
+            "line": 88
+          }
+        },
+        {
+          "name": "VersionManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class VersionManager {",
+          "location": {
+            "file": "src/versions/manager.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "MigrationManager",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class MigrationManager {",
+          "location": {
+            "file": "src/versions/migration.ts",
+            "line": 26
+          }
+        },
+        {
+          "name": "SemverUtils",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class SemverUtils {",
+          "location": {
+            "file": "src/versions/semver.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "SemanticVersion",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SemanticVersion {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 8
+          }
+        },
+        {
+          "name": "VersionRange",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionRange {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 16
+          }
+        },
+        {
+          "name": "VersionOperator",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type VersionOperator =",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "VersionConstraint",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionConstraint {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 28
+          }
+        },
+        {
+          "name": "VersionHistory",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionHistory {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "VersionChange",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionChange {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 46
+          }
+        },
+        {
+          "name": "ChangeType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ChangeType =",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 55
+          }
+        },
+        {
+          "name": "ChangeImpact",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ChangeImpact = 'breaking' | 'feature' | 'fix' | 'none';",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 62
+          }
+        },
+        {
+          "name": "ChangeSeverity",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ChangeSeverity = 'critical' | 'major' | 'minor' | 'patch';",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 63
+          }
+        },
+        {
+          "name": "ChangeDetails",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ChangeDetails {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 65
+          }
+        },
+        {
+          "name": "CompatibilityAnalysis",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CompatibilityAnalysis {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 74
+          }
+        },
+        {
+          "name": "BreakingChange",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface BreakingChange {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 84
+          }
+        },
+        {
+          "name": "CompatibilityWarning",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CompatibilityWarning {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 95
+          }
+        },
+        {
+          "name": "CompatibilityMatrix",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CompatibilityMatrix {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 104
+          }
+        },
+        {
+          "name": "MigrationPath",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationPath {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 113
+          }
+        },
+        {
+          "name": "MigrationComplexity",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type MigrationComplexity = 'simple' | 'moderate' | 'complex' | 'critical';",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 125
+          }
+        },
+        {
+          "name": "MigrationStep",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationStep {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 127
+          }
+        },
+        {
+          "name": "MigrationStepType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type MigrationStepType =",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 138
+          }
+        },
+        {
+          "name": "MigrationOperation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationOperation {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 142
+          }
+        },
+        {
+          "name": "MigrationValidation",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationValidation {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 149
+          }
+        },
+        {
+          "name": "MigrationRollback",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationRollback {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 155
+          }
+        },
+        {
+          "name": "SchemaChange",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaChange {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 162
+          }
+        },
+        {
+          "name": "ValidationRule",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationRule {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 170
+          }
+        },
+        {
+          "name": "MigrationTestCase",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface MigrationTestCase {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 177
+          }
+        },
+        {
+          "name": "VersionBumpResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionBumpResult {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 184
+          }
+        },
+        {
+          "name": "VersionBumpType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type VersionBumpType = 'major' | 'minor' | 'patch' | 'prerelease' | 'build';",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 194
+          }
+        },
+        {
+          "name": "CompatibilityImpact",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface CompatibilityImpact {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 196
+          }
+        },
+        {
+          "name": "DeprecationWarning",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface DeprecationWarning {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 202
+          }
+        },
+        {
+          "name": "SupportWindow",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SupportWindow {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 210
+          }
+        },
+        {
+          "name": "EOLVersion",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface EOLVersion {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 217
+          }
+        },
+        {
+          "name": "VersionManagerConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface VersionManagerConfig {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 223
+          }
+        },
+        {
+          "name": "GitIntegrationConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface GitIntegrationConfig {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 234
+          }
+        },
+        {
+          "name": "SchemaComparison",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaComparison {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 242
+          }
+        },
+        {
+          "name": "SchemaDifference",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface SchemaDifference {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 250
+          }
+        },
+        {
+          "name": "ContractComparison",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractComparison {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 259
+          }
+        },
+        {
+          "name": "ContractDifference",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ContractDifference {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 267
+          }
+        },
+        {
+          "name": "SemanticVersionSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const SemanticVersionSchema = z.object({",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 277
+          }
+        },
+        {
+          "name": "VersionChangeSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const VersionChangeSchema = z.object({",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 285
+          }
+        },
+        {
+          "name": "VersionHistorySchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const VersionHistorySchema = z.object({",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 307
+          }
+        },
+        {
+          "name": "MigrationStepSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const MigrationStepSchema = z.object({",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 319
+          }
+        },
+        {
+          "name": "SemanticVersionType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type SemanticVersionType = z.infer<typeof SemanticVersionSchema>;",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 354
+          }
+        },
+        {
+          "name": "VersionChangeType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type VersionChangeType = z.infer<typeof VersionChangeSchema>;",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 355
+          }
+        },
+        {
+          "name": "VersionHistoryType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type VersionHistoryType = z.infer<typeof VersionHistorySchema>;",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 356
+          }
+        },
+        {
+          "name": "MigrationStepType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type MigrationStepType = z.infer<typeof MigrationStepSchema>;",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 357
+          }
+        },
+        {
+          "name": "VersionError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class VersionError extends Error {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 360
+          }
+        },
+        {
+          "name": "VersionParsingError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class VersionParsingError extends VersionError {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 372
+          }
+        },
+        {
+          "name": "VersionCompatibilityError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class VersionCompatibilityError extends VersionError {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 379
+          }
+        },
+        {
+          "name": "MigrationError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class MigrationError extends Error {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 386
+          }
+        },
+        {
+          "name": "MigrationValidationError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class MigrationValidationError extends MigrationError {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 398
+          }
+        },
+        {
+          "name": "MigrationRollbackError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class MigrationRollbackError extends MigrationError {",
+          "location": {
+            "file": "src/versions/types.ts",
+            "line": 405
+          }
+        },
+        {
+          "name": "ChangeDetectorOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ChangeDetectorOptions {",
+          "location": {
+            "file": "src/watcher/change-detector.ts",
+            "line": 18
+          }
+        },
+        {
+          "name": "ChangeDetector",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ChangeDetector {",
+          "location": {
+            "file": "src/watcher/change-detector.ts",
+            "line": 26
+          }
+        },
+        {
+          "name": "NDJSONReporterOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONReporterOptions {",
+          "location": {
+            "file": "src/watcher/ndjson-reporter.ts",
+            "line": 17
+          }
+        },
+        {
+          "name": "NDJSONReporter",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class NDJSONReporter {",
+          "location": {
+            "file": "src/watcher/ndjson-reporter.ts",
+            "line": 25
+          }
+        },
+        {
+          "name": "NDJSONAggregator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class NDJSONAggregator {",
+          "location": {
+            "file": "src/watcher/ndjson-reporter.ts",
+            "line": 378
+          }
+        },
+        {
+          "name": "FileEventType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type FileEventType = 'add' | 'change' | 'unlink' | 'addDir' | 'unlinkDir';",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 9
+          }
+        },
+        {
+          "name": "FileEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FileEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 11
+          }
+        },
+        {
+          "name": "ValidationStatus",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ValidationStatus = 'success' | 'error' | 'warning' | 'skipped';",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "ValidationType",
+          "kind": "type",
+          "visibility": "export",
+          "signature": "export type ValidationType = 'syntax' | 'semantic' | 'contract' | 'schema' | 'dependency';",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 24
+          }
+        },
+        {
+          "name": "ValidationError",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationError {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 26
+          }
+        },
+        {
+          "name": "ValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationResult {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 38
+          }
+        },
+        {
+          "name": "NDJSONEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 53
+          }
+        },
+        {
+          "name": "NDJSONFileEvent",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONFileEvent extends NDJSONEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 59
+          }
+        },
+        {
+          "name": "NDJSONValidationResult",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONValidationResult extends NDJSONEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 64
+          }
+        },
+        {
+          "name": "NDJSONError",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONError extends NDJSONEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 69
+          }
+        },
+        {
+          "name": "NDJSONHeartbeat",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONHeartbeat extends NDJSONEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 78
+          }
+        },
+        {
+          "name": "NDJSONStatus",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface NDJSONStatus extends NDJSONEvent {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 88
+          }
+        },
+        {
+          "name": "WatcherConfig",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface WatcherConfig {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 99
+          }
+        },
+        {
+          "name": "ChangeSet",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ChangeSet {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 132
+          }
+        },
+        {
+          "name": "DependencyGraph",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface DependencyGraph {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 140
+          }
+        },
+        {
+          "name": "FileState",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FileState {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 146
+          }
+        },
+        {
+          "name": "WatcherState",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface WatcherState {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 155
+          }
+        },
+        {
+          "name": "ValidationMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidationMetrics {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 168
+          }
+        },
+        {
+          "name": "WatcherMetrics",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface WatcherMetrics {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 177
+          }
+        },
+        {
+          "name": "WatcherError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class WatcherError extends Error {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 191
+          }
+        },
+        {
+          "name": "ValidationEngineError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class ValidationEngineError extends WatcherError {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 202
+          }
+        },
+        {
+          "name": "FileSystemError",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class FileSystemError extends WatcherError {",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 214
+          }
+        },
+        {
+          "name": "FileEventSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const FileEventSchema = z.object({",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 227
+          }
+        },
+        {
+          "name": "ValidationErrorSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const ValidationErrorSchema = z.object({",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 238
+          }
+        },
+        {
+          "name": "ValidationResultSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const ValidationResultSchema = z.object({",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 250
+          }
+        },
+        {
+          "name": "WatcherConfigSchema",
+          "kind": "constant",
+          "visibility": "export",
+          "signature": "export const WatcherConfigSchema = z.object({",
+          "location": {
+            "file": "src/watcher/types.ts",
+            "line": 264
+          }
+        },
+        {
+          "name": "ValidatorOptions",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface ValidatorOptions {",
+          "location": {
+            "file": "src/watcher/validator.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "LiveValidator",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class LiveValidator {",
+          "location": {
+            "file": "src/watcher/validator.ts",
+            "line": 34
+          }
+        },
+        {
+          "name": "FileWatcherEvents",
+          "kind": "interface",
+          "visibility": "export",
+          "signature": "export interface FileWatcherEvents {",
+          "location": {
+            "file": "src/watcher/watcher.ts",
+            "line": 23
+          }
+        },
+        {
+          "name": "FileWatcher",
+          "kind": "class",
+          "visibility": "export",
+          "signature": "export class FileWatcher extends EventEmitter {",
+          "location": {
+            "file": "src/watcher/watcher.ts",
+            "line": 38
+          }
+        }
+      ],
+      "modules": [],
+      "types": []
+    },
+    "bash": {
+      "language": "bash",
+      "timestamp": "2025-09-01T13:11:18.479Z",
+      "extraction_method": "file_parsing",
+      "public_items": [
+        {
+          "name": "check_api_health",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "check_api_health() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 38
+          }
+        },
+        {
+          "name": "start_api_server",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "start_api_server() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 65
+          }
+        },
+        {
+          "name": "stop_api_server",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "stop_api_server() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 94
+          }
+        },
+        {
+          "name": "run_performance_benchmarks",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "run_performance_benchmarks() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 110
+          }
+        },
+        {
+          "name": "run_security_scans",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "run_security_scans() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 149
+          }
+        },
+        {
+          "name": "generate_final_report",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "generate_final_report() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 190
+          }
+        },
+        {
+          "name": "cleanup",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "cleanup() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 287
+          }
+        },
+        {
+          "name": "main",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "main() {",
+          "location": {
+            "file": "scripts/run-benchmarks.sh",
+            "line": 296
+          }
+        },
+        {
+          "name": "log_info",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_info() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 27
+          }
+        },
+        {
+          "name": "log_success",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_success() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 31
+          }
+        },
+        {
+          "name": "log_warning",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_warning() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 35
+          }
+        },
+        {
+          "name": "log_error",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "log_error() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 39
+          }
+        },
+        {
+          "name": "print_usage",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "print_usage() {",
+          "location": {
+            "file": "scripts/run-chaos-tests.sh",
+            "line": 43
+          }
+        },
+        {
+          "name": "run_tests",
+          "kind": "function",
+          "visibility": "public",
+          "signature": "run_tests() {",
+          "location": {
+            "file": "test-runner.sh",
+            "line": 12
+          }
+        }
+      ],
+      "scripts": [
+        {
+          "name": "demo-cli-workflow.sh",
+          "path": "demo-cli-workflow.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "demo-docs-system.sh",
+          "path": "demo-docs-system.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "demo-phase-5.sh",
+          "path": "demo-phase-5.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "install-deps.sh",
+          "path": "install-deps.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "integration-test-demo.sh",
+          "path": "integration-test-demo.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "run-acceptance-tests.sh",
+          "path": "run-acceptance-tests.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "run-benchmarks.sh",
+          "path": "scripts/run-benchmarks.sh",
+          "functions": 8,
+          "executable": true
+        },
+        {
+          "name": "run-chaos-tests.sh",
+          "path": "scripts/run-chaos-tests.sh",
+          "functions": 5,
+          "executable": true
+        },
+        {
+          "name": "start-server.sh",
+          "path": "start-server.sh",
+          "functions": 0,
+          "executable": true
+        },
+        {
+          "name": "test-runner.sh",
+          "path": "test-runner.sh",
+          "functions": 1,
+          "executable": true
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total_languages": 2,
+    "total_public_items": 551
+  }
+}

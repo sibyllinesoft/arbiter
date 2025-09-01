@@ -1,0 +1,22 @@
+{
+  "errors": [
+    {
+      "message": "config.name: invalid value \"Invalid123\" (out of bound =~\"^[a-zA-Z]+$\"):",
+      "line": 3,
+      "column": 18
+    },
+    {
+      "message": "config.port: invalid value 70000 (out of bound <65536):",
+      "line": 4,
+      "column": 20
+    },
+    {
+      "message": "../../../../../../..test-file.cue:3:9",
+      "line": 8,
+      "column": 9
+    }
+  ],
+  "hasValue": false,
+  "hasGraph": false,
+  "graphNodeCount": 0
+}

@@ -1,0 +1,169 @@
+# Rails & Guarantees Prometheus Alert Rules
+# SLO monitoring and alerting rules for production deployment
+
+groups:
+  - name: rails_guarantees_slo
+    rules:
+      # Response Time SLO (p95 < 400ms)
+      - alert: ResponseTimeP95High
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="rails-guarantees-engine"}[5m])) > 0.4
+        for: 2m
+        labels:
+          severity: warning
+          slo: response_time_p95
+        annotations:
+          summary: "Rails & Guarantees response time p95 is above SLO"
+          description: "Response time p95 is {{ $value }}s, exceeding 400ms SLO target"
+
+      - alert: ResponseTimeP95Critical
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="rails-guarantees-engine"}[5m])) > 0.8
+        for: 1m
+        labels:
+          severity: critical
+          slo: response_time_p95
+        annotations:
+          summary: "Rails & Guarantees response time p95 is critically high"
+          description: "Response time p95 is {{ $value }}s, critically exceeding 400ms SLO target"
+
+      # Ticket Verification SLO (p95 < 25ms)
+      - alert: TicketVerifyP95High
+        expr: histogram_quantile(0.95, rate(ticket_verification_duration_seconds_bucket{job="rails-guarantees-engine"}[5m])) > 0.025
+        for: 2m
+        labels:
+          severity: warning
+          slo: ticket_verify_p95
+        annotations:
+          summary: "Rails & Guarantees ticket verification p95 is above SLO"
+          description: "Ticket verification p95 is {{ $value }}s, exceeding 25ms SLO target"
+
+      # Availability SLO (99.9%)
+      - alert: AvailabilityLow
+        expr: (rate(http_requests_total{job="rails-guarantees-engine",code!~"5.."}[5m]) / rate(http_requests_total{job="rails-guarantees-engine"}[5m])) < 0.999
+        for: 5m
+        labels:
+          severity: warning
+          slo: availability
+        annotations:
+          summary: "Rails & Guarantees availability is below SLO"
+          description: "Availability is {{ $value | humanizePercentage }}, below 99.9% SLO target"
+
+      # Error Budget Burn Rate
+      - alert: ErrorBudgetBurnRateHigh
+        expr: (
+          (1 - (rate(http_requests_total{job="rails-guarantees-engine",code!~"5.."}[1h]) / rate(http_requests_total{job="rails-guarantees-engine"}[1h]))) /
+          (1 - 0.999)
+        ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          slo: error_budget
+        annotations:
+          summary: "Rails & Guarantees error budget burn rate is high"
+          description: "Error budget is burning at {{ $value }}x the acceptable rate"
+
+  - name: rails_guarantees_invariants
+    rules:
+      # Invariant Violations
+      - alert: InvariantViolationsHigh
+        expr: rate(invariant_violations_total{job="rails-guarantees-engine"}[5m]) > 0.01
+        for: 1m
+        labels:
+          severity: critical
+          category: invariant
+        annotations:
+          summary: "Rails & Guarantees invariant violations detected"
+          description: "Invariant violations rate is {{ $value }}/sec for invariant {{ $labels.invariant_name }}"
+
+      # TTL Enforcement
+      - alert: TTLEnforcementFailure
+        expr: rate(invariant_violations_total{job="rails-guarantees-engine",invariant_name="ticket_ttl_enforcement"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Rails & Guarantees TTL enforcement failure"
+          description: "TTL enforcement is failing, potential security issue"
+
+      # Nonce Uniqueness
+      - alert: NonceUniquenessViolation
+        expr: rate(invariant_violations_total{job="rails-guarantees-engine",invariant_name="nonce_uniqueness"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Rails & Guarantees nonce uniqueness violation"
+          description: "Nonce reuse detected, potential replay attack"
+
+  - name: rails_guarantees_performance
+    rules:
+      # Performance Budget
+      - alert: PerformanceBudgetExceeded
+        expr: rate(performance_budget_violations_total{job="rails-guarantees-engine"}[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Rails & Guarantees performance budget exceeded"
+          description: "Performance budget violation for {{ $labels.resource_type }}: {{ $labels.violation_reason }}"
+
+      # Memory Usage
+      - alert: MemoryUsageHigh
+        expr: (process_resident_memory_bytes{job="rails-guarantees-engine"} / 1024 / 1024) > 512
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Rails & Guarantees memory usage is high"
+          description: "Memory usage is {{ $value }}MB, exceeding 512MB budget"
+
+  - name: rails_guarantees_security
+    rules:
+      # Security Events
+      - alert: SecurityEventDetected
+        expr: rate(security_events_total{job="rails-guarantees-engine"}[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Rails & Guarantees security events detected"
+          description: "Security event rate is {{ $value }}/sec for event type {{ $labels.event_type }}"
+
+      # Potential Replay Attack
+      - alert: PotentialReplayAttack
+        expr: rate(security_events_total{job="rails-guarantees-engine",event_type="potential_replay_attack"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "Rails & Guarantees potential replay attack detected"
+          description: "Potential replay attack pattern detected, immediate investigation required"
+
+  - name: rails_guarantees_artifacts
+    rules:
+      # Artifact Generation Failures
+      - alert: ArtifactGenerationFailure
+        expr: rate(artifact_generation_failures_total{job="rails-guarantees-engine"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: artifacts
+        annotations:
+          summary: "Rails & Guarantees artifact generation failure"
+          description: "Artifact generation failing for {{ $labels.artifact_type }}"
+
+      # SBOM Generation
+      - alert: SBOMGenerationFailure
+        expr: rate(sbom_generation_failures_total{job="rails-guarantees-engine"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          category: compliance
+        annotations:
+          summary: "Rails & Guarantees SBOM generation failure"
+          description: "SBOM generation is failing, compliance may be affected"

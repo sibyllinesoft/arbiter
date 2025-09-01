@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "generatedAt": "2025-09-01T11:59:19.078Z",
+    "currentSurface": "surface.json",
+    "strict": false
+  },
+  "recommendation": {
+    "type": "minor",
+    "version": "0.1.0"
+  },
+  "changes": {
+    "breaking": [],
+    "features": [],
+    "fixes": []
+  },
+  "reasoning": "Initial version - no previous surface for comparison"
+}
