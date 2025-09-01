@@ -19,6 +19,7 @@ import {
   WebGeneratorConfig,
   TemplateContext,
   GeneratorError,
+  validateGeneratorOptions,
 } from '../types.js';
 
 /**
@@ -213,15 +214,7 @@ export class WebGenerator implements UIGenerator {
    * Validate generator options
    */
   validateOptions(options: GeneratorOptions): boolean {
-    if (options.platform !== 'web') {
-      return false;
-    }
-
-    if (!options.outputDir) {
-      return false;
-    }
-
-    return true;
+    return validateGeneratorOptions(options, 'web');
   }
 
   // Private helper methods

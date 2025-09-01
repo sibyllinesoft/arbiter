@@ -287,3 +287,20 @@ export const COMPONENT_TEMPLATES = {
     tauri: 'tauri-component.tsx.template',
   },
 } as const;
+
+// Shared Utility Functions
+/**
+ * Common validation logic for generator options
+ * Eliminates duplication across all platform generators
+ */
+export function validateGeneratorOptions(options: GeneratorOptions, expectedPlatform: Platform): boolean {
+  if (options.platform !== expectedPlatform) {
+    return false;
+  }
+
+  if (!options.outputDir) {
+    return false;
+  }
+
+  return true;
+}

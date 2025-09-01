@@ -19,6 +19,7 @@ import {
   CLIGeneratorConfig,
   TemplateContext,
   GeneratorError,
+  validateGeneratorOptions,
 } from '../types.js';
 
 /**
@@ -211,15 +212,7 @@ export class CLIGenerator implements UIGenerator {
    * Validate generator options
    */
   validateOptions(options: GeneratorOptions): boolean {
-    if (options.platform !== 'cli') {
-      return false;
-    }
-
-    if (!options.outputDir) {
-      return false;
-    }
-
-    return true;
+    return validateGeneratorOptions(options, 'cli');
   }
 
   // Private helper methods

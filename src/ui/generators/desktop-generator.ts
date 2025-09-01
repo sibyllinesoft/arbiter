@@ -19,6 +19,7 @@ import {
   DesktopGeneratorConfig,
   TemplateContext,
   GeneratorError,
+  validateGeneratorOptions,
 } from '../types.js';
 
 /**
@@ -216,15 +217,7 @@ export class DesktopGenerator implements UIGenerator {
    * Validate generator options
    */
   validateOptions(options: GeneratorOptions): boolean {
-    if (options.platform !== 'desktop') {
-      return false;
-    }
-
-    if (!options.outputDir) {
-      return false;
-    }
-
-    return true;
+    return validateGeneratorOptions(options, 'desktop');
   }
 
   // Private helper methods
