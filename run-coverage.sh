@@ -17,8 +17,10 @@ apps/web/src/services/__tests__/websocket-new.test.ts
 echo "📁 Running tests:"
 echo "$TEST_FILES" | grep -v "^$" | sed 's/^/  /'
 
-# Clean up previous coverage
-rm -rf reports/cleanup/coverage/*
+# Clean up previous coverage (preserve documentation)
+find reports/cleanup/coverage/ -name "*.info" -delete
+find reports/cleanup/coverage/ -name "*.html" -delete
+rm -rf reports/cleanup/coverage/html/
 
 echo ""
 echo "🚀 Executing tests with coverage..."
