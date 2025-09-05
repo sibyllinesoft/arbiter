@@ -111,9 +111,10 @@ Thumbs.db
 # Prettier
 .prettiercache
 
-# Built CLI (convenience copy for external agents)
+# Built CLI (convenience copy for external agents) - exclude large binaries
 arbiter-cli.js
-arbiter-cli
+arbiter-cli.cjs
+# Note: arbiter-cli.mjs wrapper is small and should be committed
 
 # Arbiter output directories
 .arbiter/
