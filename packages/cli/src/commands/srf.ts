@@ -57,6 +57,29 @@ export async function srfCommand(
 }
 
 /**
+ * Normalize spec name for directory naming
+ */
+function normalizeSpecName(filename: string): string {
+  return path.basename(filename, path.extname(filename))
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
+ * Get structured output directory for a spec
+ */
+function getSpecOutputDir(inputFile: string, options: SrfOptions): string {
+  if (options.outputDir) {
+    return options.outputDir;
+  }
+  
+  const specName = normalizeSpecName(inputFile);
+  return path.join('.arbiter', specName);
+}
+
+/**
  * Create SRF from proto-spec (EMBEDDED_SRF.md, requirements.md, etc.)
  */
 async function srfCreateCommand(
@@ -85,10 +108,9 @@ async function srfCreateCommand(
   // Parse proto-spec and extract structured requirements
   const srf = await parseProtoSpecToSrf(content, input);
 
-  // Determine output path
-  const baseName = path.basename(input, path.extname(input));
-  const outputPath = options.output || 
-                    path.join(options.outputDir || ".", `${baseName}.srf`);
+  // Determine output path using structured directory
+  const outputDir = getSpecOutputDir(input, options);
+  const outputPath = options.output || path.join(outputDir, "spec.srf");
 
   if (options.verbose) {
     console.log(chalk.dim("Parsed SRF structure:"));
@@ -97,9 +119,9 @@ async function srfCreateCommand(
 
   // Write SRF file
   if (!options.dryRun) {
-    const outputDir = path.dirname(outputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
+      console.log(chalk.dim(`📁 Created directory: ${outputDir}`));
     }
 
     if (fs.existsSync(outputPath) && !options.force) {
@@ -115,7 +137,7 @@ async function srfCreateCommand(
   }
 
   console.log(chalk.cyan("\nNext step:"));
-  console.log(chalk.dim(`  arbiter srf import ${outputPath}`));
+  console.log(chalk.dim(`  arbiter srf import ${input}`));
 
   return 0;
 }
@@ -175,10 +197,9 @@ async function srfImportCommand(
   // Convert SRF to CUE specification
   const cueSpec = await convertSrfToCue(srf, options);
 
-  // Determine output path
-  const baseName = path.basename(input, ".srf");
-  const outputPath = options.output || 
-                    path.join(options.outputDir || ".", `${baseName}.assembly.cue`);
+  // Determine output path using structured directory
+  const outputDir = getSpecOutputDir(input, options);
+  const outputPath = options.output || path.join(outputDir, "assembly.cue");
 
   if (options.verbose) {
     console.log(chalk.dim("Generated CUE specification:"));
@@ -187,9 +208,9 @@ async function srfImportCommand(
 
   // Write CUE specification
   if (!options.dryRun) {
-    const outputDir = path.dirname(outputPath);
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
+      console.log(chalk.dim(`📁 Created directory: ${outputDir}`));
     }
 
     if (fs.existsSync(outputPath) && !options.force) {
@@ -281,12 +302,15 @@ function srfHelpCommand(): number {
 
   console.log(chalk.yellow("📝 RECOMMENDED: Direct Conversion"));
   console.log(chalk.green("  arbiter srf import EMBEDDED_SRF.md      # Proto-spec → CUE spec (ONE STEP)"));
+  console.log(chalk.dim("  Creates: .arbiter/embedded-srf/assembly.cue"));
   console.log("  arbiter generate                        # Generate project files");
   console.log();
 
   console.log(chalk.yellow("Alternative: Two-step workflow"));
   console.log(chalk.dim("  1. arbiter srf create EMBEDDED_SRF.md   # Proto-spec → SRF"));
-  console.log(chalk.dim("  2. arbiter srf import EMBEDDED_SRF.srf  # SRF → CUE spec"));
+  console.log(chalk.dim("     Creates: .arbiter/embedded-srf/spec.srf"));
+  console.log(chalk.dim("  2. arbiter srf import EMBEDDED_SRF.md   # SRF → CUE spec"));
+  console.log(chalk.dim("     Creates: .arbiter/embedded-srf/assembly.cue"));
   console.log(chalk.dim("  3. arbiter generate                     # Generate project"));
   console.log();
 
@@ -300,12 +324,14 @@ function srfHelpCommand(): number {
 
   console.log(chalk.yellow("Examples:"));
   console.log(chalk.green("  arbiter srf import EMBEDDED_SRF.md                 # ✅ RECOMMENDED: Direct conversion"));
+  console.log(chalk.dim("  Output: .arbiter/embedded-srf/assembly.cue"));
   console.log(chalk.green("  arbiter srf import requirements.md --verbose       # Direct conversion with details"));
+  console.log(chalk.dim("  Output: .arbiter/requirements/assembly.cue"));
   console.log();
   console.log(chalk.dim("Advanced usage:"));
-  console.log(chalk.dim("  arbiter srf create EMBEDDED_SRF.md --output my.srf # Two-step: create SRF"));
-  console.log(chalk.dim("  arbiter srf import my.srf --verbose               # Two-step: import SRF"));
-  console.log(chalk.dim("  arbiter srf validate my.srf --verbose              # Validate SRF structure"));
+  console.log(chalk.dim("  arbiter srf create EMBEDDED_SRF.md                 # Two-step: create SRF"));
+  console.log(chalk.dim("  arbiter srf import EMBEDDED_SRF.md                 # Import from original file"));
+  console.log(chalk.dim("  arbiter srf validate .arbiter/embedded-srf/spec.srf # Validate SRF structure"));
 
   return 0;
 }

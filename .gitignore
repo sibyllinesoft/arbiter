@@ -114,3 +114,6 @@ Thumbs.db
 # Built CLI (convenience copy for external agents)
 arbiter-cli.js
 arbiter-cli
+
+# Arbiter output directories
+.arbiter/
