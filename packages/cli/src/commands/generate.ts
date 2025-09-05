@@ -19,24 +19,97 @@ export interface GenerateOptions {
   dryRun?: boolean;
   verbose?: boolean;
   format?: "auto" | "json" | "yaml" | "typescript" | "python" | "rust" | "go" | "shell";
+  spec?: string; // New: specify which spec to use
+}
+
+/**
+ * Discover available specs in .arbiter/ directories
+ */
+function discoverSpecs(): Array<{name: string, path: string}> {
+  const specs: Array<{name: string, path: string}> = [];
+  
+  if (fs.existsSync('.arbiter')) {
+    const specDirs = fs.readdirSync('.arbiter', { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name);
+    
+    for (const specName of specDirs) {
+      const assemblyPath = path.join('.arbiter', specName, 'assembly.cue');
+      if (fs.existsSync(assemblyPath)) {
+        specs.push({ name: specName, path: assemblyPath });
+      }
+    }
+  }
+  
+  return specs;
 }
 
 /**
  * Main generate command implementation
  */
-export async function generateCommand(options: GenerateOptions, _config: Config): Promise<number> {
+export async function generateCommand(options: GenerateOptions, _config: Config, specName?: string): Promise<number> {
   try {
     console.log(chalk.blue("🏗️  Generating project artifacts from assembly.cue..."));
 
-    // Read assembly file
-    const assemblyPath = path.resolve("arbiter.assembly.cue");
-    if (!fs.existsSync(assemblyPath)) {
-      console.error(chalk.red("❌ No arbiter.assembly.cue found in current directory"));
-      console.log(chalk.dim("Initialize a project with: arbiter init"));
-      return 1;
+    let assemblyPath: string;
+    let assemblyContent: string;
+
+    // Determine which assembly file to use
+    if (specName || options.spec) {
+      // Use specified spec name
+      const targetSpec = specName || options.spec!;
+      assemblyPath = path.join('.arbiter', targetSpec, 'assembly.cue');
+      
+      if (!fs.existsSync(assemblyPath)) {
+        console.error(chalk.red(`❌ Spec "${targetSpec}" not found at ${assemblyPath}`));
+        
+        // Show available specs
+        const availableSpecs = discoverSpecs();
+        if (availableSpecs.length > 0) {
+          console.log(chalk.yellow("\n📋 Available specs:"));
+          availableSpecs.forEach(spec => {
+            console.log(chalk.cyan(`  • ${spec.name}`));
+          });
+          console.log(chalk.dim(`\n💡 Usage: arbiter generate ${availableSpecs[0].name}`));
+        } else {
+          console.log(chalk.dim("No specs found in .arbiter/ directory"));
+        }
+        return 1;
+      }
+      
+      console.log(chalk.dim(`📁 Using spec: ${targetSpec}`));
+    } else {
+      // Auto-discover approach
+      const availableSpecs = discoverSpecs();
+      
+      if (availableSpecs.length === 0) {
+        // Check for legacy arbiter.assembly.cue in current directory
+        const legacyPath = path.resolve("arbiter.assembly.cue");
+        if (fs.existsSync(legacyPath)) {
+          assemblyPath = legacyPath;
+          console.log(chalk.yellow("⚠️  Using legacy arbiter.assembly.cue from current directory"));
+        } else {
+          console.error(chalk.red("❌ No assembly specifications found"));
+          console.log(chalk.dim("Create a spec with: arbiter srf import <proto-spec>.md"));
+          console.log(chalk.dim("Or initialize with: arbiter init"));
+          return 1;
+        }
+      } else if (availableSpecs.length === 1) {
+        // Use the single available spec
+        assemblyPath = availableSpecs[0].path;
+        console.log(chalk.green(`✅ Auto-detected spec: ${availableSpecs[0].name}`));
+      } else {
+        // Multiple specs found - require user to specify
+        console.error(chalk.red("❌ Multiple specs found. Please specify which one to use:"));
+        console.log(chalk.yellow("\n📋 Available specs:"));
+        availableSpecs.forEach(spec => {
+          console.log(chalk.cyan(`  • arbiter generate ${spec.name}`));
+        });
+        return 1;
+      }
     }
 
-    const assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
+    assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
     const assemblyConfig = parseAssemblyFile(assemblyContent);
 
     if (options.verbose) {

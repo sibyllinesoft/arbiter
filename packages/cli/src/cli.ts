@@ -1038,7 +1038,7 @@ program
  * Generate command - Core code generation from EXISTING assembly.cue
  */
 program
-  .command("generate")
+  .command("generate [spec-name]")
   .description("generate project files from existing arbiter.assembly.cue specification")
   .option("--output-dir <dir>", "output directory for generated files", ".")
   .option("--include-ci", "include CI/CD workflow files")
@@ -1050,14 +1050,14 @@ program
     "output format: auto, json, yaml, typescript, python, rust, go, shell",
     "auto",
   )
-  .action(async (options: GenerateOptions, command) => {
+  .action(async (specName: string | undefined, options: GenerateOptions, command) => {
     try {
       const config = command.parent?.config;
       if (!config) {
         throw new Error("Configuration not loaded");
       }
 
-      const exitCode = await generateCommand(options, config);
+      const exitCode = await generateCommand(options, config, specName);
       process.exit(exitCode);
     } catch (error) {
       console.error(

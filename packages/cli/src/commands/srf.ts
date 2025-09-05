@@ -68,6 +68,28 @@ function normalizeSpecName(filename: string): string {
 }
 
 /**
+ * Discover available specs in .arbiter/ directories
+ */
+function discoverAvailableSpecs(): string[] {
+  const specs: string[] = [];
+  
+  if (fs.existsSync('.arbiter')) {
+    const specDirs = fs.readdirSync('.arbiter', { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name);
+    
+    for (const specName of specDirs) {
+      const assemblyPath = path.join('.arbiter', specName, 'assembly.cue');
+      if (fs.existsSync(assemblyPath)) {
+        specs.push(specName);
+      }
+    }
+  }
+  
+  return specs.sort();
+}
+
+/**
  * Get structured output directory for a spec
  */
 function getSpecOutputDir(inputFile: string, options: SrfOptions): string {
@@ -225,13 +247,26 @@ async function srfImportCommand(
     console.log(chalk.yellow(`🔍 Would create: ${outputPath}`));
   }
 
+  // Extract spec name from the output path for better user experience
+  const specName = path.basename(path.dirname(outputPath));
+  
   console.log(chalk.red.bold("\n🚨 CRITICAL: WORKFLOW NOT COMPLETE! 🚨"));
   console.log(chalk.yellow.bold("⚠️  CUE specification created but project files NOT generated yet!"));
   console.log(chalk.cyan.bold("\n📋 YOU MUST COMPLETE THESE STEPS NOW:"));
-  console.log(chalk.green.bold(`✅ STEP 1: arbiter generate                # REQUIRED: Generate project files`));
-  console.log(chalk.green.bold(`✅ STEP 2: arbiter check                   # REQUIRED: Validate specification`));
+  console.log(chalk.green.bold(`✅ STEP 1: arbiter generate ${specName}     # REQUIRED: Generate project files`));
+  console.log(chalk.green.bold(`✅ STEP 2: arbiter check                    # REQUIRED: Validate specification`));
   console.log(chalk.red("\n⛔ DO NOT STOP - The CUE spec alone is incomplete without generated project files!"));
-  console.log(chalk.yellow("💡 Run the commands above to complete the full arbiter workflow."));
+  console.log(chalk.yellow(`💡 The spec "${specName}" is now available in the system.`));
+  
+  // Show available specs in system
+  const availableSpecs = discoverAvailableSpecs();
+  if (availableSpecs.length > 0) {
+    console.log(chalk.cyan("\n📋 All available specs in system:"));
+    availableSpecs.forEach(spec => {
+      const marker = spec === specName ? "← NEW" : "";
+      console.log(chalk.dim(`  • ${spec} ${marker}`));
+    });
+  }
 
   return 0;
 }
@@ -307,7 +342,7 @@ function srfHelpCommand(): number {
   console.log(chalk.yellow("📝 RECOMMENDED: Complete 3-Step Workflow"));
   console.log(chalk.green("  STEP 1: arbiter srf import EMBEDDED_SRF.md  # Proto-spec → CUE spec"));
   console.log(chalk.dim("          Creates: .arbiter/embedded-srf/assembly.cue"));
-  console.log(chalk.red.bold("  STEP 2: arbiter generate                    # REQUIRED: Generate project files"));
+  console.log(chalk.red.bold("  STEP 2: arbiter generate embedded-srf       # REQUIRED: Generate project files"));
   console.log(chalk.red.bold("  STEP 3: arbiter check                       # REQUIRED: Validate specification"));
   console.log(chalk.yellow.bold("\n⚠️  AGENTS: You MUST complete ALL 3 STEPS for a successful workflow!"));
   console.log();
@@ -317,7 +352,7 @@ function srfHelpCommand(): number {
   console.log(chalk.dim("     Creates: .arbiter/embedded-srf/spec.srf"));
   console.log(chalk.dim("  2. arbiter srf import EMBEDDED_SRF.md   # SRF → CUE spec"));
   console.log(chalk.dim("     Creates: .arbiter/embedded-srf/assembly.cue"));
-  console.log(chalk.red.bold("  3. arbiter generate                     # REQUIRED: Generate project"));
+  console.log(chalk.red.bold("  3. arbiter generate embedded-srf        # REQUIRED: Generate project"));
   console.log(chalk.red.bold("  4. arbiter check                        # REQUIRED: Validate specification"));
   console.log();
 
@@ -332,12 +367,13 @@ function srfHelpCommand(): number {
   console.log(chalk.yellow("Examples:"));
   console.log(chalk.green("  arbiter srf import EMBEDDED_SRF.md                 # ✅ STEP 1: Convert to CUE"));
   console.log(chalk.dim("  Output: .arbiter/embedded-srf/assembly.cue"));
-  console.log(chalk.red.bold("  arbiter generate                                   # ⚠️  STEP 2: MUST RUN THIS"));
+  console.log(chalk.red.bold("  arbiter generate embedded-srf                      # ⚠️  STEP 2: MUST RUN THIS"));
   console.log(chalk.red.bold("  arbiter check                                      # ⚠️  STEP 3: MUST RUN THIS"));
   console.log();
   console.log(chalk.green("  arbiter srf import requirements.md --verbose       # With detailed output"));
   console.log(chalk.dim("  Output: .arbiter/requirements/assembly.cue"));
-  console.log(chalk.red.bold("  # REMINDER: Still need 'arbiter generate' and 'arbiter check' after!"));
+  console.log(chalk.red.bold("  arbiter generate requirements                      # ⚠️  MUST RUN THIS"));
+  console.log(chalk.red.bold("  arbiter check                                      # ⚠️  MUST RUN THIS"));
   console.log();
   console.log(chalk.dim("Advanced usage:"));
   console.log(chalk.dim("  arbiter srf create EMBEDDED_SRF.md                 # Multi-step: create SRF"));
