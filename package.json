@@ -10,7 +10,7 @@
     "apps/*"
   ],
   "bin": {
-    "arbiter": "./arbiter-cli.mjs"
+    "arbiter": "./arbiter-cli"
   },
   "scripts": {
     "dev": "bun run --cwd apps/api dev",
@@ -20,11 +20,12 @@
     "build:shared": "bun run --cwd packages/shared build",
     "build:cli": "bun run --cwd packages/cli build",
     "build:api": "bun run --cwd apps/api build",
+    "build:standalone": "bun run build:cli ; bun build packages/cli/dist/cli.js --compile --outfile arbiter-cli",
     "clean": "bun run clean:all",
     "clean:all": "bun run --cwd packages/shared clean && bun run --cwd packages/cli clean && bun run --cwd apps/api clean",
-    "cli": "./arbiter-cli.mjs",
+    "cli": "./arbiter-cli",
     "cli:install": "./install-cli.sh",
-    "cli:test": "./arbiter-cli.mjs --self-test",
+    "cli:test": "./arbiter-cli --self-test",
     "cli:demo": "./demo-cli-usage.sh",
     "cli:validate": "./test-cli-distribution.sh",
     "typecheck": "bunx tsc --build",
