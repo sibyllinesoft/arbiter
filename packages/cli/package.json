@@ -1,0 +1,55 @@
+{
+  "name": "@arbiter/cli",
+  "version": "0.1.0",
+  "description": "Arbiter CLI for CUE validation and management",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "arbiter": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "mkdir -p dist && mkdir -p dist/commands && bun build src/cli.ts --outdir dist --target=node --format=esm --external commander --external chalk --external inquirer --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/index.ts --outdir dist --target=node --format=esm --external commander --external chalk --external inquirer --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/config.ts --outdir dist --target=node --format=esm --external commander --external chalk --external inquirer --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/api-client.ts --outdir dist --target=node --format=esm --external commander --external chalk --external inquirer --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid && bun build src/commands/*.ts --outdir dist/commands --target=node --format=esm --external commander --external chalk --external inquirer --external fs-extra --external yaml --external zod --external glob --external chokidar --external diff --external uuid",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "test:golden": "bun test --grep 'golden'",
+    "test:performance": "bun run src/performance-test.ts",
+    "test:watch": "bun test --watch",
+    "clean": "rm -rf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@arbiter/shared": "workspace:*",
+    "commander": "^12.0.0",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.3",
+    "ora": "^8.0.1",
+    "inquirer": "^9.2.12",
+    "fs-extra": "^11.2.0",
+    "yaml": "^2.3.4",
+    "zod": "^3.22.4",
+    "glob": "^10.3.10",
+    "chokidar": "^3.6.0",
+    "diff": "^5.1.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.11.0",
+    "@types/diff": "^5.0.9",
+    "@types/uuid": "^9.0.0",
+    "bun-types": "^1.2.21",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": [
+    "cli",
+    "cue",
+    "validation",
+    "arbiter"
+  ],
+  "author": "Nathan Rice",
+  "license": "MIT"
+}

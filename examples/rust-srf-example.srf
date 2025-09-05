@@ -1,0 +1,55 @@
+---
+srf_version: "1.1"
+project_name: "test-rust-library"
+languages: ["rust"]
+artifacts:
+  - type: "rust-crate"
+    registry: "crates.io"
+    languages: ["rust"]
+---
+
+# Test Rust Library Project
+
+## Project Metadata
+
+This is a sample Rust library project to test SRF parsing functionality.
+
+## Technical Specifications
+
+- **Primary Language**: Rust
+- **Artifact Type**: Rust crate
+- **Registry**: crates.io
+- **Build System**: Cargo
+
+## Requirements
+
+### Core Library Features
+
+- Implement core data structures
+  - Define primary data types
+  - Implement trait implementations
+  - Add serialization support
+
+- Build comprehensive API
+  - Create public interface functions
+  - Implement error handling
+  - Add documentation examples
+
+### Quality Assurance
+
+- Testing framework
+  - Unit tests for all modules. Milestone: M1
+  - Integration tests for API. Milestone: M1
+  - Benchmark tests for performance. Milestone: M2
+
+- Documentation
+  - API documentation with rustdoc. Deliverable: true
+  - Usage examples and tutorials. Deliverable: true
+  - Contributing guidelines. Milestone: M2
+
+### Distribution and Publishing
+
+- Package preparation
+  - Configure Cargo.toml metadata. Gate: true
+  - Set up CI/CD pipeline. Milestone: M2
+  - Prepare for crates.io publication. Risk: true

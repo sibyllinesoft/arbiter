@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Custom utility classes */
+.font-mono {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* Monaco editor styles */
+.monaco-editor {
+  font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.monaco-editor .current-line {
+  border: none !important;
+}
+
+.monaco-editor .monaco-editor-background {
+  background-color: #fafafa !important;
+}
+
+.monaco-editor .margin {
+  background-color: #f5f5f5 !important;
+}
+
+/* File tree styles */
+.file-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.file-tree-item:hover {
+  background: #f3f4f6;
+}
+
+.file-tree-item.active {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.file-tree-item.unsaved::after {
+  content: '•';
+  color: #f59e0b;
+  font-weight: bold;
+  margin-left: 4px;
+}
+
+/* Tab styles */
+.tab-content {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Diagram container styles */
+.diagram-container {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+  background: white;
+}
+
+.diagram-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+}
+
+.diagram-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #ef4444;
+  padding: 16px;
+}
+
+/* Mermaid diagram styles */
+.mermaid {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid svg {
+  max-width: 100% !important;
+  height: auto !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Graphviz diagram styles */
+.graphviz-container {
+  @apply w-full h-full flex items-center justify-center overflow-auto;
+}
+
+.graphviz-container svg {
+  max-width: 100% !important;
+  height: auto !important;
+  shape-rendering: crispEdges;
+}
+
+/* Coverage meter styles */
+.coverage-meter {
+  @apply relative bg-gray-200 rounded-full h-2 overflow-hidden;
+}
+
+.coverage-meter-fill {
+  @apply h-full bg-green-500 rounded-full transition-all duration-300;
+}
+
+.coverage-meter-fill.warning {
+  @apply bg-yellow-500;
+}
+
+.coverage-meter-fill.danger {
+  @apply bg-red-500;
+}
+
+/* Gap item styles */
+.gap-item {
+  @apply border border-gray-200 rounded-lg p-4 mb-3 hover:bg-gray-50 transition-colors;
+}
+
+.gap-item.resolved {
+  @apply bg-green-50 border-green-200;
+}
+
+.gap-item.high-priority {
+  @apply border-red-200 bg-red-50;
+}
+
+/* Toast notification styles */
+.toast-container {
+  font-size: 14px !important;
+}
+
+/* Loading spinner */
+.spinner {
+  @apply animate-spin rounded-full border-2 border-gray-300 border-t-blue-600;
+}
+
+/* Error boundary styles */
+.error-boundary {
+  @apply flex flex-col items-center justify-center h-full p-8 text-center;
+}
+
+.error-boundary h2 {
+  @apply text-xl font-semibold text-red-600 mb-4;
+}
+
+.error-boundary pre {
+  @apply bg-gray-100 p-4 rounded text-sm text-left max-w-full overflow-auto;
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin,
+  .transition-all,
+  .transition-colors,
+  .coverage-meter-fill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .border-gray-200 {
+    @apply border-gray-900;
+  }
+  
+  .text-gray-500 {
+    @apply text-gray-900;
+  }
+  
+  .bg-gray-100 {
+    @apply bg-gray-200;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .diagram-container {
+    @apply overflow-visible;
+  }
+}

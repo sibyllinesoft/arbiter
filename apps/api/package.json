@@ -1,0 +1,41 @@
+{
+  "name": "@arbiter/api",
+  "version": "0.1.0",
+  "description": "Arbiter API server",
+  "type": "module",
+  "main": "./src/server.ts",
+  "scripts": {
+    "dev": "bun --hot src/server.ts",
+    "start": "bun src/server.ts",
+    "build": "bun build src/server.ts --outdir=dist --target=bun",
+    "typecheck": "tsc --noEmit",
+    "migrate": "bun src/migrations/run.ts",
+    "test": "bun test",
+    "lint": "bunx @biomejs/biome lint src/",
+    "format": "bunx @biomejs/biome format src/ --write",
+    "format:check": "bunx @biomejs/biome format src/",
+    "lint:fix": "bunx @biomejs/biome check src/ --write"
+  },
+  "dependencies": {
+    "@arbiter/shared": "workspace:*",
+    "nats": "^2.28.2",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "bun-types": "^1.2.21",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": [
+    "arbiter",
+    "api",
+    "server",
+    "websocket"
+  ],
+  "author": "Nathan Rice",
+  "license": "MIT"
+}

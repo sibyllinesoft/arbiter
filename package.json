@@ -1,0 +1,75 @@
+{
+  "name": "arbiter",
+  "version": "1.0.0",
+  "description": "CUE-based specification validation and management CLI with agent-first automation and monorepo architecture",
+  "main": "apps/api/src/server.ts",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "bin": {
+    "arbiter": "./arbiter-cli.mjs"
+  },
+  "scripts": {
+    "dev": "bun run --cwd apps/api dev",
+    "start": "bun run --cwd apps/api start",
+    "build": "bun run build:all",
+    "build:all": "bun run build:shared && bun run build:cli && bun run build:api",
+    "build:shared": "bun run --cwd packages/shared build",
+    "build:cli": "bun run --cwd packages/cli build",
+    "build:api": "bun run --cwd apps/api build",
+    "clean": "bun run clean:all",
+    "clean:all": "bun run --cwd packages/shared clean && bun run --cwd packages/cli clean && bun run --cwd apps/api clean",
+    "cli": "./arbiter-cli.mjs",
+    "cli:install": "./install-cli.sh",
+    "cli:test": "./arbiter-cli.mjs --self-test",
+    "cli:demo": "./demo-cli-usage.sh",
+    "cli:validate": "./test-cli-distribution.sh",
+    "typecheck": "bunx tsc --build",
+    "typecheck:watch": "bunx tsc --build --watch",
+    "migrate": "bun run --cwd apps/api migrate",
+    "test": "bun test packages/ apps/ --recursive",
+    "test:unit": "bun test packages/shared/src --recursive --bail",
+    "test:cli": "bun test packages/cli --recursive",
+    "test:api": "bun test apps/api --recursive",
+    "test:watch": "bun test packages/ apps/ --recursive --watch",
+    "lint": "bunx @biomejs/biome lint .",
+    "format": "bunx @biomejs/biome format . --write",
+    "format:check": "bunx @biomejs/biome format .",
+    "check": "bunx @biomejs/biome check . --write",
+    "check:ci": "bunx @biomejs/biome check .",
+    "quality": "bun run format:check && bun run lint && bun run typecheck",
+    "quality:fix": "bun run format && bun run check && bun run typecheck",
+    "validate": "bun run quality && bun run test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/ws": "^8.5.10",
+    "@biomejs/biome": "^1.9.4",
+    "bun-types": "^1.2.21",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "bun": ">=1.0.0"
+  },
+  "keywords": [
+    "arbiter",
+    "cli",
+    "cue",
+    "validation",
+    "schema",
+    "config",
+    "bun",
+    "typescript",
+    "monorepo",
+    "agent-friendly",
+    "automation",
+    "specification",
+    "toolchain",
+    "code-generation"
+  ],
+  "author": "Nathan Rice",
+  "license": "LicenseRef-SPL-1.0"
+}

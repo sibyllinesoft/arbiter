@@ -1,0 +1,7 @@
+Available export formats:
+
+json         JSON format
+yaml         YAML format
+openapi      OpenAPI 3.0 specification
+types        TypeScript type definitions
+k8s          Kubernetes YAML manifests

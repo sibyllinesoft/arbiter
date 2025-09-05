@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # Spec Workbench Backend
+  spec-workbench:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5050:5050"
+    environment:
+      - NODE_ENV=development
+      - PORT=5050
+      - NATS_URL=nats://nats:4222
+      - DATABASE_PATH=/app/data/spec_workbench.db
+    volumes:
+      - ./data:/app/data
+      - ./examples:/app/examples:ro
+    depends_on:
+      - nats
+    networks:
+      - spec-workbench
+
+  # NATS Server for external agent communication
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"    # Client connections
+      - "6222:6222"    # Cluster connections
+      - "8222:8222"    # HTTP monitoring
+    command:
+      - "--cluster_name=spec-workbench"
+      - "--cluster=nats://0.0.0.0:6222"
+      - "--http_port=8222"
+      - "--port=4222"
+      - "--server_name=nats-server"
+    networks:
+      - spec-workbench
+
+  # NATS Monitoring Dashboard (optional)
+  nats-surveyor:
+    image: natsio/nats-surveyor:latest
+    ports:
+      - "7777:7777"
+    command:
+      - "-s"
+      - "http://nats:8222"
+      - "-p"
+      - "7777"
+    depends_on:
+      - nats
+    networks:
+      - spec-workbench
+
+  # Example External Agent
+  example-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      - NATS_URL=nats://nats:4222
+      - AGENT_NAME=ExampleAnalysisAgent
+    depends_on:
+      - nats
+      - spec-workbench
+    networks:
+      - spec-workbench
+    profiles:
+      - agents  # Only start with --profile agents
+
+networks:
+  spec-workbench:
+    driver: bridge
+
+volumes:
+  spec-data:
+    driver: local
