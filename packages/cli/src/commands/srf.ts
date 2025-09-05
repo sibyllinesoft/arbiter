@@ -225,9 +225,13 @@ async function srfImportCommand(
     console.log(chalk.yellow(`🔍 Would create: ${outputPath}`));
   }
 
-  console.log(chalk.cyan("\nNext steps:"));
-  console.log(chalk.dim(`  arbiter generate                    # Generate project files`));
-  console.log(chalk.dim(`  arbiter check                       # Validate specification`));
+  console.log(chalk.red.bold("\n🚨 CRITICAL: WORKFLOW NOT COMPLETE! 🚨"));
+  console.log(chalk.yellow.bold("⚠️  CUE specification created but project files NOT generated yet!"));
+  console.log(chalk.cyan.bold("\n📋 YOU MUST COMPLETE THESE STEPS NOW:"));
+  console.log(chalk.green.bold(`✅ STEP 1: arbiter generate                # REQUIRED: Generate project files`));
+  console.log(chalk.green.bold(`✅ STEP 2: arbiter check                   # REQUIRED: Validate specification`));
+  console.log(chalk.red("\n⛔ DO NOT STOP - The CUE spec alone is incomplete without generated project files!"));
+  console.log(chalk.yellow("💡 Run the commands above to complete the full arbiter workflow."));
 
   return 0;
 }
@@ -300,18 +304,21 @@ function srfHelpCommand(): number {
   console.log("  help             Show this help");
   console.log();
 
-  console.log(chalk.yellow("📝 RECOMMENDED: Direct Conversion"));
-  console.log(chalk.green("  arbiter srf import EMBEDDED_SRF.md      # Proto-spec → CUE spec (ONE STEP)"));
-  console.log(chalk.dim("  Creates: .arbiter/embedded-srf/assembly.cue"));
-  console.log("  arbiter generate                        # Generate project files");
+  console.log(chalk.yellow("📝 RECOMMENDED: Complete 3-Step Workflow"));
+  console.log(chalk.green("  STEP 1: arbiter srf import EMBEDDED_SRF.md  # Proto-spec → CUE spec"));
+  console.log(chalk.dim("          Creates: .arbiter/embedded-srf/assembly.cue"));
+  console.log(chalk.red.bold("  STEP 2: arbiter generate                    # REQUIRED: Generate project files"));
+  console.log(chalk.red.bold("  STEP 3: arbiter check                       # REQUIRED: Validate specification"));
+  console.log(chalk.yellow.bold("\n⚠️  AGENTS: You MUST complete ALL 3 STEPS for a successful workflow!"));
   console.log();
 
-  console.log(chalk.yellow("Alternative: Two-step workflow"));
+  console.log(chalk.yellow("Alternative: Multi-step workflow"));
   console.log(chalk.dim("  1. arbiter srf create EMBEDDED_SRF.md   # Proto-spec → SRF"));
   console.log(chalk.dim("     Creates: .arbiter/embedded-srf/spec.srf"));
   console.log(chalk.dim("  2. arbiter srf import EMBEDDED_SRF.md   # SRF → CUE spec"));
   console.log(chalk.dim("     Creates: .arbiter/embedded-srf/assembly.cue"));
-  console.log(chalk.dim("  3. arbiter generate                     # Generate project"));
+  console.log(chalk.red.bold("  3. arbiter generate                     # REQUIRED: Generate project"));
+  console.log(chalk.red.bold("  4. arbiter check                        # REQUIRED: Validate specification"));
   console.log();
 
   console.log(chalk.yellow("Options:"));
@@ -323,15 +330,20 @@ function srfHelpCommand(): number {
   console.log();
 
   console.log(chalk.yellow("Examples:"));
-  console.log(chalk.green("  arbiter srf import EMBEDDED_SRF.md                 # ✅ RECOMMENDED: Direct conversion"));
+  console.log(chalk.green("  arbiter srf import EMBEDDED_SRF.md                 # ✅ STEP 1: Convert to CUE"));
   console.log(chalk.dim("  Output: .arbiter/embedded-srf/assembly.cue"));
-  console.log(chalk.green("  arbiter srf import requirements.md --verbose       # Direct conversion with details"));
+  console.log(chalk.red.bold("  arbiter generate                                   # ⚠️  STEP 2: MUST RUN THIS"));
+  console.log(chalk.red.bold("  arbiter check                                      # ⚠️  STEP 3: MUST RUN THIS"));
+  console.log();
+  console.log(chalk.green("  arbiter srf import requirements.md --verbose       # With detailed output"));
   console.log(chalk.dim("  Output: .arbiter/requirements/assembly.cue"));
+  console.log(chalk.red.bold("  # REMINDER: Still need 'arbiter generate' and 'arbiter check' after!"));
   console.log();
   console.log(chalk.dim("Advanced usage:"));
-  console.log(chalk.dim("  arbiter srf create EMBEDDED_SRF.md                 # Two-step: create SRF"));
+  console.log(chalk.dim("  arbiter srf create EMBEDDED_SRF.md                 # Multi-step: create SRF"));
   console.log(chalk.dim("  arbiter srf import EMBEDDED_SRF.md                 # Import from original file"));
   console.log(chalk.dim("  arbiter srf validate .arbiter/embedded-srf/spec.srf # Validate SRF structure"));
+  console.log(chalk.red.bold("\n🚨 CRITICAL REMINDER FOR AGENTS: CUE generation is only STEP 1 of 3!"));
 
   return 0;
 }
