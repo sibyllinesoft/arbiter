@@ -3,6 +3,7 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { ApiClient } from "./api-client.js";
+import { addCommand } from "./commands/add.js";
 import { checkCommand } from "./commands/check.js";
 import { createCommand } from "./commands/create.js";
 import { diffCommand } from "./commands/diff.js";
@@ -16,6 +17,7 @@ import { ideCommand } from "./commands/ide.js";
 import { importCommand } from "./commands/import.js";
 import { initCommand, listTemplates } from "./commands/init.js";
 import { integrateCommand } from "./commands/integrate.js";
+import { onboardCommand } from "./commands/onboard.js";
 import { migrateCommand } from "./commands/migrate.js";
 import { previewCommand } from "./commands/preview.js";
 import { renameCommand, showNamingHelp } from "./commands/rename.js";
@@ -30,9 +32,9 @@ import {
   compositionStatusCommand,
 } from "./commands/composition.js";
 import { surfaceCommand } from "./commands/surface.js";
-import { type SurveyOptions, surveyCommand } from "./commands/survey.js";
 import { syncCommand } from "./commands/sync.js";
 import { templateCommand } from "./commands/template.js";
+import { templatesCommand, type TemplatesOptions } from "./commands/templates.js";
 import { testCommand } from "./commands/test.js";
 import { coverCommand, scaffoldCommand } from "./commands/tests.js";
 import { validateCommand } from "./commands/validate.js";
@@ -71,12 +73,7 @@ import type {
   VersionReleaseOptions,
   WatchOptions,
 } from "./types.js";
-import {
-  completeSurvey,
-  errorSurvey,
-  getSkaldIntegration,
-  startSurvey,
-} from "./utils/skald-integration.js";
+import type { AddOptions } from "./commands/add.js";
 
 // Package info
 const packageJson = {
@@ -98,7 +95,6 @@ program
   .option("--no-color", "disable colored output")
   .option("--api-url <url>", "API server URL", "http://localhost:5050")
   .option("--timeout <ms>", "request timeout in milliseconds", "5000")
-  .option("--no-survey", "disable skald survey collection")
   .hook("preAction", async (thisCommand) => {
     // Load configuration before running any command
     const opts = thisCommand.opts();
@@ -110,33 +106,6 @@ program
       if (opts.timeout) config.timeout = parseInt(opts.timeout, 10);
       if (opts.color === false) config.color = false;
 
-      // Initialize skald survey integration (unless disabled)
-      const _skald = getSkaldIntegration();
-      if (opts.survey !== false) {
-        const commandName = thisCommand.name();
-        const args = thisCommand.args;
-        const options = thisCommand.opts();
-
-        // Start survey collection for this command
-        const traceId = startSurvey(`arbiter.${commandName}`, {
-          command: commandName,
-          args: args,
-          options: Object.keys(options).reduce(
-            (acc, key) => {
-              // Only include non-sensitive options
-              if (!key.includes("password") && !key.includes("token") && !key.includes("key")) {
-                acc[key] = options[key];
-              }
-              return acc;
-            },
-            {} as Record<string, unknown>,
-          ),
-        });
-
-        // Store trace ID on command for postAction hook
-        thisCommand.skaldTraceId = traceId;
-      }
-
       // Store config on command for subcommands to access
       thisCommand.config = config;
     } catch (error) {
@@ -146,31 +115,7 @@ program
       );
       process.exit(2);
     }
-  })
-  .hook("postAction", async (thisCommand) => {
-    // Complete skald survey collection after command execution
-    const traceId = thisCommand.skaldTraceId;
-    if (traceId) {
-      try {
-        // Command completed successfully if we reach here
-        completeSurvey(traceId, "Command completed successfully");
-      } catch (error) {
-        // This shouldn't happen during postAction, but handle gracefully
-        errorSurvey(traceId, error instanceof Error ? error : String(error));
-      }
-    }
   });
-
-// Add error handler to capture command failures for skald survey
-const originalExit = process.exit;
-process.exit = ((code?: number) => {
-  // Check if there's an active survey that needs error reporting
-  const currentCommand = program.commands.find((cmd) => (cmd as any).skaldTraceId);
-  if (currentCommand && (currentCommand as any).skaldTraceId && code !== 0) {
-    errorSurvey((currentCommand as any).skaldTraceId, `Command failed with exit code ${code}`);
-  }
-  return originalExit(code);
-}) as typeof process.exit;
 
 /**
  * Init command - Initialize new CUE project
@@ -199,6 +144,364 @@ program
       process.exit(2);
     }
   });
+
+/**
+ * Onboard command - Smart project onboarding for existing codebases
+ */
+program
+  .command("onboard [project-path]")
+  .description("intelligently onboard existing projects to Arbiter")
+  .option("--dry-run", "preview changes without applying them")
+  .option("-f, --force", "force onboarding even if .arbiter directory exists")
+  .option("-v, --verbose", "verbose output with detailed analysis")
+  .option("--skip-analysis", "skip project analysis and use defaults")
+  .option("--non-interactive", "run without prompting for confirmation")
+  .action(
+    async (
+      projectPath,
+      options: {
+        projectPath?: string;
+        dryRun?: boolean;
+        force?: boolean;
+        verbose?: boolean;
+        skipAnalysis?: boolean;
+        nonInteractive?: boolean;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const onboardOptions = {
+          projectPath,
+          dryRun: options.dryRun,
+          force: options.force,
+          verbose: options.verbose,
+          skipAnalysis: options.skipAnalysis,
+          interactive: !options.nonInteractive,
+        };
+
+        const exitCode = await onboardCommand(onboardOptions, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+/**
+ * Add command - Compositional specification builder
+ */
+const addCmd = program
+  .command("add")
+  .description("incrementally build arbiter.assembly.cue through compositional additions");
+
+addCmd
+  .command("service <name>")
+  .description("add a service to the specification")
+  .option("--template <alias>", "use template alias for service generation")
+  .option("--language <lang>", "programming language (typescript, python, rust, go)", "typescript")
+  .option("--port <port>", "service port number", (value) => parseInt(value, 10))
+  .option("--image <image>", "prebuilt container image (for prebuilt services)")
+  .option("--directory <dir>", "source directory path")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      name: string,
+      options: AddOptions & {
+        language?: string;
+        port?: number;
+        image?: string;
+        directory?: string;
+        template?: string;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("service", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("endpoint <path>")
+  .description("add an API endpoint to a service")
+  .option("--service <name>", "target service name", "api")
+  .option("--method <method>", "HTTP method", "GET")
+  .option("--returns <schema>", "response schema reference")
+  .option("--accepts <schema>", "request body schema reference")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      path: string,
+      options: AddOptions & {
+        service?: string;
+        method?: string;
+        returns?: string;
+        accepts?: string;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("endpoint", path, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("route <path>")
+  .description("add a UI route for frontend applications")
+  .option("--id <id>", "route identifier (auto-generated if not specified)")
+  .option("--capabilities <caps>", "comma-separated capabilities (view, edit, admin)")
+  .option("--components <comps>", "comma-separated component names")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      path: string,
+      options: AddOptions & { id?: string; capabilities?: string; components?: string },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("route", path, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("flow <id>")
+  .description("add a user flow for testing and validation")
+  .option("--from <route>", "starting route for navigation flow")
+  .option("--to <route>", "target route for navigation flow")
+  .option("--endpoint <path>", "API endpoint for health check flow")
+  .option("--expect <status>", "expected HTTP status code", "200")
+  .option("--steps <json>", "custom flow steps as JSON array")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      id: string,
+      options: AddOptions & {
+        from?: string;
+        to?: string;
+        endpoint?: string;
+        expect?: string;
+        steps?: string;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("flow", id, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("load-balancer")
+  .description("add a load balancer with health check invariants")
+  .option("--target <service>", "target service to load balance (required)")
+  .option("--health-check <path>", "health check endpoint path", "/health")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(async (options: AddOptions & { target?: string; healthCheck?: string }, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await addCommand("load-balancer", "", options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+addCmd
+  .command("database <name>")
+  .description("add a database with automatic service attachment")
+  .option("--template <alias>", "use template alias for database generation")
+  .option("--attach-to <service>", "service to attach database connection to")
+  .option("--image <image>", "database container image", "postgres:15")
+  .option("--port <port>", "database port", (value) => parseInt(value, 10), 5432)
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      name: string,
+      options: AddOptions & { attachTo?: string; image?: string; port?: number; template?: string },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("database", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("cache <name>")
+  .description("add a cache service with automatic attachment")
+  .option("--attach-to <service>", "service to attach cache connection to")
+  .option("--image <image>", "cache container image", "redis:7-alpine")
+  .option("--port <port>", "cache port", (value) => parseInt(value, 10), 6379)
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      name: string,
+      options: AddOptions & { attachTo?: string; image?: string; port?: number },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("cache", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("locator <key>")
+  .description("add a UI locator for testing")
+  .option("--selector <selector>", "CSS selector or test-id (required)")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(async (key: string, options: AddOptions & { selector?: string }, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await addCommand("locator", key, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+addCmd
+  .command("schema <name>")
+  .description("add a schema for API documentation")
+  .option("--example <json>", "example data as JSON")
+  .option("--rules <json>", "validation rules as JSON")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (name: string, options: AddOptions & { example?: string; rules?: string }, command) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("schema", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
 
 /**
  * Watch command - File watcher with live validation
@@ -505,6 +808,109 @@ templateCmd
   .action(async (templateName: string, options: TemplateOptions, _command) => {
     try {
       const exitCode = await templateCommand("add", templateName, options);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+/**
+ * Templates command - Template alias management
+ */
+const templatesCmd = program
+  .command("templates")
+  .description("manage template aliases for code generation");
+
+templatesCmd
+  .command("list")
+  .description("list available template aliases")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output")
+  .action(async (options: TemplatesOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      const exitCode = await templatesCommand("list", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+templatesCmd
+  .command("show <name>")
+  .description("show details for a template alias")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output")
+  .action(async (name: string, options: TemplatesOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      const exitCode = await templatesCommand("show", name, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+templatesCmd
+  .command("add <name>")
+  .description("add a new template alias")
+  .option("--source <source>", "template source (URL, path, or repo)")
+  .option("--description <description>", "template description")
+  .option("--engine <engine>", "template engine to use", "cookiecutter")
+  .option("--prerequisites <prereqs>", "comma-separated list of prerequisites")
+  .option("-v, --verbose", "verbose output")
+  .action(async (name: string, options: any, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      const exitCode = await templatesCommand("add", name, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+templatesCmd
+  .command("remove <name>")
+  .description("remove a template alias")
+  .option("-v, --verbose", "verbose output")
+  .action(async (name: string, options: TemplatesOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      const exitCode = await templatesCommand("remove", name, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+templatesCmd
+  .command("update")
+  .description("update template configuration")
+  .option("-v, --verbose", "verbose output")
+  .action(async (options: TemplatesOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      const exitCode = await templatesCommand("update", undefined, options, config);
       process.exit(exitCode);
     } catch (error) {
       console.error(
@@ -1277,7 +1683,7 @@ compositionCmd
     } catch (error) {
       console.error(
         chalk.red("Composition init failed:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1296,15 +1702,15 @@ compositionCmd
   .action(async (fragment: string, options: ImportSrfOptions, command) => {
     try {
       if (options.dependencies) {
-        options.dependencies = (options.dependencies as string).split(",").map(d => d.trim());
+        options.dependencies = (options.dependencies as string).split(",").map((d) => d.trim());
       }
-      
+
       const exitCode = await compositionImportCommand(fragment, options);
       process.exit(exitCode);
     } catch (error) {
       console.error(
         chalk.red("Fragment import failed:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1322,15 +1728,15 @@ compositionCmd
   .action(async (options: ValidateCompositionOptions, command) => {
     try {
       if (options.fragments) {
-        options.fragments = (options.fragments as string).split(",").map(f => f.trim());
+        options.fragments = (options.fragments as string).split(",").map((f) => f.trim());
       }
-      
+
       const exitCode = await compositionValidateCommand(options);
       process.exit(exitCode);
     } catch (error) {
       console.error(
         chalk.red("Composition validation failed:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1348,7 +1754,7 @@ compositionCmd
     } catch (error) {
       console.error(
         chalk.red("Composed specification generation failed:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1370,7 +1776,7 @@ compositionCmd
     } catch (error) {
       console.error(
         chalk.red("Project recovery failed:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1388,7 +1794,7 @@ compositionCmd
     } catch (error) {
       console.error(
         chalk.red("Failed to list fragments:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1406,7 +1812,7 @@ compositionCmd
     } catch (error) {
       console.error(
         chalk.red("Failed to get composition status:"),
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
@@ -1535,43 +1941,6 @@ program
   });
 
 /**
- * Survey command - Skald survey data management
- */
-program
-  .command("survey [subcommand]")
-  .description("manage and view skald survey data")
-  .option("--limit <n>", "limit results", "50")
-  .option("--format <type>", "output format: table, json, text", "table")
-  .option("-v, --verbose", "verbose output")
-  .option("--days <n>", "filter by number of days")
-  .action(async (subcommand: string | undefined, options: SurveyOptions, command) => {
-    try {
-      const config = await loadConfig();
-
-      // Set the subcommand from the first argument if not provided in options
-      const surveyOptions: SurveyOptions = {
-        ...options,
-        command: (subcommand as SurveyOptions["command"]) || "report",
-      };
-
-      const exitCode = await surveyCommand(surveyOptions, config);
-      if (exitCode !== 0) {
-        process.exit(exitCode);
-      }
-    } catch (error) {
-      const traceId = (command as any).skaldTraceId;
-      if (traceId) {
-        await errorSurvey(traceId, "survey_command", error);
-      }
-      console.error(
-        chalk.red("❌ Survey command failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-/**
  * Error handling for unknown commands
  */
 program.on("command:*", () => {
@@ -1586,15 +1955,22 @@ program.on("command:*", () => {
 program.configureHelp({
   afterAll: () => {
     return `
-${chalk.cyan("Two Main Workflows:")}
+${chalk.cyan("Three Main Workflows:")}
 
-  ${chalk.yellow("1. CONVERT EXISTING PROTO-SPECS → CUE (SRF Workflow):")}
+  ${chalk.yellow("1. BUILD SPECIFICATIONS INCREMENTALLY (NEW - Compositional):")}
+    ${chalk.dim("Build your arbiter.assembly.cue step-by-step with validation")}
+    arbiter add service api --language typescript    # Start with a service
+    arbiter add endpoint /health --service api       # Add endpoints
+    arbiter add database userdb --attach-to api      # Add dependencies
+    arbiter generate                                  # Generate project files
+
+  ${chalk.yellow("2. CONVERT EXISTING PROTO-SPECS → CUE (SRF Workflow):")}
     ${chalk.dim("For EMBEDDED_SRF.md, requirements.md, or other proto-spec files")}
     arbiter srf create EMBEDDED_SRF.md              # Proto-spec → SRF format
     arbiter srf import EMBEDDED_SRF.srf              # SRF → CUE specification  
     arbiter generate                                 # Generate project files
     
-  ${chalk.yellow("2. GENERATE FROM EXISTING CUE SPECIFICATIONS:")}
+  ${chalk.yellow("3. GENERATE FROM EXISTING CUE SPECIFICATIONS:")}
     ${chalk.dim("When you already have arbiter.assembly.cue")}
     arbiter generate                                 # Generate project from CUE
     arbiter generate --include-ci --force           # Include CI/CD files
@@ -1609,6 +1985,25 @@ ${chalk.cyan("Examples:")}
     
   ${chalk.dim("Initialize new project:")}
     arbiter init my-project --template kubernetes
+    
+  ${chalk.dim("Onboard existing project (NEW - Smart Migration):")}
+    arbiter onboard /path/to/existing/project       # Intelligently analyze and migrate existing project
+    arbiter onboard . --dry-run                     # Preview onboarding changes without applying
+    arbiter onboard ~/myapp --force                 # Force onboarding even if .arbiter exists
+    
+  ${chalk.dim("Build specifications compositionally (NEW - Incremental Approach):")}
+    arbiter add service api --language typescript --port 3000      # Add a TypeScript service
+    arbiter add service db --image postgres:15 --port 5432        # Add a database service  
+    arbiter add endpoint /health --service api --method GET       # Add health endpoint
+    arbiter add endpoint /users --service api --method POST       # Add users endpoint
+    arbiter add route /dashboard --capabilities view,edit         # Add UI route
+    arbiter add flow health-check --endpoint /health              # Add health check flow
+    arbiter add flow navigation --from /home --to /dashboard      # Add navigation flow
+    arbiter add load-balancer --target api                        # Add load balancer
+    arbiter add database userdb --attach-to api                   # Add database with connection
+    arbiter add cache redis --attach-to api --port 6379          # Add cache with connection
+    arbiter add locator login-btn --selector "[data-testid=login]" # Add UI test locator
+    arbiter add schema User --example '{"id":1,"name":"John"}'     # Add API schema
     
   ${chalk.dim("Watch and validate files:")}
     arbiter watch
@@ -1741,7 +2136,8 @@ ${chalk.cyan("Configuration:")}
 });
 
 // Parse arguments and run
-if (import.meta.url === `file://${process.argv[1]}`) {
+import { fileURLToPath } from "url";
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   program.parse();
 }
 
