@@ -1,486 +1,291 @@
 # Arbiter
 
-_CUE-based specification validation and management CLI with agent-first automation_
+A CUE-based specification validation and management CLI with agent-first automation and comprehensive app modeling.
 
-Arbiter is a powerful CLI toolkit for CUE (Configure, Unify, Execute) specification management, validation, and code generation. Built with agent-first design principles, it provides comprehensive CUE tooling for developers and AI agents with JSON output support, structured error handling, and automation-friendly interfaces.
+## Overview
 
-## ✨ Features
+Arbiter is a powerful tool for specifying, validating, and generating applications from declarative CUE specifications. It supports both infrastructure-focused (v1) and app-centric (v2) development approaches.
 
-### 🤖 Agent-First Design
-- **JSON output support** for all commands
-- **Structured error codes** for automation workflows
-- **Predictable exit codes** for CI/CD integration
-- **Self-contained executable** with minimal dependencies
+### Key Features
 
-### 🛠️ Comprehensive CUE Tooling
-- **Validation and checking** with detailed error reporting
-- **Multi-format export** to JSON, YAML, OpenAPI, Kubernetes, and more
-- **Template management** with project scaffolding
-- **Schema generation** and code generation capabilities
+- **Dual Schema Support**: Both v1 (infrastructure-focused) and v2 (app-centric) specifications
+- **Code Generation**: Generate TypeScript, Python, Rust, Go, and Shell projects
+- **Flow-Based Testing**: Automated test generation from user flows and locators
+- **API Specification**: OpenAPI generation from component schemas and paths
+- **UI Component Generation**: React components from route specifications
+- **Migration Tools**: Seamless migration from v1 to v2 format
 
-### 📊 Project Management
-- **File watching** with real-time validation feedback  
-- **Dependency analysis** and project structure insights
-- **Test generation** from CUE invariants and specifications
-- **Version management** with semantic versioning support
+## Schema Formats
 
-### 🏗️ Monorepo Architecture
-- **Modular design** with shared packages and isolated applications
-- **TypeScript throughout** with strict type safety
-- **Bun-powered performance** for fast execution
-- **Docker containerization** for consistent deployment
+### V2 App Specification (Recommended)
 
-## 🏗️ Architecture
+The v2 format is app-centric and designed for comprehensive application modeling:
 
-```
-┌─────────────────┐                 ┌─────────────────┐
-│  Arbiter CLI    │ ────────────→   │ CUE Validation  │
-│                 │                 │ API Server      │
-│ • File watching │                 │                 │
-│ • Validation    │                 │ • CUE Engine    │
-│ • Export tools  │                 │ • Schema mgmt   │
-│ • Templates     │                 │ • Code gen      │
-└─────────────────┘                 └─────────────────┘
-```
+```cue
+// Complete application specification
+product: {
+  name: "Invoice Manager"
+  goals: ["Streamline invoice creation", "Automate payment tracking"]
+  roles: ["admin", "accountant", "manager"]
+  slos: { p95_page_load_ms: 2000, uptime: "99.9%" }
+}
 
-**Monorepo Structure:**
-- **apps/api/**: TypeScript API server with CUE validation engine
-- **packages/shared/**: Common types, utilities, and configurations
-- **packages/cli/**: CLI command implementations and tooling
-- Bun for runtime performance and package management
-- Docker for containerized development and deployment
+// UI routes and capabilities
+ui: routes: [
+  {
+    id: "invoices:list"
+    path: "/invoices" 
+    capabilities: ["list", "create", "search", "filter"]
+    components: ["InvoiceTable", "CreateButton", "SearchBar"]
+  },
+  {
+    id: "invoices:detail"
+    path: "/invoices/:id"
+    capabilities: ["view", "edit", "delete", "send"]
+    components: ["InvoiceForm", "StatusBadge", "ActionButtons"]
+  }
+]
 
-## 🚀 Quick Start
+// Stable test locators
+locators: {
+  "btn:createInvoice": '[data-testid="create-invoice"]'
+  "field:customerName": '[data-testid="customer-name"]'
+  "table:invoicesList": '[data-testid="invoices-table"]'
+}
 
-### Prerequisites
-- [Bun](https://bun.sh/) v1.0.0 or later
-- Docker (optional, for containerized development)
+// User flows for testing
+flows: [
+  {
+    id: "invoice_creation"
+    preconditions: { role: "accountant" }
+    steps: [
+      { visit: "invoices:list" },
+      { click: "btn:createInvoice" },
+      { fill: { locator: "field:customerName", value: "Acme Corp" } },
+      { expect: { locator: "btn:saveInvoice", state: "enabled" } }
+    ]
+  }
+]
 
-### CLI Installation & Setup
+// Component schemas (OpenAPI-like)
+components: schemas: {
+  Invoice: {
+    example: {
+      id: "INV-001"
+      customer: "Acme Corp"
+      total: 1500.00
+      status: "draft"
+    }
+    rules: { total: ">= 0", status: "must be valid enum" }
+  }
+}
 
-1. **Clone and setup dependencies:**
-   ```bash
-   git clone <repository-url>
-   cd arbiter
-   bun install
-   ```
-
-2. **Build the monorepo:**
-   ```bash
-   bun run build:all
-   ```
-
-3. **Start the API server (optional, for advanced features):**
-   ```bash
-   bun dev
-   # Server starts at http://localhost:5050
-   ```
-
-4. **Use the CLI:**
-   ```bash
-   # Make CLI executable
-   chmod +x arbiter-cli.mjs
-   
-   # Check installation
-   ./arbiter-cli.mjs --help
-   
-   # Check server connectivity (with auto-discovery)
-   ./arbiter-cli.mjs check
-   
-   # Validate CUE files
-   ./arbiter-cli.mjs validate examples/basic.cue
-   
-   # Check API health
-   ./arbiter-cli.mjs health
-   ```
-
-### Global Installation
-
-```bash
-# Install globally for system-wide access
-./install-cli.sh
-
-# After installation, use from anywhere:
-arbiter --help
-arbiter check
-```
-
-## 🖥️ Arbiter CLI
-
-Arbiter includes a powerful command-line interface that provides access to all CUE validation, schema management, and code generation capabilities. The CLI is designed to be agent-friendly and easily distributable for external use.
-
-### CLI Installation
-
-#### Option 1: Direct Usage (Recommended for Development)
-```bash
-# From the project root
-./arbiter-cli.mjs --help
-```
-
-#### Option 2: Global Installation
-```bash
-# Install globally for system-wide access
-./install-cli.sh
-
-# After installation, use from anywhere:
-arbiter --help
-```
-
-#### Option 3: npm/Package Manager Installation
-```bash
-# Local installation in a project
-npm install arbiter
-
-# Use with npx
-npx arbiter --help
-
-# Or add to package.json scripts:
-# "scripts": { "validate": "arbiter check" }
-```
-
-### CLI Quick Start
-
-```bash
-# Check CLI installation and dependencies
-arbiter-cli.mjs --deps-check --verbose
-
-# Initialize a new CUE project
-arbiter-cli.mjs init my-project --template basic
-
-# Validate CUE files
-arbiter-cli.mjs check
-
-# Watch files for changes with live validation
-arbiter-cli.mjs watch
-
-# Generate API surface documentation
-arbiter-cli.mjs surface typescript --output api.json
-
-# Export configurations to various formats
-arbiter-cli.mjs export *.cue --format json,yaml,openapi
-
-# Check server health
-arbiter-cli.mjs health
-```
-
-### Key CLI Commands
-
-| Command | Description | Example |
-|---------|-------------|---------|
-| `init` | Initialize new CUE project with templates | `arbiter init my-app --template kubernetes` |
-| `check` | Validate CUE files with detailed reporting | `arbiter check --format json --verbose` |
-| `watch` | Real-time file watching with validation | `arbiter watch --agent-mode --debounce 250` |
-| `surface` | Extract API surfaces from code | `arbiter surface typescript --diff --include-private` |
-| `export` | Export to multiple formats | `arbiter export . --format openapi,types,k8s` |
-| `validate` | Explicit schema validation | `arbiter validate schema.cue data.cue --strict` |
-| `version` | Semver-aware version management | `arbiter version plan --strict --verbose` |
-| `tests` | Generate and run tests from invariants | `arbiter tests scaffold --language typescript` |
-| `generate` | Generate code from specifications | `arbiter generate --output-dir ./generated` |
-| `health` | Comprehensive server health check | `arbiter health --verbose --timeout 5000` |
-
-### CLI for Agents and Automation
-
-The Arbiter CLI is specifically designed to work seamlessly with AI agents and automation tools:
-
-**Agent-Friendly Features:**
-- **Structured Output**: JSON format support for all commands
-- **Exit Codes**: Predictable exit codes for automation workflows  
-- **Dependency Checking**: Built-in dependency validation with suggestions
-- **Self-Contained**: Minimal external dependencies required
-- **Error Recovery**: Comprehensive error messages with actionable suggestions
-
-**Automation Examples:**
-```bash
-# CI/CD Pipeline Integration
-arbiter check --format json > validation-report.json
-arbiter tests run --junit test-results.xml
-arbiter version plan --output version-plan.json
-
-# Agent Workflow Integration
-arbiter watch --agent-mode | jq '.type == "validation_error"'
-arbiter surface typescript --diff --format json | jq '.breaking_changes[]'
-
-# Batch Processing
-find . -name "*.cue" -exec arbiter validate {} \;
-arbiter export **/*.cue --format openapi --output ./docs/api/
-```
-
-### CLI Configuration
-
-Create `.arbiter.json` in your project root:
-
-```json
-{
-  "apiUrl": "http://localhost:5050",
-  "timeout": 750,
-  "format": "table",
-  "color": true,
-  "projectDir": "."
+// API paths
+paths: {
+  "/api/invoices": {
+    get: { response: { $ref: "#/components/schemas/Invoice", example: [...] } }
+    post: { 
+      request: { $ref: "#/components/schemas/Invoice" }
+      response: { $ref: "#/components/schemas/Invoice" }
+    }
+  }
 }
 ```
 
-**Supported Formats:**
-- JSON: `.arbiter.json`
-- YAML: `.arbiter.yaml` or `.arbiter.yml`
-- Auto-discovery up the directory tree
+### V1 Assembly Specification (Legacy)
 
-### Advanced CLI Usage
+The v1 format focuses on infrastructure and deployment:
 
-**Template Management:**
-```bash
-# List available templates
-arbiter template list
-
-# Add custom template to project
-arbiter template add budget_constraint --output my-budget.cue
-
-# Show template details
-arbiter template show selection_rubric
+```cue
+// Infrastructure-focused specification  
+arbiterSpec: {
+  config: { 
+    language: "typescript"
+    kind: "service"
+    buildTool: "bun"
+  }
+  
+  metadata: {
+    name: "billing-service"
+    version: "1.0.0"
+    description: "Invoice management service"
+  }
+  
+  services: {
+    api: {
+      serviceType: "bespoke"
+      language: "typescript" 
+      ports: [{ name: "http", port: 3000 }]
+      env: { DATABASE_URL: "postgres://..." }
+    }
+    
+    database: {
+      serviceType: "prebuilt"
+      image: "postgres:15"
+      ports: [{ name: "pg", port: 5432 }]
+    }
+  }
+  
+  deployment: {
+    target: "kubernetes"
+    cluster: { name: "prod", namespace: "billing" }
+  }
+}
 ```
 
-**Epic Execution (Agent-First Code Generation):**
+## Getting Started
+
+### Installation
+
 ```bash
-# Execute development epics with deterministic output
-arbiter execute epics/new-service.json --dry-run
-arbiter execute epics/config-refactor.json --verbose
+npm install -g @arbiter/cli
+# or
+bun install -g @arbiter/cli
 ```
 
-**Testing Revolution:**
+### Quick Start
+
+1. **Create a new v2 app specification:**
+
 ```bash
-# Generate tests from CUE invariants
-arbiter tests scaffold --language typescript --verbose
-arbiter tests scaffold --language python --output tests/
-
-# Analyze contract coverage
-arbiter tests cover --threshold 0.9 --junit coverage.xml
-
-# Run unified test harness
-arbiter tests run --epic epics/service.json --types static,golden
+arbiter init my-app --format=v2
 ```
 
-**IDE and Ecosystem Integration:**
+2. **Generate application code:**
+
 ```bash
-# Generate IDE configurations
-arbiter ide recommend --editor vscode --force
-
-# Synchronize project manifests
-arbiter sync --language typescript --dry-run
-
-# Generate CI/CD workflows
-arbiter integrate --provider github --matrix
+arbiter generate
 ```
 
-### Troubleshooting CLI
+3. **Run tests generated from flows:**
 
-**Common Issues:**
-
-1. **Missing Dependencies**
-   ```bash
-   # Check dependencies and get suggestions
-   arbiter-cli.mjs --deps-check --verbose
-   
-   # Install missing dependencies
-   bun install  # or npm install
-   ```
-
-2. **CLI Not Built**
-   ```bash
-   # Build the CLI
-   bun run build:cli
-   
-   # Or build everything
-   bun run build
-   ```
-
-3. **Server Connection Issues**
-   ```bash
-   # Check connectivity with auto-discovery
-   arbiter check --detailed
-   
-   # Test server health
-   arbiter health
-   
-   # Manually specify server port
-   arbiter config set apiUrl http://localhost:5050
-   ```
-
-   **Port Configuration Guide:**
-   - **Development**: Server runs on port `5050` (`bun run dev`)
-   - **Docker**: Server runs on port `5050` (`docker-compose up`)
-   - **CLI Auto-discovery**: Tries ports `[5050, 3000, 4000, 8080]`
-   
-   If connection fails:
-   1. Verify server is running: `curl http://localhost:5050/health`
-   2. Check logs: `bun run dev` or `docker-compose logs`
-   3. Try discovery: `arbiter check --detailed`
-   
-   # Start the server if needed
-   bun dev
-   ```
-
-4. **Permission Issues**
-   ```bash
-   # Make CLI executable
-   chmod +x arbiter-cli.mjs
-   
-   # Check installation permissions
-   ls -la ~/.local/bin/arbiter
-   ```
-
-**Getting Help:**
 ```bash
-# General help
-arbiter-cli.mjs --help
-
-# Command-specific help
-arbiter-cli.mjs <command> --help
-
-# CLI diagnostics
-arbiter-cli.mjs --info
-arbiter-cli.mjs --self-test
+npm test  # Runs Playwright tests generated from flows
 ```
 
-## 📖 Usage
+### Migration from v1 to v2
 
-### Basic CUE Validation
+If you have existing v1 specifications:
 
 ```bash
-# Validate CUE files in current directory
-./arbiter-cli.mjs check
+# Preview migration (dry run)
+arbiter migrate --dry-run
 
-# Validate specific files
-./arbiter-cli.mjs check schema.cue config.cue
+# Migrate with backup
+arbiter migrate --backup
 
-# Get JSON output for automation
-./arbiter-cli.mjs check --format json
+# Generate v2 artifacts  
+arbiter generate
 ```
 
-### Project Scaffolding
+## Commands
+
+### Core Commands
+
+- **`arbiter generate`** - Generate application code from specifications
+- **`arbiter validate`** - Validate CUE specifications
+- **`arbiter migrate`** - Migrate v1 specifications to v2 format
+- **`arbiter export`** - Export to various formats (OpenAPI, Terraform, etc.)
+
+### Examples
 
 ```bash
-# Initialize a new CUE project
-./arbiter-cli.mjs init my-project --template basic
+# Generate with CI workflows
+arbiter generate --include-ci
 
-# List available templates
-./arbiter-cli.mjs template list
+# Dry run to preview generated files
+arbiter generate --dry-run
 
-# Generate from templates
-./arbiter-cli.mjs generate --template kubernetes
+# Export OpenAPI specification
+arbiter export --format=openapi
+
+# Validate specification
+arbiter validate assembly.cue
 ```
 
-### Export and Transformation
+## Generated Artifacts
+
+### V2 App Generation
+
+From v2 specifications, Arbiter generates:
+
+- **React Components** from UI routes
+- **Playwright Tests** from flow specifications  
+- **OpenAPI Specs** from component schemas and paths
+- **Locator Definitions** for stable UI testing
+- **TypeScript Types** from component schemas
+- **Project Structure** with modern tooling (Vite, Vitest, etc.)
+
+### V1 Infrastructure Generation
+
+From v1 specifications, Arbiter generates:
+
+- **Language-specific projects** (TypeScript, Python, Rust, Go, Shell)
+- **Docker Compose** configurations for local development
+- **Kubernetes/Terraform** configurations for deployment
+- **CI/CD workflows** (GitHub Actions)
+- **Test suites** with intelligent composition
+
+## Examples
+
+See the `examples/` directory for:
+
+- **`app-spec-v2-example.cue`** - Comprehensive v2 app specification
+- **`basic.cue`** - Simple v1 assembly example  
+- **`kubernetes.cue`** - Advanced Kubernetes deployment
+- **`api-schema.cue`** - API-focused specification
+
+## Development
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org) v20+
+- [Bun](https://bun.sh) v1.0+
+- [CUE](https://cuelang.org) for specification validation
+
+### Building
 
 ```bash
-# Export to multiple formats
-./arbiter-cli.mjs export config.cue --format json,yaml,openapi
-
-# Extract API surface from TypeScript
-./arbiter-cli.mjs surface typescript --output api.json
-
-# Watch files with real-time validation
-./arbiter-cli.mjs watch --debounce 250
+bun install
+bun run build
 ```
 
-## 🧪 Development
-
-### Running Tests
+### Testing
 
 ```bash
-# Shared package tests
 bun test
-
-# CLI functionality tests  
-./arbiter-cli.mjs --self-test
-
-# Manual validation
-./test-cli-distribution.sh
 ```
 
-### Building for Production
-
-```bash
-# Build all packages
-bun run build:all
-
-# Build individual components
-bun run build:shared
-bun run build:api
-
-# Build Docker image
-docker build -t arbiter .
-```
-
-### Code Quality
-
-```bash
-# Type checking across monorepo
-bun run typecheck
-
-# Linting with Biome
-bun run lint
-
-# Auto-formatting
-bun run format
-bun run lint:fix
-
-# Quality gate (with warnings acceptable)
-bun run quality
-```
-
-## 📁 Project Structure
-
-```
-arbiter/                           # Root workspace
-├── package.json                   # Workspace configuration  
-├── tsconfig.json                 # Root TypeScript config
-├── biome.json                    # Code formatting/linting
-├── arbiter-cli.mjs               # ✅ Working CLI wrapper
-├── arbiter-cli.cjs               # ✅ Stable CLI backend
-│
-├── apps/
-│   ├── api/                      # ✅ API application
-│   │   ├── package.json          # API-specific dependencies
-│   │   ├── tsconfig.json         # API TypeScript config  
-│   │   ├── src/                  # ✅ TypeScript source
-│   │   └── dist/                 # ✅ Built output
-│   └── web/                      # Future frontend (prepared)
-│
-├── packages/
-│   ├── shared/                   # ✅ Shared utilities
-│   │   ├── package.json          # Shared package config
-│   │   ├── tsconfig.json         # Shared TypeScript config
-│   │   ├── src/                  # ✅ Shared types & utils
-│   │   └── dist/                 # ✅ Built output
-│   └── cli/                      # CLI package (TypeScript source)
-│       ├── package.json          # CLI-specific dependencies
-│       ├── tsconfig.json         # CLI TypeScript config
-│       └── src/                  # CLI command implementations
-│
-├── spec/                         # Example CUE specifications
-├── doc/                         # CUE language documentation  
-├── examples/                    # Usage examples
-└── scripts/                     # Build and deployment scripts
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Workflow
+### Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
+2. Create a feature branch
 3. Make your changes with tests
-4. Ensure all tests pass: `bun test && cd frontend && npm test`
-5. Submit a pull request
+4. Submit a pull request
 
-## 📄 License
+## Architecture
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Arbiter follows a modular architecture:
 
-## 🙏 Acknowledgments
+- **Schema Detection** - Automatically detects v1 vs v2 format
+- **Dual Generators** - Separate generation pipelines for each format
+- **Migration Engine** - Converts v1 specifications to v2
+- **Template System** - Extensible code generation templates
+- **Validation Pipeline** - CUE-based specification validation
 
-- Built on the powerful [CUE language](https://cuelang.org/)
-- Inspired by collaborative editing tools like Figma and Notion  
-- Thanks to the CUE community for excellent documentation and examples
+## License
 
+MIT License - see `LICENSE` file for details.
+
+## Links
+
+- [Documentation](./docs/)
+- [Examples](./examples/)
+- [Contributing Guide](./CONTRIBUTING.md)
+- [Changelog](./CHANGELOG.md)
+
+To regenerate or modify the structure:
+
+```bash
+arbiter generate
+```

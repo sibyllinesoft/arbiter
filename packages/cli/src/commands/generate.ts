@@ -6,10 +6,13 @@
  * arbiter.assembly.cue specification.
  */
 
-import fs from "node:fs";
+import fs from "fs-extra";
 import path from "node:path";
+import { spawn } from "node:child_process";
+import { promisify } from "node:util";
 import chalk from "chalk";
 import type { Config } from "../config.js";
+import type { ServiceConfig, DeploymentConfig, AssemblyConfig, DeploymentTarget, TestSuite, TestCase, TestCompositionResult, EnhancedGenerateOptions, AppSpec, ConfigWithVersion, SchemaVersion } from "@arbiter/shared";
 
 export interface GenerateOptions {
   output?: string;
@@ -20,6 +23,45 @@ export interface GenerateOptions {
   verbose?: boolean;
   format?: "auto" | "json" | "yaml" | "typescript" | "python" | "rust" | "go" | "shell";
   spec?: string; // New: specify which spec to use
+}
+
+// Simple command execution for CUE evaluation
+async function executeCommand(
+  command: string,
+  args: string[],
+  options: { cwd?: string; timeout?: number } = {}
+): Promise<{ success: boolean; stdout: string; stderr: string }> {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      cwd: options.cwd || process.cwd(),
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout?.on('data', (data) => stdout += data.toString());
+    proc.stderr?.on('data', (data) => stderr += data.toString());
+
+    const timeout = setTimeout(() => {
+      proc.kill();
+      resolve({ success: false, stdout, stderr: 'Command timed out' });
+    }, options.timeout || 10000);
+
+    proc.on('close', (code) => {
+      clearTimeout(timeout);
+      resolve({
+        success: code === 0,
+        stdout: stdout.trim(),
+        stderr: stderr.trim()
+      });
+    });
+
+    proc.on('error', (error) => {
+      clearTimeout(timeout);
+      resolve({ success: false, stdout, stderr: error.message });
+    });
+  });
 }
 
 /**
@@ -110,11 +152,12 @@ export async function generateCommand(options: GenerateOptions, _config: Config,
     }
 
     assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
-    const assemblyConfig = parseAssemblyFile(assemblyContent);
+    const configWithVersion = await parseAssemblyFile(assemblyPath);
 
     if (options.verbose) {
       console.log(chalk.dim("Assembly configuration:"));
-      console.log(chalk.dim(JSON.stringify(assemblyConfig, null, 2)));
+      console.log(chalk.dim(`Schema version: ${configWithVersion.schema.version} (detected from: ${configWithVersion.schema.detected_from})`));
+      console.log(chalk.dim(JSON.stringify(configWithVersion, null, 2)));
     }
 
     // Determine output directory
@@ -126,25 +169,18 @@ export async function generateCommand(options: GenerateOptions, _config: Config,
 
     const results = [];
 
-    // Generate language-specific files
-    if (assemblyConfig.language) {
-      const langResult = await generateLanguageFiles(assemblyConfig, outputDir, options);
-      results.push(...langResult);
+    // Route to appropriate generator based on schema version
+    if (configWithVersion.schema.version === "v2" && configWithVersion.v2) {
+      console.log(chalk.blue("📱 Generating v2 app-centric artifacts..."));
+      const v2Results = await generateV2AppArtifacts(configWithVersion.v2, outputDir, options);
+      results.push(...v2Results);
+    } else if (configWithVersion.schema.version === "v1" && configWithVersion.v1) {
+      console.log(chalk.blue("🏗️  Generating v1 infrastructure-centric artifacts..."));
+      const v1Results = await generateV1InfrastructureArtifacts(configWithVersion.v1, outputDir, options);
+      results.push(...v1Results);
+    } else {
+      throw new Error("Invalid configuration: missing schema data");
     }
-
-    // Generate CI workflows if requested
-    if (options.includeCi) {
-      const ciResult = await generateCIWorkflows(assemblyConfig, outputDir, options);
-      results.push(...ciResult);
-    }
-
-    // Generate project structure
-    const structResult = await generateProjectStructure(assemblyConfig, outputDir, options);
-    results.push(...structResult);
-
-    // Generate documentation
-    const docsResult = await generateDocumentation(assemblyConfig, outputDir, options);
-    results.push(...docsResult);
 
     // Report results
     if (options.dryRun) {
@@ -166,48 +202,623 @@ export async function generateCommand(options: GenerateOptions, _config: Config,
 }
 
 /**
- * Parse assembly.cue file and extract configuration
+ * Parse assembly.cue file and extract configuration with schema version detection
  */
-function parseAssemblyFile(content: string): any {
-  // Basic CUE parsing - extract key information
-  const config: any = {
-    kind: "library",
-    language: "typescript",
-    name: "unknown",
-    version: "1.0.0",
+async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersion> {
+  try {
+    // Use CUE to evaluate and export as JSON
+    const result = await executeCommand("cue", ["eval", "--out", "json", assemblyPath], {
+      timeout: 10000
+    });
+
+    if (!result.success) {
+      console.error("CUE evaluation failed:", result.stderr);
+      return fallbackParseAssembly(assemblyPath);
+    }
+
+    const cueData = JSON.parse(result.stdout);
+    
+    // Detect schema version based on structure
+    const schemaVersion = detectSchemaVersion(cueData);
+    
+    if (schemaVersion.version === "v2") {
+      return parseV2Schema(cueData, schemaVersion);
+    } else {
+      return parseV1Schema(cueData, schemaVersion);
+    }
+  } catch (error) {
+    console.error("Error parsing CUE file:", error);
+    return fallbackParseAssembly(assemblyPath);
+  }
+}
+
+/**
+ * Detect schema version based on CUE data structure
+ */
+function detectSchemaVersion(cueData: any): SchemaVersion {
+  // V2 schema indicators
+  if (cueData.product || cueData.ui || cueData.locators || cueData.flows) {
+    return {
+      version: "v2",
+      detected_from: "structure"
+    };
+  }
+  
+  // V1 schema indicators
+  if (cueData.config || cueData.metadata || cueData.services || cueData.deployment) {
+    return {
+      version: "v1", 
+      detected_from: "structure"
+    };
+  }
+  
+  // Default to v1 for backward compatibility
+  return {
+    version: "v1",
+    detected_from: "default"
+  };
+}
+
+/**
+ * Parse V2 App Specification schema
+ */
+function parseV2Schema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
+  const appSpec: AppSpec = {
+    product: cueData.product || {
+      name: "Unknown App"
+    },
+    ui: cueData.ui || {
+      routes: []
+    },
+    locators: cueData.locators || {},
+    flows: cueData.flows || [],
+    domain: cueData.domain,
+    components: cueData.components,
+    paths: cueData.paths,
+    testability: cueData.testability,
+    ops: cueData.ops,
+    stateModels: cueData.stateModels
   };
 
-  // Extract language
-  const langMatch = content.match(/language:\s*"([^"]+)"/);
-  if (langMatch) {
-    config.language = langMatch[1];
+  return {
+    schema: schemaVersion,
+    v2: appSpec
+  };
+}
+
+/**
+ * Parse V1 Assembly schema (legacy)
+ */
+function parseV1Schema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
+  const assemblyConfig: AssemblyConfig = {
+    config: {
+      language: cueData.config?.language || "typescript",
+      kind: cueData.config?.kind || "library",
+      buildTool: cueData.config?.buildTool || "default",
+    },
+    metadata: {
+      name: cueData.metadata?.name || "unknown",
+      version: cueData.metadata?.version || "1.0.0",
+      description: cueData.metadata?.description
+    },
+    deployment: {
+      target: cueData.deployment?.target || "compose"
+    },
+    services: cueData.services || {}
+  };
+
+  // Store the full CUE data for service parsing (legacy compatibility)
+  (assemblyConfig as any)._fullCueData = cueData;
+
+  return {
+    schema: schemaVersion,
+    v1: assemblyConfig
+  };
+}
+
+// Fallback to file-based regex parsing if CUE evaluation fails
+async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVersion> {
+  const content = await fs.readFile(assemblyPath, 'utf-8');
+  
+  // Detect schema version from content structure
+  const schemaVersion: SchemaVersion = content.includes('product:') || content.includes('ui:') || content.includes('flows:')
+    ? { version: "v2", detected_from: "structure" }
+    : { version: "v1", detected_from: "structure" };
+
+  if (schemaVersion.version === "v2") {
+    // Basic V2 fallback parsing (very limited)
+    console.warn("⚠️  V2 schema detected but CUE evaluation failed - limited fallback parsing");
+    
+    const nameMatch = content.match(/name:\s*"([^"]+)"/);
+    const productName = nameMatch ? nameMatch[1] : "Unknown App";
+    
+    const appSpec: AppSpec = {
+      product: { name: productName },
+      ui: { routes: [] },
+      locators: {},
+      flows: []
+    };
+
+    return {
+      schema: schemaVersion,
+      v2: appSpec
+    };
+  } else {
+    // V1 fallback parsing
+    const config: AssemblyConfig = {
+      config: {
+        language: "typescript",
+        kind: "library",
+        buildTool: "default"
+      },
+      metadata: {
+        name: "unknown",
+        version: "1.0.0"
+      },
+      deployment: {
+        target: "compose"
+      },
+      services: {}
+    };
+
+    // Extract language
+    const langMatch = content.match(/language:\s*"([^"]+)"/);
+    if (langMatch) {
+      config.config.language = langMatch[1];
+    }
+
+    // Extract kind
+    const kindMatch = content.match(/kind:\s*"([^"]+)"/);
+    if (kindMatch) {
+      config.config.kind = kindMatch[1];
+    }
+
+    // Check for explicit deployment target specification
+    const deploymentMatch = content.match(/deployment:\s*{[^}]*target:\s*"([^"]+)"/s);
+    if (deploymentMatch) {
+      config.deployment.target = deploymentMatch[1] as DeploymentTarget;
+    }
+
+    // Extract name from metadata
+    const nameMatch = content.match(/name:\s*"([^"]+)"/);
+    if (nameMatch) {
+      config.metadata.name = nameMatch[1];
+    }
+
+    // Extract version
+    const versionMatch = content.match(/version:\s*"([^"]+)"/);
+    if (versionMatch) {
+      config.metadata.version = versionMatch[1];
+    }
+
+    // Extract build tool
+    const toolMatch = content.match(/tool:\s*"([^"]+)"/);
+    if (toolMatch) {
+      config.config.buildTool = toolMatch[1];
+    }
+
+    console.warn("⚠️  Using fallback regex parsing - some features may not work correctly");
+    return {
+      schema: schemaVersion,
+      v1: config
+    };
+  }
+}
+
+/**
+ * Generate V2 app-centric artifacts from app specification
+ */
+async function generateV2AppArtifacts(appSpec: AppSpec, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+
+  console.log(chalk.green(`📱 Generating artifacts for: ${appSpec.product.name}`));
+  
+  // Generate app structure based on routes and flows
+  if (appSpec.ui.routes.length > 0) {
+    const routeFiles = await generateUIComponents(appSpec, outputDir, options);
+    files.push(...routeFiles);
   }
 
-  // Extract kind
-  const kindMatch = content.match(/kind:\s*"([^"]+)"/);
-  if (kindMatch) {
-    config.kind = kindMatch[1];
+  // Generate test cases from flows
+  if (appSpec.flows.length > 0) {
+    const testFiles = await generateFlowBasedTests(appSpec, outputDir, options);
+    files.push(...testFiles);
   }
 
-  // Extract name from metadata
-  const nameMatch = content.match(/name:\s*"([^"]+)"/);
-  if (nameMatch) {
-    config.name = nameMatch[1];
+  // Generate API specs from components and paths
+  if (appSpec.components || appSpec.paths) {
+    const apiFiles = await generateAPISpecifications(appSpec, outputDir, options);
+    files.push(...apiFiles);
   }
 
-  // Extract version
-  const versionMatch = content.match(/version:\s*"([^"]+)"/);
-  if (versionMatch) {
-    config.version = versionMatch[1];
+  // Generate locator definitions for UI testing
+  if (Object.keys(appSpec.locators).length > 0) {
+    const locatorFiles = await generateLocatorDefinitions(appSpec, outputDir, options);
+    files.push(...locatorFiles);
   }
 
-  // Extract build tool
-  const toolMatch = content.match(/tool:\s*"([^"]+)"/);
-  if (toolMatch) {
-    config.buildTool = toolMatch[1];
+  // Generate basic project structure
+  const structFiles = await generateV2ProjectStructure(appSpec, outputDir, options);
+  files.push(...structFiles);
+
+  return files;
+}
+
+/**
+ * Generate V1 infrastructure-centric artifacts from assembly config
+ */
+async function generateV1InfrastructureArtifacts(assemblyConfig: AssemblyConfig, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+
+  // Generate language-specific files
+  if (assemblyConfig.config.language) {
+    const langResult = await generateLanguageFiles(assemblyConfig as any, outputDir, options, assemblyConfig);
+    files.push(...langResult);
   }
 
-  return config;
+  // Generate CI workflows if requested
+  if (options.includeCi) {
+    const ciResult = await generateCIWorkflows(assemblyConfig as any, outputDir, options);
+    files.push(...ciResult);
+  }
+
+  // Generate project structure
+  const structResult = await generateProjectStructure(assemblyConfig as any, outputDir, options);
+  files.push(...structResult);
+
+  // Generate documentation
+  const docsResult = await generateDocumentation(assemblyConfig as any, outputDir, options);
+  files.push(...docsResult);
+
+  // Generate and compose tests if not skipped
+  if (!options.dryRun) {
+    const testResult = await generateAndComposeTests(assemblyConfig as any, outputDir, options);
+    files.push(...testResult);
+  }
+
+  return files;
+}
+
+/**
+ * Generate UI components from app spec routes
+ */
+async function generateUIComponents(appSpec: AppSpec, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+  
+  console.log(chalk.blue("🎨 Generating UI components from routes..."));
+  
+  // Create components directory
+  const componentsDir = path.join(outputDir, "src", "components");
+  if (!fs.existsSync(componentsDir) && !options.dryRun) {
+    fs.mkdirSync(componentsDir, { recursive: true });
+  }
+
+  // Generate components for each route
+  for (const route of appSpec.ui.routes) {
+    const componentName = route.id.split(':').map(part => 
+      part.charAt(0).toUpperCase() + part.slice(1)
+    ).join('');
+    
+    const componentContent = `// ${componentName} - Generated from route ${route.id}
+import React from 'react';
+
+interface ${componentName}Props {
+  // Add props as needed based on capabilities
+}
+
+export const ${componentName}: React.FC<${componentName}Props> = (props) => {
+  return (
+    <div data-testid="${route.id}">
+      <h1>${componentName}</h1>
+      {/* TODO: Implement ${route.capabilities.join(', ')} capabilities */}
+      {route.components ? route.components.map(comp => `
+      <div>{comp}</div>`) : ''}
+    </div>
+  );
+};
+
+export default ${componentName};
+`;
+
+    const componentPath = path.join(componentsDir, `${componentName}.tsx`);
+    if (!options.dryRun) {
+      fs.writeFileSync(componentPath, componentContent);
+    }
+    files.push(`src/components/${componentName}.tsx`);
+  }
+
+  return files;
+}
+
+/**
+ * Generate test cases based on app flows
+ */
+async function generateFlowBasedTests(appSpec: AppSpec, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+  
+  console.log(chalk.blue("🧪 Generating tests from flows..."));
+  
+  const testsDir = path.join(outputDir, "tests", "flows");
+  if (!fs.existsSync(testsDir) && !options.dryRun) {
+    fs.mkdirSync(testsDir, { recursive: true });
+  }
+
+  for (const flow of appSpec.flows) {
+    const testContent = `// ${flow.id} flow test - Generated by Arbiter
+import { test, expect } from '@playwright/test';
+
+test.describe('${flow.id} flow', () => {
+  ${flow.preconditions ? `
+  test.beforeEach(async ({ page }) => {
+    // Setup preconditions
+    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ''}
+    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ''}
+    ${flow.preconditions.seed ? flow.preconditions.seed.map(seed => 
+      `// Seed: ${seed.factory} as ${seed.as}`).join('\n    ') : ''}
+  });
+  ` : ''}
+  
+  test('${flow.id} - main flow', async ({ page }) => {
+    ${flow.steps.map((step, index) => {
+      if (step.visit) {
+        return `// Step ${index + 1}: Visit ${step.visit}
+    await page.goto('${typeof step.visit === 'string' ? step.visit : `/${step.visit.replace(':', '/')}`}');`;
+      } else if (step.click) {
+        const locator = appSpec.locators[step.click];
+        return `// Step ${index + 1}: Click ${step.click}
+    await page.click('${locator || step.click}');`;
+      } else if (step.fill) {
+        const locator = appSpec.locators[step.fill.locator];
+        return `// Step ${index + 1}: Fill ${step.fill.locator} with "${step.fill.value}"
+    await page.fill('${locator || step.fill.locator}', '${step.fill.value}');`;
+      } else if (step.expect) {
+        const locator = appSpec.locators[step.expect.locator];
+        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || 'visible'}
+    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === 'visible' ? 'toBeVisible' : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
+      } else if (step.expect_api) {
+        return `// Step ${index + 1}: Expect API ${step.expect_api.method} ${step.expect_api.path} to return ${step.expect_api.status}
+    // TODO: Implement API expectation`;
+      }
+      return `// Step ${index + 1}: Unknown step type`;
+    }).join('\n    ')}
+  });
+
+  ${flow.variants ? flow.variants.map(variant => `
+  test('${flow.id} - ${variant.name} variant', async ({ page }) => {
+    // TODO: Implement variant testing with override: ${JSON.stringify(variant.override)}
+  });`).join('') : ''}
+});
+`;
+
+    const testPath = path.join(testsDir, `${flow.id.replace(/:/g, '_')}.test.ts`);
+    if (!options.dryRun) {
+      fs.writeFileSync(testPath, testContent);
+    }
+    files.push(`tests/flows/${flow.id.replace(/:/g, '_')}.test.ts`);
+  }
+
+  return files;
+}
+
+/**
+ * Generate API specifications from components and paths
+ */
+async function generateAPISpecifications(appSpec: AppSpec, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+  
+  console.log(chalk.blue("📋 Generating API specifications..."));
+  
+  const apiDir = path.join(outputDir, "api");
+  if (!fs.existsSync(apiDir) && !options.dryRun) {
+    fs.mkdirSync(apiDir, { recursive: true });
+  }
+
+  // Generate OpenAPI spec if paths are defined
+  if (appSpec.paths) {
+    const openApiSpec = {
+      openapi: "3.0.3",
+      info: {
+        title: appSpec.product.name,
+        version: "1.0.0",
+        description: appSpec.product.goals?.join('; ') || "Generated API specification"
+      },
+      paths: {} as any
+    };
+
+    // Add component schemas if available
+    if (appSpec.components?.schemas) {
+      openApiSpec.components = {
+        schemas: Object.fromEntries(
+          Object.entries(appSpec.components.schemas).map(([name, schema]) => [
+            name,
+            {
+              type: "object",
+              example: schema.example,
+              ...(schema.examples && { examples: schema.examples })
+            }
+          ])
+        )
+      };
+    }
+
+    // Convert paths to OpenAPI format
+    for (const [pathKey, pathSpec] of Object.entries(appSpec.paths)) {
+      openApiSpec.paths[pathKey] = {};
+      
+      for (const [method, operation] of Object.entries(pathSpec)) {
+        openApiSpec.paths[pathKey][method] = {
+          summary: `${method.toUpperCase()} ${pathKey}`,
+          ...(operation.request && {
+            requestBody: {
+              content: {
+                'application/json': {
+                  schema: operation.request.$ref ? { $ref: operation.request.$ref } : {},
+                  example: operation.request.example
+                }
+              }
+            }
+          }),
+          responses: {
+            [operation.status || (method === 'get' ? 200 : 201)]: {
+              description: 'Success',
+              content: {
+                'application/json': {
+                  schema: operation.response?.$ref ? { $ref: operation.response.$ref } : {},
+                  example: operation.response?.example
+                }
+              }
+            }
+          }
+        };
+      }
+    }
+
+    const specPath = path.join(apiDir, "openapi.json");
+    if (!options.dryRun) {
+      fs.writeFileSync(specPath, JSON.stringify(openApiSpec, null, 2));
+    }
+    files.push("api/openapi.json");
+  }
+
+  return files;
+}
+
+/**
+ * Generate locator definitions for UI testing  
+ */
+async function generateLocatorDefinitions(appSpec: AppSpec, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+  
+  console.log(chalk.blue("🎯 Generating locator definitions..."));
+  
+  const locatorsContent = `// UI Locators - Generated by Arbiter
+// These locators provide a stable contract between tests and UI implementation
+
+export const locators = {
+${Object.entries(appSpec.locators).map(([token, selector]) => 
+  `  '${token}': '${selector}',`).join('\n')}
+} as const;
+
+export type LocatorToken = keyof typeof locators;
+
+// Helper function to get locator by token
+export function getLocator(token: LocatorToken): string {
+  return locators[token];
+}
+
+// Type-safe locator access
+export function loc(token: LocatorToken): string {
+  return locators[token];
+}
+`;
+
+  const locatorsPath = path.join(outputDir, "src", "test-utils", "locators.ts");
+  const locatorsDir = path.dirname(locatorsPath);
+  
+  if (!fs.existsSync(locatorsDir) && !options.dryRun) {
+    fs.mkdirSync(locatorsDir, { recursive: true });
+  }
+  
+  if (!options.dryRun) {
+    fs.writeFileSync(locatorsPath, locatorsContent);
+  }
+  files.push("src/test-utils/locators.ts");
+
+  return files;
+}
+
+/**
+ * Generate V2 project structure
+ */
+async function generateV2ProjectStructure(appSpec: AppSpec, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+  
+  // Generate package.json for the app
+  const packageJson = {
+    name: appSpec.product.name.toLowerCase().replace(/\s+/g, '-'),
+    version: "1.0.0",
+    description: appSpec.product.goals?.join('; ') || "Generated by Arbiter",
+    type: "module",
+    scripts: {
+      dev: "vite",
+      build: "tsc && vite build", 
+      test: "playwright test",
+      "test:unit": "vitest",
+      lint: "eslint src/**/*.{ts,tsx}",
+      typecheck: "tsc --noEmit"
+    },
+    dependencies: {
+      react: "^18.2.0",
+      "react-dom": "^18.2.0"
+    },
+    devDependencies: {
+      "@types/react": "^18.2.0",
+      "@types/react-dom": "^18.2.0",
+      "@playwright/test": "^1.40.0",
+      typescript: "^5.0.0",
+      vite: "^5.0.0",
+      vitest: "^1.0.0",
+      eslint: "^8.0.0"
+    }
+  };
+
+  const packagePath = path.join(outputDir, "package.json");
+  if (!options.dryRun) {
+    fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
+  }
+  files.push("package.json");
+
+  // Generate README
+  const readmeContent = `# ${appSpec.product.name}
+
+Generated by Arbiter from app specification.
+
+## Overview
+
+${appSpec.product.goals ? appSpec.product.goals.map(goal => `- ${goal}`).join('\n') : 'No goals specified'}
+
+${appSpec.product.constraints ? `
+## Constraints
+
+${appSpec.product.constraints.map(constraint => `- ${constraint}`).join('\n')}
+` : ''}
+
+## Routes
+
+${appSpec.ui.routes.map(route => `- **${route.path}** (${route.id}): ${route.capabilities.join(', ')}`).join('\n')}
+
+## Flows
+
+${appSpec.flows.map(flow => `- **${flow.id}**: ${flow.steps.length} steps`).join('\n')}
+
+## Development
+
+\`\`\`bash
+npm install
+npm run dev
+\`\`\`
+
+## Testing
+
+\`\`\`bash
+npm run test        # Playwright tests
+npm run test:unit   # Unit tests
+\`\`\`
+
+## Build
+
+\`\`\`bash
+npm run build
+\`\`\`
+`;
+
+  const readmePath = path.join(outputDir, "README.md");
+  if (!options.dryRun) {
+    fs.writeFileSync(readmePath, readmeContent);
+  }
+  files.push("README.md");
+
+  return files;
 }
 
 /**
@@ -217,9 +828,11 @@ async function generateLanguageFiles(
   config: any,
   outputDir: string,
   options: GenerateOptions,
+  assemblyConfig?: any,
 ): Promise<string[]> {
   const files: string[] = [];
 
+  // Generate language-specific application files
   switch (config.language) {
     case "typescript":
       files.push(...(await generateTypeScriptFiles(config, outputDir, options)));
@@ -239,6 +852,39 @@ async function generateLanguageFiles(
       break;
     default:
       console.log(chalk.yellow(`⚠️  Unknown language: ${config.language}`));
+  }
+
+  // Generate deployment artifacts based on deployment target  
+  if (config.deploymentTarget) {
+    switch (config.deploymentTarget) {
+      case "kubernetes":
+      case "k8s":
+        console.log(chalk.blue("🚀 Generating Kubernetes deployment (Terraform)..."));
+        files.push(...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)));
+        break;
+      case "aws":
+        console.log(chalk.blue("🚀 Generating AWS deployment..."));
+        // AWS-specific deployment logic would go here
+        files.push(...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)));
+        break;
+      case "gcp":
+        console.log(chalk.blue("🚀 Generating GCP deployment..."));
+        // GCP-specific deployment logic would go here
+        files.push(...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)));
+        break;
+      default:
+        console.log(chalk.yellow(`⚠️  Unknown deployment target: ${config.deploymentTarget}. Defaulting to Kubernetes.`));
+        files.push(...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)));
+    }
+  }
+
+  // Generate testing artifacts (Docker Compose for local development)
+  const cueData = assemblyConfig._fullCueData?.arbiterSpec;
+  const testingArtifacts = cueData?.deployment?.testing?.artifacts || [];
+  
+  if (testingArtifacts.includes("compose") || cueData?.deployment?.testing?.localDevelopment) {
+    console.log(chalk.green("🧪 Generating Docker Compose for local testing and development..."));
+    files.push(...(await generateDockerCompose(config, outputDir, assemblyConfig, options)));
   }
 
   return files;
@@ -898,3 +1544,1741 @@ function getLintCommand(language: string, buildTool?: string): string {
       return 'echo "Lint command not defined"';
   }
 }
+
+// Terraform + Kubernetes generation
+async function generateTerraformKubernetes(
+  config: any,
+  outputDir: string,
+  assemblyConfig: any,
+  options: GenerateOptions
+): Promise<string[]> {
+  const files: string[] = [];
+  await fs.ensureDir(path.join(outputDir, "terraform"));
+  
+  // Parse assembly to extract services and cluster references
+  const { services, cluster } = parseDeploymentServices(assemblyConfig);
+  
+  // Generate main.tf with provider configuration
+  const mainTf = generateTerraformMain(cluster, config.name);
+  const mainPath = path.join(outputDir, "terraform", "main.tf");
+  if (!options.dryRun) {
+    await fs.writeFile(mainPath, mainTf);
+  }
+  files.push("terraform/main.tf");
+  
+  // Generate variables.tf
+  const variablesTf = generateTerraformVariables(services, cluster);
+  const variablesPath = path.join(outputDir, "terraform", "variables.tf");
+  if (!options.dryRun) {
+    await fs.writeFile(variablesPath, variablesTf);
+  }
+  files.push("terraform/variables.tf");
+  
+  // Generate services.tf with Kubernetes resources
+  const servicesTf = generateTerraformServices(services, config.name);
+  const servicesPath = path.join(outputDir, "terraform", "services.tf");
+  if (!options.dryRun) {
+    await fs.writeFile(servicesPath, servicesTf);
+  }
+  files.push("terraform/services.tf");
+  
+  // Generate outputs.tf
+  const outputsTf = generateTerraformOutputs(services, config.name);
+  const outputsPath = path.join(outputDir, "terraform", "outputs.tf");
+  if (!options.dryRun) {
+    await fs.writeFile(outputsPath, outputsTf);
+  }
+  files.push("terraform/outputs.tf");
+  
+  // Generate README for Terraform deployment
+  const readme = generateTerraformReadme(services, cluster, config.name);
+  const readmePath = path.join(outputDir, "terraform", "README.md");
+  if (!options.dryRun) {
+    await fs.writeFile(readmePath, readme);
+  }
+  files.push("terraform/README.md");
+  
+  return files;
+}
+
+function parseDeploymentServices(assemblyConfig: any): { services: DeploymentService[], cluster: ClusterConfig | null } {
+  const services: DeploymentService[] = [];
+  let cluster: ClusterConfig | null = null;
+  
+  // Use the full CUE data if available
+  const cueData = assemblyConfig._fullCueData || assemblyConfig;
+  
+  // Extract cluster configuration
+  if (cueData?.deployment?.cluster) {
+    cluster = {
+      name: cueData.deployment.cluster.name || "default",
+      provider: cueData.deployment.cluster.provider || "kubernetes", 
+      context: cueData.deployment.cluster.context,
+      namespace: cueData.deployment.cluster.namespace || "default",
+      config: cueData.deployment.cluster.config || {}
+    };
+  }
+  
+  // Extract services from properly parsed CUE configuration
+  if (cueData?.services) {
+    for (const [serviceName, serviceConfig] of Object.entries(cueData.services)) {
+      const service = parseDeploymentServiceConfig(serviceName, serviceConfig as any);
+      if (service) {
+        services.push(service);
+      }
+    }
+  }
+  
+  return { services, cluster };
+}
+
+interface DeploymentService {
+  name: string;
+  language: string;
+  serviceType: 'bespoke' | 'prebuilt' | 'external';
+  type: 'deployment' | 'statefulset' | 'daemonset' | 'job' | 'cronjob';
+  image?: string;
+  sourceDirectory?: string;
+  buildContext?: {
+    dockerfile?: string;
+    target?: string;
+    buildArgs?: Record<string, string>;
+  };
+  ports?: Array<{name: string, port: number, targetPort?: number, protocol?: string}>;
+  env?: Record<string, string>;
+  volumes?: Array<{name: string, path: string, size?: string, type?: 'persistentVolumeClaim' | 'configMap' | 'secret'}>;
+  config?: {
+    files?: Array<{name: string, content: string | Record<string, any>}>;
+    [key: string]: any;
+  };
+  replicas?: number;
+  resources?: {
+    requests?: {cpu?: string, memory?: string};
+    limits?: {cpu?: string, memory?: string};
+  };
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+  healthCheck?: {
+    path?: string;
+    port?: number;
+    initialDelay?: number;
+    periodSeconds?: number;
+  };
+}
+
+interface ClusterConfig {
+  name: string;
+  provider: 'kubernetes' | 'eks' | 'gke' | 'aks';
+  context?: string;
+  namespace: string;
+  config: Record<string, any>;
+}
+
+function parseDeploymentServiceConfig(name: string, config: any): DeploymentService | null {
+  // Determine service type based on configuration
+  let serviceType: 'bespoke' | 'prebuilt' | 'external' = 'prebuilt';
+  
+  if (config.sourceDirectory || (config.language && config.language !== 'container' && !config.image)) {
+    serviceType = 'bespoke';
+  } else if (config.image && (config.language === 'container' || !config.language)) {
+    serviceType = 'prebuilt';
+  } else if (config.external) {
+    serviceType = 'external';
+  }
+  
+  const service: DeploymentService = {
+    name: name,
+    language: config.language || "container",
+    serviceType: serviceType,
+    type: config.type || "deployment",
+    replicas: config.replicas || 1
+  };
+  
+  // Service configuration
+  if (config.image) service.image = config.image;
+  if (config.sourceDirectory) service.sourceDirectory = config.sourceDirectory;
+  if (config.buildContext) service.buildContext = config.buildContext;
+  if (config.ports) service.ports = config.ports;
+  if (config.env) service.env = config.env;
+  if (config.volumes) {
+    service.volumes = config.volumes.map((vol: any) => ({
+      ...vol,
+      type: vol.type || 'persistentVolumeClaim'
+    }));
+  }
+  if (config.resources) service.resources = config.resources;
+  if (config.labels) service.labels = config.labels;
+  if (config.annotations) service.annotations = config.annotations;
+  if (config.config) service.config = config.config;
+  if (config.healthCheck) service.healthCheck = config.healthCheck;
+  
+  return service;
+}
+
+// Terraform generation functions
+function generateTerraformMain(cluster: ClusterConfig | null, projectName: string): string {
+  const clusterName = cluster?.name || "default";
+  const namespace = cluster?.namespace || projectName.toLowerCase();
+  
+  return `terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.23"
+    }
+  }
+}
+
+provider "kubernetes" {
+  # Configuration will be loaded from kubeconfig by default
+  # Override these values via terraform.tfvars if needed
+  config_path    = var.kubeconfig_path
+  config_context = var.cluster_context
+}
+
+# Create namespace if it doesn't exist
+resource "kubernetes_namespace" "${namespace.replace(/-/g, '_')}" {
+  metadata {
+    name = "${namespace}"
+    labels = {
+      name    = "${namespace}"
+      project = "${projectName.toLowerCase()}"
+    }
+  }
+}
+`;
+}
+
+function generateTerraformVariables(services: DeploymentService[], cluster: ClusterConfig | null): string {
+  const clusterName = cluster?.name || "default";
+  
+  return `variable "kubeconfig_path" {
+  description = "Path to the kubeconfig file"
+  type        = string
+  default     = "~/.kube/config"
+}
+
+variable "cluster_context" {
+  description = "Kubernetes cluster context to use"
+  type        = string
+  default     = "${cluster?.context || clusterName}"
+}
+
+variable "namespace" {
+  description = "Kubernetes namespace for deployment"
+  type        = string
+  default     = "${cluster?.namespace || "default"}"
+}
+
+variable "image_tag" {
+  description = "Docker image tag for services"
+  type        = string
+  default     = "latest"
+}
+
+${services.map(service => {
+  const serviceName = service.name.replace(/-/g, '_');
+  return `variable "${serviceName}_replicas" {
+  description = "Number of replicas for ${service.name}"
+  type        = number
+  default     = ${service.replicas || 1}
+}`;
+}).join('\n\n')}
+`;
+}
+
+function generateTerraformServices(services: DeploymentService[], projectName: string): string {
+  return services.map(service => generateTerraformService(service, projectName)).join('\n\n');
+}
+
+function generateTerraformService(service: DeploymentService, projectName: string): string {
+  const serviceName = service.name.replace(/-/g, '_');
+  const namespace = projectName.toLowerCase();
+  
+  let terraform = `# ${service.name} ${service.type}
+resource "kubernetes_${service.type}" "${serviceName}" {
+  metadata {
+    name      = "${service.name}"
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
+    labels = {
+      app     = "${service.name}"
+      project = "${projectName.toLowerCase()}"${service.labels ? Object.entries(service.labels).map(([k, v]) => `\n      ${k} = "${v}"`).join('') : ''}
+    }${service.annotations ? `
+    annotations = {${Object.entries(service.annotations).map(([k, v]) => `\n      "${k}" = "${v}"`).join('')}
+    }` : ''}
+  }
+
+  spec {
+    replicas = var.${serviceName}_replicas
+    
+    selector {
+      match_labels = {
+        app = "${service.name}"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app     = "${service.name}"
+          project = "${projectName.toLowerCase()}"
+        }
+      }
+
+      spec {
+        container {
+          name  = "${service.name}"
+          image = "${service.image || `${service.name}:\${var.image_tag}`}"
+`;
+
+  // Add ports
+  if (service.ports && service.ports.length > 0) {
+    service.ports.forEach(port => {
+      terraform += `
+          port {
+            name           = "${port.name}"
+            container_port = ${port.targetPort || port.port}
+            protocol       = "${port.protocol || 'TCP'}"
+          }`;
+    });
+  }
+
+  // Add environment variables
+  if (service.env && Object.keys(service.env).length > 0) {
+    Object.entries(service.env).forEach(([key, value]) => {
+      terraform += `
+          env {
+            name  = "${key}"
+            value = "${value}"
+          }`;
+    });
+  }
+
+  // Add resources
+  if (service.resources) {
+    terraform += `
+          resources {`;
+    if (service.resources.requests) {
+      terraform += `
+            requests = {`;
+      if (service.resources.requests.cpu) terraform += `
+              cpu    = "${service.resources.requests.cpu}"`;
+      if (service.resources.requests.memory) terraform += `
+              memory = "${service.resources.requests.memory}"`;
+      terraform += `
+            }`;
+    }
+    if (service.resources.limits) {
+      terraform += `
+            limits = {`;
+      if (service.resources.limits.cpu) terraform += `
+              cpu    = "${service.resources.limits.cpu}"`;
+      if (service.resources.limits.memory) terraform += `
+              memory = "${service.resources.limits.memory}"`;
+      terraform += `
+            }`;
+    }
+    terraform += `
+          }`;
+  }
+
+  // Add volume mounts
+  if (service.volumes && service.volumes.length > 0) {
+    service.volumes.forEach(volume => {
+      terraform += `
+          volume_mount {
+            name       = "${volume.name}"
+            mount_path = "${volume.path}"
+          }`;
+    });
+  }
+
+  terraform += `
+        }`;
+
+  // Add volumes
+  if (service.volumes && service.volumes.length > 0) {
+    service.volumes.forEach(volume => {
+      terraform += `
+        volume {
+          name = "${volume.name}"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.${serviceName}_${volume.name.replace(/-/g, '_')}.metadata[0].name
+          }
+        }`;
+    });
+  }
+
+  terraform += `
+      }
+    }
+  }
+}`;
+
+  // Generate Service resource if has ports
+  if (service.ports && service.ports.length > 0) {
+    terraform += `
+
+resource "kubernetes_service" "${serviceName}" {
+  metadata {
+    name      = "${service.name}"
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
+    labels = {
+      app     = "${service.name}"
+      project = "${projectName.toLowerCase()}"
+    }
+  }
+
+  spec {
+    selector = {
+      app = "${service.name}"
+    }
+
+${service.ports.map(port => `    port {
+      name        = "${port.name}"
+      port        = ${port.port}
+      target_port = ${port.targetPort || port.port}
+      protocol    = "${port.protocol || 'TCP'}"
+    }`).join('\n')}
+  }
+}`;
+  }
+
+  // Generate PVCs for volumes
+  if (service.volumes && service.volumes.length > 0) {
+    service.volumes.forEach(volume => {
+      terraform += `
+
+resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.replace(/-/g, '_')}" {
+  metadata {
+    name      = "${service.name}-${volume.name}"
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
+  }
+
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "${volume.size || '10Gi'}"
+      }
+    }
+  }
+}`;
+    });
+  }
+
+  return terraform;
+}
+
+function generateTerraformOutputs(services: DeploymentService[], projectName: string): string {
+  const outputs = services
+    .filter(service => service.ports && service.ports.length > 0)
+    .map(service => {
+      const serviceName = service.name.replace(/-/g, '_');
+      return `output "${serviceName}_service_ip" {
+  description = "Cluster IP of the ${service.name} service"
+  value       = kubernetes_service.${serviceName}.spec[0].cluster_ip
+}
+
+output "${serviceName}_ports" {
+  description = "Ports exposed by ${service.name} service"
+  value       = [${service.ports!.map(p => `"${p.port}"`).join(', ')}]
+}`;
+    });
+
+  return `output "namespace" {
+  description = "Kubernetes namespace"
+  value       = kubernetes_namespace.${projectName.toLowerCase().replace(/-/g, '_')}.metadata[0].name
+}
+
+${outputs.join('\n\n')}
+`;
+}
+
+function generateTerraformReadme(services: DeploymentService[], cluster: ClusterConfig | null, projectName: string): string {
+  const clusterName = cluster?.name || "default";
+  const namespace = cluster?.namespace || projectName.toLowerCase();
+  
+  return `# ${projectName} - Terraform Kubernetes Deployment
+
+This directory contains Terraform configurations for deploying ${projectName} to Kubernetes.
+
+## Prerequisites
+
+- [Terraform](https://terraform.io) >= 1.0
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) configured with cluster access
+- Kubernetes cluster accessible via kubeconfig
+
+## Configuration
+
+### Cluster Configuration
+- **Cluster**: ${clusterName}
+- **Namespace**: ${namespace}
+- **Context**: ${cluster?.context || clusterName}
+
+## Services
+
+${services.map(service => `### ${service.name}
+- **Language**: ${service.language}
+- **Type**: ${service.type}
+- **Image**: ${service.image || `${service.name}:latest`}${service.ports ? `
+- **Ports**: ${service.ports.map(p => `${p.port}/${p.protocol || 'TCP'} (${p.name})`).join(', ')}` : ''}
+- **Replicas**: ${service.replicas || 1}${service.volumes ? `
+- **Storage**: ${service.volumes.map(v => `${v.name} → ${v.path} (${v.size || '10Gi'})`).join(', ')}` : ''}`).join('\n\n')}
+
+## Deployment
+
+### 1. Initialize Terraform
+\`\`\`bash
+terraform init
+\`\`\`
+
+### 2. Review the Plan
+\`\`\`bash
+terraform plan
+\`\`\`
+
+### 3. Apply Configuration
+\`\`\`bash
+terraform apply
+\`\`\`
+
+### 4. Verify Deployment
+\`\`\`bash
+kubectl get all -n ${namespace}
+\`\`\`
+
+## Customization
+
+Create a \`terraform.tfvars\` file to customize deployment:
+
+\`\`\`hcl
+# Cluster configuration
+kubeconfig_path = "~/.kube/config"
+cluster_context = "${cluster?.context || clusterName}"
+namespace       = "${namespace}"
+
+# Image configuration  
+image_tag = "v1.0.0"
+
+# Service scaling
+${services.map(service => `${service.name.replace(/-/g, '_')}_replicas = ${service.replicas || 1}`).join('\n')}
+\`\`\`
+
+## Access Services
+
+${services.filter(s => s.ports && s.ports.length > 0).map(service => `### ${service.name}
+\`\`\`bash
+kubectl port-forward -n ${namespace} service/${service.name} ${service.ports![0].port}:${service.ports![0].port}
+\`\`\`
+Access at: http://localhost:${service.ports![0].port}
+`).join('\n')}
+
+## State Management
+
+This configuration uses local state. For production deployments, configure remote state:
+
+\`\`\`hcl
+terraform {
+  backend "s3" {
+    bucket = "your-terraform-state"
+    key    = "${projectName}/terraform.tfstate"
+    region = "us-west-2"
+  }
+}
+\`\`\`
+
+## Cleanup
+
+\`\`\`bash
+terraform destroy
+\`\`\`
+
+## Troubleshooting
+
+### Check pod status
+\`\`\`bash
+kubectl get pods -n ${namespace}
+kubectl describe pod <pod-name> -n ${namespace}
+\`\`\`
+
+### View logs
+\`\`\`bash
+kubectl logs -f <pod-name> -n ${namespace}
+\`\`\`
+
+### Apply changes
+After modifying Terraform files:
+\`\`\`bash
+terraform plan
+terraform apply
+\`\`\`
+`;
+}
+
+// ====================================================
+// DOCKER COMPOSE GENERATION
+// ====================================================
+
+/**
+ * Generate Docker Compose files for the given services
+ */
+async function generateDockerCompose(
+  config: any,
+  outputDir: string,
+  assemblyConfig: any,
+  options: GenerateOptions
+): Promise<string[]> {
+  const files: string[] = [];
+  await fs.ensureDir(path.join(outputDir, "compose"));
+  
+  // Parse assembly to extract services and deployment configuration
+  const { services, deployment } = parseDockerComposeServices(assemblyConfig);
+  
+  // Generate docker-compose.yml
+  const composeYml = generateDockerComposeFile(services, deployment, config.name);
+  const composePath = path.join(outputDir, "compose", "docker-compose.yml");
+  if (!options.dryRun) {
+    await fs.writeFile(composePath, composeYml);
+  }
+  files.push("compose/docker-compose.yml");
+  
+  // Generate .env template
+  const envTemplate = generateComposeEnvTemplate(services, config.name);
+  const envPath = path.join(outputDir, "compose", ".env.template");
+  if (!options.dryRun) {
+    await fs.writeFile(envPath, envTemplate);
+  }
+  files.push("compose/.env.template");
+  
+  // Generate build contexts for bespoke services
+  const buildFiles = await generateBuildContexts(services, outputDir, options);
+  files.push(...buildFiles);
+  
+  // Generate compose README
+  const readme = generateComposeReadme(services, deployment, config.name);
+  const readmePath = path.join(outputDir, "compose", "README.md");
+  if (!options.dryRun) {
+    await fs.writeFile(readmePath, readme);
+  }
+  files.push("compose/README.md");
+  
+  return files;
+}
+
+function parseDockerComposeServices(assemblyConfig: any): { services: ServiceConfig[], deployment: DeploymentConfig } {
+  const services: ServiceConfig[] = [];
+  const cueData = assemblyConfig._fullCueData || assemblyConfig;
+  
+  // Extract deployment configuration
+  const deployment: DeploymentConfig = {
+    target: cueData?.deployment?.target || "compose",
+    compose: {
+      version: cueData?.deployment?.compose?.version || "3.8",
+      networks: cueData?.deployment?.compose?.networks || {},
+      volumes: cueData?.deployment?.compose?.volumes || {},
+      profiles: cueData?.deployment?.compose?.profiles || [],
+      environment: cueData?.deployment?.compose?.environment || {}
+    }
+  };
+  
+  // Parse services with enhanced schema
+  if (cueData?.services) {
+    for (const [serviceName, serviceConfig] of Object.entries(cueData.services)) {
+      const service = parseServiceForCompose(serviceName, serviceConfig as any);
+      if (service) {
+        services.push(service);
+      }
+    }
+  }
+  
+  return { services, deployment };
+}
+
+function parseServiceForCompose(name: string, config: any): ServiceConfig | null {
+  // Detect service type based on configuration
+  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
+  
+  if (config.sourceDirectory) {
+    serviceType = "bespoke";
+  } else if (config.image) {
+    serviceType = "prebuilt";
+  } else if (config.language && !config.image) {
+    // Language specified but no image - likely bespoke
+    serviceType = "bespoke";
+  }
+  
+  const service: ServiceConfig = {
+    name: name,
+    serviceType: serviceType,
+    language: config.language || "container",
+    type: config.type || "deployment",
+    replicas: config.replicas || 1,
+    image: config.image,
+    sourceDirectory: config.sourceDirectory,
+    buildContext: config.buildContext,
+    ports: config.ports,
+    env: config.env,
+    volumes: config.volumes,
+    resources: config.resources,
+    config: config.config,
+    labels: config.labels,
+    annotations: config.annotations
+  };
+  
+  return service;
+}
+
+function generateDockerComposeFile(services: ServiceConfig[], deployment: DeploymentConfig, projectName: string): string {
+  const version = deployment.compose?.version || "3.8";
+  
+  let compose = `version: "${version}"
+
+services:
+${services.map(service => generateComposeService(service, projectName)).join('\n')}`;
+
+  // Add networks if specified
+  if (deployment.compose?.networks && Object.keys(deployment.compose.networks).length > 0) {
+    compose += `
+
+networks:
+${Object.entries(deployment.compose.networks).map(([name, config]) => 
+  `  ${name}:
+${Object.entries(config as any).map(([k, v]) => `    ${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`).join('\n')}`
+).join('\n')}`;
+  }
+  
+  // Add named volumes if any services use them
+  const namedVolumes = services.flatMap(s => 
+    (s.volumes || []).filter(v => v.type === 'persistentVolumeClaim').map(v => `${s.name}_${v.name}`)
+  );
+  
+  if (namedVolumes.length > 0) {
+    compose += `
+
+volumes:
+${namedVolumes.map(volume => `  ${volume}:`).join('\n')}`;
+  }
+  
+  return compose;
+}
+
+function generateComposeService(service: ServiceConfig, projectName: string): string {
+  const serviceName = service.name;
+  let serviceConfig = `  ${serviceName}:`;
+  
+  // Image or build configuration
+  if (service.serviceType === "bespoke") {
+    // Build from source
+    if (service.sourceDirectory) {
+      serviceConfig += `
+    build:
+      context: ../${service.sourceDirectory}`;
+      
+      if (service.buildContext?.dockerfile) {
+        serviceConfig += `
+      dockerfile: ${service.buildContext.dockerfile}`;
+      }
+      
+      if (service.buildContext?.target) {
+        serviceConfig += `
+      target: ${service.buildContext.target}`;
+      }
+      
+      if (service.buildContext?.buildArgs) {
+        serviceConfig += `
+      args:
+${Object.entries(service.buildContext.buildArgs).map(([k, v]) => `        ${k}: ${v}`).join('\n')}`;
+      }
+    } else {
+      // Fallback to image for bespoke without sourceDirectory
+      serviceConfig += `
+    image: ${service.image || `${serviceName}:latest`}`;
+    }
+  } else {
+    // Use pre-built image
+    serviceConfig += `
+    image: ${service.image}`;
+  }
+  
+  // Container name
+  serviceConfig += `
+    container_name: ${projectName}_${serviceName}`;
+  
+  // Restart policy
+  serviceConfig += `
+    restart: unless-stopped`;
+  
+  // Ports
+  if (service.ports && service.ports.length > 0) {
+    serviceConfig += `
+    ports:
+${service.ports.map(p => `      - "${p.port}:${p.targetPort || p.port}"`).join('\n')}`;
+  }
+  
+  // Environment variables
+  if (service.env && Object.keys(service.env).length > 0) {
+    serviceConfig += `
+    environment:
+${Object.entries(service.env).map(([k, v]) => `      ${k}: ${v}`).join('\n')}`;
+  }
+  
+  // Volumes
+  if (service.volumes && service.volumes.length > 0) {
+    serviceConfig += `
+    volumes:`;
+    
+    service.volumes.forEach(volume => {
+      if (volume.type === 'persistentVolumeClaim') {
+        serviceConfig += `
+      - ${serviceName}_${volume.name}:${volume.path}`;
+      } else if (volume.type === 'configMap' && service.config?.files) {
+        // Handle config files
+        const configFile = service.config.files.find(f => f.name === volume.name);
+        if (configFile) {
+          serviceConfig += `
+      - ./config/${serviceName}/${configFile.name}:${volume.path}:ro`;
+        }
+      } else {
+        // Default to bind mount or volume
+        serviceConfig += `
+      - ${volume.name}:${volume.path}`;
+      }
+    });
+  }
+  
+  // Labels
+  const labels = {
+    "project": projectName,
+    "service": serviceName,
+    "service-type": service.serviceType,
+    ...service.labels
+  };
+  
+  serviceConfig += `
+    labels:
+${Object.entries(labels).map(([k, v]) => `      ${k}: "${v}"`).join('\n')}`;
+  
+  // Health check (basic)
+  if (service.ports && service.ports.length > 0) {
+    const httpPort = service.ports.find(p => p.name === 'http' || p.name === 'web');
+    if (httpPort) {
+      serviceConfig += `
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${httpPort.targetPort || httpPort.port}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3`;
+    }
+  }
+  
+  // Resource limits (if specified)
+  if (service.resources?.limits) {
+    const limits = service.resources.limits;
+    if (limits.memory) {
+      serviceConfig += `
+    mem_limit: ${limits.memory.replace('Mi', 'm').replace('Gi', 'g')}`;
+    }
+    if (limits.cpu) {
+      const cpuLimit = limits.cpu.replace('m', '');
+      const cpuFloat = (parseInt(cpuLimit) / 1000).toFixed(2);
+      serviceConfig += `
+    cpus: "${cpuFloat}"`;
+    }
+  }
+  
+  return serviceConfig;
+}
+
+function generateComposeEnvTemplate(services: ServiceConfig[], projectName: string): string {
+  const envVars = new Set<string>();
+  
+  // Collect all environment variables from services
+  services.forEach(service => {
+    if (service.env) {
+      Object.keys(service.env).forEach(key => envVars.add(key));
+    }
+  });
+  
+  let envContent = `# Environment variables for ${projectName}
+# Copy this to .env and customize values
+
+# Project Configuration
+COMPOSE_PROJECT_NAME=${projectName}
+COMPOSE_FILE=docker-compose.yml
+
+# Image Tags (for pre-built services)
+IMAGE_TAG=latest
+
+`;
+
+  // Add service-specific environment variables
+  services.forEach(service => {
+    if (service.env && Object.keys(service.env).length > 0) {
+      envContent += `# ${service.name} Service
+`;
+      Object.entries(service.env).forEach(([key, value]) => {
+        envContent += `${key}=${value}
+`;
+      });
+      envContent += '\n';
+    }
+  });
+
+  return envContent;
+}
+
+async function generateBuildContexts(services: ServiceConfig[], outputDir: string, options: GenerateOptions): Promise<string[]> {
+  const files: string[] = [];
+  
+  for (const service of services) {
+    if (service.serviceType === "bespoke" && service.config?.files) {
+      // Generate config files for bespoke services
+      const configDir = path.join(outputDir, "compose", "config", service.name);
+      if (!fs.existsSync(configDir) && !options.dryRun) {
+        await fs.mkdirSync(configDir, { recursive: true });
+      }
+      
+      for (const configFile of service.config.files) {
+        const content = typeof configFile.content === 'string' 
+          ? configFile.content 
+          : JSON.stringify(configFile.content, null, 2);
+        
+        const filePath = path.join(configDir, configFile.name);
+        if (!options.dryRun) {
+          await fs.writeFile(filePath, content);
+        }
+        files.push(`compose/config/${service.name}/${configFile.name}`);
+      }
+    }
+  }
+  
+  return files;
+}
+
+function generateComposeReadme(services: ServiceConfig[], deployment: DeploymentConfig, projectName: string): string {
+  return `# ${projectName} - Docker Compose Deployment
+
+This directory contains Docker Compose configurations for running ${projectName} locally.
+
+## Prerequisites
+
+- [Docker](https://docker.com) with Compose plugin
+- [Docker Compose](https://docs.docker.com/compose/) v2.0+
+
+## Services
+
+${services.map(service => `### ${service.name} (${service.serviceType})
+- **Language**: ${service.language}
+- **Type**: ${service.type}
+${service.serviceType === 'bespoke' ? 
+  `- **Source**: ${service.sourceDirectory || 'Built from local source'}` :
+  `- **Image**: ${service.image}`
+}${service.ports ? `
+- **Ports**: ${service.ports.map(p => `${p.port}:${p.targetPort || p.port}`).join(', ')}` : ''}${service.volumes ? `
+- **Volumes**: ${service.volumes.map(v => `${v.name} → ${v.path}`).join(', ')}` : ''}`).join('\n\n')}
+
+## Quick Start
+
+### 1. Setup Environment
+\`\`\`bash
+cp .env.template .env
+# Edit .env with your configuration
+\`\`\`
+
+### 2. Build and Start Services
+\`\`\`bash
+docker compose up --build -d
+\`\`\`
+
+### 3. View Logs
+\`\`\`bash
+docker compose logs -f
+\`\`\`
+
+### 4. Stop Services
+\`\`\`bash
+docker compose down
+\`\`\`
+
+## Service Management
+
+### Build specific service
+\`\`\`bash
+${services.filter(s => s.serviceType === 'bespoke').map(s => 
+  `docker compose build ${s.name}`
+).join('\n')}
+\`\`\`
+
+### Access services
+${services.filter(s => s.ports && s.ports.length > 0).map(service => `
+**${service.name}**: http://localhost:${service.ports![0].port}`).join('')}
+
+### Scale services
+\`\`\`bash
+${services.map(s => `docker compose up -d --scale ${s.name}=${s.replicas || 1}`).join('\n')}
+\`\`\`
+
+## Development Workflow
+
+### For bespoke services
+1. Make code changes in source directories
+2. Rebuild specific services: \`docker compose build <service>\`
+3. Restart: \`docker compose up -d <service>\`
+
+### For configuration changes
+1. Update files in \`./config/\` directories
+2. Restart affected services: \`docker compose restart <service>\`
+
+## Debugging
+
+### Check service status
+\`\`\`bash
+docker compose ps
+\`\`\`
+
+### View service logs
+\`\`\`bash
+docker compose logs <service-name>
+docker compose logs -f <service-name>  # Follow logs
+\`\`\`
+
+### Execute commands in containers
+\`\`\`bash
+docker compose exec <service-name> sh
+\`\`\`
+
+### Inspect networks and volumes
+\`\`\`bash
+docker network ls | grep ${projectName}
+docker volume ls | grep ${projectName}
+\`\`\`
+
+## Production Considerations
+
+This Docker Compose setup is designed for development and testing. For production:
+
+1. **Security**: Remove development ports and debugging tools
+2. **Secrets**: Use Docker secrets or external secret management
+3. **Persistence**: Configure proper volume management and backups
+4. **Monitoring**: Add health checks and monitoring services
+5. **Scaling**: Consider using Docker Swarm or Kubernetes for production
+
+## Cleanup
+
+### Stop and remove containers
+\`\`\`bash
+docker compose down
+\`\`\`
+
+### Remove volumes (⚠️  destroys data)
+\`\`\`bash
+docker compose down -v
+\`\`\`
+
+### Clean up everything including images
+\`\`\`bash
+docker compose down --rmi all -v
+\`\`\`
+
+## Troubleshooting
+
+### Port conflicts
+If ports are already in use, edit the \`.env\` file or \`docker-compose.yml\` to use different ports.
+
+### Build failures
+Check that all source directories exist and contain proper build files (Dockerfile, etc.).
+
+### Service won't start
+Check logs with \`docker compose logs <service>\` and verify configuration files.
+
+### Network issues
+Services communicate using service names as hostnames (e.g., \`http://${services.length > 1 ? services[1].name : 'api'}:${services.find(s => s.ports)?.ports?.[0]?.port || '3000'}\`).
+`;
+}
+
+// ====================================================
+// TEST COMPOSITION AND INTELLIGENT NAMESPACING
+// ====================================================
+
+/**
+ * Test composition engine for merging existing and generated tests
+ */
+class TestCompositionEngine {
+  private specName: string;
+  private namespace: string;
+  
+  constructor(specName: string, baseNamespace?: string) {
+    this.specName = specName;
+    this.namespace = baseNamespace || this.generateBaseNamespace(specName);
+  }
+  
+  /**
+   * Discover existing test files in the project
+   */
+  async discoverExistingTests(outputDir: string): Promise<TestSuite[]> {
+    const testSuites: TestSuite[] = [];
+    const testDirs = ['tests', 'test', '__tests__', 'spec'];
+    
+    for (const testDir of testDirs) {
+      const fullPath = path.join(outputDir, testDir);
+      if (fs.existsSync(fullPath)) {
+        const testFiles = await this.findTestFiles(fullPath);
+        for (const testFile of testFiles) {
+          const suite = await this.parseTestFile(testFile);
+          if (suite) {
+            testSuites.push(suite);
+          }
+        }
+      }
+    }
+    
+    return testSuites;
+  }
+  
+  /**
+   * Generate namespace for new tests based on spec and service
+   */
+  generateTestNamespace(serviceName: string): string {
+    return `${this.namespace}.${serviceName}`.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+  }
+  
+  /**
+   * Merge existing and new test suites intelligently
+   */
+  mergeTestSuites(existing: TestSuite[], newSuites: TestSuite[]): TestCompositionResult {
+    const result: TestCompositionResult = {
+      merged: [],
+      conflicts: [],
+      generated: [],
+      preserved: []
+    };
+    
+    // Create a map of existing tests by namespace
+    const existingMap = new Map<string, TestSuite>();
+    existing.forEach(suite => existingMap.set(suite.namespace, suite));
+    
+    // Process new test suites
+    for (const newSuite of newSuites) {
+      const existingSuite = existingMap.get(newSuite.namespace);
+      
+      if (!existingSuite) {
+        // No conflict - add new suite as-is
+        result.merged.push(newSuite);
+        result.generated.push(...newSuite.cases);
+      } else {
+        // Conflict exists - merge intelligently
+        const merged = this.mergeConflictingSuites(existingSuite, newSuite);
+        result.merged.push(merged.suite);
+        result.conflicts.push(...merged.conflicts);
+        result.generated.push(...merged.generated);
+        result.preserved.push(...merged.preserved);
+        
+        // Remove from existing map so we don't duplicate
+        existingMap.delete(newSuite.namespace);
+      }
+    }
+    
+    // Add remaining existing suites (no conflicts)
+    existingMap.forEach(suite => {
+      result.merged.push(suite);
+      result.preserved.push(...suite.cases);
+    });
+    
+    return result;
+  }
+  
+  /**
+   * Safely merge two conflicting test suites
+   */
+  private mergeConflictingSuites(existing: TestSuite, newSuite: TestSuite): {
+    suite: TestSuite;
+    conflicts: Array<{ test: string; reason: string; resolution: string }>;
+    generated: TestCase[];
+    preserved: TestCase[];
+  } {
+    const result = {
+      suite: { ...existing },
+      conflicts: [] as Array<{ test: string; reason: string; resolution: string }>,
+      generated: [] as TestCase[],
+      preserved: [...existing.cases] as TestCase[]
+    };
+    
+    // Create a map of existing test cases by name
+    const existingCases = new Map<string, TestCase>();
+    existing.cases.forEach(testCase => existingCases.set(testCase.name, testCase));
+    
+    // Process new test cases
+    for (const newCase of newSuite.cases) {
+      const existingCase = existingCases.get(newCase.name);
+      
+      if (!existingCase) {
+        // No conflict - add new case
+        result.suite.cases.push(newCase);
+        result.generated.push(newCase);
+      } else if (this.isGeneratedTest(existingCase)) {
+        // Existing test is generated - safe to replace
+        const index = result.suite.cases.findIndex(c => c.name === newCase.name);
+        if (index >= 0) {
+          result.suite.cases[index] = newCase;
+          result.generated.push(newCase);
+          result.conflicts.push({
+            test: newCase.name,
+            reason: 'Generated test updated',
+            resolution: 'replace'
+          });
+        }
+      } else {
+        // Existing test is custom - preserve and rename new test
+        const renamedCase = {
+          ...newCase,
+          name: `${newCase.name}_generated`,
+          namespace: `${newCase.namespace}.generated`
+        };
+        result.suite.cases.push(renamedCase);
+        result.generated.push(renamedCase);
+        result.conflicts.push({
+          test: newCase.name,
+          reason: 'Custom test exists',
+          resolution: 'skip'
+        });
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Check if a test case was generated (vs. custom written)
+   */
+  private isGeneratedTest(testCase: TestCase): boolean {
+    return testCase.metadata?.generated === true ||
+           testCase.metadata?.source === 'arbiter' ||
+           testCase.namespace.includes('generated');
+  }
+  
+  /**
+   * Generate base namespace from spec name
+   */
+  private generateBaseNamespace(specName: string): string {
+    return `arbiter.${specName}`.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+  }
+  
+  /**
+   * Find test files recursively in a directory
+   */
+  private async findTestFiles(dir: string): Promise<string[]> {
+    const files: string[] = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        files.push(...await this.findTestFiles(fullPath));
+      } else if (this.isTestFile(entry.name)) {
+        files.push(fullPath);
+      }
+    }
+    
+    return files;
+  }
+  
+  /**
+   * Check if a file is a test file based on naming conventions
+   */
+  private isTestFile(filename: string): boolean {
+    const testPatterns = [
+      /\.test\.(js|ts|py|rs|go)$/,
+      /\.spec\.(js|ts|py|rs|go)$/,
+      /_test\.(js|ts|py|rs|go)$/,
+      /test_.*\.(py)$/
+    ];
+    
+    return testPatterns.some(pattern => pattern.test(filename));
+  }
+  
+  /**
+   * Parse a test file and extract test cases (simplified parser)
+   */
+  private async parseTestFile(filePath: string): Promise<TestSuite | null> {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const ext = path.extname(filePath);
+      
+      // Basic parsing - in real implementation would use proper AST parsing
+      const testCases: TestCase[] = [];
+      
+      if (ext === '.js' || ext === '.ts') {
+        // JavaScript/TypeScript test parsing
+        const testMatches = content.match(/(?:test|it)\s*\(\s*['"`]([^'"`]+)['"`]/g);
+        testMatches?.forEach((match, index) => {
+          const nameMatch = match.match(/['"`]([^'"`]+)['"`]/);
+          if (nameMatch) {
+            testCases.push({
+              name: nameMatch[1],
+              namespace: this.extractNamespaceFromFile(filePath),
+              steps: [], // Would extract from test body in real implementation
+              metadata: {
+                generated: false,
+                source: 'existing',
+                lastModified: new Date().toISOString()
+              }
+            });
+          }
+        });
+      } else if (ext === '.py') {
+        // Python test parsing
+        const testMatches = content.match(/def\s+(test_\w+)/g);
+        testMatches?.forEach(match => {
+          const nameMatch = match.match(/def\s+(test_\w+)/);
+          if (nameMatch) {
+            testCases.push({
+              name: nameMatch[1],
+              namespace: this.extractNamespaceFromFile(filePath),
+              steps: [],
+              metadata: {
+                generated: false,
+                source: 'existing',
+                lastModified: new Date().toISOString()
+              }
+            });
+          }
+        });
+      }
+      
+      if (testCases.length > 0) {
+        return {
+          name: path.basename(filePath, path.extname(filePath)),
+          namespace: this.extractNamespaceFromFile(filePath),
+          cases: testCases,
+          setup: [],
+          teardown: []
+        };
+      }
+    } catch (error) {
+      console.warn(`Warning: Could not parse test file ${filePath}:`, error);
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Extract namespace from file path
+   */
+  private extractNamespaceFromFile(filePath: string): string {
+    const relativePath = path.relative(process.cwd(), filePath);
+    const parts = relativePath.split(path.sep);
+    
+    // Remove file extension and test suffix
+    const fileName = path.basename(filePath, path.extname(filePath));
+    const cleanFileName = fileName.replace(/\.(test|spec)$/, '');
+    
+    // Build namespace from path
+    const namespaceParts = [...parts.slice(0, -1), cleanFileName];
+    return namespaceParts.join('.').toLowerCase().replace(/[^a-z0-9.]/g, '_');
+  }
+}
+
+/**
+ * Generate test cases for services based on their configuration
+ */
+function generateServiceTests(services: ServiceConfig[], specName: string): TestSuite[] {
+  const testSuites: TestSuite[] = [];
+  const engine = new TestCompositionEngine(specName);
+  
+  for (const service of services) {
+    const namespace = engine.generateTestNamespace(service.name);
+    
+    const testCases: TestCase[] = [];
+    
+    // Generate basic service tests
+    if (service.ports && service.ports.length > 0) {
+      // Health check test
+      testCases.push({
+        name: `${service.name}_health_check`,
+        namespace: namespace,
+        description: `Health check for ${service.name} service`,
+        steps: [
+          {
+            action: 'http_request',
+            params: {
+              method: 'GET',
+              url: `http://localhost:${service.ports[0].port}/health`,
+              timeout: 5000
+            },
+            expected: { status: 200 }
+          }
+        ],
+        metadata: {
+          generated: true,
+          source: 'arbiter',
+          lastModified: new Date().toISOString()
+        }
+      });
+      
+      // Port connectivity test
+      for (const port of service.ports) {
+        testCases.push({
+          name: `${service.name}_port_${port.port}_connectivity`,
+          namespace: namespace,
+          description: `Test ${port.name || port.port} port connectivity`,
+          steps: [
+            {
+              action: 'tcp_connect',
+              params: {
+                host: 'localhost',
+                port: port.port,
+                timeout: 3000
+              },
+              expected: { connected: true }
+            }
+          ],
+          metadata: {
+            generated: true,
+            source: 'arbiter',
+            lastModified: new Date().toISOString()
+          }
+        });
+      }
+    }
+    
+    // Generate environment variable tests
+    if (service.env && Object.keys(service.env).length > 0) {
+      testCases.push({
+        name: `${service.name}_environment_variables`,
+        namespace: namespace,
+        description: `Verify environment variables for ${service.name}`,
+        steps: [
+          {
+            action: 'check_environment',
+            params: {
+              service: service.name,
+              variables: Object.keys(service.env)
+            },
+            expected: { all_present: true }
+          }
+        ],
+        metadata: {
+          generated: true,
+          source: 'arbiter',
+          lastModified: new Date().toISOString()
+        }
+      });
+    }
+    
+    // Generate volume tests
+    if (service.volumes && service.volumes.length > 0) {
+      for (const volume of service.volumes) {
+        testCases.push({
+          name: `${service.name}_volume_${volume.name}_mounted`,
+          namespace: namespace,
+          description: `Verify ${volume.name} volume is mounted at ${volume.path}`,
+          steps: [
+            {
+              action: 'check_volume_mount',
+              params: {
+                service: service.name,
+                path: volume.path,
+                volume: volume.name
+              },
+              expected: { mounted: true, writable: true }
+            }
+          ],
+          metadata: {
+            generated: true,
+            source: 'arbiter',
+            lastModified: new Date().toISOString()
+          }
+        });
+      }
+    }
+    
+    // Generate service-type specific tests
+    if (service.serviceType === 'prebuilt') {
+      // Test for pre-built services (like ClickHouse, Redis)
+      testCases.push({
+        name: `${service.name}_image_version`,
+        namespace: namespace,
+        description: `Verify ${service.name} is running expected image`,
+        steps: [
+          {
+            action: 'check_image',
+            params: {
+              service: service.name,
+              expectedImage: service.image
+            },
+            expected: { image_matches: true }
+          }
+        ],
+        metadata: {
+          generated: true,
+          source: 'arbiter',
+          lastModified: new Date().toISOString()
+        }
+      });
+    }
+    
+    if (testCases.length > 0) {
+      testSuites.push({
+        name: `${service.name}_tests`,
+        namespace: namespace,
+        cases: testCases,
+        setup: [
+          {
+            action: 'wait_for_service',
+            params: {
+              service: service.name,
+              timeout: 30000
+            }
+          }
+        ],
+        teardown: []
+      });
+    }
+  }
+  
+  return testSuites;
+}
+
+/**
+ * Write test composition results to files
+ */
+async function writeTestFiles(
+  testResult: TestCompositionResult, 
+  outputDir: string, 
+  language: string, 
+  options: GenerateOptions
+): Promise<string[]> {
+  const files: string[] = [];
+  const testsDir = path.join(outputDir, 'tests');
+  
+  if (!fs.existsSync(testsDir) && !options.dryRun) {
+    await fs.mkdir(testsDir, { recursive: true });
+  }
+  
+  // Write test suites based on language
+  for (const suite of testResult.merged) {
+    const fileName = `${suite.name}.${getTestFileExtension(language)}`;
+    const filePath = path.join(testsDir, fileName);
+    
+    const content = generateTestFileContent(suite, language);
+    
+    if (!options.dryRun) {
+      await fs.writeFile(filePath, content);
+    }
+    files.push(`tests/${fileName}`);
+  }
+  
+  // Write test composition report
+  const reportPath = path.join(testsDir, 'composition_report.json');
+  const report = {
+    timestamp: new Date().toISOString(),
+    summary: {
+      totalTests: testResult.merged.reduce((sum, suite) => sum + suite.cases.length, 0),
+      generatedTests: testResult.generated.length,
+      preservedTests: testResult.preserved.length,
+      conflicts: testResult.conflicts.length
+    },
+    details: {
+      conflicts: testResult.conflicts,
+      generated: testResult.generated.map(t => ({ name: t.name, namespace: t.namespace })),
+      preserved: testResult.preserved.map(t => ({ name: t.name, namespace: t.namespace }))
+    }
+  };
+  
+  if (!options.dryRun) {
+    await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+  }
+  files.push('tests/composition_report.json');
+  
+  return files;
+}
+
+function getTestFileExtension(language: string): string {
+  switch (language) {
+    case 'typescript': return 'test.ts';
+    case 'javascript': return 'test.js';
+    case 'python': return 'test.py';
+    case 'rust': return 'rs';
+    case 'go': return 'go';
+    default: return 'test.js';
+  }
+}
+
+function generateTestFileContent(suite: TestSuite, language: string): string {
+  switch (language) {
+    case 'typescript':
+    case 'javascript':
+      return generateJavaScriptTestContent(suite);
+    case 'python':
+      return generatePythonTestContent(suite);
+    case 'rust':
+      return generateRustTestContent(suite);
+    case 'go':
+      return generateGoTestContent(suite);
+    default:
+      return generateJavaScriptTestContent(suite);
+  }
+}
+
+function generateJavaScriptTestContent(suite: TestSuite): string {
+  return `// ${suite.name} - Generated by Arbiter
+// Namespace: ${suite.namespace}
+// Generated: ${new Date().toISOString()}
+
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+
+describe('${suite.name}', () => {
+${suite.setup && suite.setup.length > 0 ? `  beforeAll(async () => {
+${suite.setup.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+  });
+
+` : ''}${suite.cases.map(testCase => `  test('${testCase.name}', async () => {
+    // ${testCase.description || 'Generated test'}
+${testCase.steps.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}
+    // Expected: ${JSON.stringify(step.expected)}`).join('\n')}
+    
+    // TODO: Implement test logic
+    expect(true).toBe(true); // Placeholder
+  });`).join('\n\n')}
+${suite.teardown && suite.teardown.length > 0 ? `
+  afterAll(async () => {
+${suite.teardown.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+  });` : ''}
+});
+`;
+}
+
+function generatePythonTestContent(suite: TestSuite): string {
+  return `"""${suite.name} - Generated by Arbiter
+Namespace: ${suite.namespace}
+Generated: ${new Date().toISOString()}
+"""
+
+import pytest
+import asyncio
+from typing import Dict, Any
+
+
+class Test${suite.name.replace(/_/g, '')}:
+    """Test suite for ${suite.name}"""
+${suite.setup && suite.setup.length > 0 ? `
+    @pytest.fixture(scope="class", autouse=True)
+    async def setup_class(self):
+        """Setup for test class"""
+${suite.setup.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+        pass
+` : ''}
+${suite.cases.map(testCase => `    async def test_${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}(self):
+        """${testCase.description || 'Generated test'}"""
+${testCase.steps.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}
+        # Expected: ${JSON.stringify(step.expected)}`).join('\n')}
+        
+        # TODO: Implement test logic
+        assert True  # Placeholder`).join('\n\n')}
+${suite.teardown && suite.teardown.length > 0 ? `
+    @pytest.fixture(scope="class", autouse=True)
+    async def teardown_class(self):
+        """Teardown for test class"""
+${suite.teardown.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+        pass` : ''}
+`;
+}
+
+function generateRustTestContent(suite: TestSuite): string {
+  return `// ${suite.name} - Generated by Arbiter
+// Namespace: ${suite.namespace}
+// Generated: ${new Date().toISOString()}
+
+#[cfg(test)]
+mod ${suite.name.replace(/-/g, '_')} {
+    use super::*;
+    use tokio_test;
+
+${suite.cases.map(testCase => `    #[tokio::test]
+    async fn ${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}() {
+        // ${testCase.description || 'Generated test'}
+${testCase.steps.map(step => `        // ${step.action}: ${JSON.stringify(step.params)}
+        // Expected: ${JSON.stringify(step.expected)}`).join('\n')}
+        
+        // TODO: Implement test logic
+        assert!(true); // Placeholder
+    }`).join('\n\n')}
+}
+`;
+}
+
+function generateGoTestContent(suite: TestSuite): string {
+  return `// ${suite.name} - Generated by Arbiter
+// Namespace: ${suite.namespace}
+// Generated: ${new Date().toISOString()}
+
+package main
+
+import (
+    "testing"
+    "context"
+    "time"
+)
+
+${suite.cases.map(testCase => `func Test${testCase.name.replace(/[^a-zA-Z0-9]/g, '')}(t *testing.T) {
+    // ${testCase.description || 'Generated test'}
+${testCase.steps.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}
+    // Expected: ${JSON.stringify(step.expected)}`).join('\n')}
+    
+    // TODO: Implement test logic
+    if true != true { // Placeholder
+        t.Errorf("Test failed")
+    }
+}`).join('\n\n')}
+`;
+}
+
+/**
+ * Main function to generate and compose tests with existing test suites
+ */
+async function generateAndComposeTests(assemblyConfig: any, outputDir: string, options: GenerateOptions): Promise<string[]> {
+  try {
+    // Extract services and spec info
+    const { services } = parseDockerComposeServices(assemblyConfig);
+    const specName = assemblyConfig?.metadata?.name || 'default';
+    const language = assemblyConfig?.config?.language || 'typescript';
+    
+    // Create test composition engine
+    const engine = new TestCompositionEngine(specName);
+    
+    // Discover existing tests
+    const existingTests = await engine.discoverExistingTests(outputDir);
+    
+    // Generate new test suites for services
+    const newTestSuites = generateServiceTests(services, specName);
+    
+    // Merge existing and new tests intelligently
+    const testResult = engine.mergeTestSuites(existingTests, newTestSuites);
+    
+    // Write composed test files
+    const files = await writeTestFiles(testResult, outputDir, language, options);
+    
+    // Report composition results
+    if (options.verbose) {
+      console.log(chalk.blue(`\n📋 Test Composition Summary:`));
+      console.log(chalk.dim(`  Generated: ${testResult.generated.length} test cases`));
+      console.log(chalk.dim(`  Preserved: ${testResult.preserved.length} existing test cases`));
+      console.log(chalk.dim(`  Conflicts: ${testResult.conflicts.length} resolved`));
+      
+      if (testResult.conflicts.length > 0) {
+        console.log(chalk.yellow(`\n⚠️  Test Conflicts Resolved:`));
+        testResult.conflicts.forEach(conflict => {
+          console.log(chalk.dim(`  • ${conflict.test}: ${conflict.reason} (${conflict.resolution})`));
+        });
+      }
+    }
+    
+    return files;
+  } catch (error) {
+    console.warn(chalk.yellow(`⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`));
+    return [];
+  }
+}
+
