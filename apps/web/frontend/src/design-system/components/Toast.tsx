@@ -87,6 +87,178 @@ const extendedStatusVariants = {
   },
 };
 
+/**
+ * Create progress update callback for auto-dismissing toasts
+ */
+function createProgressUpdater(
+  startTimeRef: React.MutableRefObject<number | undefined>,
+  duration: number,
+  setProgress: (progress: number) => void
+) {
+  return () => {
+    if (!startTimeRef.current) return;
+    
+    const elapsed = Date.now() - startTimeRef.current;
+    const remaining = Math.max(0, duration - elapsed);
+    const progressValue = (remaining / duration) * 100;
+    
+    setProgress(progressValue);
+    
+    if (remaining > 0) {
+      requestAnimationFrame(createProgressUpdater(startTimeRef, duration, setProgress));
+    }
+  };
+}
+
+/**
+ * Setup auto-dismiss timer with optional progress tracking
+ */
+function setupAutoDismiss(
+  duration: number,
+  isVisible: boolean,
+  variant: ToastProps['variant'],
+  showProgress: boolean,
+  setProgress: (progress: number) => void,
+  handleClose: () => void
+) {
+  if (duration <= 0 || !isVisible || variant === 'loading') {
+    return () => {}; // No cleanup needed
+  }
+
+  const startTimeRef = { current: Date.now() };
+  
+  // Setup progress updates if requested
+  if (showProgress) {
+    const updateProgress = createProgressUpdater(startTimeRef, duration, setProgress);
+    updateProgress();
+  }
+  
+  // Setup auto-dismiss timer
+  const timeoutId = setTimeout(handleClose, duration);
+  
+  return () => clearTimeout(timeoutId);
+}
+
+/**
+ * Create toast event handlers
+ */
+function createToastHandlers(
+  dismissible: boolean,
+  onClose?: () => void,
+  onClick?: () => void
+) {
+  const handleClose = () => {
+    onClose?.();
+  };
+
+  const handleClick = () => {
+    if (dismissible) {
+      handleClose();
+    }
+    onClick?.();
+  };
+
+  const handleCloseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    handleClose();
+  };
+
+  return { handleClose, handleClick, handleCloseClick };
+}
+
+/**
+ * Render toast icon based on variant and custom icon
+ */
+function renderToastIcon(variant: ToastProps['variant'], icon?: ReactNode, statusClasses?: string) {
+  const IconComponent = icons[variant];
+  
+  return (
+    <div className={cn('flex-shrink-0 mt-0.5', statusClasses)}>
+      {icon || (
+        variant === 'loading' ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <IconComponent className="h-5 w-5" />
+        )
+      )}
+    </div>
+  );
+}
+
+/**
+ * Render toast content (title, description, action)
+ */
+function renderToastContent(title: string, description?: string, action?: ReactNode) {
+  return (
+    <div className="flex-1 min-w-0">
+      <h3 className={cn('font-semibold text-sm text-graphite-900')}>
+        {title}
+      </h3>
+      
+      {description && (
+        <p className={cn('mt-1 text-sm text-graphite-600 leading-relaxed')}>
+          {description}
+        </p>
+      )}
+      
+      {action && (
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+          {action}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Render toast close button
+ */
+function renderCloseButton(closable: boolean, handleCloseClick: (e: React.MouseEvent) => void) {
+  if (!closable) return null;
+  
+  return (
+    <button
+      type="button"
+      className={cn(
+        'flex-shrink-0 rounded-md p-1.5 transition-colors',
+        'hover:bg-graphite-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
+        'text-graphite-400 hover:text-graphite-600'
+      )}
+      onClick={handleCloseClick}
+      aria-label="Close notification"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  );
+}
+
+/**
+ * Render progress bar for auto-dismissing toasts
+ */
+function renderProgressBar(
+  showProgress: boolean,
+  duration: number,
+  variant: ToastProps['variant'],
+  progress: number,
+  statusDot: string
+) {
+  if (!showProgress || duration <= 0 || variant === 'loading') {
+    return null;
+  }
+  
+  return (
+    <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden">
+      <div 
+        className={cn(
+          'h-full transition-all duration-100 ease-linear',
+          statusDot.replace('bg-', 'bg-')
+        )}
+        style={{ width: `${progress}%` }}
+      />
+    </div>
+  );
+}
+
 export function Toast({
   id,
   variant = 'info',
@@ -106,43 +278,28 @@ export function Toast({
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(visible);
   const [progress, setProgress] = useState(100);
-  const timeoutRef = useRef<NodeJS.Timeout>();
-  const startTimeRef = useRef<number>();
 
-  // Auto-dismiss after duration with progress
+  // Create handlers once
+  const { handleClose, handleClick, handleCloseClick } = createToastHandlers(
+    dismissible,
+    () => {
+      setIsVisible(false);
+      onClose?.();
+    },
+    onClick
+  );
+
+  // Auto-dismiss effect with progress
   useEffect(() => {
-    if (duration > 0 && isVisible && variant !== 'loading') {
-      startTimeRef.current = Date.now();
-      
-      const updateProgress = () => {
-        if (!startTimeRef.current) return;
-        
-        const elapsed = Date.now() - startTimeRef.current;
-        const remaining = Math.max(0, duration - elapsed);
-        const progressValue = (remaining / duration) * 100;
-        
-        setProgress(progressValue);
-        
-        if (remaining > 0) {
-          requestAnimationFrame(updateProgress);
-        }
-      };
-
-      if (showProgress) {
-        updateProgress();
-      }
-      
-      timeoutRef.current = setTimeout(() => {
-        handleClose();
-      }, duration);
-      
-      return () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-      };
-    }
-  }, [duration, isVisible, variant, showProgress]);
+    return setupAutoDismiss(
+      duration,
+      isVisible,
+      variant,
+      showProgress,
+      setProgress,
+      handleClose
+    );
+  }, [duration, isVisible, variant, showProgress, handleClose]);
 
   // Update visibility when prop changes
   useEffect(() => {
@@ -152,24 +309,8 @@ export function Toast({
     }
   }, [visible]);
 
-  const handleClose = () => {
-    setIsVisible(false);
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    onClose?.();
-  };
-
-  const handleClick = () => {
-    if (dismissible) {
-      handleClose();
-    }
-    onClick?.();
-  };
-
   if (!isVisible) return null;
 
-  const IconComponent = icons[variant];
   const status = extendedStatusVariants[variant];
 
   const toast = (
@@ -206,68 +347,10 @@ export function Toast({
         )}
         onClick={handleClick}
       >
-        {/* Progress bar */}
-        {showProgress && duration > 0 && variant !== 'loading' && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden">
-            <div 
-              className={cn(
-                'h-full transition-all duration-100 ease-linear',
-                status.dot.replace('bg-', 'bg-')
-              )}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
-        {/* Icon */}
-        <div className={cn('flex-shrink-0 mt-0.5', status.icon)}>
-          {icon || (
-            variant === 'loading' ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <IconComponent className="h-5 w-5" />
-            )
-          )}
-        </div>
-        
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <h3 className={cn('font-semibold text-sm text-graphite-900')}>
-            {title}
-          </h3>
-          
-          {description && (
-            <p className={cn('mt-1 text-sm text-graphite-600 leading-relaxed')}>
-              {description}
-            </p>
-          )}
-          
-          {/* Action */}
-          {action && (
-            <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-              {action}
-            </div>
-          )}
-        </div>
-        
-        {/* Close button */}
-        {closable && (
-          <button
-            type="button"
-            className={cn(
-              'flex-shrink-0 rounded-md p-1.5 transition-colors',
-              'hover:bg-graphite-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
-              'text-graphite-400 hover:text-graphite-600'
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleClose();
-            }}
-            aria-label="Close notification"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+        {renderProgressBar(showProgress, duration, variant, progress, status.dot)}
+        {renderToastIcon(variant, icon, status.icon)}
+        {renderToastContent(title, description, action)}
+        {renderCloseButton(closable, handleCloseClick)}
       </div>
     </div>
   );
@@ -340,7 +423,9 @@ export function ToastContainer({
 }
 
 // Toast Hook for easy management (would typically be in a separate hooks file)
-export interface ToastOptions extends Omit<ToastProps, 'visible' | 'id'> {}
+export interface ToastOptions extends Omit<ToastProps, 'visible'> {
+  id?: string; // Optional id, will be auto-generated if not provided
+}
 
 export interface ToastContextValue {
   toasts: ToastProps[];

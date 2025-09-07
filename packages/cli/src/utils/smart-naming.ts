@@ -165,60 +165,82 @@ export function generateSmartFilename(
   options: NamingOptions = {},
   context?: ProjectContext,
 ): string {
-  // If explicit output provided, use it
+  // Handle explicit output or generic names early
   if (options.output) {
     return options.output;
   }
 
-  // If using generic names (backward compatibility), return default
   if (options.useGenericNames) {
     return FILE_PATTERNS[fileType].default;
   }
 
-  const pattern = FILE_PATTERNS[fileType];
+  // Resolve and sanitize the base name
+  const baseName = resolveBaseName(options, context);
+  const sanitizedBaseName = sanitizeBaseName(baseName);
+
+  // Generate filename based on file type
+  return generateFilenameForType(fileType, sanitizedBaseName);
+}
+
+/**
+ * Resolve base name from various sources
+ */
+function resolveBaseName(options: NamingOptions, context?: ProjectContext): string {
+  // Try explicit options first
   let baseName = options.baseName || options.projectName || context?.name;
 
-  // Generate base name from input file if available
+  // Generate from input file if available
   if (!baseName && options.inputFile) {
-    const inputBaseName = path.basename(options.inputFile, path.extname(options.inputFile));
-    baseName = inputBaseName === "requirements" ? undefined : inputBaseName;
+    baseName = deriveBaseNameFromFile(options.inputFile);
   }
 
-  // Fallback to directory name or generic name
+  // Fallback to context or current directory
   if (!baseName) {
     baseName = context?.name || path.basename(context?.directory || process.cwd());
   }
 
-  // Sanitize base name (remove special characters, make lowercase)
-  const sanitizedBaseName = baseName
+  return baseName;
+}
+
+/**
+ * Derive base name from input file
+ */
+function deriveBaseNameFromFile(inputFile: string): string | undefined {
+  const inputBaseName = path.basename(inputFile, path.extname(inputFile));
+  return inputBaseName === "requirements" ? undefined : inputBaseName;
+}
+
+/**
+ * Sanitize base name for filename use
+ */
+function sanitizeBaseName(baseName: string): string {
+  return baseName
     .toLowerCase()
     .replace(/[^a-z0-9-_]/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
 
-  // Generate filename based on file type
-  switch (fileType) {
-    case "assembly":
-      return `${sanitizedBaseName}.assembly.cue`;
+/**
+ * Generate filename for specific file type
+ */
+function generateFilenameForType(fileType: FileType, sanitizedBaseName: string): string {
+  const fileTypeTemplates: Record<FileType, string> = {
+    assembly: `${sanitizedBaseName}.assembly.cue`,
+    surface: `${sanitizedBaseName}-surface.json`,
+    versionPlan: `${sanitizedBaseName}-version-plan.json`,
+    apiSurface: `${sanitizedBaseName}-api-surface.json`,
+    docs: `${sanitizedBaseName}-docs.md`,
+    html: `${sanitizedBaseName}.html`,
+  };
 
-    case "surface":
-      return `${sanitizedBaseName}-surface.json`;
-
-    case "versionPlan":
-      return `${sanitizedBaseName}-version-plan.json`;
-
-    case "apiSurface":
-      return `${sanitizedBaseName}-api-surface.json`;
-
-    case "docs":
-      return `${sanitizedBaseName}-docs.md`;
-
-    case "html":
-      return `${sanitizedBaseName}.html`;
-
-    default:
-      return `${sanitizedBaseName}${pattern.extension}`;
+  if (fileType in fileTypeTemplates) {
+    return fileTypeTemplates[fileType];
   }
+
+  // Fallback to pattern extension
+  const pattern = FILE_PATTERNS[fileType];
+  return `${sanitizedBaseName}${pattern.extension}`;
 }
 
 /**

@@ -14,23 +14,32 @@ export class SpecWorkbenchDB {
   }
 
   /**
-   * Initialize database schema with proper indices
+   * Configure SQLite pragmas for optimal performance
    */
-  private initializeSchema(): void {
+  private configurePragmas(): void {
     // Enable WAL mode for better concurrent access
     this.db.exec("PRAGMA journal_mode = WAL");
     this.db.exec("PRAGMA synchronous = NORMAL");
     this.db.exec("PRAGMA cache_size = 1000");
     this.db.exec("PRAGMA temp_store = memory");
+  }
 
+  /**
+   * Handle schema migrations (add columns if needed)
+   */
+  private handleSchemaMigrations(): void {
     // Schema migration - add head_revision_id column if it doesn't exist
     try {
       this.db.exec("ALTER TABLE fragments ADD COLUMN head_revision_id TEXT");
     } catch (error) {
       // Column already exists or table doesn't exist yet, ignore
     }
+  }
 
-    // Create tables
+  /**
+   * Create the projects table
+   */
+  private createProjectsTable(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (
         id TEXT PRIMARY KEY,
@@ -39,7 +48,12 @@ export class SpecWorkbenchDB {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
+  }
 
+  /**
+   * Create the fragments table
+   */
+  private createFragmentsTable(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS fragments (
         id TEXT PRIMARY KEY,
@@ -53,7 +67,12 @@ export class SpecWorkbenchDB {
         UNIQUE (project_id, path)
       )
     `);
+  }
 
+  /**
+   * Create the fragment_revisions table
+   */
+  private createFragmentRevisionsTable(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS fragment_revisions (
         id TEXT PRIMARY KEY,
@@ -68,7 +87,12 @@ export class SpecWorkbenchDB {
         UNIQUE (fragment_id, revision_number)
       )
     `);
+  }
 
+  /**
+   * Create the versions table
+   */
+  private createVersionsTable(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS versions (
         id TEXT PRIMARY KEY,
@@ -80,7 +104,12 @@ export class SpecWorkbenchDB {
         UNIQUE (project_id, spec_hash)
       )
     `);
+  }
 
+  /**
+   * Create the events table
+   */
+  private createEventsTable(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
@@ -91,18 +120,45 @@ export class SpecWorkbenchDB {
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
       )
     `);
+  }
 
-    // Create indices for performance
+  /**
+   * Create all database tables
+   */
+  private createTables(): void {
+    this.createProjectsTable();
+    this.createFragmentsTable();
+    this.createFragmentRevisionsTable();
+    this.createVersionsTable();
+    this.createEventsTable();
+  }
+
+  /**
+   * Create performance indices for tables
+   */
+  private createIndices(): void {
+    // Fragment indices
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragments_project_id ON fragments (project_id)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragments_path ON fragments (project_id, path)");
+    
+    // Fragment revision indices
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragment_revisions_fragment_id ON fragment_revisions (fragment_id)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragment_revisions_revision_number ON fragment_revisions (fragment_id, revision_number)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragment_revisions_content_hash ON fragment_revisions (content_hash)");
+    
+    // Version indices
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_versions_project_id ON versions (project_id)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_versions_hash ON versions (spec_hash)");
+    
+    // Event indices
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_events_project_id ON events (project_id)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC)");
+  }
 
+  /**
+   * Create database triggers for automatic timestamp updates
+   */
+  private createTriggers(): void {
     // Trigger to update updated_at on projects
     this.db.exec(`
       CREATE TRIGGER IF NOT EXISTS update_projects_updated_at
@@ -122,6 +178,17 @@ export class SpecWorkbenchDB {
         UPDATE fragments SET updated_at = datetime('now') WHERE id = NEW.id;
       END
     `);
+  }
+
+  /**
+   * Initialize database schema with proper indices
+   */
+  private initializeSchema(): void {
+    this.configurePragmas();
+    this.handleSchemaMigrations();
+    this.createTables();
+    this.createIndices();
+    this.createTriggers();
   }
 
   // Project operations
@@ -417,7 +484,9 @@ export class SpecWorkbenchDB {
 
     if (since) {
       query += " AND created_at > ?";
-      params.push(since);
+      // Convert ISO timestamp to SQLite datetime format
+      const sqliteTimestamp = new Date(since).toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
+      params.push(sqliteTimestamp);
     }
 
     query += " ORDER BY created_at DESC LIMIT ?";

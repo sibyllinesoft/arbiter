@@ -177,6 +177,139 @@ async function validateIdempotency(filePath: string, expectedChecksum: string): 
 /**
  * Enhanced sync package.json with intelligent conflict resolution
  */
+/**
+ * Load and parse package.json content
+ */
+async function loadPackageJson(filePath: string): Promise<{
+  originalContent: string;
+  originalPkg: any;
+  originalChecksum: string;
+}> {
+  const originalContent = await fs.readFile(filePath, "utf8");
+  const originalPkg = JSON.parse(originalContent);
+  const originalChecksum = calculateChecksum(originalContent);
+  
+  return { originalContent, originalPkg, originalChecksum };
+}
+
+/**
+ * Get Arbiter configuration updates for package.json
+ */
+function getArbiterPackageUpdates() {
+  return {
+    scripts: {
+      "arbiter:check": "arbiter check",
+      "arbiter:watch": "arbiter watch",
+      "arbiter:surface": "arbiter surface typescript --output surface.json",
+      "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
+      "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
+      "arbiter:version:plan": "arbiter version plan --strict",
+      "arbiter:sync": "arbiter sync --language typescript",
+    },
+    devDependencies: {
+      "@arbiter/cli": "^0.1.0",
+    },
+    arbiter: {
+      profiles: ["library"],
+      coverage: {
+        threshold: 0.8,
+      },
+      surface: {
+        language: "typescript",
+        output: "surface.json",
+      },
+    },
+  };
+}
+
+/**
+ * Apply Arbiter updates to package object
+ */
+function applyArbiterUpdates(
+  pkg: any,
+  arbiterUpdates: ReturnType<typeof getArbiterPackageUpdates>,
+  force: boolean,
+): ConflictResolution[] {
+  const conflicts: ConflictResolution[] = [];
+  
+  // Initialize sections if not present
+  if (!pkg.scripts) pkg.scripts = {};
+  if (!pkg.devDependencies) pkg.devDependencies = {};
+
+  // Use intelligent merge for each section
+  pkg.scripts = deepMerge(pkg.scripts, arbiterUpdates.scripts, conflicts, "scripts", force);
+  pkg.devDependencies = deepMerge(
+    pkg.devDependencies,
+    arbiterUpdates.devDependencies,
+    conflicts,
+    "devDependencies",
+    force,
+  );
+  pkg.arbiter = deepMerge(pkg.arbiter || {}, arbiterUpdates.arbiter, conflicts, "arbiter", force);
+  
+  return conflicts;
+}
+
+/**
+ * Report changes that would be made
+ */
+function reportPotentialChanges(changeSet: any, conflicts: ConflictResolution[]): void {
+  // Report changes
+  if (Object.keys(changeSet.added).length > 0) {
+    console.log(chalk.green("  ✨ Would add:"));
+    for (const [key, value] of Object.entries(changeSet.added)) {
+      console.log(chalk.dim(`    ${key}: ${JSON.stringify(value, null, 2).split("\n")[0]}...`));
+    }
+  }
+
+  if (Object.keys(changeSet.modified).length > 0) {
+    console.log(chalk.yellow("  🔄 Would modify:"));
+    for (const [key, change] of Object.entries(changeSet.modified)) {
+      console.log(
+        chalk.dim(`    ${key}: ${JSON.stringify(change.from)} → ${JSON.stringify(change.to)}`),
+      );
+    }
+  }
+
+  // Report conflicts
+  if (conflicts.length > 0) {
+    console.log(chalk.yellow(`  ⚠️  ${conflicts.length} conflict(s) detected:`));
+    for (const conflict of conflicts) {
+      const status = conflict.applied ? chalk.green("RESOLVED") : chalk.red("PRESERVED");
+      console.log(chalk.dim(`    ${status}: ${conflict.details}`));
+    }
+  }
+}
+
+/**
+ * Apply changes to package.json file
+ */
+async function applyPackageChanges(
+  filePath: string,
+  newContent: string,
+  backup: boolean,
+  newChecksum: string,
+): Promise<string | undefined> {
+  let backupPath: string | undefined;
+  
+  if (backup) {
+    backupPath = await createBackup(filePath);
+    console.log(chalk.dim(`  📦 Created backup: ${path.basename(backupPath)}`));
+  }
+
+  await fs.writeFile(filePath, newContent);
+
+  // Validate idempotency
+  const isIdempotent = await validateIdempotency(filePath, newChecksum);
+  if (!isIdempotent) {
+    console.log(
+      chalk.yellow("  ⚠️  Warning: File was modified by external process during sync"),
+    );
+  }
+  
+  return backupPath;
+}
+
 async function syncPackageJson(
   filePath: string,
   dryRun: boolean,
@@ -184,54 +317,13 @@ async function syncPackageJson(
   force: boolean,
 ): Promise<SyncResult> {
   try {
-    const originalContent = await fs.readFile(filePath, "utf8");
-    const originalPkg = JSON.parse(originalContent);
-    const originalChecksum = calculateChecksum(originalContent);
-
-    // Create working copy
+    // Load package.json content
+    const { originalContent, originalPkg, originalChecksum } = await loadPackageJson(filePath);
+    
+    // Create working copy and apply updates
     const pkg = JSON.parse(originalContent);
-    const conflicts: ConflictResolution[] = [];
-
-    // Define Arbiter configurations to merge
-    const arbiterUpdates = {
-      scripts: {
-        "arbiter:check": "arbiter check",
-        "arbiter:watch": "arbiter watch",
-        "arbiter:surface": "arbiter surface typescript --output surface.json",
-        "arbiter:test:scaffold": "arbiter tests scaffold --language typescript",
-        "arbiter:test:cover": "arbiter tests cover --threshold 0.8",
-        "arbiter:version:plan": "arbiter version plan --strict",
-        "arbiter:sync": "arbiter sync --language typescript",
-      },
-      devDependencies: {
-        "@arbiter/cli": "^0.1.0",
-      },
-      arbiter: {
-        profiles: ["library"],
-        coverage: {
-          threshold: 0.8,
-        },
-        surface: {
-          language: "typescript",
-          output: "surface.json",
-        },
-      },
-    };
-
-    // Initialize sections if not present
-    if (!pkg.scripts) pkg.scripts = {};
-    if (!pkg.devDependencies) pkg.devDependencies = {};
-
-    // Use intelligent merge for each section
-    pkg.scripts = deepMerge(pkg.scripts, arbiterUpdates.scripts, conflicts, "scripts", force);
-    pkg.devDependencies = deepMerge(
-      pkg.devDependencies,
-      arbiterUpdates.devDependencies,
-      conflicts,
-      "devDependencies",
-      force,
-    );
-    pkg.arbiter = deepMerge(pkg.arbiter || {}, arbiterUpdates.arbiter, conflicts, "arbiter", force);
+    const arbiterUpdates = getArbiterPackageUpdates();
+    const conflicts = applyArbiterUpdates(pkg, arbiterUpdates, force);
 
     // Check if anything actually changed
     const newContent = `${JSON.stringify(pkg, null, 2)}\n`;
@@ -243,49 +335,13 @@ async function syncPackageJson(
 
     // Report changes in dry-run mode
     if (modified) {
-      if (Object.keys(changeSet.added).length > 0) {
-        console.log(chalk.green("  ✨ Would add:"));
-        for (const [key, value] of Object.entries(changeSet.added)) {
-          console.log(chalk.dim(`    ${key}: ${JSON.stringify(value, null, 2).split("\n")[0]}...`));
-        }
-      }
-
-      if (Object.keys(changeSet.modified).length > 0) {
-        console.log(chalk.yellow("  🔄 Would modify:"));
-        for (const [key, change] of Object.entries(changeSet.modified)) {
-          console.log(
-            chalk.dim(`    ${key}: ${JSON.stringify(change.from)} → ${JSON.stringify(change.to)}`),
-          );
-        }
-      }
-    }
-
-    // Report conflicts
-    if (conflicts.length > 0) {
-      console.log(chalk.yellow(`  ⚠️  ${conflicts.length} conflict(s) detected:`));
-      for (const conflict of conflicts) {
-        const status = conflict.applied ? chalk.green("RESOLVED") : chalk.red("PRESERVED");
-        console.log(chalk.dim(`    ${status}: ${conflict.details}`));
-      }
+      reportPotentialChanges(changeSet, conflicts);
     }
 
     // Apply changes if not dry run
     let backupPath: string | undefined;
     if (modified && !dryRun) {
-      if (backup) {
-        backupPath = await createBackup(filePath);
-        console.log(chalk.dim(`  📦 Created backup: ${path.basename(backupPath)}`));
-      }
-
-      await fs.writeFile(filePath, newContent);
-
-      // Validate idempotency
-      const isIdempotent = await validateIdempotency(filePath, newChecksum);
-      if (!isIdempotent) {
-        console.log(
-          chalk.yellow("  ⚠️  Warning: File was modified by external process during sync"),
-        );
-      }
+      backupPath = await applyPackageChanges(filePath, newContent, backup, newChecksum);
     }
 
     return {
@@ -683,121 +739,12 @@ arbiter-sync:
  */
 export async function syncCommand(options: SyncOptions, _config: CLIConfig): Promise<number> {
   try {
-    const projectPath = process.cwd();
-    console.log(chalk.blue("🔄 Arbiter manifest synchronization"));
-    console.log(chalk.dim(`Project: ${projectPath}`));
+    const context = await initializeSyncContext(options);
+    if (!context) return 1;
 
-    // Detect manifest files
-    console.log(chalk.blue("🔍 Detecting manifest files..."));
-    const manifests = await detectManifestFiles(projectPath);
-
-    if (manifests.length === 0) {
-      console.log(chalk.yellow("⚠️  No supported manifest files found"));
-      console.log(chalk.dim("Supported: package.json, pyproject.toml, Cargo.toml, Makefile"));
-      return 1;
-    }
-
-    console.log(chalk.green(`✅ Found ${manifests.length} manifest file(s):`));
-    for (const manifest of manifests) {
-      console.log(chalk.dim(`  • ${manifest.path} (${manifest.language})`));
-    }
-
-    // Filter by language if specified
-    let targetManifests = manifests;
-    if (options.language && options.language !== "all") {
-      targetManifests = manifests.filter((m) => m.language === options.language);
-      if (targetManifests.length === 0) {
-        console.log(chalk.yellow(`⚠️  No ${options.language} manifest files found`));
-        return 1;
-      }
-    }
-
-    const dryRun = options.dryRun || false;
-    const backup = options.backup || false;
-    const force = options.force || false;
-
-    if (dryRun) {
-      console.log(chalk.yellow("📋 Dry run mode - no files will be modified"));
-    }
-
-    console.log(chalk.blue("\n🔄 Synchronizing manifests..."));
-    let totalModified = 0;
-
-    // Process each manifest file
-    const syncResults: SyncResult[] = [];
-
-    for (const manifest of targetManifests) {
-      const filePath = path.join(projectPath, manifest.path);
-      console.log(chalk.cyan(`\n📝 Processing ${manifest.path}...`));
-
-      let result: SyncResult;
-
-      switch (manifest.type) {
-        case "package.json":
-          result = await syncPackageJson(filePath, dryRun, backup, force);
-          break;
-        case "pyproject.toml":
-          result = await syncPyprojectToml(filePath, dryRun, backup, force);
-          break;
-        case "Cargo.toml":
-          result = await syncCargoToml(filePath, dryRun, backup, force);
-          break;
-        case "Makefile":
-          result = await syncMakefile(filePath, dryRun, backup, force);
-          break;
-        default:
-          result = { modified: false, conflicts: [], checksum: "" };
-      }
-
-      syncResults.push(result);
-
-      if (result.modified) {
-        totalModified++;
-        const status = dryRun ? "Would modify" : "Modified";
-        const conflictCount = result.conflicts.filter((c) => c.applied).length;
-        if (conflictCount > 0) {
-          console.log(
-            chalk.green(`✅ ${status} ${manifest.path} (${conflictCount} conflict(s) resolved)`),
-          );
-        } else {
-          console.log(chalk.green(`✅ ${status} ${manifest.path}`));
-        }
-      } else {
-        console.log(chalk.dim(`⏭️  No changes needed for ${manifest.path}`));
-      }
-    }
-
-    console.log(chalk.green(`\n🎉 Synchronization complete!`));
-    console.log(
-      chalk.cyan(
-        `📊 Summary: ${totalModified}/${targetManifests.length} files ${dryRun ? "would be" : "were"} modified`,
-      ),
-    );
-
-    if (totalModified > 0 && !dryRun) {
-      console.log(chalk.cyan("\nNext steps:"));
-
-      if (targetManifests.some((m) => m.type === "package.json")) {
-        console.log(chalk.dim('  • Run "npm install" to install new dev dependencies'));
-        console.log(chalk.dim('  • Use "npm run arbiter:check" to validate CUE files'));
-      }
-
-      if (targetManifests.some((m) => m.type === "pyproject.toml")) {
-        console.log(chalk.dim('  • Run "pip install -e ." to install in development mode'));
-      }
-
-      if (targetManifests.some((m) => m.type === "Cargo.toml")) {
-        console.log(chalk.dim('  • Run "cargo build" to update dependencies'));
-      }
-
-      if (targetManifests.some((m) => m.type === "Makefile")) {
-        console.log(chalk.dim('  • Use "make arbiter-check" to validate CUE files'));
-      }
-    }
-
-    if (dryRun && totalModified > 0) {
-      console.log(chalk.yellow("\n💡 Run without --dry-run to apply these changes"));
-    }
+    const syncResults = await executeSynchronization(context);
+    displaySynchronizationResults(context, syncResults);
+    displayNextStepsGuidance(context, syncResults);
 
     return 0;
   } catch (error) {
@@ -806,5 +753,200 @@ export async function syncCommand(options: SyncOptions, _config: CLIConfig): Pro
       error instanceof Error ? error.message : String(error),
     );
     return 1;
+  }
+}
+
+interface SyncContext {
+  projectPath: string;
+  targetManifests: ManifestFile[];
+  dryRun: boolean;
+  backup: boolean;
+  force: boolean;
+}
+
+async function initializeSyncContext(options: SyncOptions): Promise<SyncContext | null> {
+  const projectPath = process.cwd();
+  displaySyncHeader(projectPath);
+
+  const manifests = await detectAndDisplayManifests(projectPath);
+  if (!manifests) return null;
+
+  const targetManifests = filterManifestsByLanguage(manifests, options.language);
+  if (!targetManifests) return null;
+
+  const syncOptions = extractSyncOptions(options);
+  displaySyncMode(syncOptions.dryRun);
+
+  return {
+    projectPath,
+    targetManifests,
+    ...syncOptions,
+  };
+}
+
+function displaySyncHeader(projectPath: string): void {
+  console.log(chalk.blue("🔄 Arbiter manifest synchronization"));
+  console.log(chalk.dim(`Project: ${projectPath}`));
+}
+
+async function detectAndDisplayManifests(projectPath: string): Promise<ManifestFile[] | null> {
+  console.log(chalk.blue("🔍 Detecting manifest files..."));
+  const manifests = await detectManifestFiles(projectPath);
+
+  if (manifests.length === 0) {
+    console.log(chalk.yellow("⚠️  No supported manifest files found"));
+    console.log(chalk.dim("Supported: package.json, pyproject.toml, Cargo.toml, Makefile"));
+    return null;
+  }
+
+  console.log(chalk.green(`✅ Found ${manifests.length} manifest file(s):`));
+  for (const manifest of manifests) {
+    console.log(chalk.dim(`  • ${manifest.path} (${manifest.language})`));
+  }
+
+  return manifests;
+}
+
+function filterManifestsByLanguage(
+  manifests: ManifestFile[],
+  language?: string
+): ManifestFile[] | null {
+  if (!language || language === "all") {
+    return manifests;
+  }
+
+  const filtered = manifests.filter((m) => m.language === language);
+  if (filtered.length === 0) {
+    console.log(chalk.yellow(`⚠️  No ${language} manifest files found`));
+    return null;
+  }
+
+  return filtered;
+}
+
+function extractSyncOptions(options: SyncOptions): {
+  dryRun: boolean;
+  backup: boolean;
+  force: boolean;
+} {
+  return {
+    dryRun: options.dryRun || false,
+    backup: options.backup || false,
+    force: options.force || false,
+  };
+}
+
+function displaySyncMode(dryRun: boolean): void {
+  if (dryRun) {
+    console.log(chalk.yellow("📋 Dry run mode - no files will be modified"));
+  }
+}
+
+async function executeSynchronization(context: SyncContext): Promise<SyncResult[]> {
+  console.log(chalk.blue("\n🔄 Synchronizing manifests..."));
+  const syncResults: SyncResult[] = [];
+
+  for (const manifest of context.targetManifests) {
+    const result = await processSingleManifest(manifest, context);
+    syncResults.push(result);
+    displayManifestResult(manifest, result, context.dryRun);
+  }
+
+  return syncResults;
+}
+
+async function processSingleManifest(
+  manifest: ManifestFile,
+  context: SyncContext
+): Promise<SyncResult> {
+  const filePath = path.join(context.projectPath, manifest.path);
+  console.log(chalk.cyan(`\n📝 Processing ${manifest.path}...`));
+
+  const manifestProcessors = {
+    "package.json": syncPackageJson,
+    "pyproject.toml": syncPyprojectToml,
+    "Cargo.toml": syncCargoToml,
+    "Makefile": syncMakefile,
+  };
+
+  const processor = manifestProcessors[manifest.type];
+  if (processor) {
+    return await processor(filePath, context.dryRun, context.backup, context.force);
+  }
+
+  return { modified: false, conflicts: [], checksum: "" };
+}
+
+function displayManifestResult(
+  manifest: ManifestFile,
+  result: SyncResult,
+  dryRun: boolean
+): void {
+  if (result.modified) {
+    const status = dryRun ? "Would modify" : "Modified";
+    const conflictCount = result.conflicts.filter((c) => c.applied).length;
+    if (conflictCount > 0) {
+      console.log(
+        chalk.green(`✅ ${status} ${manifest.path} (${conflictCount} conflict(s) resolved)`),
+      );
+    } else {
+      console.log(chalk.green(`✅ ${status} ${manifest.path}`));
+    }
+  } else {
+    console.log(chalk.dim(`⏭️  No changes needed for ${manifest.path}`));
+  }
+}
+
+function displaySynchronizationResults(
+  context: SyncContext,
+  syncResults: SyncResult[]
+): void {
+  const totalModified = syncResults.filter((r) => r.modified).length;
+
+  console.log(chalk.green(`\n🎉 Synchronization complete!`));
+  console.log(
+    chalk.cyan(
+      `📊 Summary: ${totalModified}/${context.targetManifests.length} files ${context.dryRun ? "would be" : "were"} modified`,
+    ),
+  );
+}
+
+function displayNextStepsGuidance(
+  context: SyncContext,
+  syncResults: SyncResult[]
+): void {
+  const totalModified = syncResults.filter((r) => r.modified).length;
+
+  if (totalModified > 0 && !context.dryRun) {
+    console.log(chalk.cyan("\nNext steps:"));
+    displayLanguageSpecificGuidance(context.targetManifests);
+  }
+
+  if (context.dryRun && totalModified > 0) {
+    console.log(chalk.yellow("\n💡 Run without --dry-run to apply these changes"));
+  }
+}
+
+function displayLanguageSpecificGuidance(manifests: ManifestFile[]): void {
+  const guidanceMap = {
+    "package.json": [
+      '  • Run "npm install" to install new dev dependencies',
+      '  • Use "npm run arbiter:check" to validate CUE files',
+    ],
+    "pyproject.toml": [
+      '  • Run "pip install -e ." to install in development mode',
+    ],
+    "Cargo.toml": [
+      '  • Run "cargo build" to update dependencies',
+    ],
+    "Makefile": [
+      '  • Use "make arbiter-check" to validate CUE files',
+    ],
+  };
+
+  for (const [manifestType, guidance] of Object.entries(guidanceMap)) {
+    if (manifests.some((m) => m.type === manifestType)) {
+      guidance.forEach((line) => console.log(chalk.dim(line)));
+    }
   }
 }

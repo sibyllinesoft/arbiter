@@ -418,48 +418,88 @@ export class ScriptEngine implements TemplateEngine {
  * Extract variables from CUE specification content
  */
 export function extractVariablesFromCue(content: string, serviceName?: string): VariableContext {
-  const variables: VariableContext = {
+  const variables = initializeBaseVariables(serviceName);
+  
+  extractProjectName(content, variables);
+  
+  if (serviceName) {
+    extractServiceInformation(content, serviceName, variables);
+  }
+
+  return variables;
+}
+
+/**
+ * Initialize base variable context
+ */
+function initializeBaseVariables(serviceName?: string): VariableContext {
+  return {
     projectName: path.basename(process.cwd()).replace(/[^a-zA-Z0-9]/g, ""),
     serviceName: serviceName || "api",
   };
+}
 
-  // Extract project name from package declaration
+/**
+ * Extract project name from package declaration
+ */
+function extractProjectName(content: string, variables: VariableContext): void {
   const packageMatch = content.match(/package\s+(\w+)/);
   if (packageMatch) {
     variables.projectName = packageMatch[1];
   }
+}
 
-  // Extract service information if service name provided
-  if (serviceName) {
-    const serviceRegex = new RegExp(`${serviceName}:\\s*{([^}]+)}`, "s");
-    const serviceMatch = content.match(serviceRegex);
+/**
+ * Extract service-specific information from CUE content
+ */
+function extractServiceInformation(content: string, serviceName: string, variables: VariableContext): void {
+  const serviceContent = extractServiceContent(content, serviceName);
+  if (!serviceContent) return;
+  
+  extractServiceLanguage(serviceContent, variables);
+  extractServiceType(serviceContent, variables);
+  extractServicePorts(serviceContent, variables);
+}
 
-    if (serviceMatch) {
-      const serviceContent = serviceMatch[1];
+/**
+ * Extract service content block from CUE
+ */
+function extractServiceContent(content: string, serviceName: string): string | null {
+  const serviceRegex = new RegExp(`${serviceName}:\\s*{([^}]+)}`, "s");
+  const serviceMatch = content.match(serviceRegex);
+  return serviceMatch ? serviceMatch[1] : null;
+}
 
-      // Extract language
-      const langMatch = serviceContent.match(/language:\s*"([^"]+)"/);
-      if (langMatch) {
-        variables.language = langMatch[1];
-      }
-
-      // Extract service type
-      const typeMatch = serviceContent.match(/serviceType:\s*"([^"]+)"/);
-      if (typeMatch) {
-        variables.serviceType = typeMatch[1];
-      }
-
-      // Extract ports
-      const portsMatch = serviceContent.match(/ports:\s*\[([^\]]+)\]/s);
-      if (portsMatch) {
-        const portsContent = portsMatch[1];
-        const portMatches = portsContent.matchAll(/port:\s*(\d+)/g);
-        variables.ports = Array.from(portMatches).map((m) => parseInt(m[1], 10));
-      }
-    }
+/**
+ * Extract language from service content
+ */
+function extractServiceLanguage(serviceContent: string, variables: VariableContext): void {
+  const langMatch = serviceContent.match(/language:\s*"([^"]+)"/);
+  if (langMatch) {
+    variables.language = langMatch[1];
   }
+}
 
-  return variables;
+/**
+ * Extract service type from service content
+ */
+function extractServiceType(serviceContent: string, variables: VariableContext): void {
+  const typeMatch = serviceContent.match(/serviceType:\s*"([^"]+)"/);
+  if (typeMatch) {
+    variables.serviceType = typeMatch[1];
+  }
+}
+
+/**
+ * Extract ports from service content
+ */
+function extractServicePorts(serviceContent: string, variables: VariableContext): void {
+  const portsMatch = serviceContent.match(/ports:\s*\[([^\]]+)\]/s);
+  if (portsMatch) {
+    const portsContent = portsMatch[1];
+    const portMatches = portsContent.matchAll(/port:\s*(\d+)/g);
+    variables.ports = Array.from(portMatches).map((m) => parseInt(m[1], 10));
+  }
 }
 
 /**

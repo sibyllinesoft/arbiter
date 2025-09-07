@@ -469,62 +469,102 @@ export class SpecEngine {
    */
   private async runCueValidation(projectId: string): Promise<ValidationError[]> {
     const fragmentsDir = this.getFragmentsDir(projectId);
-    const errors: ValidationError[] = [];
 
     try {
-      const result = await executeCommand(this.config.cue_binary_path, ["vet", "."], {
-        cwd: fragmentsDir,
-        timeout: this.config.external_tool_timeout_ms,
-      });
+      const result = await this.executeCueValidationCommand(fragmentsDir);
+      const errors = this.parseCueValidationResult(result);
+      
+      this.logCueValidationResult(projectId, result, errors);
+      return errors;
+    } catch (error) {
+      return this.handleCueValidationError(projectId, error);
+    }
+  }
 
-      if (!result.success && result.stderr) {
-        // Parse CUE validation errors
-        const lines = result.stderr.split("\n").filter((line) => line.trim());
+  /**
+   * Execute the CUE validation command
+   */
+  private async executeCueValidationCommand(fragmentsDir: string): Promise<any> {
+    return executeCommand(this.config.cue_binary_path, ["vet", "."], {
+      cwd: fragmentsDir,
+      timeout: this.config.external_tool_timeout_ms,
+    });
+  }
 
-        for (const line of lines) {
-          // CUE error format: filename:line:column: message
-          const match = line.match(/^([^:]+):(\d+):(\d+):\s*(.+)$/);
+  /**
+   * Parse CUE validation command results into validation errors
+   */
+  private parseCueValidationResult(result: any): ValidationError[] {
+    const errors: ValidationError[] = [];
 
-          if (match) {
-            const [, file, lineNum, col, message] = match;
-            errors.push({
-              type: "schema",
-              message: message?.trim() || "Unknown error",
-              location: `${file}:${lineNum}:${col}`,
-              details: {
-                file,
-                line: parseInt(lineNum || "0", 10),
-                column: parseInt(col || "0", 10),
-              },
-            });
-          } else {
-            // Generic error format
-            errors.push({
-              type: "schema",
-              message: line.trim(),
-            });
-          }
+    if (!result.success && result.stderr) {
+      const lines = result.stderr.split("\n").filter((line) => line.trim());
+      
+      for (const line of lines) {
+        const error = this.parseCueErrorLine(line);
+        if (error) {
+          errors.push(error);
         }
       }
-
-      logger.debug("CUE validation completed", {
-        projectId,
-        success: result.success,
-        errorCount: errors.length,
-        duration: result.duration_ms,
-      });
-    } catch (error) {
-      errors.push({
-        type: "schema",
-        message: `CUE validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      });
-
-      logger.error("CUE validation error", error instanceof Error ? error : undefined, {
-        projectId,
-      });
     }
 
     return errors;
+  }
+
+  /**
+   * Parse a single CUE error line into ValidationError
+   */
+  private parseCueErrorLine(line: string): ValidationError | null {
+    // CUE error format: filename:line:column: message
+    const match = line.match(/^([^:]+):(\d+):(\d+):\s*(.+)$/);
+
+    if (match) {
+      const [, file, lineNum, col, message] = match;
+      return {
+        type: "schema",
+        message: message?.trim() || "Unknown error",
+        location: `${file}:${lineNum}:${col}`,
+        details: {
+          file,
+          line: parseInt(lineNum || "0", 10),
+          column: parseInt(col || "0", 10),
+        },
+      };
+    }
+
+    // Generic error format
+    return {
+      type: "schema",
+      message: line.trim(),
+    };
+  }
+
+  /**
+   * Log CUE validation completion
+   */
+  private logCueValidationResult(projectId: string, result: any, errors: ValidationError[]): void {
+    logger.debug("CUE validation completed", {
+      projectId,
+      success: result.success,
+      errorCount: errors.length,
+      duration: result.duration_ms,
+    });
+  }
+
+  /**
+   * Handle CUE validation errors
+   */
+  private handleCueValidationError(projectId: string, error: unknown): ValidationError[] {
+    const validationError: ValidationError = {
+      type: "schema",
+      message: `CUE validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+    };
+
+    logger.error("CUE validation error", error instanceof Error ? error : undefined, {
+      projectId,
+    });
+
+    return [validationError];
   }
 
   /**
@@ -688,80 +728,162 @@ export class SpecEngine {
     const startTime = Date.now();
 
     try {
-      // Step 1: Write fragments to filesystem
-      await this.writeFragmentsToFS(projectId, fragments);
-
-      // Step 2: Run CUE validation
-      const schemaErrors = await this.runCueValidation(projectId);
-
-      // Step 3: Export resolved specification
-      const exportResult = await this.exportResolvedSpec(projectId);
-
-      if (!exportResult.success || !exportResult.resolved) {
-        return {
-          success: false,
-          specHash: "",
-          errors: [
-            ...schemaErrors,
-            {
-              type: "schema",
-              message: exportResult.error || "Failed to export resolved specification",
-            },
-          ],
-          warnings: [],
-        };
-      }
-
-      // Step 4: Compute spec hash
-      const specHash = computeSpecHash(JSON.stringify(exportResult.resolved));
-
-      // Step 5: Run jq assertions
-      const assertionErrors = await this.runJqAssertions(exportResult.resolved);
-
-      // Step 6: Run custom validators
-      const customValidation = await this.runCustomValidators(exportResult.resolved);
-
-      const allErrors = [...schemaErrors, ...assertionErrors, ...customValidation.errors];
-      const success = allErrors.length === 0;
-
-      const duration = Date.now() - startTime;
-
-      logger.info("Validation completed", {
-        projectId,
-        success,
-        specHash,
-        errorCount: allErrors.length,
-        warningCount: customValidation.warnings.length,
-        duration,
-      });
-
-      return {
-        success,
-        specHash,
-        resolved: exportResult.resolved,
-        errors: allErrors,
-        warnings: customValidation.warnings,
-      };
+      // Execute the main validation workflow
+      const result = await this.executeValidationWorkflow(projectId, fragments);
+      
+      // Log completion metrics
+      this.logValidationCompletion(projectId, result, Date.now() - startTime);
+      
+      return result;
     } catch (error) {
-      const duration = Date.now() - startTime;
-
-      logger.error("Validation pipeline error", error instanceof Error ? error : undefined, {
-        projectId,
-        duration,
-      });
-
-      return {
-        success: false,
-        specHash: "",
-        errors: [
-          {
-            type: "custom",
-            message: `Validation pipeline failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-          },
-        ],
-        warnings: [],
-      };
+      return this.handleValidationError(projectId, error, Date.now() - startTime);
     }
+  }
+
+  /**
+   * Execute the core validation workflow steps
+   */
+  private async executeValidationWorkflow(
+    projectId: string,
+    fragments: Fragment[],
+  ): Promise<{
+    success: boolean;
+    specHash: string;
+    resolved?: Record<string, unknown>;
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
+  }> {
+    // Step 1: Write fragments to filesystem
+    await this.writeFragmentsToFS(projectId, fragments);
+
+    // Step 2: Run CUE validation
+    const schemaErrors = await this.runCueValidation(projectId);
+
+    // Step 3: Export resolved specification
+    const exportResult = await this.exportResolvedSpec(projectId);
+
+    // Handle export failure early
+    if (!exportResult.success || !exportResult.resolved) {
+      return this.createFailureResult(schemaErrors, exportResult.error);
+    }
+
+    // Step 4-6: Process successful export
+    return await this.processSuccessfulExport(exportResult.resolved, schemaErrors);
+  }
+
+  /**
+   * Create validation result for export failures
+   */
+  private createFailureResult(
+    schemaErrors: ValidationError[],
+    exportError?: string
+  ): {
+    success: boolean;
+    specHash: string;
+    resolved?: Record<string, unknown>;
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
+  } {
+    return {
+      success: false,
+      specHash: "",
+      errors: [
+        ...schemaErrors,
+        {
+          type: "schema",
+          message: exportError || "Failed to export resolved specification",
+        },
+      ],
+      warnings: [],
+    };
+  }
+
+  /**
+   * Process successful spec export through remaining validation steps
+   */
+  private async processSuccessfulExport(
+    resolved: Record<string, unknown>,
+    schemaErrors: ValidationError[]
+  ): Promise<{
+    success: boolean;
+    specHash: string;
+    resolved?: Record<string, unknown>;
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
+  }> {
+    // Compute spec hash
+    const specHash = computeSpecHash(JSON.stringify(resolved));
+
+    // Run remaining validation steps
+    const assertionErrors = await this.runJqAssertions(resolved);
+    const customValidation = await this.runCustomValidators(resolved);
+
+    // Aggregate all results
+    const allErrors = [...schemaErrors, ...assertionErrors, ...customValidation.errors];
+    const success = allErrors.length === 0;
+
+    return {
+      success,
+      specHash,
+      resolved,
+      errors: allErrors,
+      warnings: customValidation.warnings,
+    };
+  }
+
+  /**
+   * Log validation completion metrics
+   */
+  private logValidationCompletion(
+    projectId: string,
+    result: {
+      success: boolean;
+      specHash: string;
+      errors: ValidationError[];
+      warnings: ValidationWarning[];
+    },
+    duration: number
+  ): void {
+    logger.info("Validation completed", {
+      projectId,
+      success: result.success,
+      specHash: result.specHash,
+      errorCount: result.errors.length,
+      warningCount: result.warnings.length,
+      duration,
+    });
+  }
+
+  /**
+   * Handle validation pipeline errors
+   */
+  private handleValidationError(
+    projectId: string,
+    error: unknown,
+    duration: number
+  ): {
+    success: boolean;
+    specHash: string;
+    resolved?: Record<string, unknown>;
+    errors: ValidationError[];
+    warnings: ValidationWarning[];
+  } {
+    logger.error("Validation pipeline error", error instanceof Error ? error : undefined, {
+      projectId,
+      duration,
+    });
+
+    return {
+      success: false,
+      specHash: "",
+      errors: [
+        {
+          type: "custom",
+          message: `Validation pipeline failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        },
+      ],
+      warnings: [],
+    };
   }
 
   /**
@@ -769,63 +891,103 @@ export class SpecEngine {
    */
   async generateGapSet(resolved: Record<string, unknown>): Promise<GapSet> {
     try {
-      // This is a simplified implementation
-      // In practice, you'd want more sophisticated gap analysis
+      const gapData = this.initializeGapData(resolved);
+      const orphanedTokens = this.findOrphanedTokens(resolved);
+      const coverageGaps = this.analyzeCoverageGaps(resolved);
 
-      const missing_capabilities: string[] = [];
-      const orphaned_tokens: TokenReference[] = [];
-      const coverage_gaps: CoverageGap[] = [];
-      const duplicates = this.findDuplicates(resolved);
-
-      // Find orphaned tokens by looking for unresolved template expressions
-      const jsonStr = JSON.stringify(resolved);
-      const tokenMatches = jsonStr.match(/\$\{[^}]+\}/g) || [];
-
-      tokenMatches.forEach((token) => {
-        orphaned_tokens.push({
-          token,
-          defined_in: [],
-          referenced_in: ["resolved.json"],
-        });
-      });
-
-      // Analyze coverage gaps (simplified)
-      if (typeof resolved === "object" && resolved !== null) {
-        const capabilities = (resolved as any).capabilities || {};
-        const tests = (resolved as any).tests || {};
-
-        Object.keys(capabilities).forEach((capability) => {
-          const hasTests = Object.keys(tests).some(
-            (test) => test.includes(capability) || tests[test]?.covers?.includes(capability),
-          );
-
-          if (!hasTests) {
-            coverage_gaps.push({
-              capability,
-              expected_coverage: 100,
-              actual_coverage: 0,
-              missing_scenarios: ["basic", "error_handling", "edge_cases"],
-            });
-          }
-        });
-      }
-
-      return {
-        missing_capabilities,
-        orphaned_tokens,
-        coverage_gaps,
-        duplicates,
-      };
+      return this.buildGapSet(gapData.duplicates, orphanedTokens, coverageGaps);
     } catch (error) {
       logger.error("Gap analysis error", error instanceof Error ? error : undefined);
-
-      return {
-        missing_capabilities: [],
-        orphaned_tokens: [],
-        coverage_gaps: [],
-        duplicates: [],
-      };
+      return this.createEmptyGapSet();
     }
+  }
+
+  /**
+   * Initialize gap data with duplicates
+   */
+  private initializeGapData(resolved: Record<string, unknown>): {
+    duplicates: Duplicate[];
+  } {
+    return {
+      duplicates: this.findDuplicates(resolved),
+    };
+  }
+
+  /**
+   * Find orphaned tokens in resolved specification
+   */
+  private findOrphanedTokens(resolved: Record<string, unknown>): TokenReference[] {
+    const jsonStr = JSON.stringify(resolved);
+    const tokenMatches = jsonStr.match(/\$\{[^}]+\}/g) || [];
+
+    return tokenMatches.map((token) => ({
+      token,
+      defined_in: [],
+      referenced_in: ["resolved.json"],
+    }));
+  }
+
+  /**
+   * Analyze coverage gaps between capabilities and tests
+   */
+  private analyzeCoverageGaps(resolved: Record<string, unknown>): CoverageGap[] {
+    if (typeof resolved !== "object" || resolved === null) {
+      return [];
+    }
+
+    const capabilities = (resolved as any).capabilities || {};
+    const tests = (resolved as any).tests || {};
+    const coverageGaps: CoverageGap[] = [];
+
+    Object.keys(capabilities).forEach((capability) => {
+      if (!this.hasTestCoverage(capability, tests)) {
+        coverageGaps.push({
+          capability,
+          expected_coverage: 100,
+          actual_coverage: 0,
+          missing_scenarios: ["basic", "error_handling", "edge_cases"],
+        });
+      }
+    });
+
+    return coverageGaps;
+  }
+
+  /**
+   * Check if a capability has test coverage
+   */
+  private hasTestCoverage(capability: string, tests: Record<string, any>): boolean {
+    return Object.keys(tests).some(
+      (test) => test.includes(capability) || tests[test]?.covers?.includes(capability),
+    );
+  }
+
+  /**
+   * Build the final gap set result
+   */
+  private buildGapSet(
+    duplicates: Duplicate[],
+    orphanedTokens: TokenReference[],
+    coverageGaps: CoverageGap[]
+  ): GapSet {
+    return {
+      missing_capabilities: [], // Simplified implementation
+      orphaned_tokens: orphanedTokens,
+      coverage_gaps: coverageGaps,
+      duplicates,
+    };
+  }
+
+  /**
+   * Create empty gap set for error cases
+   */
+  private createEmptyGapSet(): GapSet {
+    return {
+      missing_capabilities: [],
+      orphaned_tokens: [],
+      coverage_gaps: [],
+      duplicates: [],
+    };
   }
 
   /**

@@ -1,0 +1,11 @@
+Usage: arbiter check [options] [patterns...]
+validate CUE files in the current directory
+Options:
+  -r, --recursive      recursively search for CUE files (default: true)
+  -w, --watch          watch for file changes and re-validate (deprecated: use
+                       "arbiter watch")
+  -f, --format <type>  output format (table, json) (default: "table")
+  -v, --verbose        verbose output with detailed errors
+  --fail-fast          stop on first validation error
+  --no-recursive       disable recursive search
+  -h, --help           display help for command

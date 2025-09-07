@@ -367,29 +367,59 @@ async function analyzeAPIChanges(
   previous: APISurface | null,
   current: APISurface,
 ): Promise<APIChange[]> {
-  const changes: APIChange[] = [];
-
+  // Handle initial version case
   if (!previous) {
-    // No previous version - all current symbols are "added"
-    for (const symbol of current.symbols) {
-      changes.push({
-        type: "added",
-        symbol: symbol.name,
-        symbolType: symbol.type,
-        breaking: false, // New APIs are not breaking
-        description: `Added ${symbol.type} '${symbol.name}'`,
-        location: symbol.location,
-        newSignature: symbol.signature,
-      });
-    }
-    return changes;
+    return createInitialVersionChanges(current);
   }
 
-  // Create lookup maps
+  // Create lookup maps for comparison
+  const comparisonMaps = createSymbolComparisonMaps(previous, current);
+  
+  // Collect all change types
+  const addedChanges = findAddedSymbols(current, comparisonMaps.previousMap);
+  const removedChanges = findRemovedSymbols(previous, comparisonMaps.currentMap);
+  const modifiedChanges = findModifiedSymbols(current, comparisonMaps.previousMap);
+
+  return [...addedChanges, ...removedChanges, ...modifiedChanges];
+}
+
+/**
+ * Create changes for initial version (no previous version)
+ */
+function createInitialVersionChanges(current: APISurface): APIChange[] {
+  const changes: APIChange[] = [];
+  
+  for (const symbol of current.symbols) {
+    changes.push({
+      type: "added",
+      symbol: symbol.name,
+      symbolType: symbol.type,
+      breaking: false, // New APIs are not breaking
+      description: `Added ${symbol.type} '${symbol.name}'`,
+      location: symbol.location,
+      newSignature: symbol.signature,
+    });
+  }
+  
+  return changes;
+}
+
+/**
+ * Create lookup maps for symbol comparison
+ */
+function createSymbolComparisonMaps(previous: APISurface, current: APISurface) {
   const previousMap = new Map(previous.symbols.map((s) => [`${s.name}:${s.type}`, s]));
   const currentMap = new Map(current.symbols.map((s) => [`${s.name}:${s.type}`, s]));
+  
+  return { previousMap, currentMap };
+}
 
-  // Find added symbols
+/**
+ * Find added symbols (new in current version)
+ */
+function findAddedSymbols(current: APISurface, previousMap: Map<string, any>): APIChange[] {
+  const changes: APIChange[] = [];
+  
   for (const symbol of current.symbols) {
     const key = `${symbol.name}:${symbol.type}`;
     if (!previousMap.has(key)) {
@@ -404,8 +434,16 @@ async function analyzeAPIChanges(
       });
     }
   }
+  
+  return changes;
+}
 
-  // Find removed symbols (breaking changes)
+/**
+ * Find removed symbols (breaking changes)
+ */
+function findRemovedSymbols(previous: APISurface, currentMap: Map<string, any>): APIChange[] {
+  const changes: APIChange[] = [];
+  
   for (const symbol of previous.symbols) {
     const key = `${symbol.name}:${symbol.type}`;
     if (!currentMap.has(key)) {
@@ -420,8 +458,16 @@ async function analyzeAPIChanges(
       });
     }
   }
+  
+  return changes;
+}
 
-  // Find modified symbols
+/**
+ * Find modified symbols (signature changes)
+ */
+function findModifiedSymbols(current: APISurface, previousMap: Map<string, any>): APIChange[] {
+  const changes: APIChange[] = [];
+  
   for (const symbol of current.symbols) {
     const key = `${symbol.name}:${symbol.type}`;
     const prevSymbol = previousMap.get(key);
@@ -446,7 +492,7 @@ async function analyzeAPIChanges(
       });
     }
   }
-
+  
   return changes;
 }
 
@@ -1219,67 +1265,120 @@ function getBumpColor(bump: VersionBump): (text: string) => string {
 }
 
 /**
+ * Manifest detection configuration
+ */
+interface ManifestConfig {
+  filePath: string;
+  type: string;
+  versionField: string;
+  parser: (content: string) => string | undefined;
+}
+
+/**
+ * Parse version from package.json content
+ */
+function parsePackageJsonVersion(content: string): string | undefined {
+  try {
+    const pkg = JSON.parse(content);
+    return pkg.version;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Parse version from TOML-style content
+ */
+function parseTomlVersion(content: string): string | undefined {
+  const versionMatch = content.match(/version\s*=\s*"([^"]+)"/);
+  return versionMatch?.[1];
+}
+
+/**
+ * Check if manifest file exists and attempt to parse it
+ */
+async function checkManifestFile(config: ManifestConfig): Promise<ManifestInfo | null> {
+  if (!existsSync(config.filePath)) {
+    return null;
+  }
+
+  try {
+    const content = await readFile(config.filePath, "utf-8");
+    const version = config.parser(content);
+    
+    return {
+      type: config.type,
+      path: config.filePath,
+      current_version: version,
+      version_field: config.versionField,
+    };
+  } catch (_error) {
+    console.warn(chalk.yellow(`Warning: Could not parse ${config.filePath}`));
+    return null;
+  }
+}
+
+/**
+ * Create Go manifest info (no file parsing needed)
+ */
+function createGoManifest(): ManifestInfo | null {
+  if (!existsSync("go.mod")) {
+    return null;
+  }
+
+  return {
+    type: "go",
+    path: "go.mod",
+    current_version: undefined, // Go uses git tags
+    version_field: "git-tag",
+  };
+}
+
+/**
+ * Get all manifest configurations to check
+ */
+function getManifestConfigs(): ManifestConfig[] {
+  return [
+    {
+      filePath: "package.json",
+      type: "npm",
+      versionField: "version",
+      parser: parsePackageJsonVersion,
+    },
+    {
+      filePath: "pyproject.toml",
+      type: "python",
+      versionField: "project.version",
+      parser: parseTomlVersion,
+    },
+    {
+      filePath: "Cargo.toml",
+      type: "rust",
+      versionField: "package.version",
+      parser: parseTomlVersion,
+    },
+  ];
+}
+
+/**
  * Detect manifests in current directory
  */
 async function detectManifests(): Promise<ManifestInfo[]> {
   const manifests: ManifestInfo[] = [];
+  const configs = getManifestConfigs();
 
-  // Check for package.json (Node.js/npm)
-  if (existsSync("package.json")) {
-    try {
-      const content = await readFile("package.json", "utf-8");
-      const pkg = JSON.parse(content);
-      manifests.push({
-        type: "npm",
-        path: "package.json",
-        current_version: pkg.version,
-        version_field: "version",
-      });
-    } catch (_error) {
-      console.warn(chalk.yellow("Warning: Could not parse package.json"));
+  // Check standard manifest files
+  for (const config of configs) {
+    const manifest = await checkManifestFile(config);
+    if (manifest) {
+      manifests.push(manifest);
     }
   }
 
-  // Check for pyproject.toml (Python)
-  if (existsSync("pyproject.toml")) {
-    try {
-      const content = await readFile("pyproject.toml", "utf-8");
-      const versionMatch = content.match(/version\s*=\s*"([^"]+)"/);
-      manifests.push({
-        type: "python",
-        path: "pyproject.toml",
-        current_version: versionMatch?.[1],
-        version_field: "project.version",
-      });
-    } catch (_error) {
-      console.warn(chalk.yellow("Warning: Could not parse pyproject.toml"));
-    }
-  }
-
-  // Check for Cargo.toml (Rust)
-  if (existsSync("Cargo.toml")) {
-    try {
-      const content = await readFile("Cargo.toml", "utf-8");
-      const versionMatch = content.match(/version\s*=\s*"([^"]+)"/);
-      manifests.push({
-        type: "rust",
-        path: "Cargo.toml",
-        current_version: versionMatch?.[1],
-        version_field: "package.version",
-      });
-    } catch (_error) {
-      console.warn(chalk.yellow("Warning: Could not parse Cargo.toml"));
-    }
-  }
-
-  // Check for go.mod (Go)
-  if (existsSync("go.mod")) {
-    manifests.push({
-      type: "go",
-      path: "go.mod",
-      current_version: undefined, // Go uses git tags
-      version_field: "git-tag",
-    });
+  // Check Go manifest (special case)
+  const goManifest = createGoManifest();
+  if (goManifest) {
+    manifests.push(goManifest);
   }
 
   return manifests;

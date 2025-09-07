@@ -171,8 +171,8 @@ describe("Database Coverage Tests", () => {
         '{"version": 1}'
       );
 
-      // Small delay to ensure different timestamps
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Longer delay to ensure different timestamps in SQLite
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       const version2 = await db.createVersion(
         "latest-v2-id",
@@ -221,7 +221,7 @@ describe("Database Coverage Tests", () => {
       const projectId = "events-limit-project";
       await db.createProject(projectId, "Events Limit Test");
 
-      // Create multiple events
+      // Create multiple events with longer delays to ensure proper ordering
       for (let i = 0; i < 5; i++) {
         await db.createEvent(
           `event-${i}`,
@@ -229,6 +229,7 @@ describe("Database Coverage Tests", () => {
           "fragment_updated",
           { index: i }
         );
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       const events = await db.getEvents(projectId, 3);
@@ -250,10 +251,10 @@ describe("Database Coverage Tests", () => {
         { before: true }
       );
 
-      // Small delay
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Longer delay to ensure different timestamps (must be >1 second for SQLite precision)
+      await new Promise(resolve => setTimeout(resolve, 1500));
       const sinceTime = new Date().toISOString();
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       const event2 = await db.createEvent(
         "event-after",

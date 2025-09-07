@@ -353,120 +353,243 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
 }
 
 /**
+ * Generate product specification section
+ */
+function generateProductSection(product: ProductSpec): string[] {
+  const lines: string[] = [];
+  
+  lines.push("product: {");
+  lines.push(`  name: "${product.name}"`);
+  
+  if (product.goals && product.goals.length > 0) {
+    lines.push(`  goals: [${product.goals.map((g) => `"${g}"`).join(", ")}]`);
+  }
+  
+  if (product.roles && product.roles.length > 0) {
+    lines.push(`  roles: [${product.roles.map((r) => `"${r}"`).join(", ")}]`);
+  }
+  
+  if (product.slos) {
+    lines.push("  slos: {");
+    if (product.slos.p95_page_load_ms) {
+      lines.push(`    p95_page_load_ms: ${product.slos.p95_page_load_ms}`);
+    }
+    if (product.slos.uptime) {
+      lines.push(`    uptime: "${product.slos.uptime}"`);
+    }
+    lines.push("  }");
+  }
+  
+  lines.push("}");
+  return lines;
+}
+
+/**
+ * Generate UI routes section
+ */
+function generateUIRoutesSection(routes: UIRoute[]): string[] {
+  const lines: string[] = [];
+  
+  lines.push("ui: routes: [");
+  for (const route of routes) {
+    const capabilitiesStr = route.capabilities.map((c) => `"${c}"`).join(", ");
+    const componentsStr = route.components 
+      ? `, components: [${route.components.map((c) => `"${c}"`).join(", ")}]` 
+      : "";
+    
+    lines.push(`  { id: "${route.id}", path: "${route.path}", capabilities: [${capabilitiesStr}]${componentsStr} },`);
+  }
+  lines.push("]")
+  
+  return lines;
+}
+
+/**
+ * Generate locators section
+ */
+function generateLocatorsSection(locators: Record<LocatorToken, CssSelector>): string[] {
+  const lines: string[] = [];
+  
+  lines.push("locators: {");
+  for (const [token, selector] of Object.entries(locators)) {
+    lines.push(`  "${token}": '${selector}'`);
+  }
+  lines.push("}");
+  
+  return lines;
+}
+
+/**
+ * Format flow step for CUE output
+ */
+function formatFlowStep(step: any): string {
+  const formattedEntries = Object.entries(step)
+    .map(([key, value]) => {
+      if (typeof value === "string") {
+        return ` ${key}: "${value}"`;
+      } else if (typeof value === "object" && value !== null) {
+        return ` ${key}: ${JSON.stringify(value)}`;
+      }
+      return ` ${key}: ${value}`;
+    })
+    .join(",");
+    
+  return `      {${formattedEntries} },`;
+}
+
+/**
+ * Generate flow preconditions section
+ */
+function generateFlowPreconditions(preconditions: any): string[] {
+  const lines: string[] = [];
+  
+  lines.push(`    preconditions: {`);
+  if (preconditions.role) {
+    lines.push(`      role: "${preconditions.role}"`);
+  }
+  lines.push(`    }`);
+  
+  return lines;
+}
+
+/**
+ * Generate individual flow specification
+ */
+function generateFlowSpec(flow: FlowSpec): string[] {
+  const lines: string[] = [];
+  
+  lines.push(`  {`);
+  lines.push(`    id: "${flow.id}"`);
+  
+  if (flow.preconditions) {
+    lines.push(...generateFlowPreconditions(flow.preconditions));
+  }
+  
+  lines.push(`    steps: [`);
+  for (const step of flow.steps) {
+    lines.push(formatFlowStep(step));
+  }
+  lines.push(`    ]`);
+  lines.push(`  },`);
+  
+  return lines;
+}
+
+/**
+ * Generate flows section
+ */
+function generateFlowsSection(flows: FlowSpec[]): string[] {
+  const lines: string[] = [];
+  
+  lines.push("flows: [");
+  for (const flow of flows) {
+    lines.push(...generateFlowSpec(flow));
+  }
+  lines.push("]")
+  
+  return lines;
+}
+
+/**
+ * Generate testability section
+ */
+function generateTestabilitySection(testability: any): string[] {
+  const lines: string[] = [];
+  
+  lines.push("testability: {");
+  if (testability.coverage_targets) {
+    lines.push("  coverage_targets: {");
+    Object.entries(testability.coverage_targets).forEach(([key, value]) => {
+      lines.push(`    ${key}: ${value}`);
+    });
+    lines.push("  }");
+  }
+  lines.push("}");
+  
+  return lines;
+}
+
+/**
+ * Generate CI/CD configuration
+ */
+function generateCiCdConfig(ciCd: any): string[] {
+  const lines: string[] = [];
+  
+  lines.push("    ci_cd: {");
+  lines.push(`      provider: "${ciCd.provider}"`);
+  
+  if (ciCd.environments) {
+    const environmentsStr = ciCd.environments.map((e: string) => `"${e}"`).join(", ");
+    lines.push(`      environments: [${environmentsStr}]`);
+  }
+  
+  lines.push("    }");
+  return lines;
+}
+
+/**
+ * Generate deployment configuration
+ */
+function generateDeploymentConfig(deployment: any): string[] {
+  const lines: string[] = [];
+  
+  lines.push("  deployment: {");
+  lines.push(`    target: "${deployment.target}"`);
+  
+  if (deployment.ci_cd) {
+    lines.push(...generateCiCdConfig(deployment.ci_cd));
+  }
+  
+  lines.push("  }");
+  return lines;
+}
+
+/**
+ * Generate ops section
+ */
+function generateOpsSection(ops: any): string[] {
+  const lines: string[] = [];
+  
+  lines.push("ops: {");
+  if (ops.deployment) {
+    lines.push(...generateDeploymentConfig(ops.deployment));
+  }
+  lines.push("}");
+  
+  return lines;
+}
+
+/**
  * Generate v2 CUE content from AppSpec
  */
 function generateV2CueContent(appSpec: AppSpec): string {
   const lines: string[] = [];
 
+  // Package declaration
   lines.push("package app");
   lines.push("");
 
-  // Product specification
-  lines.push("product: {");
-  lines.push(`  name: "${appSpec.product.name}"`);
-  if (appSpec.product.goals && appSpec.product.goals.length > 0) {
-    lines.push(`  goals: [${appSpec.product.goals.map((g) => `"${g}"`).join(", ")}]`);
-  }
-  if (appSpec.product.roles && appSpec.product.roles.length > 0) {
-    lines.push(`  roles: [${appSpec.product.roles.map((r) => `"${r}"`).join(", ")}]`);
-  }
-  if (appSpec.product.slos) {
-    lines.push("  slos: {");
-    if (appSpec.product.slos.p95_page_load_ms) {
-      lines.push(`    p95_page_load_ms: ${appSpec.product.slos.p95_page_load_ms}`);
-    }
-    if (appSpec.product.slos.uptime) {
-      lines.push(`    uptime: "${appSpec.product.slos.uptime}"`);
-    }
-    lines.push("  }");
-  }
-  lines.push("}");
+  // Generate each section
+  lines.push(...generateProductSection(appSpec.product));
+  lines.push("");
+  
+  lines.push(...generateUIRoutesSection(appSpec.ui.routes));
+  lines.push("");
+  
+  lines.push(...generateLocatorsSection(appSpec.locators));
+  lines.push("");
+  
+  lines.push(...generateFlowsSection(appSpec.flows));
   lines.push("");
 
-  // UI routes
-  lines.push("ui: routes: [");
-  for (const route of appSpec.ui.routes) {
-    lines.push(
-      `  { id: "${route.id}", path: "${route.path}", capabilities: [${route.capabilities.map((c) => `"${c}"`).join(", ")}]${route.components ? `, components: [${route.components.map((c) => `"${c}"`).join(", ")}]` : ""} },`,
-    );
-  }
-  lines.push("]");
-  lines.push("");
-
-  // Locators
-  lines.push("locators: {");
-  for (const [token, selector] of Object.entries(appSpec.locators)) {
-    lines.push(`  "${token}": '${selector}'`);
-  }
-  lines.push("}");
-  lines.push("");
-
-  // Flows
-  lines.push("flows: [");
-  for (const flow of appSpec.flows) {
-    lines.push(`  {`);
-    lines.push(`    id: "${flow.id}"`);
-    if (flow.preconditions) {
-      lines.push(`    preconditions: {`);
-      if (flow.preconditions.role) {
-        lines.push(`      role: "${flow.preconditions.role}"`);
-      }
-      lines.push(`    }`);
-    }
-    lines.push(`    steps: [`);
-    for (const step of flow.steps) {
-      lines.push(
-        `      {${Object.entries(step)
-          .map(([key, value]) => {
-            if (typeof value === "string") {
-              return ` ${key}: "${value}"`;
-            } else if (typeof value === "object" && value !== null) {
-              return ` ${key}: ${JSON.stringify(value)}`;
-            }
-            return ` ${key}: ${value}`;
-          })
-          .join(",")} },`,
-      );
-    }
-    lines.push(`    ]`);
-    lines.push(`  },`);
-  }
-  lines.push("]");
-  lines.push("");
-
-  // Testability
+  // Optional sections
   if (appSpec.testability) {
-    lines.push("testability: {");
-    if (appSpec.testability.coverage_targets) {
-      lines.push("  coverage_targets: {");
-      Object.entries(appSpec.testability.coverage_targets).forEach(([key, value]) => {
-        lines.push(`    ${key}: ${value}`);
-      });
-      lines.push("  }");
-    }
-    lines.push("}");
+    lines.push(...generateTestabilitySection(appSpec.testability));
     lines.push("");
   }
 
-  // Ops
   if (appSpec.ops) {
-    lines.push("ops: {");
-    if (appSpec.ops.deployment) {
-      lines.push("  deployment: {");
-      lines.push(`    target: "${appSpec.ops.deployment.target}"`);
-      if (appSpec.ops.deployment.ci_cd) {
-        lines.push("    ci_cd: {");
-        lines.push(`      provider: "${appSpec.ops.deployment.ci_cd.provider}"`);
-        if (appSpec.ops.deployment.ci_cd.environments) {
-          lines.push(
-            `      environments: [${appSpec.ops.deployment.ci_cd.environments.map((e) => `"${e}"`).join(", ")}]`,
-          );
-        }
-        lines.push("    }");
-      }
-      lines.push("  }");
-    }
-    lines.push("}");
+    lines.push(...generateOpsSection(appSpec.ops));
   }
 
   return lines.join("\n");
@@ -766,106 +889,158 @@ function displayMigrationPlan(plan: MigrationPlan, options: MigrateOptions): voi
 /**
  * Execute migration
  */
-async function executeMigration(plan: MigrationPlan, options: MigrateOptions): Promise<number> {
-  const filesToMigrate = plan.files.filter((f) => f.changes_needed);
+/**
+ * Migration result for a single file
+ */
+interface FileMigrationResult {
+  success: boolean;
+  warnings: string[];
+  errors: string[];
+}
 
-  if (filesToMigrate.length === 0) {
-    console.log(chalk.green("✓ No files require migration"));
-    return 0;
-  }
+/**
+ * Migration file information
+ */
+interface MigrationFileInfo {
+  path: string;
+  changes_needed: boolean;
+  migration_type?: "syntax" | "schema" | "both";
+  errors: string[];
+}
 
-  // Create backups if requested
-  let backups: Map<string, string> | undefined;
-  if (options.backup) {
-    console.log(chalk.cyan("Creating backups..."));
-    backups = await createBackups(filesToMigrate.map((f) => f.path));
-    console.log(chalk.green(`✓ Created ${backups.size} backup files`));
-    console.log();
-  }
+/**
+ * Migration context for tracking state
+ */
+interface MigrationContext {
+  successCount: number;
+  errorCount: number;
+  backups?: Map<string, string>;
+}
 
-  // Apply migrations
-  console.log(chalk.cyan("Applying migrations..."));
-  let successCount = 0;
-  let errorCount = 0;
+/**
+ * Execute migration on a single file
+ */
+async function migrateFile(
+  fileInfo: MigrationFileInfo,
+  context: MigrationContext,
+): Promise<FileMigrationResult> {
+  console.log(
+    `Migrating ${chalk.blue(fileInfo.path)}... ${chalk.dim(`(${fileInfo.migration_type})`)}`,
+  );
 
-  for (const fileInfo of filesToMigrate) {
-    console.log(
-      `Migrating ${chalk.blue(fileInfo.path)}... ${chalk.dim(`(${fileInfo.migration_type})`)}`,
-    );
+  const result: FileMigrationResult = {
+    success: true,
+    warnings: [],
+    errors: [],
+  };
 
-    let migrationSuccess = true;
-    const allErrors: string[] = [];
-    const allWarnings: string[] = [];
-
-    // Apply schema migration if needed
-    if (fileInfo.migration_type === "schema" || fileInfo.migration_type === "both") {
-      const schemaResult = await applySchemaV1ToV2Migration(fileInfo.path);
-      if (!schemaResult.success) {
-        migrationSuccess = false;
-        allErrors.push(...schemaResult.errors);
-      } else {
-        allWarnings.push(...schemaResult.warnings);
-        console.log(chalk.green("  ✓ Schema migration (v1→v2) applied"));
-      }
-    }
-
-    // Apply syntax migration if needed
-    if (fileInfo.migration_type === "syntax" || fileInfo.migration_type === "both") {
-      const syntaxResult = await applySyntaxMigrations(fileInfo.path);
-      if (!syntaxResult.success) {
-        migrationSuccess = false;
-        allErrors.push(...syntaxResult.errors);
-      } else {
-        console.log(chalk.green("  ✓ Syntax migration applied"));
-      }
-    }
-
-    if (migrationSuccess) {
-      // Validate the result (only for syntax changes, schema creates new file)
-      if (fileInfo.migration_type === "syntax" || fileInfo.migration_type === "both") {
-        const validation = await validateMigratedFile(fileInfo.path);
-        if (!validation.valid) {
-          console.log(`  ${chalk.red("✗")} Migration failed validation:`);
-          for (const error of validation.errors) {
-            console.log(`    ${error}`);
-          }
-          errorCount++;
-
-          // Restore from backup if available
-          if (backups?.has(fileInfo.path)) {
-            const backupPath = backups.get(fileInfo.path)!;
-            await fs.copyFile(backupPath, fileInfo.path);
-            console.log(`    ${chalk.yellow("↺")} Restored from backup`);
-          }
-        } else {
-          console.log(`  ${chalk.green("✓")} Migration successful`);
-          if (allWarnings.length > 0) {
-            allWarnings.forEach((warning) => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
-          }
-          successCount++;
-        }
-      } else {
-        console.log(`  ${chalk.green("✓")} Migration successful`);
-        if (allWarnings.length > 0) {
-          allWarnings.forEach((warning) => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
-        }
-        successCount++;
-      }
+  // Apply schema migration if needed
+  if (fileInfo.migration_type === "schema" || fileInfo.migration_type === "both") {
+    const schemaResult = await applySchemaV1ToV2Migration(fileInfo.path);
+    if (!schemaResult.success) {
+      result.success = false;
+      result.errors.push(...schemaResult.errors);
     } else {
-      console.log(`  ${chalk.red("✗")} Migration failed:`);
-      for (const error of allErrors) {
-        console.log(`    ${error}`);
-      }
-      errorCount++;
+      result.warnings.push(...schemaResult.warnings);
+      console.log(chalk.green("  ✓ Schema migration (v1→v2) applied"));
     }
-
-    console.log();
   }
 
-  // Summary
+  // Apply syntax migration if needed
+  if (fileInfo.migration_type === "syntax" || fileInfo.migration_type === "both") {
+    const syntaxResult = await applySyntaxMigrations(fileInfo.path);
+    if (!syntaxResult.success) {
+      result.success = false;
+      result.errors.push(...syntaxResult.errors);
+    } else {
+      console.log(chalk.green("  ✓ Syntax migration applied"));
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Validate and finalize file migration
+ */
+async function finalizeFileMigration(
+  fileInfo: MigrationFileInfo,
+  result: FileMigrationResult,
+  context: MigrationContext,
+): Promise<void> {
+  if (!result.success) {
+    console.log(`  ${chalk.red("✗")} Migration failed:`);
+    result.errors.forEach((error) => console.log(`    ${error}`));
+    context.errorCount++;
+    return;
+  }
+
+  // Validate the result (only for syntax changes, schema creates new file)
+  if (fileInfo.migration_type === "syntax" || fileInfo.migration_type === "both") {
+    const validation = await validateMigratedFile(fileInfo.path);
+    if (!validation.valid) {
+      await handleMigrationValidationFailure(fileInfo, validation.errors, context);
+      return;
+    }
+  }
+
+  // Migration successful
+  console.log(`  ${chalk.green("✓")} Migration successful`);
+  if (result.warnings.length > 0) {
+    result.warnings.forEach((warning) => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
+  }
+  context.successCount++;
+}
+
+/**
+ * Handle migration validation failure
+ */
+async function handleMigrationValidationFailure(
+  fileInfo: MigrationFileInfo,
+  errors: string[],
+  context: MigrationContext,
+): Promise<void> {
+  console.log(`  ${chalk.red("✗")} Migration failed validation:`);
+  errors.forEach((error) => console.log(`    ${error}`));
+  context.errorCount++;
+
+  // Restore from backup if available
+  if (context.backups?.has(fileInfo.path)) {
+    const backupPath = context.backups.get(fileInfo.path)!;
+    await fs.copyFile(backupPath, fileInfo.path);
+    console.log(`    ${chalk.yellow("↺")} Restored from backup`);
+  }
+}
+
+/**
+ * Create backup files for migration
+ */
+async function prepareBackups(
+  filesToMigrate: MigrationFileInfo[],
+  options: MigrateOptions,
+): Promise<Map<string, string> | undefined> {
+  if (!options.backup) {
+    return undefined;
+  }
+
+  console.log(chalk.cyan("Creating backups..."));
+  const backups = await createBackups(filesToMigrate.map((f) => f.path));
+  console.log(chalk.green(`✓ Created ${backups.size} backup files`));
+  console.log();
+  
+  return backups;
+}
+
+/**
+ * Display migration summary and notes
+ */
+function displayMigrationSummary(
+  plan: MigrationPlan,
+  context: MigrationContext,
+): void {
   console.log(chalk.cyan("Migration Summary:"));
-  console.log(`Successful: ${chalk.green(successCount)}`);
-  console.log(`Failed: ${chalk.red(errorCount)}`);
+  console.log(`Successful: ${chalk.green(context.successCount)}`);
+  console.log(`Failed: ${chalk.red(context.errorCount)}`);
 
   if (plan.summary.schema_migrations > 0) {
     console.log();
@@ -875,16 +1050,47 @@ async function executeMigration(plan: MigrationPlan, options: MigrateOptions): P
     console.log("• Original v1 files are preserved");
   }
 
-  if (backups && backups.size > 0) {
+  if (context.backups && context.backups.size > 0) {
     console.log();
     console.log(chalk.dim("Backup files created:"));
-    for (const [original, backup] of backups.entries()) {
+    for (const [original, backup] of context.backups.entries()) {
       console.log(`  ${original} → ${backup}`);
     }
     console.log(chalk.dim("You can remove backup files after verifying the migration"));
   }
+}
 
-  return errorCount > 0 ? 1 : 0;
+async function executeMigration(plan: MigrationPlan, options: MigrateOptions): Promise<number> {
+  const filesToMigrate = plan.files.filter((f) => f.changes_needed);
+
+  if (filesToMigrate.length === 0) {
+    console.log(chalk.green("✓ No files require migration"));
+    return 0;
+  }
+
+  // Prepare backups if requested
+  const backups = await prepareBackups(filesToMigrate, options);
+
+  // Initialize migration context
+  const context: MigrationContext = {
+    successCount: 0,
+    errorCount: 0,
+    backups,
+  };
+
+  // Apply migrations
+  console.log(chalk.cyan("Applying migrations..."));
+  
+  for (const fileInfo of filesToMigrate) {
+    const result = await migrateFile(fileInfo, context);
+    await finalizeFileMigration(fileInfo, result, context);
+    console.log();
+  }
+
+  // Display summary
+  displayMigrationSummary(plan, context);
+
+  return context.errorCount > 0 ? 1 : 0;
 }
 
 /**

@@ -139,19 +139,18 @@ export async function listTemplates(): Promise<void> {
 }
 
 /**
- * Show template details
+ * Display template header information
  */
-export async function showTemplate(templateName: string): Promise<number> {
-  const metadata = await loadTemplateMetadata(templateName);
-  if (!metadata) {
-    console.error(chalk.red(`Template '${templateName}' not found`));
-    return 1;
-  }
-
+function displayTemplateHeader(metadata: any): void {
   console.log(chalk.cyan(`Template: ${metadata.name}`));
   console.log(chalk.dim(`Version: ${metadata.version} | Author: ${metadata.author}`));
   console.log();
+}
 
+/**
+ * Display template description and category
+ */
+function displayTemplateInfo(metadata: any): void {
   console.log(chalk.bold("Description:"));
   console.log(metadata.description);
   console.log();
@@ -161,13 +160,23 @@ export async function showTemplate(templateName: string): Promise<number> {
     console.log(chalk.bold("Tags:"), metadata.tags.join(", "));
   }
   console.log();
+}
 
+/**
+ * Display template usage if available
+ */
+function displayTemplateUsage(metadata: any): void {
   if (metadata.usage) {
     console.log(chalk.bold("Usage:"));
     console.log(metadata.usage);
     console.log();
   }
+}
 
+/**
+ * Display template parameters
+ */
+function displayTemplateParameters(metadata: any): void {
   if (metadata.parameters && metadata.parameters.length > 0) {
     console.log(chalk.bold("Parameters:"));
     for (const param of metadata.parameters) {
@@ -178,7 +187,12 @@ export async function showTemplate(templateName: string): Promise<number> {
     }
     console.log();
   }
+}
 
+/**
+ * Display template examples
+ */
+function displayTemplateExamples(metadata: any): void {
   if (metadata.examples && metadata.examples.length > 0) {
     console.log(chalk.bold("Examples:"));
     for (const example of metadata.examples) {
@@ -191,6 +205,23 @@ export async function showTemplate(templateName: string): Promise<number> {
       console.log();
     }
   }
+}
+
+/**
+ * Show template details
+ */
+export async function showTemplate(templateName: string): Promise<number> {
+  const metadata = await loadTemplateMetadata(templateName);
+  if (!metadata) {
+    console.error(chalk.red(`Template '${templateName}' not found`));
+    return 1;
+  }
+
+  displayTemplateHeader(metadata);
+  displayTemplateInfo(metadata);
+  displayTemplateUsage(metadata);
+  displayTemplateParameters(metadata);
+  displayTemplateExamples(metadata);
 
   return 0;
 }

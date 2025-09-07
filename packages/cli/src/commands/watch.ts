@@ -257,45 +257,99 @@ async function validateFiles(
   const results = { valid: 0, invalid: 0, errors: [] as string[] };
 
   for (const file of files) {
-    try {
-      const content = await readFile(file, "utf-8");
-      const result = await apiClient.validate(content);
-
-      if (result.success) {
-        results.valid++;
-        if (!agentMode) {
-          console.log(chalk.green(`  ✅ ${file} - Valid`));
-        }
-      } else {
-        results.invalid++;
-        const error = `${file}: ${result.error || "Validation failed"}`;
-        results.errors.push(error);
-
-        if (!agentMode) {
-          console.log(chalk.red(`  ❌ ${file} - ${result.error || "Validation failed"}`));
-          if (result.data?.errors) {
-            result.data.errors.forEach((error) => {
-              console.log(chalk.red(`     ${error}`));
-            });
-          }
-        }
-      }
-    } catch (error) {
-      results.invalid++;
-      const errorMsg = `${file}: Read error - ${error instanceof Error ? error.message : String(error)}`;
-      results.errors.push(errorMsg);
-
-      if (!agentMode) {
-        console.log(
-          chalk.red(
-            `  ❌ ${file} - Read error: ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
-      }
-    }
+    await validateSingleFileInWatch(file, apiClient, agentMode, results);
   }
 
   return results;
+}
+
+/**
+ * Validate a single file during watch mode
+ */
+async function validateSingleFileInWatch(
+  file: string,
+  apiClient: ApiClient,
+  agentMode: boolean,
+  results: { valid: number; invalid: number; errors: string[] },
+): Promise<void> {
+  try {
+    const content = await readFile(file, "utf-8");
+    const result = await apiClient.validate(content);
+
+    if (result.success) {
+      handleValidationSuccess(file, agentMode, results);
+    } else {
+      handleValidationFailure(file, result, agentMode, results);
+    }
+  } catch (error) {
+    handleValidationError(file, error, agentMode, results);
+  }
+}
+
+/**
+ * Handle successful validation
+ */
+function handleValidationSuccess(
+  file: string,
+  agentMode: boolean,
+  results: { valid: number; invalid: number; errors: string[] },
+): void {
+  results.valid++;
+  if (!agentMode) {
+    console.log(chalk.green(`  ✅ ${file} - Valid`));
+  }
+}
+
+/**
+ * Handle validation failure
+ */
+function handleValidationFailure(
+  file: string,
+  result: any,
+  agentMode: boolean,
+  results: { valid: number; invalid: number; errors: string[] },
+): void {
+  results.invalid++;
+  const error = `${file}: ${result.error || "Validation failed"}`;
+  results.errors.push(error);
+
+  if (!agentMode) {
+    console.log(chalk.red(`  ❌ ${file} - ${result.error || "Validation failed"}`));
+    displayValidationErrors(result.data?.errors);
+  }
+}
+
+/**
+ * Display detailed validation errors
+ */
+function displayValidationErrors(errors?: string[]): void {
+  if (errors) {
+    errors.forEach((error) => {
+      console.log(chalk.red(`     ${error}`));
+    });
+  }
+}
+
+/**
+ * Handle file read or processing errors
+ */
+function handleValidationError(
+  file: string,
+  error: unknown,
+  agentMode: boolean,
+  results: { valid: number; invalid: number; errors: string[] },
+): void {
+  results.invalid++;
+  const errorMsg = `${file}: Read error - ${error instanceof Error ? error.message : String(error)}`;
+  results.errors.push(errorMsg);
+
+  if (!agentMode) {
+    console.log(
+      chalk.red(
+        `  ❌ ${file} - Read error: ${error instanceof Error ? error.message : String(error)}`,
+      ),
+    );
+  }
 }
 
 /**

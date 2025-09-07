@@ -717,142 +717,175 @@ function generateJUnitXML(report: CoverageReport): string {
 /**
  * Scaffold command - Generate test skeletons from invariants
  */
+/**
+ * Scaffold setup - find assembly file and initialize
+ */
+async function initializeScaffoldSession(): Promise<{
+  assemblyPath: string;
+  invariants: Invariant[];
+} | null> {
+  console.log(chalk.blue("🧪 Generating test scaffolds from invariants..."));
+
+  // Find assembly file
+  const assemblyFiles = await glob("arbiter.assembly.cue");
+  if (assemblyFiles.length === 0) {
+    console.error(chalk.red("❌ No arbiter.assembly.cue file found"));
+    console.log(chalk.dim("Run this command in a project with an Arbiter assembly file"));
+    return null;
+  }
+
+  const assemblyPath = assemblyFiles[0];
+  console.log(chalk.dim(`📋 Using assembly: ${assemblyPath}`));
+
+  // Parse invariants
+  const invariants = await parseInvariants(assemblyPath);
+  console.log(chalk.cyan(`🔍 Found ${invariants.length} invariants`));
+
+  if (invariants.length === 0) {
+    console.log(chalk.yellow("No invariants found to generate tests from"));
+    return null;
+  }
+
+  return { assemblyPath, invariants };
+}
+
+/**
+ * Display invariants in verbose mode
+ */
+function displayInvariantsIfVerbose(invariants: Invariant[], verbose: boolean): void {
+  if (!verbose) return;
+
+  console.log(chalk.cyan("\nInvariants found:"));
+  for (const inv of invariants) {
+    console.log(chalk.dim(`  • ${inv.name}: ${inv.description}`));
+    console.log(chalk.dim(`    Formula: ${inv.formula}`));
+    console.log(chalk.dim(`    Testable: ${inv.testable ? "✅" : "❌"}`));
+  }
+}
+
+/**
+ * Generate test templates from invariants
+ */
+function generateTestTemplatesFromInvariants(
+  invariants: Invariant[],
+  language: string,
+): { testTemplates: TestTemplate[]; skipped: string[] } {
+  const testTemplates: TestTemplate[] = [];
+  const skipped: string[] = [];
+
+  for (const invariant of invariants) {
+    if (!invariant.testable) {
+      skipped.push(invariant.name);
+      continue;
+    }
+
+    try {
+      const template = generateTestTemplate(invariant, language);
+      testTemplates.push(template);
+    } catch (error) {
+      console.warn(chalk.yellow(`⚠️  Skipping ${invariant.name}: ${error}`));
+      skipped.push(invariant.name);
+    }
+  }
+
+  return { testTemplates, skipped };
+}
+
+/**
+ * Write test files to filesystem
+ */
+async function writeTestFiles(
+  testTemplates: TestTemplate[],
+  outputDir: string,
+  existingTests: string[],
+  force: boolean,
+): Promise<{ generated: number; updated: number }> {
+  let generated = 0;
+  let updated = 0;
+
+  for (const template of testTemplates) {
+    const filePath = path.join(outputDir, template.filename);
+    const exists = existingTests.includes(filePath);
+
+    if (exists && !force) {
+      continue; // Skip existing unless forced
+    }
+
+    try {
+      await fs.writeFile(filePath, template.content, "utf-8");
+
+      if (exists) {
+        updated++;
+        console.log(chalk.green(`🔄 Updated: ${path.relative(process.cwd(), filePath)}`));
+      } else {
+        generated++;
+        console.log(chalk.green(`✨ Generated: ${path.relative(process.cwd(), filePath)}`));
+      }
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to write ${filePath}: ${error}`));
+    }
+  }
+
+  return { generated, updated };
+}
+
+/**
+ * Display scaffold summary and installation hints
+ */
+function displayScaffoldSummary(
+  generated: number,
+  updated: number,
+  existingTests: string[],
+  language: string,
+  outputDir: string,
+  skipped: string[],
+): void {
+  console.log(chalk.blue("\n📊 Scaffold Summary:"));
+  console.log(`  Generated: ${chalk.green(generated)} new test files`);
+  console.log(`  Updated: ${chalk.yellow(updated)} existing test files`);
+  console.log(`  Skipped: ${chalk.dim(existingTests.length - updated)} existing test files`);
+  console.log(`  Language: ${language} (${LANGUAGE_CONFIGS[language].framework})`);
+  console.log(`  Output: ${outputDir}`);
+
+  if (skipped.length > 0) {
+    console.log(chalk.dim(`\nNon-testable invariants: ${skipped.join(", ")}`));
+  }
+
+  // Installation hints
+  const deps = LANGUAGE_CONFIGS[language].dependencies;
+  if (deps.length > 0) {
+    console.log(chalk.cyan("\n💡 Installation hint:"));
+    switch (language) {
+      case "typescript":
+        console.log(chalk.dim(`  npm install --save-dev ${deps.join(" ")}`));
+        break;
+      case "python":
+        console.log(chalk.dim(`  pip install ${deps.join(" ")}`));
+        break;
+      case "rust":
+        console.log(chalk.dim(`  cargo add --dev ${deps.join(" ")}`));
+        break;
+    }
+  }
+}
+
 export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig): Promise<number> {
   try {
-    console.log(chalk.blue("🧪 Generating test scaffolds from invariants..."));
+    const context = await initializeScaffoldContext(options);
+    if (!context) return 1;
 
-    // Find assembly file
-    const assemblyFiles = await glob("arbiter.assembly.cue");
-    if (assemblyFiles.length === 0) {
-      console.error(chalk.red("❌ No arbiter.assembly.cue file found"));
-      console.log(chalk.dim("Run this command in a project with an Arbiter assembly file"));
-      return 1;
-    }
-
-    const assemblyPath = assemblyFiles[0];
-    console.log(chalk.dim(`📋 Using assembly: ${assemblyPath}`));
-
-    // Parse invariants
-    const invariants = await parseInvariants(assemblyPath);
-    console.log(chalk.cyan(`🔍 Found ${invariants.length} invariants`));
-
-    if (invariants.length === 0) {
-      console.log(chalk.yellow("No invariants found to generate tests from"));
-      return 0;
-    }
-
-    // Display invariants
-    if (options.verbose) {
-      console.log(chalk.cyan("\nInvariants found:"));
-      for (const inv of invariants) {
-        console.log(chalk.dim(`  • ${inv.name}: ${inv.description}`));
-        console.log(chalk.dim(`    Formula: ${inv.formula}`));
-        console.log(chalk.dim(`    Testable: ${inv.testable ? "✅" : "❌"}`));
-      }
-    }
-
-    // Determine target language
-    const language = options.language || "typescript";
-    console.log(chalk.blue(`🎯 Generating tests for: ${language}`));
-
-    // Generate test templates
-    const testTemplates: TestTemplate[] = [];
-    const skipped: string[] = [];
-
-    for (const invariant of invariants) {
-      if (!invariant.testable) {
-        skipped.push(invariant.name);
-        continue;
-      }
-
-      try {
-        const template = generateTestTemplate(invariant, language);
-        testTemplates.push(template);
-      } catch (error) {
-        console.warn(chalk.yellow(`⚠️  Skipping ${invariant.name}: ${error}`));
-        skipped.push(invariant.name);
-      }
-    }
-
+    const language = determineTargetLanguage(options);
+    const { testTemplates, skipped } = generateTestTemplatesFromInvariants(context.invariants, language);
+    
     if (testTemplates.length === 0) {
-      console.log(chalk.yellow("No testable invariants found"));
-      if (skipped.length > 0) {
-        console.log(chalk.dim(`Skipped: ${skipped.join(", ")}`));
-      }
-      return 0;
+      return handleNoTestableInvariants(skipped);
     }
 
-    // Determine output directory
-    const outputDir = options.outputDir || options.output || getDefaultTestDir(language);
-    await fs.mkdir(outputDir, { recursive: true });
-
-    // Check for existing tests (idempotent behavior)
-    const existingTests = await checkExistingTests(testTemplates, outputDir);
-
-    if (existingTests.length > 0 && !options.force) {
-      console.log(chalk.yellow(`🔄 Found ${existingTests.length} existing test(s):`));
-      for (const existing of existingTests) {
-        console.log(chalk.dim(`  • ${path.relative(process.cwd(), existing)}`));
-      }
-      console.log(chalk.dim("Use --force to regenerate existing tests"));
-    }
-
-    // Write test files
-    let generated = 0;
-    let updated = 0;
-
-    for (const template of testTemplates) {
-      const filePath = path.join(outputDir, template.filename);
-      const exists = existingTests.includes(filePath);
-
-      if (exists && !options.force) {
-        continue; // Skip existing unless forced
-      }
-
-      try {
-        await fs.writeFile(filePath, template.content, "utf-8");
-
-        if (exists) {
-          updated++;
-          console.log(chalk.green(`🔄 Updated: ${path.relative(process.cwd(), filePath)}`));
-        } else {
-          generated++;
-          console.log(chalk.green(`✨ Generated: ${path.relative(process.cwd(), filePath)}`));
-        }
-      } catch (error) {
-        console.error(chalk.red(`❌ Failed to write ${filePath}: ${error}`));
-      }
-    }
-
-    // Summary
-    console.log(chalk.blue("\n📊 Scaffold Summary:"));
-    console.log(`  Generated: ${chalk.green(generated)} new test files`);
-    console.log(`  Updated: ${chalk.yellow(updated)} existing test files`);
-    console.log(`  Skipped: ${chalk.dim(existingTests.length - updated)} existing test files`);
-    console.log(`  Language: ${language} (${LANGUAGE_CONFIGS[language].framework})`);
-    console.log(`  Output: ${outputDir}`);
-
-    if (skipped.length > 0) {
-      console.log(chalk.dim(`\nNon-testable invariants: ${skipped.join(", ")}`));
-    }
-
-    // Installation hints
-    const deps = LANGUAGE_CONFIGS[language].dependencies;
-    if (deps.length > 0) {
-      console.log(chalk.cyan("\n💡 Installation hint:"));
-      switch (language) {
-        case "typescript":
-          console.log(chalk.dim(`  npm install --save-dev ${deps.join(" ")}`));
-          break;
-        case "python":
-          console.log(chalk.dim(`  pip install ${deps.join(" ")}`));
-          break;
-        case "rust":
-          console.log(chalk.dim(`  cargo add --dev ${deps.join(" ")}`));
-          break;
-      }
-    }
-
+    const outputDir = prepareOutputDirectory(options, language);
+    const existingTests = await processExistingTests(testTemplates, outputDir, options.force);
+    const results = await executeTestFileGeneration(testTemplates, outputDir, existingTests, options.force);
+    
+    displayScaffoldSummary(results.generated, results.updated, existingTests, language, outputDir, skipped);
     return 0;
   } catch (error) {
     console.error(
@@ -861,6 +894,65 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
     );
     return 1;
   }
+}
+
+interface ScaffoldContext {
+  invariants: Invariant[];
+  assemblyPath: string;
+}
+
+async function initializeScaffoldContext(options: TestsOptions): Promise<ScaffoldContext | null> {
+  const result = await initializeScaffoldSession();
+  if (!result) return null;
+
+  displayInvariantsIfVerbose(result.invariants, options.verbose || false);
+  return { invariants: result.invariants, assemblyPath: result.assemblyPath };
+}
+
+function determineTargetLanguage(options: TestsOptions): string {
+  const language = options.language || "typescript";
+  console.log(chalk.blue(`🎯 Generating tests for: ${language}`));
+  return language;
+}
+
+function handleNoTestableInvariants(skipped: string[]): number {
+  console.log(chalk.yellow("No testable invariants found"));
+  if (skipped.length > 0) {
+    console.log(chalk.dim(`Skipped: ${skipped.join(", ")}`));
+  }
+  return 0;
+}
+
+function prepareOutputDirectory(options: TestsOptions, language: string): string {
+  return options.outputDir || options.output || getDefaultTestDir(language);
+}
+
+async function processExistingTests(
+  testTemplates: TestTemplate[], 
+  outputDir: string, 
+  force?: boolean
+): Promise<string[]> {
+  await fs.mkdir(outputDir, { recursive: true });
+  const existingTests = await checkExistingTests(testTemplates, outputDir);
+
+  if (existingTests.length > 0 && !force) {
+    console.log(chalk.yellow(`🔄 Found ${existingTests.length} existing test(s):`));
+    for (const existing of existingTests) {
+      console.log(chalk.dim(`  • ${path.relative(process.cwd(), existing)}`));
+    }
+    console.log(chalk.dim("Use --force to regenerate existing tests"));
+  }
+
+  return existingTests;
+}
+
+async function executeTestFileGeneration(
+  testTemplates: TestTemplate[],
+  outputDir: string,
+  existingTests: string[],
+  force?: boolean
+): Promise<{ generated: number; updated: number }> {
+  return await writeTestFiles(testTemplates, outputDir, existingTests, force || false);
 }
 
 /**

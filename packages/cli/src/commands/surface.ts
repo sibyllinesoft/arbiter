@@ -438,72 +438,279 @@ async function getTypeScriptVersion(): Promise<string> {
 }
 
 /**
- * Extract Python API surface using pyright/stubgen strategies
- * Implements TODO.md section 5 strategy: pyright --createstub or stubgen → stubs → JSON
+ * Command interface for Python extraction strategies
  */
-async function _extractPythonSurface(options: SurfaceOptions): Promise<APISurface | null> {
-  try {
-    // Check if this is a Python project
-    const pythonProjectExists = await Promise.all([
+interface PythonExtractionCommand {
+  readonly name: string;
+  readonly description: string;
+  execute(options: SurfaceOptions): Promise<APISurface | null>;
+  canExecute(): Promise<boolean>;
+}
+
+/**
+ * Pyright stub generation command
+ */
+class PyrightExtractionCommand implements PythonExtractionCommand {
+  readonly name = "pyright";
+  readonly description = "pyright stub generation";
+
+  async canExecute(): Promise<boolean> {
+    return await this.checkPythonProject();
+  }
+
+  async execute(options: SurfaceOptions): Promise<APISurface | null> {
+    return await extractPythonWithPyright(options);
+  }
+
+  private async checkPythonProject(): Promise<boolean> {
+    const results = await Promise.all([
       glob("pyproject.toml"),
       glob("setup.py"),
-      glob("**/*.py", { ignore: ["__pycache__/**", "node_modules/**"] }),
-    ]).then((results) => results.some((files) => files.length > 0));
+      glob("**/*.py", { ignore: ["__pycache__/**", "node_modules/**"] })
+    ]);
+    return results.some((files) => files.length > 0);
+  }
+}
 
-    if (!pythonProjectExists) {
+/**
+ * Stubgen extraction command
+ */
+class StubgenExtractionCommand implements PythonExtractionCommand {
+  readonly name = "stubgen";
+  readonly description = "stubgen";
+
+  async canExecute(): Promise<boolean> {
+    return await this.checkPythonProject();
+  }
+
+  async execute(options: SurfaceOptions): Promise<APISurface | null> {
+    return await extractPythonWithStubgen(options);
+  }
+
+  private async checkPythonProject(): Promise<boolean> {
+    const results = await Promise.all([
+      glob("pyproject.toml"),
+      glob("setup.py"),
+      glob("**/*.py", { ignore: ["__pycache__/**", "node_modules/**"] })
+    ]);
+    return results.some((files) => files.length > 0);
+  }
+}
+
+/**
+ * AST parsing extraction command
+ */
+class AstParsingExtractionCommand implements PythonExtractionCommand {
+  readonly name = "ast-parsing";
+  readonly description = "basic AST parsing";
+
+  async canExecute(): Promise<boolean> {
+    const pythonFiles = await glob("**/*.py", { ignore: ["__pycache__/**", "node_modules/**"] });
+    return pythonFiles.length > 0;
+  }
+
+  async execute(options: SurfaceOptions): Promise<APISurface | null> {
+    return await extractPythonWithAstParsing(options);
+  }
+}
+
+/**
+ * Python surface extraction invoker using Command pattern
+ */
+class PythonExtractionInvoker {
+  private commands: PythonExtractionCommand[] = [
+    new PyrightExtractionCommand(),
+    new StubgenExtractionCommand(),
+    new AstParsingExtractionCommand()
+  ];
+
+  /**
+   * Execute Python extraction commands in sequence
+   */
+  async executeExtraction(options: SurfaceOptions): Promise<APISurface | null> {
+    // Quick validation
+    const hasValidCommands = await this.validateCommands();
+    if (!hasValidCommands) {
       console.log(chalk.yellow("No Python project files found"));
       return null;
     }
 
     console.log(chalk.dim("Attempting Python surface extraction..."));
 
-    // Strategy 1: Try pyright stub generation
-    try {
-      console.log(chalk.dim("Strategy 1: Attempting pyright stub generation..."));
-      const pyrightSurface = await extractPythonWithPyright(options);
-      if (pyrightSurface) {
-        console.log(chalk.green("✅ Successfully extracted using pyright"));
-        return pyrightSurface;
-      }
-    } catch (error) {
-      console.log(
-        chalk.dim(`pyright failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
-    }
+    // Execute commands in order until one succeeds
+    for (let i = 0; i < this.commands.length; i++) {
+      const command = this.commands[i];
+      
+      try {
+        console.log(chalk.dim(`Strategy ${i + 1}: Attempting ${command.description}...`));
+        
+        const canExecute = await command.canExecute();
+        if (!canExecute) {
+          console.log(chalk.dim(`${command.name} cannot execute for this project`));
+          continue;
+        }
 
-    // Strategy 2: Try stubgen
-    try {
-      console.log(chalk.dim("Strategy 2: Attempting stubgen..."));
-      const stubgenSurface = await extractPythonWithStubgen(options);
-      if (stubgenSurface) {
-        console.log(chalk.green("✅ Successfully extracted using stubgen"));
-        return stubgenSurface;
+        const result = await command.execute(options);
+        if (result) {
+          console.log(chalk.green(`✅ Successfully extracted using ${command.name}`));
+          return result;
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.log(chalk.dim(`${command.name} failed: ${errorMsg}`));
       }
-    } catch (error) {
-      console.log(
-        chalk.dim(`stubgen failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
-    }
-
-    // Strategy 3: Fall back to basic AST parsing
-    try {
-      console.log(chalk.dim("Strategy 3: Attempting basic AST parsing..."));
-      const astSurface = await extractPythonWithAstParsing(options);
-      if (astSurface) {
-        console.log(chalk.green("✅ Successfully extracted using AST parsing"));
-        return astSurface;
-      }
-    } catch (error) {
-      console.log(
-        chalk.dim(`AST parsing failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
     }
 
     console.log(chalk.red("❌ All Python extraction strategies failed"));
     return null;
+  }
+
+  /**
+   * Validate if any commands can execute
+   */
+  private async validateCommands(): Promise<boolean> {
+    for (const command of this.commands) {
+      if (await command.canExecute()) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Extract Python API surface using pyright/stubgen strategies
+ * Implements TODO.md section 5 strategy: pyright --createstub or stubgen → stubs → JSON
+ */
+async function _extractPythonSurface(options: SurfaceOptions): Promise<APISurface | null> {
+  try {
+    const invoker = new PythonExtractionInvoker();
+    return await invoker.executeExtraction(options);
   } catch (error) {
     console.error(chalk.red("Python surface extraction failed:"), error);
     return null;
+  }
+}
+
+/**
+ * Rust surface extraction strategy interface
+ */
+interface RustExtractionStrategy {
+  readonly name: string;
+  readonly description: string;
+  canHandle(options: SurfaceOptions): Promise<boolean>;
+  extract(options: SurfaceOptions): Promise<APISurface | null>;
+}
+
+/**
+ * Cargo public-api extraction strategy
+ */
+class CargoPublicApiStrategy implements RustExtractionStrategy {
+  readonly name = "cargo-public-api";
+  readonly description = "Using cargo public-api";
+
+  async canHandle(_options: SurfaceOptions): Promise<boolean> {
+    const cargoTomlExists = await glob("Cargo.toml").then((files) => files.length > 0);
+    return cargoTomlExists;
+  }
+
+  async extract(options: SurfaceOptions): Promise<APISurface | null> {
+    return await extractRustWithPublicApi(options);
+  }
+}
+
+/**
+ * Rustdoc JSON extraction strategy
+ */
+class RustdocJsonStrategy implements RustExtractionStrategy {
+  readonly name = "rustdoc-json";
+  readonly description = "Using rustdoc JSON";
+
+  async canHandle(_options: SurfaceOptions): Promise<boolean> {
+    const cargoTomlExists = await glob("Cargo.toml").then((files) => files.length > 0);
+    return cargoTomlExists;
+  }
+
+  async extract(options: SurfaceOptions): Promise<APISurface | null> {
+    return await extractRustWithRustdocJson(options);
+  }
+}
+
+/**
+ * Syn parsing extraction strategy
+ */
+class SynParseStrategy implements RustExtractionStrategy {
+  readonly name = "syn-parse";
+  readonly description = "Using syn-based parsing";
+
+  async canHandle(_options: SurfaceOptions): Promise<boolean> {
+    const rustFiles = await glob("src/**/*.rs").then((files) => files.length > 0);
+    return rustFiles;
+  }
+
+  async extract(options: SurfaceOptions): Promise<APISurface | null> {
+    return await extractRustWithSynParse(options);
+  }
+}
+
+/**
+ * Rust surface extraction orchestrator with strategy pattern
+ */
+class RustSurfaceExtractor {
+  private strategies: RustExtractionStrategy[] = [
+    new CargoPublicApiStrategy(),
+    new RustdocJsonStrategy(), 
+    new SynParseStrategy()
+  ];
+
+  /**
+   * Extract Rust API surface using fallback strategies
+   */
+  async extractSurface(options: SurfaceOptions): Promise<APISurface | null> {
+    // Quick project validation
+    const projectValid = await this.validateRustProject();
+    if (!projectValid) {
+      console.log(chalk.yellow("No Rust project found"));
+      return null;
+    }
+
+    console.log(chalk.dim("Attempting Rust surface extraction..."));
+
+    // Try each strategy in order
+    for (let i = 0; i < this.strategies.length; i++) {
+      const strategy = this.strategies[i];
+      
+      try {
+        console.log(chalk.dim(`Strategy ${i + 1}: ${strategy.description}...`));
+        
+        const canHandle = await strategy.canHandle(options);
+        if (!canHandle) {
+          console.log(chalk.dim(`Strategy ${strategy.name} cannot handle this project`));
+          continue;
+        }
+
+        const result = await strategy.extract(options);
+        if (result) {
+          console.log(chalk.green(`✅ Successfully extracted using ${strategy.name}`));
+          return result;
+        }
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.log(chalk.dim(`${strategy.name} failed: ${errorMsg}`));
+      }
+    }
+
+    console.log(chalk.red("❌ All Rust extraction strategies failed"));
+    return null;
+  }
+
+  /**
+   * Validate if this is a Rust project
+   */
+  private async validateRustProject(): Promise<boolean> {
+    const cargoTomlExists = await glob("Cargo.toml").then((files) => files.length > 0);
+    const rustFilesExist = await glob("src/**/*.rs").then((files) => files.length > 0);
+    return cargoTomlExists || rustFilesExist;
   }
 }
 
@@ -513,61 +720,8 @@ async function _extractPythonSurface(options: SurfaceOptions): Promise<APISurfac
  */
 async function _extractRustSurface(options: SurfaceOptions): Promise<APISurface | null> {
   try {
-    // Check if this is a Rust project
-    const cargoTomlExists = await glob("Cargo.toml").then((files) => files.length > 0);
-    if (!cargoTomlExists) {
-      console.log(chalk.yellow("No Cargo.toml found - not a Rust project"));
-      return null;
-    }
-
-    console.log(chalk.dim("Attempting Rust surface extraction..."));
-
-    // Strategy 1: Try cargo public-api (most comprehensive)
-    try {
-      console.log(chalk.dim("Strategy 1: Attempting cargo public-api..."));
-      const publicApiSurface = await extractRustWithPublicApi(options);
-      if (publicApiSurface) {
-        console.log(chalk.green("✅ Successfully extracted using cargo public-api"));
-        return publicApiSurface;
-      }
-    } catch (error) {
-      console.log(
-        chalk.dim(
-          `cargo public-api failed: ${error instanceof Error ? error.message : String(error)}`,
-        ),
-      );
-    }
-
-    // Strategy 2: Try rustdoc JSON (second choice)
-    try {
-      console.log(chalk.dim("Strategy 2: Attempting rustdoc JSON..."));
-      const rustdocSurface = await extractRustWithRustdocJson(options);
-      if (rustdocSurface) {
-        console.log(chalk.green("✅ Successfully extracted using rustdoc JSON"));
-        return rustdocSurface;
-      }
-    } catch (error) {
-      console.log(
-        chalk.dim(`rustdoc JSON failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
-    }
-
-    // Strategy 3: Fall back to syn parsing (basic parsing)
-    try {
-      console.log(chalk.dim("Strategy 3: Attempting syn-based parsing..."));
-      const synSurface = await extractRustWithSynParse(options);
-      if (synSurface) {
-        console.log(chalk.green("✅ Successfully extracted using syn parsing"));
-        return synSurface;
-      }
-    } catch (error) {
-      console.log(
-        chalk.dim(`syn parsing failed: ${error instanceof Error ? error.message : String(error)}`),
-      );
-    }
-
-    console.log(chalk.red("❌ All Rust extraction strategies failed"));
-    return null;
+    const extractor = new RustSurfaceExtractor();
+    return await extractor.extractSurface(options);
   } catch (error) {
     console.error(chalk.red("Rust surface extraction failed:"), error);
     return null;
@@ -1490,84 +1644,158 @@ async function getGoPackageSymbols(packagePath: string): Promise<APISymbol[]> {
 }
 
 /**
+ * Go doc output parser with extracted methods for reduced complexity
+ */
+class GoDocParser {
+  private packagePath: string;
+
+  constructor(packagePath: string) {
+    this.packagePath = packagePath;
+  }
+
+  /**
+   * Parse go doc output to extract symbols
+   */
+  parseDocOutput(docOutput: string): APISymbol[] {
+    const symbols: APISymbol[] = [];
+    const lines = docOutput.split("\n");
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // Use specialized parsers for each symbol type
+      const functionSymbol = this.parseFunctionLine(trimmedLine);
+      if (functionSymbol) {
+        symbols.push(functionSymbol);
+        continue;
+      }
+
+      const typeSymbol = this.parseTypeLine(trimmedLine);
+      if (typeSymbol) {
+        symbols.push(typeSymbol);
+        continue;
+      }
+
+      const variableSymbol = this.parseVariableLine(trimmedLine);
+      if (variableSymbol) {
+        symbols.push(variableSymbol);
+      }
+    }
+
+    return symbols;
+  }
+
+  /**
+   * Parse function definition lines
+   */
+  private parseFunctionLine(line: string): APISymbol | null {
+    const funcMatch = line.match(/^func\s+(\w+)\s*\((.*?)\)(?:\s*\((.*?)\))?(?:\s+(.+))?/);
+    if (!funcMatch) return null;
+
+    const [, name, params, returns, returnType] = funcMatch;
+
+    // Only include exported (uppercase) functions
+    if (!this.isExported(name)) return null;
+
+    return {
+      name,
+      type: "function",
+      visibility: "public",
+      signature: line,
+      location: this.createLocation(),
+      parameters: this.parseParameters(params),
+      returnType: returnType || returns || "void",
+    };
+  }
+
+  /**
+   * Parse type definition lines
+   */
+  private parseTypeLine(line: string): APISymbol | null {
+    const typeMatch = line.match(/^type\s+(\w+)\s+(struct|interface|.+)/);
+    if (!typeMatch) return null;
+
+    const [, name, typeKind] = typeMatch;
+    if (!this.isExported(name)) return null;
+
+    return {
+      name,
+      type: this.mapGoTypeToSymbolType(typeKind),
+      visibility: "public",
+      signature: line,
+      location: this.createLocation(),
+    };
+  }
+
+  /**
+   * Parse variable and constant definition lines
+   */
+  private parseVariableLine(line: string): APISymbol | null {
+    const varMatch = line.match(/^(var|const)\s+(\w+)\s+(.+)/);
+    if (!varMatch) return null;
+
+    const [, kind, name, type] = varMatch;
+    if (!this.isExported(name)) return null;
+
+    return {
+      name,
+      type: kind === "const" ? "constant" : "variable",
+      visibility: "public",
+      signature: line,
+      location: this.createLocation(),
+      returnType: type,
+    };
+  }
+
+  /**
+   * Parse function parameters
+   */
+  private parseParameters(params: string): APISymbol["parameters"] {
+    if (!params) return [];
+
+    return params
+      .split(",")
+      .map((p) => {
+        const parts = p.trim().split(" ");
+        return {
+          name: parts[0] || "param",
+          type: parts.slice(1).join(" ") || "interface{}",
+        };
+      })
+      .filter((p) => p.name !== "param");
+  }
+
+  /**
+   * Check if a symbol is exported (starts with uppercase)
+   */
+  private isExported(name: string): boolean {
+    return name[0] === name[0].toUpperCase();
+  }
+
+  /**
+   * Map Go type kinds to symbol types
+   */
+  private mapGoTypeToSymbolType(typeKind: string): APISymbol["type"] {
+    if (typeKind.startsWith("struct")) return "class";
+    if (typeKind.startsWith("interface")) return "interface";
+    return "type";
+  }
+
+  /**
+   * Create location object
+   */
+  private createLocation() {
+    return { file: this.packagePath, line: 1, column: 1 };
+  }
+}
+
+/**
  * Parse go doc output to extract symbols
  */
 function parseGoDocOutput(docOutput: string, packagePath: string): APISymbol[] {
-  const symbols: APISymbol[] = [];
-  const lines = docOutput.split("\n");
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    // Function definitions
-    const funcMatch = line.match(/^func\s+(\w+)\s*\((.*?)\)(?:\s*\((.*?)\))?(?:\s+(.+))?/);
-    if (funcMatch) {
-      const [, name, params, returns, returnType] = funcMatch;
-
-      // Only include exported (uppercase) functions
-      if (name[0] === name[0].toUpperCase()) {
-        symbols.push({
-          name,
-          type: "function",
-          visibility: "public",
-          signature: line,
-          location: { file: packagePath, line: 1, column: 1 },
-          parameters: params
-            ? params
-                .split(",")
-                .map((p) => {
-                  const parts = p.trim().split(" ");
-                  return {
-                    name: parts[0] || "param",
-                    type: parts.slice(1).join(" ") || "interface{}",
-                  };
-                })
-                .filter((p) => p.name !== "param")
-            : [],
-          returnType: returnType || returns || "void",
-        });
-      }
-    }
-
-    // Type definitions
-    const typeMatch = line.match(/^type\s+(\w+)\s+(struct|interface|.+)/);
-    if (typeMatch) {
-      const [, name, typeKind] = typeMatch;
-
-      if (name[0] === name[0].toUpperCase()) {
-        symbols.push({
-          name,
-          type: typeKind.startsWith("struct")
-            ? "class"
-            : typeKind.startsWith("interface")
-              ? "interface"
-              : "type",
-          visibility: "public",
-          signature: line,
-          location: { file: packagePath, line: 1, column: 1 },
-        });
-      }
-    }
-
-    // Variable and constant definitions
-    const varMatch = line.match(/^(var|const)\s+(\w+)\s+(.+)/);
-    if (varMatch) {
-      const [, kind, name, type] = varMatch;
-
-      if (name[0] === name[0].toUpperCase()) {
-        symbols.push({
-          name,
-          type: kind === "const" ? "constant" : "variable",
-          visibility: "public",
-          signature: line,
-          location: { file: packagePath, line: 1, column: 1 },
-          returnType: type,
-        });
-      }
-    }
-  }
-
-  return symbols;
+  const parser = new GoDocParser(packagePath);
+  return parser.parseDocOutput(docOutput);
 }
 
 /**

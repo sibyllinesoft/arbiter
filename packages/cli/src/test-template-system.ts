@@ -18,50 +18,110 @@ async function testTemplateSystem() {
   console.log();
 
   try {
-    // Test 1: Load configuration
-    console.log(chalk.blue("1. Loading template configuration..."));
-    await templateManager.loadConfig();
-    console.log(chalk.green("✅ Configuration loaded"));
-    console.log();
+    await runConfigurationTest();
+    await runEngineTest();
+    await runTemplateListingTest();
+    await runTemplateDetailsTest();
+    await runVariableExtractionTest();
+    
+    displaySuccessMessage();
+  } catch (error) {
+    handleTestFailure(error);
+  }
+}
 
-    // Test 2: List available engines
-    console.log(chalk.blue("2. Available engines:"));
-    const engines = templateManager.getEngines();
-    engines.forEach((engine) => console.log(`  • ${engine}`));
-    console.log();
+/**
+ * Test template configuration loading
+ */
+async function runConfigurationTest(): Promise<void> {
+  console.log(chalk.blue("1. Loading template configuration..."));
+  await templateManager.loadConfig();
+  console.log(chalk.green("✅ Configuration loaded"));
+  console.log();
+}
 
-    // Test 3: List available templates
-    console.log(chalk.blue("3. Available template aliases:"));
-    const aliases = templateManager.getAliases();
-    if (Object.keys(aliases).length === 0) {
-      console.log(chalk.yellow("  No template aliases configured"));
-    } else {
-      Object.entries(aliases).forEach(([name, alias]) => {
-        console.log(`  • ${chalk.green(name)}: ${alias.description} (${alias.engine})`);
-        console.log(`    Source: ${alias.source}`);
-      });
+/**
+ * Test available template engines
+ */
+async function runEngineTest(): Promise<void> {
+  console.log(chalk.blue("2. Available engines:"));
+  const engines = templateManager.getEngines();
+  engines.forEach((engine) => console.log(`  • ${engine}`));
+  console.log();
+}
+
+/**
+ * Test template alias listing
+ */
+async function runTemplateListingTest(): Promise<void> {
+  console.log(chalk.blue("3. Available template aliases:"));
+  const aliases = templateManager.getAliases();
+  
+  if (Object.keys(aliases).length === 0) {
+    console.log(chalk.yellow("  No template aliases configured"));
+  } else {
+    displayTemplateAliases(aliases);
+  }
+  console.log();
+}
+
+/**
+ * Display template aliases with details
+ */
+function displayTemplateAliases(aliases: any): void {
+  Object.entries(aliases).forEach(([name, alias]: [string, any]) => {
+    console.log(`  • ${chalk.green(name)}: ${alias.description} (${alias.engine})`);
+    console.log(`    Source: ${alias.source}`);
+  });
+}
+
+/**
+ * Test template details display
+ */
+async function runTemplateDetailsTest(): Promise<void> {
+  const aliases = templateManager.getAliases();
+  const firstTemplate = Object.keys(aliases)[0];
+  
+  if (firstTemplate) {
+    console.log(chalk.blue(`4. Details for template '${firstTemplate}':`));
+    displayTemplateDetails(firstTemplate);
+    console.log();
+  }
+}
+
+/**
+ * Display details for a specific template
+ */
+function displayTemplateDetails(templateName: string): void {
+  const alias = templateManager.getAlias(templateName);
+  if (alias) {
+    console.log(`  Engine: ${alias.engine}`);
+    console.log(`  Source: ${alias.source}`);
+    console.log(`  Description: ${alias.description}`);
+    if (alias.prerequisites) {
+      console.log(`  Prerequisites: ${alias.prerequisites.join(", ")}`);
     }
-    console.log();
+  }
+}
 
-    // Test 4: Show specific template
-    const firstTemplate = Object.keys(aliases)[0];
-    if (firstTemplate) {
-      console.log(chalk.blue(`4. Details for template '${firstTemplate}':`));
-      const alias = templateManager.getAlias(firstTemplate);
-      if (alias) {
-        console.log(`  Engine: ${alias.engine}`);
-        console.log(`  Source: ${alias.source}`);
-        console.log(`  Description: ${alias.description}`);
-        if (alias.prerequisites) {
-          console.log(`  Prerequisites: ${alias.prerequisites.join(", ")}`);
-        }
-      }
-      console.log();
-    }
+/**
+ * Test variable extraction functionality
+ */
+async function runVariableExtractionTest(): Promise<void> {
+  console.log(chalk.blue("5. Testing variable extraction:"));
+  
+  const sampleCue = createSampleCueContent();
+  const variables = extractVariablesFromCue(sampleCue, "api");
+  
+  console.log("  Extracted variables:", JSON.stringify(variables, null, 2));
+  console.log();
+}
 
-    // Test 5: Variable extraction
-    console.log(chalk.blue("5. Testing variable extraction:"));
-    const sampleCue = `
+/**
+ * Create sample CUE content for testing
+ */
+function createSampleCueContent(): string {
+  return `
 package myproject
 
 product: {
@@ -84,23 +144,28 @@ services: {
   }
 }
 `;
+}
 
-    const variables = extractVariablesFromCue(sampleCue, "api");
-    console.log("  Extracted variables:", JSON.stringify(variables, null, 2));
-    console.log();
+/**
+ * Display success message and next steps
+ */
+function displaySuccessMessage(): void {
+  console.log(chalk.green("🎉 Template system test completed successfully!"));
+  console.log();
+  console.log(chalk.bold("Next steps:"));
+  console.log(
+    "  1. Add custom templates with: arbiter templates add <name> --source <source> --description <desc>",
+  );
+  console.log("  2. Use templates with: arbiter add service myapi --template <template-name>");
+}
 
-    console.log(chalk.green("🎉 Template system test completed successfully!"));
-    console.log();
-    console.log(chalk.bold("Next steps:"));
-    console.log(
-      "  1. Add custom templates with: arbiter templates add <name> --source <source> --description <desc>",
-    );
-    console.log("  2. Use templates with: arbiter add service myapi --template <template-name>");
-  } catch (error) {
-    console.error(chalk.red("❌ Template system test failed:"));
-    console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-    process.exit(1);
-  }
+/**
+ * Handle test failure
+ */
+function handleTestFailure(error: unknown): void {
+  console.error(chalk.red("❌ Template system test failed:"));
+  console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+  process.exit(1);
 }
 
 // Run the test

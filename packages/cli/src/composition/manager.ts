@@ -17,6 +17,17 @@ import { SpecificationComposer } from "./spec-composer.js";
 import { RecoveryManager } from "./recovery-manager.js";
 
 /**
+ * Validation result structure
+ */
+interface ValidationResult {
+  success: boolean;
+  conflicts: ConflictEntry[];
+  errors: string[];
+  warnings: string[];
+  fragmentsStatus: Record<string, string>;
+}
+
+/**
  * Main project composition manager that coordinates all composition operations
  */
 export class ProjectCompositionManager {
@@ -327,72 +338,14 @@ project: #ProjectSpec & {
   /**
    * Validate the current project composition
    */
-  async validateComposition(options: ValidateCompositionOptions = {}): Promise<{
-    success: boolean;
-    conflicts: ConflictEntry[];
-    errors: string[];
-    warnings: string[];
-    fragmentsStatus: Record<string, string>;
-  }> {
+  async validateComposition(options: ValidateCompositionOptions = {}): Promise<ValidationResult> {
     const config = await this.loadConfig();
-
-    const result = {
-      success: true,
-      conflicts: [] as ConflictEntry[],
-      errors: [] as string[],
-      warnings: [] as string[],
-      fragmentsStatus: {} as Record<string, string>,
-    };
+    const result = this.initializeValidationResult();
 
     try {
-      // Validate each fragment individually
-      const fragmentsToValidate = options.fragments
-        ? config.fragments.filter((f) => options.fragments!.includes(f.id))
-        : config.fragments;
-
-      for (const fragment of fragmentsToValidate) {
-        try {
-          const fragmentContent = await fs.readFile(fragment.path, "utf-8");
-          const validation = await this.validator.validateSRF(fragment.path);
-
-          if (!validation.isValid) {
-            result.success = false;
-            result.errors.push(
-              `Fragment ${fragment.id} (${fragment.filename}): ${validation.errors.join(", ")}`,
-            );
-            result.fragmentsStatus[fragment.id] = "invalid";
-          } else {
-            result.fragmentsStatus[fragment.id] = "valid";
-          }
-
-          // Add existing conflicts
-          result.conflicts.push(...fragment.conflicts);
-        } catch (error) {
-          result.success = false;
-          result.errors.push(
-            `Failed to validate fragment ${fragment.id}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-          result.fragmentsStatus[fragment.id] = "error";
-        }
-      }
-
-      // Validate the composed specification
-      const currentSpec = await this.getCurrentSpec();
-      const specValidation = await this.validator.validateComposedSpec(currentSpec);
-
-      if (!specValidation.isValid) {
-        result.success = false;
-        result.errors.push(...specValidation.errors);
-      }
-
-      result.warnings.push(...specValidation.warnings);
-
-      // Check for dependency cycles
-      const dependencyCycles = this.detectDependencyCycles(config.fragments);
-      if (dependencyCycles.length > 0) {
-        result.success = false;
-        result.errors.push(`Dependency cycles detected: ${dependencyCycles.join(", ")}`);
-      }
+      await this.validateFragments(config, options, result);
+      await this.validateComposedSpec(result);
+      this.validateDependencies(config, result);
     } catch (error) {
       result.success = false;
       result.errors.push(
@@ -401,6 +354,96 @@ project: #ProjectSpec & {
     }
 
     return result;
+  }
+
+  /**
+   * Initialize validation result structure
+   */
+  private initializeValidationResult(): ValidationResult {
+    return {
+      success: true,
+      conflicts: [] as ConflictEntry[],
+      errors: [] as string[],
+      warnings: [] as string[],
+      fragmentsStatus: {} as Record<string, string>,
+    };
+  }
+
+  /**
+   * Validate individual fragments
+   */
+  private async validateFragments(
+    config: ProjectCompositionConfig,
+    options: ValidateCompositionOptions,
+    result: ValidationResult,
+  ): Promise<void> {
+    const fragmentsToValidate = options.fragments
+      ? config.fragments.filter((f) => options.fragments!.includes(f.id))
+      : config.fragments;
+
+    for (const fragment of fragmentsToValidate) {
+      await this.validateSingleFragment(fragment, result);
+    }
+  }
+
+  /**
+   * Validate a single fragment
+   */
+  private async validateSingleFragment(
+    fragment: SRFFragmentEntry,
+    result: ValidationResult,
+  ): Promise<void> {
+    try {
+      const fragmentContent = await fs.readFile(fragment.path, "utf-8");
+      const validation = await this.validator.validateSRF(fragment.path);
+
+      if (!validation.isValid) {
+        result.success = false;
+        result.errors.push(
+          `Fragment ${fragment.id} (${fragment.filename}): ${validation.errors.join(", ")}`,
+        );
+        result.fragmentsStatus[fragment.id] = "invalid";
+      } else {
+        result.fragmentsStatus[fragment.id] = "valid";
+      }
+
+      result.conflicts.push(...fragment.conflicts);
+    } catch (error) {
+      result.success = false;
+      result.errors.push(
+        `Failed to validate fragment ${fragment.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      result.fragmentsStatus[fragment.id] = "error";
+    }
+  }
+
+  /**
+   * Validate the composed specification
+   */
+  private async validateComposedSpec(result: ValidationResult): Promise<void> {
+    const currentSpec = await this.getCurrentSpec();
+    const specValidation = await this.validator.validateComposedSpec(currentSpec);
+
+    if (!specValidation.isValid) {
+      result.success = false;
+      result.errors.push(...specValidation.errors);
+    }
+
+    result.warnings.push(...specValidation.warnings);
+  }
+
+  /**
+   * Validate dependencies for cycles
+   */
+  private validateDependencies(
+    config: ProjectCompositionConfig,
+    result: ValidationResult,
+  ): void {
+    const dependencyCycles = this.detectDependencyCycles(config.fragments);
+    if (dependencyCycles.length > 0) {
+      result.success = false;
+      result.errors.push(`Dependency cycles detected: ${dependencyCycles.join(", ")}`);
+    }
   }
 
   /**

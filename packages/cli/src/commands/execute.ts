@@ -712,19 +712,66 @@ class RunTestsCommand implements Command {
 }
 
 /**
+ * Execution context for passing state between execution phases
+ */
+interface ExecutionContext {
+  startTime: number;
+  workspace: string;
+  agentMode: boolean;
+  outputManager: any;
+  reportGenerator: ReportGenerator;
+  epic?: Epic;
+  plan?: ExecutionPlan;
+  testResults?: ExecutionSummary["results"];
+}
+
+/**
  * Main orchestrator - Coordinates all execution steps using command pattern
  */
 export async function executeCommand(options: ExecuteOptions): Promise<number> {
-  const startTime = Date.now();
+  const context = initializeExecutionContext(options);
+
+  return withStepProgress(
+    {
+      title: `Executing epic: ${path.basename(options.epic)}`,
+      steps: getExecutionSteps(),
+      color: "blue",
+    },
+    async (progress) => {
+      try {
+        return await executeMainWorkflow(context, options, progress);
+      } catch (error) {
+        return handleExecutionError(error, context);
+      }
+    },
+  );
+}
+
+/**
+ * Initialize execution context with shared state
+ */
+function initializeExecutionContext(options: ExecuteOptions): ExecutionContext {
   const workspace = options.workspace || process.cwd();
   const agentMode = shouldUseAgentMode(options);
   const outputManager = createOutputManager("execute", agentMode, options.ndjsonOutput);
   const reportGenerator = new ReportGenerator(workspace);
 
-  // Define execution steps
-  const steps = [
+  return {
+    startTime: Date.now(),
+    workspace,
+    agentMode,
+    outputManager,
+    reportGenerator,
+  };
+}
+
+/**
+ * Get the standard execution steps
+ */
+function getExecutionSteps(): string[] {
+  return [
     "Loading epic configuration",
-    "Analyzing targets and dependencies",
+    "Analyzing targets and dependencies", 
     "Generating execution plan",
     "Validating guards and constraints",
     "Applying file changes",
@@ -732,227 +779,335 @@ export async function executeCommand(options: ExecuteOptions): Promise<number> {
     "Verifying contracts",
     "Generating execution report",
   ];
+}
 
-  return withStepProgress(
-    {
-      title: `Executing epic: ${path.basename(options.epic)}`,
-      steps,
-      color: "blue",
-    },
-    async (progress) => {
-      try {
-        // Initialize output
-        outputManager.emitEvent({
-          phase: "plan",
-          status: "start",
-          data: { actions: 0, guards: 0 },
-        });
+/**
+ * Execute the main workflow
+ */
+async function executeMainWorkflow(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  progress: any,
+): Promise<number> {
+  await initializeExecution(context);
+  
+  context.epic = await loadEpicConfiguration(context, options, progress);
+  await analyzeTargetsAndDependencies(context, progress);
+  
+  context.plan = await generateExecutionPlan(context, progress);
+  const validationResult = await validatePlanAndConstraints(context, options, progress);
+  if (validationResult !== null) return validationResult;
+  
+  if (options.dryRun) {
+    return await handleDryRun(context.plan!, options, context.outputManager, context.reportGenerator, context.workspace, context.agentMode);
+  }
+  
+  await executeFileChanges(context, options, progress);
+  context.testResults = await runTests(context, options, progress);
+  await verifyContracts(context, progress);
+  
+  return await generateFinalReports(context, options, progress);
+}
 
-        if (!agentMode) {
-          console.log(chalk.dim(`Workspace: ${workspace}`));
+/**
+ * Initialize execution phase
+ */
+async function initializeExecution(context: ExecutionContext): Promise<void> {
+  context.outputManager.emitEvent({
+    phase: "plan",
+    status: "start", 
+    data: { actions: 0, guards: 0 },
+  });
+
+  if (!context.agentMode) {
+    console.log(chalk.dim(`Workspace: ${context.workspace}`));
+  }
+}
+
+/**
+ * Load and validate epic configuration
+ */
+async function loadEpicConfiguration(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  progress: any,
+): Promise<Epic> {
+  progress.nextStep("Loading epic configuration");
+  const loadEpicCommand = new LoadEpicCommand(options.epic);
+  await loadEpicCommand.execute();
+  const epic = loadEpicCommand.getEpic();
+
+  if (!context.agentMode) {
+    console.log(chalk.cyan(`📋 Epic: ${epic.title} (${epic.id})`));
+    console.log(chalk.dim(`Owners: ${epic.owners.join(", ")}`));
+  }
+
+  return epic;
+}
+
+/**
+ * Analyze targets and dependencies
+ */
+async function analyzeTargetsAndDependencies(context: ExecutionContext, progress: any): Promise<void> {
+  progress.nextStep("Analyzing targets and dependencies");
+  // Implementation would go here
+}
+
+/**
+ * Generate execution plan
+ */
+async function generateExecutionPlan(context: ExecutionContext, progress: any): Promise<ExecutionPlan> {
+  progress.nextStep("Generating execution plan");
+  const generatePlanCommand = new GeneratePlanCommand(context.epic!, context.workspace);
+  await generatePlanCommand.execute();
+  return generatePlanCommand.getPlan();
+}
+
+/**
+ * Validate plan and constraints
+ */
+async function validatePlanAndConstraints(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  progress: any,
+): Promise<number | null> {
+  progress.nextStep("Validating guards and constraints");
+
+  const validationError = validatePlan(context.plan!, context.agentMode, context.outputManager);
+  if (validationError) {
+    context.outputManager.close();
+    return validationError;
+  }
+
+  const { planOutput, guards, diff } = context.reportGenerator.createPlanOutput(context.plan!);
+  await context.outputManager.writePlanFile(planOutput, guards, diff);
+
+  context.outputManager.emitEvent({
+    phase: "plan",
+    status: "complete",
+    data: { actions: context.plan!.operations.length, guards: guards.length },
+  });
+
+  if (!context.agentMode) {
+    console.log(chalk.green(`✓ Plan generated: ${context.plan!.operations.length} operations`));
+  }
+
+  return null;
+}
+
+/**
+ * Execute file changes
+ */
+async function executeFileChanges(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  progress: any,
+): Promise<void> {
+  progress.nextStep("Applying file changes");
+
+  context.outputManager.emitEvent({
+    phase: "execute",
+    status: "start",
+    data: { total: context.plan!.operations.length },
+  });
+
+  if (!context.agentMode) {
+    console.log(chalk.blue("\n🔧 Applying changes..."));
+  }
+
+  const executePlanCommand = new ExecutePlanCommand(context.plan!, options);
+  await executePlanCommand.execute();
+
+  if (!context.agentMode) {
+    console.log(chalk.green(`✓ Applied ${context.plan!.operations.length} file operations`));
+  }
+
+  context.outputManager.emitEvent({
+    phase: "execute",
+    status: "complete",
+    data: { progress: context.plan!.operations.length, total: context.plan!.operations.length },
+  });
+}
+
+/**
+ * Run tests and return results
+ */
+async function runTests(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  progress: any,
+): Promise<ExecutionSummary["results"]> {
+  progress.nextStep("Running tests");
+
+  const runTestsCommand = new RunTestsCommand(context.epic!, options);
+  
+  if (context.epic!.tests.cli?.length > 0) {
+    context.outputManager.emitEvent({
+      phase: "test",
+      status: "start",
+      data: { tests: context.epic!.tests.cli.length },
+    });
+
+    if (!context.agentMode) {
+      console.log(chalk.blue("\n🧪 Running CLI tests..."));
+    }
+
+    await runTestsCommand.execute();
+    const results = runTestsCommand.getResults();
+
+    await logTestResults(results, context.agentMode);
+    
+    context.outputManager.emitEvent({
+      phase: "test", 
+      status: "complete",
+      data: {
+        tests: results.length,
+        passed: results.filter((r) => r.passed).length,
+        failed: results.filter((r) => !r.passed).length,
+      },
+    });
+
+    return results;
+  }
+
+  return runTestsCommand.getResults();
+}
+
+/**
+ * Log test results to console
+ */
+async function logTestResults(results: ExecutionSummary["results"], agentMode: boolean): Promise<void> {
+  if (!agentMode) {
+    for (const result of results) {
+      if (result.passed) {
+        console.log(chalk.green(`  ✓ ${result.name} (${result.duration}ms)`));
+      } else {
+        console.log(chalk.red(`  ✗ ${result.name} (${result.duration}ms)`));
+        if (result.error) {
+          console.log(chalk.red(`    ${result.error}`));
         }
-
-        // Step 1: Load epic
-        progress.nextStep("Loading epic configuration");
-        const loadEpicCommand = new LoadEpicCommand(options.epic);
-        await loadEpicCommand.execute();
-        const epic = loadEpicCommand.getEpic();
-
-        if (!agentMode) {
-          console.log(chalk.cyan(`📋 Epic: ${epic.title} (${epic.id})`));
-          console.log(chalk.dim(`Owners: ${epic.owners.join(", ")}`));
-        }
-
-        // Step 2: Analyze targets and dependencies
-        progress.nextStep("Analyzing targets and dependencies");
-
-        // Step 3: Generate plan
-        progress.nextStep("Generating execution plan");
-        const generatePlanCommand = new GeneratePlanCommand(epic, workspace);
-        await generatePlanCommand.execute();
-        const plan = generatePlanCommand.getPlan();
-
-        // Step 4: Validate guards and constraints
-        progress.nextStep("Validating guards and constraints");
-
-        // Validate plan
-        const validationError = validatePlan(plan, agentMode, outputManager);
-        if (validationError) {
-          outputManager.close();
-          return validationError;
-        }
-
-        // Generate reports and outputs
-        const { planOutput, guards, diff } = reportGenerator.createPlanOutput(plan);
-        await outputManager.writePlanFile(planOutput, guards, diff);
-
-        outputManager.emitEvent({
-          phase: "plan",
-          status: "complete",
-          data: { actions: plan.operations.length, guards: guards.length },
-        });
-
-        if (!agentMode) {
-          console.log(chalk.green(`✓ Plan generated: ${plan.operations.length} operations`));
-        }
-
-        // Handle dry run
-        if (options.dryRun) {
-          return await handleDryRun(
-            plan,
-            options,
-            outputManager,
-            reportGenerator,
-            workspace,
-            agentMode,
-          );
-        }
-
-        // Step 5: Apply file changes
-        progress.nextStep("Applying file changes");
-
-        outputManager.emitEvent({
-          phase: "execute",
-          status: "start",
-          data: { total: plan.operations.length },
-        });
-
-        if (!agentMode) {
-          console.log(chalk.blue("\n🔧 Applying changes..."));
-        }
-
-        const executePlanCommand = new ExecutePlanCommand(plan, options);
-        await executePlanCommand.execute();
-
-        if (!agentMode) {
-          console.log(chalk.green(`✓ Applied ${plan.operations.length} file operations`));
-        }
-
-        outputManager.emitEvent({
-          phase: "execute",
-          status: "complete",
-          data: { progress: plan.operations.length, total: plan.operations.length },
-        });
-
-        // Step 6: Run tests
-        progress.nextStep("Running tests");
-
-        const runTestsCommand = new RunTestsCommand(epic, options);
-        if (epic.tests.cli?.length > 0) {
-          outputManager.emitEvent({
-            phase: "test",
-            status: "start",
-            data: { tests: epic.tests.cli.length },
-          });
-
-          if (!agentMode) {
-            console.log(chalk.blue("\n🧪 Running CLI tests..."));
-          }
-
-          await runTestsCommand.execute();
-          const results = runTestsCommand.getResults();
-
-          // Log test results
-          if (!agentMode) {
-            for (const result of results) {
-              if (result.passed) {
-                console.log(chalk.green(`  ✓ ${result.name} (${result.duration}ms)`));
-              } else {
-                console.log(chalk.red(`  ✗ ${result.name} (${result.duration}ms)`));
-                if (result.error) {
-                  console.log(chalk.red(`    ${result.error}`));
-                }
-              }
-            }
-          }
-
-          outputManager.emitEvent({
-            phase: "test",
-            status: "complete",
-            data: {
-              tests: results.length,
-              passed: results.filter((r) => r.passed).length,
-              failed: results.filter((r) => !r.passed).length,
-            },
-          });
-        }
-
-        // Step 7: Verify contracts
-        progress.nextStep("Verifying contracts");
-
-        // Step 8: Generate execution report
-        progress.nextStep("Generating execution report");
-
-        // Generate final reports
-        const results = runTestsCommand.getResults();
-        const duration = Date.now() - startTime;
-        const summary = reportGenerator.createExecutionSummary(epic, plan, results, startTime);
-        const executionReport = reportGenerator.createExecutionReport(plan, duration);
-
-        // Add JUnit report if needed
-        if (options.junit || results.length > 0) {
-          executionReport.junit = {
-            name: `Epic.${epic.id}`,
-            tests: results.length,
-            failures: results.filter((r) => !r.passed).length,
-            errors: 0,
-            time: duration / 1000,
-            testcases: results.map((result) => ({
-              classname: `Epic.${epic.id}`,
-              name: result.name,
-              time: (result.duration || 0) / 1000,
-              ...(result.passed
-                ? {}
-                : {
-                    failure: {
-                      message: result.error || "Test failed",
-                      type: "AssertionError",
-                      content: result.error || "Test failed",
-                    },
-                  }),
-            })),
-          };
-        }
-
-        // Write final reports
-        await outputManager.writeReportFile(executionReport);
-
-        if (options.junit) {
-          await outputManager.writeJUnitFile(executionReport.junit!);
-        }
-
-        // Output final summary
-        if (!agentMode) {
-          console.log(chalk.blue("\n📊 Execution Summary:"));
-          console.log(`  Epic: ${summary.epicId}`);
-          console.log(`  Files changed: ${summary.filesChanged}`);
-          console.log(`  Tests: ${summary.testsPassed}/${summary.testsRun} passed`);
-          console.log(`  Duration: ${summary.duration}ms`);
-          console.log(
-            `  Overall: ${summary.overallSuccess ? chalk.green("SUCCESS") : chalk.red("FAILED")}`,
-          );
-        }
-
-        outputManager.close();
-        return summary.overallSuccess ? 0 : 1;
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        if (!agentMode) {
-          console.error(chalk.red("❌ Execution failed:"), errorMessage);
-        }
-
-        outputManager.emitEvent({
-          phase: "execute",
-          status: "complete",
-          data: { progress: 0, total: 0 },
-        });
-
-        outputManager.close();
-        return 2;
       }
-    },
+    }
+  }
+}
+
+/**
+ * Verify contracts
+ */
+async function verifyContracts(context: ExecutionContext, progress: any): Promise<void> {
+  progress.nextStep("Verifying contracts");
+  // Implementation would go here
+}
+
+/**
+ * Generate final reports and return exit code
+ */
+async function generateFinalReports(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  progress: any,
+): Promise<number> {
+  progress.nextStep("Generating execution report");
+
+  const duration = Date.now() - context.startTime;
+  const summary = context.reportGenerator.createExecutionSummary(
+    context.epic!,
+    context.plan!,
+    context.testResults!,
+    context.startTime,
   );
+  const executionReport = context.reportGenerator.createExecutionReport(context.plan!, duration);
+
+  await addJUnitReportIfNeeded(executionReport, options, context);
+  await writeReportFiles(context, options, executionReport);
+  await outputFinalSummary(summary, context.agentMode);
+
+  context.outputManager.close();
+  return summary.overallSuccess ? 0 : 1;
+}
+
+/**
+ * Add JUnit report if needed
+ */
+async function addJUnitReportIfNeeded(
+  executionReport: ExecutionReport,
+  options: ExecuteOptions,
+  context: ExecutionContext,
+): Promise<void> {
+  if (options.junit || context.testResults!.length > 0) {
+    executionReport.junit = {
+      name: `Epic.${context.epic!.id}`,
+      tests: context.testResults!.length,
+      failures: context.testResults!.filter((r) => !r.passed).length,
+      errors: 0,
+      time: (Date.now() - context.startTime) / 1000,
+      testcases: context.testResults!.map((result) => ({
+        classname: `Epic.${context.epic!.id}`,
+        name: result.name,
+        time: (result.duration || 0) / 1000,
+        ...(result.passed
+          ? {}
+          : {
+              failure: {
+                message: result.error || "Test failed",
+                type: "AssertionError",
+                content: result.error || "Test failed",
+              },
+            }),
+      })),
+    };
+  }
+}
+
+/**
+ * Write report files
+ */
+async function writeReportFiles(
+  context: ExecutionContext,
+  options: ExecuteOptions,
+  executionReport: ExecutionReport,
+): Promise<void> {
+  await context.outputManager.writeReportFile(executionReport);
+
+  if (options.junit) {
+    await context.outputManager.writeJUnitFile(executionReport.junit!);
+  }
+}
+
+/**
+ * Output final summary to console
+ */
+async function outputFinalSummary(summary: ExecutionSummary, agentMode: boolean): Promise<void> {
+  if (!agentMode) {
+    console.log(chalk.blue("\n📊 Execution Summary:"));
+    console.log(`  Epic: ${summary.epicId}`);
+    console.log(`  Files changed: ${summary.filesChanged}`);
+    console.log(`  Tests: ${summary.testsPassed}/${summary.testsRun} passed`);
+    console.log(`  Duration: ${summary.duration}ms`);
+    console.log(
+      `  Overall: ${summary.overallSuccess ? chalk.green("SUCCESS") : chalk.red("FAILED")}`,
+    );
+  }
+}
+
+/**
+ * Handle execution errors
+ */
+function handleExecutionError(error: unknown, context: ExecutionContext): number {
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  if (!context.agentMode) {
+    console.error(chalk.red("❌ Execution failed:"), errorMessage);
+  }
+
+  context.outputManager.emitEvent({
+    phase: "execute",
+    status: "complete",
+    data: { progress: 0, total: 0 },
+  });
+
+  context.outputManager.close();
+  return 2;
 }
 
 /**

@@ -162,9 +162,9 @@ export class ConstraintMonitor extends EventEmitter {
   }
 
   /**
-   * Generate comprehensive monitoring report
+   * Generate report header
    */
-  generateReport(): string {
+  private generateReportHeader(): string[] {
     const lines: string[] = [];
     const uptime = Date.now() - this.startTime;
 
@@ -173,7 +173,15 @@ export class ConstraintMonitor extends EventEmitter {
     lines.push(chalk.dim(`Uptime: ${this.formatDuration(uptime)}`));
     lines.push("");
 
-    // Violation Summary
+    return lines;
+  }
+
+  /**
+   * Generate violations summary section
+   */
+  private generateViolationsSummary(): string[] {
+    const lines: string[] = [];
+
     lines.push(chalk.bold("Violations Summary:"));
     lines.push(
       `Total Violations: ${this.getViolationColor(this.violationCounts.total)}${this.violationCounts.total}`,
@@ -184,7 +192,15 @@ export class ConstraintMonitor extends EventEmitter {
     lines.push(`Violation Rate: ${this.calculateViolationRate()} violations/hour`);
     lines.push("");
 
-    // Violations by Constraint
+    return lines;
+  }
+
+  /**
+   * Generate violations by constraint section
+   */
+  private generateViolationsByConstraint(): string[] {
+    const lines: string[] = [];
+
     if (this.violationCounts.byConstraint.size > 0) {
       lines.push(chalk.bold("Violations by Constraint:"));
       const sortedConstraints = Array.from(this.violationCounts.byConstraint.entries()).sort(
@@ -198,7 +214,15 @@ export class ConstraintMonitor extends EventEmitter {
       lines.push("");
     }
 
-    // Violations by Operation
+    return lines;
+  }
+
+  /**
+   * Generate violations by operation section
+   */
+  private generateViolationsByOperation(): string[] {
+    const lines: string[] = [];
+
     if (this.violationCounts.byOperation.size > 0) {
       lines.push(chalk.bold("Violations by Operation:"));
       const sortedOperations = Array.from(this.violationCounts.byOperation.entries()).sort(
@@ -211,7 +235,15 @@ export class ConstraintMonitor extends EventEmitter {
       lines.push("");
     }
 
-    // Performance Metrics
+    return lines;
+  }
+
+  /**
+   * Generate performance metrics section
+   */
+  private generatePerformanceMetrics(): string[] {
+    const lines: string[] = [];
+
     if (this.operationMetrics.size > 0) {
       lines.push(chalk.bold("Performance Metrics:"));
       const sortedMetrics = Array.from(this.operationMetrics.entries()).sort(
@@ -241,7 +273,15 @@ export class ConstraintMonitor extends EventEmitter {
       lines.push("");
     }
 
-    // Recent Violations
+    return lines;
+  }
+
+  /**
+   * Generate recent violations section
+   */
+  private generateRecentViolations(): string[] {
+    const lines: string[] = [];
+
     if (this.violations.length > 0) {
       lines.push(chalk.bold("Recent Violations (Last 10):"));
       const recentViolations = this.violations.slice(-10).reverse();
@@ -257,7 +297,15 @@ export class ConstraintMonitor extends EventEmitter {
       lines.push("");
     }
 
-    // Health Status
+    return lines;
+  }
+
+  /**
+   * Generate health status section
+   */
+  private generateHealthStatus(): string[] {
+    const lines: string[] = [];
+
     lines.push(chalk.bold("System Health:"));
     const healthStatus = this.getSystemHealth();
     const healthColor = healthStatus.isHealthy ? chalk.green : chalk.red;
@@ -277,7 +325,37 @@ export class ConstraintMonitor extends EventEmitter {
       }
     }
 
-    return lines.join("\n");
+    return lines;
+  }
+
+  /**
+   * Generate comprehensive monitoring report
+   */
+  generateReport(): string {
+    const sections = this.collectReportSections();
+    return this.formatReportSections(sections);
+  }
+
+  /**
+   * Collect all report sections in order
+   */
+  private collectReportSections(): string[][] {
+    return [
+      this.generateReportHeader(),
+      this.generateViolationsSummary(),
+      this.generateViolationsByConstraint(),
+      this.generateViolationsByOperation(),
+      this.generatePerformanceMetrics(),
+      this.generateRecentViolations(),
+      this.generateHealthStatus(),
+    ];
+  }
+
+  /**
+   * Format and join all report sections
+   */
+  private formatReportSections(sections: string[][]): string {
+    return sections.flat().join("\n");
   }
 
   /**

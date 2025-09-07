@@ -262,15 +262,14 @@ export class EventService {
   /**
    * Broadcast event to all subscribers of a project
    */
-  async broadcastToProject(
+  /**
+   * Create WebSocket message from event
+   */
+  private createWebSocketMessage(
     projectId: string,
-    event: Omit<Event, "id" | "created_at">,
-    specHash?: string,
-  ): Promise<void> {
-    const startTime = Date.now();
-    const subscribers = this.projectSubscriptions.get(projectId);
-
-    const message: WebSocketMessage = {
+    event: Omit<Event, "id" | "created_at">
+  ): WebSocketMessage {
+    return {
       type: "event",
       project_id: projectId,
       data: {
@@ -279,9 +278,16 @@ export class EventService {
         created_at: getCurrentTimestamp(),
       },
     };
+  }
 
-    // Publish to NATS for external agents (async, non-blocking)
-    // This happens regardless of WebSocket subscribers to ensure external agents get events
+  /**
+   * Publish event to NATS (non-blocking)
+   */
+  private async publishToNats(
+    projectId: string,
+    event: Omit<Event, "id" | "created_at">,
+    specHash?: string
+  ): Promise<void> {
     this.nats.publishEvent(projectId, event, specHash).catch((_error) => {
       // Already logged in NatsService, but ensure it doesn't affect WebSocket flow
       logger.debug("NATS publish completed with potential error", {
@@ -289,54 +295,136 @@ export class EventService {
         eventType: event.event_type,
       });
     });
+  }
 
-    if (!subscribers || subscribers.size === 0) {
-      logger.debug("No WebSocket subscribers for project", { projectId });
-      return;
+  /**
+   * Check if there are subscribers for the project
+   */
+  private hasProjectSubscribers(projectId: string): boolean {
+    const subscribers = this.projectSubscriptions.get(projectId);
+    return !!(subscribers && subscribers.size > 0);
+  }
+
+  /**
+   * Get project subscribers
+   */
+  private getProjectSubscribers(projectId: string): Set<string> | undefined {
+    return this.projectSubscriptions.get(projectId);
+  }
+
+  /**
+   * Send message to individual connection with error handling
+   */
+  private async sendToConnectionSafe(
+    connectionId: string,
+    message: WebSocketMessage,
+    projectId: string
+  ): Promise<{ success: boolean }> {
+    try {
+      await this.sendToConnection(connectionId, message);
+      return { success: true };
+    } catch (error) {
+      logger.error(
+        "Failed to send message to connection",
+        error instanceof Error ? error : undefined,
+        {
+          connectionId,
+          projectId,
+        },
+      );
+      return { success: false };
     }
+  }
 
-    let successCount = 0;
-    let errorCount = 0;
+  /**
+   * Broadcast message to all WebSocket subscribers
+   */
+  private async broadcastToSubscribers(
+    subscribers: Set<string>,
+    message: WebSocketMessage,
+    projectId: string
+  ): Promise<{ successCount: number; errorCount: number }> {
+    const promises = Array.from(subscribers).map((connectionId) =>
+      this.sendToConnectionSafe(connectionId, message, projectId)
+    );
 
-    // Broadcast to all WebSocket subscribers
-    const promises = Array.from(subscribers).map(async (connectionId) => {
-      try {
-        await this.sendToConnection(connectionId, message);
-        successCount++;
-      } catch (error) {
-        errorCount++;
-        logger.error(
-          "Failed to send message to connection",
-          error instanceof Error ? error : undefined,
-          {
-            connectionId,
-            projectId,
-          },
-        );
-      }
-    });
+    const results = await Promise.all(promises);
+    const successCount = results.filter((r) => r.success).length;
+    const errorCount = results.length - successCount;
 
-    await Promise.all(promises);
+    return { successCount, errorCount };
+  }
 
-    const duration = Date.now() - startTime;
-
+  /**
+   * Log broadcast results and performance
+   */
+  private logBroadcastResults(
+    projectId: string,
+    event: Omit<Event, "id" | "created_at">,
+    subscriberCount: number,
+    successCount: number,
+    errorCount: number,
+    duration: number
+  ): void {
     logger.info("Broadcasted event to project", {
       projectId,
       eventType: event.event_type,
-      subscriberCount: subscribers.size,
+      subscriberCount,
       successCount,
       errorCount,
       duration,
     });
+  }
 
-    // Check if we meet the 100ms broadcast target
-    if (duration > 100) {
+  /**
+   * Check and warn about broadcast performance
+   */
+  private checkBroadcastPerformance(
+    projectId: string,
+    duration: number,
+    targetMs: number = 100
+  ): void {
+    if (duration > targetMs) {
       logger.warn("Broadcast exceeded target time", {
         projectId,
         duration,
-        target: 100,
+        target: targetMs,
       });
     }
+  }
+
+  async broadcastToProject(
+    projectId: string,
+    event: Omit<Event, "id" | "created_at">,
+    specHash?: string,
+  ): Promise<void> {
+    const startTime = Date.now();
+    
+    // Create WebSocket message
+    const message = this.createWebSocketMessage(projectId, event);
+
+    // Publish to NATS (async, non-blocking)
+    await this.publishToNats(projectId, event, specHash);
+
+    // Check for WebSocket subscribers
+    if (!this.hasProjectSubscribers(projectId)) {
+      logger.debug("No WebSocket subscribers for project", { projectId });
+      return;
+    }
+
+    const subscribers = this.getProjectSubscribers(projectId)!;
+    
+    // Broadcast to all WebSocket subscribers
+    const { successCount, errorCount } = await this.broadcastToSubscribers(
+      subscribers,
+      message,
+      projectId
+    );
+
+    // Log results and check performance
+    const duration = Date.now() - startTime;
+    this.logBroadcastResults(projectId, event, subscribers.size, successCount, errorCount, duration);
+    this.checkBroadcastPerformance(projectId, duration);
   }
 
   /**

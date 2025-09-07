@@ -58,13 +58,21 @@ async function loadTemplateContent(templateName: string): Promise<string | null>
 /**
  * Interactive schema configuration prompts
  */
-async function interactiveSchemaConfig(): Promise<SchemaConfig> {
+/**
+ * Display welcome message for interactive schema builder
+ */
+function displayWelcomeMessage(): void {
   console.log(chalk.cyan("🚀 Arbiter Interactive Schema Builder"));
   console.log(
     chalk.dim("Answer a few questions to generate a tailored CUE schema with constraints\n"),
   );
+}
 
-  const answers = await inquirer.prompt([
+/**
+ * Collect basic project information
+ */
+async function collectBasicProjectInfo(): Promise<any> {
+  return await inquirer.prompt([
     {
       type: "input",
       name: "projectName",
@@ -98,36 +106,46 @@ async function interactiveSchemaConfig(): Promise<SchemaConfig> {
       default: false,
     },
   ]);
+}
 
-  let budgetConfig = {};
-  if (answers.hasBudgetConstraints) {
-    const budgetAnswers = await inquirer.prompt([
-      {
-        type: "number",
-        name: "budgetLimit",
-        message: "What is your budget limit?",
-        default: 1000,
-        validate: (input: number) => input > 0 || "Budget must be greater than 0",
-      },
-      {
-        type: "list",
-        name: "budgetCurrency",
-        message: "What currency/unit?",
-        choices: ["USD", "EUR", "credits", "GB", "CPU hours", "API calls"],
-        default: "USD",
-      },
-      {
-        type: "list",
-        name: "budgetPeriod",
-        message: "What time period?",
-        choices: ["hourly", "daily", "weekly", "monthly", "yearly"],
-        default: "monthly",
-      },
-    ]);
-    budgetConfig = budgetAnswers;
+/**
+ * Collect budget configuration if needed
+ */
+async function collectBudgetConfig(hasBudgetConstraints: boolean): Promise<any> {
+  if (!hasBudgetConstraints) {
+    return {};
   }
 
-  const qualityAnswers = await inquirer.prompt([
+  return await inquirer.prompt([
+    {
+      type: "number",
+      name: "budgetLimit",
+      message: "What is your budget limit?",
+      default: 1000,
+      validate: (input: number) => input > 0 || "Budget must be greater than 0",
+    },
+    {
+      type: "list",
+      name: "budgetCurrency",
+      message: "What currency/unit?",
+      choices: ["USD", "EUR", "credits", "GB", "CPU hours", "API calls"],
+      default: "USD",
+    },
+    {
+      type: "list",
+      name: "budgetPeriod",
+      message: "What time period?",
+      choices: ["hourly", "daily", "weekly", "monthly", "yearly"],
+      default: "monthly",
+    },
+  ]);
+}
+
+/**
+ * Ask if user wants quality gates
+ */
+async function askForQualityGates(): Promise<boolean> {
+  const answers = await inquirer.prompt([
     {
       type: "confirm",
       name: "hasQualityGates",
@@ -135,36 +153,55 @@ async function interactiveSchemaConfig(): Promise<SchemaConfig> {
       default: true,
     },
   ]);
+  return answers.hasQualityGates;
+}
 
-  let qualityConfig = {};
-  if (qualityAnswers.hasQualityGates) {
-    const thresholds = await inquirer.prompt([
-      {
-        type: "number",
-        name: "testCoverage",
-        message: "Minimum test coverage percentage?",
-        default: 80,
-        validate: (input: number) =>
-          (input >= 0 && input <= 100) || "Coverage must be between 0 and 100",
-      },
-      {
-        type: "input",
-        name: "performanceTarget",
-        message: 'Performance target (e.g., "< 200ms", "1000 RPS")?',
-        default: "< 200ms",
-      },
-      {
-        type: "list",
-        name: "securityLevel",
-        message: "Security level requirement?",
-        choices: ["basic", "standard", "high", "critical"],
-        default: "standard",
-      },
-    ]);
-    qualityConfig = { qualityThresholds: thresholds };
+/**
+ * Collect quality thresholds configuration
+ */
+async function collectQualityThresholds(): Promise<any> {
+  return await inquirer.prompt([
+    {
+      type: "number",
+      name: "testCoverage",
+      message: "Minimum test coverage percentage?",
+      default: 80,
+      validate: (input: number) =>
+        (input >= 0 && input <= 100) || "Coverage must be between 0 and 100",
+    },
+    {
+      type: "input",
+      name: "performanceTarget",
+      message: 'Performance target (e.g., "< 200ms", "1000 RPS")?',
+      default: "< 200ms",
+    },
+    {
+      type: "list",
+      name: "securityLevel",
+      message: "Security level requirement?",
+      choices: ["basic", "standard", "high", "critical"],
+      default: "standard",
+    },
+  ]);
+}
+
+/**
+ * Collect quality configuration if needed
+ */
+async function collectQualityConfig(hasQualityGates: boolean): Promise<any> {
+  if (!hasQualityGates) {
+    return {};
   }
 
-  const selectionAnswers = await inquirer.prompt([
+  const thresholds = await collectQualityThresholds();
+  return { qualityThresholds: thresholds };
+}
+
+/**
+ * Ask if user wants selection rubric
+ */
+async function askForSelectionRubric(): Promise<boolean> {
+  const answers = await inquirer.prompt([
     {
       type: "confirm",
       name: "hasSelectionRubric",
@@ -172,31 +209,49 @@ async function interactiveSchemaConfig(): Promise<SchemaConfig> {
       default: false,
     },
   ]);
+  return answers.hasSelectionRubric;
+}
 
-  let selectionConfig = {};
-  if (selectionAnswers.hasSelectionRubric) {
-    const criteria = await inquirer.prompt([
-      {
-        type: "checkbox",
-        name: "selectionCriteria",
-        message: "Select evaluation criteria:",
-        choices: [
-          "Performance",
-          "Cost",
-          "Reliability",
-          "Security",
-          "Scalability",
-          "Maintainability",
-          "User Experience",
-          "Documentation",
-        ],
-        validate: (input: string[]) => input.length > 0 || "Select at least one criteria",
-      },
-    ]);
-    selectionConfig = criteria;
+/**
+ * Collect selection criteria
+ */
+async function collectSelectionCriteria(): Promise<any> {
+  return await inquirer.prompt([
+    {
+      type: "checkbox",
+      name: "selectionCriteria",
+      message: "Select evaluation criteria:",
+      choices: [
+        "Performance",
+        "Cost",
+        "Reliability",
+        "Security",
+        "Scalability",
+        "Maintainability",
+        "User Experience",
+        "Documentation",
+      ],
+      validate: (input: string[]) => input.length > 0 || "Select at least one criteria",
+    },
+  ]);
+}
+
+/**
+ * Collect selection configuration if needed
+ */
+async function collectSelectionConfig(hasSelectionRubric: boolean): Promise<any> {
+  if (!hasSelectionRubric) {
+    return {};
   }
 
-  const dependencyAnswers = await inquirer.prompt([
+  return await collectSelectionCriteria();
+}
+
+/**
+ * Ask if user has complex dependencies
+ */
+async function askForDependencyChain(): Promise<boolean> {
+  const answers = await inquirer.prompt([
     {
       type: "confirm",
       name: "hasDependencyChain",
@@ -204,28 +259,46 @@ async function interactiveSchemaConfig(): Promise<SchemaConfig> {
       default: false,
     },
   ]);
+  return answers.hasDependencyChain;
+}
 
-  let dependencyConfig = {};
-  if (dependencyAnswers.hasDependencyChain) {
-    const steps = await inquirer.prompt([
-      {
-        type: "input",
-        name: "dependencySteps",
-        message: "Enter main workflow steps (comma-separated):",
-        default: "validate,build,test,deploy",
-        filter: (input: string) => input.split(",").map((s) => s.trim()),
-        validate: (input: string[]) => input.length > 0 || "Enter at least one step",
-      },
-    ]);
-    dependencyConfig = steps;
+/**
+ * Collect dependency workflow steps
+ */
+async function collectDependencySteps(): Promise<any> {
+  return await inquirer.prompt([
+    {
+      type: "input",
+      name: "dependencySteps",
+      message: "Enter main workflow steps (comma-separated):",
+      default: "validate,build,test,deploy",
+      filter: (input: string) => input.split(",").map((s) => s.trim()),
+      validate: (input: string[]) => input.length > 0 || "Enter at least one step",
+    },
+  ]);
+}
+
+/**
+ * Collect dependency configuration if needed
+ */
+async function collectDependencyConfig(hasDependencyChain: boolean): Promise<any> {
+  if (!hasDependencyChain) {
+    return {};
   }
 
-  const outputAnswers = await inquirer.prompt([
+  return await collectDependencySteps();
+}
+
+/**
+ * Collect output configuration
+ */
+async function collectOutputConfig(projectName: string): Promise<any> {
+  return await inquirer.prompt([
     {
       type: "input",
       name: "outputPath",
       message: "Output file path:",
-      default: `${answers.projectName}-schema.cue`,
+      default: `${projectName}-schema.cue`,
       validate: (input: string) => {
         if (!input.trim()) return "Output path is required";
         if (!input.endsWith(".cue")) return "File must have .cue extension";
@@ -233,14 +306,40 @@ async function interactiveSchemaConfig(): Promise<SchemaConfig> {
       },
     },
   ]);
+}
 
+async function interactiveSchemaConfig(): Promise<SchemaConfig> {
+  displayWelcomeMessage();
+
+  // Collect basic project information
+  const basicAnswers = await collectBasicProjectInfo();
+
+  // Collect budget configuration if needed
+  const budgetConfig = await collectBudgetConfig(basicAnswers.hasBudgetConstraints);
+
+  // Collect quality configuration
+  const hasQualityGates = await askForQualityGates();
+  const qualityConfig = await collectQualityConfig(hasQualityGates);
+
+  // Collect selection configuration
+  const hasSelectionRubric = await askForSelectionRubric();
+  const selectionConfig = await collectSelectionConfig(hasSelectionRubric);
+
+  // Collect dependency configuration
+  const hasDependencyChain = await askForDependencyChain();
+  const dependencyConfig = await collectDependencyConfig(hasDependencyChain);
+
+  // Collect output configuration
+  const outputConfig = await collectOutputConfig(basicAnswers.projectName);
+
+  // Combine all configurations
   return {
-    ...answers,
+    ...basicAnswers,
     ...budgetConfig,
     ...qualityConfig,
     ...selectionConfig,
     ...dependencyConfig,
-    ...outputAnswers,
+    ...outputConfig,
   };
 }
 

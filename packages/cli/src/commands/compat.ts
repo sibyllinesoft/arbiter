@@ -256,94 +256,157 @@ async function showMigrationPaths(
  * Execute migration command
  */
 export async function runMigration(options: MigrationOptions): Promise<void> {
-  try {
-    console.log("🔄 Arbiter Migration Tool v1.0 RC\n");
+  const migrationRunner = new MigrationRunner(options);
+  await migrationRunner.execute();
+}
 
-    // Validate component
-    const component = options.component as keyof VersionSet;
+/**
+ * Migration execution orchestrator using Command pattern
+ */
+class MigrationRunner {
+  private readonly component: keyof VersionSet;
 
-    console.log(`📦 Component: ${component}`);
-    console.log(`📥 From: ${options.from}`);
-    console.log(`📤 To: ${options.to}`);
-    console.log();
+  constructor(private readonly options: MigrationOptions) {
+    this.component = options.component as keyof VersionSet;
+  }
 
-    // Check if migration path exists
-    if (!hasMigrationPath(component, options.from, options.to)) {
-      console.error(
-        `❌ No migration path available: ${component} ${options.from} -> ${options.to}`,
-      );
-
-      const availablePaths = getAvailableMigrationPaths(component);
-      if (availablePaths.length > 0) {
-        console.log("\n🛤️  Available migration paths:");
-        availablePaths.forEach((path) => console.log(`  • ${path}`));
+  async execute(): Promise<void> {
+    try {
+      this.displayHeader();
+      await this.validateMigrationPath();
+      this.displayEstimatedDuration();
+      
+      if (this.options.dryRun) {
+        this.executeDryRun();
+        return;
       }
 
+      this.requestConfirmationIfNeeded();
+      await this.performMigration();
+    } catch (error) {
+      this.handleFatalError(error);
+    }
+  }
+
+  private displayHeader(): void {
+    console.log("🔄 Arbiter Migration Tool v1.0 RC\n");
+    console.log(`📦 Component: ${this.component}`);
+    console.log(`📥 From: ${this.options.from}`);
+    console.log(`📤 To: ${this.options.to}`);
+    console.log();
+  }
+
+  private async validateMigrationPath(): Promise<void> {
+    if (!hasMigrationPath(this.component, this.options.from, this.options.to)) {
+      this.displayMigrationPathError();
       process.exit(1);
     }
+  }
 
-    // Estimate duration
-    const estimatedDuration = estimateMigrationDuration(component, options.from, options.to);
-    console.log(`⏱️  Estimated duration: ${estimatedDuration}ms`);
+  private displayMigrationPathError(): void {
+    console.error(
+      `❌ No migration path available: ${this.component} ${this.options.from} -> ${this.options.to}`,
+    );
 
-    // Dry run mode
-    if (options.dryRun) {
-      console.log("\n🧪 DRY RUN MODE - No changes will be made\n");
-
-      // Show what would happen
-      console.log("Migration plan:");
-      console.log(`  1. Validate preconditions for ${component} migration`);
-      console.log(`  2. ${options.backup ? "Create backup" : "Skip backup (disabled)"}`);
-      console.log(`  3. Execute migration transformations`);
-      console.log(`  4. Validate post-migration state`);
-      console.log(`  5. Update version metadata`);
-
-      console.log("\n✅ Dry run completed - use --dry-run=false to execute");
-      process.exit(0);
+    const availablePaths = getAvailableMigrationPaths(this.component);
+    if (availablePaths.length > 0) {
+      console.log("\n🛤️  Available migration paths:");
+      availablePaths.forEach((path) => console.log(`  • ${path}`));
     }
+  }
 
-    // Confirm migration
-    if (!options.force) {
+  private displayEstimatedDuration(): void {
+    const estimatedDuration = estimateMigrationDuration(
+      this.component,
+      this.options.from,
+      this.options.to,
+    );
+    console.log(`⏱️  Estimated duration: ${estimatedDuration}ms`);
+  }
+
+  private executeDryRun(): void {
+    console.log("\n🧪 DRY RUN MODE - No changes will be made\n");
+    this.displayMigrationPlan();
+    console.log("\n✅ Dry run completed - use --dry-run=false to execute");
+    process.exit(0);
+  }
+
+  private displayMigrationPlan(): void {
+    console.log("Migration plan:");
+    console.log(`  1. Validate preconditions for ${this.component} migration`);
+    console.log(`  2. ${this.options.backup ? "Create backup" : "Skip backup (disabled)"}`);
+    console.log(`  3. Execute migration transformations`);
+    console.log(`  4. Validate post-migration state`);
+    console.log(`  5. Update version metadata`);
+  }
+
+  private requestConfirmationIfNeeded(): void {
+    if (!this.options.force) {
       console.log("⚠️  This will modify your system. Continue? (y/N)");
       // In a real CLI, we'd wait for user input here
       // For now, assume confirmation
     }
+  }
 
+  private async performMigration(): Promise<void> {
     console.log("\n🚀 Starting migration...\n");
-
-    // Execute migration
-    const result = await executeMigration(component, options.from, options.to);
-
-    // Output result
+    
+    const result = await executeMigration(this.component, this.options.from, this.options.to);
+    
     if (result.success) {
-      console.log("✅ Migration completed successfully!\n");
-
-      console.log("📋 Operations performed:");
-      result.operations_performed.forEach((op) => console.log(`  • ${op}`));
-
-      if (result.warnings.length > 0) {
-        console.log("\n⚠️  Warnings:");
-        result.warnings.forEach((warning) => console.log(`  • ${warning}`));
-      }
-
-      console.log(`\n⏰ Completed at: ${result.timestamp}`);
+      this.displaySuccessResult(result);
     } else {
-      console.error("❌ Migration failed!\n");
-
-      console.log("📋 Operations attempted:");
-      result.operations_performed.forEach((op) => console.log(`  • ${op}`));
-
-      if (result.warnings.length > 0) {
-        console.log("\n⚠️  Issues encountered:");
-        result.warnings.forEach((warning) => console.log(`  • ${warning}`));
-      }
-
+      this.displayFailureResult(result);
       process.exit(1);
     }
-  } catch (error) {
+  }
+
+  private displaySuccessResult(result: MigrationResult): void {
+    console.log("✅ Migration completed successfully!\n");
+    
+    this.displayOperations("📋 Operations performed:", result.operations_performed);
+    this.displayWarningsIfAny(result.warnings);
+    
+    console.log(`\n⏰ Completed at: ${result.timestamp}`);
+  }
+
+  private displayFailureResult(result: MigrationResult): void {
+    console.error("❌ Migration failed!\n");
+    
+    this.displayOperations("📋 Operations attempted:", result.operations_performed);
+    
+    if (result.warnings.length > 0) {
+      console.log("\n⚠️  Issues encountered:");
+      result.warnings.forEach((warning) => console.log(`  • ${warning}`));
+    }
+  }
+
+  private displayOperations(header: string, operations: string[]): void {
+    console.log(header);
+    operations.forEach((op) => console.log(`  • ${op}`));
+  }
+
+  private displayWarningsIfAny(warnings: string[]): void {
+    if (warnings.length > 0) {
+      console.log("\n⚠️  Warnings:");
+      warnings.forEach((warning) => console.log(`  • ${warning}`));
+    }
+  }
+
+  private handleFatalError(error: unknown): never {
     console.error("❌ Migration failed:", error instanceof Error ? error.message : error);
     process.exit(1);
   }
+}
+
+/**
+ * Migration result interface
+ */
+interface MigrationResult {
+  success: boolean;
+  operations_performed: string[];
+  warnings: string[];
+  timestamp: string;
 }
 
 // =============================================================================

@@ -216,38 +216,76 @@ async function outputFile(
   options: ExportOptions,
   requestedFormat: ExportFormat,
 ): Promise<void> {
-  let outputContent = file.content;
-
-  // Apply formatting options
-  if (requestedFormat === "json" && options.minify) {
-    try {
-      const parsed = JSON.parse(outputContent);
-      outputContent = JSON.stringify(parsed);
-    } catch {
-      // Keep original if not valid JSON
-    }
-  }
-
+  const formattedContent = applyContentFormatting(file.content, requestedFormat, options);
+  
   if (options.output) {
-    let outputPath = options.output;
-
-    // If output is a directory, use the file name from export result
-    try {
-      const stats = await fs.stat(outputPath);
-      if (stats.isDirectory()) {
-        outputPath = path.join(outputPath, file.name);
-      }
-    } catch {
-      // Path doesn't exist, treat as file
-    }
-
-    await fs.writeFile(outputPath, outputContent, "utf-8");
-    console.log(chalk.green(`✓ Exported ${file.format} to ${outputPath}`));
+    await writeToFileSystem(file, formattedContent, options.output);
   } else {
-    // Output to stdout with file separator for multiple files
-    console.log(chalk.blue(`--- ${file.name} ---`));
-    console.log(outputContent);
+    outputToConsole(file.name, formattedContent);
   }
+}
+
+/**
+ * Apply content formatting based on format and options
+ */
+function applyContentFormatting(
+  content: string,
+  requestedFormat: ExportFormat,
+  options: ExportOptions,
+): string {
+  if (requestedFormat === "json" && options.minify) {
+    return minifyJsonContent(content);
+  }
+  return content;
+}
+
+/**
+ * Minify JSON content safely
+ */
+function minifyJsonContent(content: string): string {
+  try {
+    const parsed = JSON.parse(content);
+    return JSON.stringify(parsed);
+  } catch {
+    // Keep original if not valid JSON
+    return content;
+  }
+}
+
+/**
+ * Write content to filesystem with path resolution
+ */
+async function writeToFileSystem(
+  file: { name: string; format: ExportFormat },
+  content: string,
+  outputPath: string,
+): Promise<void> {
+  const resolvedPath = await resolveOutputPath(outputPath, file.name);
+  await fs.writeFile(resolvedPath, content, "utf-8");
+  console.log(chalk.green(`✓ Exported ${file.format} to ${resolvedPath}`));
+}
+
+/**
+ * Resolve output path (directory vs file)
+ */
+async function resolveOutputPath(outputPath: string, fileName: string): Promise<string> {
+  try {
+    const stats = await fs.stat(outputPath);
+    if (stats.isDirectory()) {
+      return path.join(outputPath, fileName);
+    }
+  } catch {
+    // Path doesn't exist, treat as file
+  }
+  return outputPath;
+}
+
+/**
+ * Output content to console
+ */
+function outputToConsole(fileName: string, content: string): void {
+  console.log(chalk.blue(`--- ${fileName} ---`));
+  console.log(content);
 }
 
 /**

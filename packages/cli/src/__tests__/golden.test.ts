@@ -81,11 +81,11 @@ describe("CLI Golden Tests", () => {
       projectDir,
     ]);
 
-    // Check that files were created
-    expect(await fs.pathExists(path.join(projectDir, "schema.cue"))).toBe(true);
-    expect(await fs.pathExists(path.join(projectDir, "values.cue"))).toBe(true);
+    // Check that files were created (modern CLI creates minimal structure)
     expect(await fs.pathExists(path.join(projectDir, "README.md"))).toBe(true);
-    expect(await fs.pathExists(path.join(projectDir, ".arbiter.json"))).toBe(true);
+    expect(await fs.pathExists(path.join(projectDir, ".gitignore"))).toBe(true);
+    expect(await fs.pathExists(path.join(projectDir, ".arbiter/config.json"))).toBe(true);
+    expect(await fs.pathExists(path.join(projectDir, "cue.mod"))).toBe(true);
 
     await compareWithGolden("init-basic.txt", result.stdout);
   });

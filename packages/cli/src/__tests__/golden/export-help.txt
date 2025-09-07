@@ -1,0 +1,13 @@
+Usage: arbiter export [options] <files...>
+export CUE configurations to various formats
+Options:
+  --format <formats>   output formats (comma-separated):
+                       openapi,types,kXXXs,terraform,json-schema,json,yaml
+  -o, --output <path>  output file or directory
+  -s, --schema <path>  schema file to include
+  -c, --config <path>  configuration file to include
+  --minify             minify JSON output
+  --strict             enable strict export validation
+  -v, --verbose        verbose output with metadata
+  --list-formats       list available export formats
+  -h, --help           display help for command

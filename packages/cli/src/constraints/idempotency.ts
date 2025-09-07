@@ -61,55 +61,87 @@ export class IdempotencyValidator {
   ): Promise<TOutput> {
     const opts = { ...this.defaultOptions, ...options };
     const cacheKey = this.generateCacheKey(operation, inputs);
-
-    // Check if we have a cached result
     const cached = this.cache.get(cacheKey);
 
     if (cached && this.isCacheValid(cached, opts.maxCacheAge)) {
-      // Execute operation again to verify idempotency
-      const newResult = await executor(inputs);
-      const newOutputHash = this.hashValue(newResult);
-
-      // Compare results
-      if (cached.outputHash !== newOutputHash) {
-        const violation = new ConstraintViolationError(
-          "idempotency",
-          `different output: ${newOutputHash}`,
-          `consistent output: ${cached.outputHash}`,
-          {
-            operationId,
-            operation,
-            cacheKey,
-            cachedTimestamp: cached.timestamp,
-            currentTimestamp: Date.now(),
-            inputHash: cached.inputHash,
-          },
-        );
-
-        globalConstraintEnforcer.emit("constraint:violation", {
-          constraint: "idempotency",
-          violation,
-          operation,
-        });
-
-        throw violation;
-      }
-
-      globalConstraintEnforcer.emit("idempotency:verified", {
-        operationId,
-        operation,
-        cacheKey,
-        consistent: true,
-      });
-
-      return newResult;
+      return await this.validateCachedResult(cached, executor, inputs, operation, operationId, cacheKey);
     }
 
-    // Execute operation for the first time (or cache expired)
-    const result = await executor(inputs);
+    return await this.executeAndCacheOperation(
+      operation,
+      inputs,
+      executor,
+      operationId,
+      cacheKey,
+      cached
+    );
+  }
 
-    // Cache the result
-    const record: IdempotencyRecord = {
+  /**
+   * Validate cached result by re-executing operation and comparing outputs
+   */
+  private async validateCachedResult<TInput, TOutput>(
+    cached: IdempotencyRecord,
+    executor: (inputs: TInput) => Promise<TOutput>,
+    inputs: TInput,
+    operation: IdempotentOperation,
+    operationId?: string,
+    cacheKey?: string,
+  ): Promise<TOutput> {
+    const newResult = await executor(inputs);
+    const newOutputHash = this.hashValue(newResult);
+
+    if (cached.outputHash !== newOutputHash) {
+      this.throwIdempotencyViolation(
+        "different output",
+        newOutputHash,
+        cached.outputHash,
+        {
+          operationId,
+          operation,
+          cacheKey,
+          cachedTimestamp: cached.timestamp,
+          currentTimestamp: Date.now(),
+          inputHash: cached.inputHash,
+        }
+      );
+    }
+
+    this.emitIdempotencyVerified(operationId, operation, cacheKey);
+    return newResult;
+  }
+
+  /**
+   * Execute operation and cache the result
+   */
+  private async executeAndCacheOperation<TInput, TOutput>(
+    operation: IdempotentOperation,
+    inputs: TInput,
+    executor: (inputs: TInput) => Promise<TOutput>,
+    operationId?: string,
+    cacheKey?: string,
+    cached?: IdempotencyRecord,
+  ): Promise<TOutput> {
+    const result = await executor(inputs);
+    const record = this.createCacheRecord(operation, inputs, result, operationId);
+    
+    this.cache.set(cacheKey!, record);
+    this.handleExpiredCacheValidation(cached, record, operation, operationId, cacheKey);
+    this.emitCacheEvent(operationId, operation, cacheKey, record);
+    
+    return result;
+  }
+
+  /**
+   * Create cache record for storing operation result
+   */
+  private createCacheRecord<TInput, TOutput>(
+    operation: IdempotentOperation,
+    inputs: TInput,
+    result: TOutput,
+    operationId?: string,
+  ): IdempotencyRecord {
+    return {
       operation,
       inputHash: this.hashValue(inputs),
       outputHash: this.hashValue(result),
@@ -120,13 +152,20 @@ export class IdempotencyValidator {
         outputType: typeof result,
       },
     };
+  }
 
-    this.cache.set(cacheKey, record);
-
-    // If this is a repeated execution, verify against previous result
-    if (cached) {
-      const violation = new ConstraintViolationError(
-        "idempotency",
+  /**
+   * Handle validation when cache was expired
+   */
+  private handleExpiredCacheValidation(
+    cached: IdempotencyRecord | undefined,
+    currentRecord: IdempotencyRecord,
+    operation: IdempotentOperation,
+    operationId?: string,
+    cacheKey?: string,
+  ): void {
+    if (cached && cached.outputHash !== currentRecord.outputHash) {
+      this.emitConstraintViolation(
         "cache expired but results differ",
         "consistent results across time",
         {
@@ -134,26 +173,86 @@ export class IdempotencyValidator {
           operation,
           cacheKey,
           previousHash: cached.outputHash,
-          currentHash: record.outputHash,
-        },
+          currentHash: currentRecord.outputHash,
+        }
       );
-
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "idempotency",
-        violation,
-        operation,
-      });
     }
+  }
 
+  /**
+   * Throw idempotency violation with proper error structure
+   */
+  private throwIdempotencyViolation(
+    message: string,
+    actual: string,
+    expected: string,
+    metadata: Record<string, unknown>
+  ): never {
+    const violation = new ConstraintViolationError(
+      "idempotency",
+      `${message}: ${actual}`,
+      `consistent output: ${expected}`,
+      metadata,
+    );
+
+    globalConstraintEnforcer.emit("constraint:violation", {
+      constraint: "idempotency",
+      violation,
+      operation: metadata.operation,
+    });
+
+    throw violation;
+  }
+
+  /**
+   * Emit constraint violation event
+   */
+  private emitConstraintViolation(
+    message: string,
+    expected: string,
+    metadata: Record<string, unknown>
+  ): void {
+    const violation = new ConstraintViolationError("idempotency", message, expected, metadata);
+
+    globalConstraintEnforcer.emit("constraint:violation", {
+      constraint: "idempotency",
+      violation,
+      operation: metadata.operation,
+    });
+  }
+
+  /**
+   * Emit idempotency verified event
+   */
+  private emitIdempotencyVerified(
+    operationId?: string,
+    operation?: IdempotentOperation,
+    cacheKey?: string,
+  ): void {
+    globalConstraintEnforcer.emit("idempotency:verified", {
+      operationId,
+      operation,
+      cacheKey,
+      consistent: true,
+    });
+  }
+
+  /**
+   * Emit cache event for successful operation
+   */
+  private emitCacheEvent(
+    operationId?: string,
+    operation?: IdempotentOperation,
+    cacheKey?: string,
+    record?: IdempotencyRecord,
+  ): void {
     globalConstraintEnforcer.emit("idempotency:cached", {
       operationId,
       operation,
       cacheKey,
-      inputHash: record.inputHash,
-      outputHash: record.outputHash,
+      inputHash: record?.inputHash,
+      outputHash: record?.outputHash,
     });
-
-    return result;
   }
 
   /**
@@ -166,71 +265,220 @@ export class IdempotencyValidator {
     repetitions: number = 2,
     operationId?: string,
   ): Promise<TOutput> {
+    const validatedRepetitions = this.validateAndGetRepetitions(repetitions);
+    const executionResults = await this.performRepeatedExecution(
+      operation,
+      inputs,
+      executor,
+      validatedRepetitions,
+      operationId
+    );
+    
+    return this.processExecutionResults(
+      executionResults,
+      operation,
+      validatedRepetitions,
+      operationId
+    );
+  }
+
+  /**
+   * Validate and return the repetition count
+   */
+  private validateAndGetRepetitions(repetitions: number): number {
+    this.validateRepetitionCount(repetitions);
+    return repetitions;
+  }
+
+  /**
+   * Perform the repeated execution and collect results
+   */
+  private async performRepeatedExecution<TInput, TOutput>(
+    operation: IdempotentOperation,
+    inputs: TInput,
+    executor: (inputs: TInput) => Promise<TOutput>,
+    repetitions: number,
+    operationId?: string,
+  ): Promise<{ results: TOutput[]; hashes: string[] }> {
+    return await this.executeRepeatedOperations(
+      operation,
+      inputs,
+      executor,
+      repetitions,
+      operationId
+    );
+  }
+
+  /**
+   * Process execution results and return the first result
+   */
+  private processExecutionResults<TOutput>(
+    executionResults: { results: TOutput[]; hashes: string[] },
+    operation: IdempotentOperation,
+    repetitions: number,
+    operationId?: string,
+  ): TOutput {
+    this.validateResultConsistency(
+      executionResults.hashes,
+      operation,
+      repetitions,
+      operationId
+    );
+    
+    this.emitValidationSuccess(
+      operation,
+      repetitions,
+      operationId,
+      executionResults.hashes[0]
+    );
+    
+    return executionResults.results[0];
+  }
+
+  /**
+   * Validate repetition count is sufficient for testing
+   */
+  private validateRepetitionCount(repetitions: number): void {
     if (repetitions < 2) {
       throw new Error("Repetitions must be at least 2 for idempotency validation");
     }
+  }
 
+  /**
+   * Execute operation multiple times and collect results
+   */
+  private async executeRepeatedOperations<TInput, TOutput>(
+    operation: IdempotentOperation,
+    inputs: TInput,
+    executor: (inputs: TInput) => Promise<TOutput>,
+    repetitions: number,
+    operationId?: string,
+  ): Promise<{ results: TOutput[]; hashes: string[] }> {
     const results: TOutput[] = [];
     const hashes: string[] = [];
 
-    // Execute operation multiple times
     for (let i = 0; i < repetitions; i++) {
-      const iterationId = globalConstraintEnforcer.startOperation(`${operation}:repeat:${i}`, {
-        operationId,
-        iteration: i,
-        totalRepetitions: repetitions,
-      });
-
-      try {
-        const result = await executor(inputs);
-        const resultHash = this.hashValue(result);
-
-        results.push(result);
-        hashes.push(resultHash);
-
-        globalConstraintEnforcer.endOperation(iterationId);
-      } catch (error) {
-        globalConstraintEnforcer.endOperation(iterationId);
-        throw error;
-      }
+      const result = await this.executeSingleIteration(
+        operation,
+        inputs,
+        executor,
+        i,
+        repetitions,
+        operationId
+      );
+      
+      const resultHash = this.hashValue(result);
+      results.push(result);
+      hashes.push(resultHash);
     }
 
-    // Verify all results are identical
+    return { results, hashes };
+  }
+
+  /**
+   * Execute a single iteration with proper error handling
+   */
+  private async executeSingleIteration<TInput, TOutput>(
+    operation: IdempotentOperation,
+    inputs: TInput,
+    executor: (inputs: TInput) => Promise<TOutput>,
+    iteration: number,
+    totalRepetitions: number,
+    operationId?: string,
+  ): Promise<TOutput> {
+    const iterationId = globalConstraintEnforcer.startOperation(
+      `${operation}:repeat:${iteration}`,
+      {
+        operationId,
+        iteration,
+        totalRepetitions,
+      }
+    );
+
+    try {
+      const result = await executor(inputs);
+      globalConstraintEnforcer.endOperation(iterationId);
+      return result;
+    } catch (error) {
+      globalConstraintEnforcer.endOperation(iterationId);
+      throw error;
+    }
+  }
+
+  /**
+   * Validate that all execution results are consistent
+   */
+  private validateResultConsistency(
+    hashes: string[],
+    operation: IdempotentOperation,
+    repetitions: number,
+    operationId?: string,
+  ): void {
     const firstHash = hashes[0];
+    
     for (let i = 1; i < hashes.length; i++) {
       if (hashes[i] !== firstHash) {
-        const violation = new ConstraintViolationError(
-          "idempotency",
-          `iteration ${i} hash: ${hashes[i]}`,
-          `consistent hash: ${firstHash}`,
-          {
-            operationId,
-            operation,
-            repetitions,
-            allHashes: hashes,
-            divergentIteration: i,
-          },
-        );
-
-        globalConstraintEnforcer.emit("constraint:violation", {
-          constraint: "idempotency",
-          violation,
+        this.handleInconsistentResult(
+          i,
+          hashes,
+          firstHash,
           operation,
-        });
-
-        throw violation;
+          repetitions,
+          operationId
+        );
       }
     }
+  }
 
+  /**
+   * Handle inconsistent result by creating and throwing violation
+   */
+  private handleInconsistentResult(
+    divergentIteration: number,
+    allHashes: string[],
+    expectedHash: string,
+    operation: IdempotentOperation,
+    repetitions: number,
+    operationId?: string,
+  ): never {
+    const violation = new ConstraintViolationError(
+      "idempotency",
+      `iteration ${divergentIteration} hash: ${allHashes[divergentIteration]}`,
+      `consistent hash: ${expectedHash}`,
+      {
+        operationId,
+        operation,
+        repetitions,
+        allHashes,
+        divergentIteration,
+      },
+    );
+
+    globalConstraintEnforcer.emit("constraint:violation", {
+      constraint: "idempotency",
+      violation,
+      operation,
+    });
+
+    throw violation;
+  }
+
+  /**
+   * Emit success event for validated repeated execution
+   */
+  private emitValidationSuccess(
+    operation: IdempotentOperation,
+    repetitions: number,
+    operationId: string | undefined,
+    resultHash: string,
+  ): void {
     globalConstraintEnforcer.emit("idempotency:repeated_validated", {
       operationId,
       operation,
       repetitions,
       consistent: true,
-      resultHash: firstHash,
+      resultHash,
     });
-
-    return results[0];
   }
 
   /**

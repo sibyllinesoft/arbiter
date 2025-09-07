@@ -1,0 +1,9 @@
+Usage: arbiter validate [options] <files...>
+validate CUE files with explicit schema and configuration
+Options:
+  -s, --schema <path>  schema file to validate against
+  -c, --config <path>  configuration file to include
+  -f, --format <type>  output format (table, json) (default: "table")
+  --strict             treat warnings as errors
+  -v, --verbose        verbose output with detailed errors
+  -h, --help           display help for command

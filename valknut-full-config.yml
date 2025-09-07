@@ -1,0 +1,84 @@
+# Comprehensive valknut configuration for full analysis
+version: 1
+
+# Enable comprehensive analysis
+ranking:
+  granularity: auto
+  top_k: 80  # Balanced for performance
+
+# Enable impact packs without coverage for performance
+impact_packs:
+  enable_coverage_packs: false  # Disabled for performance  
+  enable_chokepoint_packs: true
+  enable_cycle_packs: true
+  max_packs: 20  # Default value for better performance
+  centrality_samples: 64  # Default value for better performance
+  non_overlap: true
+
+# Enable all detectors
+detectors:
+  echo:
+    enabled: true
+    min_similarity: 0.8  # Slightly lower threshold for more detection
+    min_tokens: 25  # Lower threshold for more detection
+  semgrep:
+    enabled: true
+    rule_packs:
+      - python.lang.best-practice
+      - javascript.lang.best-practice
+      - typescript.lang.best-practice
+
+# Enhanced briefs with more context
+briefs:
+  callee_depth: 3  # Increased from default 2
+  include_detected_refactors: true
+  include_signatures: true
+  max_tokens_per_item: 12000  # Increased from default 8000
+
+# Clone detection with comprehensive settings
+clone:
+  min_total_loc: 40  # Lowered from default 60 for more detection
+
+# Comprehensive normalization
+normalize:
+  scheme: robust_bayesian
+  use_bayesian_fallbacks: true
+  confidence_reporting: true
+  clip_bounds: [0.0, 1.0]
+
+# Language coverage
+languages:
+  - typescript
+  - javascript
+  - python
+  - rust
+
+# File discovery
+roots:
+  - path: ./
+    include:
+      - '**/*'
+    exclude:
+      - '**/node_modules/**'
+      - '**/dist/**'
+      - '**/.venv/**'
+      - '**/venv/**'
+      - '**/target/**'
+      - '**/__pycache__/**'
+      - '**/.git/**'
+      - '**/build/**'
+      - '**/coverage/**'
+      - '**/.valknut_cache/**'
+
+# Weight distribution for comprehensive scoring
+weights:
+  complexity: 0.25
+  clone_mass: 0.2
+  centrality: 0.15
+  cycles: 0.15
+  type_friction: 0.15
+  smell_prior: 0.1
+
+# Cache settings
+cache_dir: .valknut_cache
+cache_ttl: 86400

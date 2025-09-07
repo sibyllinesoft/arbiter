@@ -132,64 +132,124 @@ async function listTemplates(options: TemplatesOptions): Promise<number> {
 async function showTemplate(name: string, options: TemplatesOptions): Promise<number> {
   try {
     const alias = templateManager.getAlias(name);
-
+    
     if (!alias) {
-      console.error(chalk.red(`❌ Template alias '${name}' not found`));
-
-      const availableTemplates = Object.keys(templateManager.getAliases());
-      if (availableTemplates.length > 0) {
-        console.log(chalk.dim("Available templates:"));
-        availableTemplates.forEach((t) => console.log(chalk.dim(`  • ${t}`)));
-      }
-      return 1;
+      return handleTemplateNotFound(name);
     }
 
     if (options.format === "json") {
-      console.log(JSON.stringify({ [name]: alias }, null, 2));
-      return 0;
+      return displayTemplateAsJson(name, alias);
     }
 
-    console.log(chalk.cyan(`📋 Template: ${chalk.bold(name)}`));
-    console.log();
-
-    console.log(chalk.bold("Description:"));
-    console.log(`  ${alias.description}`);
-    console.log();
-
-    console.log(chalk.bold("Engine:"));
-    console.log(`  ${alias.engine}`);
-    console.log();
-
-    console.log(chalk.bold("Source:"));
-    console.log(`  ${alias.source}`);
-    console.log();
-
-    if (alias.prerequisites && alias.prerequisites.length > 0) {
-      console.log(chalk.bold("Prerequisites:"));
-      alias.prerequisites.forEach((prereq) => {
-        console.log(`  • ${prereq}`);
-      });
-      console.log();
-    }
-
-    if (alias.variables && Object.keys(alias.variables).length > 0) {
-      console.log(chalk.bold("Default Variables:"));
-      Object.entries(alias.variables).forEach(([key, value]) => {
-        console.log(`  ${chalk.green(key)}: ${JSON.stringify(value)}`);
-      });
-      console.log();
-    }
-
-    console.log(chalk.bold("Usage:"));
-    console.log(`  arbiter add service myapi --template ${name}`);
-    console.log(`  arbiter add frontend web --template ${name}`);
-
-    return 0;
+    return displayTemplateDetails(name, alias);
   } catch (error) {
-    console.error(chalk.red("Failed to show template:"));
-    console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-    return 1;
+    return handleTemplateDisplayError(error);
   }
+}
+
+/**
+ * Handle template not found scenario
+ */
+function handleTemplateNotFound(name: string): number {
+  console.error(chalk.red(`❌ Template alias '${name}' not found`));
+  
+  const availableTemplates = Object.keys(templateManager.getAliases());
+  if (availableTemplates.length > 0) {
+    console.log(chalk.dim("Available templates:"));
+    availableTemplates.forEach((t) => console.log(chalk.dim(`  • ${t}`)));
+  }
+  
+  return 1;
+}
+
+/**
+ * Display template in JSON format
+ */
+function displayTemplateAsJson(name: string, alias: any): number {
+  console.log(JSON.stringify({ [name]: alias }, null, 2));
+  return 0;
+}
+
+/**
+ * Display template details in formatted output
+ */
+function displayTemplateDetails(name: string, alias: any): number {
+  displayTemplateHeader(name);
+  displayTemplateBasicInfo(alias);
+  displayTemplatePrerequisites(alias);
+  displayTemplateVariables(alias);
+  displayTemplateUsage(name);
+  
+  return 0;
+}
+
+/**
+ * Display template header
+ */
+function displayTemplateHeader(name: string): void {
+  console.log(chalk.cyan(`📋 Template: ${chalk.bold(name)}`));
+  console.log();
+}
+
+/**
+ * Display basic template information
+ */
+function displayTemplateBasicInfo(alias: any): void {
+  console.log(chalk.bold("Description:"));
+  console.log(`  ${alias.description}`);
+  console.log();
+
+  console.log(chalk.bold("Engine:"));
+  console.log(`  ${alias.engine}`);
+  console.log();
+
+  console.log(chalk.bold("Source:"));
+  console.log(`  ${alias.source}`);
+  console.log();
+}
+
+/**
+ * Display template prerequisites if available
+ */
+function displayTemplatePrerequisites(alias: any): void {
+  if (alias.prerequisites && alias.prerequisites.length > 0) {
+    console.log(chalk.bold("Prerequisites:"));
+    alias.prerequisites.forEach((prereq: string) => {
+      console.log(`  • ${prereq}`);
+    });
+    console.log();
+  }
+}
+
+/**
+ * Display template variables if available
+ */
+function displayTemplateVariables(alias: any): void {
+  if (alias.variables && Object.keys(alias.variables).length > 0) {
+    console.log(chalk.bold("Default Variables:"));
+    Object.entries(alias.variables).forEach(([key, value]) => {
+      console.log(`  ${chalk.green(key)}: ${JSON.stringify(value)}`);
+    });
+    console.log();
+  }
+}
+
+/**
+ * Display template usage examples
+ */
+function displayTemplateUsage(name: string): void {
+  console.log(chalk.bold("Usage:"));
+  console.log(`  arbiter add service myapi --template ${name}`);
+  console.log(`  arbiter add frontend web --template ${name}`);
+}
+
+/**
+ * Handle template display errors
+ */
+function handleTemplateDisplayError(error: unknown): number {
+  console.error(chalk.red("Failed to show template:"));
+  console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+  return 1;
 }
 
 /**

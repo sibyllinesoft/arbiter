@@ -124,71 +124,133 @@ class StaticTestRunner extends BaseTestRunner {
     context: TestExecutionContext,
   ): Promise<TestResult> {
     const startTime = Date.now();
+    const testName = `Static: ${test.selector}`;
 
     try {
-      // Find files matching selector
-      const { glob } = await import("glob");
-      const files = await glob(test.selector);
-
+      const files = await this.discoverFilesForTest(test.selector);
+      
       if (files.length === 0) {
-        return {
-          name: `Static: ${test.selector}`,
-          type: "static",
-          passed: false,
-          duration: Date.now() - startTime,
-          error: "No files found matching selector",
-        };
+        return this.createFailedResult(testName, startTime, "No files found matching selector");
       }
 
-      // Analyze each file
-      const errors: string[] = [];
-
-      for (const file of files) {
-        try {
-          const content = await fs.readFile(file, "utf-8");
-
-          const response = await fetch(`${context.apiUrl}/analyze`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ content, filename: file }),
-            signal: AbortSignal.timeout(context.timeout),
-          });
-
-          if (!response.ok) {
-            errors.push(`${file}: HTTP ${response.status}`);
-            continue;
-          }
-
-          const result = await response.json();
-
-          // Check for CUE errors (bottom values or validation errors)
-          if (result.errors && result.errors.length > 0) {
-            errors.push(`${file}: ${result.errors.map((e: any) => e.message).join(", ")}`);
-          }
-        } catch (error) {
-          errors.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-
-      return {
-        name: `Static: ${test.selector}`,
-        type: "static",
-        passed: errors.length === 0,
-        duration: Date.now() - startTime,
-        error: errors.length > 0 ? errors.join("; ") : undefined,
-        details: { filesAnalyzed: files.length, errors },
-      };
+      const errors = await this.analyzeDiscoveredFiles(files, context);
+      
+      return this.createAnalysisResult(testName, startTime, files.length, errors);
     } catch (error) {
-      return {
-        name: `Static: ${test.selector}`,
-        type: "static",
-        passed: false,
-        duration: Date.now() - startTime,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      return this.createFailedResult(
+        testName, 
+        startTime, 
+        error instanceof Error ? error.message : String(error)
+      );
     }
+  }
+
+  /**
+   * Discover files matching the test selector
+   */
+  private async discoverFilesForTest(selector: string): Promise<string[]> {
+    const { glob } = await import("glob");
+    return await glob(selector);
+  }
+
+  /**
+   * Analyze all discovered files and collect errors
+   */
+  private async analyzeDiscoveredFiles(
+    files: string[], 
+    context: TestExecutionContext
+  ): Promise<string[]> {
+    const errors: string[] = [];
+
+    for (const file of files) {
+      const fileErrors = await this.analyzeIndividualFile(file, context);
+      errors.push(...fileErrors);
+    }
+
+    return errors;
+  }
+
+  /**
+   * Analyze a single file and return any errors
+   */
+  private async analyzeIndividualFile(
+    file: string, 
+    context: TestExecutionContext
+  ): Promise<string[]> {
+    try {
+      const content = await fs.readFile(file, "utf-8");
+      const analysisResult = await this.performFileAnalysis(file, content, context);
+      
+      return this.extractErrorsFromAnalysis(file, analysisResult);
+    } catch (error) {
+      return [`${file}: ${error instanceof Error ? error.message : String(error)}`];
+    }
+  }
+
+  /**
+   * Perform API-based file analysis
+   */
+  private async performFileAnalysis(
+    file: string, 
+    content: string, 
+    context: TestExecutionContext
+  ): Promise<any> {
+    const response = await fetch(`${context.apiUrl}/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ content, filename: file }),
+      signal: AbortSignal.timeout(context.timeout),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Extract errors from analysis result
+   */
+  private extractErrorsFromAnalysis(file: string, result: any): string[] {
+    if (result.errors && result.errors.length > 0) {
+      return [`${file}: ${result.errors.map((e: any) => e.message).join(", ")}`];
+    }
+    return [];
+  }
+
+  /**
+   * Create successful analysis result
+   */
+  private createAnalysisResult(
+    testName: string,
+    startTime: number,
+    filesAnalyzed: number,
+    errors: string[]
+  ): TestResult {
+    return {
+      name: testName,
+      type: "static",
+      passed: errors.length === 0,
+      duration: Date.now() - startTime,
+      error: errors.length > 0 ? errors.join("; ") : undefined,
+      details: { filesAnalyzed, errors },
+    };
+  }
+
+  /**
+   * Create failed test result
+   */
+  private createFailedResult(testName: string, startTime: number, error: string): TestResult {
+    return {
+      name: testName,
+      type: "static",
+      passed: false,
+      duration: Date.now() - startTime,
+      error,
+    };
   }
 }
 
@@ -379,6 +441,147 @@ class CliTestRunner extends BaseTestRunner {
     return `Executing: ${test.cmd}`;
   }
 
+  /**
+   * Parse command string into command and arguments
+   */
+  private parseCommand(cmdString: string): { command: string; args: string[] } {
+    const [command, ...args] = cmdString.split(" ");
+    return { command, args };
+  }
+
+  /**
+   * Create test result for exit code mismatch
+   */
+  private createExitCodeMismatchResult(
+    test: { cmd: string; expectExit: number },
+    actualExitCode: number | null,
+    duration: number,
+    stderr: string,
+    stdout: string
+  ): TestResult {
+    return {
+      name: `CLI: ${test.cmd}`,
+      type: "cli",
+      passed: false,
+      duration,
+      error: `Expected exit code ${test.expectExit}, got ${actualExitCode}. stderr: ${stderr}`,
+      details: { stdout, stderr, exitCode: actualExitCode },
+    };
+  }
+
+  /**
+   * Create test result for regex mismatch
+   */
+  private createRegexMismatchResult(
+    test: { cmd: string; expectRE: string },
+    duration: number,
+    stdout: string,
+    stderr: string
+  ): TestResult {
+    return {
+      name: `CLI: ${test.cmd}`,
+      type: "cli",
+      passed: false,
+      duration,
+      error: `Output didn't match expected regex: ${test.expectRE}`,
+      details: { stdout, stderr, expectRE: test.expectRE },
+    };
+  }
+
+  /**
+   * Create successful test result
+   */
+  private createSuccessResult(
+    test: { cmd: string },
+    duration: number,
+    stdout: string,
+    stderr: string,
+    exitCode: number | null
+  ): TestResult {
+    return {
+      name: `CLI: ${test.cmd}`,
+      type: "cli",
+      passed: true,
+      duration,
+      details: { stdout, stderr, exitCode },
+    };
+  }
+
+  /**
+   * Create error test result
+   */
+  private createErrorResult(
+    test: { cmd: string },
+    duration: number,
+    error: Error
+  ): TestResult {
+    return {
+      name: `CLI: ${test.cmd}`,
+      type: "cli",
+      passed: false,
+      duration,
+      error: error.message,
+    };
+  }
+
+  /**
+   * Create fallback error result for try-catch
+   */
+  private createFallbackErrorResult(
+    test: { cmd: string },
+    startTime: number,
+    error: unknown
+  ): TestResult {
+    return {
+      name: `CLI: ${test.cmd}`,
+      type: "cli",
+      passed: false,
+      duration: Date.now() - startTime,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  /**
+   * Validate test result against expectations
+   */
+  private validateTestResult(
+    test: { cmd: string; expectExit: number; expectRE?: string },
+    exitCode: number | null,
+    stdout: string,
+    stderr: string,
+    duration: number
+  ): TestResult | null {
+    // Check exit code
+    if (exitCode !== test.expectExit) {
+      return this.createExitCodeMismatchResult(test, exitCode, duration, stderr, stdout);
+    }
+
+    // Check regex if provided
+    if (test.expectRE && !new RegExp(test.expectRE).test(stdout)) {
+      return this.createRegexMismatchResult(test, duration, stdout, stderr);
+    }
+
+    // Return null if validation passes (indicates success)
+    return null;
+  }
+
+  /**
+   * Setup output data collectors for spawned process
+   */
+  private setupOutputCollectors(proc: any): { stdout: string; stderr: string } {
+    const collectors = { stdout: "", stderr: "" };
+
+    proc.stdout?.on("data", (data: Buffer) => {
+      collectors.stdout += data.toString();
+    });
+
+    proc.stderr?.on("data", (data: Buffer) => {
+      collectors.stderr += data.toString();
+    });
+
+    return collectors;
+  }
+
   protected async executeTest(
     test: { cmd: string; expectExit: number; expectRE?: string },
     context: TestExecutionContext,
@@ -386,7 +589,7 @@ class CliTestRunner extends BaseTestRunner {
     const startTime = Date.now();
 
     try {
-      const [command, ...args] = test.cmd.split(" ");
+      const { command, args } = this.parseCommand(test.cmd);
 
       return new Promise((resolve) => {
         const proc = spawn(command, args, {
@@ -394,71 +597,39 @@ class CliTestRunner extends BaseTestRunner {
           timeout: context.timeout,
         });
 
-        let stdout = "";
-        let stderr = "";
+        const outputCollectors = this.setupOutputCollectors(proc);
 
-        proc.stdout?.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        proc.stderr?.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        proc.on("close", (code) => {
+        proc.on("close", (code: number | null) => {
           const duration = Date.now() - startTime;
+          const validationResult = this.validateTestResult(
+            test, 
+            code, 
+            outputCollectors.stdout, 
+            outputCollectors.stderr, 
+            duration
+          );
 
-          if (code !== test.expectExit) {
-            resolve({
-              name: `CLI: ${test.cmd}`,
-              type: "cli",
-              passed: false,
-              duration,
-              error: `Expected exit code ${test.expectExit}, got ${code}. stderr: ${stderr}`,
-              details: { stdout, stderr, exitCode: code },
-            });
+          if (validationResult) {
+            resolve(validationResult);
             return;
           }
 
-          if (test.expectRE && !new RegExp(test.expectRE).test(stdout)) {
-            resolve({
-              name: `CLI: ${test.cmd}`,
-              type: "cli",
-              passed: false,
-              duration,
-              error: `Output didn't match expected regex: ${test.expectRE}`,
-              details: { stdout, stderr, expectRE: test.expectRE },
-            });
-            return;
-          }
-
-          resolve({
-            name: `CLI: ${test.cmd}`,
-            type: "cli",
-            passed: true,
-            duration,
-            details: { stdout, stderr, exitCode: code },
-          });
+          // Success case
+          resolve(this.createSuccessResult(
+            test, 
+            duration, 
+            outputCollectors.stdout, 
+            outputCollectors.stderr, 
+            code
+          ));
         });
 
-        proc.on("error", (error) => {
-          resolve({
-            name: `CLI: ${test.cmd}`,
-            type: "cli",
-            passed: false,
-            duration: Date.now() - startTime,
-            error: error.message,
-          });
+        proc.on("error", (error: Error) => {
+          resolve(this.createErrorResult(test, Date.now() - startTime, error));
         });
       });
     } catch (error) {
-      return {
-        name: `CLI: ${test.cmd}`,
-        type: "cli",
-        passed: false,
-        duration: Date.now() - startTime,
-        error: error instanceof Error ? error.message : String(error),
-      };
+      return this.createFallbackErrorResult(test, startTime, error);
     }
   }
 }
@@ -667,59 +838,18 @@ class TestSuiteExecutor {
  */
 export async function testCommand(options: TestOptions): Promise<number> {
   const startTime = Date.now();
-  const apiUrl = "http://localhost:8080"; // Should be configurable
-  const timeout = options.timeout || 30000;
-  const types = options.types || ["static", "property", "golden", "cli"];
-
   console.log(chalk.blue("🧪 Running unified test harness"));
 
   try {
-    if (!options.epic) {
-      console.log(chalk.yellow("No epic specified - skipping tests"));
-      return 0;
-    }
+    // Validate prerequisites and setup configuration
+    const config = createTestConfig(options);
+    if (!config) return 0; // No epic specified
 
-    // Load epic configuration
-    console.log(chalk.cyan(`📋 Loading tests from epic: ${options.epic}`));
-    const epicLoader = new EpicTestLoader();
-    const epicConfig = await epicLoader.loadTests(options.epic);
+    // Execute the complete test workflow
+    const suites = await executeCompleteTestWorkflow(config);
 
-    // Set up test execution context
-    const context: TestExecutionContext = {
-      apiUrl,
-      timeout,
-      verbose: options.verbose || false,
-      updateGolden: options.updateGolden,
-    };
-
-    // Configure test suite executor
-    const executor = new TestSuiteExecutor(context);
-
-    // Add runners for requested test types using Chain of Responsibility
-    for (const type of types) {
-      const runner = TestRunnerFactory.getRunner(type);
-      if (runner) {
-        executor.addRunner(runner);
-      }
-    }
-
-    // Execute all test suites
-    const suites = await executor.execute(epicConfig, types);
-
-    // Display results and generate reports
-    const totalDuration = Date.now() - startTime;
-    executor.displaySummary(suites, totalDuration);
-
-    // Write JUnit XML if requested
-    if (options.junit) {
-      const junitXml = executor.generateJUnitReport(suites);
-      await fs.writeFile(options.junit, junitXml);
-      console.log(chalk.dim(`\nJUnit report written to: ${options.junit}`));
-    }
-
-    // Return appropriate exit code
-    const totalFailed = suites.reduce((sum, suite) => sum + suite.summary.failed, 0);
-    return totalFailed === 0 ? 0 : 1;
+    // Handle results and generate reports
+    return await processTestResults(suites, options, Date.now() - startTime);
   } catch (error) {
     console.error(
       chalk.red("❌ Test execution failed:"),
@@ -727,4 +857,124 @@ export async function testCommand(options: TestOptions): Promise<number> {
     );
     return 2;
   }
+}
+
+/**
+ * Test configuration for workflow execution
+ */
+interface TestConfig {
+  epic: string;
+  apiUrl: string;
+  timeout: number;
+  types: string[];
+  verbose: boolean;
+  updateGolden?: boolean;
+}
+
+/**
+ * Create and validate test configuration from options
+ */
+function createTestConfig(options: TestOptions): TestConfig | null {
+  if (!options.epic) {
+    console.log(chalk.yellow("No epic specified - skipping tests"));
+    return null;
+  }
+
+  return {
+    epic: options.epic,
+    apiUrl: "http://localhost:8080", // Should be configurable
+    timeout: options.timeout || 30000,
+    types: options.types || ["static", "property", "golden", "cli"],
+    verbose: options.verbose || false,
+    updateGolden: options.updateGolden,
+  };
+}
+
+/**
+ * Execute the complete test workflow
+ */
+async function executeCompleteTestWorkflow(config: TestConfig): Promise<TestSuite[]> {
+  // Load epic configuration
+  console.log(chalk.cyan(`📋 Loading tests from epic: ${config.epic}`));
+  const epicConfig = await loadTestEpicConfig(config.epic);
+
+  // Set up execution environment
+  const context = buildExecutionContext(config);
+  const executor = configureTestExecutor(context, config.types);
+
+  // Execute all test suites
+  return await executor.execute(epicConfig, config.types);
+}
+
+/**
+ * Load and validate epic test configuration
+ */
+async function loadTestEpicConfig(epicPath: string): Promise<EpicTestConfig> {
+  const epicLoader = new EpicTestLoader();
+  return await epicLoader.loadTests(epicPath);
+}
+
+/**
+ * Build test execution context from configuration
+ */
+function buildExecutionContext(config: TestConfig): TestExecutionContext {
+  return {
+    apiUrl: config.apiUrl,
+    timeout: config.timeout,
+    verbose: config.verbose,
+    updateGolden: config.updateGolden,
+  };
+}
+
+/**
+ * Configure test executor with appropriate runners
+ */
+function configureTestExecutor(context: TestExecutionContext, types: string[]): TestSuiteExecutor {
+  const executor = new TestSuiteExecutor(context);
+
+  // Add runners for requested test types using Chain of Responsibility pattern
+  for (const type of types) {
+    const runner = TestRunnerFactory.getRunner(type);
+    if (runner) {
+      executor.addRunner(runner);
+    }
+  }
+
+  return executor;
+}
+
+/**
+ * Process test results, generate reports, and determine exit code
+ */
+async function processTestResults(
+  suites: TestSuite[], 
+  options: TestOptions, 
+  totalDuration: number
+): Promise<number> {
+  // Display summary to console
+  const reportingExecutor = new TestSuiteExecutor({ 
+    apiUrl: "", timeout: 0, verbose: false 
+  });
+  reportingExecutor.displaySummary(suites, totalDuration);
+
+  // Generate JUnit XML report if requested
+  if (options.junit) {
+    await writeJUnitReport(suites, options.junit);
+  }
+
+  // Return appropriate exit code based on test results
+  const totalFailed = suites.reduce((sum, suite) => sum + suite.summary.failed, 0);
+  return totalFailed === 0 ? 0 : 1;
+}
+
+/**
+ * Write JUnit XML report to specified file
+ */
+async function writeJUnitReport(suites: TestSuite[], junitPath: string): Promise<void> {
+  const executor = new TestSuiteExecutor({ 
+    apiUrl: "", timeout: 0, verbose: false 
+  });
+  const junitXml = executor.generateJUnitReport(suites);
+  await fs.writeFile(junitPath, junitXml);
+  console.log(chalk.dim(`\nJUnit report written to: ${junitPath}`));
 }

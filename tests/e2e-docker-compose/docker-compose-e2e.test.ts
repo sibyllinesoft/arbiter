@@ -36,11 +36,13 @@ describe('Docker Compose E2E Tests', () => {
     // Verify the generated file exists and is valid
     expect(fs.existsSync(dockerComposeFile)).toBe(true);
     
-    // Validate YAML syntax
-    const yamlContent = fs.readFileSync(dockerComposeFile, 'utf8');
-    expect(yamlContent.length).toBeGreaterThan(100);
-    expect(yamlContent).toContain('version:');
-    expect(yamlContent).toContain('services:');
+    // Validate JSON/YAML content (CUE exports JSON by default)
+    const content = fs.readFileSync(dockerComposeFile, 'utf8');
+    expect(content.length).toBeGreaterThan(100);
+    // CUE exports JSON, so check for JSON format
+    const parsed = JSON.parse(content);
+    expect(parsed.version).toBe('3.8');
+    expect(parsed.services).toBeDefined();
     
     console.log('✅ Docker Compose file generated successfully');
   }, 60000);
@@ -72,18 +74,18 @@ describe('Docker Compose E2E Tests', () => {
   test('should generate valid docker-compose.yml from CUE spec', () => {
     const yamlContent = fs.readFileSync(dockerComposeFile, 'utf8');
     
-    // Check for expected services
-    expect(yamlContent).toContain('redis:');
-    expect(yamlContent).toContain('postgres:');
-    expect(yamlContent).toContain('app:');
-    expect(yamlContent).toContain('nginx:');
+    // Check for expected services (JSON format)
+    expect(yamlContent).toContain('"redis"');
+    expect(yamlContent).toContain('"postgres"');
+    expect(yamlContent).toContain('"app"');
+    expect(yamlContent).toContain('"nginx"');
     
     // Check for network configuration
-    expect(yamlContent).toContain('networks:');
+    expect(yamlContent).toContain('"networks"');
     expect(yamlContent).toContain('e2e-network');
     
     // Check for volume configuration
-    expect(yamlContent).toContain('volumes:');
+    expect(yamlContent).toContain('"volumes"');
     expect(yamlContent).toContain('postgres_data');
     
     console.log('✅ Generated docker-compose.yml is valid');
@@ -240,7 +242,7 @@ describe('Docker Compose E2E Tests', () => {
   function generateDockerCompose() {
     try {
       const cueFile = path.join(testDir, 'specs/docker-compose.cue');
-      const output = execSync(`cue export ${cueFile} --expression dockerCompose`, {
+      const output = execSync(`cue export "${cueFile}" --expression dockerCompose`, {
         encoding: 'utf8',
         cwd: testDir
       });

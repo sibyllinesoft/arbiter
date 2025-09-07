@@ -101,8 +101,20 @@ export async function explainCommand(options: ExplainOptions, _config: Config): 
  */
 async function parseAssemblyForExplanation(content: string): Promise<AssemblyExplanation> {
   const lines = content.split("\n");
+  const explanation = initializeEmptyExplanation();
+  const context = createParsingContext();
 
-  const explanation: AssemblyExplanation = {
+  processContentLines(lines, explanation, context);
+  enrichExplanationWithAnalysis(explanation);
+
+  return explanation;
+}
+
+/**
+ * Initialize an empty explanation structure
+ */
+function initializeEmptyExplanation(): AssemblyExplanation {
+  return {
     summary: "",
     artifact: {
       type: "unknown",
@@ -134,124 +146,181 @@ async function parseAssemblyForExplanation(content: string): Promise<AssemblyExp
     recommendations: [],
     potentialIssues: [],
   };
+}
 
-  let currentSection = "";
-  let _braceDepth = 0;
-  const _inComment = false;
+/**
+ * Create parsing context for state management
+ */
+function createParsingContext(): { currentSection: string; braceDepth: number } {
+  return {
+    currentSection: "",
+    braceDepth: 0,
+  };
+}
 
+/**
+ * Process all content lines with state tracking
+ */
+function processContentLines(
+  lines: string[],
+  explanation: AssemblyExplanation,
+  context: { currentSection: string; braceDepth: number }
+): void {
   for (const line of lines) {
     const trimmedLine = line.trim();
-
-    // Skip empty lines
     if (!trimmedLine) continue;
 
-    // Handle comments at the top for description
-    if (trimmedLine.startsWith("//") && explanation.artifact.description === "") {
-      explanation.artifact.description += `${trimmedLine.replace(/^\/\/\s*/, "")} `;
-      continue;
+    processIndividualLine(trimmedLine, line, explanation, context);
+  }
+}
+
+/**
+ * Process a single line with all extraction logic
+ */
+function processIndividualLine(
+  trimmedLine: string,
+  fullLine: string,
+  explanation: AssemblyExplanation,
+  context: { currentSection: string; braceDepth: number }
+): void {
+  extractCommentDescription(trimmedLine, explanation);
+  updateBraceDepth(fullLine, context);
+  updateCurrentSection(trimmedLine, context, explanation);
+  extractSectionSpecificFields(trimmedLine, explanation, context);
+  extractGlobalBuildInfo(trimmedLine, explanation);
+  extractTestInformation(trimmedLine, explanation);
+  extractContractInformation(trimmedLine, explanation);
+}
+
+/**
+ * Extract description from comments
+ */
+function extractCommentDescription(trimmedLine: string, explanation: AssemblyExplanation): void {
+  if (trimmedLine.startsWith("//") && explanation.artifact.description === "") {
+    explanation.artifact.description += `${trimmedLine.replace(/^\/\/\s*/, "")} `;
+  }
+}
+
+/**
+ * Update brace depth tracking
+ */
+function updateBraceDepth(line: string, context: { currentSection: string; braceDepth: number }): void {
+  context.braceDepth += (line.match(/{/g) || []).length;
+  context.braceDepth -= (line.match(/}/g) || []).length;
+}
+
+/**
+ * Update current parsing section
+ */
+function updateCurrentSection(
+  trimmedLine: string,
+  context: { currentSection: string; braceDepth: number },
+  explanation: AssemblyExplanation
+): void {
+  if (trimmedLine.includes("Artifact:") && trimmedLine.includes("#Artifact")) {
+    context.currentSection = "artifact";
+  } else if (trimmedLine.includes("Profile:") && trimmedLine.includes("#")) {
+    context.currentSection = "profile";
+    const profileMatch = trimmedLine.match(/#(\w+)/);
+    if (profileMatch) {
+      explanation.profile.type = profileMatch[1];
     }
+  }
+}
 
-    // Track brace depth for nested objects
-    _braceDepth += (line.match(/{/g) || []).length;
-    _braceDepth -= (line.match(/}/g) || []).length;
+/**
+ * Extract fields specific to current section
+ */
+function extractSectionSpecificFields(
+  trimmedLine: string,
+  explanation: AssemblyExplanation,
+  context: { currentSection: string; braceDepth: number }
+): void {
+  if (context.currentSection === "artifact") {
+    extractArtifactFields(trimmedLine, explanation);
+  }
+}
 
-    // Extract artifact information
-    if (trimmedLine.includes("Artifact:") && trimmedLine.includes("#Artifact")) {
-      currentSection = "artifact";
-      continue;
-    }
+/**
+ * Extract artifact-specific fields
+ */
+function extractArtifactFields(trimmedLine: string, explanation: AssemblyExplanation): void {
+  const fieldExtractors = [
+    { pattern: /kind:\s*"([^"]+)"/, target: (match: string) => { explanation.artifact.type = match; } },
+    { pattern: /language:\s*"([^"]+)"/, target: (match: string) => { explanation.artifact.language = match; } },
+    { pattern: /name:\s*"([^"]+)"/, target: (match: string) => { explanation.artifact.metadata.name = match; } },
+    { pattern: /version:\s*"([^"]+)"/, target: (match: string) => { explanation.artifact.metadata.version = match; } },
+  ];
 
-    // Extract profile information
-    if (trimmedLine.includes("Profile:") && trimmedLine.includes("#")) {
-      currentSection = "profile";
-      const profileMatch = trimmedLine.match(/#(\w+)/);
-      if (profileMatch) {
-        explanation.profile.type = profileMatch[1];
-      }
-      continue;
-    }
-
-    // Extract specific fields based on current section
-    if (currentSection === "artifact") {
-      if (trimmedLine.includes("kind:")) {
-        const kindMatch = trimmedLine.match(/kind:\s*"([^"]+)"/);
-        if (kindMatch) {
-          explanation.artifact.type = kindMatch[1];
-        }
-      }
-
-      if (trimmedLine.includes("language:")) {
-        const langMatch = trimmedLine.match(/language:\s*"([^"]+)"/);
-        if (langMatch) {
-          explanation.artifact.language = langMatch[1];
-        }
-      }
-
-      if (trimmedLine.includes("name:")) {
-        const nameMatch = trimmedLine.match(/name:\s*"([^"]+)"/);
-        if (nameMatch) {
-          explanation.artifact.metadata.name = nameMatch[1];
-        }
-      }
-
-      if (trimmedLine.includes("version:")) {
-        const versionMatch = trimmedLine.match(/version:\s*"([^"]+)"/);
-        if (versionMatch) {
-          explanation.artifact.metadata.version = versionMatch[1];
-        }
-      }
-    }
-
-    // Extract build information
-    if (trimmedLine.includes("tool:")) {
-      const toolMatch = trimmedLine.match(/tool:\s*"([^"]+)"/);
-      if (toolMatch) {
-        explanation.build.tool = toolMatch[1];
-      }
-    }
-
-    if (trimmedLine.includes("targets:")) {
-      const targetsMatch = trimmedLine.match(/targets:\s*\[([^\]]+)\]/);
-      if (targetsMatch) {
-        explanation.build.targets = targetsMatch[1]
-          .split(",")
-          .map((t) => t.trim().replace(/"/g, ""));
-      }
-    }
-
-    // Extract test information
-    if (trimmedLine.includes("golden:") || trimmedLine.includes("property:")) {
-      if (trimmedLine.includes("golden:")) {
-        explanation.tests.types.push("golden");
-      }
-      if (trimmedLine.includes("property:")) {
-        explanation.tests.types.push("property");
-      }
-    }
-
-    // Extract contracts and invariants
-    if (trimmedLine.includes("invariants:")) {
-      explanation.tests.types.push("contracts");
-    }
-
-    if (trimmedLine.includes("name:") && trimmedLine.includes("formula:")) {
-      // This is likely an invariant
-      const nameMatch = trimmedLine.match(/name:\s*"([^"]+)"/);
-      if (nameMatch) {
-        explanation.contracts.invariants.push(nameMatch[1]);
+  for (const extractor of fieldExtractors) {
+    if (trimmedLine.includes(extractor.pattern.source.split('\\s')[0])) {
+      const match = trimmedLine.match(extractor.pattern);
+      if (match) {
+        extractor.target(match[1]);
       }
     }
   }
+}
 
-  // Generate summary based on extracted information
+/**
+ * Extract global build information
+ */
+function extractGlobalBuildInfo(trimmedLine: string, explanation: AssemblyExplanation): void {
+  if (trimmedLine.includes("tool:")) {
+    const toolMatch = trimmedLine.match(/tool:\s*"([^"]+)"/);
+    if (toolMatch) {
+      explanation.build.tool = toolMatch[1];
+    }
+  }
+
+  if (trimmedLine.includes("targets:")) {
+    const targetsMatch = trimmedLine.match(/targets:\s*\[([^\]]+)\]/);
+    if (targetsMatch) {
+      explanation.build.targets = targetsMatch[1]
+        .split(",")
+        .map((t) => t.trim().replace(/"/g, ""));
+    }
+  }
+}
+
+/**
+ * Extract test information
+ */
+function extractTestInformation(trimmedLine: string, explanation: AssemblyExplanation): void {
+  if (trimmedLine.includes("golden:") || trimmedLine.includes("property:")) {
+    if (trimmedLine.includes("golden:")) {
+      explanation.tests.types.push("golden");
+    }
+    if (trimmedLine.includes("property:")) {
+      explanation.tests.types.push("property");
+    }
+  }
+}
+
+/**
+ * Extract contract and invariant information
+ */
+function extractContractInformation(trimmedLine: string, explanation: AssemblyExplanation): void {
+  if (trimmedLine.includes("invariants:")) {
+    explanation.tests.types.push("contracts");
+  }
+
+  if (trimmedLine.includes("name:") && trimmedLine.includes("formula:")) {
+    const nameMatch = trimmedLine.match(/name:\s*"([^"]+)"/);
+    if (nameMatch) {
+      explanation.contracts.invariants.push(nameMatch[1]);
+    }
+  }
+}
+
+/**
+ * Enrich explanation with generated analysis
+ */
+function enrichExplanationWithAnalysis(explanation: AssemblyExplanation): void {
   explanation.summary = generateSummary(explanation);
-
-  // Generate next steps and recommendations
   explanation.nextSteps = generateNextSteps(explanation);
   explanation.recommendations = generateRecommendations(explanation);
   explanation.potentialIssues = generatePotentialIssues(explanation);
-
-  return explanation;
 }
 
 /**
@@ -581,92 +650,240 @@ async function generateTextExplanation(
 }
 
 /**
+ * Markdown explanation generator using Template Method pattern
+ */
+class MarkdownExplanationGenerator {
+  private explanation: AssemblyExplanation;
+
+  constructor(explanation: AssemblyExplanation) {
+    this.explanation = explanation;
+  }
+
+  /**
+   * Template method - defines the algorithm structure
+   */
+  generateExplanation(): string {
+    const sections = this.collectSections();
+    return this.combineSections(sections);
+  }
+
+  /**
+   * Collect all sections in order
+   */
+  private collectSections(): string[] {
+    return [
+      this.generateHeader(),
+      this.generateSummarySection(),
+      this.generateArtifactSection(),
+      this.generateProfileSection(),
+      this.generateBuildSection(),
+      this.generateTestSection(),
+      this.generateContractsSection(),
+      this.generateNextStepsSection(),
+      this.generateRecommendationsSection(),
+      this.generateIssuesSection(),
+    ];
+  }
+
+  /**
+   * Combine sections with filtering
+   */
+  private combineSections(sections: string[]): string {
+    return sections
+      .filter(section => section.trim())
+      .join('');
+  }
+
+  // Section generation methods - each with single responsibility
+  private generateHeader(): string {
+    return generateMarkdownHeader();
+  }
+
+  private generateSummarySection(): string {
+    return generateMarkdownSummary(this.explanation.summary);
+  }
+
+  private generateArtifactSection(): string {
+    return generateMarkdownArtifactDetails(this.explanation.artifact);
+  }
+
+  private generateProfileSection(): string {
+    return generateMarkdownProfileConfiguration(this.explanation.profile);
+  }
+
+  private generateBuildSection(): string {
+    return generateMarkdownBuildConfiguration(this.explanation.build);
+  }
+
+  private generateTestSection(): string {
+    return generateMarkdownTestConfiguration(this.explanation.tests);
+  }
+
+  private generateContractsSection(): string {
+    return generateMarkdownContracts(this.explanation.contracts);
+  }
+
+  private generateNextStepsSection(): string {
+    return generateMarkdownNextSteps(this.explanation.nextSteps);
+  }
+
+  private generateRecommendationsSection(): string {
+    return generateMarkdownRecommendations(this.explanation.recommendations);
+  }
+
+  private generateIssuesSection(): string {
+    return generateMarkdownPotentialIssues(this.explanation.potentialIssues);
+  }
+}
+
+/**
  * Generate Markdown explanation for file output
  */
 function generateMarkdownExplanation(explanation: AssemblyExplanation): string {
-  let md = "";
+  const generator = new MarkdownExplanationGenerator(explanation);
+  return generator.generateExplanation();
+}
 
-  // Header
-  md += `# Project Configuration Explanation\n\n`;
-  md += `> Generated on ${new Date().toLocaleString()}\n\n`;
+/**
+ * Generate markdown header section
+ */
+function generateMarkdownHeader(): string {
+  return `# Project Configuration Explanation\n\n> Generated on ${new Date().toLocaleString()}\n\n`;
+}
 
-  // Summary
-  md += `## Summary\n\n`;
-  md += `${explanation.summary}\n\n`;
+/**
+ * Generate markdown summary section
+ */
+function generateMarkdownSummary(summary: string): string {
+  return `## Summary\n\n${summary}\n\n`;
+}
 
-  // Artifact details
-  md += `## Artifact Details\n\n`;
-  md += `- **Type**: ${explanation.artifact.type}\n`;
-  md += `- **Language**: ${explanation.artifact.language}\n`;
-  if (explanation.artifact.metadata.name) {
-    md += `- **Name**: ${explanation.artifact.metadata.name}\n`;
+/**
+ * Generate markdown artifact details section
+ */
+function generateMarkdownArtifactDetails(artifact: AssemblyExplanation['artifact']): string {
+  const lines = [
+    '## Artifact Details\n',
+    `- **Type**: ${artifact.type}`,
+    `- **Language**: ${artifact.language}`
+  ];
+
+  if (artifact.metadata.name) {
+    lines.push(`- **Name**: ${artifact.metadata.name}`);
   }
-  if (explanation.artifact.metadata.version) {
-    md += `- **Version**: ${explanation.artifact.metadata.version}\n`;
+  if (artifact.metadata.version) {
+    lines.push(`- **Version**: ${artifact.metadata.version}`);
   }
-  if (explanation.artifact.description.trim()) {
-    md += `- **Description**: ${explanation.artifact.description.trim()}\n`;
-  }
-  md += `\n`;
-
-  // Profile configuration
-  md += `## Profile Configuration\n\n`;
-  md += `- **Profile Type**: ${explanation.profile.type}\n`;
-  if (explanation.profile.features.length > 0) {
-    md += `- **Features**: ${explanation.profile.features.join(", ")}\n`;
-  }
-  md += `\n`;
-
-  // Build configuration
-  md += `## Build Configuration\n\n`;
-  md += `- **Build Tool**: ${explanation.build.tool}\n`;
-  if (explanation.build.targets.length > 0) {
-    md += `- **Targets**: ${explanation.build.targets.join(", ")}\n`;
-  }
-  md += `\n`;
-
-  // Test configuration
-  if (explanation.tests.types.length > 0) {
-    md += `## Test Configuration\n\n`;
-    md += `- **Test Types**: ${explanation.tests.types.join(", ")}\n`;
-    md += `\n`;
+  if (artifact.description.trim()) {
+    lines.push(`- **Description**: ${artifact.description.trim()}`);
   }
 
-  // Contracts
-  if (explanation.contracts.invariants.length > 0) {
-    md += `## Contracts & Invariants\n\n`;
-    for (const invariant of explanation.contracts.invariants) {
-      md += `- ${invariant}\n`;
-    }
-    md += `\n`;
+  return lines.join('\n') + '\n\n';
+}
+
+/**
+ * Generate markdown profile configuration section
+ */
+function generateMarkdownProfileConfiguration(profile: AssemblyExplanation['profile']): string {
+  const lines = [
+    '## Profile Configuration\n',
+    `- **Profile Type**: ${profile.type}`
+  ];
+
+  if (profile.features.length > 0) {
+    lines.push(`- **Features**: ${profile.features.join(', ')}`);
   }
 
-  // Next steps
-  if (explanation.nextSteps.length > 0) {
-    md += `## Recommended Next Steps\n\n`;
-    for (let i = 0; i < explanation.nextSteps.length; i++) {
-      md += `${i + 1}. ${explanation.nextSteps[i]}\n`;
-    }
-    md += `\n`;
+  return lines.join('\n') + '\n\n';
+}
+
+/**
+ * Generate markdown build configuration section
+ */
+function generateMarkdownBuildConfiguration(build: AssemblyExplanation['build']): string {
+  const lines = [
+    '## Build Configuration\n',
+    `- **Build Tool**: ${build.tool}`
+  ];
+
+  if (build.targets.length > 0) {
+    lines.push(`- **Targets**: ${build.targets.join(', ')}`);
   }
 
-  // Recommendations
-  if (explanation.recommendations.length > 0) {
-    md += `## Recommendations\n\n`;
-    for (const recommendation of explanation.recommendations) {
-      md += `- ${recommendation}\n`;
-    }
-    md += `\n`;
+  return lines.join('\n') + '\n\n';
+}
+
+/**
+ * Generate markdown test configuration section
+ */
+function generateMarkdownTestConfiguration(tests: AssemblyExplanation['tests']): string {
+  if (tests.types.length === 0) {
+    return '';
   }
 
-  // Potential issues
-  if (explanation.potentialIssues.length > 0) {
-    md += `## Potential Issues\n\n`;
-    for (const issue of explanation.potentialIssues) {
-      md += `- ⚠️ ${issue}\n`;
-    }
-    md += `\n`;
+  return `## Test Configuration\n\n- **Test Types**: ${tests.types.join(', ')}\n\n`;
+}
+
+/**
+ * Generate markdown contracts section
+ */
+function generateMarkdownContracts(contracts: AssemblyExplanation['contracts']): string {
+  if (contracts.invariants.length === 0) {
+    return '';
   }
 
-  return md;
+  const lines = ['## Contracts & Invariants\n'];
+  for (const invariant of contracts.invariants) {
+    lines.push(`- ${invariant}`);
+  }
+
+  return lines.join('\n') + '\n\n';
+}
+
+/**
+ * Generate markdown next steps section
+ */
+function generateMarkdownNextSteps(nextSteps: string[]): string {
+  if (nextSteps.length === 0) {
+    return '';
+  }
+
+  const lines = ['## Recommended Next Steps\n'];
+  for (let i = 0; i < nextSteps.length; i++) {
+    lines.push(`${i + 1}. ${nextSteps[i]}`);
+  }
+
+  return lines.join('\n') + '\n\n';
+}
+
+/**
+ * Generate markdown recommendations section
+ */
+function generateMarkdownRecommendations(recommendations: string[]): string {
+  if (recommendations.length === 0) {
+    return '';
+  }
+
+  const lines = ['## Recommendations\n'];
+  for (const recommendation of recommendations) {
+    lines.push(`- ${recommendation}`);
+  }
+
+  return lines.join('\n') + '\n\n';
+}
+
+/**
+ * Generate markdown potential issues section
+ */
+function generateMarkdownPotentialIssues(potentialIssues: string[]): string {
+  if (potentialIssues.length === 0) {
+    return '';
+  }
+
+  const lines = ['## Potential Issues\n'];
+  for (const issue of potentialIssues) {
+    lines.push(`- ⚠️ ${issue}`);
+  }
+
+  return lines.join('\n') + '\n\n';
 }

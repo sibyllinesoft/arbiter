@@ -3509,50 +3509,78 @@ async function generateAndComposeTests(
   options: GenerateOptions,
 ): Promise<string[]> {
   try {
-    // Extract services and spec info
-    const { services } = parseDockerComposeServices(assemblyConfig);
-    const specName = assemblyConfig?.metadata?.name || "default";
-    const language = assemblyConfig?.config?.language || "typescript";
-
-    // Create test composition engine
-    const engine = new TestCompositionEngine(specName);
-
-    // Discover existing tests
-    const existingTests = await engine.discoverExistingTests(outputDir);
-
-    // Generate new test suites for services
-    const newTestSuites = generateServiceTests(services, specName);
-
-    // Merge existing and new tests intelligently
-    const testResult = engine.mergeTestSuites(existingTests, newTestSuites);
-
-    // Write composed test files
-    const files = await writeTestFiles(testResult, outputDir, language, options);
-
-    // Report composition results
+    const testConfig = extractTestConfiguration(assemblyConfig);
+    const testComposition = await composeTestSuites(testConfig, outputDir);
+    const files = await writeTestFiles(testComposition.result, outputDir, testConfig.language, options);
+    
     if (options.verbose) {
-      console.log(chalk.blue(`\n📋 Test Composition Summary:`));
-      console.log(chalk.dim(`  Generated: ${testResult.generated.length} test cases`));
-      console.log(chalk.dim(`  Preserved: ${testResult.preserved.length} existing test cases`));
-      console.log(chalk.dim(`  Conflicts: ${testResult.conflicts.length} resolved`));
-
-      if (testResult.conflicts.length > 0) {
-        console.log(chalk.yellow(`\n⚠️  Test Conflicts Resolved:`));
-        testResult.conflicts.forEach((conflict) => {
-          console.log(
-            chalk.dim(`  • ${conflict.test}: ${conflict.reason} (${conflict.resolution})`),
-          );
-        });
-      }
+      reportTestComposition(testComposition.result);
     }
 
     return files;
   } catch (error) {
-    console.warn(
-      chalk.yellow(
-        `⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`,
-      ),
-    );
-    return [];
+    return handleTestGenerationError(error);
   }
+}
+
+/**
+ * Extract test configuration from assembly config
+ */
+function extractTestConfiguration(assemblyConfig: any) {
+  const { services } = parseDockerComposeServices(assemblyConfig);
+  const specName = assemblyConfig?.metadata?.name || "default";
+  const language = assemblyConfig?.config?.language || "typescript";
+  
+  return { services, specName, language };
+}
+
+/**
+ * Compose test suites by merging existing and new tests
+ */
+async function composeTestSuites(config: { services: any, specName: string, language: string }, outputDir: string) {
+  const engine = new TestCompositionEngine(config.specName);
+  
+  const existingTests = await engine.discoverExistingTests(outputDir);
+  const newTestSuites = generateServiceTests(config.services, config.specName);
+  const result = engine.mergeTestSuites(existingTests, newTestSuites);
+  
+  return { engine, result };
+}
+
+/**
+ * Report test composition results
+ */
+function reportTestComposition(testResult: any): void {
+  console.log(chalk.blue(`\n📋 Test Composition Summary:`));
+  console.log(chalk.dim(`  Generated: ${testResult.generated.length} test cases`));
+  console.log(chalk.dim(`  Preserved: ${testResult.preserved.length} existing test cases`));
+  console.log(chalk.dim(`  Conflicts: ${testResult.conflicts.length} resolved`));
+
+  if (testResult.conflicts.length > 0) {
+    reportTestConflicts(testResult.conflicts);
+  }
+}
+
+/**
+ * Report test conflict resolution details
+ */
+function reportTestConflicts(conflicts: any[]): void {
+  console.log(chalk.yellow(`\n⚠️  Test Conflicts Resolved:`));
+  conflicts.forEach((conflict) => {
+    console.log(
+      chalk.dim(`  • ${conflict.test}: ${conflict.reason} (${conflict.resolution})`),
+    );
+  });
+}
+
+/**
+ * Handle test generation errors
+ */
+function handleTestGenerationError(error: unknown): string[] {
+  console.warn(
+    chalk.yellow(
+      `⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    ),
+  );
+  return [];
 }

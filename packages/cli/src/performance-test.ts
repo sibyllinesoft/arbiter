@@ -194,40 +194,84 @@ async function benchmarkCheckCommand(benchmark: CLIBenchmark): Promise<void> {
   const iterations = 5;
 
   for (const testFile of testFiles) {
-    console.log(`\nTesting ${testFile}:`);
+    await benchmarkSingleFile(testFile, iterations, benchmark);
+  }
+}
 
-    const durations: number[] = [];
+/**
+ * Benchmark a single test file
+ */
+async function benchmarkSingleFile(
+  testFile: string,
+  iterations: number,
+  benchmark: CLIBenchmark,
+): Promise<void> {
+  console.log(`\nTesting ${testFile}:`);
+  
+  const durations = await runBenchmarkIterations(testFile, iterations, benchmark);
+  const stats = calculateBenchmarkStats(durations);
+  
+  reportBenchmarkResults(stats);
+  
+  if (testFile === "10kb.cue") {
+    validatePerformanceTarget(stats.p95);
+  }
+}
 
-    for (let i = 0; i < iterations; i++) {
-      const result = await runCliCommand(["check", testFile, "--no-color"], TEST_DATA_DIR);
-
-      durations.push(result.duration);
-      benchmark.addResult("check", [testFile], result.duration, result.exitCode);
-
-      console.log(`  Run ${i + 1}: ${result.duration.toFixed(1)}ms (exit: ${result.exitCode})`);
-
-      if (result.exitCode !== 0 && result.exitCode !== 1) {
-        console.error(`  Error: ${result.stderr}`);
-      }
+/**
+ * Run multiple benchmark iterations for a file
+ */
+async function runBenchmarkIterations(
+  testFile: string,
+  iterations: number,
+  benchmark: CLIBenchmark,
+): Promise<number[]> {
+  const durations: number[] = [];
+  
+  for (let i = 0; i < iterations; i++) {
+    const result = await runCliCommand(["check", testFile, "--no-color"], TEST_DATA_DIR);
+    
+    durations.push(result.duration);
+    benchmark.addResult("check", [testFile], result.duration, result.exitCode);
+    
+    console.log(`  Run ${i + 1}: ${result.duration.toFixed(1)}ms (exit: ${result.exitCode})`);
+    
+    if (result.exitCode !== 0 && result.exitCode !== 1) {
+      console.error(`  Error: ${result.stderr}`);
     }
+  }
+  
+  return durations;
+}
 
-    // Calculate statistics
-    durations.sort((a, b) => a - b);
-    const avg = durations.reduce((a, b) => a + b) / durations.length;
-    const p95 = durations[Math.floor(durations.length * 0.95)];
+/**
+ * Calculate benchmark statistics
+ */
+function calculateBenchmarkStats(durations: number[]): { avg: number; p95: number } {
+  const sortedDurations = [...durations].sort((a, b) => a - b);
+  const avg = durations.reduce((a, b) => a + b) / durations.length;
+  const p95 = sortedDurations[Math.floor(sortedDurations.length * 0.95)];
+  
+  return { avg, p95 };
+}
 
-    console.log(`  Average: ${avg.toFixed(1)}ms`);
-    console.log(`  P95: ${p95.toFixed(1)}ms`);
+/**
+ * Report benchmark results
+ */
+function reportBenchmarkResults(stats: { avg: number; p95: number }): void {
+  console.log(`  Average: ${stats.avg.toFixed(1)}ms`);
+  console.log(`  P95: ${stats.p95.toFixed(1)}ms`);
+}
 
-    // Check against target for 10KB file
-    if (testFile === "10kb.cue") {
-      const target = PERFORMANCE_TARGETS.CHECK_10KB_P95;
-      if (p95 <= target) {
-        console.log(`  ✓ P95 meets target (${target}ms)`);
-      } else {
-        console.log(`  ✗ P95 exceeds target (${target}ms) by ${(p95 - target).toFixed(1)}ms`);
-      }
-    }
+/**
+ * Validate performance against target
+ */
+function validatePerformanceTarget(p95: number): void {
+  const target = PERFORMANCE_TARGETS.CHECK_10KB_P95;
+  if (p95 <= target) {
+    console.log(`  ✓ P95 meets target (${target}ms)`);
+  } else {
+    console.log(`  ✗ P95 exceeds target (${target}ms) by ${(p95 - target).toFixed(1)}ms`);
   }
 }
 

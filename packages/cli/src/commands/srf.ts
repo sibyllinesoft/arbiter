@@ -298,49 +298,110 @@ async function srfValidateCommand(
   options: SrfOptions,
   _config?: Config,
 ): Promise<number> {
-  if (!input) {
-    console.error(chalk.red("❌ SRF file required"));
-    console.log(chalk.dim("Usage: arbiter srf validate <srf-file>"));
-    return 1;
-  }
-
-  if (!fs.existsSync(input)) {
-    console.error(chalk.red(`❌ SRF file not found: ${input}`));
+  // Validate input parameters
+  const inputValidation = validateSrfInputParameters(input);
+  if (inputValidation.error) {
+    console.error(chalk.red(inputValidation.error));
+    if (inputValidation.usage) {
+      console.log(chalk.dim(inputValidation.usage));
+    }
     return 1;
   }
 
   console.log(chalk.blue("🔍 Validating SRF file..."));
 
   try {
-    const content = fs.readFileSync(input, "utf-8");
-    const srf = JSON.parse(content);
-
-    const errors = validateSrfStructure(srf);
-
-    if (errors.length === 0) {
-      console.log(chalk.green("✅ SRF file is valid"));
-
-      if (options.verbose) {
-        console.log(chalk.dim("\nSRF Summary:"));
-        console.log(chalk.dim(`  Project: ${srf.project?.name || "Unknown"}`));
-        console.log(chalk.dim(`  Requirements: ${srf.requirements?.length || 0}`));
-        console.log(chalk.dim(`  Constraints: ${srf.constraints?.length || 0}`));
-      }
-
-      return 0;
-    } else {
-      console.log(chalk.red("❌ SRF validation failed:"));
-      errors.forEach((error) => console.log(chalk.red(`  - ${error}`)));
-      return 1;
-    }
+    const srf = readAndParseSrfFile(input!);
+    const validationResult = performSrfValidation(srf);
+    
+    return handleValidationResult(validationResult, srf, options);
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      console.error(chalk.red("❌ Invalid JSON format"));
-    } else {
-      console.error(chalk.red("❌ Validation error:"), error);
+    return handleSrfValidationError(error);
+  }
+}
+
+/**
+ * Validate input parameters for SRF validation
+ */
+function validateSrfInputParameters(input: string | undefined): { error?: string; usage?: string } {
+  if (!input) {
+    return {
+      error: "❌ SRF file required",
+      usage: "Usage: arbiter srf validate <srf-file>"
+    };
+  }
+
+  if (!fs.existsSync(input)) {
+    return {
+      error: `❌ SRF file not found: ${input}`
+    };
+  }
+
+  return {}; // No errors
+}
+
+/**
+ * Read and parse SRF file
+ */
+function readAndParseSrfFile(filePath: string): any {
+  const content = fs.readFileSync(filePath, "utf-8");
+  return JSON.parse(content);
+}
+
+/**
+ * Perform SRF structure validation
+ */
+function performSrfValidation(srf: any): { isValid: boolean; errors: string[] } {
+  const errors = validateSrfStructure(srf);
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+
+/**
+ * Handle validation result and output
+ */
+function handleValidationResult(
+  validationResult: { isValid: boolean; errors: string[] },
+  srf: any,
+  options: SrfOptions
+): number {
+  if (validationResult.isValid) {
+    console.log(chalk.green("✅ SRF file is valid"));
+    
+    if (options.verbose) {
+      displaySrfSummary(srf);
     }
+    
+    return 0;
+  } else {
+    console.log(chalk.red("❌ SRF validation failed:"));
+    validationResult.errors.forEach((error) => console.log(chalk.red(`  - ${error}`)));
     return 1;
   }
+}
+
+/**
+ * Display SRF summary information
+ */
+function displaySrfSummary(srf: any): void {
+  console.log(chalk.dim("\nSRF Summary:"));
+  console.log(chalk.dim(`  Project: ${srf.project?.name || "Unknown"}`));
+  console.log(chalk.dim(`  Requirements: ${srf.requirements?.length || 0}`));
+  console.log(chalk.dim(`  Constraints: ${srf.constraints?.length || 0}`));
+}
+
+/**
+ * Handle SRF validation errors
+ */
+function handleSrfValidationError(error: unknown): number {
+  if (error instanceof SyntaxError) {
+    console.error(chalk.red("❌ Invalid JSON format"));
+  } else {
+    console.error(chalk.red("❌ Validation error:"), error);
+  }
+  return 1;
 }
 
 /**
@@ -727,38 +788,177 @@ function extractConstraints(content: string): any[] {
   return constraints;
 }
 
-function extractArchitecture(content: string): any {
-  const architecture: any = {
+/**
+ * Architecture object interface
+ */
+interface ArchitectureSpec {
+  type: string;
+  language: string;
+  patterns: string[];
+  dependencies: string[];
+}
+
+/**
+ * Builder for constructing architecture specifications
+ */
+class ArchitectureBuilder {
+  private spec: ArchitectureSpec = {
     type: "library",
     language: "typescript",
     patterns: [],
     dependencies: [],
   };
 
-  // Extract language
-  const langMatch =
-    content.match(/language:\s*([^\n]+)/i) ||
-    content.match(/tech stack:\s*([^\n]*(?:typescript|python|rust|go|java)[^\n]*)/i);
-  if (langMatch) {
-    const lang = langMatch[1].toLowerCase();
-    if (lang.includes("typescript") || lang.includes("ts")) architecture.language = "typescript";
-    else if (lang.includes("python")) architecture.language = "python";
-    else if (lang.includes("rust")) architecture.language = "rust";
-    else if (lang.includes("go")) architecture.language = "go";
-    else if (lang.includes("java")) architecture.language = "java";
+  private content: string;
+
+  constructor(content: string) {
+    this.content = content;
   }
 
-  // Extract type/kind
-  const typeMatch = content.match(/(?:type|kind):\s*([^\n]+)/i);
-  if (typeMatch) {
-    const type = typeMatch[1].toLowerCase();
-    if (type.includes("library")) architecture.type = "library";
-    else if (type.includes("service") || type.includes("api")) architecture.type = "service";
-    else if (type.includes("cli")) architecture.type = "cli";
-    else if (type.includes("web") || type.includes("frontend")) architecture.type = "web";
+  /**
+   * Extract and set the programming language
+   */
+  withLanguage(): ArchitectureBuilder {
+    const language = this.extractLanguage();
+    if (language) {
+      this.spec.language = language;
+    }
+    return this;
   }
 
-  return architecture;
+  /**
+   * Extract and set the architecture type
+   */
+  withType(): ArchitectureBuilder {
+    const type = this.extractType();
+    if (type) {
+      this.spec.type = type;
+    }
+    return this;
+  }
+
+  /**
+   * Extract and set patterns
+   */
+  withPatterns(): ArchitectureBuilder {
+    const patterns = this.extractPatterns();
+    this.spec.patterns = patterns;
+    return this;
+  }
+
+  /**
+   * Extract and set dependencies
+   */
+  withDependencies(): ArchitectureBuilder {
+    const dependencies = this.extractDependencies();
+    this.spec.dependencies = dependencies;
+    return this;
+  }
+
+  /**
+   * Build the final architecture specification
+   */
+  build(): ArchitectureSpec {
+    return { ...this.spec };
+  }
+
+  /**
+   * Extract language from content
+   */
+  private extractLanguage(): string | null {
+    const patterns = [
+      /language:\s*([^\n]+)/i,
+      /tech stack:\s*([^\n]*(?:typescript|python|rust|go|java)[^\n]*)/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = this.content.match(pattern);
+      if (match) {
+        return this.normalizeLanguage(match[1].toLowerCase());
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Normalize language string to standard format
+   */
+  private normalizeLanguage(lang: string): string {
+    const languageMap: Record<string, string> = {
+      typescript: "typescript",
+      ts: "typescript",
+      python: "python",
+      rust: "rust",
+      go: "go",
+      java: "java",
+    };
+
+    for (const [key, value] of Object.entries(languageMap)) {
+      if (lang.includes(key)) {
+        return value;
+      }
+    }
+    return "typescript"; // default
+  }
+
+  /**
+   * Extract architecture type from content
+   */
+  private extractType(): string | null {
+    const typeMatch = this.content.match(/(?:type|kind):\s*([^\n]+)/i);
+    if (!typeMatch) return null;
+
+    return this.normalizeType(typeMatch[1].toLowerCase());
+  }
+
+  /**
+   * Normalize type string to standard format
+   */
+  private normalizeType(type: string): string {
+    const typeMap: Record<string, string> = {
+      library: "library",
+      service: "service",
+      api: "service",
+      cli: "cli",
+      web: "web",
+      frontend: "web",
+    };
+
+    for (const [key, value] of Object.entries(typeMap)) {
+      if (type.includes(key)) {
+        return value;
+      }
+    }
+    return "library"; // default
+  }
+
+  /**
+   * Extract patterns from content (placeholder)
+   */
+  private extractPatterns(): string[] {
+    // TODO: Implement pattern extraction
+    return [];
+  }
+
+  /**
+   * Extract dependencies from content (placeholder)
+   */
+  private extractDependencies(): string[] {
+    // TODO: Implement dependency extraction
+    return [];
+  }
+}
+
+/**
+ * Extract architecture specification using Builder pattern
+ */
+function extractArchitecture(content: string): ArchitectureSpec {
+  return new ArchitectureBuilder(content)
+    .withLanguage()
+    .withType()
+    .withPatterns()
+    .withDependencies()
+    .build();
 }
 
 function extractAcceptanceCriteria(content: string): any[] {

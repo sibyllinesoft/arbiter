@@ -99,53 +99,115 @@ async function validateFiles(
   config: CLIConfig,
   options: CheckOptions,
 ): Promise<ValidationResult[]> {
-  const apiClient = new ApiClient(config);
-  const results: ValidationResult[] = [];
+  const apiClient = await initializeApiClient(config);
+  
+  return await executeValidationWithProgress(files, config, apiClient, options);
+}
 
-  // Check server health first
+/**
+ * Initialize API client with health check
+ */
+async function initializeApiClient(config: CLIConfig): Promise<ApiClient> {
+  const apiClient = new ApiClient(config);
+  
   const healthCheck = await apiClient.health();
   if (!healthCheck.success) {
     throw new Error(`Cannot connect to Arbiter server: ${healthCheck.error}`);
   }
+  
+  return apiClient;
+}
 
-  let _processedCount = 0;
+/**
+ * Execute validation with progress tracking
+ */
+async function executeValidationWithProgress(
+  files: string[],
+  config: CLIConfig,
+  apiClient: ApiClient,
+  options: CheckOptions,
+): Promise<ValidationResult[]> {
   const progressText = `Validating ${files.length} files...`;
-
+  
   return withProgress({ text: progressText, color: "blue" }, async () => {
-    // Process files with concurrency limit for performance
-    const concurrency = 5; // Limit concurrent requests
-    const chunks = chunkArray(files, concurrency);
-
-    for (const chunk of chunks) {
-      const chunkResults = await Promise.all(
-        chunk.map(async (file) => {
-          const result = await validateFile(file, apiClient, options);
-          _processedCount++;
-
-          if (options.verbose) {
-            const status =
-              result.status === "valid"
-                ? chalk.green("✓")
-                : result.status === "invalid"
-                  ? chalk.red("✗")
-                  : chalk.yellow("!");
-            console.log(`${status} ${path.relative(config.projectDir, file)}`);
-          }
-
-          return result;
-        }),
-      );
-
-      results.push(...chunkResults);
-
-      // Fail fast if requested and we have errors
-      if (options.failFast && chunkResults.some((r) => r.status !== "valid")) {
-        break;
-      }
-    }
-
-    return results;
+    return await processFilesInChunks(files, config, apiClient, options);
   });
+}
+
+/**
+ * Process files in chunks with concurrency control
+ */
+async function processFilesInChunks(
+  files: string[],
+  config: CLIConfig,
+  apiClient: ApiClient,
+  options: CheckOptions,
+): Promise<ValidationResult[]> {
+  const results: ValidationResult[] = [];
+  const concurrency = 5; // Limit concurrent requests
+  const chunks = chunkArray(files, concurrency);
+
+  for (const chunk of chunks) {
+    const chunkResults = await processFileChunk(chunk, config, apiClient, options);
+    results.push(...chunkResults);
+
+    if (shouldStopProcessing(options, chunkResults)) {
+      break;
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Process a single chunk of files
+ */
+async function processFileChunk(
+  chunk: string[],
+  config: CLIConfig,
+  apiClient: ApiClient,
+  options: CheckOptions,
+): Promise<ValidationResult[]> {
+  return await Promise.all(
+    chunk.map(async (file) => {
+      const result = await validateFile(file, apiClient, options);
+      
+      if (options.verbose) {
+        logFileValidationResult(file, result, config);
+      }
+      
+      return result;
+    }),
+  );
+}
+
+/**
+ * Log validation result for a file
+ */
+function logFileValidationResult(file: string, result: ValidationResult, config: CLIConfig): void {
+  const status = getStatusIcon(result.status);
+  console.log(`${status} ${path.relative(config.projectDir, file)}`);
+}
+
+/**
+ * Get status icon for validation result
+ */
+function getStatusIcon(status: string): string {
+  switch (status) {
+    case "valid":
+      return chalk.green("✓");
+    case "invalid":
+      return chalk.red("✗");
+    default:
+      return chalk.yellow("!");
+  }
+}
+
+/**
+ * Determine if processing should stop based on fail-fast option
+ */
+function shouldStopProcessing(options: CheckOptions, chunkResults: ValidationResult[]): boolean {
+  return options.failFast && chunkResults.some((r) => r.status !== "valid");
 }
 
 /**

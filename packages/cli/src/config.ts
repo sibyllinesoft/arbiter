@@ -54,36 +54,56 @@ const CONFIG_FILES = [
  * Load CLI configuration from file or use defaults
  */
 export async function loadConfig(configPath?: string): Promise<CLIConfig> {
-  let config = { ...DEFAULT_CONFIG };
+  const baseConfig = { ...DEFAULT_CONFIG };
 
-  // If specific config path provided, use it
   if (configPath) {
-    if (await fs.pathExists(configPath)) {
-      const userConfig = await loadConfigFile(configPath);
-      config = { ...config, ...userConfig };
-    } else {
-      throw new Error(`Configuration file not found: ${configPath}`);
-    }
-    return config;
+    return await loadSpecificConfigFile(configPath, baseConfig);
   }
 
-  // Look for config files in current directory and up the tree
+  return await searchForConfigFile(baseConfig);
+}
+
+/**
+ * Load a specific configuration file
+ */
+async function loadSpecificConfigFile(configPath: string, baseConfig: CLIConfig): Promise<CLIConfig> {
+  if (!(await fs.pathExists(configPath))) {
+    throw new Error(`Configuration file not found: ${configPath}`);
+  }
+
+  const userConfig = await loadConfigFile(configPath);
+  return { ...baseConfig, ...userConfig };
+}
+
+/**
+ * Search for configuration files up the directory tree
+ */
+async function searchForConfigFile(baseConfig: CLIConfig): Promise<CLIConfig> {
   let currentDir = process.cwd();
   const root = path.parse(currentDir).root;
 
   while (currentDir !== root) {
-    for (const fileName of CONFIG_FILES) {
-      const configFile = path.join(currentDir, fileName);
-      if (await fs.pathExists(configFile)) {
-        const userConfig = await loadConfigFile(configFile);
-        config = { ...config, ...userConfig };
-        return config;
-      }
+    const foundConfig = await findConfigInDirectory(currentDir);
+    if (foundConfig) {
+      return { ...baseConfig, ...foundConfig };
     }
     currentDir = path.dirname(currentDir);
   }
 
-  return config;
+  return baseConfig;
+}
+
+/**
+ * Find configuration file in a specific directory
+ */
+async function findConfigInDirectory(directory: string): Promise<Partial<CLIConfig> | null> {
+  for (const fileName of CONFIG_FILES) {
+    const configFile = path.join(directory, fileName);
+    if (await fs.pathExists(configFile)) {
+      return await loadConfigFile(configFile);
+    }
+  }
+  return null;
 }
 
 /**

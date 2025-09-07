@@ -131,11 +131,36 @@ async function generateVSCodeConfig(
   outputDir?: string,
 ): Promise<void> {
   const vscodeDir = path.join(outputDir || projectPath, ".vscode");
-
-  // Ensure .vscode directory exists
   await fs.mkdir(vscodeDir, { recursive: true });
 
-  // Generate extensions.json
+  // Generate all VS Code configuration files
+  await generateExtensionsConfig(languages, vscodeDir, force);
+  await generateTasksConfig(languages, vscodeDir, force);  
+  await generateSettingsConfig(vscodeDir, force);
+
+}
+
+/**
+ * Generate extensions.json configuration
+ */
+async function generateExtensionsConfig(
+  languages: ProjectLanguage[],
+  vscodeDir: string,
+  force: boolean
+): Promise<void> {
+  const allExtensions = collectRequiredExtensions(languages);
+  const extensionsConfig = {
+    recommendations: Array.from(allExtensions).sort(),
+  };
+
+  const extensionsPath = path.join(vscodeDir, "extensions.json");
+  await writeConfigFile(extensionsPath, extensionsConfig, force);
+}
+
+/**
+ * Collect all required VS Code extensions for detected languages
+ */
+function collectRequiredExtensions(languages: ProjectLanguage[]): Set<string> {
   const allExtensions = new Set<string>();
 
   // Add recommended extensions for detected languages
@@ -150,30 +175,135 @@ async function generateVSCodeConfig(
   allExtensions.add("ms-vscode.vscode-json"); // JSON support
   allExtensions.add("redhat.vscode-yaml"); // YAML support
 
-  const extensionsConfig = {
-    recommendations: Array.from(allExtensions).sort(),
-  };
+  return allExtensions;
+}
 
-  const extensionsPath = path.join(vscodeDir, "extensions.json");
-  let shouldWriteExtensions = force;
+/**
+ * Write a configuration file, respecting the force flag
+ */
+async function writeConfigFile(filePath: string, config: any, force: boolean): Promise<void> {
+  let shouldWrite = force;
 
   if (!force) {
     try {
-      await fs.access(extensionsPath);
-      console.log(chalk.yellow(`⚠️  ${extensionsPath} already exists. Use --force to overwrite.`));
+      const existingContent = JSON.parse(await fs.readFile(filePath, "utf8"));
+      // Merge with existing config
+      Object.assign(existingContent, config);
+      await fs.writeFile(filePath, JSON.stringify(existingContent, null, 2));
+      console.log(chalk.green(`✅ Merged configuration into ${filePath}`));
+      return;
     } catch {
-      shouldWriteExtensions = true;
+      shouldWrite = true;
     }
   }
 
-  if (shouldWriteExtensions) {
-    await fs.writeFile(extensionsPath, JSON.stringify(extensionsConfig, null, 2));
-    console.log(chalk.green(`✅ Generated ${extensionsPath}`));
+  if (shouldWrite) {
+    await fs.writeFile(filePath, JSON.stringify(config, null, 2));
+    console.log(chalk.green(`✅ Generated ${filePath}`));
   }
+}
 
-  // Generate tasks.json with enhanced problem matchers and save-time formatting
-  const tasks = {
-    version: "2.0.0",
+/**
+ * Create base Arbiter tasks for VS Code
+ */
+function createArbiterTasks(): any[] {
+  return [
+    {
+      label: "Arbiter: Check",
+      type: "shell",
+      command: "arbiter",
+      args: ["check", "--format", "json"],
+      group: "build",
+      presentation: {
+        echo: true,
+        reveal: "always",
+        focus: false,
+        panel: "shared",
+        clear: true,
+      },
+      problemMatcher: {
+        owner: "arbiter-check",
+        fileLocation: ["relative", "${workspaceFolder}"],
+        pattern: [
+          {
+            regexp: "^ERROR\\s+(.*):(\\d+):(\\d+)\\s+(.*)$",
+            file: 1,
+            line: 2,
+            column: 3,
+            message: 4,
+            severity: "error",
+          },
+        ],
+      },
+    },
+    {
+      label: "Arbiter: Watch",
+      type: "shell",
+      command: "arbiter",
+      args: ["watch"],
+      group: "build",
+      isBackground: true,
+      presentation: {
+        echo: true,
+        reveal: "always",
+        focus: false,
+        panel: "shared",
+      },
+      problemMatcher: {
+        owner: "arbiter-watch",
+        fileLocation: ["relative", "${workspaceFolder}"],
+        background: {
+          activeOnStart: true,
+          beginsPattern: "^🔍 Watching for changes",
+          endsPattern: "^✅ All files validated",
+        },
+      },
+    },
+  ];
+}
+
+/**
+ * Create language-specific tasks
+ */
+function createLanguageSpecificTasks(languages: ProjectLanguage[]): any[] {
+  const tasks = [];
+  
+  for (const lang of languages) {
+    if (lang.name === "typescript") {
+      tasks.push({
+        label: `${lang.name}: Build`,
+        type: "shell",
+        command: "npm",
+        args: ["run", "build"],
+        group: "build",
+      });
+    } else if (lang.name === "python") {
+      tasks.push({
+        label: `${lang.name}: Test`,
+        type: "shell",
+        command: "python",
+        args: ["-m", "pytest"],
+        group: "test",
+      });
+    }
+    // Add more language-specific tasks as needed
+  }
+  
+  return tasks;
+}
+
+/**
+ * Generate tasks.json configuration
+ */
+async function generateTasksConfig(
+  languages: ProjectLanguage[],
+  vscodeDir: string,
+  force: boolean
+): Promise<void> {
+  const baseTasks = createArbiterTasks();
+  const languageTasks = createLanguageSpecificTasks(languages);
+  
+  const tasksConfig = {
     tasks: [
       {
         label: "Arbiter: Check",

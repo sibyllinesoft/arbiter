@@ -74,6 +74,7 @@ export interface ConstraintSystemStatus {
  * Master constraint system that coordinates all constraint enforcement
  */
 export class ConstraintSystem extends EventEmitter {
+  private readonly config: CLIConfig;
   private readonly constraints: Constraints;
   private readonly sandboxValidator: SandboxValidator;
   private readonly violationCounts = new Map<string, number>();
@@ -162,6 +163,31 @@ export class ConstraintSystem extends EventEmitter {
   }
 
   /**
+   * Validate payload sizes for all files
+   */
+  private validateFilePayloads(files: Record<string, string>, operationId: string): void {
+    for (const [_path, content] of Object.entries(files)) {
+      globalConstraintEnforcer.validatePayloadSize(content, operationId);
+    }
+  }
+
+  /**
+   * Ensure schema compliance for JSON files
+   */
+  private ensureSchemaCompliance(files: Record<string, string>): void {
+    for (const [_path, content] of Object.entries(files)) {
+      try {
+        const parsed = JSON.parse(content);
+        if (this.isApiData(parsed)) {
+          ensureLatestSchema(parsed);
+        }
+      } catch {
+        // Not JSON, skip schema validation
+      }
+    }
+  }
+
+  /**
    * Export files with constraint enforcement
    */
   async exportWithConstraints(
@@ -169,35 +195,52 @@ export class ConstraintSystem extends EventEmitter {
     outputDir: string,
     format?: string,
   ): Promise<void> {
-    const operationId = globalConstraintEnforcer.startOperation("constrained_export", {
+    const operationId = this.startExportOperation(files, outputDir, format);
+
+    try {
+      await this.performConstrainedExport(files, outputDir, operationId);
+    } finally {
+      globalConstraintEnforcer.endOperation(operationId);
+    }
+  }
+
+  /**
+   * Start export operation with proper metadata tracking
+   */
+  private startExportOperation(
+    files: Record<string, string>,
+    outputDir: string,
+    format?: string,
+  ): string {
+    return globalConstraintEnforcer.startOperation("constrained_export", {
       fileCount: Object.keys(files).length,
       outputDir,
       format,
     });
+  }
 
-    try {
-      // Validate payload sizes
-      for (const [_path, content] of Object.entries(files)) {
-        globalConstraintEnforcer.validatePayloadSize(content, operationId);
-      }
+  /**
+   * Perform the constrained export with all validation steps
+   */
+  private async performConstrainedExport(
+    files: Record<string, string>,
+    outputDir: string,
+    operationId: string,
+  ): Promise<void> {
+    this.validateFilePayloads(files, operationId);
+    await this.executeFileSystemExport(files, outputDir, operationId);
+    this.ensureSchemaCompliance(files);
+  }
 
-      // Use file system constraints for export
-      await globalFileSystemConstraints.exportFiles(files, outputDir, operationId);
-
-      // Ensure all outputs use latest schema if they contain API data
-      for (const [_path, content] of Object.entries(files)) {
-        try {
-          const parsed = JSON.parse(content);
-          if (this.isApiData(parsed)) {
-            ensureLatestSchema(parsed);
-          }
-        } catch {
-          // Not JSON, skip schema validation
-        }
-      }
-    } finally {
-      globalConstraintEnforcer.endOperation(operationId);
-    }
+  /**
+   * Execute the file system export operation
+   */
+  private async executeFileSystemExport(
+    files: Record<string, string>,
+    outputDir: string,
+    operationId: string,
+  ): Promise<void> {
+    await globalFileSystemConstraints.exportFiles(files, outputDir, operationId);
   }
 
   /**

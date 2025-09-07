@@ -126,39 +126,77 @@ async function validateFiles(
   schemaContent?: string,
   configContent?: string,
 ): Promise<ValidationResult[]> {
-  const apiClient = new ApiClient(config);
-  const results: ValidationResult[] = [];
+  const apiClient = await initializeValidationClient(config);
+  
+  return withProgress({ text: `Validating ${files.length} files...`, color: "blue" }, async () => {
+    return await processValidationFiles(files, apiClient, options, schemaContent, configContent);
+  });
+}
 
-  // Check server health first
+/**
+ * Initialize and verify API client for validation
+ */
+async function initializeValidationClient(config: CLIConfig): Promise<ApiClient> {
+  const apiClient = new ApiClient(config);
+  
   const healthCheck = await apiClient.health();
   if (!healthCheck.success) {
     throw new Error(`Cannot connect to Arbiter server: ${healthCheck.error}`);
   }
+  
+  return apiClient;
+}
 
-  return withProgress({ text: `Validating ${files.length} files...`, color: "blue" }, async () => {
-    for (const file of files) {
-      const result = await validateSingleFile(
-        file,
-        apiClient,
-        options,
-        schemaContent,
-        configContent,
-      );
-      results.push(result);
-
-      if (options.verbose) {
-        const status =
-          result.status === "valid"
-            ? chalk.green("✓")
-            : result.status === "invalid"
-              ? chalk.red("✗")
-              : chalk.yellow("!");
-        console.log(`${status} ${path.basename(file)}`);
-      }
+/**
+ * Process validation for all files
+ */
+async function processValidationFiles(
+  files: string[],
+  apiClient: ApiClient,
+  options: ValidateOptions,
+  schemaContent?: string,
+  configContent?: string,
+): Promise<ValidationResult[]> {
+  const results: ValidationResult[] = [];
+  
+  for (const file of files) {
+    const result = await validateSingleFile(
+      file,
+      apiClient,
+      options,
+      schemaContent,
+      configContent,
+    );
+    results.push(result);
+    
+    if (options.verbose) {
+      displayValidationProgress(result, file);
     }
+  }
+  
+  return results;
+}
 
-    return results;
-  });
+/**
+ * Display validation progress for a single file
+ */
+function displayValidationProgress(result: ValidationResult, file: string): void {
+  const status = getValidationStatusIcon(result.status);
+  console.log(`${status} ${path.basename(file)}`);
+}
+
+/**
+ * Get appropriate icon for validation status
+ */
+function getValidationStatusIcon(status: string): string {
+  switch (status) {
+    case "valid":
+      return chalk.green("✓");
+    case "invalid":
+      return chalk.red("✗");
+    default:
+      return chalk.yellow("!");
+  }
 }
 
 /**

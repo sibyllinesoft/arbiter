@@ -244,20 +244,25 @@ async function addService(
 }
 
 /**
+ * Service template options
+ */
+interface ServiceTemplateOptions {
+  language?: string;
+  port?: number;
+  image?: string;
+  directory?: string;
+  template?: string;
+  [key: string]: any;
+}
+
+/**
  * Add a service using a template (with AST-based CUE manipulation)
  */
 async function addServiceWithTemplate(
   manipulator: any,
   content: string,
   serviceName: string,
-  options: {
-    language?: string;
-    port?: number;
-    image?: string;
-    directory?: string;
-    template?: string;
-    [key: string]: any;
-  },
+  options: ServiceTemplateOptions,
 ): Promise<string> {
   const { template, directory = `./src/${serviceName}` } = options;
 
@@ -266,80 +271,120 @@ async function addServiceWithTemplate(
   }
 
   try {
-    // Load template manager configuration
-    await templateManager.loadConfig();
-
-    // Check if template alias exists
-    const alias = templateManager.getAlias(template);
-    if (!alias) {
-      const availableTemplates = Object.keys(templateManager.getAliases());
-      throw new Error(
-        `Template '${template}' not found. Available templates: ${availableTemplates.join(", ")}`,
-      );
-    }
-
-    console.log(chalk.blue(`🔧 Generating service '${serviceName}' using template '${template}'`));
-
-    // Extract variables from CUE content
-    const variables = extractVariablesFromCue(content, serviceName);
-
-    // Add service-specific variables
-    variables.serviceName = serviceName;
-    if (options.language) variables.language = options.language;
-    if (options.port) variables.port = options.port;
-
-    // Ensure target directory exists
-    await fs.ensureDir(path.resolve(directory));
-
-    // Execute template
-    await templateManager.executeTemplate(template, path.resolve(directory), variables);
-
-    console.log(chalk.green(`✅ Template '${template}' applied successfully to '${directory}'`));
-
-    // Now update the CUE specification with the service definition using AST manipulation
-    const serviceConfig: ServiceConfig = {
-      serviceType: "bespoke",
-      language: options.language || "typescript",
-      type: "deployment",
-      sourceDirectory: directory,
-      template: template,
-      ...(options.port && {
-        ports: [{ name: "http", port: options.port, targetPort: options.port }],
-      }),
-    };
-
+    await validateTemplateExists(template);
+    await executeTemplate(serviceName, template, content, directory, options);
+    const serviceConfig = createTemplateServiceConfig(serviceName, directory, options);
+    
     let updatedContent = await manipulator.addService(content, serviceName, serviceConfig);
-
-    // If this creates a UI service, add route to v2 structure
-    if (
-      !options.image &&
-      (options.language === "typescript" || options.language === "javascript")
-    ) {
-      const routeConfig: RouteConfig = {
-        id: `${serviceName}:main`,
-        path: options.port === 3000 ? "/" : `/${serviceName}`,
-        capabilities: ["view"],
-        components: [`${toTitleCase(serviceName)}Page`],
-      };
-      updatedContent = await manipulator.addRoute(updatedContent, routeConfig);
-
-      // Add basic locator
-      const locatorKey = `page:${serviceName}`;
-      const locatorValue = `[data-testid="${serviceName}-page"]`;
-      updatedContent = await manipulator.addToSection(
-        updatedContent,
-        "locators",
-        locatorKey,
-        locatorValue,
-      );
+    
+    if (shouldAddUIComponents(options)) {
+      updatedContent = await addUIComponentsForService(manipulator, updatedContent, serviceName, options);
     }
-
+    
     return updatedContent;
   } catch (error) {
     throw new Error(
       `Template generation failed: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
+}
+
+/**
+ * Validate that template exists in template manager
+ */
+async function validateTemplateExists(template: string): Promise<void> {
+  await templateManager.loadConfig();
+  
+  const alias = templateManager.getAlias(template);
+  if (!alias) {
+    const availableTemplates = Object.keys(templateManager.getAliases());
+    throw new Error(
+      `Template '${template}' not found. Available templates: ${availableTemplates.join(", ")}`,
+    );
+  }
+}
+
+/**
+ * Execute template generation
+ */
+async function executeTemplate(
+  serviceName: string,
+  template: string,
+  content: string,
+  directory: string,
+  options: ServiceTemplateOptions,
+): Promise<void> {
+  console.log(chalk.blue(`🔧 Generating service '${serviceName}' using template '${template}'`));
+  
+  const variables = extractVariablesFromCue(content, serviceName);
+  variables.serviceName = serviceName;
+  if (options.language) variables.language = options.language;
+  if (options.port) variables.port = options.port;
+  
+  await fs.ensureDir(path.resolve(directory));
+  await templateManager.executeTemplate(template, path.resolve(directory), variables);
+  
+  console.log(chalk.green(`✅ Template '${template}' applied successfully to '${directory}'`));
+}
+
+/**
+ * Create service configuration for template-based service
+ */
+function createTemplateServiceConfig(
+  serviceName: string,
+  directory: string,
+  options: ServiceTemplateOptions,
+): ServiceConfig {
+  return {
+    serviceType: "bespoke",
+    language: options.language || "typescript",
+    type: "deployment",
+    sourceDirectory: directory,
+    template: options.template!,
+    ...(options.port && {
+      ports: [{ name: "http", port: options.port, targetPort: options.port }],
+    }),
+  };
+}
+
+/**
+ * Check if UI components should be added
+ */
+function shouldAddUIComponents(options: ServiceTemplateOptions): boolean {
+  return (
+    !options.image &&
+    (options.language === "typescript" || options.language === "javascript")
+  );
+}
+
+/**
+ * Add UI components and routes for service
+ */
+async function addUIComponentsForService(
+  manipulator: any,
+  content: string,
+  serviceName: string,
+  options: ServiceTemplateOptions,
+): Promise<string> {
+  const routeConfig: RouteConfig = {
+    id: `${serviceName}:main`,
+    path: options.port === 3000 ? "/" : `/${serviceName}`,
+    capabilities: ["view"],
+    components: [`${toTitleCase(serviceName)}Page`],
+  };
+  
+  let updatedContent = await manipulator.addRoute(content, routeConfig);
+  
+  const locatorKey = `page:${serviceName}`;
+  const locatorValue = `[data-testid="${serviceName}-page"]`;
+  updatedContent = await manipulator.addToSection(
+    updatedContent,
+    "locators",
+    locatorKey,
+    locatorValue,
+  );
+  
+  return updatedContent;
 }
 
 /**
@@ -437,48 +482,36 @@ async function addRoute(
 }
 
 /**
+ * Flow configuration options
+ */
+interface FlowOptions {
+  from?: string;
+  to?: string;
+  endpoint?: string;
+  expect?: string;
+  steps?: string;
+  [key: string]: any;
+}
+
+/**
+ * Flow step types
+ */
+type FlowStep = 
+  | { visit: string }
+  | { click: string }
+  | { expect: { locator: string; state: string } }
+  | { expect_api: { method: string; path: string; status: number } };
+
+/**
  * Add a user flow using AST-based manipulation
  */
 async function addFlow(
   manipulator: any,
   content: string,
   flowId: string,
-  options: {
-    from?: string;
-    to?: string;
-    endpoint?: string;
-    expect?: string;
-    steps?: string;
-    [key: string]: any;
-  },
+  options: FlowOptions,
 ): Promise<string> {
-  const { from, to, endpoint, expect: expectedStatus = "200", steps } = options;
-
-  let flowSteps = [];
-
-  if (steps) {
-    // Parse custom steps (JSON format expected)
-    try {
-      flowSteps = JSON.parse(steps);
-    } catch {
-      throw new Error("Invalid steps format. Expected JSON array.");
-    }
-  } else if (from && to) {
-    // Generate navigation flow
-    flowSteps = [
-      { visit: from },
-      { click: `btn:goto-${to}` },
-      { expect: { locator: `page:${to}`, state: "visible" } },
-    ];
-  } else if (endpoint) {
-    // Generate API health check flow
-    flowSteps = [
-      { expect_api: { method: "GET", path: endpoint, status: parseInt(expectedStatus) } },
-    ];
-  } else {
-    throw new Error("Flow must specify either --from/--to, --endpoint, or --steps");
-  }
-
+  const flowSteps = generateFlowSteps(options);
   const flowConfig: FlowConfig = {
     id: flowId,
     steps: flowSteps,
@@ -488,58 +521,182 @@ async function addFlow(
 }
 
 /**
+ * Generate flow steps based on options
+ */
+function generateFlowSteps(options: FlowOptions): FlowStep[] {
+  if (options.steps) {
+    return parseCustomSteps(options.steps);
+  }
+  
+  if (options.from && options.to) {
+    return generateNavigationFlow(options.from, options.to);
+  }
+  
+  if (options.endpoint) {
+    return generateApiHealthFlow(options.endpoint, options.expect || "200");
+  }
+  
+  throw new Error("Flow must specify either --from/--to, --endpoint, or --steps");
+}
+
+/**
+ * Parse custom steps from JSON string
+ */
+function parseCustomSteps(stepsJson: string): FlowStep[] {
+  try {
+    return JSON.parse(stepsJson);
+  } catch {
+    throw new Error("Invalid steps format. Expected JSON array.");
+  }
+}
+
+/**
+ * Generate navigation flow between pages
+ */
+function generateNavigationFlow(from: string, to: string): FlowStep[] {
+  return [
+    { visit: from },
+    { click: `btn:goto-${to}` },
+    { expect: { locator: `page:${to}`, state: "visible" } },
+  ];
+}
+
+/**
+ * Generate API health check flow
+ */
+function generateApiHealthFlow(endpoint: string, expectedStatus: string): FlowStep[] {
+  return [
+    { expect_api: { method: "GET", path: endpoint, status: parseInt(expectedStatus) } },
+  ];
+}
+
+/**
+ * Validate that target service exists in content
+ */
+function validateTargetServiceExists(manipulator: any, content: string, target: string): Promise<boolean> {
+  return new Promise(async (resolve) => {
+    try {
+      const ast = await manipulator.parse(content);
+      resolve(!!(ast.services && ast.services[target]));
+    } catch {
+      resolve(content.includes(`${target}:`));
+    }
+  });
+}
+
+/**
+ * Create load balancer service configuration
+ */
+function createLoadBalancerConfig(): ServiceConfig {
+  return {
+    serviceType: "prebuilt",
+    language: "container",
+    type: "deployment",
+    image: "nginx:alpine",
+    ports: [{ name: "http", port: 80, targetPort: 80 }],
+    template: "nginx-loadbalancer",
+  };
+}
+
+/**
+ * Add health check to target service
+ */
+async function addHealthCheckToTarget(
+  manipulator: any,
+  content: string,
+  target: string,
+  healthCheck: string,
+): Promise<string> {
+  try {
+    const ast = await manipulator.parse(content);
+    if (!ast.services[target].healthCheck) {
+      ast.services[target].healthCheck = {
+        path: healthCheck,
+        port: 3000,
+      };
+      return await manipulator.serialize(ast, content);
+    }
+  } catch (error) {
+    console.warn(`Could not add health check to target service ${target}`);
+  }
+  return content;
+}
+
+/**
+ * Load balancer options interface
+ */
+interface LoadBalancerOptions {
+  target?: string;
+  healthCheck?: string;
+  [key: string]: any;
+}
+
+/**
+ * Load balancer configuration parameters
+ */
+interface LoadBalancerParams {
+  target: string;
+  healthCheck: string;
+}
+
+/**
  * Add load balancer using AST-based manipulation
  */
 async function addLoadBalancer(
   manipulator: any,
   content: string,
-  options: { target?: string; healthCheck?: string; [key: string]: any },
+  options: LoadBalancerOptions,
 ): Promise<string> {
+  const params = validateAndNormalizeLoadBalancerOptions(options);
+  await ensureTargetServiceExists(manipulator, content, params.target);
+  
+  return await createLoadBalancerWithHealthCheck(manipulator, content, params);
+}
+
+/**
+ * Validate and normalize load balancer options
+ */
+function validateAndNormalizeLoadBalancerOptions(options: LoadBalancerOptions): LoadBalancerParams {
   const { target, healthCheck = "/health" } = options;
 
   if (!target) {
     throw new Error("Load balancer requires --target service");
   }
 
-  // Ensure target service exists
-  try {
-    const ast = await manipulator.parse(content);
-    if (!ast.services || !ast.services[target]) {
-      throw new Error(`Target service "${target}" not found`);
-    }
-  } catch (parseError) {
-    if (!content.includes(`${target}:`)) {
-      throw new Error(`Target service "${target}" not found`);
-    }
+  return { target, healthCheck };
+}
+
+/**
+ * Ensure target service exists, throw error if not found
+ */
+async function ensureTargetServiceExists(
+  manipulator: any,
+  content: string,
+  target: string,
+): Promise<void> {
+  const targetExists = await validateTargetServiceExists(manipulator, content, target);
+  if (!targetExists) {
+    throw new Error(`Target service "${target}" not found`);
   }
+}
 
-  // Add load balancer service configuration
-  const lbConfig: ServiceConfig = {
-    serviceType: "prebuilt",
-    language: "container",
-    type: "deployment",
-    image: "nginx:alpine",
-    ports: [{ name: "http", port: 80, targetPort: 80 }],
-    // Note: nginx.conf generation would be handled by the template system
-    // For now, we'll add a simplified configuration marker
-    template: "nginx-loadbalancer",
-  };
-
+/**
+ * Create load balancer service and configure health check
+ */
+async function createLoadBalancerWithHealthCheck(
+  manipulator: any,
+  content: string,
+  params: LoadBalancerParams,
+): Promise<string> {
+  const lbConfig = createLoadBalancerConfig();
   let updatedContent = await manipulator.addService(content, "loadbalancer", lbConfig);
-
-  // Ensure target service has health check
-  try {
-    const ast = await manipulator.parse(updatedContent);
-    if (!ast.services[target].healthCheck) {
-      ast.services[target].healthCheck = {
-        path: healthCheck,
-        port: 3000,
-      };
-      updatedContent = await manipulator.serialize(ast, updatedContent);
-    }
-  } catch (error) {
-    console.warn(`Could not add health check to target service ${target}`);
-  }
+  
+  updatedContent = await addHealthCheckToTarget(
+    manipulator, 
+    updatedContent, 
+    params.target, 
+    params.healthCheck
+  );
 
   return updatedContent;
 }
@@ -551,70 +708,189 @@ async function addDatabase(
   manipulator: any,
   content: string,
   dbName: string,
-  options: {
-    attachTo?: string;
-    image?: string;
-    port?: number;
-    template?: string;
-    [key: string]: any;
-  },
+  options: DatabaseAddOptions,
 ): Promise<string> {
-  const { attachTo, image = "postgres:15", port = 5432, template } = options;
+  const dbOptions = normalizeDatabaseOptions(options);
 
-  // If template is specified, use template-based generation
-  if (template) {
-    try {
-      await templateManager.loadConfig();
-
-      const alias = templateManager.getAlias(template);
-      if (!alias) {
-        const availableTemplates = Object.keys(templateManager.getAliases());
-        throw new Error(
-          `Template '${template}' not found. Available templates: ${availableTemplates.join(", ")}`,
-        );
-      }
-
-      console.log(chalk.blue(`🔧 Generating database '${dbName}' using template '${template}'`));
-
-      // Extract variables from CUE content
-      const variables = extractVariablesFromCue(content);
-      variables.databaseName = dbName;
-      variables.attachTo = attachTo;
-      variables.image = image;
-      variables.port = port;
-
-      // Execute template for database setup
-      const targetDir = `./database/${dbName}`;
-      await templateManager.executeTemplate(template, path.resolve(targetDir), variables);
-
-      console.log(chalk.green(`✅ Database template '${template}' applied to '${targetDir}'`));
-    } catch (error) {
-      throw new Error(
-        `Database template generation failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+  if (dbOptions.template) {
+    await handleTemplateBasedDatabaseCreation(dbName, content, dbOptions);
   }
 
-  const dbConfig: DatabaseConfig = {
+  const dbConfig = createDatabaseConfiguration(dbName, dbOptions);
+  return await manipulator.addDatabase(content, dbName, dbConfig);
+}
+
+/**
+ * Database add options interface
+ */
+interface DatabaseAddOptions {
+  attachTo?: string;
+  image?: string;
+  port?: number;
+  template?: string;
+  [key: string]: any;
+}
+
+/**
+ * Normalized database options with defaults
+ */
+interface NormalizedDatabaseOptions {
+  attachTo?: string;
+  image: string;
+  port: number;
+  template?: string;
+}
+
+/**
+ * Database configuration defaults
+ */
+const DATABASE_DEFAULTS = {
+  image: "postgres:15",
+  port: 5432,
+  volumeSize: "50Gi",
+} as const;
+
+/**
+ * Normalize database options with defaults
+ */
+function normalizeDatabaseOptions(options: DatabaseAddOptions): NormalizedDatabaseOptions {
+  return {
+    attachTo: options.attachTo,
+    image: options.image ?? DATABASE_DEFAULTS.image,
+    port: options.port ?? DATABASE_DEFAULTS.port,
+    template: options.template,
+  };
+}
+
+/**
+ * Handle template-based database creation
+ */
+async function handleTemplateBasedDatabaseCreation(
+  dbName: string,
+  content: string,
+  options: NormalizedDatabaseOptions,
+): Promise<void> {
+  try {
+    await templateManager.loadConfig();
+    
+    validateTemplateExistsSync(options.template!);
+    
+    console.log(chalk.blue(`🔧 Generating database '${dbName}' using template '${options.template}'`));
+    
+    const variables = prepareTemplateVariables(content, dbName, options);
+    const targetDir = `./database/${dbName}`;
+    
+    await templateManager.executeTemplate(options.template!, path.resolve(targetDir), variables);
+    
+    console.log(chalk.green(`✅ Database template '${options.template}' applied to '${targetDir}'`));
+  } catch (error) {
+    throw new Error(
+      `Database template generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/**
+ * Validate template exists synchronously and throw error if not found
+ */
+function validateTemplateExistsSync(template: string): void {
+  const alias = templateManager.getAlias(template);
+  if (!alias) {
+    const availableTemplates = Object.keys(templateManager.getAliases());
+    throw new Error(
+      `Template '${template}' not found. Available templates: ${availableTemplates.join(", ")}`,
+    );
+  }
+}
+
+/**
+ * Prepare template variables for database generation
+ */
+function prepareTemplateVariables(
+  content: string,
+  dbName: string,
+  options: NormalizedDatabaseOptions,
+): Record<string, any> {
+  const variables = extractVariablesFromCue(content);
+  variables.databaseName = dbName;
+  variables.attachTo = options.attachTo;
+  variables.image = options.image;
+  variables.port = options.port;
+  return variables;
+}
+
+/**
+ * Create database configuration object
+ */
+function createDatabaseConfiguration(
+  dbName: string,
+  options: NormalizedDatabaseOptions,
+): DatabaseConfig {
+  return {
     serviceType: "prebuilt",
     language: "container",
     type: "statefulset",
-    image,
-    ports: [{ name: "db", port, targetPort: port }],
-    volumes: [
-      {
-        name: "data",
-        path: image.includes("postgres") ? "/var/lib/postgresql/data" : "/var/lib/mysql",
-        size: "50Gi",
-        type: "persistentVolumeClaim",
-      },
-    ],
-    env: generateDbEnvVars(image, dbName),
-    ...(attachTo && { attachTo }),
+    image: options.image,
+    ports: [{ name: "db", port: options.port, targetPort: options.port }],
+    volumes: [createDatabaseVolume(options.image)],
+    env: generateDbEnvVars(options.image, dbName),
+    ...(options.attachTo && { attachTo: options.attachTo }),
   };
-
-  return await manipulator.addDatabase(content, dbName, dbConfig);
 }
+
+/**
+ * Create database volume configuration based on image type
+ */
+function createDatabaseVolume(image: string): VolumeConfig {
+  const dataPath = image.includes("postgres") 
+    ? "/var/lib/postgresql/data" 
+    : "/var/lib/mysql";
+    
+  return {
+    name: "data",
+    path: dataPath,
+    size: DATABASE_DEFAULTS.volumeSize,
+    type: "persistentVolumeClaim",
+  };
+}
+
+/**
+ * Volume configuration interface
+ */
+interface VolumeConfig {
+  name: string;
+  path: string;
+  size: string;
+  type: string;
+}
+
+/**
+ * Cache service configuration options
+ */
+interface CacheServiceOptions {
+  attachTo?: string;
+  image?: string;
+  port?: number;
+  [key: string]: any;
+}
+
+/**
+ * Cache configuration with defaults
+ */
+interface CacheConfig {
+  attachTo?: string;
+  image: string;
+  port: number;
+}
+
+/**
+ * Default cache configuration
+ */
+const CACHE_DEFAULTS = {
+  image: "redis:7-alpine",
+  port: 6379,
+  volumeSize: "10Gi",
+} as const;
 
 /**
  * Add cache service using AST-based manipulation
@@ -623,39 +899,68 @@ async function addCache(
   manipulator: any,
   content: string,
   cacheName: string,
-  options: { attachTo?: string; image?: string; port?: number; [key: string]: any },
+  options: CacheServiceOptions,
 ): Promise<string> {
-  const { attachTo, image = "redis:7-alpine", port = 6379 } = options;
+  const cacheConfig = normalizeCacheOptions(options);
+  const serviceConfig = createCacheServiceConfig(cacheConfig);
+  
+  let updatedContent = await manipulator.addService(content, cacheName, serviceConfig);
+  
+  if (cacheConfig.attachTo) {
+    updatedContent = await attachCacheToService(manipulator, updatedContent, cacheName, cacheConfig);
+  }
+  
+  return updatedContent;
+}
 
-  const cacheConfig: ServiceConfig = {
+/**
+ * Normalize cache options with defaults
+ */
+function normalizeCacheOptions(options: CacheServiceOptions): CacheConfig {
+  return {
+    attachTo: options.attachTo,
+    image: options.image ?? CACHE_DEFAULTS.image,
+    port: options.port ?? CACHE_DEFAULTS.port,
+  };
+}
+
+/**
+ * Create cache service configuration
+ */
+function createCacheServiceConfig(config: CacheConfig): ServiceConfig {
+  return {
     serviceType: "prebuilt",
     language: "container",
     type: "deployment",
-    image,
-    ports: [{ name: "cache", port, targetPort: port }],
-    volumes: [{ name: "data", path: "/data", size: "10Gi" }],
+    image: config.image,
+    ports: [{ name: "cache", port: config.port, targetPort: config.port }],
+    volumes: [{ name: "data", path: "/data", size: CACHE_DEFAULTS.volumeSize }],
   };
+}
 
-  let updatedContent = await manipulator.addService(content, cacheName, cacheConfig);
-
-  // If attaching to a service, add connection env vars
-  if (attachTo) {
-    try {
-      const ast = await manipulator.parse(updatedContent);
-      if (ast.services && ast.services[attachTo]) {
-        if (!ast.services[attachTo].env) {
-          ast.services[attachTo].env = {};
-        }
-        const cacheUrl = `redis://${cacheName}:${port}`;
-        ast.services[attachTo].env.REDIS_URL = cacheUrl;
-        updatedContent = await manipulator.serialize(ast, updatedContent);
+/**
+ * Attach cache connection to target service
+ */
+async function attachCacheToService(
+  manipulator: any,
+  content: string,
+  cacheName: string,
+  config: CacheConfig,
+): Promise<string> {
+  try {
+    const ast = await manipulator.parse(content);
+    if (ast.services && ast.services[config.attachTo!]) {
+      if (!ast.services[config.attachTo!].env) {
+        ast.services[config.attachTo!].env = {};
       }
-    } catch (error) {
-      console.warn(`Could not add cache connection to service ${attachTo}`);
+      const cacheUrl = `redis://${cacheName}:${config.port}`;
+      ast.services[config.attachTo!].env.REDIS_URL = cacheUrl;
+      return await manipulator.serialize(ast, content);
     }
+  } catch (error) {
+    console.warn(`Could not add cache connection to service ${config.attachTo}`);
   }
-
-  return updatedContent;
+  return content;
 }
 
 /**
