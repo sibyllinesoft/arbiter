@@ -1,0 +1,75 @@
+{
+  "engines": {
+    "cookiecutter": {
+      "command": "cookiecutter",
+      "defaultArgs": ["--no-input"],
+      "timeout": 300000
+    },
+    "script": {
+      "command": "sh",
+      "defaultArgs": [],
+      "timeout": 60000
+    }
+  },
+  "aliases": {
+    "bun-hono": {
+      "engine": "cookiecutter",
+      "source": "https://github.com/arbiter-templates/bun-hono.git",
+      "description": "Bun + Hono API service with Drizzle ORM",
+      "variables": {
+        "project_name": "{{cookiecutter.serviceName}}",
+        "use_typescript": true,
+        "use_drizzle": true
+      },
+      "prerequisites": ["bun", "git"]
+    },
+    "rust-axum": {
+      "engine": "cookiecutter", 
+      "source": "gh:arbiter-templates/rust-axum",
+      "description": "Rust + Axum service with SQLx",
+      "variables": {
+        "project_name": "{{cookiecutter.serviceName}}",
+        "use_sqlx": true,
+        "use_tokio": true
+      },
+      "prerequisites": ["cargo", "git"]
+    },
+    "react-vite": {
+      "engine": "cookiecutter",
+      "source": "/local/path/to/react-template",
+      "description": "React + Vite frontend with Tailwind",
+      "variables": {
+        "project_name": "{{cookiecutter.serviceName}}",
+        "use_typescript": true,
+        "use_tailwind": true
+      },
+      "prerequisites": ["node", "npm"]
+    },
+    "python-fastapi": {
+      "engine": "cookiecutter",
+      "source": "https://github.com/fastapi-users/fastapi-users-cookiecutter.git",
+      "description": "FastAPI service with async SQLAlchemy",
+      "variables": {
+        "project_name": "{{cookiecutter.serviceName}}",
+        "use_async": true,
+        "use_sqlalchemy": true
+      },
+      "prerequisites": ["python3", "pip"]
+    },
+    "postgres-setup": {
+      "engine": "script",
+      "source": "./scripts/setup-postgres.sh",
+      "description": "PostgreSQL database setup with migrations",
+      "variables": {
+        "db_name": "{{cookiecutter.databaseName}}",
+        "db_port": 5432
+      },
+      "prerequisites": ["psql", "docker"]
+    }
+  },
+  "settings": {
+    "defaultEngine": "cookiecutter",
+    "cacheDir": "~/.arbiter/template-cache",
+    "timeout": 300000
+  }
+}

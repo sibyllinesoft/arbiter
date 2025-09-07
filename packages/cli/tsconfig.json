@@ -26,7 +26,13 @@
     "baseUrl": ".",
     "paths": {
       "@arbiter/shared": ["../shared/src/index.ts"],
-      "@arbiter/shared/*": ["../shared/src/*"]
+      "@arbiter/shared/*": ["../shared/src/*"],
+      "@/*": ["./src/*"],
+      "@/commands/*": ["./src/commands/*"],
+      "@/templates/*": ["./src/templates/*"],
+      "@/cue/*": ["./src/cue/*"],
+      "@/types": ["./src/types.ts"],
+      "@/config": ["./src/config.ts"]
     }
   },
   "references": [

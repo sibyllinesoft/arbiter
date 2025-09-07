@@ -1,45 +1,74 @@
 Usage: arbiter [options] [command]
-
 Arbiter CLI for CUE validation and management
-
 Options:
-  -v, --version         display version number
-  -c, --config <path>   path to configuration file
-  --no-color            disable colored output
-  --api-url <url>       API server URL (default: "http://localhost:XXXX")
-  --timeout <ms>        request timeout in milliseconds (default: "XXXX")
-  -h, --help            display help for command
-
+  -v, --version                         display version number
+  -c, --config <path>                   path to configuration file
+  --no-color                            disable colored output
+  --api-url <url>                       API server URL (default:
+                                        "http://localhost:XXXX")
+  --timeout <ms>                        request timeout in milliseconds
+                                        (default: "XXXX")
+  -h, --help                            display help for command
 Commands:
-  init [options] [project-name]  initialize a new CUE project with templates
-  check [options] [patterns...]  validate CUE files in the current directory
-  validate [options] <files...>  validate CUE files with explicit schema and configuration
-  export [options] <files...>    export CUE configurations to various formats
-  server [options]               start local Arbiter server (development)
-  config                         manage CLI configuration
-  health                         check Arbiter server health
-  help [command]                 display help for command
-
-Examples:
-  Initialize new project:
-    arbiter init my-project --template kubernetes
-    
-  Validate files:
-    arbiter check
-    arbiter check --format json
-    arbiter validate schema.cue values.cue --strict
-    
-  Export configurations:
-    arbiter export *.cue --format openapi,types
-    arbiter export . --format k8s --output manifests/
-    
-  Check server:
-    arbiter health
-    
-Configuration:
-  Create .arbiter.json in your project root:
-  {
-    "apiUrl": "http://localhost:XXXX",
-    "format": "table",
-    "color": true
-  }
+  init [options] [project-name]         initialize a new CUE project with
+                                        templates
+  onboard [options] [project-path]      intelligently onboard existing projects
+                                        to Arbiter
+  add                                   incrementally build
+                                        arbiter.assembly.cue through
+                                        compositional additions
+  watch [options] [path]                cross-platform file watcher with live
+                                        validation and planning
+  surface [options] <language>          extract API surface from source code
+                                        and generate project-specific surface
+                                        file
+  version                               semver-aware version planning and
+                                        release management
+  check [options] [patterns...]         validate CUE files in the current
+                                        directory
+  validate [options] <files...>         validate CUE files with explicit schema
+                                        and configuration
+  export [options] <files...>           export CUE configurations to various
+                                        formats
+  template                              manage and use CUE schema templates
+  templates                             manage template aliases for code
+                                        generation
+  create [options] <type>               create new schemas and configurations
+                                        interactively
+  import                                manage trusted import registry for CUE
+                                        files
+  diff [options] <old-file> <new-file>  compare two CUE schema versions and
+                                        analyze changes
+  migrate [options] [patterns...]       automatically migrate CUE schemas to
+                                        latest format
+  execute [options] <epic>              execute Epic v2 for deterministic,
+                                        agent-first code generation
+  tests                                 test management, scaffolding, and
+                                        coverage analysis
+  server [options]                      start local Arbiter server
+                                        (development)
+  ide [options] <recommend>             generate IDE configuration for optimal
+                                        CUE development
+  sync [options]                        synchronize project manifests
+                                        (package.json, pyproject.toml, etc.)
+                                        with Arbiter
+  integrate [options]                   generate CI/CD workflows with contract
+                                        coverage and quality gates
+  docs                                  generate documentation from CUE schemas
+                                        and API surfaces
+  examples [options] <type>             generate example projects by profile or
+                                        language type
+  generate [options] [spec-name]        generate project files from existing
+                                        arbiter.assembly.cue specification
+  preview [options]                     show what would be generated without
+                                        creating files (deterministic output)
+  explain [options]                     generate plain-English summary of
+                                        current arbiter.assembly.cue
+  rename [options]                      migrate existing files to
+                                        project-specific naming
+  spec                                  manage spec fragments and revisions
+                                        with git-style operations
+  config                                manage CLI configuration
+  health [options]                      comprehensive Arbiter server health
+                                        check
+  help [command]                        display help for command

@@ -1,0 +1,18 @@
+{
+  "name": "e2e-test-app",
+  "version": "1.0.0",
+  "description": "Simple Node.js app for Docker Compose e2e testing",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "redis": "^4.6.7",
+    "pg": "^8.11.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

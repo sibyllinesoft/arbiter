@@ -144,9 +144,39 @@ export class SpecWorkbenchServer {
         return await this.handleHealthCheck(corsHeaders);
       }
 
+      // Status endpoint (redirect from root)
+      if (pathname === "/status") {
+        return await this.handleStatusCheck(corsHeaders);
+      }
+
+      // MCP endpoint
+      if (pathname === "/mcp") {
+        return await this.handleMcpRequest(request, corsHeaders);
+      }
+
+      // Root redirect to status
+      if (pathname === "/") {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: "/status",
+            ...corsHeaders,
+          },
+        });
+      }
+
       // Not found
       return this.createErrorResponse(
-        createProblemDetails(404, "Not Found", `Route ${pathname} not found`),
+        createProblemDetails(
+          404,
+          "Not Found",
+          `Route ${pathname} not found`,
+          undefined, // type
+          undefined, // instance
+          {
+            available_endpoints: ["/health", "/status", "/mcp", "/api/*", "/ws"],
+          },
+        ),
         corsHeaders,
       );
     } catch (error) {
@@ -262,6 +292,10 @@ export class SpecWorkbenchServer {
 
     // Route to specific API handlers
     if (pathname.startsWith("/api/fragments")) {
+      // Handle revision routes first (more specific)
+      if (pathname.match(/\/api\/fragments\/[^\/]+\/revisions/)) {
+        return await this.handleFragmentRevisionsApi(request, authContext, corsHeaders);
+      }
       return await this.handleFragmentsApi(request, authContext, corsHeaders);
     }
 
@@ -296,20 +330,168 @@ export class SpecWorkbenchServer {
   }
 
   /**
-   * Handle fragments API (POST /api/fragments)
+   * Handle fragments API (GET /api/fragments and POST /api/fragments)
    */
   private async handleFragmentsApi(
     request: Request,
     authContext: AuthContext,
     corsHeaders: Record<string, string>,
   ): Promise<Response> {
-    if (request.method !== "POST") {
+    if (request.method === "GET") {
+      return await this.handleFragmentsListApi(request, authContext, corsHeaders);
+    } else if (request.method === "POST") {
+      return await this.handleFragmentsCreateApi(request, authContext, corsHeaders);
+    } else {
       return this.createErrorResponse(
-        createProblemDetails(405, "Method Not Allowed", "Only POST is supported"),
+        createProblemDetails(405, "Method Not Allowed", "Only GET and POST are supported"),
+        corsHeaders,
+      );
+    }
+  }
+
+  /**
+   * Handle fragment revisions API (GET /api/fragments/:fragmentId/revisions)
+   */
+  private async handleFragmentRevisionsApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    if (request.method !== "GET") {
+      return this.createErrorResponse(
+        createProblemDetails(405, "Method Not Allowed", "Only GET is supported"),
         corsHeaders,
       );
     }
 
+    try {
+      const url = new URL(request.url);
+      const pathname = url.pathname;
+      const pathParts = pathname.split('/');
+      
+      // Extract fragment ID from path like /api/fragments/{fragmentId}/revisions
+      const fragmentId = pathParts[3];
+      if (!fragmentId) {
+        return this.createErrorResponse(
+          createProblemDetails(400, "Bad Request", "Fragment ID is required"),
+          corsHeaders,
+        );
+      }
+
+      // Get fragment to check project access
+      const fragment = await this.db.getFragmentById(fragmentId);
+      if (!fragment) {
+        return this.createErrorResponse(
+          createProblemDetails(404, "Not Found", "Fragment not found"),
+          corsHeaders,
+        );
+      }
+
+      // Check project access
+      const accessCheck = this.auth.createProjectAccessMiddleware()(authContext, fragment.project_id);
+      if (!accessCheck.authorized) {
+        return accessCheck.response!;
+      }
+
+      // Get revisions
+      const revisions = await this.db.listFragmentRevisions(fragmentId);
+
+      return new Response(
+        JSON.stringify({
+          fragmentId: fragmentId,
+          path: fragment.path,
+          revisions: revisions.map((r) => ({
+            id: r.id,
+            revision_number: r.revision_number,
+            content_hash: r.content_hash,
+            author: r.author,
+            message: r.message,
+            created_at: r.created_at,
+          })),
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        },
+      );
+    } catch (error) {
+      logger.error("Fragment revisions API error", error instanceof Error ? error : undefined);
+
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to get fragment revisions"),
+        corsHeaders,
+      );
+    }
+  }
+
+  /**
+   * Handle fragments list API (GET /api/fragments)
+   */
+  private async handleFragmentsListApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      const url = new URL(request.url);
+      // Support both projectId (primary) and project_id (backward compatibility)
+      const projectId = url.searchParams.get("projectId") || url.searchParams.get("project_id");
+
+      if (!projectId) {
+        return this.createErrorResponse(
+          createProblemDetails(400, "Bad Request", "projectId parameter is required"),
+          corsHeaders,
+        );
+      }
+
+      // Check project access
+      const accessCheck = this.auth.createProjectAccessMiddleware()(authContext, projectId);
+      if (!accessCheck.authorized) {
+        return accessCheck.response!;
+      }
+
+      // Get project fragments
+      const fragments = await this.db.listFragments(projectId);
+
+      return new Response(
+        JSON.stringify(
+          fragments.map((f) => ({
+            id: f.id,
+            path: f.path,
+            content: f.content,
+            created_at: f.created_at,
+            updated_at: f.updated_at,
+          })),
+        ),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        },
+      );
+    } catch (error) {
+      logger.error("Fragments list API error", error instanceof Error ? error : undefined);
+
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to list fragments"),
+        corsHeaders,
+      );
+    }
+  }
+
+  /**
+   * Handle fragments create API (POST /api/fragments)
+   */
+  private async handleFragmentsCreateApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
     try {
       const body = (await request.json()) as CreateFragmentRequest & {
         project_id?: string;
@@ -348,17 +530,26 @@ export class SpecWorkbenchServer {
       const formatResult = await this.specEngine.formatFragment(body.content);
       const content = formatResult.success ? formatResult.formatted : body.content;
 
-      // Create or update fragment using upsert logic
+      // Create or update fragment using upsert logic with revision tracking
       let fragment: Fragment;
       const fragmentId = generateId();
+      const author = body.author || authContext.user_id;
+      const message = body.message || "Updated fragment";
 
       try {
-        // Try to update existing fragment first
-        fragment = await this.db.updateFragment(projectId, body.path, content);
+        // Try to update existing fragment first (this will create a revision)
+        fragment = await this.db.updateFragment(projectId, body.path, content, author, message);
       } catch (updateError) {
-        // If update fails (fragment not found), create new fragment
+        // If update fails (fragment not found), create new fragment with initial revision
         try {
-          fragment = await this.db.createFragment(fragmentId, projectId, body.path, content);
+          fragment = await this.db.createFragment(
+            fragmentId, 
+            projectId, 
+            body.path, 
+            content, 
+            author, 
+            "Initial fragment creation"
+          );
         } catch (createError) {
           logger.error(
             "Failed to create fragment after update failed",
@@ -375,16 +566,17 @@ export class SpecWorkbenchServer {
       const fragments = await this.db.listFragments(projectId);
       const validationResult = await this.specEngine.validateProject(projectId, fragments);
 
-      // Broadcast event
+      // Broadcast revision event
       await this.events.broadcastToProject(projectId, {
         project_id: projectId,
-        event_type: "fragment_updated",
+        event_type: "fragment_revision_created",
         data: {
           fragment_path: body.path,
           user_id: authContext.user_id,
           filename: body.filename || `${body.path}.cue`,
           author: body.author || authContext.user_id,
           message: body.message || "Updated fragment",
+          head_revision_id: fragment.head_revision_id,
         },
       });
 
@@ -878,6 +1070,589 @@ export class SpecWorkbenchServer {
           ...corsHeaders,
         },
       });
+    }
+  }
+
+  /**
+   * Handle status check (more detailed than health)
+   */
+  private async handleStatusCheck(corsHeaders: Record<string, string>): Promise<Response> {
+    try {
+      const dbHealthy = await this.db.healthCheck();
+      const stats = this.events.getStats();
+
+      const status = {
+        service: "arbiter-lens",
+        version: "1.0.0",
+        status: dbHealthy ? "running" : "degraded",
+        timestamp: getCurrentTimestamp(),
+        uptime: process.uptime(),
+        daemon: {
+          healthy: dbHealthy,
+          database_connected: dbHealthy,
+          websocket_connections: stats.totalConnections,
+          active_projects: stats.totalProjects,
+        },
+        system: {
+          memory_usage: process.memoryUsage(),
+          node_version: process.version,
+          platform: process.platform,
+          arch: process.arch,
+        },
+        endpoints: {
+          health: "/health",
+          status: "/status",
+          mcp: "/mcp",
+          api: "/api/*",
+          websocket: "/ws",
+        },
+      };
+
+      return new Response(JSON.stringify(status), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          service: "arbiter-lens",
+          status: "error",
+          error: "Status check failed",
+          timestamp: getCurrentTimestamp(),
+        }),
+        {
+          status: 503,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        },
+      );
+    }
+  }
+
+  /**
+   * Handle MCP JSON-RPC requests
+   */
+  private async handleMcpRequest(
+    request: Request,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    if (request.method !== "POST") {
+      return this.createErrorResponse(
+        createProblemDetails(405, "Method Not Allowed", "MCP endpoint only supports POST requests"),
+        corsHeaders,
+      );
+    }
+
+    try {
+      const body = await request.json();
+
+      // Basic JSON-RPC validation
+      if (!body.jsonrpc || body.jsonrpc !== "2.0" || !body.method) {
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            error: {
+              code: -32600,
+              message: "Invalid Request",
+            },
+            id: body.id || null,
+          }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              ...corsHeaders,
+            },
+          },
+        );
+      }
+
+      // Handle MCP methods
+      switch (body.method) {
+        case "initialize":
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              result: {
+                protocolVersion: "2024-11-05",
+                capabilities: {
+                  roots: {
+                    listChanged: true,
+                  },
+                  sampling: {},
+                  tools: {
+                    listChanged: true,
+                  },
+                  resources: {
+                    listChanged: true,
+                  },
+                },
+                serverInfo: {
+                  name: "arbiter-lens",
+                  version: "1.0.0",
+                },
+              },
+              id: body.id,
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                ...corsHeaders,
+              },
+            },
+          );
+
+        case "notifications/initialized":
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              result: {},
+              id: body.id,
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                ...corsHeaders,
+              },
+            },
+          );
+
+        case "ping":
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              result: {},
+              id: body.id,
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                ...corsHeaders,
+              },
+            },
+          );
+
+        case "tools/list":
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              result: {
+                tools: [
+                  {
+                    name: "get_projects",
+                    description: "List all available projects in the spec workbench",
+                    inputSchema: {
+                      type: "object",
+                      properties: {},
+                    },
+                  },
+                  {
+                    name: "get_resolved_spec",
+                    description: "Get the resolved specification for a project",
+                    inputSchema: {
+                      type: "object",
+                      properties: {
+                        projectId: { type: "string", description: "The project ID" },
+                      },
+                      required: ["projectId"],
+                    },
+                  },
+                  {
+                    name: "validate_project",
+                    description: "Validate a project's CUE specification",
+                    inputSchema: {
+                      type: "object",
+                      properties: {
+                        projectId: { type: "string", description: "The project ID" },
+                      },
+                      required: ["projectId"],
+                    },
+                  },
+                ],
+              },
+              id: body.id,
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                ...corsHeaders,
+              },
+            },
+          );
+
+        case "tools/call":
+          return await this.handleMcpToolCall(body, corsHeaders);
+
+        default:
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: {
+                code: -32601,
+                message: "Method not found",
+              },
+              id: body.id,
+            }),
+            {
+              status: 404,
+              headers: {
+                "Content-Type": "application/json",
+                ...corsHeaders,
+              },
+            },
+          );
+      }
+    } catch (error) {
+      logger.error("MCP request handling error", error instanceof Error ? error : undefined);
+
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: {
+            code: -32603,
+            message: "Internal error",
+          },
+          id: null,
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        },
+      );
+    }
+  }
+
+  /**
+   * Handle MCP tool call requests
+   */
+  private async handleMcpToolCall(
+    body: any,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      const toolName = body.params?.name;
+      const args = body.params?.arguments || {};
+
+      if (!toolName) {
+        return new Response(
+          JSON.stringify({
+            jsonrpc: "2.0",
+            error: {
+              code: -32602,
+              message: "Invalid params - tool name required",
+            },
+            id: body.id,
+          }),
+          {
+            status: 400,
+            headers: {
+              "Content-Type": "application/json",
+              ...corsHeaders,
+            },
+          },
+        );
+      }
+
+      // Create a dummy auth context for MCP tool calls since we're bypassing auth
+      const authContext = {
+        user_id: "mcp-client",
+        authorized: true,
+      };
+
+      switch (toolName) {
+        case "get_projects":
+          try {
+            const projects = await this.db.listProjects();
+            return new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                result: {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Found ${projects.length} projects:\n${projects.map((p) => `- ${p.id}: ${p.name || "Unnamed Project"}`).join("\n")}`,
+                    },
+                  ],
+                  isError: false,
+                },
+                id: body.id,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  ...corsHeaders,
+                },
+              },
+            );
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                result: {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Error listing projects: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                  ],
+                  isError: true,
+                },
+                id: body.id,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  ...corsHeaders,
+                },
+              },
+            );
+          }
+
+        case "get_resolved_spec":
+          try {
+            const projectId = args.projectId;
+            if (!projectId) {
+              return new Response(
+                JSON.stringify({
+                  jsonrpc: "2.0",
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: "Error: projectId parameter is required",
+                      },
+                    ],
+                    isError: true,
+                  },
+                  id: body.id,
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...corsHeaders,
+                  },
+                },
+              );
+            }
+
+            const version = await this.db.getLatestVersion(projectId);
+            if (!version) {
+              return new Response(
+                JSON.stringify({
+                  jsonrpc: "2.0",
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: `No resolved specification found for project: ${projectId}`,
+                      },
+                    ],
+                    isError: false,
+                  },
+                  id: body.id,
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...corsHeaders,
+                  },
+                },
+              );
+            }
+
+            const resolved = JSON.parse(version.resolved_json);
+            return new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                result: {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Resolved specification for project ${projectId}:\n\`\`\`json\n${JSON.stringify(resolved, null, 2)}\n\`\`\``,
+                    },
+                  ],
+                  isError: false,
+                },
+                id: body.id,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  ...corsHeaders,
+                },
+              },
+            );
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                result: {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Error getting resolved spec: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                  ],
+                  isError: true,
+                },
+                id: body.id,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  ...corsHeaders,
+                },
+              },
+            );
+          }
+
+        case "validate_project":
+          try {
+            const projectId = args.projectId;
+            if (!projectId) {
+              return new Response(
+                JSON.stringify({
+                  jsonrpc: "2.0",
+                  result: {
+                    content: [
+                      {
+                        type: "text",
+                        text: "Error: projectId parameter is required",
+                      },
+                    ],
+                    isError: true,
+                  },
+                  id: body.id,
+                }),
+                {
+                  status: 200,
+                  headers: {
+                    "Content-Type": "application/json",
+                    ...corsHeaders,
+                  },
+                },
+              );
+            }
+
+            const fragments = await this.db.listFragments(projectId);
+            const validationResult = await this.specEngine.validateProject(projectId, fragments);
+
+            let resultText = `Validation results for project ${projectId}:\n`;
+            resultText += `Status: ${validationResult.success ? "✅ Valid" : "❌ Invalid"}\n`;
+            resultText += `Spec Hash: ${validationResult.specHash}\n`;
+
+            if (validationResult.errors.length > 0) {
+              resultText += `\nErrors:\n${validationResult.errors.map((e) => `- ${e}`).join("\n")}`;
+            }
+
+            if (validationResult.warnings.length > 0) {
+              resultText += `\nWarnings:\n${validationResult.warnings.map((w) => `- ${w}`).join("\n")}`;
+            }
+
+            return new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                result: {
+                  content: [
+                    {
+                      type: "text",
+                      text: resultText,
+                    },
+                  ],
+                  isError: !validationResult.success,
+                },
+                id: body.id,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  ...corsHeaders,
+                },
+              },
+            );
+          } catch (error) {
+            return new Response(
+              JSON.stringify({
+                jsonrpc: "2.0",
+                result: {
+                  content: [
+                    {
+                      type: "text",
+                      text: `Error validating project: ${error instanceof Error ? error.message : String(error)}`,
+                    },
+                  ],
+                  isError: true,
+                },
+                id: body.id,
+              }),
+              {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                  ...corsHeaders,
+                },
+              },
+            );
+          }
+
+        default:
+          return new Response(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: {
+                code: -32601,
+                message: `Unknown tool: ${toolName}`,
+              },
+              id: body.id,
+            }),
+            {
+              status: 404,
+              headers: {
+                "Content-Type": "application/json",
+                ...corsHeaders,
+              },
+            },
+          );
+      }
+    } catch (error) {
+      logger.error("MCP tool call error", error instanceof Error ? error : undefined);
+
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: {
+            code: -32603,
+            message: "Internal error",
+          },
+          id: body.id,
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        },
+      );
     }
   }
 

@@ -208,7 +208,7 @@ export default function MonacoTest() {
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-4 h-4 rounded" style={{backgroundColor: '#4ECDC4'}}></div>
-                                <span>Constraints: <code>=~</code>, <code>></code>, <code><=</code></span>
+                                <span>Constraints: <code>=~</code>, <code>&gt;</code>, <code>&lt;=</code></span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="w-4 h-4 rounded" style={{backgroundColor: '#6A9955'}}></div>

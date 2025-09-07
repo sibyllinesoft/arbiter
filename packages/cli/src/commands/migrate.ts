@@ -2,7 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
 import { glob } from "glob";
-import type { AssemblyConfig, AppSpec, ProductSpec, UIRoute, FlowSpec, LocatorToken, CssSelector, ServiceConfig } from "@arbiter/shared";
+import type {
+  AssemblyConfig,
+  AppSpec,
+  ProductSpec,
+  UIRoute,
+  FlowSpec,
+  LocatorToken,
+  CssSelector,
+  ServiceConfig,
+} from "@arbiter/shared";
 
 export interface MigrateOptions {
   from?: string;
@@ -96,8 +105,8 @@ function detectV1AssemblyStructure(content: string): boolean {
     /services\s*:\s*{/, // Services block
     /meta\s*:\s*{\s*name\s*:/, // Meta block
   ];
-  
-  return v1Patterns.some(pattern => pattern.test(content));
+
+  return v1Patterns.some((pattern) => pattern.test(content));
 }
 
 /**
@@ -111,25 +120,29 @@ function detectV2AppStructure(content: string): boolean {
     /flows\s*:\s*\[/, // Flows array
     /locators\s*:\s*{/, // Locators object
   ];
-  
-  return v2Patterns.some(pattern => pattern.test(content));
+
+  return v2Patterns.some((pattern) => pattern.test(content));
 }
 
 /**
  * Parse v1 assembly.cue file content to AssemblyConfig
  */
-function parseV1Assembly(content: string): { success: boolean; config?: AssemblyConfig; errors: string[] } {
+function parseV1Assembly(content: string): {
+  success: boolean;
+  config?: AssemblyConfig;
+  errors: string[];
+} {
   const errors: string[] = [];
-  
+
   try {
     // This is a simplified parser - in a real implementation, you'd use CUE's Go API
     // or a proper CUE parser. For now, we'll extract key information with regex.
-    
+
     const config: Partial<AssemblyConfig> = {
       config: { language: "", kind: "" },
       metadata: { name: "", version: "" },
       deployment: { target: "kubernetes" },
-      services: {}
+      services: {},
     };
 
     // Extract language
@@ -157,11 +170,11 @@ function parseV1Assembly(content: string): { success: boolean; config?: Assembly
     }
 
     // Extract services (simplified)
-    const servicesMatch = content.match(/services\s*:\s*{([^}]+(?:{[^}]*}[^}]*)*)}/) ;
+    const servicesMatch = content.match(/services\s*:\s*{([^}]+(?:{[^}]*}[^}]*)*)}/);
     if (servicesMatch) {
       const servicesContent = servicesMatch[1];
       const serviceBlocks = servicesContent.split(/(?=\w+\s*:\s*{)/);
-      
+
       for (const block of serviceBlocks) {
         const serviceNameMatch = block.match(/^(\w+)\s*:/);
         if (serviceNameMatch) {
@@ -170,7 +183,7 @@ function parseV1Assembly(content: string): { success: boolean; config?: Assembly
             name: serviceName,
             serviceType: "bespoke",
             language: config.config?.language || "typescript",
-            type: "deployment"
+            type: "deployment",
           };
 
           // Extract service type
@@ -188,8 +201,8 @@ function parseV1Assembly(content: string): { success: boolean; config?: Assembly
           // Extract ports
           const portsMatch = block.match(/ports\s*:\s*\[([^\]]+)\]/);
           if (portsMatch) {
-            const ports = portsMatch[1].split(',').map(p => parseInt(p.trim()));
-            service.ports = ports.map(port => ({ name: `port-${port}`, port }));
+            const ports = portsMatch[1].split(",").map((p) => parseInt(p.trim()));
+            service.ports = ports.map((port) => ({ name: `port-${port}`, port }));
           }
 
           config.services![serviceName] = service as ServiceConfig;
@@ -204,10 +217,10 @@ function parseV1Assembly(content: string): { success: boolean; config?: Assembly
       errors.push("Could not extract name from metadata");
     }
 
-    return { 
-      success: errors.length === 0, 
-      config: errors.length === 0 ? config as AssemblyConfig : undefined, 
-      errors 
+    return {
+      success: errors.length === 0,
+      config: errors.length === 0 ? (config as AssemblyConfig) : undefined,
+      errors,
     };
   } catch (error) {
     errors.push(`Parse error: ${error instanceof Error ? error.message : String(error)}`);
@@ -230,8 +243,8 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
       roles: ["user"], // Default role, could be enhanced based on service analysis
       slos: {
         p95_page_load_ms: 2000, // Default SLO
-        uptime: "99.9%" // Default uptime
-      }
+        uptime: "99.9%", // Default uptime
+      },
     };
 
     // Generate UI routes from services
@@ -247,7 +260,7 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
         id: routeId,
         path: `/${serviceName}`,
         capabilities: ["list", "create", "view"],
-        components: [`${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}Table`]
+        components: [`${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}Table`],
       };
       routes.push(route);
 
@@ -257,14 +270,16 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
         id: detailRouteId,
         path: `/${serviceName}/:id`,
         capabilities: ["edit", "delete"],
-        components: [`${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}Form`]
+        components: [`${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}Form`],
       };
       routes.push(detailRoute);
 
       // Generate basic locators
-      locators[`btn:Create${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}`] = `[data-testid="create-${serviceName}"]`;
+      locators[`btn:Create${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}`] =
+        `[data-testid="create-${serviceName}"]`;
       locators[`field:${serviceName}Name`] = `[data-testid="${serviceName}-name"]`;
-      locators[`btn:Save${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}`] = `[data-testid="save-${serviceName}"]`;
+      locators[`btn:Save${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}`] =
+        `[data-testid="save-${serviceName}"]`;
 
       // Generate basic flow
       const flow: FlowSpec = {
@@ -275,13 +290,13 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
           { click: `btn:Create${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}` },
           { fill: { locator: `field:${serviceName}Name`, value: `Test ${serviceName}` } },
           { click: `btn:Save${serviceName.charAt(0).toUpperCase()}${serviceName.slice(1)}` },
-          { 
-            expect: { 
-              locator: "toast:Saved" as LocatorToken, 
-              state: "visible" 
-            } 
-          }
-        ]
+          {
+            expect: {
+              locator: "toast:Saved" as LocatorToken,
+              state: "visible",
+            },
+          },
+        ],
       };
       flows.push(flow);
     }
@@ -293,7 +308,7 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
     const appSpec: AppSpec = {
       product,
       ui: {
-        routes
+        routes,
       },
       locators,
       flows,
@@ -301,21 +316,23 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
         coverage_targets: {
           unit: 80,
           integration: 70,
-          e2e: 60
-        }
+          e2e: 60,
+        },
       },
       ops: {
         deployment: {
           target: v1Config.deployment.target,
           ci_cd: {
             provider: "github_actions",
-            environments: ["staging", "production"]
-          }
-        }
-      }
+            environments: ["staging", "production"],
+          },
+        },
+      },
     };
 
-    warnings.push(`Generated ${routes.length} UI routes from ${Object.keys(v1Config.services).length} services`);
+    warnings.push(
+      `Generated ${routes.length} UI routes from ${Object.keys(v1Config.services).length} services`,
+    );
     warnings.push(`Generated ${Object.keys(locators).length} locators`);
     warnings.push(`Generated ${flows.length} basic flows`);
 
@@ -323,14 +340,14 @@ function convertV1ToV2(v1Config: AssemblyConfig): V1ToV2ConversionResult {
       success: true,
       appSpec,
       errors,
-      warnings
+      warnings,
     };
   } catch (error) {
     errors.push(`Conversion error: ${error instanceof Error ? error.message : String(error)}`);
     return {
       success: false,
       errors,
-      warnings
+      warnings,
     };
   }
 }
@@ -348,10 +365,10 @@ function generateV2CueContent(appSpec: AppSpec): string {
   lines.push("product: {");
   lines.push(`  name: "${appSpec.product.name}"`);
   if (appSpec.product.goals && appSpec.product.goals.length > 0) {
-    lines.push(`  goals: [${appSpec.product.goals.map(g => `"${g}"`).join(", ")}]`);
+    lines.push(`  goals: [${appSpec.product.goals.map((g) => `"${g}"`).join(", ")}]`);
   }
   if (appSpec.product.roles && appSpec.product.roles.length > 0) {
-    lines.push(`  roles: [${appSpec.product.roles.map(r => `"${r}"`).join(", ")}]`);
+    lines.push(`  roles: [${appSpec.product.roles.map((r) => `"${r}"`).join(", ")}]`);
   }
   if (appSpec.product.slos) {
     lines.push("  slos: {");
@@ -369,7 +386,9 @@ function generateV2CueContent(appSpec: AppSpec): string {
   // UI routes
   lines.push("ui: routes: [");
   for (const route of appSpec.ui.routes) {
-    lines.push(`  { id: "${route.id}", path: "${route.path}", capabilities: [${route.capabilities.map(c => `"${c}"`).join(", ")}]${route.components ? `, components: [${route.components.map(c => `"${c}"`).join(", ")}]` : ""} },`);
+    lines.push(
+      `  { id: "${route.id}", path: "${route.path}", capabilities: [${route.capabilities.map((c) => `"${c}"`).join(", ")}]${route.components ? `, components: [${route.components.map((c) => `"${c}"`).join(", ")}]` : ""} },`,
+    );
   }
   lines.push("]");
   lines.push("");
@@ -396,14 +415,18 @@ function generateV2CueContent(appSpec: AppSpec): string {
     }
     lines.push(`    steps: [`);
     for (const step of flow.steps) {
-      lines.push(`      {${Object.entries(step).map(([key, value]) => {
-        if (typeof value === "string") {
-          return ` ${key}: "${value}"`;
-        } else if (typeof value === "object" && value !== null) {
-          return ` ${key}: ${JSON.stringify(value)}`;
-        }
-        return ` ${key}: ${value}`;
-      }).join(",")} },`);
+      lines.push(
+        `      {${Object.entries(step)
+          .map(([key, value]) => {
+            if (typeof value === "string") {
+              return ` ${key}: "${value}"`;
+            } else if (typeof value === "object" && value !== null) {
+              return ` ${key}: ${JSON.stringify(value)}`;
+            }
+            return ` ${key}: ${value}`;
+          })
+          .join(",")} },`,
+      );
     }
     lines.push(`    ]`);
     lines.push(`  },`);
@@ -435,7 +458,9 @@ function generateV2CueContent(appSpec: AppSpec): string {
         lines.push("    ci_cd: {");
         lines.push(`      provider: "${appSpec.ops.deployment.ci_cd.provider}"`);
         if (appSpec.ops.deployment.ci_cd.environments) {
-          lines.push(`      environments: [${appSpec.ops.deployment.ci_cd.environments.map(e => `"${e}"`).join(", ")}]`);
+          lines.push(
+            `      environments: [${appSpec.ops.deployment.ci_cd.environments.map((e) => `"${e}"`).join(", ")}]`,
+          );
         }
         lines.push("    }");
       }
@@ -458,7 +483,7 @@ async function applySchemaV1ToV2Migration(
 
   try {
     const content = await fs.readFile(file, "utf-8");
-    
+
     // Parse v1 assembly
     const parseResult = parseV1Assembly(content);
     if (!parseResult.success || !parseResult.config) {
@@ -481,7 +506,7 @@ async function applySchemaV1ToV2Migration(
     // Write new content (with .v2 extension for safety)
     const v2FilePath = file.replace(/\.cue$/, ".v2.cue");
     await fs.writeFile(v2FilePath, v2Content, "utf-8");
-    
+
     console.log(chalk.green(`  ✓ Generated v2 schema: ${v2FilePath}`));
     warnings.push(`V2 schema written to: ${v2FilePath}`);
 
@@ -629,8 +654,9 @@ async function generateMigrationPlan(
       const content = await fs.readFile(file, "utf-8");
 
       // Check for v1 to v2 schema migration needs
-      const needsSchemaV1ToV2 = detectV1AssemblyStructure(content) && !detectV2AppStructure(content);
-      
+      const needsSchemaV1ToV2 =
+        detectV1AssemblyStructure(content) && !detectV2AppStructure(content);
+
       // Check for syntax migration needs
       const needsSyntaxMigration = [
         content.includes("cue.lang.io/go/"),
@@ -699,10 +725,14 @@ function displayMigrationPlan(plan: MigrationPlan, options: MigrateOptions): voi
   if (filesToMigrate.length > 0) {
     console.log(chalk.bold("Files to migrate:"));
     for (const file of filesToMigrate) {
-      const icon = file.migration_type === "schema" ? "🔄" : 
-                   file.migration_type === "syntax" ? "📝" : "🔄📝";
-      const typeLabel = file.migration_type === "schema" ? "(v1→v2 schema)" :
-                       file.migration_type === "syntax" ? "(CUE syntax)" : "(schema + syntax)";
+      const icon =
+        file.migration_type === "schema" ? "🔄" : file.migration_type === "syntax" ? "📝" : "🔄📝";
+      const typeLabel =
+        file.migration_type === "schema"
+          ? "(v1→v2 schema)"
+          : file.migration_type === "syntax"
+            ? "(CUE syntax)"
+            : "(schema + syntax)";
       console.log(`  ${chalk.yellow(icon)} ${file.path} ${chalk.dim(typeLabel)}`);
       if (file.errors.length > 0) {
         for (const error of file.errors) {
@@ -759,7 +789,9 @@ async function executeMigration(plan: MigrationPlan, options: MigrateOptions): P
   let errorCount = 0;
 
   for (const fileInfo of filesToMigrate) {
-    console.log(`Migrating ${chalk.blue(fileInfo.path)}... ${chalk.dim(`(${fileInfo.migration_type})`)}`);
+    console.log(
+      `Migrating ${chalk.blue(fileInfo.path)}... ${chalk.dim(`(${fileInfo.migration_type})`)}`,
+    );
 
     let migrationSuccess = true;
     const allErrors: string[] = [];
@@ -777,7 +809,7 @@ async function executeMigration(plan: MigrationPlan, options: MigrateOptions): P
       }
     }
 
-    // Apply syntax migration if needed  
+    // Apply syntax migration if needed
     if (fileInfo.migration_type === "syntax" || fileInfo.migration_type === "both") {
       const syntaxResult = await applySyntaxMigrations(fileInfo.path);
       if (!syntaxResult.success) {
@@ -808,14 +840,14 @@ async function executeMigration(plan: MigrationPlan, options: MigrateOptions): P
         } else {
           console.log(`  ${chalk.green("✓")} Migration successful`);
           if (allWarnings.length > 0) {
-            allWarnings.forEach(warning => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
+            allWarnings.forEach((warning) => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
           }
           successCount++;
         }
       } else {
         console.log(`  ${chalk.green("✓")} Migration successful`);
         if (allWarnings.length > 0) {
-          allWarnings.forEach(warning => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
+          allWarnings.forEach((warning) => console.log(`    ${chalk.yellow("ℹ")} ${warning}`));
         }
         successCount++;
       }
@@ -834,7 +866,7 @@ async function executeMigration(plan: MigrationPlan, options: MigrateOptions): P
   console.log(chalk.cyan("Migration Summary:"));
   console.log(`Successful: ${chalk.green(successCount)}`);
   console.log(`Failed: ${chalk.red(errorCount)}`);
-  
+
   if (plan.summary.schema_migrations > 0) {
     console.log();
     console.log(chalk.blue("Schema Migration Notes:"));

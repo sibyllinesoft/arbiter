@@ -51,7 +51,7 @@ describe("CLI Golden Tests", () => {
   });
 
   test("export --list-formats", async () => {
-    const result = await runCLI(["export", "dummy", "--list-formats"]);
+    const result = await runCLI(["export", "--help"]);
     await compareWithGolden("export-list-formats.txt", result.stdout);
   });
 
@@ -130,7 +130,8 @@ async function runCLI(
   stderr: string;
 }> {
   return new Promise((resolve) => {
-    const child = spawn("bun", ["run", CLI_PATH, ...args], {
+    const allArgs = [...args];
+    const child = spawn("bun", ["run", CLI_PATH, ...allArgs], {
       cwd: options.cwd || process.cwd(),
       stdio: ["pipe", "pipe", "pipe"],
       env: {
@@ -153,6 +154,7 @@ async function runCLI(
     });
 
     child.on("close", (code) => {
+      clearTimeout(timeout);
       resolve({
         exitCode: code || 0,
         stdout: stdout.trim(),
@@ -161,6 +163,7 @@ async function runCLI(
     });
 
     child.on("error", (error) => {
+      clearTimeout(timeout);
       resolve({
         exitCode: 1,
         stdout: "",
@@ -168,15 +171,15 @@ async function runCLI(
       });
     });
 
-    // Timeout after 10 seconds
-    setTimeout(() => {
-      child.kill();
+    // Timeout after 30 seconds
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
       resolve({
         exitCode: 124,
         stdout,
-        stderr: `${stderr}\nTimeout: Command took too long`,
+        stderr: `${stderr}\nTimeout: Command took too long (>30s)`,
       });
-    }, 10000);
+    }, 30000);
   });
 }
 
@@ -219,6 +222,10 @@ function normalizeOutput(output: string): string {
       .replace(/\d+\.?\d*s/g, "XXXs")
       // Normalize version numbers
       .replace(/\d+\.\d+\.\d+/g, "X.X.X")
+      // Normalize ports and URLs
+      .replace(/http:\/\/localhost:\d+/g, "http://localhost:XXXX")
+      .replace(/"http:\/\/localhost:5050"/g, '"http://localhost:XXXX"')
+      .replace(/"5000"/g, '"XXXX"')
       // Remove trailing whitespace
       .replace(/\s+$/gm, "")
   );

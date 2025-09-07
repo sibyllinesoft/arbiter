@@ -1,6 +1,5 @@
 {
   "apiUrl": "http://localhost:5050",
   "timeout": 750,
-  "color": true,
-  "survey": false
+  "color": true
 }

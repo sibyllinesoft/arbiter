@@ -4,7 +4,6 @@ import type { ConflictEntry, ConflictResolution } from "../types.js";
  * Handles detection and resolution of conflicts between SRF fragments
  */
 export class ConflictResolver {
-
   /**
    * Detect conflicts between two CUE specifications
    */
@@ -12,20 +11,35 @@ export class ConflictResolver {
     newSpec: ParsedSpec,
     existingSpec: ParsedSpec,
     newFragmentId: string,
-    existingFragmentId: string
+    existingFragmentId: string,
   ): Promise<ConflictEntry[]> {
     const conflicts: ConflictEntry[] = [];
 
     // Schema conflicts - same path with different types
-    const schemaConflicts = this.detectSchemaConflicts(newSpec, existingSpec, newFragmentId, existingFragmentId);
+    const schemaConflicts = this.detectSchemaConflicts(
+      newSpec,
+      existingSpec,
+      newFragmentId,
+      existingFragmentId,
+    );
     conflicts.push(...schemaConflicts);
 
     // Field overlap conflicts - same field name with different constraints
-    const fieldConflicts = this.detectFieldConflicts(newSpec, existingSpec, newFragmentId, existingFragmentId);
+    const fieldConflicts = this.detectFieldConflicts(
+      newSpec,
+      existingSpec,
+      newFragmentId,
+      existingFragmentId,
+    );
     conflicts.push(...fieldConflicts);
 
     // Constraint contradictions - conflicting validation rules
-    const constraintConflicts = this.detectConstraintConflicts(newSpec, existingSpec, newFragmentId, existingFragmentId);
+    const constraintConflicts = this.detectConstraintConflicts(
+      newSpec,
+      existingSpec,
+      newFragmentId,
+      existingFragmentId,
+    );
     conflicts.push(...constraintConflicts);
 
     return conflicts;
@@ -37,14 +51,14 @@ export class ConflictResolver {
   async resolveConflicts(
     conflicts: ConflictEntry[],
     newFragmentContent: string,
-    existingSpec: string
+    existingSpec: string,
   ): Promise<{
     success: boolean;
     resolutions: ConflictResolution[];
     error?: string;
   }> {
     const resolutions: ConflictResolution[] = [];
-    
+
     try {
       for (const conflict of conflicts) {
         const resolution = await this.resolveConflict(conflict, newFragmentContent, existingSpec);
@@ -54,18 +68,17 @@ export class ConflictResolver {
       }
 
       const success = resolutions.length === conflicts.length;
-      
+
       return {
         success,
         resolutions,
-        error: success ? undefined : "Some conflicts could not be resolved automatically"
+        error: success ? undefined : "Some conflicts could not be resolved automatically",
       };
-
     } catch (error) {
       return {
         success: false,
         resolutions,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -84,7 +97,7 @@ export class ConflictResolver {
 
     for (const conflict of conflicts) {
       const canAutoResolve = this.canAutoResolve(conflict);
-      
+
       if (canAutoResolve) {
         automatic.push(conflict);
         suggestions[conflict.fragmentId] = this.getAutoResolutionSuggestion(conflict);
@@ -104,21 +117,21 @@ export class ConflictResolver {
     newSpec: ParsedSpec,
     existingSpec: ParsedSpec,
     newFragmentId: string,
-    existingFragmentId: string
+    existingFragmentId: string,
   ): ConflictEntry[] {
     const conflicts: ConflictEntry[] = [];
 
     // Compare type definitions
     for (const [path, newType] of Object.entries(newSpec.types)) {
       const existingType = existingSpec.types[path];
-      
+
       if (existingType && !this.areTypesCompatible(newType, existingType)) {
         conflicts.push({
           fragmentId: newFragmentId,
           type: "schema_mismatch",
           description: `Type definition conflict at path '${path}': ${newType.signature} vs ${existingType.signature}`,
           cuePath: path,
-          severity: "error"
+          severity: "error",
         });
       }
     }
@@ -133,23 +146,23 @@ export class ConflictResolver {
     newSpec: ParsedSpec,
     existingSpec: ParsedSpec,
     newFragmentId: string,
-    existingFragmentId: string
+    existingFragmentId: string,
   ): ConflictEntry[] {
     const conflicts: ConflictEntry[] = [];
 
     // Compare field definitions
     for (const [path, newField] of Object.entries(newSpec.fields)) {
       const existingField = existingSpec.fields[path];
-      
+
       if (existingField && !this.areFieldsCompatible(newField, existingField)) {
         const severity = this.determineFieldConflictSeverity(newField, existingField);
-        
+
         conflicts.push({
           fragmentId: newFragmentId,
           type: "field_overlap",
           description: `Field conflict at '${path}': different constraints or types`,
           cuePath: path,
-          severity
+          severity,
         });
       }
     }
@@ -164,24 +177,27 @@ export class ConflictResolver {
     newSpec: ParsedSpec,
     existingSpec: ParsedSpec,
     newFragmentId: string,
-    existingFragmentId: string
+    existingFragmentId: string,
   ): ConflictEntry[] {
     const conflicts: ConflictEntry[] = [];
 
     // Compare constraints
     for (const [path, newConstraints] of Object.entries(newSpec.constraints)) {
       const existingConstraints = existingSpec.constraints[path];
-      
+
       if (existingConstraints) {
-        const contradictions = this.findConstraintContradictions(newConstraints, existingConstraints);
-        
+        const contradictions = this.findConstraintContradictions(
+          newConstraints,
+          existingConstraints,
+        );
+
         for (const contradiction of contradictions) {
           conflicts.push({
             fragmentId: newFragmentId,
             type: "constraint_contradiction",
             description: `Constraint contradiction at '${path}': ${contradiction}`,
             cuePath: path,
-            severity: "error"
+            severity: "error",
           });
         }
       }
@@ -196,18 +212,18 @@ export class ConflictResolver {
   private async resolveConflict(
     conflict: ConflictEntry,
     newFragmentContent: string,
-    existingSpec: string
+    existingSpec: string,
   ): Promise<ConflictResolution | null> {
     switch (conflict.type) {
       case "schema_mismatch":
         return this.resolveSchemaConflict(conflict, newFragmentContent, existingSpec);
-      
+
       case "field_overlap":
         return this.resolveFieldConflict(conflict, newFragmentContent, existingSpec);
-      
+
       case "constraint_contradiction":
         return this.resolveConstraintConflict(conflict, newFragmentContent, existingSpec);
-      
+
       default:
         return null;
     }
@@ -219,24 +235,24 @@ export class ConflictResolver {
   private resolveSchemaConflict(
     conflict: ConflictEntry,
     newFragmentContent: string,
-    existingSpec: string
+    existingSpec: string,
   ): ConflictResolution | null {
     // For schema mismatches, we can try to merge compatible types
     // or rename one of the conflicting types
-    
+
     if (conflict.severity === "warning") {
       // Try merge strategy for compatible types
       return {
         method: "merge",
         resolved_at: new Date().toISOString(),
-        resolver: "auto"
+        resolver: "auto",
       };
     } else {
       // For errors, suggest renaming
       return {
         method: "rename",
         resolved_at: new Date().toISOString(),
-        resolver: "auto"
+        resolver: "auto",
       };
     }
   }
@@ -247,17 +263,17 @@ export class ConflictResolver {
   private resolveFieldConflict(
     conflict: ConflictEntry,
     newFragmentContent: string,
-    existingSpec: string
+    existingSpec: string,
   ): ConflictResolution | null {
     if (conflict.severity === "warning") {
       // Try to merge field constraints
       return {
         method: "merge",
         resolved_at: new Date().toISOString(),
-        resolver: "auto"
+        resolver: "auto",
       };
     }
-    
+
     return null; // Manual resolution required for field errors
   }
 
@@ -267,7 +283,7 @@ export class ConflictResolver {
   private resolveConstraintConflict(
     conflict: ConflictEntry,
     newFragmentContent: string,
-    existingSpec: string
+    existingSpec: string,
   ): ConflictResolution | null {
     // Constraint contradictions typically require manual resolution
     return null;
@@ -362,7 +378,7 @@ export class ConflictResolver {
    */
   private determineFieldConflictSeverity(
     field1: FieldDefinition,
-    field2: FieldDefinition
+    field2: FieldDefinition,
   ): "error" | "warning" {
     // Type mismatch is always an error
     if (field1.type !== field2.type) {
@@ -370,7 +386,10 @@ export class ConflictResolver {
     }
 
     // Constraint conflicts might be warnings if they're not contradictory
-    const contradictions = this.findConstraintContradictions(field1.constraints, field2.constraints);
+    const contradictions = this.findConstraintContradictions(
+      field1.constraints,
+      field2.constraints,
+    );
     return contradictions.length > 0 ? "error" : "warning";
   }
 
@@ -381,8 +400,8 @@ export class ConflictResolver {
     const contradictions: string[] = [];
 
     // Simple contradiction detection
-    const numericConstraints1 = constraints1.filter(c => c.match(/[<>=]/));
-    const numericConstraints2 = constraints2.filter(c => c.match(/[<>=]/));
+    const numericConstraints1 = constraints1.filter((c) => c.match(/[<>=]/));
+    const numericConstraints2 = constraints2.filter((c) => c.match(/[<>=]/));
 
     for (const c1 of numericConstraints1) {
       for (const c2 of numericConstraints2) {
@@ -400,18 +419,18 @@ export class ConflictResolver {
    */
   private areNumericConstraintsContradictory(constraint1: string, constraint2: string): boolean {
     // Very basic check - would need more sophisticated parsing in production
-    
+
     // Example: "> 10" and "< 5" are contradictory
     const gt1 = constraint1.match(/>\s*(\d+)/);
     const lt2 = constraint2.match(/<\s*(\d+)/);
-    
+
     if (gt1 && lt2) {
       return parseInt(gt1[1]) >= parseInt(lt2[1]);
     }
 
     const lt1 = constraint1.match(/<\s*(\d+)/);
     const gt2 = constraint2.match(/>\s*(\d+)/);
-    
+
     if (lt1 && gt2) {
       return parseInt(lt1[1]) <= parseInt(gt2[1]);
     }

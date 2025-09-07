@@ -404,15 +404,15 @@ export async function initCommand(
         }
 
         console.log(chalk.green(`\n✓ Created project "${name}" in ${directory}`));
-        
+
         if (options.composition) {
           console.log(chalk.green("✓ Initialized project composition system"));
         }
-        
+
         console.log(chalk.dim("\nNext steps:"));
         console.log(chalk.dim(`  cd ${directory}`));
         console.log(chalk.dim("  arbiter check"));
-        
+
         if (options.composition) {
           console.log(chalk.dim("  arbiter composition validate  # Validate composition setup"));
           console.log(chalk.dim("  arbiter composition import <srf-file>  # Import SRF fragments"));
@@ -493,15 +493,15 @@ async function getProjectDetails(
   // Composition template selection (only if composition is enabled)
   questions.push({
     type: "list",
-    name: "compositionTemplate", 
+    name: "compositionTemplate",
     message: "Choose composition template:",
     choices: [
       { name: "Basic - Simple fragment management with auto-conflict resolution", value: "basic" },
       { name: "Advanced - Manual conflict resolution with detailed validation", value: "advanced" },
-      { name: "Enterprise - Strict validation with comprehensive recovery", value: "enterprise" }
+      { name: "Enterprise - Strict validation with comprehensive recovery", value: "enterprise" },
     ],
     default: "basic",
-    when: (answers: any) => answers.composition || options.composition
+    when: (answers: any) => answers.composition || options.composition,
   });
 
   const answers = await inquirer.prompt(questions);
@@ -576,7 +576,7 @@ async function initializeCompositionSystem(
   options: InitOptions,
 ): Promise<void> {
   const compositionManager = new ProjectCompositionManager(targetDir);
-  
+
   await compositionManager.initialize({
     name: projectName,
     description: description,

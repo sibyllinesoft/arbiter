@@ -9,12 +9,12 @@ import type {
   ConflictEntry,
   ImportSrfOptions,
   ValidateCompositionOptions,
-  RecoveryOptions
+  RecoveryOptions,
 } from "../types.js";
-import { SRFValidator } from './validator.js';
-import { ConflictResolver } from './conflict-resolver.js';
-import { SpecificationComposer } from './spec-composer.js';
-import { RecoveryManager } from './recovery-manager.js';
+import { SRFValidator } from "./validator.js";
+import { ConflictResolver } from "./conflict-resolver.js";
+import { SpecificationComposer } from "./spec-composer.js";
+import { RecoveryManager } from "./recovery-manager.js";
 
 /**
  * Main project composition manager that coordinates all composition operations
@@ -57,26 +57,26 @@ export class ProjectCompositionManager {
         description: options.description,
         created_at: new Date().toISOString(),
         last_modified: new Date().toISOString(),
-        version: "1.0.0"
+        version: "1.0.0",
       },
       composition: {
         composedSpecDir: ".arbiter/composed",
-        fragmentsDir: ".arbiter/fragments", 
+        fragmentsDir: ".arbiter/fragments",
         conflictResolutionDir: ".arbiter/conflicts",
         masterSpecFile: "master.cue",
         autoResolveConflicts: template === "basic",
-        validationLevel: template === "enterprise" ? "strict" : "moderate"
+        validationLevel: template === "enterprise" ? "strict" : "moderate",
       },
       fragments: [],
-      integrationHistory: []
+      integrationHistory: [],
     };
 
     // Create required directories
     const dirs = [
       config.composition.composedSpecDir,
       config.composition.fragmentsDir,
-      config.composition.conflictResolutionDir
-    ].map(dir => path.join(this.projectRoot, dir));
+      config.composition.conflictResolutionDir,
+    ].map((dir) => path.join(this.projectRoot, dir));
 
     for (const dir of dirs) {
       await fs.ensureDir(dir);
@@ -88,9 +88,9 @@ export class ProjectCompositionManager {
 
     // Initialize master specification with basic structure
     const masterSpecPath = path.join(
-      this.projectRoot, 
+      this.projectRoot,
       config.composition.composedSpecDir,
-      config.composition.masterSpecFile
+      config.composition.masterSpecFile,
     );
 
     const initialSpec = `// Master CUE Specification for ${options.name}
@@ -148,8 +148,8 @@ project: #ProjectSpec & {
       success: true,
       recoveryData: {
         filesAffected: [masterSpecPath],
-        backups: {}
-      }
+        backups: {},
+      },
     };
 
     config.integrationHistory.push(historyEntry);
@@ -164,8 +164,10 @@ project: #ProjectSpec & {
       return this.config;
     }
 
-    if (!await fs.pathExists(this.configPath)) {
-      throw new Error(`Project composition not initialized. Run 'arbiter init --composition' first.`);
+    if (!(await fs.pathExists(this.configPath))) {
+      throw new Error(
+        `Project composition not initialized. Run 'arbiter init --composition' first.`,
+      );
     }
 
     this.config = await fs.readJson(this.configPath);
@@ -202,7 +204,7 @@ project: #ProjectSpec & {
         if (!validationResult.isValid) {
           return {
             success: false,
-            error: `SRF validation failed: ${validationResult.errors.join(", ")}`
+            error: `SRF validation failed: ${validationResult.errors.join(", ")}`,
           };
         }
       }
@@ -216,7 +218,7 @@ project: #ProjectSpec & {
       const fragmentPath = path.join(
         this.projectRoot,
         config.composition.fragmentsDir,
-        `${fragmentId}-${fragmentFilename}`
+        `${fragmentId}-${fragmentFilename}`,
       );
       await fs.copy(options.fragment, fragmentPath);
 
@@ -233,7 +235,7 @@ project: #ProjectSpec & {
         version: await this.calculateFragmentVersion(fragmentContent),
         dependencies: options.dependencies || [],
         conflicts: conflicts,
-        status: conflicts.length > 0 ? "conflict" : "integrated"
+        status: conflicts.length > 0 ? "conflict" : "integrated",
       };
 
       // If there are conflicts and auto-resolution is disabled, mark as pending
@@ -246,7 +248,7 @@ project: #ProjectSpec & {
           success: false,
           fragmentId,
           conflicts,
-          error: "Conflicts detected. Use 'arbiter composition resolve' to resolve them."
+          error: "Conflicts detected. Use 'arbiter composition resolve' to resolve them.",
         };
       }
 
@@ -255,7 +257,7 @@ project: #ProjectSpec & {
         const resolutionResults = await this.conflictResolver.resolveConflicts(
           conflicts,
           fragmentContent,
-          await this.getCurrentSpec()
+          await this.getCurrentSpec(),
         );
 
         if (!resolutionResults.success) {
@@ -267,16 +269,14 @@ project: #ProjectSpec & {
             success: false,
             fragmentId,
             conflicts,
-            error: `Auto-resolution failed: ${resolutionResults.error}`
+            error: `Auto-resolution failed: ${resolutionResults.error}`,
           };
         }
 
         // Apply resolutions
-        fragmentEntry.conflicts = conflicts.map(conflict => ({
+        fragmentEntry.conflicts = conflicts.map((conflict) => ({
           ...conflict,
-          resolution: resolutionResults.resolutions.find(r => 
-            r.method !== "manual"
-          )
+          resolution: resolutionResults.resolutions.find((r) => r.method !== "manual"),
         }));
       }
 
@@ -285,7 +285,7 @@ project: #ProjectSpec & {
       const newSpec = await this.specComposer.integrateFragment(
         currentSpec,
         fragmentContent,
-        fragmentEntry
+        fragmentEntry,
       );
 
       // Create integration history entry
@@ -299,8 +299,8 @@ project: #ProjectSpec & {
         success: true,
         recoveryData: {
           filesAffected: [fragmentPath, await this.getMasterSpecPath()],
-          backups: {}
-        }
+          backups: {},
+        },
       };
 
       // Update composed specification
@@ -314,13 +314,12 @@ project: #ProjectSpec & {
       return {
         success: true,
         fragmentId,
-        conflicts: conflicts.length > 0 ? conflicts : undefined
+        conflicts: conflicts.length > 0 ? conflicts : undefined,
       };
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -336,30 +335,30 @@ project: #ProjectSpec & {
     fragmentsStatus: Record<string, string>;
   }> {
     const config = await this.loadConfig();
-    
+
     const result = {
       success: true,
       conflicts: [] as ConflictEntry[],
       errors: [] as string[],
       warnings: [] as string[],
-      fragmentsStatus: {} as Record<string, string>
+      fragmentsStatus: {} as Record<string, string>,
     };
 
     try {
       // Validate each fragment individually
       const fragmentsToValidate = options.fragments
-        ? config.fragments.filter(f => options.fragments!.includes(f.id))
+        ? config.fragments.filter((f) => options.fragments!.includes(f.id))
         : config.fragments;
 
       for (const fragment of fragmentsToValidate) {
         try {
           const fragmentContent = await fs.readFile(fragment.path, "utf-8");
           const validation = await this.validator.validateSRF(fragment.path);
-          
+
           if (!validation.isValid) {
             result.success = false;
             result.errors.push(
-              `Fragment ${fragment.id} (${fragment.filename}): ${validation.errors.join(", ")}`
+              `Fragment ${fragment.id} (${fragment.filename}): ${validation.errors.join(", ")}`,
             );
             result.fragmentsStatus[fragment.id] = "invalid";
           } else {
@@ -368,11 +367,10 @@ project: #ProjectSpec & {
 
           // Add existing conflicts
           result.conflicts.push(...fragment.conflicts);
-
         } catch (error) {
           result.success = false;
           result.errors.push(
-            `Failed to validate fragment ${fragment.id}: ${error instanceof Error ? error.message : String(error)}`
+            `Failed to validate fragment ${fragment.id}: ${error instanceof Error ? error.message : String(error)}`,
           );
           result.fragmentsStatus[fragment.id] = "error";
         }
@@ -381,7 +379,7 @@ project: #ProjectSpec & {
       // Validate the composed specification
       const currentSpec = await this.getCurrentSpec();
       const specValidation = await this.validator.validateComposedSpec(currentSpec);
-      
+
       if (!specValidation.isValid) {
         result.success = false;
         result.errors.push(...specValidation.errors);
@@ -395,11 +393,10 @@ project: #ProjectSpec & {
         result.success = false;
         result.errors.push(`Dependency cycles detected: ${dependencyCycles.join(", ")}`);
       }
-
     } catch (error) {
       result.success = false;
       result.errors.push(
-        `Composition validation failed: ${error instanceof Error ? error.message : String(error)}`
+        `Composition validation failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
@@ -417,37 +414,37 @@ project: #ProjectSpec & {
     const composedSpec: ComposedSpecification = {
       metadata: {
         composedAt: new Date().toISOString(),
-        sourceFragments: config.fragments.map(f => f.id),
-        version: await this.calculateSpecVersion(currentSpec)
+        sourceFragments: config.fragments.map((f) => f.id),
+        version: await this.calculateSpecVersion(currentSpec),
       },
       spec: currentSpec,
       validation: {
         valid: validation.success,
-        errors: validation.errors.map(error => ({
+        errors: validation.errors.map((error) => ({
           message: error,
           path: "unknown",
-          sourceFragment: "unknown", 
+          sourceFragment: "unknown",
           severity: "major" as const,
         })),
-        warnings: validation.warnings.map(warning => ({
+        warnings: validation.warnings.map((warning) => ({
           message: warning,
           path: "unknown",
           sourceFragment: "unknown",
-          category: "compatibility" as const
-        }))
+          category: "compatibility" as const,
+        })),
       },
       recovery: {
         regenerationCapable: validation.success,
         externalDependencies: this.extractExternalDependencies(config.fragments),
-        fileStructure: await this.generateFileStructure()
-      }
+        fileStructure: await this.generateFileStructure(),
+      },
     };
 
     // Save the composed specification
     const composedSpecPath = path.join(
       this.projectRoot,
       config.composition.composedSpecDir,
-      "composed-spec.json"
+      "composed-spec.json",
     );
 
     await fs.writeJson(composedSpecPath, composedSpec, { spaces: 2 });
@@ -469,13 +466,16 @@ project: #ProjectSpec & {
   /**
    * Detect conflicts between a new fragment and existing ones
    */
-  private async detectConflicts(fragmentContent: string, fragmentId: string): Promise<ConflictEntry[]> {
+  private async detectConflicts(
+    fragmentContent: string,
+    fragmentId: string,
+  ): Promise<ConflictEntry[]> {
     const config = await this.loadConfig();
     const conflicts: ConflictEntry[] = [];
 
     // Parse new fragment for comparison
     const newFragmentSpec = await this.specComposer.parseFragment(fragmentContent);
-    
+
     // Compare with existing fragments
     for (const existingFragment of config.fragments) {
       try {
@@ -486,14 +486,11 @@ project: #ProjectSpec & {
           newFragmentSpec,
           existingSpec,
           fragmentId,
-          existingFragment.id
+          existingFragment.id,
         );
 
         conflicts.push(...fragmentConflicts);
-      } catch (error) {
-        // Skip fragments that can't be read or parsed
-        continue;
-      }
+      } catch (error) {}
     }
 
     return conflicts;
@@ -505,7 +502,7 @@ project: #ProjectSpec & {
   private async getCurrentSpec(): Promise<string> {
     const config = await this.loadConfig();
     const masterSpecPath = await this.getMasterSpecPath();
-    
+
     try {
       return await fs.readFile(masterSpecPath, "utf-8");
     } catch {
@@ -530,7 +527,7 @@ project: #ProjectSpec & {
     return path.join(
       this.projectRoot,
       config.composition.composedSpecDir,
-      config.composition.masterSpecFile
+      config.composition.masterSpecFile,
     );
   }
 
@@ -570,7 +567,7 @@ project: #ProjectSpec & {
       visited.add(fragmentId);
       recursionStack.add(fragmentId);
 
-      const fragment = fragments.find(f => f.id === fragmentId);
+      const fragment = fragments.find((f) => f.id === fragmentId);
       if (fragment) {
         for (const dep of fragment.dependencies) {
           if (dfs(dep, [...path, fragmentId])) {
@@ -597,10 +594,10 @@ project: #ProjectSpec & {
    */
   private extractExternalDependencies(fragments: SRFFragmentEntry[]): string[] {
     const deps = new Set<string>();
-    
+
     for (const fragment of fragments) {
       // Add fragment dependencies that aren't other fragments
-      const fragmentIds = new Set(fragments.map(f => f.id));
+      const fragmentIds = new Set(fragments.map((f) => f.id));
       for (const dep of fragment.dependencies) {
         if (!fragmentIds.has(dep)) {
           deps.add(dep);
@@ -616,13 +613,13 @@ project: #ProjectSpec & {
    */
   private async generateFileStructure(): Promise<Record<string, string>> {
     const structure: Record<string, string> = {};
-    
+
     // Add basic CUE project structure
     structure["cue.mod/module.cue"] = "module template";
     structure["schema.cue"] = "schema template";
     structure["values.cue"] = "values template";
     structure[".arbiter/project.json"] = "composition config";
-    
+
     return structure;
   }
 }

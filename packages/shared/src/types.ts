@@ -106,8 +106,8 @@ export interface ServiceConfig {
   name: string;
   serviceType: ServiceType;
   language: string;
-  type: 'deployment' | 'statefulset' | 'daemonset' | 'job' | 'cronjob';
-  
+  type: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
+
   // Image and build configuration
   image?: string;
   sourceDirectory?: string;
@@ -116,7 +116,7 @@ export interface ServiceConfig {
     buildArgs?: Record<string, string>;
     target?: string;
   };
-  
+
   // Runtime configuration
   replicas?: number;
   ports?: Array<{
@@ -130,13 +130,13 @@ export interface ServiceConfig {
     name: string;
     path: string;
     size?: string;
-    type?: 'emptyDir' | 'persistentVolumeClaim' | 'configMap' | 'secret';
+    type?: "emptyDir" | "persistentVolumeClaim" | "configMap" | "secret";
   }>;
   resources?: {
     requests?: { cpu?: string; memory?: string };
     limits?: { cpu?: string; memory?: string };
   };
-  
+
   // Enhanced configuration management
   config?: {
     files?: Array<{
@@ -152,26 +152,26 @@ export interface ServiceConfig {
       external?: string;
     }>;
   };
-  
+
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
 }
 
 export interface DeploymentConfig {
   target: DeploymentTarget;
-  
+
   // Kubernetes configuration
   cluster?: {
     name: string;
-    provider: 'kubernetes' | 'eks' | 'gke' | 'aks';
+    provider: "kubernetes" | "eks" | "gke" | "aks";
     context?: string;
     namespace: string;
     config?: Record<string, any>;
   };
-  
-  // Docker Compose configuration  
+
+  // Docker Compose configuration
   compose?: {
-    version: '3.8' | '3.9';
+    version: "3.8" | "3.9";
     networks?: Record<string, any>;
     volumes?: Record<string, any>;
     profiles?: string[];
@@ -226,7 +226,7 @@ export interface TestCompositionResult {
   conflicts: Array<{
     test: string;
     reason: string;
-    resolution: 'skip' | 'merge' | 'replace';
+    resolution: "skip" | "merge" | "replace";
   }>;
   generated: TestCase[];
   preserved: TestCase[];
@@ -261,7 +261,7 @@ export interface EnhancedGenerateOptions {
   verbose?: boolean;
   format?: "auto" | "json" | "yaml" | "typescript" | "python" | "rust" | "go" | "shell";
   spec?: string;
-  
+
   // Enhanced options
   deploymentTarget?: DeploymentTarget;
   skipTests?: boolean;

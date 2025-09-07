@@ -23,7 +23,7 @@ export class RecoveryManager {
     const result = {
       success: false,
       recoveredFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
@@ -55,7 +55,6 @@ export class RecoveryManager {
           result.error = `Unknown recovery mode: ${options.mode}`;
           return result;
       }
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
       return result;
@@ -68,7 +67,7 @@ export class RecoveryManager {
   async recoverFromHistoryPoint(
     recoveryPoint: string,
     targetDir: string,
-    options: RecoveryOptions = {}
+    options: RecoveryOptions = {},
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -77,17 +76,15 @@ export class RecoveryManager {
     const result = {
       success: false,
       recoveredFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       // Load project configuration
       const config = await this.loadProjectConfig();
-      
+
       // Find the recovery point in integration history
-      const historyEntry = config.integrationHistory.find(
-        entry => entry.id === recoveryPoint
-      );
+      const historyEntry = config.integrationHistory.find((entry) => entry.id === recoveryPoint);
 
       if (!historyEntry) {
         result.error = `Recovery point ${recoveryPoint} not found in integration history`;
@@ -96,7 +93,9 @@ export class RecoveryManager {
 
       // Restore files from the recovery point
       if (historyEntry.recoveryData.backups) {
-        for (const [originalPath, backupPath] of Object.entries(historyEntry.recoveryData.backups)) {
+        for (const [originalPath, backupPath] of Object.entries(
+          historyEntry.recoveryData.backups,
+        )) {
           const targetPath = path.join(targetDir, path.relative(this.projectRoot, originalPath));
           await fs.ensureDir(path.dirname(targetPath));
           await fs.copy(backupPath, targetPath);
@@ -111,7 +110,6 @@ export class RecoveryManager {
       result.recoveredFiles.push(specPath);
 
       result.success = true;
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -132,7 +130,7 @@ export class RecoveryManager {
       success: false,
       snapshotId: "",
       snapshotPath: "",
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
@@ -142,11 +140,11 @@ export class RecoveryManager {
 
       // Copy current project state
       const filesToSnapshot = await this.identifyProjectFiles();
-      
+
       for (const filePath of filesToSnapshot) {
         const relativePath = path.relative(this.projectRoot, filePath);
         const targetPath = path.join(snapshotDir, relativePath);
-        
+
         await fs.ensureDir(path.dirname(targetPath));
         await fs.copy(filePath, targetPath);
       }
@@ -157,7 +155,7 @@ export class RecoveryManager {
         created_at: new Date().toISOString(),
         description: description || "Manual snapshot",
         files_count: filesToSnapshot.length,
-        composed_spec_version: await this.getCurrentSpecVersion()
+        composed_spec_version: await this.getCurrentSpecVersion(),
       };
 
       const metadataPath = path.join(snapshotDir, "snapshot.json");
@@ -166,7 +164,6 @@ export class RecoveryManager {
       result.success = true;
       result.snapshotId = snapshotId;
       result.snapshotPath = snapshotDir;
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -194,25 +191,25 @@ export class RecoveryManager {
   }> {
     const result = {
       integrationHistory: [] as any[],
-      snapshots: [] as any[]
+      snapshots: [] as any[],
     };
 
     try {
       // Load integration history from project config
       const config = await this.loadProjectConfig();
-      result.integrationHistory = config.integrationHistory.map(entry => ({
+      result.integrationHistory = config.integrationHistory.map((entry) => ({
         id: entry.id,
         timestamp: entry.timestamp,
         operation: entry.operation,
         fragments: entry.fragments,
-        success: entry.success
+        success: entry.success,
       }));
 
       // Load snapshots from filesystem
       const snapshotsDir = path.join(this.projectRoot, ".arbiter", "snapshots");
       if (await fs.pathExists(snapshotsDir)) {
         const snapshotDirs = await fs.readdir(snapshotsDir);
-        
+
         for (const snapshotDir of snapshotDirs) {
           const metadataPath = path.join(snapshotsDir, snapshotDir, "snapshot.json");
           if (await fs.pathExists(metadataPath)) {
@@ -221,7 +218,6 @@ export class RecoveryManager {
           }
         }
       }
-
     } catch (error) {
       // Return empty results if loading fails
     }
@@ -240,7 +236,7 @@ export class RecoveryManager {
     const result = {
       canRecover: true,
       issues: [] as string[],
-      recommendations: [] as string[]
+      recommendations: [] as string[],
     };
 
     try {
@@ -249,7 +245,9 @@ export class RecoveryManager {
       if (!composedSpec) {
         result.canRecover = false;
         result.issues.push("No composed specification found");
-        result.recommendations.push("Run 'arbiter composition generate' to create composed specification");
+        result.recommendations.push(
+          "Run 'arbiter composition generate' to create composed specification",
+        );
         return result;
       }
 
@@ -267,21 +265,29 @@ export class RecoveryManager {
       }
 
       // Check external dependencies
-      const missingDeps = await this.checkExternalDependencies(composedSpec.recovery.externalDependencies);
+      const missingDeps = await this.checkExternalDependencies(
+        composedSpec.recovery.externalDependencies,
+      );
       if (missingDeps.length > 0) {
         result.issues.push(`Missing external dependencies: ${missingDeps.join(", ")}`);
         result.recommendations.push("Install missing dependencies before recovery");
       }
 
       // Check file structure template
-      if (!composedSpec.recovery.fileStructure || Object.keys(composedSpec.recovery.fileStructure).length === 0) {
+      if (
+        !composedSpec.recovery.fileStructure ||
+        Object.keys(composedSpec.recovery.fileStructure).length === 0
+      ) {
         result.issues.push("File structure template is empty");
-        result.recommendations.push("Regenerate composed specification with updated file structure");
+        result.recommendations.push(
+          "Regenerate composed specification with updated file structure",
+        );
       }
-
     } catch (error) {
       result.canRecover = false;
-      result.issues.push(`Recovery validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.issues.push(
+        `Recovery validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -293,7 +299,7 @@ export class RecoveryManager {
   private async performFullRecovery(
     composedSpec: ComposedSpecification,
     targetDir: string,
-    options: RecoveryOptions
+    options: RecoveryOptions,
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -302,14 +308,14 @@ export class RecoveryManager {
     const result = {
       success: false,
       recoveredFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       // 1. Recreate directory structure
       const structureResult = await this.recreateFileStructure(
         composedSpec.recovery.fileStructure,
-        targetDir
+        targetDir,
       );
       result.recoveredFiles.push(...structureResult.createdFiles);
 
@@ -329,13 +335,12 @@ export class RecoveryManager {
       if (options.includeExternalDeps) {
         const depsResult = await this.installExternalDependencies(
           composedSpec.recovery.externalDependencies,
-          targetDir
+          targetDir,
         );
         // Dependencies don't create files, so we just note success
       }
 
       result.success = true;
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -349,7 +354,7 @@ export class RecoveryManager {
   private async performSpecOnlyRecovery(
     composedSpec: ComposedSpecification,
     targetDir: string,
-    options: RecoveryOptions
+    options: RecoveryOptions,
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -358,14 +363,13 @@ export class RecoveryManager {
     const result = {
       success: false,
       recoveredFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       const specResult = await this.restoreSpecification(composedSpec, targetDir);
       result.recoveredFiles.push(...specResult.createdFiles);
       result.success = true;
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -379,7 +383,7 @@ export class RecoveryManager {
   private async performStructureOnlyRecovery(
     composedSpec: ComposedSpecification,
     targetDir: string,
-    options: RecoveryOptions
+    options: RecoveryOptions,
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -388,17 +392,16 @@ export class RecoveryManager {
     const result = {
       success: false,
       recoveredFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       const structureResult = await this.recreateFileStructure(
         composedSpec.recovery.fileStructure,
-        targetDir
+        targetDir,
       );
       result.recoveredFiles.push(...structureResult.createdFiles);
       result.success = true;
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -410,7 +413,7 @@ export class RecoveryManager {
 
   private async loadComposedSpec(): Promise<ComposedSpecification | null> {
     const specPath = path.join(this.projectRoot, ".arbiter", "composed", "composed-spec.json");
-    
+
     try {
       return await fs.readJson(specPath);
     } catch {
@@ -425,7 +428,7 @@ export class RecoveryManager {
 
   private async checkExternalDependencies(dependencies: string[]): Promise<string[]> {
     const missing: string[] = [];
-    
+
     // Simple check - in production, this would be more sophisticated
     for (const dep of dependencies) {
       // Check if dependency is available (simplified)
@@ -434,7 +437,7 @@ export class RecoveryManager {
         missing.push(dep);
       }
     }
-    
+
     return missing;
   }
 
@@ -458,25 +461,25 @@ export class RecoveryManager {
 
   private async recreateFileStructure(
     fileStructure: Record<string, string>,
-    targetDir: string
+    targetDir: string,
   ): Promise<{
     createdFiles: string[];
     error?: string;
   }> {
     const result = {
       createdFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       for (const [filePath, template] of Object.entries(fileStructure)) {
         const fullPath = path.join(targetDir, filePath);
         await fs.ensureDir(path.dirname(fullPath));
-        
+
         // Generate content from template
         const content = await this.generateFileContentFromTemplate(template);
         await fs.writeFile(fullPath, content, "utf-8");
-        
+
         result.createdFiles.push(fullPath);
       }
     } catch (error) {
@@ -488,29 +491,28 @@ export class RecoveryManager {
 
   private async restoreSpecification(
     composedSpec: ComposedSpecification,
-    targetDir: string
+    targetDir: string,
   ): Promise<{
     createdFiles: string[];
     error?: string;
   }> {
     const result = {
       createdFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       const specDir = path.join(targetDir, ".arbiter", "composed");
       await fs.ensureDir(specDir);
-      
+
       const specPath = path.join(specDir, "master.cue");
       await fs.writeFile(specPath, composedSpec.spec, "utf-8");
       result.createdFiles.push(specPath);
-      
+
       // Also save the full composed specification
       const composedSpecPath = path.join(specDir, "composed-spec.json");
       await fs.writeJson(composedSpecPath, composedSpec, { spaces: 2 });
       result.createdFiles.push(composedSpecPath);
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -524,22 +526,21 @@ export class RecoveryManager {
   }> {
     const result = {
       createdFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       // Copy fragments from current project to target
       const fragmentsDir = path.join(this.projectRoot, ".arbiter", "fragments");
       const targetFragmentsDir = path.join(targetDir, ".arbiter", "fragments");
-      
+
       if (await fs.pathExists(fragmentsDir)) {
         await fs.ensureDir(targetFragmentsDir);
         await fs.copy(fragmentsDir, targetFragmentsDir);
-        
-        const fragmentFiles = await fs.readdir(targetFragmentsDir);
-        result.createdFiles.push(...fragmentFiles.map(f => path.join(targetFragmentsDir, f)));
-      }
 
+        const fragmentFiles = await fs.readdir(targetFragmentsDir);
+        result.createdFiles.push(...fragmentFiles.map((f) => path.join(targetFragmentsDir, f)));
+      }
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -553,20 +554,19 @@ export class RecoveryManager {
   }> {
     const result = {
       createdFiles: [] as string[],
-      error: undefined as string | undefined
+      error: undefined as string | undefined,
     };
 
     try {
       // Copy project configuration
       const configPath = path.join(this.projectRoot, ".arbiter", "project.json");
       const targetConfigPath = path.join(targetDir, ".arbiter", "project.json");
-      
+
       if (await fs.pathExists(configPath)) {
         await fs.ensureDir(path.dirname(targetConfigPath));
         await fs.copy(configPath, targetConfigPath);
         result.createdFiles.push(targetConfigPath);
       }
-
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
     }
@@ -576,7 +576,7 @@ export class RecoveryManager {
 
   private async installExternalDependencies(
     dependencies: string[],
-    targetDir: string
+    targetDir: string,
   ): Promise<{
     success: boolean;
     error?: string;
@@ -617,37 +617,35 @@ config: #Config & {
 
   private async identifyProjectFiles(): Promise<string[]> {
     const files: string[] = [];
-    
+
     // CUE files
     const cueFiles = await this.findFilesWithExtension(".cue");
     files.push(...cueFiles);
-    
+
     // Configuration files
-    const configFiles = [
-      ".arbiter/project.json",
-      ".arbiter.json",
-      "cue.mod/module.cue"
-    ].map(f => path.join(this.projectRoot, f));
-    
+    const configFiles = [".arbiter/project.json", ".arbiter.json", "cue.mod/module.cue"].map((f) =>
+      path.join(this.projectRoot, f),
+    );
+
     for (const configFile of configFiles) {
       if (await fs.pathExists(configFile)) {
         files.push(configFile);
       }
     }
-    
+
     return files;
   }
 
   private async findFilesWithExtension(extension: string): Promise<string[]> {
     const files: string[] = [];
-    
+
     const findFiles = async (dir: string): Promise<void> => {
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true });
-        
+
         for (const entry of entries) {
           const fullPath = path.join(dir, entry.name);
-          
+
           if (entry.isDirectory() && !entry.name.startsWith(".")) {
             await findFiles(fullPath);
           } else if (entry.isFile() && entry.name.endsWith(extension)) {
@@ -658,7 +656,7 @@ config: #Config & {
         // Skip directories that can't be read
       }
     };
-    
+
     await findFiles(this.projectRoot);
     return files;
   }

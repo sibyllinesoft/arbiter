@@ -21,16 +21,6 @@ import { onboardCommand } from "./commands/onboard.js";
 import { migrateCommand } from "./commands/migrate.js";
 import { previewCommand } from "./commands/preview.js";
 import { renameCommand, showNamingHelp } from "./commands/rename.js";
-import { srfCommand } from "./commands/srf.js";
-import {
-  compositionInitCommand,
-  compositionImportCommand,
-  compositionValidateCommand,
-  compositionGenerateCommand,
-  compositionRecoverCommand,
-  compositionListCommand,
-  compositionStatusCommand,
-} from "./commands/composition.js";
 import { surfaceCommand } from "./commands/surface.js";
 import { syncCommand } from "./commands/sync.js";
 import { templateCommand } from "./commands/template.js";
@@ -58,11 +48,6 @@ import type {
   MigrateOptions,
   PreviewOptions,
   RenameOptions,
-  SrfOptions,
-  CompositionOptions,
-  ImportSrfOptions,
-  ValidateCompositionOptions,
-  RecoveryOptions,
   SurfaceOptions,
   SyncOptions,
   TemplateOptions,
@@ -1575,248 +1560,253 @@ program
   });
 
 /**
- * SRF (Structured Requirements Format) command - Proto-spec conversion
+ * Spec command - Git-style spec revision management
  */
-const srfCmd = program
-  .command("srf")
-  .description("convert proto-specs (EMBEDDED_SRF.md, requirements.md) to CUE specifications");
+const specCmd = program
+  .command("spec")
+  .description("manage spec fragments and revisions with git-style operations");
 
-srfCmd
-  .command("create <file>")
-  .description("convert proto-spec file to SRF format")
-  .option("-o, --output <file>", "output SRF file path")
-  .option("--output-dir <dir>", "output directory for SRF file")
-  .option("-f, --force", "overwrite existing SRF file")
-  .option("--dry-run", "show what would be created without creating files")
-  .option("-v, --verbose", "verbose output with parsed structure")
-  .action(async (file: string, options: SrfOptions, command) => {
-    try {
-      const config = command.parent?.parent?.config;
-      if (!config) {
-        throw new Error("Configuration not loaded");
-      }
-
-      const exitCode = await srfCommand("create", file, options, config);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Command failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-srfCmd
-  .command("import <file>")
-  .description("convert proto-spec or SRF file to CUE specification")
-  .option("-o, --output <file>", "output CUE file path")
-  .option("--output-dir <dir>", "output directory for CUE file")
-  .option("-f, --force", "overwrite existing CUE file")
-  .option("--dry-run", "show what would be created without creating files")
-  .option("-v, --verbose", "verbose output with generated CUE")
-  .action(async (file: string, options: SrfOptions, command) => {
-    try {
-      const config = command.parent?.parent?.config;
-      if (!config) {
-        throw new Error("Configuration not loaded");
-      }
-
-      const exitCode = await srfCommand("import", file, options, config);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Command failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-srfCmd
-  .command("validate <file>")
-  .description("validate SRF file structure and format")
-  .option("-v, --verbose", "verbose validation output")
-  .action(async (file: string, options: SrfOptions, command) => {
-    try {
-      const config = command.parent?.parent?.config;
-      if (!config) {
-        throw new Error("Configuration not loaded");
-      }
-
-      const exitCode = await srfCommand("validate", file, options, config);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Command failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-srfCmd
-  .command("help")
-  .description("show detailed SRF workflow help")
-  .action(async () => {
-    const exitCode = await srfCommand("help");
-    process.exit(exitCode);
-  });
-
-/**
- * Composition command - Project composition system for SRF fragment management
- */
-const compositionCmd = program
-  .command("composition")
-  .description("manage project composition system for SRF fragment integration");
-
-compositionCmd
-  .command("init")
-  .description("initialize project composition system in current directory")
-  .option("-v, --verbose", "verbose output")
-  .option("--dry-run", "show what would be done without making changes")
-  .option("--force", "force initialization even if conflicts exist")
-  .action(async (options: CompositionOptions, command) => {
-    try {
-      const exitCode = await compositionInitCommand(options);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Composition init failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-compositionCmd
-  .command("import <fragment>")
-  .description("import an SRF fragment into the project")
-  .option("-d, --description <desc>", "description for the imported fragment")
-  .option("--dependencies <deps>", "comma-separated list of fragment dependencies")
-  .option("--skip-validation", "skip validation during import")
-  .option("-v, --verbose", "verbose output")
-  .option("--dry-run", "show what would be done without making changes")
-  .option("--force", "force import even if conflicts exist")
-  .option("--auto-resolve", "enable automatic conflict resolution")
-  .action(async (fragment: string, options: ImportSrfOptions, command) => {
-    try {
-      if (options.dependencies) {
-        options.dependencies = (options.dependencies as string).split(",").map((d) => d.trim());
-      }
-
-      const exitCode = await compositionImportCommand(fragment, options);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Fragment import failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-compositionCmd
-  .command("validate")
-  .description("validate current project composition")
-  .option("--fragments <ids>", "comma-separated list of fragment IDs to validate")
-  .option("--detailed-report", "generate detailed conflict resolution report")
-  .option("--export-results <file>", "export validation results to file")
-  .option("--format <format>", "output format (table, json, yaml)", "table")
-  .option("-v, --verbose", "verbose output")
-  .option("--validation-level <level>", "validation strictness (strict, moderate, lenient)")
-  .action(async (options: ValidateCompositionOptions, command) => {
-    try {
-      if (options.fragments) {
-        options.fragments = (options.fragments as string).split(",").map((f) => f.trim());
-      }
-
-      const exitCode = await compositionValidateCommand(options);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Composition validation failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-compositionCmd
-  .command("generate")
-  .description("generate composed specification for recovery")
-  .option("-v, --verbose", "verbose output with file paths")
-  .option("--format <format>", "output format (table, json, yaml)", "table")
-  .action(async (options: CompositionOptions, command) => {
-    try {
-      const exitCode = await compositionGenerateCommand(options);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Composed specification generation failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-compositionCmd
-  .command("recover [target-dir]")
-  .description("recover project from composed specification")
-  .option("--recovery-point <id>", "specific integration point to recover from")
-  .option("--include-external-deps", "include external dependencies in recovery")
-  .option("--mode <mode>", "recovery mode (full, spec_only, structure_only)", "full")
-  .option("-v, --verbose", "verbose output with recovered file list")
-  .option("--dry-run", "show what would be recovered without making changes")
-  .option("--force", "force recovery even if validation fails")
-  .action(async (targetDir: string | undefined, options: RecoveryOptions, command) => {
-    try {
-      const exitCode = await compositionRecoverCommand(targetDir, options);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Project recovery failed:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-compositionCmd
-  .command("list")
-  .description("list project fragments and their status")
-  .option("--format <format>", "output format (table, json)", "table")
-  .option("-v, --verbose", "verbose output with fragment details")
-  .action(async (options: CompositionOptions, command) => {
-    try {
-      const exitCode = await compositionListCommand(options);
-      process.exit(exitCode);
-    } catch (error) {
-      console.error(
-        chalk.red("Failed to list fragments:"),
-        error instanceof Error ? error.message : String(error),
-      );
-      process.exit(2);
-    }
-  });
-
-compositionCmd
+specCmd
   .command("status")
-  .description("show project composition status and health")
+  .description("show the status of spec fragments and revisions")
+  .option("--project-id <id>", "project ID", "default")
   .option("--format <format>", "output format (table, json)", "table")
-  .option("-v, --verbose", "verbose output with detailed information")
-  .action(async (options: CompositionOptions, command) => {
+  .action(async (options, command) => {
     try {
-      const exitCode = await compositionStatusCommand(options);
-      process.exit(exitCode);
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const apiClient = new ApiClient(config);
+      const fragments = await apiClient.listFragments(options.projectId);
+      
+      if (options.format === "json") {
+        console.log(JSON.stringify(fragments, null, 2));
+      } else {
+        console.log(chalk.cyan("Spec Fragment Status:"));
+        for (const fragment of fragments.data || []) {
+          console.log(`  ${fragment.path} (${fragment.id.substring(0, 8)})`);
+        }
+      }
     } catch (error) {
       console.error(
-        chalk.red("Failed to get composition status:"),
+        chalk.red("Command failed:"),
         error instanceof Error ? error.message : String(error),
       );
       process.exit(2);
     }
   });
+
+specCmd
+  .command("checkout <fragment-path> [revision]")
+  .description("checkout a specific revision of a spec fragment")
+  .option("--project-id <id>", "project ID", "default")
+  .option("-o, --output <file>", "output file path")
+  .action(async (fragmentPath: string, revision: string | undefined, options, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const apiClient = new ApiClient(config);
+      
+      // Get fragment info
+      const fragments = await apiClient.listFragments(options.projectId);
+      const fragment = fragments.data?.find(f => f.path === fragmentPath);
+      
+      if (!fragment) {
+        console.error(chalk.red(`Fragment not found: ${fragmentPath}`));
+        process.exit(1);
+      }
+
+      // Get revisions
+      const revisionsResponse = await fetch(`${config.apiUrl}/api/fragments/${fragment.id}/revisions`);
+      if (!revisionsResponse.ok) {
+        throw new Error(`Failed to get revisions: ${revisionsResponse.statusText}`);
+      }
+      
+      const revisionsData = await revisionsResponse.json();
+      const revisions = revisionsData.revisions;
+      
+      let targetRevision;
+      if (revision) {
+        // Find specific revision by number or ID
+        targetRevision = revisions.find(r => 
+          r.revision_number.toString() === revision || r.id === revision
+        );
+        if (!targetRevision) {
+          console.error(chalk.red(`Revision not found: ${revision}`));
+          process.exit(1);
+        }
+      } else {
+        // Get latest revision (head)
+        targetRevision = revisions[0];
+      }
+
+      // Get the specific revision content
+      const revisionResponse = await fetch(`${config.apiUrl}/api/fragments/${fragment.id}/revisions/${targetRevision.id}`);
+      if (!revisionResponse.ok) {
+        throw new Error(`Failed to get revision content: ${revisionResponse.statusText}`);
+      }
+      
+      const revisionData = await revisionResponse.json();
+      const content = revisionData.content;
+      
+      if (options.output) {
+        await require('fs').promises.writeFile(options.output, content);
+        console.log(chalk.green(`✓ Checked out revision ${targetRevision.revision_number} to ${options.output}`));
+      } else {
+        console.log(content);
+      }
+      
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+specCmd
+  .command("diff <fragment-path> [old-revision] [new-revision]")
+  .description("show differences between spec revisions")
+  .option("--project-id <id>", "project ID", "default")
+  .option("--unified <lines>", "lines of context", "3")
+  .action(async (fragmentPath: string, oldRevision: string | undefined, newRevision: string | undefined, options, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const apiClient = new ApiClient(config);
+      
+      // Get fragment info
+      const fragments = await apiClient.listFragments(options.projectId);
+      const fragment = fragments.data?.find(f => f.path === fragmentPath);
+      
+      if (!fragment) {
+        console.error(chalk.red(`Fragment not found: ${fragmentPath}`));
+        process.exit(1);
+      }
+
+      // Get revisions
+      const revisionsResponse = await fetch(`${config.apiUrl}/api/fragments/${fragment.id}/revisions`);
+      if (!revisionsResponse.ok) {
+        throw new Error(`Failed to get revisions: ${revisionsResponse.statusText}`);
+      }
+      
+      const revisionsData = await revisionsResponse.json();
+      const revisions = revisionsData.revisions;
+      
+      // Default to comparing HEAD with previous revision
+      let oldRev, newRev;
+      
+      if (!oldRevision && !newRevision) {
+        // Compare HEAD with previous
+        if (revisions.length < 2) {
+          console.log(chalk.yellow("Only one revision exists, nothing to compare"));
+          process.exit(0);
+        }
+        newRev = revisions[0]; // HEAD
+        oldRev = revisions[1]; // Previous
+      } else {
+        // Find specific revisions
+        oldRev = revisions.find(r => 
+          r.revision_number.toString() === oldRevision || r.id === oldRevision
+        );
+        newRev = newRevision ? revisions.find(r => 
+          r.revision_number.toString() === newRevision || r.id === newRevision
+        ) : revisions[0];
+        
+        if (!oldRev || !newRev) {
+          console.error(chalk.red("One or more revisions not found"));
+          process.exit(1);
+        }
+      }
+
+      // Simulate diff output (simplified)
+      console.log(chalk.cyan(`diff --git a/${fragmentPath} b/${fragmentPath}`));
+      console.log(chalk.yellow(`--- ${fragmentPath} (revision ${oldRev.revision_number})`));
+      console.log(chalk.yellow(`+++ ${fragmentPath} (revision ${newRev.revision_number})`));
+      console.log();
+      console.log(chalk.dim(`Old: ${oldRev.message} by ${oldRev.author}`));
+      console.log(chalk.dim(`New: ${newRev.message} by ${newRev.author}`));
+      console.log(chalk.dim(`Content hash changed: ${oldRev.content_hash.substring(0, 12)} -> ${newRev.content_hash.substring(0, 12)}`));
+      
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+specCmd
+  .command("log <fragment-path>")
+  .description("show revision history for a spec fragment")
+  .option("--project-id <id>", "project ID", "default")
+  .option("--oneline", "condensed one-line format")
+  .option("-n, --max-count <number>", "limit number of revisions", "10")
+  .action(async (fragmentPath: string, options, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const apiClient = new ApiClient(config);
+      
+      // Get fragment info
+      const fragments = await apiClient.listFragments(options.projectId);
+      const fragment = fragments.data?.find(f => f.path === fragmentPath);
+      
+      if (!fragment) {
+        console.error(chalk.red(`Fragment not found: ${fragmentPath}`));
+        process.exit(1);
+      }
+
+      // Get revisions
+      const revisionsResponse = await fetch(`${config.apiUrl}/api/fragments/${fragment.id}/revisions`);
+      if (!revisionsResponse.ok) {
+        throw new Error(`Failed to get revisions: ${revisionsResponse.statusText}`);
+      }
+      
+      const revisionsData = await revisionsResponse.json();
+      const revisions = revisionsData.revisions.slice(0, parseInt(options.maxCount));
+      
+      if (options.oneline) {
+        for (const rev of revisions) {
+          console.log(`${chalk.yellow(rev.content_hash.substring(0, 7))} ${rev.message} (${chalk.dim(rev.author)})`);
+        }
+      } else {
+        for (const rev of revisions) {
+          console.log(chalk.yellow(`commit ${rev.content_hash}`));
+          console.log(`Author: ${rev.author}`);
+          console.log(`Date: ${rev.created_at}`);
+          console.log(`Revision: ${rev.revision_number}`);
+          console.log();
+          console.log(`    ${rev.message}`);
+          console.log();
+        }
+      }
+      
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+// Commit functionality is handled automatically by the existing add/update commands
+// Revisions are created automatically when fragments are updated
+
 
 /**
  * Config command - Manage CLI configuration
@@ -1955,43 +1945,51 @@ program.on("command:*", () => {
 program.configureHelp({
   afterAll: () => {
     return `
-${chalk.cyan("Three Main Workflows:")}
+${chalk.cyan("Arbiter CLI - Agent-Friendly Specification Management")}
 
-  ${chalk.yellow("1. BUILD SPECIFICATIONS INCREMENTALLY (NEW - Compositional):")}
-    ${chalk.dim("Build your arbiter.assembly.cue step-by-step with validation")}
-    arbiter add service api --language typescript    # Start with a service
-    arbiter add endpoint /health --service api       # Add endpoints
-    arbiter add database userdb --attach-to api      # Add dependencies
-    arbiter generate                                  # Generate project files
+${chalk.yellow("Core Workflows:")}
 
-  ${chalk.yellow("2. CONVERT EXISTING PROTO-SPECS → CUE (SRF Workflow):")}
-    ${chalk.dim("For EMBEDDED_SRF.md, requirements.md, or other proto-spec files")}
-    arbiter srf create EMBEDDED_SRF.md              # Proto-spec → SRF format
-    arbiter srf import EMBEDDED_SRF.srf              # SRF → CUE specification  
+  ${chalk.cyan("1. SPEC FRAGMENT MANAGEMENT (Git-Style):")}
+    ${chalk.dim("Manage specification fragments with full revision history")}
+    arbiter spec status                              # Show all fragments
+    arbiter spec log path/to/spec.cue               # Show revision history
+    arbiter spec diff path/to/spec.cue              # Compare revisions
+    arbiter spec checkout path/to/spec.cue          # Get latest content
+    arbiter spec checkout path/to/spec.cue 2        # Get specific revision
+
+  ${chalk.cyan("2. BUILD SPECIFICATIONS INCREMENTALLY:")}
+    ${chalk.dim("Build your specifications step-by-step with validation")}
+    arbiter add service api --language typescript   # Add services
+    arbiter add endpoint /health --service api      # Add endpoints
+    arbiter add database userdb --attach-to api     # Add dependencies
     arbiter generate                                 # Generate project files
-    
-  ${chalk.yellow("3. GENERATE FROM EXISTING CUE SPECIFICATIONS:")}
-    ${chalk.dim("When you already have arbiter.assembly.cue")}
-    arbiter generate                                 # Generate project from CUE
-    arbiter generate --include-ci --force           # Include CI/CD files
 
-${chalk.cyan("Examples:")}
-  ${chalk.dim("Convert proto-specs to CUE (NEW - SRF Workflow):")}
-    arbiter srf create requirements.md              # Convert proto-spec to SRF
-    arbiter srf create EMBEDDED_SRF.md --verbose    # Verbose conversion
-    arbiter srf import my-spec.srf --force          # SRF to CUE specification
-    arbiter srf validate my-spec.srf                # Validate SRF structure
-    arbiter srf help                                 # Detailed SRF workflow help
+  ${chalk.cyan("3. PROJECT GENERATION:")}
+    ${chalk.dim("Generate complete projects from specifications")}
+    arbiter generate                                 # Generate from current spec
+    arbiter generate --include-ci --force          # Include CI/CD files
+
+${chalk.cyan("Revision Management Examples:")}
+  ${chalk.dim("Work with spec revisions like git:")}
+    arbiter spec status                              # List all fragments
+    arbiter spec log api.cue                        # Show revision history
+    arbiter spec log api.cue --oneline             # Condensed history
+    arbiter spec diff api.cue                       # Compare HEAD with previous
+    arbiter spec diff api.cue 1 3                  # Compare specific revisions
+    arbiter spec checkout api.cue                   # Get HEAD content
+    arbiter spec checkout api.cue 2                # Get revision 2 content  
+    arbiter spec checkout api.cue 2 -o old-api.cue # Save to file
+    arbiter add endpoint /users --service api      # Adds content, creates revision automatically
     
   ${chalk.dim("Initialize new project:")}
     arbiter init my-project --template kubernetes
     
-  ${chalk.dim("Onboard existing project (NEW - Smart Migration):")}
-    arbiter onboard /path/to/existing/project       # Intelligently analyze and migrate existing project
-    arbiter onboard . --dry-run                     # Preview onboarding changes without applying
-    arbiter onboard ~/myapp --force                 # Force onboarding even if .arbiter exists
+  ${chalk.dim("Onboard existing project:")}
+    arbiter onboard /path/to/existing/project       # Analyze and migrate existing project
+    arbiter onboard . --dry-run                     # Preview onboarding changes
+    arbiter onboard ~/myapp --force                 # Force onboarding
     
-  ${chalk.dim("Build specifications compositionally (NEW - Incremental Approach):")}
+  ${chalk.dim("Build specifications incrementally:")}
     arbiter add service api --language typescript --port 3000      # Add a TypeScript service
     arbiter add service db --image postgres:15 --port 5432        # Add a database service  
     arbiter add endpoint /health --service api --method GET       # Add health endpoint
@@ -2097,40 +2095,41 @@ ${chalk.cyan("Examples:")}
     arbiter explain --verbose                     # Detailed analysis
     arbiter explain --no-hints                   # Without helpful hints
     
-  ${chalk.dim("Smart file naming (NEW):")}
-    arbiter rename --dry-run                             # Preview naming changes
-    arbiter rename --apply                               # Apply project-specific names
-    arbiter rename --help-naming                         # Show detailed naming help
-    arbiter rename --types surface,versionPlan --apply  # Rename specific file types
+  ${chalk.dim("Smart file naming:")}
+    arbiter rename --dry-run                        # Preview naming changes
+    arbiter rename --apply                          # Apply project-specific names
+    arbiter rename --help-naming                    # Show detailed naming help
     
   ${chalk.dim("Check server:")}
-    arbiter health
+    arbiter health                                  # Comprehensive health check
     
-${chalk.cyan("Smart Naming:")}
-  Arbiter now generates project-specific file names automatically:
+${chalk.cyan("Agent-Friendly Features:")}
   
-  ${chalk.dim("Instead of generic names like:")}
-    arbiter.assembly.cue, surface.json, version_plan.json
+  ${chalk.dim("Revision Tracking:")}
+    • Every spec change creates a new revision (never overwrites)
+    • Full audit trail with author, timestamp, and message
+    • Git-style commands for easy navigation and comparison
+    • Content-based deduplication prevents unnecessary revisions
     
-  ${chalk.dim("Creates project-specific names like:")}
-    myproject.assembly.cue, myproject-surface.json, myproject-version-plan.json
-    
-  ${chalk.dim("Project name detection (in order of priority):")}
-    1. --project-name flag          2. package.json name field
-    3. Assembly file name field     4. Directory name
-    
-  ${chalk.dim("Control naming behavior:")}
-    --generic-names                 # Use old generic names for compatibility
-    --output filename               # Override with explicit filename
-    --output-dir directory          # Set output directory
+  ${chalk.dim("Simple Command Structure:")}
+    • Focus on core spec management operations
+    • Consistent patterns across all commands  
+    • JSON output available for programmatic use
+    • Clear error messages and exit codes
     
 ${chalk.cyan("Configuration:")}
   Create ${chalk.yellow(".arbiter.json")} in your project root:
   {
-    "apiUrl": "http://localhost:8080",
-    "format": "table",
+    "apiUrl": "http://localhost:5050",
+    "format": "table", 
     "color": true
   }
+  
+${chalk.cyan("Getting Started:")}
+  1. Start the arbiter server: ${chalk.yellow("bun run dev")}
+  2. Check server health: ${chalk.yellow("arbiter health")}
+  3. View spec status: ${chalk.yellow("arbiter spec status")}
+  4. Add content to create revisions: ${chalk.yellow("arbiter add service api --language typescript")}
 `;
   },
 });

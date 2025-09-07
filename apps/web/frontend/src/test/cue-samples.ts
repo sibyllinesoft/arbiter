@@ -222,7 +222,7 @@ services: {
 			
 			alerts: {
 				high_error_rate: {
-					condition: "rate(http_requests_total{code=~\"5..\"}[5m]) > 0.1"
+					condition: "rate(http_requests_total{code=~"5.."}[5m]) > 0.1"
 					severity: "critical"
 					description: "High 5xx error rate in auth service"
 				}
@@ -1297,56 +1297,56 @@ project: {
  * Sample data combining multiple CUE files for complex visualization scenarios
  */
 export const combinedProjectData = {
-	requirements: basicRequirementsCue,
-	assembly: assemblySpecCue,
-	validation_errors: validationErrorsCue,
-	typescript_project: complexTypescriptProjectCue,
-	rust_project: rustMicroserviceCue,
+  requirements: basicRequirementsCue,
+  assembly: assemblySpecCue,
+  validation_errors: validationErrorsCue,
+  typescript_project: complexTypescriptProjectCue,
+  rust_project: rustMicroserviceCue,
 };
 
 /**
  * Sample resolved data (what would come from the CUE evaluation)
  */
 export const sampleResolvedData = {
-	spec_hash: "sha256:a1b2c3d4e5f6789...",
-	last_updated: new Date().toISOString(),
-	resolved: {
-		project: {
-			name: "Advanced TypeScript Microservice",
-			version: "v3.2.1",
-			language: "TypeScript",
-			runtime: "Node.js"
-		},
-		services: {
-			auth_service: {
-				name: "Authentication Service",
-				version: "v2.1.0",
-				status: "production",
-				endpoints: 4,
-				dependencies: ["redis", "vault", "sendgrid"]
-			},
-			user_service: {
-				name: "User Management Service", 
-				version: "v1.8.2",
-				status: "production",
-				endpoints: 4,
-				depends_on: ["auth_service"]
-			},
-			notification_service: {
-				name: "Notification Service",
-				version: "v0.9.1", 
-				status: "staging",
-				endpoints: 6,
-				depends_on: ["auth_service", "user_service"]
-			}
-		},
-		requirements: {
-			security: 3,
-			performance: 2,
-			compliance: 1,
-			total: 6
-		},
-		validation_status: "passed",
-		deployment_ready: true
-	}
+  spec_hash: "sha256:a1b2c3d4e5f6789...",
+  last_updated: new Date().toISOString(),
+  resolved: {
+    project: {
+      name: "Advanced TypeScript Microservice",
+      version: "v3.2.1",
+      language: "TypeScript",
+      runtime: "Node.js",
+    },
+    services: {
+      auth_service: {
+        name: "Authentication Service",
+        version: "v2.1.0",
+        status: "production",
+        endpoints: 4,
+        dependencies: ["redis", "vault", "sendgrid"],
+      },
+      user_service: {
+        name: "User Management Service",
+        version: "v1.8.2",
+        status: "production",
+        endpoints: 4,
+        depends_on: ["auth_service"],
+      },
+      notification_service: {
+        name: "Notification Service",
+        version: "v0.9.1",
+        status: "staging",
+        endpoints: 6,
+        depends_on: ["auth_service", "user_service"],
+      },
+    },
+    requirements: {
+      security: 3,
+      performance: 2,
+      compliance: 1,
+      total: 6,
+    },
+    validation_status: "passed",
+    deployment_ready: true,
+  },
 };

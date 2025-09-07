@@ -1,5 +1,4 @@
 Available templates:
-
 basic        A simple CUE project with basic structure
 kubernetes   CUE project for Kubernetes configurations
 api          CUE project for API schema definition

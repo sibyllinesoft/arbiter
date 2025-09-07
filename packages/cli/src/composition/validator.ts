@@ -6,7 +6,6 @@ import type { ValidationError, ValidationWarning } from "../types.js";
  * SRF and CUE specification validator
  */
 export class SRFValidator {
-  
   /**
    * Validate an SRF file
    */
@@ -18,12 +17,12 @@ export class SRFValidator {
     const result = {
       isValid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
       const content = await fs.readFile(filePath, "utf-8");
-      
+
       // Basic SRF structure validation
       const structureValidation = this.validateSRFStructure(content);
       if (!structureValidation.isValid) {
@@ -47,10 +46,11 @@ export class SRFValidator {
         result.errors.push(...contentValidation.errors);
       }
       result.warnings.push(...contentValidation.warnings);
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Failed to read SRF file: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Failed to read SRF file: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -67,7 +67,7 @@ export class SRFValidator {
     const result = {
       isValid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
@@ -98,15 +98,15 @@ export class SRFValidator {
           result.errors.push(...semanticValidation.errors);
         }
         result.warnings.push(...semanticValidation.warnings);
-
       } finally {
         // Clean up temp file
         await fs.remove(tempFile).catch(() => {});
       }
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Spec validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Spec validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -123,16 +123,16 @@ export class SRFValidator {
     const result = {
       isValid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
       // Check for required SRF sections
       const requiredSections = [
         "## Project Metadata",
-        "## Requirements Analysis", 
+        "## Requirements Analysis",
         "## Technical Specifications",
-        "## Quality Attributes"
+        "## Quality Attributes",
       ];
 
       for (const section of requiredSections) {
@@ -160,11 +160,11 @@ export class SRFValidator {
         try {
           // Basic YAML structure validation
           const lines = yamlContent.split("\\n");
-          let indentLevel = 0;
-          
+          const indentLevel = 0;
+
           for (const line of lines) {
             if (line.trim() === "") continue;
-            
+
             const currentIndent = line.length - line.trimStart().length;
             if (currentIndent % 2 !== 0) {
               result.warnings.push(`Inconsistent YAML indentation in block ${i + 1}`);
@@ -175,10 +175,11 @@ export class SRFValidator {
           result.isValid = false;
         }
       }
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Structure validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Structure validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -195,7 +196,7 @@ export class SRFValidator {
     const result = {
       isValid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
@@ -215,7 +216,7 @@ export class SRFValidator {
         "project_name:",
         "description:",
         "created_at:",
-        "version:"
+        "version:",
       ];
 
       for (const field of requiredFields) {
@@ -237,10 +238,11 @@ export class SRFValidator {
       if (versionMatch && !/^\\d+\\.\\d+(\\.\\d+)?/.test(versionMatch[1])) {
         result.warnings.push("version should follow semantic versioning format");
       }
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Metadata validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Metadata validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -257,22 +259,24 @@ export class SRFValidator {
     const result = {
       isValid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
       // Check for empty sections
       const sections = [
         "## Requirements Analysis",
-        "## Technical Specifications", 
+        "## Technical Specifications",
         "## Quality Attributes",
-        "## Integration Points"
+        "## Integration Points",
       ];
 
       for (const section of sections) {
-        const sectionRegex = new RegExp(`${section.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}([\\s\\S]*?)(?=##|$)`);
+        const sectionRegex = new RegExp(
+          `${section.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}([\\s\\S]*?)(?=##|$)`,
+        );
         const sectionMatch = content.match(sectionRegex);
-        
+
         if (sectionMatch) {
           const sectionContent = sectionMatch[1].trim();
           if (sectionContent.length < 50) {
@@ -284,13 +288,15 @@ export class SRFValidator {
       // Validate priority levels (Must/Should/Could/Won't)
       const requirements = content.match(/^\\s*[-*]\\s+(.+)$/gm) || [];
       const priorityKeywords = ["must", "should", "could", "won't", "will not"];
-      
+
       for (const req of requirements) {
-        const hasKeyword = priorityKeywords.some(keyword => 
-          req.toLowerCase().includes(keyword.toLowerCase())
+        const hasKeyword = priorityKeywords.some((keyword) =>
+          req.toLowerCase().includes(keyword.toLowerCase()),
         );
         if (!hasKeyword) {
-          result.warnings.push(`Requirement may be missing priority level: "${req.slice(0, 50)}..."`);
+          result.warnings.push(
+            `Requirement may be missing priority level: "${req.slice(0, 50)}..."`,
+          );
         }
       }
 
@@ -298,21 +304,22 @@ export class SRFValidator {
       const techSpecSection = content.match(/## Technical Specifications([\\s\\S]*?)(?=##|$)/);
       if (techSpecSection) {
         const techContent = techSpecSection[1];
-        
+
         // Look for common technical elements
         const techElements = ["API", "database", "architecture", "framework", "library", "service"];
-        const foundElements = techElements.filter(element => 
-          techContent.toLowerCase().includes(element)
+        const foundElements = techElements.filter((element) =>
+          techContent.toLowerCase().includes(element),
         );
-        
+
         if (foundElements.length === 0) {
           result.warnings.push("Technical Specifications section may lack technical details");
         }
       }
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Content validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Content validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -330,11 +337,11 @@ export class SRFValidator {
       const result = {
         success: true,
         errors: [] as string[],
-        warnings: [] as string[]
+        warnings: [] as string[],
       };
 
       const cueProcess = spawn("cue", ["vet", filePath], {
-        stdio: ["pipe", "pipe", "pipe"]
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
       let stdout = "";
@@ -387,7 +394,7 @@ export class SRFValidator {
   } {
     const result = {
       isValid: true,
-      errors: [] as string[]
+      errors: [] as string[],
     };
 
     try {
@@ -404,12 +411,24 @@ export class SRFValidator {
         // Count brackets, braces, parens
         for (const char of line) {
           switch (char) {
-            case "{": braceCount++; break;
-            case "}": braceCount--; break;
-            case "[": bracketCount++; break;
-            case "]": bracketCount--; break;
-            case "(": parenCount++; break;
-            case ")": parenCount--; break;
+            case "{":
+              braceCount++;
+              break;
+            case "}":
+              braceCount--;
+              break;
+            case "[":
+              bracketCount++;
+              break;
+            case "]":
+              bracketCount--;
+              break;
+            case "(":
+              parenCount++;
+              break;
+            case ")":
+              parenCount--;
+              break;
           }
         }
 
@@ -441,10 +460,11 @@ export class SRFValidator {
         result.isValid = false;
         result.errors.push("Unclosed parentheses detected");
       }
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Syntax validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Syntax validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;
@@ -461,7 +481,7 @@ export class SRFValidator {
     const result = {
       isValid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
@@ -472,29 +492,32 @@ export class SRFValidator {
 
       // Check for duplicate field definitions
       const fieldMatches = spec.match(/^\\s*([a-zA-Z_][a-zA-Z0-9_]*):.*$/gm) || [];
-      const fieldNames = fieldMatches.map(match => match.trim().split(":")[0]);
+      const fieldNames = fieldMatches.map((match) => match.trim().split(":")[0]);
       const duplicates = fieldNames.filter((name, index) => fieldNames.indexOf(name) !== index);
-      
+
       if (duplicates.length > 0) {
-        result.warnings.push(`Potential duplicate field definitions: ${[...new Set(duplicates)].join(", ")}`);
+        result.warnings.push(
+          `Potential duplicate field definitions: ${[...new Set(duplicates)].join(", ")}`,
+        );
       }
 
       // Check for undefined references (basic check)
       const references = spec.match(/#[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
       const definitions = spec.match(/#[a-zA-Z_][a-zA-Z0-9_]*\\s*:/g) || [];
-      
-      const definedTypes = new Set(definitions.map(def => def.replace(/\\s*:.*/, "")));
+
+      const definedTypes = new Set(definitions.map((def) => def.replace(/\\s*:.*/, "")));
       const usedTypes = new Set(references);
-      
+
       for (const usedType of usedTypes) {
         if (!definedTypes.has(usedType)) {
           result.warnings.push(`Potentially undefined type reference: ${usedType}`);
         }
       }
-
     } catch (error) {
       result.isValid = false;
-      result.errors.push(`Semantic validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      result.errors.push(
+        `Semantic validation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     return result;

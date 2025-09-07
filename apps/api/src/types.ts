@@ -17,6 +17,18 @@ export interface Fragment {
   content: string;
   created_at: string;
   updated_at: string;
+  head_revision_id?: string;
+}
+
+export interface FragmentRevision {
+  id: string;
+  fragment_id: string;
+  revision_number: number;
+  content: string;
+  content_hash: string;
+  author?: string;
+  message?: string;
+  created_at: string;
 }
 
 export interface Version {
@@ -40,6 +52,7 @@ export type EventType =
   | "fragment_created"
   | "fragment_updated"
   | "fragment_deleted"
+  | "fragment_revision_created"
   | "validation_started"
   | "validation_completed"
   | "validation_failed"

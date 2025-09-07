@@ -190,6 +190,95 @@ export class ApiClient {
   }
 
   /**
+   * List fragments for a project
+   */
+  async listFragments(projectId: string = "default"): Promise<CommandResult<any[]>> {
+    try {
+      await this.enforceRateLimit();
+
+      const response = await this.fetch(`/api/fragments?projectId=${encodeURIComponent(projectId)}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
+   * Update or create a fragment
+   */
+  async updateFragment(
+    projectId: string,
+    path: string,
+    content: string,
+    options?: { author?: string; message?: string }
+  ): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      this.validatePayloadSize(content);
+
+      const requestPayload = JSON.stringify({
+        projectId,
+        path,
+        content,
+        author: options?.author,
+        message: options?.message,
+      });
+      this.validatePayloadSize(requestPayload);
+
+      const response = await this.fetch("/api/fragments", {
+        method: "POST",
+        body: requestPayload,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
    * Check server health using the /health endpoint
    * Automatically attempts discovery if initial connection fails
    */

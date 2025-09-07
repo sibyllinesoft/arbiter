@@ -1,0 +1,599 @@
+/**
+ * CUE Manipulation Abstraction Layer
+ *
+ * This module provides a proper AST-based approach to CUE file manipulation,
+ * replacing fragile string concatenation with validated CUE tool integration.
+ *
+ * Key Features:
+ * - Parse CUE files using the CUE tool
+ * - Manipulate CUE structures through JSON intermediate representation
+ * - Format and validate using official CUE tooling
+ * - Type-safe operations with proper error handling
+ */
+
+import { spawn } from "node:child_process";
+import { promisify } from "node:util";
+import fs from "fs-extra";
+import path from "node:path";
+import * as os from "node:os";
+
+/**
+ * Configuration for a service in the CUE specification
+ */
+export interface ServiceConfig {
+  serviceType: "bespoke" | "prebuilt";
+  language: string;
+  type: "deployment" | "statefulset";
+  sourceDirectory?: string;
+  image?: string;
+  ports?: Array<{
+    name: string;
+    port: number;
+    targetPort: number;
+  }>;
+  volumes?: Array<{
+    name: string;
+    path: string;
+    size?: string;
+    type?: string;
+  }>;
+  env?: Record<string, string>;
+  healthCheck?: {
+    path: string;
+    port: number;
+  };
+  template?: string;
+}
+
+/**
+ * Configuration for an API endpoint
+ */
+export interface EndpointConfig {
+  method: string;
+  request?: {
+    $ref: string;
+  };
+  response?: {
+    $ref: string;
+  };
+}
+
+/**
+ * Configuration for a database service
+ */
+export interface DatabaseConfig extends ServiceConfig {
+  attachTo?: string;
+}
+
+/**
+ * Configuration for a UI route
+ */
+export interface RouteConfig {
+  id: string;
+  path: string;
+  capabilities: string[];
+  components?: string[];
+}
+
+/**
+ * Configuration for a user flow
+ */
+export interface FlowConfig {
+  id: string;
+  steps: Array<any>;
+}
+
+/**
+ * Result of CUE validation
+ */
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+/**
+ * Main CUE manipulator class providing AST-based operations
+ */
+export class CUEManipulator {
+  private tempDir: string;
+
+  constructor() {
+    this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cue-manipulator-"));
+  }
+
+  /**
+   * Parse CUE content into a JavaScript object using the CUE tool
+   */
+  async parse(content: string): Promise<any> {
+    const tempFile = path.join(this.tempDir, "input.cue");
+    await fs.writeFile(tempFile, content);
+
+    try {
+      const result = await this.runCueCommand(["export", tempFile]);
+      return JSON.parse(result.stdout);
+    } catch (error) {
+      throw new Error(`Failed to parse CUE content: ${error}`);
+    }
+  }
+
+  /**
+   * Add a service to the CUE structure
+   */
+  async addService(content: string, serviceName: string, config: ServiceConfig): Promise<string> {
+    try {
+      // Parse existing content
+      const ast = await this.parse(content);
+
+      // Ensure services section exists
+      if (!ast.services) {
+        ast.services = {};
+      }
+
+      // Add the service
+      ast.services[serviceName] = config;
+
+      // Convert back to CUE and format
+      return await this.serialize(ast, content);
+    } catch (error) {
+      // Fallback to direct manipulation if parsing fails (for incomplete CUE)
+      return this.directServiceAdd(content, serviceName, config);
+    }
+  }
+
+  /**
+   * Add an endpoint to the CUE structure
+   */
+  async addEndpoint(content: string, endpoint: string, config: EndpointConfig): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+
+      // Ensure paths section exists
+      if (!ast.paths) {
+        ast.paths = {};
+      }
+
+      // Add the endpoint
+      ast.paths[endpoint] = {
+        [config.method.toLowerCase()]: {
+          ...(config.request && { request: config.request }),
+          ...(config.response && { response: config.response }),
+        },
+      };
+
+      return await this.serialize(ast, content);
+    } catch (error) {
+      return this.directEndpointAdd(content, endpoint, config);
+    }
+  }
+
+  /**
+   * Add a database to the CUE structure
+   */
+  async addDatabase(content: string, dbName: string, config: DatabaseConfig): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+
+      // Ensure services section exists
+      if (!ast.services) {
+        ast.services = {};
+      }
+
+      // Add the database service
+      ast.services[dbName] = config;
+
+      // If attaching to another service, add connection environment variables
+      if (config.attachTo && ast.services[config.attachTo]) {
+        if (!ast.services[config.attachTo].env) {
+          ast.services[config.attachTo].env = {};
+        }
+
+        const connectionString = this.generateDbConnectionString(
+          config.image!,
+          dbName,
+          config.ports?.[0]?.port || 5432,
+        );
+        ast.services[config.attachTo].env.DATABASE_URL = connectionString;
+      }
+
+      return await this.serialize(ast, content);
+    } catch (error) {
+      return this.directDatabaseAdd(content, dbName, config);
+    }
+  }
+
+  /**
+   * Add a route to the UI routes array
+   */
+  async addRoute(content: string, route: RouteConfig): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+
+      // Ensure ui.routes exists
+      if (!ast.ui) {
+        ast.ui = {};
+      }
+      if (!ast.ui.routes) {
+        ast.ui.routes = [];
+      }
+
+      // Add the route
+      ast.ui.routes.push(route);
+
+      return await this.serialize(ast, content);
+    } catch (error) {
+      return this.directRouteAdd(content, route);
+    }
+  }
+
+  /**
+   * Add a flow to the flows array
+   */
+  async addFlow(content: string, flow: FlowConfig): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+
+      // Ensure flows exists
+      if (!ast.flows) {
+        ast.flows = [];
+      }
+
+      // Add the flow
+      ast.flows.push(flow);
+
+      return await this.serialize(ast, content);
+    } catch (error) {
+      return this.directFlowAdd(content, flow);
+    }
+  }
+
+  /**
+   * Add a key-value pair to a specific section
+   */
+  async addToSection(content: string, section: string, key: string, value: any): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+
+      // Navigate to the section (support nested sections like "components.schemas")
+      const sections = section.split(".");
+      let current = ast;
+
+      for (const sec of sections) {
+        if (!current[sec]) {
+          current[sec] = {};
+        }
+        current = current[sec];
+      }
+
+      // Add the key-value pair
+      current[key] = value;
+
+      return await this.serialize(ast, content);
+    } catch (error) {
+      return this.directSectionAdd(content, section, key, value);
+    }
+  }
+
+  /**
+   * Serialize a JavaScript object back to formatted CUE
+   */
+  async serialize(ast: any, originalContent?: string): Promise<string> {
+    try {
+      // Extract package declaration from original content if available
+      let packageDeclaration = "package main";
+      if (originalContent) {
+        const packageMatch = originalContent.match(/package\s+(\w+)/);
+        if (packageMatch) {
+          packageDeclaration = `package ${packageMatch[1]}`;
+        }
+      }
+
+      // Use manual CUE formatting for better control
+      const cueBody = this.formatCueObject(ast);
+      const cueWithPackage = `${packageDeclaration}\n\n${cueBody}`;
+
+      return await this.format(cueWithPackage);
+    } catch (error) {
+      throw new Error(`Failed to serialize CUE content: ${error}`);
+    }
+  }
+
+  /**
+   * Format CUE content using the CUE tool
+   */
+  async format(content: string): Promise<string> {
+    const tempFile = path.join(this.tempDir, "format.cue");
+    await fs.writeFile(tempFile, content);
+
+    try {
+      await this.runCueCommand(["fmt", tempFile]);
+      return await fs.readFile(tempFile, "utf-8");
+    } catch (error) {
+      throw new Error(`Failed to format CUE content: ${error}`);
+    }
+  }
+
+  /**
+   * Validate CUE content using the CUE tool
+   */
+  async validate(content: string): Promise<ValidationResult> {
+    const tempFile = path.join(this.tempDir, "validate.cue");
+    await fs.writeFile(tempFile, content);
+
+    try {
+      await this.runCueCommand(["vet", tempFile]);
+      return { valid: true, errors: [] };
+    } catch (error: any) {
+      const errorMessage = error.stderr || error.message || String(error);
+      const errors = errorMessage
+        .split("\n")
+        .filter((line: string) => line.trim())
+        .map((line: string) => line.replace(tempFile + ":", "").trim());
+
+      return { valid: false, errors };
+    }
+  }
+
+  /**
+   * Run a CUE command and return the result
+   */
+  private async runCueCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
+    return new Promise((resolve, reject) => {
+      const child = spawn("cue", args);
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      child.on("close", (code) => {
+        if (code === 0) {
+          resolve({ stdout, stderr });
+        } else {
+          const error = new Error(`CUE command failed with code ${code}: ${stderr}`);
+          (error as any).stderr = stderr;
+          (error as any).stdout = stdout;
+          reject(error);
+        }
+      });
+
+      child.on("error", (error) => {
+        reject(new Error(`Failed to run CUE command: ${error.message}`));
+      });
+    });
+  }
+
+  /**
+   * Direct service addition fallback for when parsing fails
+   */
+  private directServiceAdd(content: string, serviceName: string, config: ServiceConfig): string {
+    const serviceBlock = this.formatCueObject(config);
+
+    const servicesRegex = /(services:\s*{)([^}]*)(})/s;
+    const match = content.match(servicesRegex);
+
+    if (match) {
+      const existing = match[2];
+      const newEntry = `\n\t${serviceName}: ${serviceBlock}`;
+      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
+      return content.replace(servicesRegex, `$1${updated}\n$3`);
+    } else {
+      return content + `\n\nservices: {\n\t${serviceName}: ${serviceBlock}\n}`;
+    }
+  }
+
+  /**
+   * Direct endpoint addition fallback
+   */
+  private directEndpointAdd(content: string, endpoint: string, config: EndpointConfig): string {
+    const pathBlock = this.formatCueObject({
+      [config.method.toLowerCase()]: {
+        ...(config.request && { request: config.request }),
+        ...(config.response && { response: config.response }),
+      },
+    });
+
+    const pathsRegex = /(paths:\s*{)([^}]*)(})/s;
+    const match = content.match(pathsRegex);
+
+    if (match) {
+      const existing = match[2];
+      const newEntry = `\n\t"${endpoint}": ${pathBlock}`;
+      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
+      return content.replace(pathsRegex, `$1${updated}\n$3`);
+    } else {
+      return content + `\n\npaths: {\n\t"${endpoint}": ${pathBlock}\n}`;
+    }
+  }
+
+  /**
+   * Direct database addition fallback
+   */
+  private directDatabaseAdd(content: string, dbName: string, config: DatabaseConfig): string {
+    let result = this.directServiceAdd(content, dbName, config);
+
+    // Add connection string to attached service if specified
+    if (config.attachTo) {
+      const connectionString = this.generateDbConnectionString(
+        config.image!,
+        dbName,
+        config.ports?.[0]?.port || 5432,
+      );
+      result = this.addEnvironmentVariable(
+        result,
+        config.attachTo,
+        "DATABASE_URL",
+        connectionString,
+      );
+    }
+
+    return result;
+  }
+
+  /**
+   * Direct route addition fallback
+   */
+  private directRouteAdd(content: string, route: RouteConfig): string {
+    const routeBlock = this.formatCueObject(route);
+
+    const routesRegex = /(ui:\s*routes:\s*\[)([^\]]*)]]/s;
+    const match = content.match(routesRegex);
+
+    if (match) {
+      const existing = match[2];
+      const separator = existing.trim() ? ",\n\t" : "\n\t";
+      return content.replace(routesRegex, `$1${existing}${separator}${routeBlock}\n]`);
+    } else {
+      return content.replace(/ui:\s*routes:\s*\[\]/, `ui: routes: [\n\t${routeBlock}\n]`);
+    }
+  }
+
+  /**
+   * Direct flow addition fallback
+   */
+  private directFlowAdd(content: string, flow: FlowConfig): string {
+    const flowBlock = this.formatCueObject(flow);
+
+    const flowsRegex = /(flows:\s*\[)([^\]]*)]]/s;
+    const match = content.match(flowsRegex);
+
+    if (match) {
+      const existing = match[2];
+      const separator = existing.trim() ? ",\n\t" : "\n\t";
+      return content.replace(flowsRegex, `$1${existing}${separator}${flowBlock}\n]`);
+    } else {
+      return content.replace(/flows:\s*\[\]/, `flows: [\n\t${flowBlock}\n]`);
+    }
+  }
+
+  /**
+   * Direct section addition fallback
+   */
+  private directSectionAdd(content: string, section: string, key: string, value: any): string {
+    const valueStr = this.formatCueObject(value);
+
+    const sectionRegex = new RegExp(`(${section.replace(".", ":\\s+")}:\\s*{)([^}]*)(})`, "s");
+    const match = content.match(sectionRegex);
+
+    if (match) {
+      const existing = match[2];
+      const newEntry = `\n\t${key}: ${valueStr}`;
+      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
+      return content.replace(sectionRegex, `$1${updated}\n$3`);
+    } else {
+      return content + `\n\n${section}: {\n\t${key}: ${valueStr}\n}`;
+    }
+  }
+
+  /**
+   * Add environment variable to a service
+   */
+  private addEnvironmentVariable(
+    content: string,
+    serviceName: string,
+    key: string,
+    value: string,
+  ): string {
+    const envRegex = new RegExp(`(${serviceName}:\\s*{[^}]*env:\\s*{)([^}]*)(})`, "s");
+    const match = content.match(envRegex);
+
+    if (match) {
+      const existing = match[2];
+      const newEntry = `\n\t\t${key}: "${value}"`;
+      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
+      return content.replace(envRegex, `$1${updated}\n\t$3`);
+    } else {
+      // Add env section to service
+      const serviceRegex = new RegExp(`(${serviceName}:\\s*{[^}]*)(})`, "s");
+      return content.replace(serviceRegex, `$1\tenv: {\n\t\t${key}: "${value}"\n\t}\n$2`);
+    }
+  }
+
+  /**
+   * Format a JavaScript object as CUE syntax
+   */
+  private formatCueObject(obj: any, indent: string = ""): string {
+    if (typeof obj === "string") {
+      return `"${obj.replace(/"/g, '\\"')}"`;
+    }
+    if (typeof obj === "number" || typeof obj === "boolean") {
+      return String(obj);
+    }
+
+    if (Array.isArray(obj)) {
+      if (obj.length === 0) {
+        return "[]";
+      }
+      const items = obj.map((item) => `${indent}\t${this.formatCueObject(item, indent + "\t")}`);
+      return `[\n${items.join(",\n")}\n${indent}]`;
+    }
+
+    if (typeof obj === "object" && obj !== null) {
+      const entries = Object.entries(obj);
+      if (entries.length === 0) {
+        return "{}";
+      }
+      const formattedEntries = entries.map(([k, v]) => {
+        const key = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) ? k : `"${k}"`;
+        return `${indent}\t${key}: ${this.formatCueObject(v, indent + "\t")}`;
+      });
+      return `{\n${formattedEntries.join("\n")}\n${indent}}`;
+    }
+
+    return String(obj);
+  }
+
+  /**
+   * Generate database connection string
+   */
+  private generateDbConnectionString(image: string, dbName: string, port: number): string {
+    if (image.includes("postgres")) {
+      return `postgresql://user:password@${dbName}:${port}/${dbName}`;
+    } else if (image.includes("mysql")) {
+      return `mysql://user:password@${dbName}:${port}/${dbName}`;
+    }
+    return `db://${dbName}:${port}/${dbName}`;
+  }
+
+  /**
+   * Cleanup temporary files
+   */
+  async cleanup(): Promise<void> {
+    await fs.remove(this.tempDir);
+  }
+}
+
+/**
+ * Create a new CUE manipulator instance
+ */
+export function createCUEManipulator(): CUEManipulator {
+  return new CUEManipulator();
+}
+
+/**
+ * Helper function to validate CUE content
+ */
+export async function validateCUE(content: string): Promise<ValidationResult> {
+  const manipulator = createCUEManipulator();
+  try {
+    return await manipulator.validate(content);
+  } finally {
+    await manipulator.cleanup();
+  }
+}
+
+/**
+ * Helper function to format CUE content
+ */
+export async function formatCUE(content: string): Promise<string> {
+  const manipulator = createCUEManipulator();
+  try {
+    return await manipulator.format(content);
+  } finally {
+    await manipulator.cleanup();
+  }
+}
