@@ -7,7 +7,7 @@ import { withProgress } from "../utils/progress.js";
 import { ProjectCompositionManager } from "../composition/index.js";
 
 /**
- * Project templates for initialization
+ * Basic project templates for initialization (structure only - no CUE files)
  */
 const TEMPLATES: Record<string, ProjectTemplate> = {
   basic: {
@@ -17,57 +17,36 @@ const TEMPLATES: Record<string, ProjectTemplate> = {
       "cue.mod/module.cue": `module: "example.com/myproject"
 language: version: "v0.6.0"
 `,
-      "schema.cue": `package main
-
-// Define your schema here
-#Config: {
-	name: string
-	version: string
-	env: "dev" | "staging" | "prod"
-	database: #Database
-}
-
-#Database: {
-	host: string
-	port: int & >0 & <65536
-	name: string
-}
-`,
-      "values.cue": `package main
-
-// Example configuration
-config: #Config & {
-	name: "my-app"
-	version: "1.0.0"
-	env: "dev"
-	database: {
-		host: "localhost"
-		port: 5432
-		name: "myapp_dev"
-	}
-}
-`,
-      "README.md": `# My CUE Project
+      "README.md": `# {{PROJECT_NAME}}
 
 This is a CUE project created with Arbiter CLI.
 
 ## Getting Started
 
-1. Validate your configuration:
-   \`\`\`bash
-   arbiter check
-   \`\`\`
+⚠️  **IMPORTANT**: This project has been initialized with basic structure only.
+To add functionality, use the Arbiter CLI commands to build your specification:
 
-2. Export to different formats:
-   \`\`\`bash
-   arbiter export --format json,yaml
-   \`\`\`
+### 1. Add components to your specification:
+\`\`\`bash
+# Add API endpoints, data models, configurations, etc.
+arbiter add <component-type> <name>
+\`\`\`
+
+### 2. Generate project files from your specification:
+\`\`\`bash
+arbiter generate
+\`\`\`
+
+### 3. Validate your configuration:
+\`\`\`bash
+arbiter check
+\`\`\`
 
 ## Project Structure
 
-- \`schema.cue\` - Define your configuration schema
-- \`values.cue\` - Your configuration values
 - \`cue.mod/\` - CUE module configuration
+- \`.arbiter/config.json\` - Arbiter CLI configuration
+- Generated CUE files will appear after running \`arbiter generate\`
 
 ## Learn More
 
@@ -103,99 +82,43 @@ Thumbs.db
       "cue.mod/module.cue": `module: "example.com/k8s-config"
 language: version: "v0.6.0"
 `,
-      "k8s/base.cue": `package k8s
-
-import (
-	"k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
-)
-
-// Base deployment template
-#Deployment: v1.#Deployment & {
-	apiVersion: "apps/v1"
-	kind: "Deployment"
-	metadata: {
-		name: string
-		namespace: string | *"default"
-		labels: {
-			app: metadata.name
-			...
-		}
-	}
-	spec: {
-		replicas: int | *1
-		selector: matchLabels: metadata.labels
-		template: {
-			metadata: labels: metadata.labels
-			spec: #PodSpec
-		}
-	}
-}
-
-#PodSpec: v1.#PodSpec & {
-	containers: [#Container, ...]
-}
-
-#Container: v1.#Container & {
-	name: string
-	image: string
-	ports: [...v1.#ContainerPort]
-}
-`,
-      "k8s/app.cue": `package k8s
-
-// Application deployment
-app: #Deployment & {
-	metadata: {
-		name: "my-app"
-		namespace: "default"
-		labels: {
-			app: "my-app"
-			version: "1.0.0"
-		}
-	}
-	spec: {
-		replicas: 3
-		template: spec: {
-			containers: [{
-				name: "app"
-				image: "my-app:1.0.0"
-				ports: [{
-					containerPort: 8080
-					name: "http"
-				}]
-			}]
-		}
-	}
-}
-`,
-      "README.md": `# Kubernetes CUE Configuration
+      "README.md": `# {{PROJECT_NAME}} - Kubernetes Configuration
 
 This project uses CUE to manage Kubernetes configurations with type safety and validation.
 
-## Usage
+## Getting Started
 
-1. Validate configurations:
-   \`\`\`bash
-   arbiter check k8s/
-   \`\`\`
+⚠️  **IMPORTANT**: This project has been initialized with basic structure only.
+To add Kubernetes resources, use the Arbiter CLI commands:
 
-2. Export to Kubernetes YAML:
-   \`\`\`bash
-   arbiter export --format k8s
-   \`\`\`
+### 1. Add Kubernetes components:
+\`\`\`bash
+# Add deployments, services, configmaps, etc.
+arbiter add deployment <name>
+arbiter add service <name>
+arbiter add configmap <name>
+\`\`\`
 
-## Structure
+### 2. Generate CUE files:
+\`\`\`bash
+arbiter generate
+\`\`\`
 
-- \`k8s/base.cue\` - Base Kubernetes types and templates
-- \`k8s/app.cue\` - Application-specific configurations
-- \`cue.mod/\` - CUE module with Kubernetes API definitions
+### 3. Validate configurations:
+\`\`\`bash
+arbiter check
+\`\`\`
+
+### 4. Export to YAML:
+\`\`\`bash
+arbiter export --format k8s
+\`\`\`
 
 ## Next Steps
 
 1. Import Kubernetes schemas: \`cue get go k8s.io/api/...\`
-2. Define your application configurations
-3. Use \`arbiter export\` to generate YAML manifests
+2. Use \`arbiter add\` commands to build your specification
+3. Generate and validate your configurations
 `,
     },
   },
@@ -207,149 +130,44 @@ This project uses CUE to manage Kubernetes configurations with type safety and v
       "cue.mod/module.cue": `module: "example.com/api-schema"
 language: version: "v0.6.0"
 `,
-      "api/types.cue": `package api
-
-// Common types
-#ID: string & =~"^[a-zA-Z0-9_-]+$"
-#Email: string & =~"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-#Timestamp: string // ISO 8601 format
-
-// Base response structure
-#Response: {
-	success: bool
-	data?: _
-	error?: string
-	timestamp: #Timestamp
-}
-
-// Pagination
-#Pagination: {
-	page: int & >=1
-	limit: int & >=1 & <=100
-	total: int & >=0
-	hasNext: bool
-}
-
-#PaginatedResponse: #Response & {
-	data: {
-		items: [...] 
-		pagination: #Pagination
-	}
-}
-`,
-      "api/users.cue": `package api
-
-// User model
-#User: {
-	id: #ID
-	email: #Email
-	name: string & len(>0) & len(<=255)
-	createdAt: #Timestamp
-	updatedAt: #Timestamp
-	active: bool | *true
-}
-
-// User operations
-#CreateUserRequest: {
-	email: #Email
-	name: string & len(>0) & len(<=255)
-}
-
-#UpdateUserRequest: {
-	name?: string & len(>0) & len(<=255)
-	active?: bool
-}
-
-#UserResponse: #Response & {
-	data: #User
-}
-
-#UsersResponse: #PaginatedResponse & {
-	data: {
-		items: [...#User]
-		pagination: #Pagination
-	}
-}
-`,
-      "openapi.cue": `package api
-
-import "encoding/json"
-
-// OpenAPI specification
-openapi: {
-	openapi: "3.0.3"
-	info: {
-		title: "My API"
-		version: "1.0.0"
-		description: "API defined with CUE"
-	}
-	paths: {
-		"/users": {
-			get: {
-				summary: "List users"
-				responses: {
-					"200": {
-						description: "Success"
-						content: {
-							"application/json": {
-								schema: json.Schema(#UsersResponse)
-							}
-						}
-					}
-				}
-			}
-			post: {
-				summary: "Create user"
-				requestBody: {
-					content: {
-						"application/json": {
-							schema: json.Schema(#CreateUserRequest)
-						}
-					}
-				}
-				responses: {
-					"201": {
-						description: "Created"
-						content: {
-							"application/json": {
-								schema: json.Schema(#UserResponse)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-}
-`,
-      "README.md": `# API Schema Project
+      "README.md": `# {{PROJECT_NAME}} - API Schema
 
 This project defines API schemas using CUE with type safety and OpenAPI generation.
 
-## Usage
+## Getting Started
 
-1. Validate schemas:
-   \`\`\`bash
-   arbiter check
-   \`\`\`
+⚠️  **IMPORTANT**: This project has been initialized with basic structure only.
+To define your API, use the Arbiter CLI commands:
 
-2. Export OpenAPI spec:
-   \`\`\`bash
-   arbiter export --format openapi > openapi.yaml
-   \`\`\`
+### 1. Add API components:
+\`\`\`bash
+# Add data models, endpoints, types, etc.
+arbiter add model <name>
+arbiter add endpoint <path>
+arbiter add type <name>
+\`\`\`
 
-3. Generate TypeScript types:
-   \`\`\`bash
-   arbiter export --format types > types.ts
-   \`\`\`
+### 2. Generate CUE files:
+\`\`\`bash
+arbiter generate
+\`\`\`
 
-## Structure
+### 3. Validate schemas:
+\`\`\`bash
+arbiter check
+\`\`\`
 
-- \`api/types.cue\` - Common types and base structures
-- \`api/users.cue\` - User-related schemas
-- \`openapi.cue\` - OpenAPI specification definition
+### 4. Export OpenAPI spec:
+\`\`\`bash
+arbiter export --format openapi > openapi.yaml
+\`\`\`
 
-## Features
+### 5. Generate TypeScript types:
+\`\`\`bash
+arbiter export --format types > types.ts
+\`\`\`
+
+## Features (after adding components)
 
 - Type-safe API definitions
 - Automatic validation
@@ -377,19 +195,8 @@ export async function initCommand(
     const exists = await fs.pathExists(targetDir);
 
     if (exists && !options.force) {
-      const { overwrite } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "overwrite",
-          message: `Directory "${directory}" already exists. Continue?`,
-          default: false,
-        },
-      ]);
-
-      if (!overwrite) {
-        console.log(chalk.yellow("Aborted"));
-        return 0;
-      }
+      console.log(chalk.yellow(`Directory "${directory}" already exists. Use --force to overwrite.`));
+      return 1;
     }
 
     // Create project
@@ -409,9 +216,17 @@ export async function initCommand(
           console.log(chalk.green("✓ Initialized project composition system"));
         }
 
+        console.log(chalk.yellow("\n📋 IMPORTANT: Basic project structure created"));
+        console.log(chalk.red("⚠️  NO CUE files have been generated yet - this is intentional!"));
         console.log(chalk.dim("\nNext steps:"));
         console.log(chalk.dim(`  cd ${directory}`));
-        console.log(chalk.dim("  arbiter check"));
+        console.log(chalk.green("  1. Add components to build your specification:"));
+        console.log(chalk.cyan("     arbiter add <component-type> <name>  # Add models, endpoints, configs, etc."));
+        console.log(chalk.green("  2. Generate CUE files from your specification:"));
+        console.log(chalk.cyan("     arbiter generate  # Creates the actual CUE files"));
+        console.log(chalk.green("  3. Validate your generated CUE files:"));
+        console.log(chalk.cyan("     arbiter check  # Validate the generated CUE"));
+        console.log(chalk.dim("\n💡 Use 'arbiter --help' to see all available add commands"));
 
         if (options.composition) {
           console.log(chalk.dim("  arbiter composition validate  # Validate composition setup"));
@@ -437,80 +252,12 @@ async function getProjectDetails(
   projectName: string | undefined,
   options: InitOptions,
 ): Promise<{ name: string; directory: string; template: ProjectTemplate }> {
-  const questions: any[] = [];
-
-  // Project name
-  if (!projectName) {
-    questions.push({
-      type: "input",
-      name: "name",
-      message: "Project name:",
-      default: "my-cue-project",
-      validate: (input: string) => {
-        if (!input.trim()) return "Project name is required";
-        if (!/^[a-zA-Z0-9_-]+$/.test(input)) {
-          return "Project name must contain only letters, numbers, hyphens, and underscores";
-        }
-        return true;
-      },
-    });
-  }
-
-  // Template selection
-  if (!options.template) {
-    questions.push({
-      type: "list",
-      name: "template",
-      message: "Choose a template:",
-      choices: Object.entries(TEMPLATES).map(([key, template]) => ({
-        name: `${template.name} - ${template.description}`,
-        value: key,
-      })),
-      default: "basic",
-    });
-  }
-
-  // Directory
-  if (!options.directory) {
-    questions.push({
-      type: "input",
-      name: "directory",
-      message: "Project directory:",
-      default: (answers: any) => projectName || answers.name || "my-cue-project",
-    });
-  }
-
-  // Composition system setup
-  if (options.composition === undefined) {
-    questions.push({
-      type: "confirm",
-      name: "composition",
-      message: "Enable project composition system for SRF fragment management?",
-      default: false,
-    });
-  }
-
-  // Composition template selection (only if composition is enabled)
-  questions.push({
-    type: "list",
-    name: "compositionTemplate",
-    message: "Choose composition template:",
-    choices: [
-      { name: "Basic - Simple fragment management with auto-conflict resolution", value: "basic" },
-      { name: "Advanced - Manual conflict resolution with detailed validation", value: "advanced" },
-      { name: "Enterprise - Strict validation with comprehensive recovery", value: "enterprise" },
-    ],
-    default: "basic",
-    when: (answers: any) => answers.composition || options.composition,
-  });
-
-  const answers = await inquirer.prompt(questions);
-
-  const name = projectName || answers.name;
-  const templateKey = options.template || answers.template;
-  const directory = options.directory || answers.directory || name;
-  const composition = options.composition ?? answers.composition;
-  const compositionTemplate = options.compositionTemplate || answers.compositionTemplate;
+  // Use defaults for all required values, no interactive prompts
+  const name = projectName || "my-cue-project";
+  const templateKey = options.template || "basic";
+  const directory = options.directory || name;
+  const composition = options.composition ?? false;
+  const compositionTemplate = options.compositionTemplate || "basic";
 
   const template = TEMPLATES[templateKey];
   if (!template) {
@@ -520,6 +267,7 @@ async function getProjectDetails(
   // Update options with composition settings
   options.composition = composition;
   options.compositionTemplate = compositionTemplate;
+  options.enableFragments = composition; // Enable fragments if composition is enabled
   options.enableFragments = composition; // Enable fragments if composition is enabled
 
   return { name, directory, template };
@@ -552,15 +300,17 @@ async function createProject(
     await fs.writeFile(fullPath, processedContent, "utf-8");
   }
 
-  // Create .arbiter.json config file
+  // Create .arbiter/config.json config file
   const configContent = {
     apiUrl: "http://localhost:8080",
     format: "table",
     color: true,
   };
 
+  const arbiterDir = path.join(targetDir, ".arbiter");
+  await fs.ensureDir(arbiterDir);
   await fs.writeFile(
-    path.join(targetDir, ".arbiter.json"),
+    path.join(arbiterDir, "config.json"),
     JSON.stringify(configContent, null, 2),
     "utf-8",
   );
