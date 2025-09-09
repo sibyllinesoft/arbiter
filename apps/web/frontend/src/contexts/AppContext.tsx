@@ -19,7 +19,7 @@ const initialState: AppState = {
   // UI state
   activeFragmentId: null,
   activeFragmentTab: 'source',
-  activeTab: 'source',
+  activeTab: 'friendly',
   isLoading: false,
   error: null,
   

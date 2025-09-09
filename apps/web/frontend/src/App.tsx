@@ -10,6 +10,7 @@ import TopBar from './components/Layout/TopBar';
 import SplitPane from './components/Layout/SplitPane';
 import Tabs from './components/Layout/Tabs';
 import EditorPane from './components/Editor/EditorPane';
+import MonacoEditor from './components/Editor/MonacoEditor';
 import { 
   FlowDiagram, 
   FriendlyDiagram,
@@ -17,8 +18,7 @@ import {
   ViewDiagram, 
   SiteDiagram, 
   GapsChecklist, 
-  ResolvedViewer,
-  PrettyCueDiagram
+  ResolvedViewer
 } from './components/diagrams';
 
 import type { DiagramTab } from './types/ui';
@@ -60,11 +60,6 @@ function AppContent() {
 
   const diagramTabs = [
     {
-      id: 'pretty',
-      label: 'Pretty',
-      content: currentProject ? <PrettyCueDiagram projectId={currentProject.id} /> : <DiagramPlaceholder type="Pretty CUE" />,
-    },
-    {
       id: 'flow',
       label: 'Flow',
       content: currentProject ? <FlowDiagram projectId={currentProject.id} /> : <DiagramPlaceholder type="Flow Diagram" />,
@@ -101,11 +96,82 @@ function AppContent() {
     },
   ];
 
+  // Simple source editor component without file tree
+  const SimpleSourceEditor = () => {
+    const [sourceContent, setSourceContent] = useState(`# CUE Specification
+# Auto-loaded arbiter.assembly.cue
+
+package arbiter
+
+// Define your specification here
+app: {
+  name: "example-app"
+  version: "1.0.0"
+  
+  components: {
+    api: {
+      type: "service"
+      port: 8080
+    }
+    
+    web: {
+      type: "frontend"
+      framework: "react"
+    }
+  }
+}
+`);
+
+    return (
+      <div className="h-full flex flex-col bg-white">
+        {/* Source editor header */}
+        <div className="px-6 py-3 bg-gradient-to-r from-graphite-50 to-white border-b border-graphite-100 flex items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded flex items-center justify-center bg-purple-100">
+              <code className="text-purple-600 text-xs font-mono">CUE</code>
+            </div>
+            <span className="font-medium text-sm text-graphite-800">
+              arbiter.assembly.cue
+            </span>
+          </div>
+        </div>
+        
+        {/* Monaco Editor */}
+        <div className="flex-1">
+          <MonacoEditor
+            value={sourceContent}
+            onChange={setSourceContent}
+            language="cue"
+            theme="cue-light"
+            options={{
+              automaticLayout: true,
+              wordWrap: 'on',
+              lineNumbers: 'on',
+              minimap: { enabled: true },
+              folding: true,
+              bracketMatching: 'always',
+              autoIndent: 'advanced',
+              formatOnType: true,
+              formatOnPaste: true,
+              fontSize: 14,
+              lineHeight: 1.6,
+              fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", Consolas, monospace',
+              padding: { top: 16, bottom: 16 },
+              scrollBeyondLastLine: false,
+              renderWhitespace: 'selection',
+              renderLineHighlight: 'gutter',
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   const editorTabs = [
     {
       id: 'source',
       label: 'Source',
-      content: <EditorPane />,
+      content: <SimpleSourceEditor />,
     },
     {
       id: 'friendly',
@@ -140,7 +206,7 @@ function AppContent() {
           {/* Right pane - Diagrams */}
           <div className="h-full bg-white">
             <Tabs
-              activeTab={!['source', 'friendly'].includes(state.activeTab) ? state.activeTab : 'pretty'}
+              activeTab={!['source', 'friendly'].includes(state.activeTab) ? state.activeTab : 'flow'}
               onTabChange={(tab) => setActiveTab(tab as DiagramTab)}
               tabs={diagramTabs}
               className="h-full"

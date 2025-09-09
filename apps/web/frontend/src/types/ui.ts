@@ -46,7 +46,7 @@ export interface AppState {
 }
 
 // Diagram tabs
-export type DiagramTab = "source" | "friendly" | "pretty" | "flow" | "site" | "fsm" | "view" | "gaps" | "resolved";
+export type DiagramTab = "source" | "friendly" | "flow" | "site" | "fsm" | "view" | "gaps" | "resolved";
 
 // UI actions
 export type AppAction =
