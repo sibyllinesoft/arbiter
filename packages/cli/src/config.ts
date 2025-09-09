@@ -42,8 +42,12 @@ const configSchema = z.object({
  * Possible configuration file names
  */
 const CONFIG_FILES = [
+  ".arbiter/config.json",
+  ".arbiter/config.yaml",
+  ".arbiter/config.yml",
+  // Legacy paths for backward compatibility
   ".arbiter.json",
-  ".arbiter.yaml",
+  ".arbiter.yaml", 
   ".arbiter.yml",
   "arbiter.json",
   "arbiter.yaml",
@@ -147,6 +151,8 @@ export async function saveConfig(config: Partial<CLIConfig>, filePath: string): 
     throw new Error(`Unsupported configuration file format: ${ext}`);
   }
 
+  // Ensure the directory exists
+  await fs.ensureDir(path.dirname(filePath));
   await fs.writeFile(filePath, content, "utf-8");
 }
 
@@ -154,5 +160,5 @@ export async function saveConfig(config: Partial<CLIConfig>, filePath: string): 
  * Get default configuration file path
  */
 export function getDefaultConfigPath(): string {
-  return path.join(process.cwd(), ".arbiter.json");
+  return path.join(process.cwd(), ".arbiter", "config.json");
 }

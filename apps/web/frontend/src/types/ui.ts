@@ -15,6 +15,7 @@ import type {
 export interface AppState {
   // Core data
   currentProject: Project | null;
+  projects: Project[];
   fragments: Fragment[];
   resolved: Record<string, unknown> | null;
   gaps: GapSet | null;
@@ -22,6 +23,7 @@ export interface AppState {
 
   // UI state
   activeFragmentId: string | null;
+  activeFragmentTab: string;
   activeTab: DiagramTab;
   isLoading: boolean;
   error: string | null;
@@ -44,11 +46,13 @@ export interface AppState {
 }
 
 // Diagram tabs
-export type DiagramTab = "flow" | "site" | "fsm" | "view" | "gaps" | "resolved";
+export type DiagramTab = "source" | "friendly" | "pretty" | "flow" | "site" | "fsm" | "view" | "gaps" | "resolved";
 
 // UI actions
 export type AppAction =
   | { type: "SET_PROJECT"; payload: Project | null }
+  | { type: "SET_PROJECTS"; payload: Project[] }
+  | { type: "SET_CURRENT_PROJECT"; payload: Project }
   | { type: "SET_FRAGMENTS"; payload: Fragment[] }
   | { type: "UPDATE_FRAGMENT"; payload: Fragment }
   | { type: "DELETE_FRAGMENT"; payload: string }
@@ -56,6 +60,7 @@ export type AppAction =
   | { type: "SET_GAPS"; payload: GapSet }
   | { type: "SET_IR"; payload: { kind: string; data: IRResponse } }
   | { type: "SET_ACTIVE_FRAGMENT"; payload: string | null }
+  | { type: "SET_ACTIVE_FRAGMENT_TAB"; payload: string }
   | { type: "SET_ACTIVE_TAB"; payload: DiagramTab }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }

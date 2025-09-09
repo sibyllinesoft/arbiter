@@ -12,11 +12,13 @@ import Tabs from './components/Layout/Tabs';
 import EditorPane from './components/Editor/EditorPane';
 import { 
   FlowDiagram, 
+  FriendlyDiagram,
   FsmDiagram, 
   ViewDiagram, 
   SiteDiagram, 
   GapsChecklist, 
-  ResolvedViewer 
+  ResolvedViewer,
+  PrettyCueDiagram
 } from './components/diagrams';
 
 import type { DiagramTab } from './types/ui';
@@ -36,13 +38,15 @@ function AppContent() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Set development auth token
+        // Set development auth token (only if auth is required)
         apiService.setAuthToken('dev-token');
         
         // Load initial project
         const projects = await apiService.getProjects();
+        console.log('Loaded projects:', projects);
         if (projects.length > 0) {
           setProject(projects[0]);
+          console.log('Set initial project:', projects[0]);
         }
       } catch (error) {
         console.error('Failed to initialize app:', error);
@@ -54,7 +58,12 @@ function AppContent() {
     }
   }, [currentProject, setProject]);
 
-  const tabItems = [
+  const diagramTabs = [
+    {
+      id: 'pretty',
+      label: 'Pretty',
+      content: currentProject ? <PrettyCueDiagram projectId={currentProject.id} /> : <DiagramPlaceholder type="Pretty CUE" />,
+    },
     {
       id: 'flow',
       label: 'Flow',
@@ -92,30 +101,48 @@ function AppContent() {
     },
   ];
 
+  const editorTabs = [
+    {
+      id: 'source',
+      label: 'Source',
+      content: <EditorPane />,
+    },
+    {
+      id: 'friendly',
+      label: 'Friendly',
+      content: currentProject ? <FriendlyDiagram projectId={currentProject.id} /> : <DiagramPlaceholder type="Friendly Diagram" />,
+    },
+  ];
+
   return (
     <div className="h-full flex flex-col bg-gray-50">
       {/* Top navigation bar */}
       <TopBar className="flex-shrink-0" />
 
       {/* Main content area */}
-      <div className="flex-1 min-h-0 flex">
+      <div className="flex-1 overflow-hidden">
         <SplitPane
           defaultSize="40%"
           minSize="300px"
           maxSize="70%"
           split="vertical"
         >
-          {/* Left pane - Editor */}
+          {/* Left pane - Editor with tabs (Source & Friendly) */}
           <div className="h-full bg-white border-r border-gray-200">
-            <EditorPane />
+            <Tabs
+              activeTab={['source', 'friendly'].includes(state.activeTab) ? state.activeTab : 'source'}
+              onTabChange={(tab) => setActiveTab(tab as DiagramTab)}
+              tabs={editorTabs}
+              className="h-full"
+            />
           </div>
 
           {/* Right pane - Diagrams */}
           <div className="h-full bg-white">
             <Tabs
-              activeTab={state.activeTab}
+              activeTab={!['source', 'friendly'].includes(state.activeTab) ? state.activeTab : 'pretty'}
               onTabChange={(tab) => setActiveTab(tab as DiagramTab)}
-              tabs={tabItems}
+              tabs={diagramTabs}
               className="h-full"
             />
           </div>

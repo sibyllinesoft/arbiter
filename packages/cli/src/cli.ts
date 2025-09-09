@@ -59,6 +59,8 @@ import type {
   WatchOptions,
 } from "./types.js";
 import type { AddOptions } from "./commands/add.js";
+import { epicCommand, taskCommand } from "./commands/epic.js";
+import type { EpicOptions, TaskOptions } from "./commands/epic.js";
 
 // Package info
 const packageJson = {
@@ -78,8 +80,8 @@ program
   .version(packageJson.version, "-v, --version", "display version number")
   .option("-c, --config <path>", "path to configuration file")
   .option("--no-color", "disable colored output")
-  .option("--api-url <url>", "API server URL", "http://localhost:5050")
-  .option("--timeout <ms>", "request timeout in milliseconds", "5000")
+  .option("--api-url <url>", "API server URL")
+  .option("--timeout <ms>", "request timeout in milliseconds")
   .hook("preAction", async (thisCommand) => {
     // Load configuration before running any command
     const opts = thisCommand.opts();
@@ -196,6 +198,8 @@ addCmd
   .option("--port <port>", "service port number", (value) => parseInt(value, 10))
   .option("--image <image>", "prebuilt container image (for prebuilt services)")
   .option("--directory <dir>", "source directory path")
+  .option("--platform <platform>", "target platform (cloudflare, vercel, supabase, kubernetes)")
+  .option("--service-type <type>", "platform-specific service type (cloudflare_worker, vercel_function, supabase_functions, etc.)")
   .option("--dry-run", "preview changes without applying them")
   .option("--force", "overwrite existing configuration")
   .option("-v, --verbose", "verbose output with detailed changes")
@@ -375,6 +379,8 @@ addCmd
   .option("--attach-to <service>", "service to attach database connection to")
   .option("--image <image>", "database container image", "postgres:15")
   .option("--port <port>", "database port", (value) => parseInt(value, 10), 5432)
+  .option("--platform <platform>", "target platform (cloudflare, vercel, supabase, kubernetes)")
+  .option("--service-type <type>", "platform-specific database type (cloudflare_d1, vercel_postgres, supabase_database)")
   .option("--dry-run", "preview changes without applying them")
   .option("--force", "overwrite existing configuration")
   .option("-v, --verbose", "verbose output with detailed changes")
@@ -408,6 +414,8 @@ addCmd
   .option("--attach-to <service>", "service to attach cache connection to")
   .option("--image <image>", "cache container image", "redis:7-alpine")
   .option("--port <port>", "cache port", (value) => parseInt(value, 10), 6379)
+  .option("--platform <platform>", "target platform (cloudflare, vercel, supabase, kubernetes)")
+  .option("--service-type <type>", "platform-specific cache type (cloudflare_kv, vercel_kv)")
   .option("--dry-run", "preview changes without applying them")
   .option("--force", "overwrite existing configuration")
   .option("-v, --verbose", "verbose output with detailed changes")
@@ -625,6 +633,309 @@ versionCmd
       }
 
       const exitCode = await versionReleaseCommand(options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+/**
+ * Epic command - Epic and task management with ordered execution
+ */
+const epicCmd = program
+  .command("epic")
+  .description("manage epics and their ordered tasks using sharded CUE storage");
+
+epicCmd
+  .command("list")
+  .description("list all epics")
+  .option("-s, --status <status>", "filter by status (planning, in_progress, completed, cancelled)")
+  .option("-p, --priority <priority>", "filter by priority (critical, high, medium, low)")
+  .option("-a, --assignee <assignee>", "filter by assignee")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (options: EpicOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await epicCommand("list", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+epicCmd
+  .command("show <epic-id>")
+  .description("show detailed epic information")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (epicId: string, options: EpicOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await epicCommand("show", epicId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+epicCmd
+  .command("create")
+  .description("create a new epic")
+  .requiredOption("-n, --name <name>", "epic name")
+  .option("-d, --description <description>", "epic description")
+  .option("-p, --priority <priority>", "priority (critical, high, medium, low)", "medium")
+  .option("-o, --owner <owner>", "epic owner")
+  .option("-a, --assignee <assignee>", "epic assignee")
+  .option("--start-date <date>", "start date (YYYY-MM-DD)")
+  .option("--due-date <date>", "due date (YYYY-MM-DD)")
+  .option("--labels <labels>", "comma-separated labels")
+  .option("--tags <tags>", "comma-separated tags")
+  .option("--allow-parallel-tasks", "allow tasks to run in parallel")
+  .option("--no-auto-progress", "disable automatic task progression")
+  .option("--no-require-all-tasks", "don't require all tasks to complete epic")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (options: EpicOptions & { name: string }, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await epicCommand("create", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+epicCmd
+  .command("update <epic-id>")
+  .description("update an existing epic")
+  .option("-s, --status <status>", "update status (planning, in_progress, completed, cancelled)")
+  .option("-p, --priority <priority>", "update priority (critical, high, medium, low)")
+  .option("-a, --assignee <assignee>", "update assignee")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (epicId: string, options: EpicOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await epicCommand("update", epicId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+epicCmd
+  .command("stats")
+  .description("show sharded storage statistics")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (options: EpicOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await epicCommand("stats", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+/**
+ * Task command - Ordered task management within epics
+ */
+const taskCmd = program
+  .command("task")
+  .description("manage ordered tasks within epics");
+
+taskCmd
+  .command("list")
+  .description("list all tasks across epics")
+  .option("-s, --status <status>", "filter by status (todo, in_progress, review, testing, completed, cancelled)")
+  .option("-t, --type <type>", "filter by type (feature, bug, refactor, test, docs, devops, research)")
+  .option("-p, --priority <priority>", "filter by priority (critical, high, medium, low)")
+  .option("-a, --assignee <assignee>", "filter by assignee")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (options: TaskOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await taskCommand("list", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+taskCmd
+  .command("show <task-id>")
+  .description("show detailed task information")
+  .option("-f, --format <format>", "output format (table, json)", "table")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (taskId: string, options: TaskOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await taskCommand("show", taskId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+taskCmd
+  .command("create")
+  .description("create a new task in an epic")
+  .requiredOption("-e, --epic <epic-id>", "epic ID to add task to")
+  .requiredOption("-n, --name <name>", "task name")
+  .option("-d, --description <description>", "task description")
+  .option("-t, --type <type>", "task type (feature, bug, refactor, test, docs, devops, research)", "feature")
+  .option("-p, --priority <priority>", "priority (critical, high, medium, low)", "medium")
+  .option("-a, --assignee <assignee>", "task assignee")
+  .option("-r, --reviewer <reviewer>", "task reviewer")
+  .option("--depends-on <tasks>", "comma-separated list of task IDs this depends on")
+  .option("--acceptance-criteria <criteria>", "comma-separated list of acceptance criteria")
+  .option("--can-run-in-parallel", "task can run in parallel with others")
+  .option("--no-requires-review", "task doesn't require code review")
+  .option("--no-requires-testing", "task doesn't require testing")
+  .option("--blocks-other-tasks", "task blocks subsequent tasks")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (options: TaskOptions & { epic: string; name: string }, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await taskCommand("create", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+taskCmd
+  .command("batch")
+  .description("batch create tasks from JSON")
+  .requiredOption("-e, --epic <epic-id>", "epic ID to add tasks to")
+  .option("--json <json>", "JSON array of task objects")
+  .option("--file <file>", "JSON file containing task array")
+  .option("-v, --verbose", "verbose output with individual task creation status")
+  .action(async (options: TaskOptions & { epic: string; json?: string; file?: string }, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await taskCommand("batch", undefined, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+taskCmd
+  .command("update <task-id>")
+  .description("update an existing task")
+  .option("-s, --status <status>", "update status (todo, in_progress, review, testing, completed, cancelled)")
+  .option("-t, --type <type>", "update type (feature, bug, refactor, test, docs, devops, research)")
+  .option("-p, --priority <priority>", "update priority (critical, high, medium, low)")
+  .option("-a, --assignee <assignee>", "update assignee")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (taskId: string, options: TaskOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await taskCommand("update", taskId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+taskCmd
+  .command("complete <task-id>")
+  .description("mark a task as completed")
+  .option("-v, --verbose", "verbose output with additional details")
+  .action(async (taskId: string, options: TaskOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await taskCommand("complete", taskId, options, config);
       process.exit(exitCode);
     } catch (error) {
       console.error(
@@ -1849,7 +2160,7 @@ program
   .command("health")
   .description("comprehensive Arbiter server health check")
   .option("--verbose", "show detailed health information")
-  .option("--timeout <ms>", "health check timeout in milliseconds", "5000")
+  .option("--timeout <ms>", "health check timeout in milliseconds")
   .action(async (options: { verbose?: boolean; timeout?: string }, command) => {
     try {
       const config = command.parent?.config;
@@ -2118,7 +2429,7 @@ ${chalk.cyan("Agent-Friendly Features:")}
     • Clear error messages and exit codes
     
 ${chalk.cyan("Configuration:")}
-  Create ${chalk.yellow(".arbiter.json")} in your project root:
+  Create ${chalk.yellow(".arbiter/config.json")} in your project root:
   {
     "apiUrl": "http://localhost:5050",
     "format": "table", 

@@ -279,6 +279,84 @@ export class ApiClient {
   }
 
   /**
+   * Store CUE specification in service database with sharding support
+   */
+  async storeSpecification(spec: {
+    content: string;
+    type: string;
+    path: string;
+    shard?: string;
+  }): Promise<CommandResult<{ success: boolean; id: string; shard?: string }>> {
+    await this.enforceRateLimit();
+    
+    try {
+      const response = await this.fetch("/api/specifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...spec,
+          sharded: true, // Indicate this should use sharded storage
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        return {
+          success: false,
+          data: null,
+          error: `Failed to store specification: ${error}`,
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data, error: null };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: `Network error storing specification: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Get CUE specification from service database
+   */
+  async getSpecification(type: string, path: string): Promise<CommandResult<{ content: string }>> {
+    await this.enforceRateLimit();
+    
+    try {
+      const params = new URLSearchParams({ type, path });
+      const response = await this.fetch(`/api/specifications?${params}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          return {
+            success: false,
+            data: null,
+            error: "Specification not found",
+          };
+        }
+        const error = await response.text();
+        return {
+          success: false,
+          data: null,
+          error: `Failed to get specification: ${error}`,
+        };
+      }
+
+      const data = await response.json();
+      return { success: true, data, error: null };
+    } catch (error) {
+      return {
+        success: false,
+        data: null,
+        error: `Network error getting specification: ${error}`,
+      };
+    }
+  }
+
+  /**
    * Check server health using the /health endpoint
    * Automatically attempts discovery if initial connection fails
    */

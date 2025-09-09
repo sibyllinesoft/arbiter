@@ -2,7 +2,7 @@
  * Top navigation bar with project controls - Enhanced with Graphite Design System
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
 import { 
   Save, 
@@ -22,6 +22,9 @@ import { useApp, useCurrentProject, useConnectionStatus, useValidationState } fr
 import { apiService } from '../../services/api';
 import { toast } from 'react-toastify';
 import { Button, StatusBadge, cn } from '../../design-system';
+import { createLogger } from '../../utils/logger';
+
+const log = createLogger('TopBar');
 
 export interface TopBarProps {
   className?: string;
@@ -39,9 +42,27 @@ export function TopBar({ className }: TopBarProps) {
   const { isConnected, reconnectAttempts, lastSync } = useConnectionStatus();
   const { isValidating, errors, warnings, specHash } = useValidationState();
 
-  const [showProjectSelector, setShowProjectSelector] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isFreezing, setIsFreezing] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
 
   // Save all unsaved fragments
   const handleSave = useCallback(async () => {
@@ -163,7 +184,7 @@ export function TopBar({ className }: TopBarProps) {
         autoClose: 3000,
       });
 
-      console.log('Version frozen:', result);
+      log.debug('Version frozen:', result);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to freeze version';
       setError(message);
@@ -216,7 +237,7 @@ export function TopBar({ className }: TopBarProps) {
       'flex items-center justify-between h-16 px-6',
       'bg-gradient-to-r from-white via-graphite-25 to-white',
       'border-b border-graphite-200 shadow-sm',
-      'backdrop-blur-sm relative',
+      'backdrop-blur-sm relative z-30',
       className
     )}>
       {/* Subtle top accent line */}
@@ -229,16 +250,13 @@ export function TopBar({ className }: TopBarProps) {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-sm">
             <GitBranch className="w-4 h-4 text-white" />
           </div>
-          <div className="relative">
-            <Button
-              variant="ghost"
-              size="sm"
-              rightIcon={<ChevronDown className="h-4 w-4 text-graphite-500" />}
-              onClick={() => setShowProjectSelector(!showProjectSelector)}
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
               className={cn(
-                'font-semibold text-graphite-800 hover:text-graphite-900',
+                'flex items-center gap-2 px-3 py-2 font-semibold text-graphite-800 hover:text-graphite-900',
                 'hover:bg-graphite-100 border border-transparent hover:border-graphite-200',
-                'transition-all duration-200 rounded-lg px-3 py-2'
+                'transition-all duration-200 rounded-lg bg-transparent'
               )}
             >
               {currentProject ? (
@@ -249,38 +267,62 @@ export function TopBar({ className }: TopBarProps) {
               ) : (
                 'Select Project'
               )}
-            </Button>
+              <ChevronDown className={cn(
+                "h-4 w-4 text-graphite-500 transition-transform duration-200",
+                showDropdown && "rotate-180"
+              )} />
+            </button>
             
-            {/* Project selector dropdown would go here */}
+            {showDropdown && (
+              <div className="absolute left-0 top-full mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50 animate-in fade-in-0 zoom-in-95 duration-100">
+                <div className="p-1">
+                  <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    Available Projects ({state.projects.length})
+                  </div>
+                  {state.projects.length > 0 ? (
+                    state.projects.map((project) => (
+                      <button
+                        key={project.id}
+                        onClick={() => {
+                          dispatch({ type: 'SET_CURRENT_PROJECT', payload: project });
+                          setShowDropdown(false);
+                          log.debug('Selected project:', project.name);
+                        }}
+                        className={cn(
+                          'group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-gray-100',
+                          currentProject?.id === project.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        )}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <div className="text-left">
+                            <div className="font-medium">{project.name}</div>
+                            <div className="text-xs text-gray-500">{project.id}</div>
+                          </div>
+                          {currentProject?.id === project.id && (
+                            <CheckCircle className="h-4 w-4 text-blue-600" />
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      No projects available
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Status indicators */}
-        <div className="flex items-center gap-6 pl-6 border-l border-graphite-200">
-          {/* Connection status */}
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              'w-2 h-2 rounded-full transition-colors duration-300',
-              isConnected ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-red-500 shadow-sm shadow-red-500/50'
-            )} />
-            <StatusBadge
-              variant={isConnected ? 'success' : 'error'}
-              size="sm"
-              icon={isConnected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
-              className="font-medium"
-            >
-              {isConnected ? 'Live' : 'Offline'}
-              {reconnectAttempts > 0 && ` (${reconnectAttempts})`}
-            </StatusBadge>
-          </div>
-          
-          {/* Last sync indicator */}
-          {isConnected && lastSync && (
-            <div className="flex items-center gap-1.5 text-xs text-graphite-500 bg-graphite-50 px-2 py-1 rounded-md">
-              <Clock className="w-3 h-3" />
-              <span>synced {new Date(lastSync).toLocaleTimeString([], { timeStyle: 'short' })}</span>
-            </div>
-          )}
+        {/* CUE selector */}
+        <div className="flex items-center gap-3 pl-6 border-l border-graphite-200">
+          <span className="text-sm font-medium text-graphite-600">CUE:</span>
+          <select className="px-3 py-1.5 text-sm border border-graphite-200 rounded-md bg-white hover:border-graphite-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="arbiter.assembly.cue">arbiter.assembly.cue</option>
+            <option value="spec.cue">spec.cue</option>
+            <option value="config.cue">config.cue</option>
+          </select>
         </div>
       </div>
 

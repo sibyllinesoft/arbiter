@@ -7,6 +7,9 @@ import { toast } from "react-toastify";
 import { useApp } from "../contexts/AppContext";
 import { apiService } from "../services/api";
 import { type WebSocketEventHandler, wsService } from "../services/websocket";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger('useWebSocket');
 import type {
   WsEvent,
   WsFragmentUpdatedData,
@@ -52,8 +55,13 @@ function dispatchWebSocketEvent(event: WsEvent, dispatch: any): void {
       handleIrUpdatedEvent(event.data as WsIrUpdatedData, dispatch);
       break;
 
+    case "connection_established":
+      // Connection established - just log it at debug level
+      log.debug("WebSocket connection established:", event.data);
+      break;
+
     default:
-      console.warn("Unknown WebSocket event type:", event.type);
+      log.warn("Unknown WebSocket event type:", event.type);
   }
 }
 
@@ -138,7 +146,7 @@ function createWebSocketHandlers(params: {
 
   return {
     onConnect: () => {
-      console.log("WebSocket connected for project:", projectId);
+      log.info("WebSocket connected for project:", projectId);
       dispatch({ type: "SET_CONNECTION_STATUS", payload: true });
       dispatch({ type: "RESET_RECONNECT_ATTEMPTS" });
       setError(null);
@@ -151,7 +159,7 @@ function createWebSocketHandlers(params: {
       }
     },
     onDisconnect: () => {
-      console.log("WebSocket disconnected");
+      log.info("WebSocket disconnected");
       dispatch({ type: "SET_CONNECTION_STATUS", payload: false });
 
       if (showToastNotifications && autoReconnect) {
@@ -162,7 +170,7 @@ function createWebSocketHandlers(params: {
       }
     },
     onReconnect: (attempt: number) => {
-      console.log(`WebSocket reconnect attempt ${attempt}`);
+      log.debug(`WebSocket reconnect attempt ${attempt}`);
       dispatch({ type: "INCREMENT_RECONNECT_ATTEMPTS" });
 
       if (showToastNotifications) {
@@ -173,7 +181,7 @@ function createWebSocketHandlers(params: {
       }
     },
     onError: (error: Event) => {
-      console.error("WebSocket error:", error);
+      log.error("WebSocket error:", error);
       const errorMessage = "WebSocket connection error";
       setError(errorMessage);
 
@@ -191,15 +199,31 @@ function createWebSocketHandlers(params: {
  * Sync initial data from API
  */
 /**
- * Fetch all initial project data in parallel with error handling
+ * Fetch all initial project data with staggered requests to avoid rate limiting
  */
 async function fetchInitialProjectData(projectId: string) {
-  return await Promise.all([
-    apiService.getFragments(projectId),
-    apiService.getResolvedSpec(projectId).catch(() => null),
-    apiService.getGaps(projectId).catch(() => null),
-    apiService.getAllIRs(projectId).catch(() => ({})),
-  ]);
+  // Fetch fragments first (most important)
+  const fragments = await apiService.getFragments(projectId);
+  
+  // Small delay before next request
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Fetch resolved spec
+  const resolved = await apiService.getResolvedSpec(projectId).catch(() => null);
+  
+  // Small delay before next request
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Fetch gaps
+  const gaps = await apiService.getGaps(projectId).catch(() => null);
+  
+  // Small delay before next request (getAllIRs already has internal delays)
+  await new Promise(resolve => setTimeout(resolve, 50));
+  
+  // Fetch all IRs (this is already sequential internally)
+  const irs = await apiService.getAllIRs(projectId).catch(() => ({}));
+  
+  return [fragments, resolved, gaps, irs];
 }
 
 /**
@@ -268,7 +292,7 @@ function updateProjectStates(dispatch: any, fragments: any, resolved: any, gaps:
  * Handle sync error with logging and user notification
  */
 function handleSyncError(error: unknown, setError: (error: string | null) => void) {
-  console.error("Failed to sync initial data:", error);
+  log.error("Failed to sync initial data:", error);
   setError(error instanceof Error ? error.message : "Failed to sync data");
 }
 
@@ -312,7 +336,14 @@ function useWebSocketConnection(
 
   useEffect(() => {
     if (!projectId) {
-      return handleNoProject();
+      // Handle no project case inline
+      if (eventHandlerRef.current) {
+        wsService.disconnect();
+        eventHandlerRef.current = null;
+        dispatch({ type: "SET_CONNECTION_STATUS", payload: false });
+        dispatch({ type: "RESET_RECONNECT_ATTEMPTS" });
+      }
+      return;
     }
 
     if (shouldSkipReconnection(projectId, lastProjectIdRef.current)) {
@@ -332,21 +363,6 @@ function useWebSocketConnection(
   }, [projectId, handleWebSocketEvent, dispatch, setError, showToastNotifications, autoReconnect]);
 }
 
-/**
- * Handle the case when there's no project ID
- */
-function handleNoProject() {
-  const eventHandlerRef = useRef<WebSocketEventHandler | null>(null);
-  const dispatch = useApp().dispatch;
-
-  if (eventHandlerRef.current) {
-    wsService.disconnect();
-    eventHandlerRef.current = null;
-    dispatch({ type: "SET_CONNECTION_STATUS", payload: false });
-    dispatch({ type: "RESET_RECONNECT_ATTEMPTS" });
-  }
-  return;
-}
 
 /**
  * Check if WebSocket reconnection should be skipped
@@ -443,7 +459,7 @@ export function useWebSocket(projectId: string | null, options: UseWebSocketOpti
   // Handle WebSocket events
   const handleWebSocketEvent = useCallback(
     (event: WsEvent) => {
-      console.log("WebSocket event received:", event);
+      log.debug("WebSocket event received:", { type: event.type, timestamp: event.timestamp });
 
       // Show toast notification
       if (showToastNotifications && event.user && event.user !== "current_user") {

@@ -17,6 +17,9 @@ import type {
   ValidationRequest,
   ValidationResponse,
 } from "../types/api";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger('API');
 
 export class ApiError extends Error {
   constructor(
@@ -30,7 +33,7 @@ export class ApiError extends Error {
 }
 
 class ApiService {
-  private baseUrl = "http://localhost:4000";
+  private baseUrl = "http://localhost:5050";
   private defaultHeaders: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -176,7 +179,19 @@ class ApiService {
 
   // Resolved spec endpoints
   async getResolvedSpec(projectId: string): Promise<ResolvedSpecResponse> {
-    return this.request<ResolvedSpecResponse>(`/api/resolved?projectId=${projectId}`);
+    const response = await this.request<{
+      projectId: string;
+      specHash: string;
+      updatedAt: string;
+      json: Record<string, unknown>;
+    }>(`/api/resolved?projectId=${projectId}`);
+    
+    // Transform response to match expected interface
+    return {
+      spec_hash: response.specHash,
+      resolved: response.json,
+      last_updated: response.updatedAt
+    };
   }
 
   // Gap analysis endpoints
@@ -191,23 +206,21 @@ class ApiService {
 
   async getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
     const kinds: IRKind[] = ["flow", "fsm", "view", "site"];
-    const results = await Promise.all(
-      kinds.map(async (kind) => {
-        try {
-          const ir = await this.getIR(projectId, kind);
-          return [kind, ir] as const;
-        } catch (error) {
-          console.warn(`Failed to load IR for ${kind}:`, error);
-          return null;
-        }
-      }),
-    );
-
     const irs: Record<string, IRResponse> = {};
-    for (const result of results) {
-      if (result) {
-        const [kind, ir] = result;
+    
+    // Sequential requests with small delays to avoid rate limiting
+    for (let i = 0; i < kinds.length; i++) {
+      const kind = kinds[i];
+      try {
+        const ir = await this.getIR(projectId, kind);
         irs[kind] = ir;
+      } catch (error) {
+        log.warn(`Failed to load IR for ${kind}:`, error);
+      }
+      
+      // Add small delay between requests to avoid overwhelming rate limiter
+      if (i < kinds.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
     }
 

@@ -623,7 +623,7 @@ config: #Config & {
     files.push(...cueFiles);
 
     // Configuration files
-    const configFiles = [".arbiter/project.json", ".arbiter.json", "cue.mod/module.cue"].map((f) =>
+    const configFiles = [".arbiter/project.json", ".arbiter/config.json", ".arbiter.json", "cue.mod/module.cue"].map((f) =>
       path.join(this.projectRoot, f),
     );
 

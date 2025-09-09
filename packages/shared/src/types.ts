@@ -271,9 +271,9 @@ export interface EnhancedGenerateOptions {
 }
 
 // =============================================================================
-// V2 APP SPECIFICATION TYPES
+// APP SPECIFICATION TYPES
 // =============================================================================
-// Types for the new app-centric schema format (v2)
+// Types for the app-centric schema format
 
 // Core primitives matching CUE definitions
 export type Slug = string; // Pattern: ^[a-z0-9]+(?:[._-][a-z0-9]+)*$
@@ -448,15 +448,20 @@ export interface FSMSpec {
   states: Record<Slug, FSMState>;
 }
 
-// Complete V2 App Specification
+// Complete App Specification
 export interface AppSpec {
   product: ProductSpec;
+  config?: {
+    language?: string;
+    [key: string]: any;
+  };
   domain?: DomainSpec;
   components?: ComponentsSpec;
   paths?: Record<URLPath, PathSpec>;
   ui: UISpec;
   locators: Record<LocatorToken, CssSelector>;
   flows: FlowSpec[];
+  services?: Record<string, ServiceConfig>;
   testability?: TestabilitySpec;
   ops?: OpsSpec;
   stateModels?: Record<Slug, FSMSpec>;
@@ -464,12 +469,12 @@ export interface AppSpec {
 
 // Schema version detection and configuration
 export interface SchemaVersion {
-  version: "v1" | "v2";
+  version: "v1" | "app";
   detected_from: "structure" | "metadata" | "default";
 }
 
 export interface ConfigWithVersion {
   schema: SchemaVersion;
   v1?: AssemblyConfig;
-  v2?: AppSpec;
+  app?: AppSpec;
 }

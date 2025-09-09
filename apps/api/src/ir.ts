@@ -33,11 +33,12 @@ export class IRGenerator {
 
       const duration = Date.now() - startTime;
 
-      logger.debug("Generated IR", {
-        kind,
-        nodeCount: this.getNodeCount(data),
-        duration,
-      });
+      // Reduced logging - only log for debug level when enabled
+      // logger.debug("Generated IR", {
+      //   kind,
+      //   nodeCount: this.getNodeCount(data),
+      //   duration,
+      // });
 
       return {
         kind,
@@ -66,7 +67,7 @@ export class IRGenerator {
 
       if (Array.isArray(flow.steps)) {
         flow.steps.forEach((step: any, index: number) => {
-          const nodeId = `${index}`;
+          const nodeId = step.id || `${index}`;
           const kind = this.getFlowStepKind(step);
           const label = this.getFlowStepLabel(step, index);
 
@@ -76,12 +77,14 @@ export class IRGenerator {
             label,
           });
 
-          // Create edge to next step
-          if (index < flow.steps.length - 1) {
-            edges.push({
-              from: nodeId,
-              to: `${index + 1}`,
-              label: step.transition || "",
+          // Create edges based on dependsOn relationships
+          if (step.dependsOn && Array.isArray(step.dependsOn)) {
+            step.dependsOn.forEach((depId: string) => {
+              edges.push({
+                from: depId,
+                to: nodeId,
+                label: step.transition || "",
+              });
             });
           }
         });
@@ -104,7 +107,8 @@ export class IRGenerator {
    * Generate FSM IR for XState - from TODO.md specification
    */
   private generateFsmIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    const stateModels = (resolved.stateModels as Record<string, any>) || {};
+    // Handle both CUE format (states) and legacy format (stateModels)
+    const stateModels = (resolved.states as Record<string, any>) || (resolved.stateModels as Record<string, any>) || {};
     const fsms: any[] = [];
 
     Object.entries(stateModels).forEach(([fsmId, model]) => {
@@ -112,17 +116,17 @@ export class IRGenerator {
 
       if (model.states && typeof model.states === "object") {
         Object.entries(model.states).forEach(([stateId, state]: [string, any]) => {
-          states[stateId] = {};
-
-          if (state.on && typeof state.on === "object") {
-            states[stateId].on = state.on;
-          }
+          states[stateId] = {
+            actions: state.actions || [],
+            transitions: state.transitions || state.on || {}
+          };
         });
       }
 
       fsms.push({
         id: fsmId,
-        initial: model.initial || "idle",
+        name: model.name || fsmId,
+        initial: model.initialState || model.initial || "idle",
         states,
       });
     });
@@ -137,11 +141,12 @@ export class IRGenerator {
    * Generate view IR for wireframes - from TODO.md specification
    */
   private generateViewIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    const routes = (resolved.ui as any)?.routes || [];
+    // Handle both CUE format (routes) and legacy format (ui.routes)
+    const routes = (resolved.routes as Record<string, any>) || (resolved.ui as any)?.routes || {};
     const locators = (resolved.locators as Record<string, string>) || {};
     const views: any[] = [];
 
-    routes.forEach((route: any) => {
+    Object.entries(routes).forEach(([path, route]: [string, any]) => {
       const widgets: any[] = [];
 
       // Extract widgets from route components and map with locators
@@ -186,12 +191,15 @@ export class IRGenerator {
         }
       });
 
-      if (widgets.length > 0) {
-        views.push({
-          id: route.id || route.path,
-          widgets,
-        });
-      }
+      // Create view for each route (even without widgets for navigation structure)
+      views.push({
+        id: path,
+        name: route.name || path,
+        component: route.component,
+        layout: route.layout,
+        requiresAuth: route.requiresAuth || false,
+        widgets,
+      });
     });
 
     return {
@@ -262,6 +270,10 @@ export class IRGenerator {
 
   // New helper methods for TODO.md specification compliance
   private getFlowStepKind(step: any): string {
+    // Handle CUE specification format
+    if (step.type) return step.type;
+    
+    // Fallback to legacy test format
     if (step.visit) return "visit";
     if (step.click) return "click";
     if (step.fill) return "fill";
@@ -271,6 +283,10 @@ export class IRGenerator {
   }
 
   private getFlowStepLabel(step: any, index: number): string {
+    // Handle CUE specification format
+    if (step.name) return step.name;
+    
+    // Fallback to legacy test format
     if (step.visit) return `Visit: ${step.visit}`;
     if (step.click) return `Click: ${step.click}`;
     if (step.fill) return `Fill: ${step.fill}`;

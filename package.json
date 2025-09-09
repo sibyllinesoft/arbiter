@@ -13,7 +13,7 @@
     "arbiter": "./arbiter-cli"
   },
   "scripts": {
-    "dev": "bun run --cwd apps/api dev",
+    "dev": "NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev",
     "start": "bun run --cwd apps/api start",
     "build": "bun run build:all",
     "build:all": "bun run build:shared && bun run build:cli && bun run build:api",
@@ -75,5 +75,8 @@
     "code-generation"
   ],
   "author": "Nathan Rice",
-  "license": "LicenseRef-SPL-1.0"
+  "license": "LicenseRef-SPL-1.0",
+  "dependencies": {
+    "@headlessui/react": "^2.2.7"
+  }
 }

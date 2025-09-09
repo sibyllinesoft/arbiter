@@ -56,11 +56,12 @@ export class EventService {
     // Set connection data for WebSocket
     ws.data = { connectionId, authContext };
 
-    logger.info("WebSocket connection established", {
-      connectionId,
-      userId: authContext.user_id,
-      totalConnections: this.connections.size,
-    });
+    // Reduced logging - only log if debug level enabled
+    // logger.info("WebSocket connection established", {
+    //   connectionId,
+    //   userId: authContext.user_id,
+    //   totalConnections: this.connections.size,
+    // });
 
     // Send welcome message
     this.sendToConnection(connectionId, {
@@ -89,11 +90,12 @@ export class EventService {
 
       this.connections.delete(connectionId);
 
-      logger.info("WebSocket connection closed", {
-        connectionId,
-        userId: connection.authContext.user_id,
-        totalConnections: this.connections.size,
-      });
+      // Reduced logging - only log if debug level enabled
+      // logger.info("WebSocket connection closed", {
+      //   connectionId,
+      //   userId: connection.authContext.user_id,
+      //   totalConnections: this.connections.size,
+      // });
     }
   }
 

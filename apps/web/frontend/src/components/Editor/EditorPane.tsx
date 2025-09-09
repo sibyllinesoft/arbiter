@@ -121,9 +121,9 @@ export function EditorPane({ className }: EditorPaneProps) {
     <div className={clsx('h-full bg-graphite-50', className)}>
       <SplitPane
         split="horizontal"
-        defaultSize="280px"
+        defaultSize="40%"
         minSize="200px"
-        maxSize="60%"
+        maxSize="70%"
         resizerStyle={{
           background: 'linear-gradient(90deg, transparent 0%, rgba(71, 85, 105, 0.1) 50%, transparent 100%)',
           borderTop: '1px solid rgba(71, 85, 105, 0.1)',
@@ -160,13 +160,6 @@ export function EditorPane({ className }: EditorPaneProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-xs text-graphite-500">
-                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-md font-medium">CUE</span>
-                    <span className="text-graphite-300">•</span>
-                    <span>UTF-8</span>
-                    <span className="text-graphite-300">•</span>
-                    <span>LF</span>
-                  </div>
                   <button 
                     onClick={handleSave}
                     className={clsx(

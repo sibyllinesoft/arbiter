@@ -7,6 +7,9 @@ import Editor from '@monaco-editor/react';
 import { editor } from 'monaco-editor';
 import { clsx } from 'clsx';
 import type { EditorProps } from '../../types/ui';
+import { createLogger } from '../../utils/logger';
+
+const log = createLogger('MonacoEditor');
 
 // Enhanced CUE language definition for Monaco
 const CUE_LANGUAGE_CONFIG = {
@@ -52,103 +55,66 @@ const CUE_LANGUAGE_CONFIG = {
   },
 };
 
-// Enhanced CUE tokenizer with better CUE-specific patterns
+// Simplified CUE tokenizer to avoid regex parsing errors
 const CUE_TOKENIZER = {
-  // Default tokens
-  defaultToken: 'invalid',
+  defaultToken: '',
   
-  // Keywords
   keywords: [
     'package', 'import', 'if', 'for', 'in', 'let', 'true', 'false', 'null'
   ],
   
-  // Built-in types
   typeKeywords: [
     'string', 'int', 'float', 'bool', 'bytes', 'number', 'top', 'bottom'
   ],
   
-  // Built-in functions
   builtins: [
     'len', 'close', 'and', 'or', 'div', 'mod', 'quo', 'rem', 'list', 'struct'
   ],
   
-  // Operators
-  operators: [
-    '=', '!=', '<', '<=', '>', '>=', '=~', '!~',
-    '&', '|', '!', '+', '-', '*', '/', '%',
-    '?', ':', '?:', '?=', '*=', '..', '..<'
-  ],
-  
-  // Common regular expressions
   escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
   
-  // Token rules
   tokenizer: {
     root: [
       // Comments
       [/\/\/.*$/, 'comment'],
       [/\/\*/, 'comment', '@comment'],
 
-      // Package and import statements
-      [/\bpackage\s+([a-zA-Z_][\w]*)\b/, ['keyword', 'namespace']],
-      [/\bimport\b/, 'keyword', '@import'],
-
       // Keywords
-      [/\b(if|for|in|let)\b/, 'keyword.control'],
-      [/\b(package|import)\b/, 'keyword'],
+      [/\b(?:if|for|in|let)\b/, 'keyword.control'],
+      [/\b(?:package|import)\b/, 'keyword'],
       
-      // Built-in types and constants
-      [/\b(string|int|float|bool|bytes|null|number|top|bottom|_)\b/, 'type'],
-      [/\b(true|false)\b/, 'constant.language.boolean'],
+      // Types and constants
+      [/\b(?:string|int|float|bool|bytes|null|number|top|bottom|_)\b/, 'type'],
+      [/\b(?:true|false)\b/, 'constant.language.boolean'],
       [/\bnull\b/, 'constant.language.null'],
       
       // Built-in functions
-      [/\b(len|close|and|or|div|mod|quo|rem|list|struct)\b/, 'support.function'],
+      [/\b(?:len|close|and|or|div|mod|quo|rem|list|struct)\b/, 'support.function'],
       
-      // Template expressions and interpolation
-      [/\\[(]/, 'delimiter', '@interpolation'],
-      
-      // Numbers with units and scientific notation
-      [/\d+(\.\d+)?([KMGTPE]i?|[munpfazy])?\b/, 'number'],
+      // Numbers
+      [/\d*\.\d+(?:[eE][\-+]?\d+)?/, 'number.float'],
       [/0[xX][0-9a-fA-F]+/, 'number.hex'],
       [/0[oO][0-7]+/, 'number.octal'],
       [/0[bB][01]+/, 'number.binary'],
-      [/\d*\.\d+([eE][\-+]?\d+)?/, 'number.float'],
-      [/\d+([eE][\-+]?\d+)?/, 'number'],
+      [/\d+/, 'number'],
       
       // Strings
-      [/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-terminated string
       [/"/, 'string', '@string_double'],
-      [/'([^'\\]|\\.)*$/, 'string.invalid'],  // non-terminated string
       [/'/, 'string', '@string_single'],
       [/`/, 'string', '@string_backtick'],
-      [/#"/, 'string.raw', '@string_raw'],
       
-      // Regular expressions
-      [/=~\s*"/, 'regexp', '@regexp'],
-      [/!~\s*"/, 'regexp', '@regexp'],
+      // Operators
+      [/(?:\?=|\?:|\*=|=~|!~|!=|<=|>=|==)/, 'keyword.operator.comparison'],
+      [/(?:\.\.\.|\.\.<)/, 'keyword.operator.range'],
+      [/[&|](?![&|])/, 'keyword.operator.unification'],
+      [/!(?!=)/, 'keyword.operator.logical'],
       
-      // CUE-specific operators and constraints
-      [/(\?=|\?:|\*=|=~|!~|!=|<=|>=|==)/, 'keyword.operator.comparison'],
-      [/(\.\.\.|\.\.\<)/, 'keyword.operator.range'],
-      [/(&|\|)(?![&|])/, 'keyword.operator.unification'],
-      [/[!](?!=)/, 'keyword.operator.logical'],
-      
-      // Field definitions and references
-      [/([a-zA-Z_][\w]*)(\s*)([:])/, ['variable.name', '', 'delimiter']],
-      [/([a-zA-Z_][\w]*)(\s*)([?])(?![:=])/, ['variable.name', '', 'keyword.operator.optional']],
-      [/([a-zA-Z_][\w]*)(\s*)([!])(?![:=~])/, ['variable.name', '', 'keyword.operator.required']],
-      
-      // Attributes and tags
-      [/@[a-zA-Z_][\w]*/, 'decorator'],
-      
-      // Hidden fields and special identifiers
-      [/_[a-zA-Z_][\w]*/, 'variable.other.constant'],
+      // Identifiers
+      [/@[a-zA-Z_]\w*/, 'decorator'],
+      [/_[a-zA-Z_]\w*/, 'variable.other.constant'],
       [/#[a-zA-Z_$][\w$]*/, 'variable.name'],
-      [/\$[a-zA-Z_][\w]*/, 'variable.parameter'],
-      [/\.[a-zA-Z_][\w]*/, 'variable.other.property'],
-      
-      // Regular identifiers
+      [/\$[a-zA-Z_]\w*/, 'variable.parameter'],
+      [/\.[a-zA-Z_]\w*/, 'variable.other.property'],
       [/[a-zA-Z_$][\w$]*/, 'identifier'],
       
       // Brackets and delimiters
@@ -160,22 +126,10 @@ const CUE_TOKENIZER = {
       [/[ \t\r\n]+/, ''],
     ],
 
-    import: [
-      [/"([^"]*)"/, 'string', '@pop'],
-      [/[^\s"]+/, 'string', '@pop'],
-      [/\s+/, ''],
-      [/$/, '', '@pop'],
-    ],
-
-    interpolation: [
-      [/[)]/, 'delimiter', '@pop'],
-      { include: '@root' },
-    ],
-
     comment: [
-      [/[^\/*]+/, 'comment'],
+      [/[^/*]+/, 'comment'],
       [/\*\//, 'comment', '@pop'],
-      [/[\/*]/, 'comment'],
+      [/[/*]/, 'comment'],
     ],
 
     string_double: [
@@ -197,17 +151,6 @@ const CUE_TOKENIZER = {
       [/@escapes/, 'string.escape'],
       [/\\./, 'string.escape.invalid'],
       [/`/, 'string', '@pop'],
-    ],
-
-    string_raw: [
-      [/[^#"]+/, 'string'],
-      [/#"/, 'string.raw', '@pop'],
-    ],
-
-    regexp: [
-      [/[^\\"]/, 'regexp'],
-      [/\\./, 'regexp.escape'],
-      [/"/, 'regexp', '@pop'],
     ],
   }
 };
@@ -250,8 +193,8 @@ export function MonacoEditor({
     showFoldingControls: 'mouseover',
     matchBrackets: 'always',
     autoIndent: 'advanced',
-    formatOnPaste: true,
-    formatOnType: true,
+    formatOnPaste: false, // Disable to avoid worker issues
+    formatOnType: false,  // Disable to avoid worker issues
     tabSize: 2,
     insertSpaces: true,
     detectIndentation: true,
@@ -260,17 +203,36 @@ export function MonacoEditor({
       verticalScrollbarSize: 10,
       horizontalScrollbarSize: 10,
     },
+    // Disable features that require workers to avoid errors
+    quickSuggestions: false,
+    parameterHints: { enabled: false },
+    suggest: { showWords: false },
+    hover: { enabled: false },
+    semanticHighlighting: { enabled: false },
     ...options,
   };
 
   // Register CUE language before mount
   const handleEditorWillMount = useCallback((monaco: any) => {
+    // Disable all workers to prevent worker errors
+    self.MonacoEnvironment = {
+      getWorker: () => {
+        return new Worker('/dev/null', { type: 'module' });
+      }
+    };
+    
+    // Also set global worker override
+    (window as any).MonacoEnvironment = {
+      getWorker: () => {
+        return new Worker('data:text/javascript,', { type: 'module' });
+      }
+    };
     // Check if CUE language is already registered
     const languages = monaco.languages.getLanguages();
     const cueExists = languages.some((lang: any) => lang.id === 'cue');
     
     if (!cueExists) {
-      console.log('🔧 Registering CUE language with Monaco Editor...');
+      log.debug('Registering CUE language with Monaco Editor...');
       
       // Register CUE language
       monaco.languages.register({ id: 'cue' });
@@ -413,9 +375,9 @@ export function MonacoEditor({
           },
         });
       
-      console.log('✅ CUE language successfully registered with Monaco Editor');
+      log.info('CUE language successfully registered with Monaco Editor');
     } else {
-      console.log('🔄 CUE language already registered');
+      log.debug('CUE language already registered');
     }
   }, []);
 
@@ -439,276 +401,8 @@ export function MonacoEditor({
       // Debounced auto-format could go here
     });
 
-    // Add comprehensive CUE completions
-    monaco.languages.registerCompletionItemProvider('cue', {
-      provideCompletionItems: (model, position) => {
-        const suggestions = [
-          // Basic keywords
-          {
-            label: 'package',
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: 'package ${1:name}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Define a package name',
-          },
-          {
-            label: 'import',
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: 'import "${1:path}"',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Import a package from a path',
-          },
-          
-          // Control flow
-          {
-            label: 'if',
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: 'if ${1:condition} {\n\t$0\n}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Conditional expression',
-          },
-          {
-            label: 'for',
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: 'for ${1:key}, ${2:value} in ${3:object} {\n\t$0\n}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Iterate over object or list',
-          },
-          {
-            label: 'let',
-            kind: monaco.languages.CompletionItemKind.Keyword,
-            insertText: 'let ${1:name} = ${2:value}\n$0',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Create a let binding',
-          },
-
-          // Built-in types
-          {
-            label: 'string',
-            kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: 'string',
-            documentation: 'Built-in string type',
-          },
-          {
-            label: 'int',
-            kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: 'int',
-            documentation: 'Built-in integer type',
-          },
-          {
-            label: 'float',
-            kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: 'float',
-            documentation: 'Built-in floating point type',
-          },
-          {
-            label: 'bool',
-            kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: 'bool',
-            documentation: 'Built-in boolean type',
-          },
-          {
-            label: 'bytes',
-            kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: 'bytes',
-            documentation: 'Built-in bytes type',
-          },
-          {
-            label: 'number',
-            kind: monaco.languages.CompletionItemKind.TypeParameter,
-            insertText: 'number',
-            documentation: 'Union of int and float',
-          },
-
-          // CUE-specific constructs
-          {
-            label: 'struct definition',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:StructName}: {\n\t${2:field}: ${3:type}\n\t$0\n}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Define a struct with fields',
-          },
-          {
-            label: 'constraint',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}: ${2:type} & ${3:constraint}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Add constraint to a field',
-          },
-          {
-            label: 'optional field',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}?: ${2:type}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Define an optional field',
-          },
-          {
-            label: 'required field',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}!: ${2:type}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Define a required field',
-          },
-
-          // Built-in functions
-          {
-            label: 'len',
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: 'len(${1:value})',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Returns the length of a string, list, or object',
-          },
-          {
-            label: 'close',
-            kind: monaco.languages.CompletionItemKind.Function,
-            insertText: 'close({\n\t$0\n})',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Close a struct to prevent additional fields',
-          },
-
-          // Validation patterns
-          {
-            label: 'range constraint',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}: >${2:min} & <${3:max}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Numeric range constraint',
-          },
-          {
-            label: 'regex constraint',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}: =~"${2:pattern}"',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Regular expression constraint',
-          },
-          {
-            label: 'enum constraint',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}: "${2:option1}" | "${3:option2}" | "${4:option3}"',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Enumeration constraint',
-          },
-
-          // Common patterns
-          {
-            label: 'list definition',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}: [...${2:type}]',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Define a list of specific type',
-          },
-          {
-            label: 'map definition',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:field}: [${2:KeyType}]: ${3:ValueType}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Define a map with key-value types',
-          },
-          
-          // Template and interpolation
-          {
-            label: 'template',
-            kind: monaco.languages.CompletionItemKind.Snippet,
-            insertText: '${1:template}: {\n\t${2:field}: "\\(${3:variable})"\n\t$0\n}',
-            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-            documentation: 'Create a template with string interpolation',
-          },
-        ];
-
-        return { suggestions };
-      },
-    });
-
-    // Add comprehensive hover provider for CUE
-    monaco.languages.registerHoverProvider('cue', {
-      provideHover: (model, position) => {
-        const word = model.getWordAtPosition(position);
-        if (!word) return;
-
-        const builtins: Record<string, string> = {
-          // Built-in types
-          'string': '**string** - Built-in string type for text values',
-          'int': '**int** - Built-in integer type for whole numbers',
-          'float': '**float** - Built-in floating point type for decimal numbers',
-          'bool': '**bool** - Built-in boolean type (true/false)',
-          'bytes': '**bytes** - Built-in bytes type for binary data',
-          'number': '**number** - Union type of int and float',
-          'null': '**null** - Represents absence of a value',
-          'top': '**top** - The universal type that all values satisfy',
-          'bottom': '**bottom** - The empty type that no values satisfy',
-          
-          // Built-in functions
-          'len': '**len(value)** - Returns the length of a string, list, or object',
-          'close': '**close(struct)** - Closes a struct, preventing addition of new fields',
-          'and': '**and(a, b)** - Logical AND operation',
-          'or': '**or(a, b)** - Logical OR operation',
-          'div': '**div(a, b)** - Integer division',
-          'mod': '**mod(a, b)** - Modulo operation',
-          'quo': '**quo(a, b)** - Quotient operation',
-          'rem': '**rem(a, b)** - Remainder operation',
-          
-          // Control flow keywords
-          'package': '**package** - Defines the package name for this CUE file',
-          'import': '**import** - Imports another package or module',
-          'if': '**if** - Conditional expression for control flow',
-          'for': '**for** - Iteration over lists and objects',
-          'let': '**let** - Creates a local binding',
-          'in': '**in** - Used in for loops to iterate over collections',
-          
-          // Constants
-          'true': '**true** - Boolean constant representing truth',
-          'false': '**false** - Boolean constant representing falsehood',
-        };
-
-        const documentation = builtins[word.word];
-        if (documentation) {
-          return {
-            range: {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            },
-            contents: [{ value: documentation }],
-          };
-        }
-
-        // Check for operators and constraints
-        const line = model.getLineContent(position.lineNumber);
-        const wordStart = word.startColumn - 1;
-        const wordEnd = word.endColumn - 1;
-        
-        // Check for constraint operators around the cursor
-        const beforeWord = line.substring(0, wordStart);
-        const afterWord = line.substring(wordEnd);
-        
-        if (beforeWord.includes('=~')) {
-          return {
-            range: {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            },
-            contents: [{ value: '**Regular Expression Constraint** - The value must match this pattern' }],
-          };
-        }
-        
-        if (beforeWord.includes('!~')) {
-          return {
-            range: {
-              startLineNumber: position.lineNumber,
-              endLineNumber: position.lineNumber,
-              startColumn: word.startColumn,
-              endColumn: word.endColumn,
-            },
-            contents: [{ value: '**Negative Regular Expression Constraint** - The value must NOT match this pattern' }],
-          };
-        }
-
-        return null;
-      },
-    });
+    // Basic CUE language features (hover and completion disabled to avoid worker issues)
+    log.debug('CUE language features initialized (advanced features disabled for stability)');
 
     // Call external ready handler
     onEditorReady?.(editor);

@@ -86,16 +86,12 @@ export class SpecWorkbenchServer {
       },
     });
 
-    logger.info("Spec Workbench server started", {
+    logger.info(`🚀 Server running at http://${this.config.host}:${this.config.port}`, {
       host: this.config.host,
       port: this.config.port,
       authRequired: this.config.auth_required,
       databasePath: this.config.database_path,
     });
-
-    logger.info(`🚀 Server running at http://${this.config.host}:${this.config.port}`);
-    logger.info(`📋 Health check: http://${this.config.host}:${this.config.port}/health`);
-    logger.info("Server started successfully");
   }
 
   /**
@@ -142,16 +138,56 @@ export class SpecWorkbenchServer {
   }
 
   /**
-   * Handle root redirect to status
+   * Serve static files using Bun's built-in file serving
    */
-  private handleRootRedirect(corsHeaders: Record<string, string>): Response {
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: "/status",
-        ...corsHeaders,
-      },
-    });
+  private async serveStaticFiles(pathname: string, corsHeaders: Record<string, string>): Promise<Response> {
+    try {
+      const distPath = new URL("../../web/frontend/dist", import.meta.url).pathname;
+      
+      // Handle static assets
+      if (pathname.startsWith('/assets/') || 
+          pathname.endsWith('.js') || 
+          pathname.endsWith('.css') || 
+          pathname.endsWith('.svg') || 
+          pathname.endsWith('.ico') ||
+          pathname.startsWith('/monacoeditorwork/')) {
+        
+        const file = Bun.file(`${distPath}${pathname}`);
+        if (await file.exists()) {
+          return new Response(file, {
+            headers: {
+              "Cache-Control": pathname.startsWith('/assets/') ? "public, max-age=31536000" : "public, max-age=3600",
+              ...corsHeaders,
+            },
+          });
+        }
+      }
+      
+      // For SPA routes, serve index.html
+      const indexFile = Bun.file(`${distPath}/index.html`);
+      if (await indexFile.exists()) {
+        return new Response(indexFile, {
+          headers: {
+            "Content-Type": "text/html",
+            "Cache-Control": "no-cache",
+            ...corsHeaders,
+          },
+        });
+      }
+      
+      // Frontend not built
+      return this.createErrorResponse(
+        createProblemDetails(503, "Service Unavailable", "Frontend not built or deployed"),
+        corsHeaders,
+      );
+      
+    } catch (error) {
+      logger.error("Static file serving error", error instanceof Error ? error : undefined);
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to serve frontend"),
+        corsHeaders,
+      );
+    }
   }
 
   /**
@@ -207,9 +243,10 @@ export class SpecWorkbenchServer {
       return await this.handleMcpRequest(request, corsHeaders);
     }
 
-    // Root redirect to status
-    if (pathname === "/") {
-      return this.handleRootRedirect(corsHeaders);
+    // Root and frontend routes - serve the React app
+    if (pathname === "/" || (!pathname.startsWith("/api/") && !pathname.startsWith("/ws") && 
+        pathname !== "/health" && pathname !== "/status" && pathname !== "/mcp")) {
+      return await this.serveStaticFiles(pathname, corsHeaders);
     }
 
     // Not found
@@ -1754,9 +1791,9 @@ const defaultConfig: ServerConfig = {
   jq_binary_path: process.env.JQ_BINARY || "jq",
   auth_required: process.env.AUTH_REQUIRED !== "false",
   rate_limit: {
-    max_tokens: parseInt(process.env.RATE_LIMIT_TOKENS || "10", 10),
-    refill_rate: parseFloat(process.env.RATE_LIMIT_REFILL || "1"),
-    window_ms: parseInt(process.env.RATE_LIMIT_WINDOW || "10000", 10),
+    max_tokens: parseInt(process.env.RATE_LIMIT_TOKENS || "100", 10),
+    refill_rate: parseFloat(process.env.RATE_LIMIT_REFILL || "10"),
+    window_ms: parseInt(process.env.RATE_LIMIT_WINDOW || "60000", 10),
   },
   external_tool_timeout_ms: parseInt(process.env.EXTERNAL_TOOL_TIMEOUT || "10000", 10),
   websocket: {

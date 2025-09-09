@@ -12,6 +12,8 @@ import { spawn } from "node:child_process";
 import { promisify } from "node:util";
 import chalk from "chalk";
 import type { Config } from "../config.js";
+import { ApiClient } from "../api-client.js";
+import type { CLIConfig } from "../types.js";
 import type {
   ServiceConfig,
   DeploymentConfig,
@@ -26,6 +28,8 @@ import type {
   SchemaVersion,
 } from "@arbiter/shared";
 import { templateManager, extractVariablesFromCue } from "../templates/index.js";
+import { registry as languageRegistry, generateComponent, generateService, initializeProject } from "../language-plugins/index.js";
+import { validateSpecification, formatWarnings } from "../validation/warnings.js";
 
 export interface GenerateOptions {
   output?: string;
@@ -105,11 +109,14 @@ function discoverSpecs(): Array<{ name: string; path: string }> {
  */
 export async function generateCommand(
   options: GenerateOptions,
-  _config: Config,
+  config: Config & CLIConfig,
   specName?: string,
 ): Promise<number> {
   try {
     console.log(chalk.blue("🏗️  Generating project artifacts from assembly.cue..."));
+
+    // First, try to emit the CUE file from stored specification in service
+    await emitSpecificationFromService(config);
 
     let assemblyPath: string;
     let assemblyContent: string;
@@ -143,14 +150,19 @@ export async function generateCommand(
       const availableSpecs = discoverSpecs();
 
       if (availableSpecs.length === 0) {
-        // Check for legacy arbiter.assembly.cue in current directory
+        // Check for assembly.cue in .arbiter directory first
+        const arbiterPath = path.resolve(".arbiter", "assembly.cue");
         const legacyPath = path.resolve("arbiter.assembly.cue");
-        if (fs.existsSync(legacyPath)) {
+        
+        if (fs.existsSync(arbiterPath)) {
+          assemblyPath = arbiterPath;
+          console.log(chalk.dim("📁 Using .arbiter/assembly.cue"));
+        } else if (fs.existsSync(legacyPath)) {
           assemblyPath = legacyPath;
           console.log(chalk.yellow("⚠️  Using legacy arbiter.assembly.cue from current directory"));
         } else {
           console.error(chalk.red("❌ No assembly specifications found"));
-          console.log(chalk.dim("Create a spec with: arbiter srf import <proto-spec>.md"));
+          console.log(chalk.dim("Create a spec with: arbiter add service <name>"));
           console.log(chalk.dim("Or initialize with: arbiter init"));
           return 1;
         }
@@ -182,6 +194,43 @@ export async function generateCommand(
       console.log(chalk.dim(JSON.stringify(configWithVersion, null, 2)));
     }
 
+    // Validate specification completeness
+    console.log(chalk.blue("🔍 Validating specification completeness..."));
+    const validationResult = validateSpecification(configWithVersion.app || configWithVersion);
+    
+    if (validationResult.hasErrors) {
+      console.log(formatWarnings(validationResult));
+      console.error(chalk.red("\n❌ Cannot generate with errors present. Please fix the errors above."));
+      return 1;
+    }
+
+    if (validationResult.hasWarnings && !options.force) {
+      console.log(formatWarnings(validationResult));
+      console.error(chalk.red("\n❌ Cannot generate with warnings present."));
+      console.log(chalk.blue("Use --force to generate anyway, but this may result in incomplete artifacts."));
+      console.log(chalk.dim("Recommendation: Fix the warnings above for a complete, production-ready specification."));
+      
+      // Critical prompt for agents/automation
+      console.log(chalk.red.bold("\n🚨 IMPORTANT FOR AI AGENTS:"));
+      console.log(chalk.yellow("IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT."));
+      console.log(chalk.yellow("YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force` TO GENERATE AN INCOMPLETE SPEC."));
+      console.log(chalk.dim("Incomplete specifications lead to production issues and technical debt."));
+      
+      return 1;
+    }
+
+    if (validationResult.hasWarnings && options.force) {
+      console.log(formatWarnings(validationResult));
+      console.log(chalk.yellow("\n⚠️  Generating despite warnings (--force used)"));
+      console.log(chalk.red.bold("\n🚨 REMINDER FOR AI AGENTS:"));
+      console.log(chalk.yellow("You should have requested user approval before using --force with incomplete specifications."));
+      console.log(chalk.dim("This may result in production issues that require additional work later."));
+    }
+
+    if (!validationResult.hasWarnings && !validationResult.hasErrors) {
+      console.log(chalk.green("✅ Specification validation passed"));
+    }
+
     // Determine output directory
     const outputDir = options.outputDir || ".";
 
@@ -191,21 +240,13 @@ export async function generateCommand(
 
     const results = [];
 
-    // Route to appropriate generator based on schema version
-    if (configWithVersion.schema.version === "v2" && configWithVersion.v2) {
-      console.log(chalk.blue("📱 Generating v2 app-centric artifacts..."));
-      const v2Results = await generateV2AppArtifacts(configWithVersion.v2, outputDir, options);
-      results.push(...v2Results);
-    } else if (configWithVersion.schema.version === "v1" && configWithVersion.v1) {
-      console.log(chalk.blue("🏗️  Generating v1 infrastructure-centric artifacts..."));
-      const v1Results = await generateV1InfrastructureArtifacts(
-        configWithVersion.v1,
-        outputDir,
-        options,
-      );
-      results.push(...v1Results);
+    // Generate application artifacts
+    if (configWithVersion.app) {
+      console.log(chalk.blue("🎨 Generating application artifacts..."));
+      const appResults = await generateAppArtifacts(configWithVersion.app, outputDir, options);
+      results.push(...appResults);
     } else {
-      throw new Error("Invalid configuration: missing schema data");
+      throw new Error("Invalid configuration: missing app specification data");
     }
 
     // Report results
@@ -247,11 +288,8 @@ async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersio
     // Detect schema version based on structure
     const schemaVersion = detectSchemaVersion(cueData);
 
-    if (schemaVersion.version === "v2") {
-      return parseV2Schema(cueData, schemaVersion);
-    } else {
-      return parseV1Schema(cueData, schemaVersion);
-    }
+    // Parse app schema
+    return parseAppSchema(cueData, schemaVersion);
   } catch (error) {
     console.error("Error parsing CUE file:", error);
     return fallbackParseAssembly(assemblyPath);
@@ -262,42 +300,28 @@ async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersio
  * Detect schema version based on CUE data structure
  */
 function detectSchemaVersion(cueData: any): SchemaVersion {
-  // V2 schema indicators
-  if (cueData.product || cueData.ui || cueData.locators || cueData.flows) {
-    return {
-      version: "v2",
-      detected_from: "structure",
-    };
-  }
-
-  // V1 schema indicators
-  if (cueData.config || cueData.metadata || cueData.services || cueData.deployment) {
-    return {
-      version: "v1",
-      detected_from: "structure",
-    };
-  }
-
-  // Default to v1 for backward compatibility
+  // Always use app schema - it's the primary and only supported schema now
   return {
-    version: "v1",
-    detected_from: "default",
+    version: "app",
+    detected_from: "unified",
   };
 }
 
 /**
- * Parse V2 App Specification schema
+ * Parse App Specification schema
  */
-function parseV2Schema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
+function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
   const appSpec: AppSpec = {
     product: cueData.product || {
       name: "Unknown App",
     },
+    config: cueData.config,
     ui: cueData.ui || {
       routes: [],
     },
     locators: cueData.locators || {},
     flows: cueData.flows || [],
+    services: cueData.services,
     domain: cueData.domain,
     components: cueData.components,
     paths: cueData.paths,
@@ -308,134 +332,44 @@ function parseV2Schema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVe
 
   return {
     schema: schemaVersion,
-    v2: appSpec,
+    app: appSpec,
   };
 }
 
-/**
- * Parse V1 Assembly schema (legacy)
- */
-function parseV1Schema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
-  const assemblyConfig: AssemblyConfig = {
-    config: {
-      language: cueData.config?.language || "typescript",
-      kind: cueData.config?.kind || "library",
-      buildTool: cueData.config?.buildTool || "default",
-    },
-    metadata: {
-      name: cueData.metadata?.name || "unknown",
-      version: cueData.metadata?.version || "1.0.0",
-      description: cueData.metadata?.description,
-    },
-    deployment: {
-      target: cueData.deployment?.target || "compose",
-    },
-    services: cueData.services || {},
-  };
-
-  // Store the full CUE data for service parsing (legacy compatibility)
-  (assemblyConfig as any)._fullCueData = cueData;
-
-  return {
-    schema: schemaVersion,
-    v1: assemblyConfig,
-  };
-}
 
 // Fallback to file-based regex parsing if CUE evaluation fails
 async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVersion> {
   const content = await fs.readFile(assemblyPath, "utf-8");
 
-  // Detect schema version from content structure
-  const schemaVersion: SchemaVersion =
-    content.includes("product:") || content.includes("ui:") || content.includes("flows:")
-      ? { version: "v2", detected_from: "structure" }
-      : { version: "v1", detected_from: "structure" };
+  // Always use app schema
+  const schemaVersion: SchemaVersion = { version: "app", detected_from: "fallback" };
+  
+  console.warn("⚠️  CUE evaluation failed - using limited fallback parsing");
 
-  if (schemaVersion.version === "v2") {
-    // Basic V2 fallback parsing (very limited)
-    console.warn("⚠️  V2 schema detected but CUE evaluation failed - limited fallback parsing");
+  // Extract basic information from the CUE file
+  const nameMatch = content.match(/name:\s*"([^"]+)"/);
+  const languageMatch = content.match(/language:\s*"([^"]+)"/);
+  const productName = nameMatch ? nameMatch[1] : "Unknown App";
+  const language = languageMatch ? languageMatch[1] : "typescript";
 
-    const nameMatch = content.match(/name:\s*"([^"]+)"/);
-    const productName = nameMatch ? nameMatch[1] : "Unknown App";
+  const appSpec: AppSpec = {
+    product: { name: productName },
+    config: { language },
+    ui: { routes: [] },
+    locators: {},
+    flows: [],
+  };
 
-    const appSpec: AppSpec = {
-      product: { name: productName },
-      ui: { routes: [] },
-      locators: {},
-      flows: [],
-    };
-
-    return {
-      schema: schemaVersion,
-      v2: appSpec,
-    };
-  } else {
-    // V1 fallback parsing
-    const config: AssemblyConfig = {
-      config: {
-        language: "typescript",
-        kind: "library",
-        buildTool: "default",
-      },
-      metadata: {
-        name: "unknown",
-        version: "1.0.0",
-      },
-      deployment: {
-        target: "compose",
-      },
-      services: {},
-    };
-
-    // Extract language
-    const langMatch = content.match(/language:\s*"([^"]+)"/);
-    if (langMatch) {
-      config.config.language = langMatch[1];
-    }
-
-    // Extract kind
-    const kindMatch = content.match(/kind:\s*"([^"]+)"/);
-    if (kindMatch) {
-      config.config.kind = kindMatch[1];
-    }
-
-    // Check for explicit deployment target specification
-    const deploymentMatch = content.match(/deployment:\s*{[^}]*target:\s*"([^"]+)"/s);
-    if (deploymentMatch) {
-      config.deployment.target = deploymentMatch[1] as DeploymentTarget;
-    }
-
-    // Extract name from metadata
-    const nameMatch = content.match(/name:\s*"([^"]+)"/);
-    if (nameMatch) {
-      config.metadata.name = nameMatch[1];
-    }
-
-    // Extract version
-    const versionMatch = content.match(/version:\s*"([^"]+)"/);
-    if (versionMatch) {
-      config.metadata.version = versionMatch[1];
-    }
-
-    // Extract build tool
-    const toolMatch = content.match(/tool:\s*"([^"]+)"/);
-    if (toolMatch) {
-      config.config.buildTool = toolMatch[1];
-    }
-
-    console.warn("⚠️  Using fallback regex parsing - some features may not work correctly");
-    return {
-      schema: schemaVersion,
-      v1: config,
-    };
-  }
+  return {
+    schema: schemaVersion,
+    app: appSpec,
+  };
 }
 
 /**
- * Generate V2 app-centric artifacts from app specification
+ * Generate app-centric artifacts from app specification
  */
-async function generateV2AppArtifacts(
+async function generateAppArtifacts(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
@@ -468,56 +402,19 @@ async function generateV2AppArtifacts(
     files.push(...locatorFiles);
   }
 
+  // Generate service structures
+  if (appSpec.services && Object.keys(appSpec.services).length > 0) {
+    const serviceFiles = await generateServiceStructures(appSpec, outputDir, options);
+    files.push(...serviceFiles);
+  }
+
   // Generate basic project structure
-  const structFiles = await generateV2ProjectStructure(appSpec, outputDir, options);
+  const structFiles = await generateProjectStructure(appSpec, outputDir, options);
   files.push(...structFiles);
 
   return files;
 }
 
-/**
- * Generate V1 infrastructure-centric artifacts from assembly config
- */
-async function generateV1InfrastructureArtifacts(
-  assemblyConfig: AssemblyConfig,
-  outputDir: string,
-  options: GenerateOptions,
-): Promise<string[]> {
-  const files: string[] = [];
-
-  // Generate language-specific files
-  if (assemblyConfig.config.language) {
-    const langResult = await generateLanguageFiles(
-      assemblyConfig as any,
-      outputDir,
-      options,
-      assemblyConfig,
-    );
-    files.push(...langResult);
-  }
-
-  // Generate CI workflows if requested
-  if (options.includeCi) {
-    const ciResult = await generateCIWorkflows(assemblyConfig as any, outputDir, options);
-    files.push(...ciResult);
-  }
-
-  // Generate project structure
-  const structResult = await generateProjectStructure(assemblyConfig as any, outputDir, options);
-  files.push(...structResult);
-
-  // Generate documentation
-  const docsResult = await generateDocumentation(assemblyConfig as any, outputDir, options);
-  files.push(...docsResult);
-
-  // Generate and compose tests if not skipped
-  if (!options.dryRun) {
-    const testResult = await generateAndComposeTests(assemblyConfig as any, outputDir, options);
-    files.push(...testResult);
-  }
-
-  return files;
-}
 
 /**
  * Generate UI components from app spec routes
@@ -528,47 +425,55 @@ async function generateUIComponents(
   options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
+  
+  // Determine language from options or app config
+  const language = options.format || appSpec.config?.language || "typescript";
+  
+  console.log(chalk.blue(`🎨 Generating ${language} UI components from routes...`));
 
-  console.log(chalk.blue("🎨 Generating UI components from routes..."));
-
-  // Create components directory
-  const componentsDir = path.join(outputDir, "src", "components");
-  if (!fs.existsSync(componentsDir) && !options.dryRun) {
-    fs.mkdirSync(componentsDir, { recursive: true });
+  // Check if language plugin supports components
+  const plugin = languageRegistry.get(language);
+  if (!plugin?.capabilities?.components) {
+    console.log(chalk.yellow(`⚠️  Language '${language}' doesn't support UI components, skipping...`));
+    return files;
   }
 
-  // Generate components for each route
+  // Generate components for each route using language plugin
   for (const route of appSpec.ui.routes) {
     const componentName = route.id
       .split(":")
       .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
       .join("");
 
-    const componentContent = `// ${componentName} - Generated from route ${route.id}
-import React from 'react';
+    try {
+      const result = await generateComponent(language, {
+        name: componentName,
+        type: "page",
+        props: {
+          // Convert capabilities to props
+          ...Object.fromEntries(
+            route.capabilities.map(cap => [cap, "boolean"])
+          )
+        },
+        testId: route.id,
+        children: route.components || [],
+        styles: true,
+        tests: true
+      }, outputDir);
 
-interface ${componentName}Props {
-  // Add props as needed based on capabilities
-}
+      if (!options.dryRun) {
+        // Write generated files
+        for (const [filePath, content] of Object.entries(result.files)) {
+          const fullPath = path.join(outputDir, filePath);
+          await fs.ensureDir(path.dirname(fullPath));
+          await fs.writeFile(fullPath, content);
+        }
+      }
 
-export const ${componentName}: React.FC<${componentName}Props> = (props) => {
-  return (
-    <div data-testid="${route.id}">
-      <h1>${componentName}</h1>
-      {/* TODO: Implement ${route.capabilities.join(", ")} capabilities */}
-      ${route.components ? route.components.map((comp) => `<div>${comp}</div>`).join("\n      ") : ""}
-    </div>
-  );
-};
-
-export default ${componentName};
-`;
-
-    const componentPath = path.join(componentsDir, `${componentName}.tsx`);
-    if (!options.dryRun) {
-      fs.writeFileSync(componentPath, componentContent);
+      files.push(...Object.keys(result.files));
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to generate component ${componentName}:`), error);
     }
-    files.push(`src/components/${componentName}.tsx`);
   }
 
   return files;
@@ -585,6 +490,14 @@ async function generateFlowBasedTests(
   const files: string[] = [];
 
   console.log(chalk.blue("🧪 Generating tests from flows..."));
+  
+  // Determine language for test generation
+  const language = appSpec.config?.language || "typescript";
+  const plugin = languageRegistry.get(language);
+  
+  if (!plugin) {
+    console.log(chalk.yellow(`⚠️  No plugin available for ${language}, using default Playwright tests`));
+  }
 
   const testsDir = path.join(outputDir, "tests", "flows");
   if (!fs.existsSync(testsDir) && !options.dryRun) {
@@ -592,71 +505,32 @@ async function generateFlowBasedTests(
   }
 
   for (const flow of appSpec.flows) {
-    const testContent = `// ${flow.id} flow test - Generated by Arbiter
-import { test, expect } from '@playwright/test';
-
-test.describe('${flow.id} flow', () => {
-  ${
-    flow.preconditions
-      ? `
-  test.beforeEach(async ({ page }) => {
-    // Setup preconditions
-    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ""}
-    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ""}
-    ${
-      flow.preconditions.seed
-        ? flow.preconditions.seed
-            .map((seed) => `// Seed: ${seed.factory} as ${seed.as}`)
-            .join("\n    ")
-        : ""
+    // Use plugin-specific test generation if available, otherwise fallback to default
+    let testContent: string;
+    
+    if (plugin?.capabilities?.testing) {
+      // Generate using language plugin
+      const testConfig = {
+        name: flow.id,
+        type: 'e2e',
+        framework: 'playwright',
+        flow: flow,
+        locators: appSpec.locators,
+      };
+      
+      try {
+        // Note: This would need to be implemented in each language plugin
+        testContent = `// ${flow.id} flow test - Generated by Arbiter (${plugin.name})
+// TODO: Implement plugin-specific test generation
+import { test, expect } from '@playwright/test';`;
+      } catch (error) {
+        console.warn(chalk.yellow(`⚠️  Plugin test generation failed, using default: ${error.message}`));
+        testContent = generateDefaultFlowTest(flow, appSpec.locators);
+      }
+    } else {
+      testContent = generateDefaultFlowTest(flow, appSpec.locators);
     }
-  });
-  `
-      : ""
-  }
-  
-  test('${flow.id} - main flow', async ({ page }) => {
-    ${flow.steps
-      .map((step, index) => {
-        if (step.visit) {
-          return `// Step ${index + 1}: Visit ${step.visit}
-    await page.goto('${typeof step.visit === "string" ? step.visit : `/${step.visit.replace(":", "/")}`}');`;
-        } else if (step.click) {
-          const locator = appSpec.locators[step.click];
-          return `// Step ${index + 1}: Click ${step.click}
-    await page.click('${locator || step.click}');`;
-        } else if (step.fill) {
-          const locator = appSpec.locators[step.fill.locator];
-          return `// Step ${index + 1}: Fill ${step.fill.locator} with "${step.fill.value}"
-    await page.fill('${locator || step.fill.locator}', '${step.fill.value}');`;
-        } else if (step.expect) {
-          const locator = appSpec.locators[step.expect.locator];
-          return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || "visible"}
-    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === "visible" ? "toBeVisible" : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
-        } else if (step.expect_api) {
-          return `// Step ${index + 1}: Expect API ${step.expect_api.method} ${step.expect_api.path} to return ${step.expect_api.status}
-    // TODO: Implement API expectation`;
-        }
-        return `// Step ${index + 1}: Unknown step type`;
-      })
-      .join("\n    ")}
-  });
-
-  ${
-    flow.variants
-      ? flow.variants
-          .map(
-            (variant) => `
-  test('${flow.id} - ${variant.name} variant', async ({ page }) => {
-    // TODO: Implement variant testing with override: ${JSON.stringify(variant.override)}
-  });`,
-          )
-          .join("")
-      : ""
-  }
-});
-`;
-
+    
     const testPath = path.join(testsDir, `${flow.id.replace(/:/g, "_")}.test.ts`);
     if (!options.dryRun) {
       fs.writeFileSync(testPath, testContent);
@@ -665,6 +539,75 @@ test.describe('${flow.id} flow', () => {
   }
 
   return files;
+}
+
+/**
+ * Generate default Playwright test content
+ */
+function generateDefaultFlowTest(flow: any, locators: any): string {
+  const preconditionsCode = flow.preconditions
+    ? `
+  test.beforeEach(async ({ page }) => {
+    // Setup preconditions
+    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ""}
+    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ""}
+    ${
+      flow.preconditions.seed
+        ? flow.preconditions.seed
+            .map((seed: any) => `// Seed: ${seed.factory} as ${seed.as}`)
+            .join("\n    ")
+        : ""
+    }
+  });
+  `
+    : "";
+
+  const stepsCode = flow.steps
+    .map((step: any, index: number) => {
+      if (step.visit) {
+        return `// Step ${index + 1}: Visit ${step.visit}
+    await page.goto('${typeof step.visit === "string" ? step.visit : `/${step.visit.replace(":", "/")}`}');`;
+      } else if (step.click) {
+        const locator = locators[step.click];
+        return `// Step ${index + 1}: Click ${step.click}
+    await page.click('${locator || step.click}');`;
+      } else if (step.fill) {
+        const locator = locators[step.fill.locator];
+        return `// Step ${index + 1}: Fill ${step.fill.locator} with "${step.fill.value}"
+    await page.fill('${locator || step.fill.locator}', '${step.fill.value}');`;
+      } else if (step.expect) {
+        const locator = locators[step.expect.locator];
+        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || "visible"}
+    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === "visible" ? "toBeVisible" : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
+      } else if (step.expect_api) {
+        return `// Step ${index + 1}: Expect API ${step.expect_api.method} ${step.expect_api.path} to return ${step.expect_api.status}
+    // TODO: Implement API expectation`;
+      }
+      return `// Step ${index + 1}: Unknown step type`;
+    })
+    .join("\n    ");
+
+  const variantsCode = flow.variants
+    ? flow.variants
+        .map(
+          (variant: any) => `
+  test('${flow.id} - ${variant.name} variant', async ({ page }) => {
+    // TODO: Implement variant testing with override: ${JSON.stringify(variant.override)}
+  });`,
+        )
+        .join("")
+    : "";
+
+  return `// ${flow.id} flow test - Generated by Arbiter
+import { test, expect } from '@playwright/test';
+
+test.describe('${flow.id} flow', () => {${preconditionsCode}
+  
+  test('${flow.id} - main flow', async ({ page }) => {
+    ${stepsCode}
+  });${variantsCode}
+});
+`;
 }
 
 /**
@@ -678,13 +621,56 @@ async function generateAPISpecifications(
   const files: string[] = [];
 
   console.log(chalk.blue("📋 Generating API specifications..."));
-
+  
+  // Determine language for API generation
+  const language = appSpec.config?.language || "typescript";
+  const plugin = languageRegistry.get(language);
+  
   const apiDir = path.join(outputDir, "api");
   if (!fs.existsSync(apiDir) && !options.dryRun) {
     fs.mkdirSync(apiDir, { recursive: true });
   }
+  
+  // Generate API services using language plugin if available
+  if (plugin?.capabilities?.api && appSpec.components) {
+    console.log(chalk.blue(`🚀 Generating ${language} API services using ${plugin.name}...`));
+    
+    // Generate services for each component that has API methods
+    for (const [componentName, component] of Object.entries(appSpec.components || {})) {
+      if (component.methods && component.methods.length > 0) {
+        const serviceConfig: ServiceConfig = {
+          name: componentName,
+          type: 'api',
+          methods: component.methods,
+          validation: true,
+        };
+        
+        try {
+          const result = await generateService(language, serviceConfig);
+          
+          // Write all generated files
+          for (const file of result.files) {
+            const fullPath = path.join(apiDir, file.path.replace(/^src\//i, ''));
+            const dir = path.dirname(fullPath);
+            
+            if (!fs.existsSync(dir) && !options.dryRun) {
+              fs.mkdirSync(dir, { recursive: true });
+            }
+            
+            if (!options.dryRun) {
+              fs.writeFileSync(fullPath, file.content);
+            }
+            
+            files.push(`api/${file.path.replace(/^src\//i, '')}`);
+          }
+        } catch (error) {
+          console.error(chalk.red(`❌ Failed to generate ${language} service for ${componentName}:`), error.message);
+        }
+      }
+    }
+  }
 
-  // Generate OpenAPI spec if paths are defined
+  // Generate OpenAPI spec if paths are defined (universal, not language-specific)
   if (appSpec.paths) {
     const openApiSpec = {
       openapi: "3.0.3",
@@ -804,49 +790,75 @@ export function loc(token: LocatorToken): string {
 }
 
 /**
- * Generate V2 project structure
+ * Generate project structure
  */
-async function generateV2ProjectStructure(
+async function generateProjectStructure(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
 
-  // Generate package.json for the app
-  const packageJson = {
-    name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
-    version: "1.0.0",
-    description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
-    type: "module",
-    scripts: {
-      dev: "vite",
-      build: "tsc && vite build",
-      test: "playwright test",
-      "test:unit": "vitest",
-      lint: "eslint src/**/*.{ts,tsx}",
-      typecheck: "tsc --noEmit",
-    },
-    dependencies: {
-      react: "^18.2.0",
-      "react-dom": "^18.2.0",
-    },
-    devDependencies: {
-      "@types/react": "^18.2.0",
-      "@types/react-dom": "^18.2.0",
-      "@playwright/test": "^1.40.0",
-      typescript: "^5.0.0",
-      vite: "^5.0.0",
-      vitest: "^1.0.0",
-      eslint: "^8.0.0",
-    },
-  };
+  // Determine language from app spec config
+  const language = appSpec.config?.language || "typescript";
+  const plugin = languageRegistry.get(language);
 
-  const packagePath = path.join(outputDir, "package.json");
-  if (!options.dryRun) {
-    fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
+  if (plugin) {
+    console.log(chalk.blue(`📦 Initializing ${language} project using ${plugin.name}...`));
+
+    // Create project configuration for the language plugin
+    const projectConfig: ProjectConfig = {
+      name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
+      description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
+      features: [],
+      testing: true,
+    };
+
+    try {
+      const result = await initializeProject(language, projectConfig);
+
+      // Write all generated files from the language plugin
+      for (const file of result.files) {
+        const fullPath = path.join(outputDir, file.path);
+        const dir = path.dirname(fullPath);
+
+        if (!fs.existsSync(dir) && !options.dryRun) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+
+        if (!options.dryRun) {
+          fs.writeFileSync(fullPath, file.content);
+        }
+
+        files.push(file.path);
+      }
+
+      // Log additional setup instructions from the language plugin
+      if (result.instructions) {
+        result.instructions.forEach(instruction =>
+          console.log(chalk.green(`✅ ${instruction}`))
+        );
+      }
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to initialize ${language} project:`), error.message);
+      return files;
+    }
+  } else {
+    console.log(chalk.yellow(`⚠️  No language plugin available for '${language}', using minimal structure`));
+    
+    // Fallback: create minimal project structure
+    const packageJson = {
+      name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
+      version: "1.0.0",
+      description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
+    };
+
+    const packagePath = path.join(outputDir, "package.json");
+    if (!options.dryRun) {
+      fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
+    }
+    files.push("package.json");
   }
-  files.push("package.json");
 
   // Generate README
   const readmeContent = `# ${appSpec.product.name}
@@ -906,6 +918,70 @@ npm run build
 }
 
 /**
+ * Generate service structures from app specification
+ */
+async function generateServiceStructures(
+  appSpec: AppSpec,
+  outputDir: string,
+  options: GenerateOptions,
+): Promise<string[]> {
+  const files: string[] = [];
+  
+  if (!appSpec.services || Object.keys(appSpec.services).length === 0) {
+    return files;
+  }
+
+  console.log(chalk.blue("🔧 Generating service structures..."));
+
+  // Process each service
+  for (const [serviceName, service] of Object.entries(appSpec.services)) {
+    if (service.serviceType === "bespoke" && service.sourceDirectory) {
+      const serviceDir = path.join(outputDir, service.sourceDirectory);
+      
+      console.log(chalk.dim(`  • ${serviceName} (${service.language}) -> ${service.sourceDirectory}`));
+      
+      // Create service directory
+      if (!fs.existsSync(serviceDir) && !options.dryRun) {
+        fs.mkdirSync(serviceDir, { recursive: true });
+      }
+
+      // Generate language-specific project structure
+      if (service.language === "rust") {
+        const rustFiles = await generateRustFiles(
+          { name: serviceName, version: "1.0.0" },
+          serviceDir,
+          options
+        );
+        files.push(...rustFiles.map(file => path.join(service.sourceDirectory, file)));
+      } else if (service.language === "typescript") {
+        const tsFiles = await generateTypeScriptFiles(
+          { name: serviceName, version: "1.0.0" },
+          serviceDir,
+          options
+        );
+        files.push(...tsFiles.map(file => path.join(service.sourceDirectory, file)));
+      } else if (service.language === "go") {
+        const goFiles = await generateGoFiles(
+          { name: serviceName, version: "1.0.0" },
+          serviceDir,
+          options
+        );
+        files.push(...goFiles.map(file => path.join(service.sourceDirectory, file)));
+      } else if (service.language === "python") {
+        const pythonFiles = await generatePythonFiles(
+          { name: serviceName, version: "1.0.0" },
+          serviceDir,
+          options
+        );
+        files.push(...pythonFiles.map(file => path.join(service.sourceDirectory, file)));
+      }
+    }
+  }
+
+  return files;
+}
+
+/**
  * Generate language-specific files
  */
 async function generateLanguageFiles(
@@ -916,26 +992,59 @@ async function generateLanguageFiles(
 ): Promise<string[]> {
   const files: string[] = [];
 
-  // Generate language-specific application files
-  switch (config.language) {
-    case "typescript":
-      files.push(...(await generateTypeScriptFiles(config, outputDir, options)));
-      break;
-    case "python":
-      files.push(...(await generatePythonFiles(config, outputDir, options)));
-      break;
-    case "rust":
-      files.push(...(await generateRustFiles(config, outputDir, options)));
-      break;
-    case "go":
-      files.push(...(await generateGoFiles(config, outputDir, options)));
-      break;
-    case "shell":
-    case "bash":
+  // Use language plugin system for code generation
+  const language = config.language || "typescript";
+  const plugin = languageRegistry.get(language);
+  
+  if (plugin) {
+    console.log(chalk.blue(`📦 Generating ${language} project using ${plugin.name}...`));
+    
+    // Initialize project using the language plugin
+    const projectConfig: ProjectConfig = {
+      name: config.name,
+      description: config.description,
+      features: config.features || [],
+      testing: config.testing !== false,
+    };
+    
+    try {
+      const result = await initializeProject(language, projectConfig);
+      
+      // Write all generated files
+      for (const file of result.files) {
+        const fullPath = path.join(outputDir, file.path);
+        const dir = path.dirname(fullPath);
+        
+        if (!fs.existsSync(dir) && !options.dryRun) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        if (!options.dryRun) {
+          fs.writeFileSync(fullPath, file.content);
+        }
+        
+        files.push(file.path);
+      }
+      
+      // Log additional setup instructions
+      if (result.instructions) {
+        result.instructions.forEach(instruction => 
+          console.log(chalk.green(`✅ ${instruction}`))
+        );
+      }
+    } catch (error) {
+      console.error(chalk.red(`❌ Failed to generate ${language} project:`), error.message);
+      // Fallback to legacy generation for unsupported languages
+      if (language === "shell" || language === "bash") {
+        files.push(...(await generateShellFiles(config, outputDir, options)));
+      }
+    }
+  } else {
+    console.log(chalk.yellow(`⚠️  No plugin available for language: ${language}`));
+    // Fallback for unsupported languages
+    if (language === "shell" || language === "bash") {
       files.push(...(await generateShellFiles(config, outputDir, options)));
-      break;
-    default:
-      console.log(chalk.yellow(`⚠️  Unknown language: ${config.language}`));
+    }
   }
 
   // Generate deployment artifacts based on deployment target
@@ -3583,4 +3692,63 @@ function handleTestGenerationError(error: unknown): string[] {
     ),
   );
   return [];
+}
+
+/**
+ * Emit sharded CUE specifications from service to .arbiter directory before generation
+ */
+async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
+  try {
+    const apiClient = new ApiClient(config);
+    
+    // Ensure .arbiter directory exists
+    await fs.ensureDir('.arbiter');
+    
+    // Try to get the stored specifications from service (sharded)
+    const assemblyPath = path.resolve(".arbiter", "assembly.cue");
+    const storedSpec = await apiClient.getSpecification('assembly', assemblyPath);
+    
+    if (storedSpec.success && storedSpec.data && storedSpec.data.content) {
+      // Emit the main assembly CUE file to .arbiter directory
+      await fs.writeFile(assemblyPath, storedSpec.data.content, 'utf-8');
+      console.log(chalk.green("📄 Emitted CUE specification from service to .arbiter/assembly.cue"));
+      
+      // Also try to get any sharded specification files
+      await emitShardedSpecifications(apiClient);
+      
+    } else {
+      // No stored specification found, check for legacy files
+      const legacyPath = path.resolve("arbiter.assembly.cue");
+      if (fs.existsSync(legacyPath)) {
+        console.log(chalk.yellow("⚠️  Found legacy arbiter.assembly.cue, consider migrating to .arbiter directory"));
+      } else {
+        console.log(chalk.dim("💡 No stored specification found, using existing CUE files"));
+      }
+    }
+  } catch (error) {
+    // Service unavailable, continue with existing file-based workflow
+    console.log(chalk.dim("💡 Service unavailable, using existing CUE files"));
+  }
+}
+
+/**
+ * Emit additional sharded CUE files from service
+ */
+async function emitShardedSpecifications(apiClient: ApiClient): Promise<void> {
+  try {
+    // Try to get any additional sharded files (services, endpoints, etc.)
+    const shardTypes = ['services', 'endpoints', 'schemas', 'flows'];
+    
+    for (const shardType of shardTypes) {
+      const shardPath = path.resolve(".arbiter", `${shardType}.cue`);
+      const shardSpec = await apiClient.getSpecification(shardType, shardPath);
+      
+      if (shardSpec.success && shardSpec.data && shardSpec.data.content) {
+        await fs.writeFile(shardPath, shardSpec.data.content, 'utf-8');
+        console.log(chalk.dim(`  📄 Emitted ${shardType} shard to .arbiter/${shardType}.cue`));
+      }
+    }
+  } catch (error) {
+    // Sharded files are optional, continue silently
+  }
 }

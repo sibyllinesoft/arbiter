@@ -3,6 +3,9 @@
  */
 
 import type { WebSocketMessage, WsEvent } from "../types/api";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger('WebSocket');
 
 export type WebSocketEventHandler = (event: WsEvent) => void;
 
@@ -103,13 +106,14 @@ class WebSocketService {
 
     this.isManuallyDisconnected = false;
     const protocol = this.locationService.protocol === "https:" ? "wss:" : "ws:";
-    this.wsUrl = `${protocol}//${this.locationService.host}/api/ws?project_id=${projectId}`;
+    // Use API server port (5050) instead of frontend port for WebSocket connection
+    this.wsUrl = `${protocol}//localhost:5050/ws?project_id=${projectId}`;
 
     try {
       this.ws = this.webSocketFactory.create(this.wsUrl);
       this.setupEventListeners();
     } catch (error) {
-      console.error("Failed to create WebSocket connection:", error);
+      log.error("Failed to create WebSocket connection:", error);
       this.scheduleReconnect();
     }
   }
@@ -132,7 +136,7 @@ class WebSocketService {
     } else {
       // Queue message for when connection is restored
       this.messageQueue.push(message);
-      console.warn("WebSocket not connected, queuing message:", message);
+      log.debug("WebSocket not connected, queuing message:", message);
     }
   }
 
@@ -163,7 +167,7 @@ class WebSocketService {
   }
 
   private handleOpen(): void {
-    console.log("WebSocket connected");
+    log.info("WebSocket connected");
     this.reconnectAttempts = 0;
     this.options.onConnect();
 
@@ -189,46 +193,69 @@ class WebSocketService {
           break;
 
         case "error":
-          console.error("WebSocket server error:", message.data);
+          log.error("WebSocket server error:", message.data);
           break;
 
         case "pong":
           // Server responded to ping
+          log.trace("Received pong from server");
+          break;
+
+        case "ping":
+          // Server sent ping, respond with pong
+          log.trace("Received ping from server, responding with pong");
+          this.send({ type: "pong", data: {} });
           break;
 
         default:
-          console.warn("Unknown WebSocket message type:", message);
+          log.warn("Unknown WebSocket message type:", message);
       }
     } catch (error) {
-      console.error("Failed to parse WebSocket message:", error);
+      log.error("Failed to parse WebSocket message:", error);
     }
   }
 
   private handleEventMessage(message: WebSocketMessage): void {
     try {
-      const wsEvent = message.data as WsEvent;
+      const rawEvent = message.data as any;
 
-      // Validate event structure
-      if (!wsEvent.type || !wsEvent.project_id || !wsEvent.timestamp) {
-        console.warn("Invalid WebSocket event structure:", wsEvent);
+      // Handle different event formats from server
+      const wsEvent: WsEvent = {
+        type: rawEvent.type || rawEvent.event_type,
+        project_id: rawEvent.project_id,
+        timestamp: rawEvent.timestamp,
+        data: rawEvent.data
+      };
+
+      // Validate event structure - connection_established events don't need project_id
+      if (!wsEvent.type || !wsEvent.timestamp) {
+        log.warn("Invalid WebSocket event structure:", rawEvent);
         return;
       }
+
+      // Skip project-specific events if we don't have a project_id (except connection_established)
+      if (!wsEvent.project_id && wsEvent.type !== 'connection_established') {
+        log.debug("Skipping non-project event:", wsEvent.type);
+        return;
+      }
+      
+      log.debug("Processing WebSocket event:", { type: wsEvent.type, project_id: wsEvent.project_id });
 
       // Notify all subscribers
       this.eventHandlers.forEach((handler) => {
         try {
           handler(wsEvent);
         } catch (error) {
-          console.error("Error in WebSocket event handler:", error);
+          log.error("Error in WebSocket event handler:", error);
         }
       });
     } catch (error) {
-      console.error("Failed to handle WebSocket event:", error);
+      log.error("Failed to handle WebSocket event:", error);
     }
   }
 
   private handleClose(event: CloseEvent): void {
-    console.log("WebSocket disconnected:", event.code, event.reason);
+    log.info("WebSocket disconnected:", { code: event.code, reason: event.reason });
     this.clearTimers();
     this.options.onDisconnect();
 
@@ -238,7 +265,7 @@ class WebSocketService {
   }
 
   private handleError(event: Event): void {
-    console.error("WebSocket error:", event);
+    log.error("WebSocket error:", event);
     this.options.onError(event);
   }
 
@@ -247,7 +274,7 @@ class WebSocketService {
       this.isManuallyDisconnected ||
       this.reconnectAttempts >= this.options.maxReconnectAttempts
     ) {
-      console.log("Max reconnect attempts reached or manually disconnected");
+      log.warn("Max reconnect attempts reached or manually disconnected");
       return;
     }
 
@@ -256,7 +283,7 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    console.log(
+    log.info(
       `Scheduling WebSocket reconnect attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts} in ${this.options.reconnectInterval}ms`,
     );
 
@@ -273,7 +300,7 @@ class WebSocketService {
 
     // Use stored URL instead of relying on WebSocket instance
     if (!this.wsUrl) {
-      console.error("Cannot reconnect: no previous URL available");
+      log.error("Cannot reconnect: no previous URL available");
       return;
     }
 
@@ -281,7 +308,7 @@ class WebSocketService {
     const projectId = urlParams.get("project_id");
 
     if (!projectId) {
-      console.error("Cannot reconnect: no project ID available");
+      log.error("Cannot reconnect: no project ID available");
       return;
     }
 
@@ -297,6 +324,7 @@ class WebSocketService {
           type: "ping",
           data: { timestamp: new Date().toISOString() },
         });
+        log.trace("Ping sent to server");
       }
     }, this.options.pingInterval);
   }

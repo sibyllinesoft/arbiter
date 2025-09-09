@@ -94,6 +94,8 @@ export async function detectProjectContext(
     "Cargo.toml",
     "go.mod",
     "composer.json",
+    ".arbiter/config.json",
+    ".arbiter/config.yaml",
     ".arbiter.json",
     ".arbiter.yaml",
   ];

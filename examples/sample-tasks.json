@@ -1,0 +1,88 @@
+[
+  {
+    "name": "Design Epic and Task Schema",
+    "description": "Create comprehensive CUE schemas for epic and task management with ordering support",
+    "type": "feature",
+    "priority": "high",
+    "order": 0,
+    "assignee": "architect",
+    "acceptanceCriteria": [
+      "CUE schema validates epic structure",
+      "Task ordering is enforced",
+      "Dependencies are properly modeled"
+    ]
+  },
+  {
+    "name": "Implement Sharded Storage",
+    "description": "Create sharded CUE file storage architecture for better organization",
+    "type": "feature", 
+    "priority": "high",
+    "order": 1,
+    "dependsOn": ["design-epic-and-task-schema"],
+    "assignee": "backend-dev",
+    "acceptanceCriteria": [
+      "Files are sharded based on configurable limits",
+      "Manifest tracks shard contents",
+      "Cross-shard queries work correctly"
+    ]
+  },
+  {
+    "name": "Add CLI Commands",
+    "description": "Implement CLI commands for epic and task management",
+    "type": "feature",
+    "priority": "medium", 
+    "order": 2,
+    "dependsOn": ["implement-sharded-storage"],
+    "assignee": "frontend-dev",
+    "acceptanceCriteria": [
+      "Epic CRUD operations work",
+      "Task CRUD operations work",
+      "Batch task creation via JSON works",
+      "Proper error handling and validation"
+    ]
+  },
+  {
+    "name": "Write Comprehensive Tests",
+    "description": "Add unit and integration tests for all epic/task functionality",
+    "type": "test",
+    "priority": "medium",
+    "order": 3,
+    "dependsOn": ["add-cli-commands"],
+    "assignee": "qa-engineer",
+    "acceptanceCriteria": [
+      "90%+ test coverage",
+      "Golden file tests for CLI output",
+      "Integration tests with actual CUE files",
+      "Error case testing"
+    ]
+  },
+  {
+    "name": "Add Documentation",
+    "description": "Create user documentation and examples for epic/task management",
+    "type": "docs",
+    "priority": "low",
+    "order": 4,
+    "dependsOn": ["write-comprehensive-tests"],
+    "assignee": "technical-writer",
+    "acceptanceCriteria": [
+      "User guide for epic/task workflow",
+      "CLI command reference",
+      "JSON schema documentation for batch operations",
+      "Example workflows and use cases"
+    ]
+  },
+  {
+    "name": "Performance Optimization", 
+    "description": "Optimize sharded storage performance and memory usage",
+    "type": "refactor",
+    "priority": "low",
+    "order": 5,
+    "canRunInParallel": true,
+    "assignee": "performance-engineer",
+    "acceptanceCriteria": [
+      "Sub-100ms query times for typical operations",
+      "Memory usage scales linearly with shard count",
+      "Large epic/task lists handle smoothly"
+    ]
+  }
+]

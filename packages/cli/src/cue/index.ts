@@ -18,14 +18,45 @@ import path from "node:path";
 import * as os from "node:os";
 
 /**
+ * Platform-specific service types for popular cloud providers
+ */
+export type PlatformServiceType = 
+  // Generic types
+  | "bespoke" 
+  | "prebuilt"
+  // Cloudflare platform
+  | "cloudflare_worker"
+  | "cloudflare_d1" 
+  | "cloudflare_kv"
+  | "cloudflare_r2"
+  | "cloudflare_durable_object"
+  // Vercel platform  
+  | "vercel_function"
+  | "vercel_edge_function"
+  | "vercel_kv"
+  | "vercel_postgres"
+  | "vercel_blob"
+  // Supabase platform
+  | "supabase_database"
+  | "supabase_auth"
+  | "supabase_storage" 
+  | "supabase_functions"
+  | "supabase_realtime";
+
+/**
  * Configuration for a service in the CUE specification
  */
 export interface ServiceConfig {
-  serviceType: "bespoke" | "prebuilt";
+  serviceType: PlatformServiceType;
   language: string;
-  type: "deployment" | "statefulset";
+  type: "deployment" | "statefulset" | "serverless" | "managed";
   sourceDirectory?: string;
   image?: string;
+  // Platform-specific configurations
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
+  runtime?: string; // e.g., "durable_object", "edge", "nodejs18"
+  region?: string;
+  // Standard configurations
   ports?: Array<{
     name: string;
     port: number;
@@ -187,12 +218,20 @@ export class CUEManipulator {
           ast.services[config.attachTo].env = {};
         }
 
-        const connectionString = this.generateDbConnectionString(
-          config.image!,
-          dbName,
-          config.ports?.[0]?.port || 5432,
-        );
-        ast.services[config.attachTo].env.DATABASE_URL = connectionString;
+        // Generate connection string based on service type
+        if (config.image) {
+          // Container-based database
+          const connectionString = this.generateDbConnectionString(
+            config.image,
+            dbName,
+            config.ports?.[0]?.port || 5432,
+          );
+          ast.services[config.attachTo].env.DATABASE_URL = connectionString;
+        } else if (config.serviceType && config.serviceType !== "prebuilt") {
+          // Platform-managed database - generate appropriate env vars
+          const envVars = this.generatePlatformDbEnvVars(config.serviceType, dbName);
+          Object.assign(ast.services[config.attachTo].env, envVars);
+        }
       }
 
       return await this.serialize(ast, content);
@@ -418,17 +457,26 @@ export class CUEManipulator {
 
     // Add connection string to attached service if specified
     if (config.attachTo) {
-      const connectionString = this.generateDbConnectionString(
-        config.image!,
-        dbName,
-        config.ports?.[0]?.port || 5432,
-      );
-      result = this.addEnvironmentVariable(
-        result,
-        config.attachTo,
-        "DATABASE_URL",
-        connectionString,
-      );
+      if (config.image) {
+        // Container-based database
+        const connectionString = this.generateDbConnectionString(
+          config.image,
+          dbName,
+          config.ports?.[0]?.port || 5432,
+        );
+        result = this.addEnvironmentVariable(
+          result,
+          config.attachTo,
+          "DATABASE_URL",
+          connectionString,
+        );
+      } else if (config.serviceType && config.serviceType !== "prebuilt") {
+        // Platform-managed database - add multiple env vars
+        const envVars = this.generatePlatformDbEnvVars(config.serviceType, dbName);
+        for (const [key, value] of Object.entries(envVars)) {
+          result = this.addEnvironmentVariable(result, config.attachTo, key, value);
+        }
+      }
     }
 
     return result;
@@ -551,12 +599,57 @@ export class CUEManipulator {
    * Generate database connection string
    */
   private generateDbConnectionString(image: string, dbName: string, port: number): string {
+    if (!image) {
+      throw new Error("generateDbConnectionString called with undefined image");
+    }
     if (image.includes("postgres")) {
       return `postgresql://user:password@${dbName}:${port}/${dbName}`;
     } else if (image.includes("mysql")) {
       return `mysql://user:password@${dbName}:${port}/${dbName}`;
     }
     return `db://${dbName}:${port}/${dbName}`;
+  }
+
+  /**
+   * Generate platform-specific database environment variables
+   */
+  private generatePlatformDbEnvVars(serviceType: string, dbName: string): Record<string, string> {
+    switch (serviceType) {
+      case "cloudflare_d1":
+        return {
+          D1_DATABASE_ID: `${dbName}_id`,
+          D1_DATABASE_NAME: dbName,
+          DATABASE_URL: `d1://${dbName}`,
+        };
+      case "cloudflare_kv":
+        return {
+          KV_NAMESPACE_ID: `${dbName}_namespace_id`,
+          KV_BINDING_NAME: dbName.toUpperCase(),
+        };
+      case "vercel_postgres":
+        return {
+          POSTGRES_URL: `postgres://${dbName}`,
+          POSTGRES_PRISMA_URL: `postgres://${dbName}?pgbouncer=true`,
+          POSTGRES_URL_NON_POOLING: `postgres://${dbName}`,
+        };
+      case "vercel_kv":
+        return {
+          KV_REST_API_URL: `https://${dbName}.kv.vercel-storage.com`,
+          KV_REST_API_TOKEN: `${dbName}_token`,
+          KV_URL: `redis://${dbName}`,
+        };
+      case "supabase_database":
+        return {
+          SUPABASE_URL: `https://${dbName}.supabase.co`,
+          SUPABASE_ANON_KEY: `${dbName}_anon_key`,
+          SUPABASE_SERVICE_ROLE_KEY: `${dbName}_service_role_key`,
+          DATABASE_URL: `postgresql://${dbName}`,
+        };
+      default:
+        return {
+          DATABASE_URL: `${serviceType}://${dbName}`,
+        };
+    }
   }
 
   /**

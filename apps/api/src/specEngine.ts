@@ -442,7 +442,11 @@ export class SpecEngine {
 
     // Write each fragment to its path
     for (const fragment of fragments) {
-      const fragmentPath = join(fragmentsDir, fragment.path);
+      // Ensure fragment path has .cue extension
+      const fragmentFileName = fragment.path.endsWith('.cue') 
+        ? fragment.path 
+        : `${fragment.path}.cue`;
+      const fragmentPath = join(fragmentsDir, fragmentFileName);
       const fragmentDir = join(fragmentPath, "..");
 
       await ensureDir(fragmentDir);
@@ -844,14 +848,19 @@ export class SpecEngine {
     },
     duration: number
   ): void {
-    logger.info("Validation completed", {
-      projectId,
-      success: result.success,
-      specHash: result.specHash,
-      errorCount: result.errors.length,
-      warningCount: result.warnings.length,
-      duration,
-    });
+    // Reduced logging - only log validation failures or significant events
+    const errorCount = result.errors.length;
+    const warningCount = result.warnings.length;
+    if (!result.success || errorCount > 0) {
+      logger.info("Validation completed", {
+        projectId,
+        success: result.success,
+        specHash: result.specHash,
+        errorCount,
+        warningCount,
+        duration,
+      });
+    }
   }
 
   /**

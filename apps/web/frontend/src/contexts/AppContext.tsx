@@ -10,6 +10,7 @@ import type { Project, Fragment, GapSet, IRResponse, ValidationError, Validation
 const initialState: AppState = {
   // Core data
   currentProject: null,
+  projects: [],
   fragments: [],
   resolved: null,
   gaps: null,
@@ -17,7 +18,8 @@ const initialState: AppState = {
   
   // UI state
   activeFragmentId: null,
-  activeTab: 'flow',
+  activeFragmentTab: 'source',
+  activeTab: 'source',
   isLoading: false,
   error: null,
   
@@ -50,6 +52,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
         gaps: action.payload ? state.gaps : null,
         irs: action.payload ? state.irs : {},
         activeFragmentId: action.payload ? state.activeFragmentId : null,
+        error: null,
+      };
+
+    case 'SET_PROJECTS':
+      return {
+        ...state,
+        projects: action.payload,
+      };
+
+    case 'SET_CURRENT_PROJECT':
+      return {
+        ...state,
+        currentProject: action.payload,
+        fragments: [],
+        resolved: null,
+        gaps: null,
+        irs: {},
+        activeFragmentId: null,
         error: null,
       };
 
@@ -119,6 +139,12 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         activeFragmentId: action.payload,
+      };
+
+    case 'SET_ACTIVE_FRAGMENT_TAB':
+      return {
+        ...state,
+        activeFragmentTab: action.payload,
       };
 
     case 'SET_ACTIVE_TAB':

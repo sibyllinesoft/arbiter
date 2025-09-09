@@ -10,7 +10,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
   const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content;
 
   return (
-    <div className={clsx('flex flex-col h-full', className)}>
+    <div className={clsx('flex flex-col h-full min-h-0', className)}>
       {/* Tab headers */}
       <div className="flex border-b border-gray-200 bg-gray-50">
         {tabs.map((tab) => (
@@ -24,7 +24,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 min-w-0">
         {activeTabContent}
       </div>
     </div>

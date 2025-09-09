@@ -4,7 +4,13 @@ import monacoEditorPlugin from "vite-plugin-monaco-editor";
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), (monacoEditorPlugin as any).default({})],
+  plugins: [
+    react(),
+    (monacoEditorPlugin as any).default({
+      languageWorkers: [],
+      customWorkers: []
+    })
+  ],
   server: {
     port: 3000,
     host: "0.0.0.0",
@@ -19,12 +25,24 @@ export default defineConfig({
   build: {
     target: "es2022",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'monaco-editor': ['monaco-editor'],
+        },
+      },
+    },
   },
   optimizeDeps: {
-    include: ["monaco-editor/esm/vs/editor/editor.api"],
+    include: [
+      "monaco-editor/esm/vs/editor/editor.api",
+    ],
   },
   define: {
     global: "globalThis",
     "process.env": {},
+  },
+  worker: {
+    format: 'es',
   },
 });

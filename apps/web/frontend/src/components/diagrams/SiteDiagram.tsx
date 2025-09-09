@@ -86,7 +86,8 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
     `;
 
     // Add route nodes
-    data.routes.forEach(route => {
+    const routes = Array.isArray(data.routes) ? data.routes : data.routes?.nodes || [];
+    routes.forEach(route => {
       const capabilities = route.capabilities || [];
       const capabilityText = capabilities.length > 0 
         ? `\\nCapabilities: ${capabilities.join(', ')}`
@@ -110,36 +111,42 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
         borderColor = '#2563eb';
       }
       
-      const nodeId = route.id.replace(/[^a-zA-Z0-9]/g, '_');
+      const routeId = route.id || route.label || route.path || `route_${Math.random().toString(36).substr(2, 9)}`;
+      const nodeId = routeId.replace(/[^a-zA-Z0-9]/g, '_');
       dot += `
         ${nodeId} [
-          label="${route.id}\\n${route.path}${capabilityText}"
+          label="${routeId}\\n${route.path || ''}${capabilityText}"
           fillcolor="${fillColor}"
           color="${borderColor}"
         ];`;
     });
 
     // Add dependencies if available
-    if (data.dependencies && data.dependencies.length > 0) {
+    const edges = data.routes?.edges || data.dependencies || [];
+    if (edges && edges.length > 0) {
       dot += `\n      // Dependencies\n`;
-      data.dependencies.forEach(dep => {
-        const fromId = dep.from.replace(/[^a-zA-Z0-9]/g, '_');
-        const toId = dep.to.replace(/[^a-zA-Z0-9]/g, '_');
-        const label = dep.type ? ` [label="${dep.type}"]` : '';
-        dot += `      ${fromId} -> ${toId}${label};\n`;
+      edges.forEach(dep => {
+        const fromId = (dep.from || dep.source || '').replace(/[^a-zA-Z0-9]/g, '_');
+        const toId = (dep.to || dep.target || '').replace(/[^a-zA-Z0-9]/g, '_');
+        const label = dep.type || dep.label ? ` [label="${dep.type || dep.label}"]` : '';
+        if (fromId && toId) {
+          dot += `      ${fromId} -> ${toId}${label};\n`;
+        }
       });
     } else {
       // Create implicit dependencies based on route hierarchy
-      const sortedRoutes = [...data.routes].sort((a, b) => a.path.length - b.path.length);
+      const sortedRoutes = [...routes].sort((a, b) => (a.path || '').length - (b.path || '').length);
       
       sortedRoutes.forEach(route => {
-        const parentPath = route.path.split('/').slice(0, -1).join('/') || '/';
-        const parentRoute = sortedRoutes.find(r => r.path === parentPath && r.id !== route.id);
-        
-        if (parentRoute) {
-          const fromId = parentRoute.id.replace(/[^a-zA-Z0-9]/g, '_');
-          const toId = route.id.replace(/[^a-zA-Z0-9]/g, '_');
-          dot += `      ${fromId} -> ${toId} [style=dashed, color="#9ca3af"];\n`;
+        if (route.path) {
+          const parentPath = route.path.split('/').slice(0, -1).join('/') || '/';
+          const parentRoute = sortedRoutes.find(r => r.path === parentPath && r.id !== route.id);
+          
+          if (parentRoute && route.id && parentRoute.id) {
+            const fromId = parentRoute.id.replace(/[^a-zA-Z0-9]/g, '_');
+            const toId = route.id.replace(/[^a-zA-Z0-9]/g, '_');
+            dot += `      ${fromId} -> ${toId} [style=dashed, color="#9ca3af"];\n`;
+          }
         }
       });
     }

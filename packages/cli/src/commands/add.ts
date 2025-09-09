@@ -12,6 +12,7 @@ import fs from "fs-extra";
 import * as path from "node:path";
 import chalk from "chalk";
 import type { CLIConfig } from "../types.js";
+import { ApiClient } from "../api-client.js";
 import { templateManager, extractVariablesFromCue } from "../templates/index.js";
 import {
   createCUEManipulator,
@@ -22,7 +23,9 @@ import {
   type DatabaseConfig,
   type RouteConfig,
   type FlowConfig,
+  type PlatformServiceType,
 } from "../cue/index.js";
+import { detectPlatform, getPlatformServiceDefaults } from "../utils/platform-detection.js";
 
 export interface AddOptions {
   verbose?: boolean;
@@ -38,23 +41,50 @@ export async function addCommand(
   subcommand: string,
   name: string,
   options: AddOptions & Record<string, any>,
-  _config: CLIConfig,
+  config: CLIConfig,
 ): Promise<number> {
   const manipulator = createCUEManipulator();
 
   try {
     console.log(chalk.blue(`🔧 Adding ${subcommand}: ${name}`));
 
-    // Ensure we have an assembly file to work with
-    const assemblyPath = path.resolve("arbiter.assembly.cue");
+    // Get existing assembly content from sharded storage in service
+    const assemblyPath = path.resolve(".arbiter", "assembly.cue"); // Move to .arbiter directory
     let assemblyContent = "";
 
-    if (fs.existsSync(assemblyPath)) {
-      assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
-    } else {
-      // Initialize with basic structure
-      console.log(chalk.yellow("⚠️  No arbiter.assembly.cue found. Creating new specification..."));
-      assemblyContent = await initializeAssembly();
+    // Initialize API client to try getting existing specification from sharded storage
+    const apiClient = new ApiClient(config);
+    
+    try {
+      // First try to get the specification from the service's sharded storage
+      const storedSpec = await apiClient.getSpecification('assembly', assemblyPath);
+      if (storedSpec.success && storedSpec.data && storedSpec.data.content) {
+        assemblyContent = storedSpec.data.content;
+        if (options.verbose) {
+          console.log(chalk.dim("📡 Retrieved existing specification from service (sharded storage)"));
+        }
+      } else {
+        throw new Error("No stored specification found");
+      }
+    } catch (apiError) {
+      // Fallback to file system - check both .arbiter directory and legacy location
+      const legacyPath = path.resolve("arbiter.assembly.cue");
+      
+      if (fs.existsSync(assemblyPath)) {
+        assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
+        if (options.verbose) {
+          console.log(chalk.dim("📁 Retrieved existing specification from .arbiter directory"));
+        }
+      } else if (fs.existsSync(legacyPath)) {
+        assemblyContent = fs.readFileSync(legacyPath, "utf-8");
+        if (options.verbose) {
+          console.log(chalk.dim("📁 Retrieved existing specification from legacy location"));
+        }
+      } else {
+        // Initialize with basic structure
+        console.log(chalk.yellow("⚠️  No existing specification found. Creating new specification..."));
+        assemblyContent = await initializeAssembly();
+      }
     }
 
     let updatedContent = assemblyContent;
@@ -108,17 +138,51 @@ export async function addCommand(
       return 1;
     }
 
-    // Write or preview the changes
+    // Store specification in service or preview changes
     if (options.dryRun) {
       console.log(chalk.yellow("🔍 Dry run - changes that would be made:"));
       console.log(chalk.dim(showDiff(assemblyContent, updatedContent)));
     } else {
-      fs.writeFileSync(assemblyPath, updatedContent);
-      console.log(chalk.green(`✅ Updated ${path.basename(assemblyPath)}`));
+      // Initialize API client and store specification in service database
+      const apiClient = new ApiClient(config);
+      
+      try {
+        // Determine shard type based on subcommand
+        const shardType = getShardTypeForSubcommand(subcommand);
+        
+        // Store the updated CUE specification in the service with sharding
+        const storeResult = await apiClient.storeSpecification({
+          content: updatedContent,
+          type: shardType,
+          path: assemblyPath,
+          shard: shardType // Use shard type as shard identifier
+        });
+        
+        if (storeResult.success) {
+          console.log(chalk.green(`✅ Updated specification in service (${subcommand}: ${name})`));
+          console.log(chalk.dim(`💡 CUE files will be generated to .arbiter/ when specification is complete`));
+          
+          if (storeResult.data?.shard) {
+            console.log(chalk.dim(`   Stored in shard: ${storeResult.data.shard}`));
+          }
 
-      if (options.verbose) {
-        console.log(chalk.dim("Added configuration:"));
-        console.log(chalk.dim(showDiff(assemblyContent, updatedContent)));
+          if (options.verbose) {
+            console.log(chalk.dim("Added configuration:"));
+            console.log(chalk.dim(showDiff(assemblyContent, updatedContent)));
+          }
+        } else {
+          throw new Error(storeResult.error || "Failed to store specification");
+        }
+      } catch (apiError) {
+        // Fallback to file system if API is not available
+        console.log(chalk.yellow("⚠️  Service unavailable, storing locally as fallback"));
+        
+        // Ensure .arbiter directory exists
+        await fs.ensureDir('.arbiter');
+        
+        // Write to .arbiter directory
+        await fs.writeFile(assemblyPath, updatedContent, 'utf-8');
+        console.log(chalk.green(`✅ Updated ${path.basename(assemblyPath)} (local fallback)`));
       }
     }
 
@@ -188,6 +252,8 @@ async function addService(
     image?: string;
     directory?: string;
     template?: string;
+    platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
+    serviceType?: PlatformServiceType;
     [key: string]: any;
   },
 ): Promise<string> {
@@ -198,23 +264,60 @@ async function addService(
     return await addServiceWithTemplate(manipulator, content, serviceName, options);
   }
 
+  // Detect platform context if not explicitly specified
+  let platformContext;
+  if (!options.platform && !options.serviceType) {
+    platformContext = await detectPlatform();
+    
+    if (platformContext.detected !== "unknown" && platformContext.confidence > 0.3) {
+      console.log(chalk.cyan(`🔍 Detected ${platformContext.detected} platform (${Math.round(platformContext.confidence * 100)}% confidence)`));
+      
+      // Show platform-specific suggestions
+      if (platformContext.suggestions.length > 0) {
+        console.log(chalk.dim("💡 Platform-specific suggestions:"));
+        for (const suggestion of platformContext.suggestions) {
+          console.log(chalk.dim(`  • Use --service-type ${suggestion.serviceType} for ${suggestion.reason}`));
+        }
+        console.log(chalk.dim("  • Or use --platform kubernetes for traditional container deployment"));
+      }
+    }
+  }
+
   // Determine service type and create proper config
   const isPrebuilt = !!image;
-  const serviceConfig: ServiceConfig = isPrebuilt
-    ? {
-        serviceType: "prebuilt",
-        language: "container",
-        type: image.includes("postgres") || image.includes("mysql") ? "statefulset" : "deployment",
-        image: image!,
-        ...(port && { ports: [{ name: "main", port, targetPort: port }] }),
-      }
-    : {
-        serviceType: "bespoke",
-        language,
-        type: "deployment",
-        sourceDirectory: directory || `./src/${serviceName}`,
-        ...(port && { ports: [{ name: "http", port, targetPort: port }] }),
-      };
+  let serviceConfig: ServiceConfig;
+  
+  if (options.serviceType) {
+    // Use explicitly specified platform-specific service type
+    const platformDefaults = getPlatformServiceDefaults(options.serviceType);
+    serviceConfig = {
+      serviceType: options.serviceType,
+      language: platformDefaults.language || language,
+      type: platformDefaults.type || "serverless",
+      ...(platformDefaults.platform && { platform: platformDefaults.platform }),
+      ...(platformDefaults.runtime && { runtime: platformDefaults.runtime }),
+      ...(directory && { sourceDirectory: directory }),
+      ...(port && { ports: [{ name: "http", port, targetPort: port }] }),
+    };
+  } else if (isPrebuilt) {
+    // Container-based service
+    serviceConfig = {
+      serviceType: "prebuilt",
+      language: "container",
+      type: (image && (image.includes("postgres") || image.includes("mysql"))) ? "statefulset" : "deployment",
+      image: image!,
+      ...(port && { ports: [{ name: "main", port, targetPort: port }] }),
+    };
+  } else {
+    // Traditional bespoke service
+    serviceConfig = {
+      serviceType: "bespoke",
+      language,
+      type: "deployment",
+      sourceDirectory: directory || `./src/${serviceName}`,
+      ...(port && { ports: [{ name: "http", port, targetPort: port }] }),
+    };
+  }
 
   // Add service using AST manipulation
   let updatedContent = await manipulator.addService(content, serviceName, serviceConfig);
@@ -728,6 +831,8 @@ interface DatabaseAddOptions {
   image?: string;
   port?: number;
   template?: string;
+  serviceType?: PlatformServiceType;
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
   [key: string]: any;
 }
 
@@ -739,6 +844,8 @@ interface NormalizedDatabaseOptions {
   image: string;
   port: number;
   template?: string;
+  serviceType?: PlatformServiceType;
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
 }
 
 /**
@@ -759,6 +866,8 @@ function normalizeDatabaseOptions(options: DatabaseAddOptions): NormalizedDataba
     image: options.image ?? DATABASE_DEFAULTS.image,
     port: options.port ?? DATABASE_DEFAULTS.port,
     template: options.template,
+    serviceType: options.serviceType,
+    platform: options.platform,
   };
 }
 
@@ -826,6 +935,21 @@ function createDatabaseConfiguration(
   dbName: string,
   options: NormalizedDatabaseOptions,
 ): DatabaseConfig {
+  // Check for platform-specific service types
+  if (options.serviceType && options.serviceType !== "prebuilt") {
+    const platformDefaults = getPlatformServiceDefaults(options.serviceType);
+    return {
+      serviceType: options.serviceType,
+      language: platformDefaults.language || "sql",
+      type: platformDefaults.type || "managed",
+      ...(platformDefaults.platform && { platform: platformDefaults.platform }),
+      ...(platformDefaults.runtime && { runtime: platformDefaults.runtime }),
+      ...(options.attachTo && { attachTo: options.attachTo }),
+      // Platform-managed services don't need traditional container config
+    };
+  }
+  
+  // Traditional container-based database
   return {
     serviceType: "prebuilt",
     language: "container",
@@ -842,6 +966,16 @@ function createDatabaseConfiguration(
  * Create database volume configuration based on image type
  */
 function createDatabaseVolume(image: string): VolumeConfig {
+  if (!image) {
+    // Default path for undefined image
+    return {
+      name: "data",
+      path: "/var/lib/data",
+      size: DATABASE_DEFAULTS.volumeSize,
+      type: "persistentVolumeClaim",
+    };
+  }
+  
   const dataPath = image.includes("postgres") 
     ? "/var/lib/postgresql/data" 
     : "/var/lib/mysql";
@@ -871,6 +1005,8 @@ interface CacheServiceOptions {
   attachTo?: string;
   image?: string;
   port?: number;
+  serviceType?: PlatformServiceType;
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
   [key: string]: any;
 }
 
@@ -879,8 +1015,10 @@ interface CacheServiceOptions {
  */
 interface CacheConfig {
   attachTo?: string;
-  image: string;
-  port: number;
+  image?: string;
+  port?: number;
+  serviceType?: PlatformServiceType;
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
 }
 
 /**
@@ -919,8 +1057,10 @@ async function addCache(
 function normalizeCacheOptions(options: CacheServiceOptions): CacheConfig {
   return {
     attachTo: options.attachTo,
-    image: options.image ?? CACHE_DEFAULTS.image,
-    port: options.port ?? CACHE_DEFAULTS.port,
+    image: options.image ?? (options.serviceType ? undefined : CACHE_DEFAULTS.image),
+    port: options.port ?? (options.serviceType ? undefined : CACHE_DEFAULTS.port),
+    serviceType: options.serviceType,
+    platform: options.platform,
   };
 }
 
@@ -928,12 +1068,27 @@ function normalizeCacheOptions(options: CacheServiceOptions): CacheConfig {
  * Create cache service configuration
  */
 function createCacheServiceConfig(config: CacheConfig): ServiceConfig {
+  // Check for platform-specific service types
+  if (config.serviceType && config.serviceType !== "prebuilt") {
+    const platformDefaults = getPlatformServiceDefaults(config.serviceType);
+    return {
+      serviceType: config.serviceType,
+      language: platformDefaults.language || "key-value",
+      type: platformDefaults.type || "managed",
+      ...(platformDefaults.platform && { platform: platformDefaults.platform }),
+      ...(platformDefaults.runtime && { runtime: platformDefaults.runtime }),
+      ...(config.attachTo && { attachTo: config.attachTo }),
+      // Platform-managed caches don't need traditional container config
+    };
+  }
+  
+  // Traditional container-based cache
   return {
     serviceType: "prebuilt",
     language: "container",
     type: "deployment",
-    image: config.image,
-    ports: [{ name: "cache", port: config.port, targetPort: config.port }],
+    image: config.image!,
+    ports: [{ name: "cache", port: config.port!, targetPort: config.port! }],
     volumes: [{ name: "data", path: "/data", size: CACHE_DEFAULTS.volumeSize }],
   };
 }
@@ -953,8 +1108,19 @@ async function attachCacheToService(
       if (!ast.services[config.attachTo!].env) {
         ast.services[config.attachTo!].env = {};
       }
-      const cacheUrl = `redis://${cacheName}:${config.port}`;
-      ast.services[config.attachTo!].env.REDIS_URL = cacheUrl;
+      
+      // Generate environment variables based on cache type
+      let envVars: Record<string, string> = {};
+      
+      if (config.serviceType && config.serviceType !== "prebuilt") {
+        // Platform-managed cache - use platform-specific env vars
+        envVars = generatePlatformCacheEnvVars(config.serviceType, cacheName);
+      } else {
+        // Traditional container-based cache
+        envVars = { REDIS_URL: `redis://${cacheName}:${config.port}` };
+      }
+      
+      Object.assign(ast.services[config.attachTo!].env, envVars);
       return await manipulator.serialize(ast, content);
     }
   } catch (error) {
@@ -1015,6 +1181,8 @@ async function addSchema(
 
 // Helper functions
 function generateDbEnvVars(image: string, dbName: string): Record<string, string> {
+  if (!image) return {};
+  
   if (image.includes("postgres")) {
     return {
       POSTGRES_DB: dbName,
@@ -1030,6 +1198,31 @@ function generateDbEnvVars(image: string, dbName: string): Record<string, string
     };
   }
   return {};
+}
+
+/**
+ * Generate platform-specific cache environment variables
+ */
+function generatePlatformCacheEnvVars(serviceType: string, cacheName: string): Record<string, string> {
+  switch (serviceType) {
+    case "cloudflare_kv":
+      return {
+        KV_NAMESPACE_ID: `${cacheName}_namespace_id`,
+        KV_BINDING_NAME: cacheName.toUpperCase(),
+        CACHE_URL: `kv://${cacheName}`,
+      };
+    case "vercel_kv":
+      return {
+        KV_REST_API_URL: `https://${cacheName}.kv.vercel-storage.com`,
+        KV_REST_API_TOKEN: `${cacheName}_token`,
+        KV_URL: `redis://${cacheName}`,
+        CACHE_URL: `vercel-kv://${cacheName}`,
+      };
+    default:
+      return {
+        CACHE_URL: `${serviceType}://${cacheName}`,
+      };
+  }
 }
 
 function generateRouteId(path: string): string {
@@ -1050,4 +1243,22 @@ function showDiff(oldContent: string, newContent: string): string {
 
   const addedLines = newLines.filter((line) => !oldLines.includes(line));
   return addedLines.map((line) => `+ ${line}`).join("\n");
+}
+
+/**
+ * Determine shard type based on add subcommand for better organization
+ */
+function getShardTypeForSubcommand(subcommand: string): string {
+  const shardMapping: Record<string, string> = {
+    'service': 'services',
+    'endpoint': 'endpoints', 
+    'route': 'routes',
+    'flow': 'flows',
+    'database': 'services', // Databases go with services
+    'load-balancer': 'services', // Load balancers go with services
+    'schema': 'schemas',
+    'locator': 'locators'
+  };
+  
+  return shardMapping[subcommand] || 'assembly';
 }
