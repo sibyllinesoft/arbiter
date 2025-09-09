@@ -24,7 +24,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 min-h-0 min-w-0">
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
         {activeTabContent}
       </div>
     </div>

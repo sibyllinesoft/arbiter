@@ -137,7 +137,7 @@ app: {
         </div>
         
         {/* Monaco Editor */}
-        <div className="flex-1">
+        <div className="flex-1 overflow-hidden">
           <MonacoEditor
             value={sourceContent}
             onChange={setSourceContent}
