@@ -209,7 +209,7 @@ export function FileTree({ className }: FileTreeProps) {
   }, [currentProject, dispatch, setError]);
 
   return (
-    <div className={cn('h-full flex flex-col bg-white border border-graphite-200 rounded-lg shadow-sm', className)}>
+    <div className={cn('h-full flex flex-col bg-white', className)}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-graphite-200 bg-gradient-to-r from-graphite-50 to-white rounded-t-lg">
         <div className="flex items-center justify-between">
@@ -290,7 +290,7 @@ export function FileTree({ className }: FileTreeProps) {
       </div>
 
       {/* File tree */}
-      <div className="flex-1 overflow-auto p-2">
+      <div className="flex-1 min-h-0 overflow-hidden p-2">
         {fileTree.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
             <div className="w-16 h-16 bg-graphite-100 rounded-2xl flex items-center justify-center mb-4">
