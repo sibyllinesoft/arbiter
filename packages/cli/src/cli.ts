@@ -30,7 +30,7 @@ import { coverCommand, scaffoldCommand } from "./commands/tests.js";
 import { validateCommand } from "./commands/validate.js";
 import { versionPlanCommand, versionReleaseCommand } from "./commands/version.js";
 import { watchCommand } from "./commands/watch.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, loadConfigWithGitDetection } from "./config.js";
 import type {
   CheckOptions,
   CreateOptions,
@@ -83,7 +83,8 @@ program
   .option("--api-url <url>", "API server URL")
   .option("--timeout <ms>", "request timeout in milliseconds")
   .hook("preAction", async (thisCommand) => {
-    // Load configuration before running any command
+    // Load basic configuration before running any command
+    // Git auto-detection will be applied per-command as needed
     const opts = thisCommand.opts();
     try {
       const config = await loadConfig(opts.config);
@@ -1752,11 +1753,24 @@ program
     "output format: auto, json, yaml, typescript, python, rust, go, shell",
     "auto",
   )
+  .option("--sync-github", "sync epics and tasks to GitHub after generation")
+  .option("--github-dry-run", "preview GitHub sync changes without applying them")
+  .option("--use-config", "use configuration file repository info (for conflict resolution)")
+  .option("--use-git-remote", "use Git remote repository info (for conflict resolution)")
   .action(async (specName: string | undefined, options: GenerateOptions, command) => {
     try {
-      const config = command.parent?.config;
+      let config = command.parent?.config;
       if (!config) {
         throw new Error("Configuration not loaded");
+      }
+
+      // Apply Git auto-detection if GitHub sync is requested
+      if (options.syncGithub) {
+        config = await loadConfigWithGitDetection(config, {
+          useConfig: options.useConfig,
+          useGitRemote: options.useGitRemote,
+          verbose: options.verbose
+        });
       }
 
       const exitCode = await generateCommand(options, config, specName);

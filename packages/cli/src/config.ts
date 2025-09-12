@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
 import yaml from "yaml";
 import { z } from "zod";
+import chalk from "chalk";
 import type { CLIConfig } from "./types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,12 +31,38 @@ export const COMMON_PORTS = [5050, 3000, 4000, 8080] as const;
  * Configuration file schema for validation
  * Enforces Arbiter specification constraints
  */
+const gitHubRepoSchema = z.object({
+  owner: z.string().optional(), // Made optional for auto-detection
+  repo: z.string().optional(), // Made optional for auto-detection
+  token: z.string().optional(),
+  baseUrl: z.string().url().optional(),
+  tokenEnv: z.string().optional(),
+});
+
+const gitHubSyncSchema = z.object({
+  repository: gitHubRepoSchema,
+  mapping: z.object({
+    epicLabels: z.record(z.array(z.string())).optional(),
+    taskLabels: z.record(z.array(z.string())).optional(),
+    defaultLabels: z.array(z.string()).optional(),
+    epicPrefix: z.string().optional(),
+    taskPrefix: z.string().optional(),
+  }).optional(),
+  behavior: z.object({
+    createMilestones: z.boolean().optional(),
+    autoClose: z.boolean().optional(),
+    syncAcceptanceCriteria: z.boolean().optional(),
+    syncAssignees: z.boolean().optional(),
+  }).optional(),
+});
+
 const configSchema = z.object({
   apiUrl: z.string().url().optional(),
   timeout: z.number().min(100).max(750).optional(), // Enforce spec maximum (≤750ms)
   format: z.enum(["table", "json", "yaml"]).optional(),
   color: z.boolean().optional(),
   projectDir: z.string().optional(),
+  github: gitHubSyncSchema.optional(),
 });
 
 /**
@@ -65,6 +92,51 @@ export async function loadConfig(configPath?: string): Promise<CLIConfig> {
   }
 
   return await searchForConfigFile(baseConfig);
+}
+
+/**
+ * Load configuration with Git auto-detection integration
+ * This is called after the initial config load to enhance with Git info
+ */
+export async function loadConfigWithGitDetection(
+  baseConfig: CLIConfig,
+  options: {
+    useConfig?: boolean;
+    useGitRemote?: boolean;
+    verbose?: boolean;
+  } = {}
+): Promise<CLIConfig> {
+  const { getSmartRepositoryConfig } = await import("./utils/git-detection.js");
+  
+  // Always try to get smart repository config, which handles conflicts
+  const smartRepoConfig = getSmartRepositoryConfig(
+    baseConfig.github?.repository,
+    options
+  );
+  
+  if (smartRepoConfig) {
+    // Merge detected repository info into config
+    const enhancedConfig: CLIConfig = {
+      ...baseConfig,
+      github: {
+        ...baseConfig.github,
+        repository: {
+          ...baseConfig.github?.repository,
+          owner: smartRepoConfig.repo.owner,
+          repo: smartRepoConfig.repo.repo,
+        }
+      }
+    };
+    
+    if (options.verbose) {
+      console.log(chalk.green(`✅ Enhanced config with ${smartRepoConfig.source} repository: ${smartRepoConfig.repo.owner}/${smartRepoConfig.repo.repo}`));
+    }
+    
+    return enhancedConfig;
+  }
+  
+  // If no smart config found, return original
+  return baseConfig;
 }
 
 /**

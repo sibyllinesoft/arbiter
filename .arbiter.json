@@ -1,5 +1,23 @@
 {
   "apiUrl": "http://localhost:5050",
   "timeout": 750,
-  "color": true
+  "color": true,
+  "github": {
+    "repository": {
+      "owner": "your-github-username",
+      "repo": "your-repo-name",
+      "tokenEnv": "GITHUB_TOKEN"
+    },
+    "mapping": {
+      "epicPrefix": "[Epic]",
+      "taskPrefix": "[Task]",
+      "defaultLabels": ["arbiter"]
+    },
+    "behavior": {
+      "createMilestones": true,
+      "autoClose": true,
+      "syncAcceptanceCriteria": true,
+      "syncAssignees": false
+    }
+  }
 }

@@ -1,6 +1,46 @@
 /**
  * CLI configuration schema and types
  */
+export interface GitHubRepo {
+  /** GitHub repository owner/organization (auto-detected from Git remote if not specified) */
+  owner?: string;
+  /** GitHub repository name (auto-detected from Git remote if not specified) */
+  repo?: string;
+  /** Base URL for GitHub API (defaults to github.com) */
+  baseUrl?: string;
+  /** Environment variable name for GitHub token (defaults to GITHUB_TOKEN) */
+  tokenEnv?: string;
+}
+
+export interface GitHubSyncConfig {
+  /** GitHub repository configuration */
+  repository: GitHubRepo;
+  /** Mapping configuration for syncing */
+  mapping: {
+    /** Epic to GitHub issue label mappings */
+    epicLabels?: Record<string, string[]>;
+    /** Task to GitHub issue label mappings */
+    taskLabels?: Record<string, string[]>;
+    /** Default labels to apply to all synced issues */
+    defaultLabels?: string[];
+    /** Prefix for epic issues */
+    epicPrefix?: string;
+    /** Prefix for task issues */
+    taskPrefix?: string;
+  };
+  /** Sync behavior configuration */
+  behavior: {
+    /** Create GitHub milestones for epics */
+    createMilestones?: boolean;
+    /** Close GitHub issues when tasks/epics are completed */
+    autoClose?: boolean;
+    /** Update GitHub issue descriptions with acceptance criteria */
+    syncAcceptanceCriteria?: boolean;
+    /** Sync assignees between systems */
+    syncAssignees?: boolean;
+  };
+}
+
 export interface CLIConfig {
   /** API endpoint URL */
   apiUrl: string;
@@ -12,6 +52,8 @@ export interface CLIConfig {
   color: boolean;
   /** Default project directory */
   projectDir: string;
+  /** GitHub sync configuration */
+  github?: GitHubSyncConfig;
 }
 
 /**
