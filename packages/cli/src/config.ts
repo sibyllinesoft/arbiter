@@ -39,6 +39,97 @@ const gitHubRepoSchema = z.object({
   tokenEnv: z.string().optional(),
 });
 
+const gitHubTemplateFieldSchema = z.object({
+  name: z.string(),
+  label: z.string(),
+  required: z.boolean().optional(),
+  type: z.enum(["text", "number", "date", "select", "boolean"]).optional(),
+  default: z.string().optional(),
+  pattern: z.string().optional(),
+  help: z.string().optional(),
+});
+
+const gitHubFieldValidationSchema = z.object({
+  field: z.string(),
+  required: z.boolean().optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  pattern: z.string().optional(),
+  enum: z.array(z.string()).optional(),
+  validator: z.string().optional(),
+  errorMessage: z.string().optional(),
+});
+
+const gitHubTemplateSectionsSchema = z.object({
+  description: z.string(),
+  details: z.array(gitHubTemplateFieldSchema).optional(),
+  acceptanceCriteria: z.string().optional(),
+  dependencies: z.string().optional(),
+  additional: z.record(z.string()).optional(),
+});
+
+const gitHubTemplateValidationSchema = z.object({
+  fields: z.array(gitHubFieldValidationSchema).optional(),
+  custom: z.array(z.string()).optional(),
+});
+
+const gitHubTemplateSetSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  sections: gitHubTemplateSectionsSchema,
+  labels: z.array(z.string()).optional(),
+  validation: gitHubTemplateValidationSchema.optional(),
+});
+
+const gitHubTemplateOptionsSchema = z.object({
+  includeMetadata: z.boolean().optional(),
+  includeArbiterIds: z.boolean().optional(),
+  includeAcceptanceCriteria: z.boolean().optional(),
+  includeDependencies: z.boolean().optional(),
+  includeEstimations: z.boolean().optional(),
+  customFields: z.record(z.string()).optional(),
+});
+
+const gitHubTemplateConfigSchema = z.object({
+  inherits: z.string().optional(),
+  name: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  sections: gitHubTemplateSectionsSchema.partial().optional(),
+  labels: z.array(z.string()).optional(),
+  assignees: z.array(z.string()).optional(),
+  validation: gitHubTemplateValidationSchema.optional(),
+  options: gitHubTemplateOptionsSchema.optional(),
+});
+
+const gitHubLabelSchema = z.object({
+  name: z.string(),
+  color: z.string(),
+  description: z.string().optional(),
+});
+
+const gitHubRepoConfigSchema = z.object({
+  issueConfig: z.object({
+    blankIssuesEnabled: z.boolean().optional(),
+    contactLinks: z.array(z.object({
+      name: z.string(),
+      url: z.string().url(),
+      about: z.string(),
+    })).optional(),
+  }).optional(),
+  labels: z.array(gitHubLabelSchema).optional(),
+  pullRequestTemplate: z.string().optional(),
+});
+
+const gitHubTemplatesConfigSchema = z.object({
+  base: gitHubTemplateSetSchema.optional(),
+  epic: gitHubTemplateConfigSchema.optional(),
+  task: gitHubTemplateConfigSchema.optional(),
+  bugReport: gitHubTemplateConfigSchema.optional(),
+  featureRequest: gitHubTemplateConfigSchema.optional(),
+  repositoryConfig: gitHubRepoConfigSchema.optional(),
+});
+
 const gitHubSyncSchema = z.object({
   repository: gitHubRepoSchema,
   mapping: z.object({
@@ -54,6 +145,7 @@ const gitHubSyncSchema = z.object({
     syncAcceptanceCriteria: z.boolean().optional(),
     syncAssignees: z.boolean().optional(),
   }).optional(),
+  templates: gitHubTemplatesConfigSchema.optional(),
 });
 
 const configSchema = z.object({

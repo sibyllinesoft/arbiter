@@ -3,6 +3,7 @@ import path from "node:path";
 import chalk from "chalk";
 import * as YAML from "yaml";
 import type { CLIConfig, IntegrateOptions } from "../types.js";
+import { ConfigurableTemplateManager } from "../utils/github-template-config.js";
 
 interface BuildMatrix {
   versions: string[];
@@ -766,6 +767,36 @@ export async function integrateCommand(
         generated++;
       } else {
         console.log(chalk.yellow(`⚠️  ${mainPath} already exists. Use --force to overwrite.`));
+      }
+    }
+
+    // Generate GitHub templates if requested
+    if (options.templates && provider === "github") {
+      console.log(chalk.blue("\n🎯 Generating GitHub issue templates and configuration..."));
+      
+      // Use configurable template manager with default configuration
+      const templateManager = new ConfigurableTemplateManager();
+      const allTemplateFiles = templateManager.generateRepositoryTemplates();
+      
+      for (const [filePath, content] of Object.entries(allTemplateFiles)) {
+        const fullPath = path.join(projectPath, filePath);
+        
+        // Ensure directory exists
+        await fs.mkdir(path.dirname(fullPath), { recursive: true });
+        
+        if (
+          force ||
+          !(await fs.access(fullPath).then(
+            () => true,
+            () => false,
+          ))
+        ) {
+          await fs.writeFile(fullPath, content);
+          console.log(chalk.green(`✅ Generated ${filePath}`));
+          generated++;
+        } else {
+          console.log(chalk.yellow(`⚠️  ${filePath} already exists. Use --force to overwrite.`));
+        }
       }
     }
 

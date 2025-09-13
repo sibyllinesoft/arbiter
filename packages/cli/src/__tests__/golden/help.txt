@@ -1,14 +1,15 @@
 Usage: arbiter [options] [command]
+
 Arbiter CLI for CUE validation and management
+
 Options:
   -v, --version                         display version number
   -c, --config <path>                   path to configuration file
   --no-color                            disable colored output
-  --api-url <url>                       API server URL (default:
-                                        "http://localhost:XXXX")
+  --api-url <url>                       API server URL
   --timeout <ms>                        request timeout in milliseconds
-                                        (default: "XXXX")
   -h, --help                            display help for command
+
 Commands:
   init [options] [project-name]         initialize a new CUE project with
                                         templates
@@ -24,6 +25,9 @@ Commands:
                                         file
   version                               semver-aware version planning and
                                         release management
+  epic                                  manage epics and their ordered tasks
+                                        using sharded CUE storage
+  task                                  manage ordered tasks within epics
   check [options] [patterns...]         validate CUE files in the current
                                         directory
   validate [options] <files...>         validate CUE files with explicit schema

@@ -174,7 +174,7 @@ describe("Ecosystem Integration Commands", () => {
       );
 
       // Should have new Arbiter dev dependency
-      expect(updatedPackage.devDependencies["@arbiter/cli"]).toBe("^0.1.0");
+      expect(updatedPackage.devDependencies["@arbiter/cli"]).toBe("^1.0.0");
 
       // Should have Arbiter configuration
       expect(updatedPackage.arbiter).toBeDefined();

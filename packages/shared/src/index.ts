@@ -2,8 +2,8 @@
  * Shared types and utilities for Arbiter
  */
 
-export * from "./migration.js";
+export * from "./migration";
 // Re-export all shared types and utilities
-export * from "./types.js";
-export * from "./utils.js";
-export * from "./version.js";
+export * from "./types";
+export * from "./utils";
+export * from "./version";

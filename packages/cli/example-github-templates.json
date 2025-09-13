@@ -1,0 +1,164 @@
+{
+  "github": {
+    "repository": {
+      "owner": "my-org",
+      "repo": "my-repo",
+      "tokenEnv": "GITHUB_TOKEN"
+    },
+    "behavior": {
+      "createMilestones": true,
+      "autoClose": true,
+      "syncAcceptanceCriteria": true,
+      "syncAssignees": true
+    },
+    "templates": {
+      "base": {
+        "name": "custom-base",
+        "description": "Custom base template for our organization",
+        "sections": {
+          "description": "## 📋 Description\n\n{{description}}\n\n",
+          "details": [
+            {
+              "name": "priority",
+              "label": "Priority",
+              "required": true,
+              "type": "select"
+            },
+            {
+              "name": "team",
+              "label": "Team",
+              "required": true,
+              "type": "text"
+            },
+            {
+              "name": "sprint",
+              "label": "Sprint",
+              "type": "text"
+            }
+          ],
+          "acceptanceCriteria": "## ✅ Acceptance Criteria\n\n{{#each acceptanceCriteria}}\n- [ ] {{this}}\n{{/each}}\n\n"
+        },
+        "labels": ["org:managed"],
+        "validation": {
+          "fields": [
+            {
+              "field": "team",
+              "required": true,
+              "enum": ["frontend", "backend", "devops", "design"],
+              "errorMessage": "Team must be one of: frontend, backend, devops, design"
+            }
+          ]
+        }
+      },
+      "epic": {
+        "inherits": "custom-base",
+        "name": "Epic",
+        "title": "[EPIC] [{{team}}] {{priority}}: {{name}}",
+        "labels": ["epic", "priority:{{priority}}", "team:{{team}}"],
+        "sections": {
+          "additional": {
+            "roadmap": "## 🗺️ Roadmap Impact\n\n**Quarter:** {{quarter}}\n**Initiative:** {{initiative}}\n\n",
+            "stakeholders": "## 👥 Stakeholders\n\n**Product Owner:** @{{productOwner}}\n**Tech Lead:** @{{techLead}}\n**Designer:** @{{designer}}\n\n"
+          }
+        }
+      },
+      "task": {
+        "inherits": "custom-base",
+        "name": "Task",
+        "title": "[{{type}}] [{{team}}] {{priority}}: {{name}}",
+        "labels": ["type:{{type}}", "priority:{{priority}}", "team:{{team}}", "epic:{{epicId}}"],
+        "sections": {
+          "additional": {
+            "definition": "## 🎯 Definition of Done\n\n- [ ] Code implemented and reviewed\n- [ ] Tests written and passing\n- [ ] Documentation updated\n- [ ] Stakeholder approval received\n\n"
+          }
+        }
+      },
+      "bugReport": {
+        "name": "Bug Report",
+        "title": "[BUG] [{{severity}}] {{title}}",
+        "labels": ["type:bug", "severity:{{severity}}", "team:{{team}}"],
+        "sections": {
+          "description": "## 🐛 Bug Description\n\n**Summary:** {{summary}}\n\n**Severity:** {{severity}}\n\n**Environment:** {{environment}}\n\n",
+          "additional": {
+            "impact": "## 📊 Impact\n\n**Users Affected:** {{usersAffected}}\n**Business Impact:** {{businessImpact}}\n**Workaround Available:** {{hasWorkaround}}\n\n",
+            "reproduction": "## 🔄 Reproduction Steps\n\n{{#each steps}}\n{{@index}}. {{this}}\n{{/each}}\n\n**Expected Result:** {{expectedResult}}\n**Actual Result:** {{actualResult}}\n\n"
+          }
+        },
+        "validation": {
+          "fields": [
+            {
+              "field": "severity",
+              "required": true,
+              "enum": ["critical", "high", "medium", "low"],
+              "errorMessage": "Severity must be one of: critical, high, medium, low"
+            }
+          ]
+        }
+      },
+      "repositoryConfig": {
+        "issueConfig": {
+          "blankIssuesEnabled": false,
+          "contactLinks": [
+            {
+              "name": "📚 Team Documentation",
+              "url": "https://wiki.company.com/{{repo}}",
+              "about": "Internal team documentation and guidelines"
+            },
+            {
+              "name": "💬 Slack Channel",
+              "url": "https://company.slack.com/channels/{{repo}}",
+              "about": "Team chat for quick questions"
+            }
+          ]
+        },
+        "labels": [
+          {
+            "name": "team:frontend",
+            "color": "1f77b4",
+            "description": "Frontend team responsibility"
+          },
+          {
+            "name": "team:backend",
+            "color": "ff7f0e",
+            "description": "Backend team responsibility"
+          },
+          {
+            "name": "team:devops",
+            "color": "2ca02c",
+            "description": "DevOps team responsibility"
+          },
+          {
+            "name": "team:design",
+            "color": "d62728",
+            "description": "Design team responsibility"
+          },
+          {
+            "name": "severity:critical",
+            "color": "b60205",
+            "description": "Critical severity - immediate attention required"
+          },
+          {
+            "name": "severity:high",
+            "color": "ff9500",
+            "description": "High severity - needs prompt attention"
+          },
+          {
+            "name": "severity:medium",
+            "color": "fbca04",
+            "description": "Medium severity - normal priority"
+          },
+          {
+            "name": "severity:low",
+            "color": "0e8a16",
+            "description": "Low severity - can wait"
+          },
+          {
+            "name": "org:managed",
+            "color": "e1e4e8",
+            "description": "Managed by organization processes"
+          }
+        ]
+      }
+    }
+  }
+}

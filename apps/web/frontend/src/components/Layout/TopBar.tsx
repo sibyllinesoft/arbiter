@@ -18,7 +18,7 @@ import {
   Clock,
   User
 } from 'lucide-react';
-import { useApp, useCurrentProject, useConnectionStatus, useValidationState } from '../../contexts/AppContext';
+import { useApp, useCurrentProject, useConnectionStatus, useValidationState, useCueFileState } from '../../contexts/AppContext';
 import { apiService } from '../../services/api';
 import { toast } from 'react-toastify';
 import { Button, StatusBadge, cn } from '../../design-system';
@@ -35,17 +35,27 @@ export function TopBar({ className }: TopBarProps) {
     state, 
     setLoading, 
     setError,
-    dispatch
+    dispatch,
+    setSelectedCueFile
   } = useApp();
   
   const currentProject = useCurrentProject();
   const { isConnected, reconnectAttempts, lastSync } = useConnectionStatus();
   const { isValidating, errors, warnings, specHash } = useValidationState();
+  const { selectedCueFile, availableCueFiles } = useCueFileState();
 
   const [isSaving, setIsSaving] = useState(false);
   const [isFreezing, setIsFreezing] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Initialize default CUE file selection
+  useEffect(() => {
+    if (!selectedCueFile && availableCueFiles.length > 0) {
+      setSelectedCueFile(availableCueFiles[0]);
+      log.debug('Auto-selected first CUE file:', availableCueFiles[0]);
+    }
+  }, [selectedCueFile, availableCueFiles, setSelectedCueFile]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -197,6 +207,26 @@ export function TopBar({ className }: TopBarProps) {
     }
   }, [currentProject, setError]);
 
+  // Handle CUE file change
+  const handleCueFileChange = useCallback((fileName: string) => {
+    try {
+      setSelectedCueFile(fileName);
+      log.debug('CUE file changed to:', fileName);
+      
+      // Optionally trigger re-validation when CUE file changes
+      if (currentProject && fileName) {
+        toast.info(`Switched to ${fileName}`, {
+          position: 'top-right',
+          autoClose: 2000,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to change CUE file';
+      setError(message);
+      log.error('Failed to change CUE file:', error);
+    }
+  }, [setSelectedCueFile, currentProject, setError]);
+
   // Get validation status
   const getValidationStatus = () => {
     if (isValidating) {
@@ -318,11 +348,27 @@ export function TopBar({ className }: TopBarProps) {
         {/* CUE selector */}
         <div className="flex items-center gap-3 pl-6 border-l border-graphite-200">
           <span className="text-sm font-medium text-graphite-600">CUE:</span>
-          <select className="px-3 py-1.5 text-sm border border-graphite-200 rounded-md bg-white hover:border-graphite-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-            <option value="arbiter.assembly.cue">arbiter.assembly.cue</option>
-            <option value="spec.cue">spec.cue</option>
-            <option value="config.cue">config.cue</option>
+          <select 
+            value={selectedCueFile || ''}
+            onChange={(e) => handleCueFileChange(e.target.value)}
+            className="px-3 py-1.5 text-sm border border-graphite-200 rounded-md bg-white hover:border-graphite-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+            disabled={!currentProject}
+          >
+            {availableCueFiles.length === 0 ? (
+              <option value="">No CUE files available</option>
+            ) : (
+              availableCueFiles.map((fileName) => (
+                <option key={fileName} value={fileName}>
+                  {fileName}
+                </option>
+              ))
+            )}
           </select>
+          {selectedCueFile && (
+            <div className="text-xs text-graphite-400 font-mono bg-graphite-50 px-2 py-1 rounded border">
+              {selectedCueFile.split('.')[0]}
+            </div>
+          )}
         </div>
       </div>
 

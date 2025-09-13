@@ -3,7 +3,7 @@
  */
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import type { AppState, AppAction, DiagramTab } from '../types/ui';
+import type { AppState, AppAction, DiagramTab, LeftTab, RightTab } from '../types/ui';
 import type { Project, Fragment, GapSet, IRResponse, ValidationError, ValidationWarning } from '../types/api';
 
 // Initial state
@@ -19,7 +19,8 @@ const initialState: AppState = {
   // UI state
   activeFragmentId: null,
   activeFragmentTab: 'source',
-  activeTab: 'friendly',
+  leftTab: 'friendly',
+  rightTab: 'flow',
   isLoading: false,
   error: null,
   
@@ -38,6 +39,10 @@ const initialState: AppState = {
   isValidating: false,
   lastValidation: null,
   specHash: null,
+
+  // CUE file state
+  selectedCueFile: null,
+  availableCueFiles: ['arbiter.assembly.cue', 'spec.cue', 'config.cue'],
 };
 
 // Reducer
@@ -147,11 +152,31 @@ function appReducer(state: AppState, action: AppAction): AppState {
         activeFragmentTab: action.payload,
       };
 
-    case 'SET_ACTIVE_TAB':
+    case 'SET_LEFT_TAB':
       return {
         ...state,
-        activeTab: action.payload,
+        leftTab: action.payload,
       };
+
+    case 'SET_RIGHT_TAB':
+      return {
+        ...state,
+        rightTab: action.payload,
+      };
+
+    case 'SET_ACTIVE_TAB':
+      // Legacy compatibility - route to appropriate tab state
+      if (action.payload === 'source' || action.payload === 'friendly') {
+        return {
+          ...state,
+          leftTab: action.payload as LeftTab,
+        };
+      } else {
+        return {
+          ...state,
+          rightTab: action.payload as RightTab,
+        };
+      }
 
     case 'SET_LOADING':
       return {
@@ -229,6 +254,20 @@ function appReducer(state: AppState, action: AppAction): AppState {
         specHash: action.payload.specHash || state.specHash,
       };
 
+    case 'SET_SELECTED_CUE_FILE':
+      return {
+        ...state,
+        selectedCueFile: action.payload,
+      };
+
+    case 'SET_AVAILABLE_CUE_FILES':
+      return {
+        ...state,
+        availableCueFiles: action.payload,
+        // If no CUE file is selected, default to the first available one
+        selectedCueFile: state.selectedCueFile || (action.payload.length > 0 ? action.payload[0] : null),
+      };
+
     default:
       return state;
   }
@@ -242,12 +281,15 @@ interface AppContextType {
   // Convenience methods
   setProject: (project: Project | null) => void;
   setActiveFragment: (fragmentId: string | null) => void;
-  setActiveTab: (tab: DiagramTab) => void;
+  setLeftTab: (tab: LeftTab) => void;
+  setRightTab: (tab: RightTab) => void;
+  setActiveTab: (tab: DiagramTab) => void; // Legacy compatibility
   updateEditorContent: (fragmentId: string, content: string) => void;
   markUnsaved: (fragmentId: string) => void;
   markSaved: (fragmentId: string) => void;
   setError: (error: string | null) => void;
   setLoading: (loading: boolean) => void;
+  setSelectedCueFile: (fileName: string | null) => void;
 }
 
 // Create context
@@ -268,6 +310,14 @@ export function AppProvider({ children }: AppProviderProps) {
 
   const setActiveFragment = useCallback((fragmentId: string | null) => {
     dispatch({ type: 'SET_ACTIVE_FRAGMENT', payload: fragmentId });
+  }, []);
+
+  const setLeftTab = useCallback((tab: LeftTab) => {
+    dispatch({ type: 'SET_LEFT_TAB', payload: tab });
+  }, []);
+
+  const setRightTab = useCallback((tab: RightTab) => {
+    dispatch({ type: 'SET_RIGHT_TAB', payload: tab });
   }, []);
 
   const setActiveTab = useCallback((tab: DiagramTab) => {
@@ -294,17 +344,24 @@ export function AppProvider({ children }: AppProviderProps) {
     dispatch({ type: 'SET_LOADING', payload: loading });
   }, []);
 
+  const setSelectedCueFile = useCallback((fileName: string | null) => {
+    dispatch({ type: 'SET_SELECTED_CUE_FILE', payload: fileName });
+  }, []);
+
   const contextValue: AppContextType = {
     state,
     dispatch,
     setProject,
     setActiveFragment,
+    setLeftTab,
+    setRightTab,
     setActiveTab,
     updateEditorContent,
     markUnsaved,
     markSaved,
     setError,
     setLoading,
+    setSelectedCueFile,
   };
 
   return (
@@ -366,5 +423,13 @@ export function useValidationState() {
     isValidating: state.isValidating,
     lastValidation: state.lastValidation,
     specHash: state.specHash,
+  };
+}
+
+export function useCueFileState() {
+  const { state } = useApp();
+  return {
+    selectedCueFile: state.selectedCueFile,
+    availableCueFiles: state.availableCueFiles,
   };
 }

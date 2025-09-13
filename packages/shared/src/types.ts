@@ -271,6 +271,114 @@ export interface EnhancedGenerateOptions {
 }
 
 // =============================================================================
+// ISSUE SCHEMA SPECIFICATION
+// =============================================================================
+
+// Exact issue schema specification with clean, standardized approach
+export interface IssueSpec {
+  /** Title of the issue - required, max 255 characters */
+  title: string;
+  /** Body content with Markdown and templating support - required */
+  body: string;
+  /** Semantic labels that map to GitHub/GitLab labels - optional */
+  labels?: string[];
+  /** Acceptance criteria - optional */
+  acceptance_criteria?: string[];
+  /** Checklist items with proper structure - optional */
+  checklist?: ChecklistItem[];
+  /** Related links - optional */
+  links?: string[];
+}
+
+/** Checklist item structure */
+export interface ChecklistItem {
+  /** Unique identifier for the checklist item */
+  id: string;
+  /** Display text for the checklist item */
+  text: string;
+  /** Whether the item is completed - optional, defaults to false */
+  done?: boolean;
+}
+
+/** Issue validation configuration */
+export interface IssueValidationConfig {
+  /** Maximum allowed title length */
+  maxTitleLength: number;
+  /** Required fields */
+  requiredFields: (keyof IssueSpec)[];
+}
+
+/** Default issue validation configuration */
+export const DEFAULT_ISSUE_VALIDATION: IssueValidationConfig = {
+  maxTitleLength: 255,
+  requiredFields: ['title', 'body']
+};
+
+/** Issue validation result */
+export interface IssueValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+/** Validate an issue against the schema */
+export function validateIssue(
+  issue: Partial<IssueSpec>, 
+  config: IssueValidationConfig = DEFAULT_ISSUE_VALIDATION
+): IssueValidationResult {
+  const errors: string[] = [];
+
+  // Check required fields
+  for (const field of config.requiredFields) {
+    if (!issue[field] || (typeof issue[field] === 'string' && issue[field]!.trim() === '')) {
+      errors.push(`Field '${field}' is required`);
+    }
+  }
+
+  // Validate title length
+  if (issue.title && issue.title.length > config.maxTitleLength) {
+    errors.push(`Title exceeds maximum length of ${config.maxTitleLength} characters`);
+  }
+
+  // Validate checklist structure if present
+  if (issue.checklist) {
+    issue.checklist.forEach((item, index) => {
+      if (!item.id || typeof item.id !== 'string' || item.id.trim() === '') {
+        errors.push(`Checklist item ${index} missing required 'id' field`);
+      }
+      if (!item.text || typeof item.text !== 'string' || item.text.trim() === '') {
+        errors.push(`Checklist item ${index} missing required 'text' field`);
+      }
+    });
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+/** Create a new issue with default structure */
+export function createIssue(data: Pick<IssueSpec, 'title' | 'body'> & Partial<IssueSpec>): IssueSpec {
+  return {
+    title: data.title,
+    body: data.body,
+    labels: data.labels || [],
+    acceptance_criteria: data.acceptance_criteria || [],
+    checklist: data.checklist || [],
+    links: data.links || []
+  };
+}
+
+/** Create a checklist item with proper structure */
+export function createChecklistItem(text: string, done: boolean = false): ChecklistItem {
+  return {
+    id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    text,
+    done
+  };
+}
+
+// =============================================================================
 // APP SPECIFICATION TYPES
 // =============================================================================
 // Types for the app-centric schema format

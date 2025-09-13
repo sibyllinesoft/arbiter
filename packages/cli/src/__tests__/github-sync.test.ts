@@ -1,7 +1,9 @@
-import { describe, test, expect, beforeEach, mock, spyOn } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach, mock, spyOn } from "bun:test";
 import { GitHubSyncClient } from "../utils/github-sync.js";
 import type { GitHubSyncConfig } from "../types.js";
 import type { Epic, Task } from "../utils/sharded-storage.js";
+import fs from "fs-extra";
+import path from "node:path";
 
 // Create a more robust mock for Octokit
 const mockIssuesApi = {
@@ -64,13 +66,139 @@ mock.module("@octokit/rest", () => ({
   }
 }));
 
+// Mock FileBasedTemplateManager
+mock.module("../utils/file-based-template-manager.js", () => ({
+  FileBasedTemplateManager: class MockFileBasedTemplateManager {
+    constructor(config: any) {
+      this.config = config;
+    }
+    
+    async generateEpicTemplate(epic: Epic, options: any = {}) {
+      return {
+        title: `[Epic] ${epic.name}`,
+        body: `<!-- arbiter-id: ${epic.id} -->\n\n${epic.description || ""}\n\n**Status:** ${epic.status}\n**Priority:** ${epic.priority}\n${epic.owner ? `**Owner:** ${epic.owner}\n` : ""}${epic.assignee ? `**Assignee:** ${epic.assignee}\n` : ""}${epic.estimatedHours ? `**Estimated Hours:** ${epic.estimatedHours}\n` : ""}${epic.dueDate ? `**Due Date:** ${epic.dueDate}\n` : ""}\n**Tasks:** ${epic.tasks ? epic.tasks.length : 0} tasks\n\n${epic.labels ? `**Labels:** ${epic.labels.join(", ")}\n` : ""}`,
+        labels: [
+          "epic",
+          ...(epic.labels || []),
+          `priority-${epic.priority}`
+        ].filter((label, index, arr) => arr.indexOf(label) === index),
+        assignee: epic.assignee,
+        milestone: options.milestoneNumber,
+        dueDate: epic.dueDate
+      };
+    }
+    
+    async generateTaskTemplate(task: Task, epic: Epic, options: any = {}) {
+      let body = `<!-- arbiter-id: ${task.id} -->\n\n`;
+      if (task.description) {
+        body += `${task.description}\n\n`;
+      }
+      body += `**Epic:** ${epic.name}\n`;
+      body += `**Type:** ${task.type}\n`;
+      if (task.priority) {
+        body += `**Priority:** ${task.priority}\n`;
+      }
+      if (task.status) {
+        body += `**Status:** ${task.status}\n`;
+      }
+      if (task.estimatedHours) {
+        body += `**Estimated Hours:** ${task.estimatedHours}\n`;
+      }
+      if (task.assignee) {
+        body += `**Assignee:** ${task.assignee}\n`;
+      }
+      
+      if (task.acceptanceCriteria && task.acceptanceCriteria.length > 0) {
+        body += `\n**Acceptance Criteria:**\n`;
+        for (const criteria of task.acceptanceCriteria) {
+          body += `- ${criteria}\n`;
+        }
+      }
+      
+      const labels = ["task"];
+      if (task.type === "test") {
+        labels.push("test");
+      }
+      
+      return {
+        title: `[Task] ${task.name}`,
+        body,
+        labels,
+        assignee: task.assignee,
+        milestone: options.milestoneNumber
+      };
+    }
+    
+    async generateMilestoneTemplate(epic: Epic) {
+      let description = `<!-- arbiter-id: ${epic.id} -->\n\n`;
+      if (epic.description) {
+        description += `${epic.description}\n\n`;
+      }
+      description += `Arbiter Epic: ${epic.name}\n`;
+      description += `Tasks: ${epic.tasks ? epic.tasks.length : 0}\n`;
+      
+      const totalEstimated = (epic.tasks || []).reduce((sum, task) => sum + (task.estimatedHours || 0), 0);
+      description += `Estimated Hours: ${totalEstimated}\n`;
+      
+      return {
+        title: `Epic: ${epic.name}`,
+        description,
+        dueDate: epic.dueDate
+      };
+    }
+  }
+}));
+
 describe("GitHubSyncClient", () => {
   let config: GitHubSyncConfig;
   let client: GitHubSyncClient;
   let sampleEpic: Epic;
   let sampleTask: Task;
+  let tempDir: string;
+  let originalCwd: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Set up temporary directory for template files
+    originalCwd = process.cwd();
+    tempDir = await fs.mkdtemp(path.join(import.meta.dir, "temp-github-sync-"));
+    process.chdir(tempDir);
+    
+    // Create template directory and files
+    await fs.ensureDir(".arbiter/templates/github");
+    await fs.writeFile(".arbiter/templates/github/base.hbs", `<!-- arbiter-id: {{id}} -->
+
+{{#if description}}{{description}}{{/if}}
+
+{{> content}}`);
+    await fs.writeFile(".arbiter/templates/github/epic.hbs", `{{!-- @inherits base.hbs --}}
+{{#*inline "content"}}
+**Status:** {{status}}
+**Priority:** {{priority}}
+{{#if owner}}**Owner:** {{owner}}{{/if}}
+{{#if assignee}}**Assignee:** {{assignee}}{{/if}}
+{{#if estimatedHours}}**Estimated Hours:** {{estimatedHours}}{{/if}}
+{{#if dueDate}}**Due Date:** {{dueDate}}{{/if}}
+
+**Tasks:** {{tasks.length}} tasks
+
+{{#if labels}}**Labels:** {{join labels ", "}}{{/if}}
+{{/inline}}`);
+    await fs.writeFile(".arbiter/templates/github/task.hbs", `{{!-- @inherits base.hbs --}}
+{{#*inline "content"}}
+{{#if epicName}}**Epic:** {{epicName}}{{/if}}
+**Type:** {{type}}
+{{#if priority}}**Priority:** {{priority}}{{/if}}
+{{#if status}}**Status:** {{status}}{{/if}}
+{{#if estimatedHours}}**Estimated Hours:** {{estimatedHours}}{{/if}}
+{{#if assignee}}**Assignee:** {{assignee}}{{/if}}
+
+{{#if acceptanceCriteria}}
+**Acceptance Criteria:**
+{{#each acceptanceCriteria}}
+- {{this}}
+{{/each}}
+{{/if}}
+{{/inline}}`);
     // Mock the environment variable for testing
     process.env.GITHUB_TOKEN = "test-token";
     delete process.env.ARBITER_GITHUB_TOKEN; // Clear alternative env var
@@ -131,6 +259,20 @@ describe("GitHubSyncClient", () => {
       labels: ["auth", "security"]
     };
 
+    // Add template configuration to the config
+    config.templates = {
+      discoveryPaths: [".arbiter/templates/github"],
+      defaultExtension: "hbs",
+      epic: {
+        file: "epic.hbs",
+        inherits: "base.hbs"
+      },
+      task: {
+        file: "task.hbs",
+        inherits: "base.hbs"
+      }
+    };
+    
     client = new GitHubSyncClient(config);
 
     // Reset mocks
@@ -141,6 +283,11 @@ describe("GitHubSyncClient", () => {
     mockIssuesApi.createMilestone.mockClear();
     mockIssuesApi.updateMilestone.mockClear();
     mockPaginate.mockClear();
+  });
+  
+  afterEach(async () => {
+    process.chdir(originalCwd);
+    await fs.remove(tempDir);
   });
 
   test("should initialize with correct configuration", () => {
@@ -171,7 +318,7 @@ describe("GitHubSyncClient", () => {
         repo: "test-repo",
         title: "[Epic] User Authentication System",
         labels: expect.arrayContaining(["epic", "auth", "security", "priority-high"]),
-        assignee: "jane-smith"
+        assignees: undefined // No assignees since syncAssignees is false in config
       })
     );
 
@@ -383,8 +530,20 @@ describe("GitHubSyncClient", () => {
 
 describe("GitHubSyncClient Error Handling", () => {
   let config: GitHubSyncConfig;
+  let tempDir: string;
+  let originalCwd: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Set up temporary directory for template files
+    originalCwd = process.cwd();
+    tempDir = await fs.mkdtemp(path.join(import.meta.dir, "temp-github-sync-error-"));
+    process.chdir(tempDir);
+    
+    // Create basic template directory
+    await fs.ensureDir(".arbiter/templates/github");
+    await fs.writeFile(".arbiter/templates/github/base.hbs", `<!-- arbiter-id: {{id}} -->
+
+{{#if description}}{{description}}{{/if}}`);
     // Set a test token for error handling tests
     process.env.GITHUB_TOKEN = "invalid-token";
     
@@ -394,8 +553,17 @@ describe("GitHubSyncClient Error Handling", () => {
         repo: "test-repo"
       },
       mapping: {},
-      behavior: {}
+      behavior: {},
+      templates: {
+        discoveryPaths: [".arbiter/templates/github"],
+        defaultExtension: "hbs"
+      }
     };
+  });
+  
+  afterEach(async () => {
+    process.chdir(originalCwd);
+    await fs.remove(tempDir);
   });
 
   test("should handle API errors gracefully", async () => {

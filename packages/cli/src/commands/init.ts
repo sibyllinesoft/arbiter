@@ -182,12 +182,12 @@ arbiter export --format types > types.ts
  * Initialize a new CUE project with templates
  */
 export async function initCommand(
-  projectName: string | undefined,
+  displayName: string | undefined,
   options: InitOptions,
 ): Promise<number> {
   try {
     // Get project details
-    const projectDetails = await getProjectDetails(projectName, options);
+    const projectDetails = await getProjectDetails(displayName, options);
     const { name, directory, template } = projectDetails;
 
     // Check if directory exists and handle accordingly
@@ -249,13 +249,13 @@ export async function initCommand(
  * Get project details from user input
  */
 async function getProjectDetails(
-  projectName: string | undefined,
+  displayName: string | undefined,
   options: InitOptions,
 ): Promise<{ name: string; directory: string; template: ProjectTemplate }> {
   // Use defaults for all required values, no interactive prompts
-  const name = projectName || "my-cue-project";
+  const name = displayName || path.basename(process.cwd());
   const templateKey = options.template || "basic";
-  const directory = options.directory || name;
+  const directory = process.cwd();
   const composition = options.composition ?? false;
   const compositionTemplate = options.compositionTemplate || "basic";
 

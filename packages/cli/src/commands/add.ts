@@ -118,11 +118,20 @@ export async function addCommand(
       case "schema":
         updatedContent = await addSchema(manipulator, assemblyContent, name, options);
         break;
+      case "package":
+        updatedContent = await addPackage(manipulator, assemblyContent, name, options);
+        break;
+      case "component":
+        updatedContent = await addComponent(manipulator, assemblyContent, name, options);
+        break;
+      case "module":
+        updatedContent = await addModule(manipulator, assemblyContent, name, options);
+        break;
       default:
         console.error(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
         console.log(
           chalk.dim(
-            "Available subcommands: service, endpoint, route, flow, load-balancer, database, cache, locator, schema",
+            "Available subcommands: service, endpoint, route, flow, load-balancer, database, cache, locator, schema, package, component, module",
           ),
         );
         return 1;
@@ -1177,6 +1186,105 @@ async function addSchema(
   }
 
   return await manipulator.addToSection(content, "components.schemas", schemaName, schemaConfig);
+}
+
+/**
+ * Add a reusable package/library
+ */
+async function addPackage(
+  manipulator: any,
+  content: string,
+  name: string,
+  options: AddOptions & {
+    language?: string;
+    directory?: string;
+    exports?: string;
+    version?: string;
+  },
+): Promise<string> {
+  const packageName = name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
+  const packageConfig: any = {
+    name: packageName,
+    type: "package",
+    language: options.language || "typescript",
+    version: options.version || "0.1.0",
+    directory: options.directory || `packages/${packageName}`,
+  };
+
+  if (options.exports) {
+    packageConfig.exports = options.exports.split(",").map(e => e.trim());
+  }
+
+  return await manipulator.addToSection(content, "components.packages", packageName, packageConfig);
+}
+
+/**
+ * Add a UI component
+ */
+async function addComponent(
+  manipulator: any,
+  content: string,
+  name: string,
+  options: AddOptions & {
+    framework?: string;
+    directory?: string;
+    props?: string;
+    stories?: boolean;
+  },
+): Promise<string> {
+  const componentName = name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
+  const componentConfig: any = {
+    name: componentName,
+    type: "component",
+    framework: options.framework || "react",
+    directory: options.directory || `src/components/${componentName}`,
+  };
+
+  if (options.props) {
+    componentConfig.props = options.props.split(",").map(p => p.trim());
+  }
+
+  if (options.stories) {
+    componentConfig.storybook = true;
+  }
+
+  return await manipulator.addToSection(content, "components.ui", componentName, componentConfig);
+}
+
+/**
+ * Add a standalone module
+ */
+async function addModule(
+  manipulator: any,
+  content: string,
+  name: string,
+  options: AddOptions & {
+    language?: string;
+    directory?: string;
+    functions?: string;
+    types?: string;
+  },
+): Promise<string> {
+  const moduleName = name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
+  const moduleConfig: any = {
+    name: moduleName,
+    type: "module",
+    language: options.language || "typescript",
+    directory: options.directory || `src/modules/${moduleName}`,
+  };
+
+  if (options.functions) {
+    moduleConfig.functions = options.functions.split(",").map(f => f.trim());
+  }
+
+  if (options.types) {
+    moduleConfig.types = options.types.split(",").map(t => t.trim());
+  }
+
+  return await manipulator.addToSection(content, "components.modules", moduleName, moduleConfig);
 }
 
 // Helper functions

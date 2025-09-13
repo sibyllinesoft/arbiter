@@ -24,7 +24,8 @@ export interface AppState {
   // UI state
   activeFragmentId: string | null;
   activeFragmentTab: string;
-  activeTab: DiagramTab;
+  leftTab: LeftTab;
+  rightTab: RightTab;
   isLoading: boolean;
   error: string | null;
 
@@ -43,10 +44,18 @@ export interface AppState {
   isValidating: boolean;
   lastValidation: string | null;
   specHash: string | null;
+
+  // CUE file state
+  selectedCueFile: string | null;
+  availableCueFiles: string[];
 }
 
-// Diagram tabs
-export type DiagramTab = "source" | "friendly" | "flow" | "site" | "fsm" | "view" | "gaps" | "resolved";
+// Tab types - separate left and right tab groups
+export type LeftTab = "source" | "friendly";
+export type RightTab = "flow" | "site" | "fsm" | "view" | "gaps" | "resolved" | "architecture";
+
+// Legacy type for backwards compatibility
+export type DiagramTab = LeftTab | RightTab;
 
 // UI actions
 export type AppAction =
@@ -61,7 +70,9 @@ export type AppAction =
   | { type: "SET_IR"; payload: { kind: string; data: IRResponse } }
   | { type: "SET_ACTIVE_FRAGMENT"; payload: string | null }
   | { type: "SET_ACTIVE_FRAGMENT_TAB"; payload: string }
-  | { type: "SET_ACTIVE_TAB"; payload: DiagramTab }
+  | { type: "SET_LEFT_TAB"; payload: LeftTab }
+  | { type: "SET_RIGHT_TAB"; payload: RightTab }
+  | { type: "SET_ACTIVE_TAB"; payload: DiagramTab } // Legacy compatibility
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
   | { type: "SET_EDITOR_CONTENT"; payload: { fragmentId: string; content: string } }
@@ -80,7 +91,9 @@ export type AppAction =
         lastValidation: string | null;
         specHash: string | null;
       };
-    };
+    }
+  | { type: "SET_SELECTED_CUE_FILE"; payload: string | null }
+  | { type: "SET_AVAILABLE_CUE_FILES"; payload: string[] };
 
 // Component props
 export interface SplitPaneProps {

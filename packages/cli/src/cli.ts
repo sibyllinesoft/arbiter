@@ -17,6 +17,7 @@ import { ideCommand } from "./commands/ide.js";
 import { importCommand } from "./commands/import.js";
 import { initCommand, listTemplates } from "./commands/init.js";
 import { integrateCommand } from "./commands/integrate.js";
+import { githubTemplatesCommand } from "./commands/github-templates.js";
 import { onboardCommand } from "./commands/onboard.js";
 import { migrateCommand } from "./commands/migrate.js";
 import { previewCommand } from "./commands/preview.js";
@@ -48,6 +49,7 @@ import type {
   MigrateOptions,
   PreviewOptions,
   RenameOptions,
+  TemplateManagementOptions,
   SurfaceOptions,
   SyncOptions,
   TemplateOptions,
@@ -62,12 +64,8 @@ import type { AddOptions } from "./commands/add.js";
 import { epicCommand, taskCommand } from "./commands/epic.js";
 import type { EpicOptions, TaskOptions } from "./commands/epic.js";
 
-// Package info
-const packageJson = {
-  name: "arbiter",
-  version: "0.1.0",
-  description: "Arbiter CLI for CUE validation and management",
-};
+// Package info - import from package.json
+import packageJson from "../package.json" with { type: "json" };
 
 /**
  * Main CLI program
@@ -109,20 +107,19 @@ program
  * Init command - Initialize new CUE project
  */
 program
-  .command("init [project-name]")
-  .description("initialize a new CUE project with templates")
+  .command("init [display-name]")
+  .description("initialize a new CUE project with templates in current directory")
   .option("-t, --template <name>", "project template to use (basic, kubernetes, api)")
-  .option("-d, --directory <path>", "target directory for the project")
   .option("-f, --force", "overwrite existing files")
   .option("--list-templates", "list available templates")
-  .action(async (projectName, options: InitOptions & { listTemplates?: boolean }, _command) => {
+  .action(async (displayName, options: InitOptions & { listTemplates?: boolean }, _command) => {
     if (options.listTemplates) {
       listTemplates();
       return;
     }
 
     try {
-      const exitCode = await initCommand(projectName, options);
+      const exitCode = await initCommand(displayName, options);
       process.exit(exitCode);
     } catch (error) {
       console.error(
@@ -189,7 +186,7 @@ program
  */
 const addCmd = program
   .command("add")
-  .description("incrementally build arbiter.assembly.cue through compositional additions");
+  .description("incrementally build specifications using compositional commands");
 
 addCmd
   .command("service <name>")
@@ -486,6 +483,123 @@ addCmd
         }
 
         const exitCode = await addCommand("schema", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("package <name>")
+  .description("add a reusable package/library (e.g. design systems, shared utilities)")
+  .option("--language <lang>", "programming language (typescript, python, rust, go)", "typescript")
+  .option("--directory <dir>", "source directory path")
+  .option("--exports <exports>", "comma-separated list of main exports")
+  .option("--version <version>", "initial version", "0.1.0")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      name: string,
+      options: AddOptions & {
+        language?: string;
+        directory?: string;
+        exports?: string;
+        version?: string;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("package", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("component <name>")
+  .description("add a UI component (e.g. buttons, forms, layout components)")
+  .option("--framework <framework>", "UI framework (react, vue, angular, svelte)", "react")
+  .option("--directory <dir>", "source directory path")
+  .option("--props <props>", "comma-separated list of component props")
+  .option("--stories", "generate Storybook stories")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      name: string,
+      options: AddOptions & {
+        framework?: string;
+        directory?: string;
+        props?: string;
+        stories?: boolean;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("component", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    },
+  );
+
+addCmd
+  .command("module <name>")
+  .description("add a standalone module (e.g. utilities, helpers, data models)")
+  .option("--language <lang>", "programming language (typescript, python, rust, go)", "typescript")
+  .option("--directory <dir>", "source directory path")
+  .option("--functions <functions>", "comma-separated list of main functions")
+  .option("--types <types>", "comma-separated list of exported types")
+  .option("--dry-run", "preview changes without applying them")
+  .option("--force", "overwrite existing configuration")
+  .option("-v, --verbose", "verbose output with detailed changes")
+  .action(
+    async (
+      name: string,
+      options: AddOptions & {
+        language?: string;
+        directory?: string;
+        functions?: string;
+        types?: string;
+      },
+      command,
+    ) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("module", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -1628,6 +1742,7 @@ program
   .option("--output <dir>", "output directory for CI files", ".github/workflows")
   .option("--force", "overwrite existing workflow files")
   .option("--matrix", "use build matrix from assembly file")
+  .option("--templates", "generate GitHub issue templates from configuration")
   .action(async (options: IntegrateOptions, command) => {
     try {
       const config = command.parent?.config;
@@ -1647,6 +1762,36 @@ program
   });
 
 /**
+ * GitHub Templates command - Manage GitHub issue templates
+ */
+program
+  .command("github-templates")
+  .description("manage GitHub issue templates configuration")
+  .option("--list", "list all available templates")
+  .option("--show <name>", "show details of a specific template")
+  .option("--validate", "validate template configuration")
+  .option("--add", "add a new template (interactive)")
+  .option("--remove <name>", "remove a template")
+  .option("--format <format>", "output format: table, json, yaml", "table")
+  .action(async (options: TemplateManagementOptions, command) => {
+    try {
+      const config = command.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await githubTemplatesCommand(options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+/**
  * Docs command - Documentation generation
  */
 const docsCmd = program
@@ -1655,7 +1800,7 @@ const docsCmd = program
 
 docsCmd
   .command("schema")
-  .description("generate schema documentation from arbiter.assembly.cue")
+  .description("generate schema documentation from project specifications")
   .option("--format <type>", "output format: markdown, html, json", "markdown")
   .option("--output <file>", "output file path")
   .option("--output-dir <dir>", "output directory for generated documentation", ".")
@@ -1742,7 +1887,7 @@ program
  */
 program
   .command("generate [spec-name]")
-  .description("generate project files from existing arbiter.assembly.cue specification")
+  .description("generate project files from stored specifications")
   .option("--output-dir <dir>", "output directory for generated files", ".")
   .option("--include-ci", "include CI/CD workflow files")
   .option("--force", "overwrite existing files")
@@ -1818,7 +1963,7 @@ program
  */
 program
   .command("explain")
-  .description("generate plain-English summary of current arbiter.assembly.cue")
+  .description("generate plain-English summary of project specifications")
   .option("--format <type>", "output format: text, json", "text")
   .option("--output <file>", "output file path for saving explanation")
   .option("--verbose", "detailed explanation with all configuration details")
@@ -2402,6 +2547,12 @@ ${chalk.cyan("Revision Management Examples:")}
     arbiter integrate
     arbiter integrate --provider github --type pr --force
     arbiter integrate --matrix --output .github/workflows
+    
+  ${chalk.dim("GitHub Templates:")}
+    arbiter github-templates --list
+    arbiter github-templates --show epic
+    arbiter github-templates --validate
+    arbiter integrate --templates                    # Generate templates from config
     
   ${chalk.dim("Documentation generation (Phase 5):")}
     arbiter docs schema                           # Generate schema docs from CUE

@@ -46,12 +46,15 @@
     "check:ci": "bunx @biomejs/biome check .",
     "quality": "bun run format:check && bun run lint && bun run typecheck",
     "quality:fix": "bun run format && bun run check && bun run typecheck",
-    "validate": "bun run quality && bun run test"
+    "validate": "bun run quality && bun run test",
+    "version:sync": "bun scripts/sync-versions.ts sync",
+    "version:validate": "bun scripts/sync-versions.ts validate"
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/handlebars": "^4.1.0",
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
-    "@biomejs/biome": "^1.9.4",
     "bun-types": "^1.2.21",
     "typescript": "^5.3.3"
   },
@@ -77,6 +80,8 @@
   "author": "Nathan Rice",
   "license": "LicenseRef-SPL-1.0",
   "dependencies": {
-    "@headlessui/react": "^2.2.7"
+    "@headlessui/react": "^2.2.7",
+    "@octokit/rest": "^22.0.0",
+    "handlebars": "^4.7.8"
   }
 }

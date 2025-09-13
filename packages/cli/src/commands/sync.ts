@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
+import packageJson from "../../package.json" with { type: "json" };
 import type { CLIConfig, SyncOptions } from "../types.js";
 
 interface ManifestFile {
@@ -207,7 +208,7 @@ function getArbiterPackageUpdates() {
       "arbiter:sync": "arbiter sync --language typescript",
     },
     devDependencies: {
-      "@arbiter/cli": "^0.1.0",
+      "@arbiter/cli": `^${packageJson.version}`,
     },
     arbiter: {
       profiles: ["library"],
