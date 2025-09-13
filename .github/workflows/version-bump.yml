@@ -1,0 +1,358 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+        default: patch
+      prerelease-identifier:
+        description: 'Pre-release identifier (alpha, beta, rc)'
+        required: false
+        type: choice
+        options:
+          - alpha
+          - beta
+          - rc
+        default: beta
+      custom-version:
+        description: 'Custom version (overrides version-type)'
+        required: false
+        type: string
+      changelog-entry:
+        description: 'Changelog entry for this version'
+        required: false
+        type: string
+
+env:
+  NODE_ENV: development
+
+jobs:
+  validate-inputs:
+    name: Validate Inputs
+    runs-on: ubuntu-latest
+    outputs:
+      target-version: ${{ steps.calculate-version.outputs.target-version }}
+      changelog-entry: ${{ steps.prepare-changelog.outputs.changelog-entry }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Calculate target version
+        id: calculate-version
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          if [ -n "${{ github.event.inputs.custom-version }}" ]; then
+            TARGET_VERSION="${{ github.event.inputs.custom-version }}"
+            echo "Using custom version: $TARGET_VERSION"
+          else
+            VERSION_TYPE="${{ github.event.inputs.version-type }}"
+            
+            # Split version into parts
+            IFS='.' read -r major minor patch <<< "$CURRENT_VERSION"
+            
+            # Remove any pre-release suffix from patch
+            patch=$(echo "$patch" | cut -d'-' -f1)
+            
+            case "$VERSION_TYPE" in
+              "major")
+                TARGET_VERSION="$((major + 1)).0.0"
+                ;;
+              "minor")
+                TARGET_VERSION="$major.$((minor + 1)).0"
+                ;;
+              "patch")
+                TARGET_VERSION="$major.$minor.$((patch + 1))"
+                ;;
+              "prerelease")
+                IDENTIFIER="${{ github.event.inputs.prerelease-identifier }}"
+                # Check if current version already has a prerelease suffix
+                if [[ "$CURRENT_VERSION" =~ -([a-z]+)\.?([0-9]+)?$ ]]; then
+                  # Extract current prerelease info
+                  CURRENT_ID="${BASH_REMATCH[1]}"
+                  CURRENT_NUM="${BASH_REMATCH[2]:-0}"
+                  
+                  if [ "$CURRENT_ID" = "$IDENTIFIER" ]; then
+                    # Increment the prerelease number
+                    TARGET_VERSION="$major.$minor.$patch-$IDENTIFIER.$((CURRENT_NUM + 1))"
+                  else
+                    # Change prerelease identifier
+                    TARGET_VERSION="$major.$minor.$patch-$IDENTIFIER.1"
+                  fi
+                else
+                  # Add prerelease to current version
+                  TARGET_VERSION="$major.$minor.$patch-$IDENTIFIER.1"
+                fi
+                ;;
+            esac
+          fi
+          
+          # Validate semver format
+          if [[ ! "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
+            echo "Error: Invalid version format: $TARGET_VERSION"
+            exit 1
+          fi
+          
+          echo "target-version=$TARGET_VERSION" >> $GITHUB_OUTPUT
+          echo "Target version: $TARGET_VERSION"
+          
+      - name: Prepare changelog entry
+        id: prepare-changelog
+        run: |
+          TARGET_VERSION="${{ steps.calculate-version.outputs.target-version }}"
+          CHANGELOG_INPUT="${{ github.event.inputs.changelog-entry }}"
+          
+          if [ -n "$CHANGELOG_INPUT" ]; then
+            CHANGELOG_ENTRY="$CHANGELOG_INPUT"
+          else
+            # Generate default changelog entry based on recent commits
+            CURRENT_VERSION=$(node -p "require('./package.json').version")
+            
+            # Get commits since last version tag
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            
+            if [ -n "$LAST_TAG" ]; then
+              COMMITS=$(git log --pretty=format:"* %s" "$LAST_TAG..HEAD" | head -10)
+            else
+              COMMITS=$(git log --pretty=format:"* %s" --max-count=10)
+            fi
+            
+            CHANGELOG_ENTRY="### Version $TARGET_VERSION
+            
+**Changes:**
+$COMMITS
+
+**Full Changelog**: https://github.com/${{ github.repository }}/compare/v$CURRENT_VERSION...v$TARGET_VERSION"
+          fi
+          
+          # Save multiline output
+          echo "changelog-entry<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG_ENTRY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  version-bump:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    needs: validate-inputs
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+          
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Update version in package.json files
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          
+          # Create a script to update versions
+          cat > update-versions.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          const targetVersion = process.argv[2];
+          
+          function updatePackageJson(filePath) {
+            if (fs.existsSync(filePath)) {
+              const pkg = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+              pkg.version = targetVersion;
+              fs.writeFileSync(filePath, JSON.stringify(pkg, null, 2) + '\n');
+              console.log(`Updated ${filePath} to version ${targetVersion}`);
+            }
+          }
+          
+          // Update root package.json
+          updatePackageJson('./package.json');
+          
+          // Update workspace packages
+          updatePackageJson('./packages/cli/package.json');
+          updatePackageJson('./packages/shared/package.json');
+          updatePackageJson('./apps/api/package.json');
+          
+          // Update any other package.json files found
+          const { execSync } = require('child_process');
+          try {
+            const otherPackages = execSync('find apps/ packages/ -name package.json -not -path "*/node_modules/*"', { encoding: 'utf8' })
+              .trim()
+              .split('\n')
+              .filter(p => p && p !== './packages/cli/package.json' && p !== './packages/shared/package.json' && p !== './apps/api/package.json');
+            
+            otherPackages.forEach(updatePackageJson);
+          } catch (e) {
+            console.log('No additional packages found');
+          }
+          EOF
+          
+          node update-versions.js "$TARGET_VERSION"
+          
+      - name: Update CHANGELOG.md
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          CHANGELOG_ENTRY="${{ needs.validate-inputs.outputs.changelog-entry }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          if [ -f "CHANGELOG.md" ]; then
+            # Add new entry to existing changelog
+            cp CHANGELOG.md CHANGELOG.md.bak
+            
+            # Create new changelog entry
+            cat > new-entry.md << EOF
+## [$TARGET_VERSION] - $DATE
+
+$CHANGELOG_ENTRY
+
+EOF
+            
+            # Insert new entry after the first line (title)
+            head -n 1 CHANGELOG.md > temp-changelog.md
+            echo "" >> temp-changelog.md
+            cat new-entry.md >> temp-changelog.md
+            tail -n +2 CHANGELOG.md >> temp-changelog.md
+            mv temp-changelog.md CHANGELOG.md
+            rm new-entry.md
+          else
+            # Create new changelog
+            cat > CHANGELOG.md << EOF
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [$TARGET_VERSION] - $DATE
+
+$CHANGELOG_ENTRY
+EOF
+          fi
+          
+          echo "Updated CHANGELOG.md with version $TARGET_VERSION"
+          
+      - name: Validate changes
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          
+          # Validate that version was updated correctly
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          
+          if [ "$CURRENT_VERSION" != "$TARGET_VERSION" ]; then
+            echo "Error: Version not updated correctly. Expected: $TARGET_VERSION, Got: $CURRENT_VERSION"
+            exit 1
+          fi
+          
+          # Run validation to ensure nothing is broken
+          bun run version:validate || {
+            echo "Version validation failed"
+            exit 1
+          }
+          
+          echo "Version bump validation successful"
+          
+      - name: Commit and tag
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          
+          # Stage changes
+          git add package.json packages/*/package.json apps/*/package.json CHANGELOG.md
+          
+          # Commit changes
+          git commit -m "chore: bump version to v$TARGET_VERSION
+
+- Updated package.json files across workspace
+- Updated CHANGELOG.md with release notes
+- Version bump type: ${{ github.event.inputs.version-type }}
+  
+${{ needs.validate-inputs.outputs.changelog-entry }}"
+          
+          # Create tag
+          git tag -a "v$TARGET_VERSION" -m "Release v$TARGET_VERSION
+
+${{ needs.validate-inputs.outputs.changelog-entry }}"
+          
+          echo "Created commit and tag for v$TARGET_VERSION"
+          
+      - name: Push changes
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          
+          # Push commits and tags
+          git push origin main
+          git push origin "v$TARGET_VERSION"
+          
+          echo "✅ Pushed version v$TARGET_VERSION to repository"
+          
+      - name: Create summary
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          # 🎉 Version Bump Completed
+          
+          **New Version:** \`v$TARGET_VERSION\`
+          **Bump Type:** \`${{ github.event.inputs.version-type }}\`
+          **Tag Created:** \`v$TARGET_VERSION\`
+          
+          ## Changes Made
+          - Updated all package.json files
+          - Updated CHANGELOG.md
+          - Created git tag
+          - Pushed to main branch
+          
+          ## Next Steps
+          The release workflow will be triggered automatically by the new tag.
+          
+          **Release URL:** https://github.com/${{ github.repository }}/releases/tag/v$TARGET_VERSION
+          EOF
+
+  trigger-release:
+    name: Trigger Release Workflow
+    runs-on: ubuntu-latest
+    needs: [validate-inputs, version-bump]
+    
+    steps:
+      - name: Wait for release workflow
+        run: |
+          TARGET_VERSION="${{ needs.validate-inputs.outputs.target-version }}"
+          
+          echo "🚀 Version v$TARGET_VERSION has been tagged and pushed."
+          echo "The release workflow should trigger automatically."
+          echo ""
+          echo "Monitor the release at:"
+          echo "https://github.com/${{ github.repository }}/actions/workflows/release.yml"
+          echo ""
+          echo "Once complete, the release will be available at:"
+          echo "https://github.com/${{ github.repository }}/releases/tag/v$TARGET_VERSION"

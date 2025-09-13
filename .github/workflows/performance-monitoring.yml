@@ -1,0 +1,490 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run performance benchmarks daily at 4 AM UTC
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      benchmark-type:
+        description: 'Type of benchmarks to run'
+        required: true
+        type: choice
+        options:
+          - cli
+          - api
+          - build
+          - all
+        default: all
+      store-results:
+        description: 'Store results for trend analysis'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  NODE_ENV: production
+  BENCHMARK_ITERATIONS: 10
+
+jobs:
+  cli-performance:
+    name: CLI Performance
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark-type == 'cli' || github.event.inputs.benchmark-type == 'all' || github.event_name != 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Build CLI
+        run: |
+          bun run build:all
+          bun run build:standalone
+          chmod +x arbiter-cli
+          
+      - name: Warm up CLI
+        run: |
+          echo "🔥 Warming up CLI..."
+          ./arbiter-cli --version >/dev/null 2>&1 || true
+          ./arbiter-cli --help >/dev/null 2>&1 || true
+          
+      - name: Benchmark CLI startup time
+        run: |
+          echo "⚡ Benchmarking CLI startup time..."
+          
+          # Create benchmark script
+          cat > benchmark-cli.sh << 'EOF'
+          #!/bin/bash
+          
+          ITERATIONS=${1:-10}
+          COMMAND="./arbiter-cli --version"
+          
+          echo "Running $ITERATIONS iterations of: $COMMAND"
+          
+          total=0
+          for i in $(seq 1 $ITERATIONS); do
+            start=$(date +%s%N)
+            $COMMAND >/dev/null 2>&1
+            end=$(date +%s%N)
+            duration=$((end - start))
+            duration_ms=$((duration / 1000000))
+            echo "Iteration $i: ${duration_ms}ms"
+            total=$((total + duration_ms))
+          done
+          
+          avg=$((total / ITERATIONS))
+          echo "Average startup time: ${avg}ms"
+          echo "STARTUP_TIME_MS=$avg" >> $GITHUB_ENV
+          EOF
+          
+          chmod +x benchmark-cli.sh
+          ./benchmark-cli.sh ${{ env.BENCHMARK_ITERATIONS }}
+          
+      - name: Benchmark CLI command performance
+        run: |
+          echo "🧪 Benchmarking CLI commands..."
+          
+          # Test different commands
+          commands=(
+            "--help"
+            "--version"
+            "check --help"
+          )
+          
+          echo "# CLI Command Performance" > cli-results.md
+          echo "" >> cli-results.md
+          echo "| Command | Avg Time (ms) | Iterations |" >> cli-results.md
+          echo "|---------|---------------|------------|" >> cli-results.md
+          
+          for cmd in "${commands[@]}"; do
+            echo "Testing: $cmd"
+            
+            total=0
+            iterations=${{ env.BENCHMARK_ITERATIONS }}
+            
+            for i in $(seq 1 $iterations); do
+              start=$(date +%s%N)
+              ./arbiter-cli $cmd >/dev/null 2>&1 || true
+              end=$(date +%s%N)
+              duration=$((end - start))
+              duration_ms=$((duration / 1000000))
+              total=$((total + duration_ms))
+            done
+            
+            avg=$((total / iterations))
+            echo "| \`arbiter $cmd\` | ${avg} | $iterations |" >> cli-results.md
+          done
+          
+      - name: Binary size analysis
+        run: |
+          echo "📦 Analyzing binary size..."
+          
+          if [ -f "arbiter-cli" ]; then
+            SIZE=$(stat -f%z arbiter-cli 2>/dev/null || stat -c%s arbiter-cli 2>/dev/null || echo "0")
+            SIZE_MB=$((SIZE / 1024 / 1024))
+            
+            echo "Binary size: $SIZE bytes (${SIZE_MB} MB)"
+            echo "BINARY_SIZE_MB=$SIZE_MB" >> $GITHUB_ENV
+            
+            echo "" >> cli-results.md
+            echo "## Binary Analysis" >> cli-results.md
+            echo "- **Size**: $SIZE bytes (${SIZE_MB} MB)" >> cli-results.md
+            
+            # Check if size is reasonable
+            if [ "$SIZE_MB" -gt 50 ]; then
+              echo "⚠️ Binary size is quite large (${SIZE_MB} MB)"
+              echo "- **Status**: ⚠️ Large binary" >> cli-results.md
+            else
+              echo "✅ Binary size is reasonable (${SIZE_MB} MB)"
+              echo "- **Status**: ✅ Reasonable size" >> cli-results.md
+            fi
+          fi
+          
+      - name: Upload CLI performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-performance-results
+          path: cli-results.md
+          retention-days: 30
+
+  build-performance:
+    name: Build Performance
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark-type == 'build' || github.event.inputs.benchmark-type == 'all' || github.event_name != 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Clean previous builds
+        run: bun run clean:all
+        
+      - name: Benchmark build times
+        run: |
+          echo "🏗️ Benchmarking build performance..."
+          
+          build_targets=(
+            "build:shared"
+            "build:cli"  
+            "build:api"
+            "build:all"
+            "build:standalone"
+          )
+          
+          echo "# Build Performance" > build-results.md
+          echo "" >> build-results.md
+          echo "| Target | Time (s) | Status |" >> build-results.md
+          echo "|--------|----------|--------|" >> build-results.md
+          
+          total_build_time=0
+          
+          for target in "${build_targets[@]}"; do
+            echo "Building: $target"
+            
+            # Clean before each build for consistency
+            bun run clean:all >/dev/null 2>&1 || true
+            
+            start=$(date +%s)
+            if bun run $target; then
+              end=$(date +%s)
+              duration=$((end - start))
+              total_build_time=$((total_build_time + duration))
+              
+              echo "| \`bun run $target\` | ${duration}s | ✅ Success |" >> build-results.md
+              echo "✅ $target completed in ${duration}s"
+            else
+              end=$(date +%s)
+              duration=$((end - start))
+              
+              echo "| \`bun run $target\` | ${duration}s | ❌ Failed |" >> build-results.md
+              echo "❌ $target failed after ${duration}s"
+            fi
+          done
+          
+          echo "" >> build-results.md
+          echo "**Total build time**: ${total_build_time}s" >> build-results.md
+          echo "BUILD_TIME_TOTAL=$total_build_time" >> $GITHUB_ENV
+          
+      - name: Analyze build artifacts
+        run: |
+          echo "📊 Analyzing build artifacts..."
+          
+          echo "" >> build-results.md
+          echo "## Build Artifacts" >> build-results.md
+          
+          # Check package sizes
+          for dir in packages/*/dist apps/*/dist; do
+            if [ -d "$dir" ]; then
+              size=$(du -sh "$dir" | cut -f1)
+              echo "- $dir: $size" >> build-results.md
+            fi
+          done
+          
+          # Check standalone binary
+          if [ -f "arbiter-cli" ]; then
+            size=$(stat -f%z arbiter-cli 2>/dev/null || stat -c%s arbiter-cli 2>/dev/null || echo "0")
+            size_mb=$((size / 1024 / 1024))
+            echo "- arbiter-cli: ${size_mb} MB" >> build-results.md
+          fi
+          
+      - name: Upload build performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-performance-results
+          path: build-results.md
+          retention-days: 30
+
+  api-performance:
+    name: API Performance
+    runs-on: ubuntu-latest
+    if: github.event.inputs.benchmark-type == 'api' || github.event.inputs.benchmark-type == 'all' || github.event_name != 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Build API
+        run: bun run build:api
+        
+      - name: Start API server
+        run: |
+          echo "🚀 Starting API server..."
+          cd apps/api
+          bun run start &
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> $GITHUB_ENV
+          
+          # Wait for server to start
+          echo "Waiting for server to start..."
+          for i in {1..30}; do
+            if curl -f http://localhost:5050/health >/dev/null 2>&1; then
+              echo "✅ Server is ready"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          
+      - name: API load testing
+        run: |
+          echo "🔥 Running API load tests..."
+          
+          # Install curl for testing (if not available)
+          if ! command -v curl >/dev/null 2>&1; then
+            echo "Installing curl..."
+            sudo apt-get update && sudo apt-get install -y curl
+          fi
+          
+          echo "# API Performance" > api-results.md
+          echo "" >> api-results.md
+          
+          # Test different endpoints
+          endpoints=(
+            "/health"
+          )
+          
+          echo "| Endpoint | Avg Response Time (ms) | Success Rate |" >> api-results.md
+          echo "|----------|------------------------|--------------|" >> api-results.md
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Testing endpoint: $endpoint"
+            
+            success_count=0
+            total_time=0
+            iterations=${{ env.BENCHMARK_ITERATIONS }}
+            
+            for i in $(seq 1 $iterations); do
+              start=$(date +%s%N)
+              if curl -f "http://localhost:5050$endpoint" >/dev/null 2>&1; then
+                success_count=$((success_count + 1))
+              fi
+              end=$(date +%s%N)
+              
+              duration=$((end - start))
+              duration_ms=$((duration / 1000000))
+              total_time=$((total_time + duration_ms))
+            done
+            
+            avg_time=$((total_time / iterations))
+            success_rate=$((success_count * 100 / iterations))
+            
+            echo "| $endpoint | ${avg_time} | ${success_rate}% |" >> api-results.md
+          done
+          
+      - name: API memory usage
+        continue-on-error: true
+        run: |
+          echo "📊 Checking API memory usage..."
+          
+          if [ -n "$SERVER_PID" ] && kill -0 $SERVER_PID 2>/dev/null; then
+            # Get memory usage
+            memory_kb=$(ps -o rss= -p $SERVER_PID 2>/dev/null | tr -d ' ')
+            if [ -n "$memory_kb" ]; then
+              memory_mb=$((memory_kb / 1024))
+              echo "" >> api-results.md
+              echo "## Resource Usage" >> api-results.md
+              echo "- **Memory**: ${memory_mb} MB" >> api-results.md
+              echo "API_MEMORY_MB=$memory_mb" >> $GITHUB_ENV
+            fi
+          fi
+          
+      - name: Cleanup API server
+        if: always()
+        run: |
+          if [ -n "$SERVER_PID" ]; then
+            kill $SERVER_PID 2>/dev/null || true
+            echo "🛑 API server stopped"
+          fi
+          
+      - name: Upload API performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-performance-results
+          path: api-results.md
+          retention-days: 30
+
+  performance-report:
+    name: Performance Report
+    runs-on: ubuntu-latest
+    needs: [cli-performance, build-performance, api-performance]
+    if: always()
+    
+    steps:
+      - name: Download performance results
+        uses: actions/download-artifact@v4
+        with:
+          path: results/
+        continue-on-error: true
+        
+      - name: Generate performance report
+        run: |
+          echo "# ⚡ Performance Monitoring Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date**: $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # CLI Performance
+          if [ -f "results/cli-performance-results/cli-results.md" ]; then
+            echo "## 🖥️ CLI Performance" >> $GITHUB_STEP_SUMMARY
+            cat results/cli-performance-results/cli-results.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Build Performance
+          if [ -f "results/build-performance-results/build-results.md" ]; then
+            echo "## 🏗️ Build Performance" >> $GITHUB_STEP_SUMMARY
+            cat results/build-performance-results/build-results.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # API Performance
+          if [ -f "results/api-performance-results/api-results.md" ]; then
+            echo "## 🌐 API Performance" >> $GITHUB_STEP_SUMMARY
+            cat results/api-performance-results/api-results.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          # Job Results
+          echo "## 📊 Job Results" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| CLI Performance | ${{ needs.cli-performance.result == 'success' && '✅' || needs.cli-performance.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.cli-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build Performance | ${{ needs.build-performance.result == 'success' && '✅' || needs.build-performance.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.build-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| API Performance | ${{ needs.api-performance.result == 'success' && '✅' || needs.api-performance.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.api-performance.result }} |" >> $GITHUB_STEP_SUMMARY
+          
+          # Performance alerts
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚨 Performance Alerts" >> $GITHUB_STEP_SUMMARY
+          
+          # Check for performance regressions (basic checks)
+          alert_count=0
+          
+          # CLI startup time check
+          if [ -n "${{ env.STARTUP_TIME_MS }}" ] && [ "${{ env.STARTUP_TIME_MS }}" -gt 1000 ]; then
+            echo "- ⚠️ CLI startup time is slow (${{ env.STARTUP_TIME_MS }}ms > 1000ms)" >> $GITHUB_STEP_SUMMARY
+            alert_count=$((alert_count + 1))
+          fi
+          
+          # Binary size check
+          if [ -n "${{ env.BINARY_SIZE_MB }}" ] && [ "${{ env.BINARY_SIZE_MB }}" -gt 50 ]; then
+            echo "- ⚠️ CLI binary is large (${{ env.BINARY_SIZE_MB }}MB > 50MB)" >> $GITHUB_STEP_SUMMARY
+            alert_count=$((alert_count + 1))
+          fi
+          
+          # Build time check
+          if [ -n "${{ env.BUILD_TIME_TOTAL }}" ] && [ "${{ env.BUILD_TIME_TOTAL }}" -gt 300 ]; then
+            echo "- ⚠️ Total build time is slow (${{ env.BUILD_TIME_TOTAL }}s > 300s)" >> $GITHUB_STEP_SUMMARY
+            alert_count=$((alert_count + 1))
+          fi
+          
+          if [ "$alert_count" -eq 0 ]; then
+            echo "- ✅ No performance alerts" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*Performance monitoring completed at $(date -u +%Y-%m-%d\ %H:%M:%S\ UTC)*" >> $GITHUB_STEP_SUMMARY
+          
+      - name: Store performance data
+        if: github.event.inputs.store-results != 'false'
+        run: |
+          echo "💾 Storing performance data for trend analysis..."
+          
+          # Create performance data file
+          cat > performance-data.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "event": "${{ github.event_name }}",
+            "cli": {
+              "startup_time_ms": ${{ env.STARTUP_TIME_MS || 'null' }},
+              "binary_size_mb": ${{ env.BINARY_SIZE_MB || 'null' }}
+            },
+            "build": {
+              "total_time_s": ${{ env.BUILD_TIME_TOTAL || 'null' }}
+            },
+            "api": {
+              "memory_mb": ${{ env.API_MEMORY_MB || 'null' }}
+            }
+          }
+          EOF
+          
+          echo "Performance data stored in performance-data.json"
+          
+      - name: Upload performance data
+        if: github.event.inputs.store-results != 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-data-${{ github.run_id }}
+          path: performance-data.json
+          retention-days: 90

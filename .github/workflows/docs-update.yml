@@ -1,0 +1,293 @@
+name: Documentation Update
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - 'packages/**/README.md'
+      - 'apps/**/README.md'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '*.md'
+      - 'packages/**/README.md'
+      - 'apps/**/README.md'
+  workflow_dispatch:
+
+jobs:
+  docs-check:
+    name: Documentation Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for broken links
+        run: |
+          echo "🔍 Checking for broken internal links..."
+          
+          # Simple check for broken relative links
+          find . -name "*.md" -not -path "./node_modules/*" | while read -r file; do
+            echo "Checking $file..."
+            
+            # Look for relative links that might be broken
+            grep -n "\]\(" "$file" | grep -v "http" | while IFS: read -r line_num link; do
+              # Extract the link path
+              link_path=$(echo "$link" | sed -n 's/.*](\([^)]*\)).*/\1/p')
+              
+              if [ -n "$link_path" ] && [[ "$link_path" != "#"* ]]; then
+                # Convert relative path to absolute
+                if [[ "$link_path" == /* ]]; then
+                  abs_path=".$link_path"
+                else
+                  dir=$(dirname "$file")
+                  abs_path="$dir/$link_path"
+                fi
+                
+                # Check if file exists (remove any anchors)
+                clean_path=$(echo "$abs_path" | sed 's/#.*//')
+                if [ ! -f "$clean_path" ] && [ ! -d "$clean_path" ]; then
+                  echo "⚠️  Potentially broken link in $file:$line_num: $link_path"
+                fi
+              fi
+            done
+          done
+          
+      - name: Check documentation structure
+        run: |
+          echo "📚 Checking documentation structure..."
+          
+          # Check for required documentation files
+          required_files=(
+            "README.md"
+            "CHANGELOG.md"
+          )
+          
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ Found required file: $file"
+            else
+              echo "⚠️  Missing recommended file: $file"
+            fi
+          done
+          
+          # Check for README files in major directories
+          for dir in packages/*/; do
+            if [ -d "$dir" ]; then
+              if [ -f "${dir}README.md" ]; then
+                echo "✅ Found README in $dir"
+              else
+                echo "⚠️  Missing README in $dir"
+              fi
+            fi
+          done
+          
+      - name: Validate markdown format
+        run: |
+          echo "📝 Validating markdown format..."
+          
+          # Check for basic markdown issues
+          find . -name "*.md" -not -path "./node_modules/*" | while read -r file; do
+            # Check for heading hierarchy
+            if grep -q "^#" "$file"; then
+              # Check if first heading is H1
+              first_heading=$(grep -m1 "^#" "$file")
+              if [[ "$first_heading" != "#"* ]] || [[ "$first_heading" == "##"* ]]; then
+                echo "⚠️  $file: Consider starting with H1 heading"
+              fi
+            fi
+            
+            # Check for trailing spaces
+            if grep -q " $" "$file"; then
+              echo "⚠️  $file: Contains trailing spaces"
+            fi
+          done
+          
+      - name: Check code examples
+        run: |
+          echo "💻 Checking code examples in documentation..."
+          
+          # Find code blocks and check for common issues
+          find . -name "*.md" -not -path "./node_modules/*" | while read -r file; do
+            # Check for shell commands that might need updating
+            if grep -q "```bash" "$file" || grep -q "```sh" "$file"; then
+              # Check for old npm commands when we use bun
+              if grep -A 10 "```bash\|```sh" "$file" | grep -q "npm "; then
+                echo "ℹ️  $file: Contains npm commands - consider if bun alternatives are appropriate"
+              fi
+            fi
+          done
+
+  generate-toc:
+    name: Generate Table of Contents
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Generate README TOC
+        run: |
+          echo "📑 Generating table of contents for README.md..."
+          
+          if [ -f "README.md" ]; then
+            # Simple TOC generation for README
+            cat > temp_toc.md << 'EOF'
+          ## Table of Contents
+          
+          EOF
+            
+            # Extract headings and create TOC
+            grep "^##" README.md | while read -r line; do
+              # Remove ## and create anchor link
+              heading=$(echo "$line" | sed 's/^## //')
+              anchor=$(echo "$heading" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | tr ' ' '-')
+              echo "- [$heading](#$anchor)" >> temp_toc.md
+            done
+            
+            # Check if TOC section exists
+            if grep -q "## Table of Contents" README.md; then
+              echo "ℹ️  TOC section already exists in README.md"
+            else
+              echo "ℹ️  No TOC section found - consider adding one manually"
+            fi
+            
+            rm -f temp_toc.md
+          fi
+          
+      - name: Update documentation index
+        run: |
+          echo "📚 Updating documentation index..."
+          
+          # Create or update docs index if docs directory exists
+          if [ -d "docs" ]; then
+            cat > docs/INDEX.md << 'EOF'
+          # Documentation Index
+          
+          *Auto-generated documentation index*
+          
+          ## Documentation Files
+          
+          EOF
+            
+            find docs/ -name "*.md" -not -name "INDEX.md" | sort | while read -r file; do
+              filename=$(basename "$file" .md)
+              filepath=$(echo "$file" | sed 's|^docs/||')
+              echo "- [$filename]($filepath)" >> docs/INDEX.md
+            done
+            
+            echo "" >> docs/INDEX.md
+            echo "*Last updated: $(date -u +%Y-%m-%d)*" >> docs/INDEX.md
+            
+            echo "✅ Generated docs/INDEX.md"
+          fi
+
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [docs-check, generate-toc]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Pages
+        if: github.repository_owner == github.actor  # Only deploy if we own the repo
+        uses: actions/configure-pages@v3
+        continue-on-error: true
+        
+      - name: Build documentation site
+        run: |
+          echo "🏗️  Building documentation site..."
+          
+          # Create a simple documentation site
+          mkdir -p _site
+          
+          # Copy README as index
+          if [ -f "README.md" ]; then
+            cp README.md _site/index.md
+          fi
+          
+          # Copy all documentation
+          if [ -d "docs" ]; then
+            cp -r docs/* _site/
+          fi
+          
+          # Create a simple HTML wrapper if needed
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Arbiter Documentation</title>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { 
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                line-height: 1.6;
+              }
+              code { 
+                background: #f5f5f5;
+                padding: 2px 4px;
+                border-radius: 3px;
+              }
+              pre {
+                background: #f5f5f5;
+                padding: 16px;
+                border-radius: 6px;
+                overflow-x: auto;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>Arbiter Documentation</h1>
+            <p>Welcome to the Arbiter documentation.</p>
+            
+            <h2>Quick Links</h2>
+            <ul>
+              <li><a href="index.md">README</a></li>
+              <li><a href="CHANGELOG.md">Changelog</a></li>
+            </ul>
+            
+            <p><em>This is an auto-generated documentation site.</em></p>
+          </body>
+          </html>
+          EOF
+          
+          echo "✅ Documentation site built in _site/"
+          
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-site
+          path: _site/
+          retention-days: 30
+          
+      - name: Create documentation summary
+        run: |
+          echo "# 📚 Documentation Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Files Processed" >> $GITHUB_STEP_SUMMARY
+          
+          find . -name "*.md" -not -path "./node_modules/*" | wc -l | xargs echo "- Markdown files found:" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "_site" ]; then
+            find _site/ -type f | wc -l | xargs echo "- Site files generated:" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Quality Checks" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Link validation completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Structure validation completed" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Format validation completed" >> $GITHUB_STEP_SUMMARY

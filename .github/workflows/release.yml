@@ -4,11 +4,73 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_ENV: production
+  REGISTRY_URL: https://registry.npmjs.org
 
 jobs:
-  release:
-    name: Create Release
+  validate:
+    name: Validate Release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+      release-name: ${{ steps.extract-version.outputs.release-name }}
+      is-prerelease: ${{ steps.extract-version.outputs.is-prerelease }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Extract version from tag
+        id: extract-version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+            PRERELEASE="${{ github.event.inputs.prerelease }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            # Check if tag contains alpha, beta, rc, or pre
+            if [[ "$TAG" =~ (alpha|beta|rc|pre) ]]; then
+              PRERELEASE="true"
+            else
+              PRERELEASE="false"
+            fi
+          fi
+          
+          # Validate semver format
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
+            echo "Error: Invalid tag format. Expected semver (e.g., v1.0.0, v1.0.0-beta.1)"
+            exit 1
+          fi
+          
+          VERSION="${TAG#v}"
+          RELEASE_NAME="Release $TAG"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release-name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "is-prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+          
+          echo "Releasing version: $VERSION"
+          echo "Pre-release: $PRERELEASE"
+
+  security-scan:
+    name: Security & License Scan
+    runs-on: ubuntu-latest
+    needs: validate
     
     steps:
       - name: Checkout code
@@ -22,21 +84,363 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
         
-      - name: Run quality gates
-        run: bun run quality
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
         
-      - name: Build all packages
+      - name: Security audit
+        run: |
+          bun audit --audit-level high || {
+            echo "High-severity vulnerabilities found!"
+            exit 1
+          }
+          
+      - name: License compatibility check
+        run: |
+          echo "Checking license compatibility..."
+          # Add license checking logic here if needed
+          # For now, just verify our license file exists
+          if [ ! -f "LICENSE" ] && [ ! -f "LICENSE.md" ]; then
+            echo "Warning: No LICENSE file found"
+          fi
+
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Validate version consistency
+        run: |
+          bun run version:validate
+          
+      - name: Type checking
+        run: bun run typecheck
+        
+      - name: Code quality check
+        run: bun run check:ci
+        
+      - name: Lint check
+        run: bun run lint
+        
+      - name: Format check
+        run: bun run format:check
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: validate
+    strategy:
+      matrix:
+        test-type: [unit, cli, api]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Build packages
         run: bun run build:all
         
       - name: Run tests
-        run: bun run test
+        run: |
+          case "${{ matrix.test-type }}" in
+            "unit")
+              bun run test:unit
+              ;;
+            "cli")
+              bun run test:cli
+              ;;
+            "api")
+              bun run test:api
+              ;;
+          esac
+        env:
+          NODE_ENV: test
+          
+      - name: CLI validation
+        if: matrix.test-type == 'cli'
+        run: |
+          chmod +x arbiter-cli
+          ./arbiter-cli --version
+          ./arbiter-cli --help
+          ./arbiter-cli --self-test
+
+  build:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    needs: [quality-gates, test, security-scan]
+    outputs:
+      cli-artifact: ${{ steps.artifacts.outputs.cli-artifact }}
+      api-artifact: ${{ steps.artifacts.outputs.api-artifact }}
+      frontend-artifact: ${{ steps.artifacts.outputs.frontend-artifact }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+          
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+        
+      - name: Update version numbers
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          echo "Updating version to $VERSION"
+          
+          # Update root package.json
+          bun run --bun scripts/update-version.js "$VERSION"
+          
+      - name: Build all packages
+        run: bun run build:all
+        
+      - name: Create standalone CLI binary
+        run: |
+          bun run build:standalone
+          chmod +x arbiter-cli
+          
+          # Verify the binary works
+          ./arbiter-cli --version
+          
+      - name: Build API
+        run: |
+          cd apps/api
+          bun run build
+          
+      - name: Build frontend (if exists)
+        run: |
+          if [ -d "apps/web/frontend" ]; then
+            cd apps/web/frontend
+            if [ -f "package.json" ]; then
+              bun install
+              bun run build
+            fi
+          fi
+          
+      - name: Create artifacts directory
+        run: mkdir -p artifacts
+        
+      - name: Package CLI binary
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          CLI_NAME="arbiter-cli-v${VERSION}-linux-x64"
+          
+          cp arbiter-cli "artifacts/${CLI_NAME}"
+          cd artifacts && tar -czf "${CLI_NAME}.tar.gz" "${CLI_NAME}"
+          rm "${CLI_NAME}"
+          
+      - name: Package API build
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          API_NAME="arbiter-api-v${VERSION}"
+          
+          mkdir -p "artifacts/${API_NAME}"
+          cp -r apps/api/dist/* "artifacts/${API_NAME}/" 2>/dev/null || echo "No API dist found"
+          cp -r apps/api/src "artifacts/${API_NAME}/"
+          cp apps/api/package.json "artifacts/${API_NAME}/"
+          
+          cd artifacts && tar -czf "${API_NAME}.tar.gz" "${API_NAME}"
+          rm -rf "${API_NAME}"
+          
+      - name: Package frontend build (if exists)
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          FRONTEND_NAME="arbiter-frontend-v${VERSION}"
+          
+          if [ -d "apps/web/frontend/dist" ]; then
+            mkdir -p "artifacts/${FRONTEND_NAME}"
+            cp -r apps/web/frontend/dist/* "artifacts/${FRONTEND_NAME}/"
+            
+            cd artifacts && tar -czf "${FRONTEND_NAME}.tar.gz" "${FRONTEND_NAME}"
+            rm -rf "${FRONTEND_NAME}"
+          fi
+          
+      - name: Set artifact outputs
+        id: artifacts
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          echo "cli-artifact=arbiter-cli-v${VERSION}-linux-x64.tar.gz" >> $GITHUB_OUTPUT
+          echo "api-artifact=arbiter-api-v${VERSION}.tar.gz" >> $GITHUB_OUTPUT
+          
+          if [ -f "artifacts/arbiter-frontend-v${VERSION}.tar.gz" ]; then
+            echo "frontend-artifact=arbiter-frontend-v${VERSION}.tar.gz" >> $GITHUB_OUTPUT
+          else
+            echo "frontend-artifact=" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: artifacts/
+          retention-days: 30
+
+  generate-changelog:
+    name: Generate Changelog
+    runs-on: ubuntu-latest
+    needs: validate
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+          
+          # Try to extract changelog from CHANGELOG.md if it exists
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract the section for this version
+            CHANGELOG=$(sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | head -n -1)
+            
+            if [ -z "$CHANGELOG" ]; then
+              # Fallback to generating from git commits
+              CHANGELOG="## What's Changed\n\n"
+              
+              # Get the previous tag
+              PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+              
+              if [ -n "$PREV_TAG" ]; then
+                CHANGELOG+=" Commits since ${PREV_TAG}:\n\n"
+                git log --pretty=format:"* %s (%h)" "${PREV_TAG}..HEAD" | head -20
+              else
+                CHANGELOG+=" Initial release\n"
+              fi
+            fi
+          else
+            # Generate basic changelog from recent commits
+            CHANGELOG="## What's Changed\n\n"
+            
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+            
+            if [ -n "$PREV_TAG" ]; then
+              CHANGELOG+=" Commits since ${PREV_TAG}:\n\n"
+              git log --pretty=format:"* %s (%h)" "${PREV_TAG}..HEAD" | head -20
+            else
+              CHANGELOG+=" Initial release of Arbiter v${VERSION}\n\n"
+              CHANGELOG+=" Features:\n"
+              CHANGELOG+=" * CUE-based specification validation\n"
+              CHANGELOG+=" * Agent-first CLI design\n"
+              CHANGELOG+=" * Monorepo architecture with CLI, API, and frontend\n"
+              CHANGELOG+=" * Comprehensive test suite\n"
+            fi
+          fi
+          
+          # Save changelog to output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [validate, build, generate-changelog]
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: artifacts/
+          
       - name: Create Release
+        id: create-release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: v${{ needs.validate.outputs.version }}
+          release_name: ${{ needs.validate.outputs.release-name }}
+          body: ${{ needs.generate-changelog.outputs.changelog }}
           draft: false
-          prerelease: false
+          prerelease: ${{ needs.validate.outputs.is-prerelease }}
+          
+      - name: Upload CLI Binary
+        if: needs.build.outputs.cli-artifact != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: artifacts/${{ needs.build.outputs.cli-artifact }}
+          asset_name: ${{ needs.build.outputs.cli-artifact }}
+          asset_content_type: application/gzip
+          
+      - name: Upload API Build
+        if: needs.build.outputs.api-artifact != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: artifacts/${{ needs.build.outputs.api-artifact }}
+          asset_name: ${{ needs.build.outputs.api-artifact }}
+          asset_content_type: application/gzip
+          
+      - name: Upload Frontend Build
+        if: needs.build.outputs.frontend-artifact != ''
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: artifacts/${{ needs.build.outputs.frontend-artifact }}
+          asset_name: ${{ needs.build.outputs.frontend-artifact }}
+          asset_content_type: application/gzip
+
+  notify:
+    name: Post-Release Notifications
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+    if: always()
+    
+    steps:
+      - name: Notify success
+        if: needs.release.result == 'success'
+        run: |
+          echo "✅ Release ${{ needs.validate.outputs.release-name }} completed successfully!"
+          echo "Version: ${{ needs.validate.outputs.version }}"
+          echo "Pre-release: ${{ needs.validate.outputs.is-prerelease }}"
+          
+      - name: Notify failure
+        if: needs.release.result == 'failure'
+        run: |
+          echo "❌ Release ${{ needs.validate.outputs.release-name }} failed!"
+          echo "Please check the workflow logs for details."
+          exit 1
