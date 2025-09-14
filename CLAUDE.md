@@ -15,12 +15,16 @@ This document provides comprehensive context to help future AI assistants work e
 - **Agent-First Design**: CLI optimized for AI/automation consumption
 - **Complete Lifecycle**: From specification to production deployment
 - **Modern Toolchain**: Built with Bun, TypeScript, and modern web technologies
+- **Webhook Integration**: Real-time GitHub/GitLab integration with custom handlers
+- **AI-Enhanced**: Built-in AI agents for code review, analysis, and documentation
 
 ### Key Value Propositions
 1. **Declarative Infrastructure**: Define complex systems in CUE and generate everything
 2. **AI-Friendly**: Non-interactive commands, structured outputs, comprehensive APIs
 3. **Full-Stack Generation**: From database schemas to UI components to CI/CD pipelines
 4. **Validation-First**: Strong typing and validation throughout the development lifecycle
+5. **Real-time Integration**: Webhook-driven automation with secure custom handlers
+6. **AI-Augmented Workflows**: Built-in AI agents for code analysis and documentation
 
 ---
 
@@ -31,10 +35,25 @@ This document provides comprehensive context to help future AI assistants work e
 arbiter/
 ├── apps/                    # Deployable applications
 │   ├── api/                # Bun + TypeScript API server (port 5050)
+│   │   ├── src/webhooks.ts # Webhook processing and signature verification
+│   │   ├── src/events.ts   # Real-time WebSocket event broadcasting
+│   │   └── src/handlers/   # Custom handlers system implementation
+│   │       ├── manager.ts  # Handler lifecycle management
+│   │       ├── executor.ts # Sandboxed handler execution
+│   │       ├── discovery.ts# Handler file discovery and loading
+│   │       ├── api.ts      # Handler management API endpoints
+│   │       └── types.ts    # Handler system type definitions
 │   └── web/                # React + Vite frontend
 ├── packages/               # Shared libraries
 │   ├── cli/                # Main CLI package (@arbiter/cli)
 │   └── shared/             # Shared types and utilities
+├── scripts/
+│   └── cloudflare-tunnel.sh # Secure tunnel setup and management
+├── arbiter/handlers/        # User-defined webhook handlers
+│   ├── github/             # GitHub-specific event handlers
+│   ├── gitlab/             # GitLab-specific event handlers
+│   ├── shared/             # Shared handler utilities and types
+│   └── examples/           # Example handler implementations
 ├── tests/                  # E2E and integration tests
 ├── examples/               # Example projects and specifications
 ├── docs/                   # Documentation and tutorials
@@ -45,8 +64,9 @@ arbiter/
 - **Root**: Workspaces coordinator, contains standalone CLI binary (`arbiter-cli`)
 - **packages/cli**: Core CLI implementation, depends on `packages/shared`
 - **packages/shared**: Common types, utilities, CUE processing logic
-- **apps/api**: Backend API server for spec management and validation
-- **apps/web**: Web frontend for visual spec editing (React + Vite)
+- **apps/api**: Backend API server for spec management, validation, webhooks, and handlers
+- **apps/web**: Web frontend for visual spec editing with handlers management (React + Vite)
+- **arbiter/handlers**: User-defined webhook handlers (not in package.json, dynamically loaded)
 
 ### Technology Stack
 - **Runtime**: Bun (primary), Node.js (compatibility)
@@ -55,6 +75,9 @@ arbiter/
 - **Testing**: Bun test, golden file testing, E2E with Docker Compose
 - **Build**: Bun build, TypeScript compilation
 - **Formatting**: Biome (linting, formatting)
+- **Webhooks**: HMAC SHA-256 signature verification, real-time WebSocket events
+- **Security**: Cloudflare tunnels, IP filtering, sandboxed handler execution
+- **AI Integration**: Anthropic Claude, OpenAI GPT, Google Gemini APIs
 
 ---
 
@@ -75,6 +98,12 @@ The CLI has been simplified for agent-friendliness. Many interactive commands ha
 - `arbiter sync` - Synchronize project manifests
 - `arbiter integrate` - Generate CI/CD workflows
 - `arbiter health` - Server health checking
+
+#### 🔌 Webhook & Handler Commands (API-based)
+- **Handler Management**: Via REST API and Web UI
+- **Webhook Testing**: Direct API endpoints for testing webhook payloads
+- **Tunnel Management**: Via `scripts/cloudflare-tunnel.sh` script
+- **AI Agent Control**: Environment variables and API endpoints
 
 #### ❌ Removed Commands (Agent-Unfriendly)
 - `export` - Too complex, interactive prompts
@@ -143,8 +172,8 @@ bun run dev
 
 #### 4. **Full Stack Development**
 ```bash
-# Terminal 1: API Server
-bun run dev
+# Terminal 1: API Server with webhooks
+WEBHOOKS_ENABLED=true bun run dev
 
 # Terminal 2: CLI Development  
 cd packages/cli
@@ -153,9 +182,257 @@ bun run dev
 # Terminal 3: Frontend (if needed)
 cd apps/web/frontend
 bun run dev
+
+# Terminal 4: Secure tunnel (for webhook testing)
+./scripts/cloudflare-tunnel.sh start
+```
+
+#### 5. **Webhook & Handler Development**
+```bash
+# Development with webhook support
+WEBHOOKS_ENABLED=true HANDLERS_ENABLED=true bun run dev
+
+# Initialize handler directory structure
+curl -X POST localhost:5050/api/handlers/init
+
+# Test webhook processing
+curl -X POST localhost:5050/webhooks/github \
+  -H "Content-Type: application/json" \
+  -H "X-GitHub-Event: push" \
+  -H "X-Hub-Signature-256: sha256=..." \
+  -d @test-payload.json
+
+# Monitor handler execution
+curl localhost:5050/api/handlers/executions
+
+# Test specific handler
+curl -X POST localhost:5050/api/handlers/test-handler/execute \
+  -d '{"test": true}'
+```
+
+#### 6. **Cloudflare Tunnel Development**
+```bash
+# Start secure tunnel (webhook-only mode)
+TUNNEL_MODE=webhook-only ./scripts/cloudflare-tunnel.sh start
+
+# Start development tunnel (all endpoints)  
+TUNNEL_MODE=full-api ./scripts/cloudflare-tunnel.sh start
+
+# Monitor tunnel logs
+./scripts/cloudflare-tunnel.sh logs
+
+# Check tunnel status
+./scripts/cloudflare-tunnel.sh status
+
+# Stop tunnel
+./scripts/cloudflare-tunnel.sh stop
 ```
 
 ---
+
+## 🚀 WEBHOOK & HANDLERS ARCHITECTURE
+
+### Core Components
+
+#### 1. **Webhook Service** (`apps/api/src/webhooks.ts`)
+- **Purpose**: Processes incoming GitHub and GitLab webhook payloads
+- **Features**: HMAC signature verification, payload parsing, event routing
+- **Security**: IP filtering, rate limiting, secret validation
+- **Integration**: Connects to custom handlers and broadcasts WebSocket events
+
+```typescript
+interface WebhookRequest {
+  provider: "github" | "gitlab";
+  event: string;
+  signature: string | undefined;
+  payload: WebhookPayload;
+  timestamp: string;
+}
+```
+
+#### 2. **Custom Handlers System** (`apps/api/src/handlers/`)
+- **Manager** (`manager.ts`): Handler lifecycle, configuration, execution coordination
+- **Executor** (`executor.ts`): Sandboxed handler execution with timeout and retry logic
+- **Discovery** (`discovery.ts`): File system scanning and handler loading
+- **API** (`api.ts`): REST endpoints for handler management
+- **Services** (`services.ts`): HTTP client, notifications, database access for handlers
+
+```typescript
+interface HandlerModule {
+  handler: WebhookHandler;
+  config: HandlerConfig;
+  metadata: HandlerMetadata;
+}
+```
+
+#### 3. **Event Broadcasting** (`apps/api/src/events.ts`)
+- **WebSocket Server**: Real-time event streaming to connected clients
+- **Event Types**: Webhook received, handler executed, validation completed
+- **Project Scoping**: Events filtered by project ID for multi-tenancy
+
+#### 4. **Cloudflare Tunnel Integration** (`scripts/cloudflare-tunnel.sh`)
+- **Security Modes**: webhook-only (secure), full-api (development), custom
+- **Proxy Layer**: Node.js reverse proxy with IP filtering and path restrictions
+- **Management**: Start, stop, status, logs, delete operations
+
+### Handler Development Workflow
+
+#### 1. **Handler Creation**
+```bash
+# Initialize handler directory structure
+curl -X POST localhost:5050/api/handlers/init
+
+# Create new handler file
+./arbiter/handlers/github/custom-push.ts
+```
+
+#### 2. **Handler Structure**
+```typescript
+import type { HandlerModule, WebhookHandler } from '../types.js';
+
+const handleEvent: WebhookHandler = async (payload, context) => {
+  const { logger, services, projectId, config } = context;
+  const { parsed } = payload;
+
+  // Handler logic here
+  return {
+    success: true,
+    message: 'Processed successfully',
+    actions: ['action-taken'],
+    data: { custom: 'result' }
+  };
+};
+
+export default {
+  handler: handleEvent,
+  config: { enabled: true, timeout: 30000, retries: 2 },
+  metadata: { name: 'Custom Handler', version: '1.0.0' }
+} satisfies HandlerModule;
+```
+
+#### 3. **Handler Testing & Deployment**
+```bash
+# Validate handler syntax
+POST /api/handlers/validate
+{ "code": "handler-code-here" }
+
+# Test handler execution
+POST /api/handlers/test-handler/execute
+{ "test_payload": true }
+
+# Enable/disable handler
+POST /api/handlers/handler-id/toggle
+
+# Monitor execution
+GET /api/handlers/executions?handlerId=handler-id
+```
+
+### Security Architecture
+
+#### 1. **Webhook Security**
+- **Signature Verification**: HMAC SHA-256 for GitHub/GitLab
+- **IP Filtering**: Automatic GitHub/GitLab IP range validation
+- **Rate Limiting**: Per-endpoint and per-IP protection
+- **Payload Sanitization**: Input validation and XSS prevention
+
+#### 2. **Handler Sandboxing**
+- **Code Validation**: AST analysis to prevent dangerous patterns
+- **Module Restrictions**: Only allowed Node.js modules accessible
+- **Environment Isolation**: Handler secrets separated from system environment
+- **Resource Limits**: Timeout, memory, and CPU constraints
+
+#### 3. **Tunnel Security**
+- **webhook-only Mode**: Only `/webhooks/*` and `/health` endpoints exposed
+- **IP Whitelisting**: GitHub (140.82.112.0/20) and GitLab (34.74.90.64/28) ranges
+- **Path Filtering**: Reverse proxy blocks unauthorized paths
+- **TLS Termination**: Cloudflare handles SSL/TLS certificates
+
+### API Endpoints Reference
+
+#### Handler Management
+```bash
+GET    /api/handlers                    # List all handlers
+GET    /api/handlers/:id               # Get specific handler
+PUT    /api/handlers/:id               # Update handler config
+DELETE /api/handlers/:id               # Remove handler
+POST   /api/handlers/:id/toggle        # Enable/disable handler
+POST   /api/handlers/:id/reload        # Reload from filesystem
+```
+
+#### Handler Operations  
+```bash
+POST /api/handlers/init                # Initialize directory structure
+POST /api/handlers/validate            # Validate handler code
+GET  /api/handlers/stats              # System statistics
+GET  /api/handlers/executions         # Execution history
+```
+
+#### Webhook Processing
+```bash
+POST /webhooks/github                 # GitHub webhook endpoint
+POST /webhooks/gitlab                 # GitLab webhook endpoint
+GET  /health                          # System health check
+```
+
+#### Real-time Events
+```bash
+WebSocket: /events                    # Real-time event stream
+```
+
+### Environment Configuration
+
+#### Required Variables
+```bash
+# Webhook System
+WEBHOOKS_ENABLED=true
+WEBHOOK_SECRET=your-webhook-secret
+GITHUB_WEBHOOK_SECRET=github-specific-secret
+GITLAB_WEBHOOK_SECRET=gitlab-specific-secret
+
+# Handler System  
+HANDLERS_ENABLED=true
+HANDLERS_DIR=./arbiter/handlers
+HANDLERS_MAX_CONCURRENT=10
+HANDLERS_DEFAULT_TIMEOUT=30000
+
+# Security
+TUNNEL_MODE=webhook-only
+RATE_LIMIT_ENABLED=true
+IP_FILTERING_ENABLED=true
+
+# AI Agents (optional)
+AI_AGENTS_ENABLED=false
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+```
+
+### Debugging & Monitoring
+
+#### Log Files
+- **Tunnel Logs**: `/tmp/cloudflare-tunnel.log`
+- **Proxy Logs**: `/tmp/webhook-proxy.log`
+- **Handler Execution**: API endpoint `/api/handlers/executions`
+
+#### Health Checks
+```bash
+# API server health
+curl localhost:5050/health
+
+# Tunnel status  
+./scripts/cloudflare-tunnel.sh status
+
+# Handler system status
+curl localhost:5050/api/handlers/stats
+```
+
+#### WebSocket Monitoring
+```javascript
+const ws = new WebSocket('ws://localhost:5050/events');
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Real-time event:', data);
+};
+```
 
 ## 🧪 TESTING ARCHITECTURE
 
@@ -191,6 +468,12 @@ The project uses a comprehensive testing approach:
 - **Location**: `tests/e2e-docker-compose/`
 - **Purpose**: Full system integration testing
 
+#### 5. **Webhook & Handler Testing**
+- **Framework**: Bun test + mock webhook payloads
+- **Coverage**: Signature verification, handler execution, event broadcasting
+- **Location**: `apps/api/src/__tests__/webhooks.test.ts`
+- **Validation**: HMAC verification, IP filtering, rate limiting
+
 ### Testing Commands
 ```bash
 # Core test commands
@@ -202,6 +485,17 @@ bun test:e2e                  # E2E tests
 # Specific test types
 bun test golden.test.ts       # Golden file tests
 bun test ecosystem.test.ts    # Ecosystem integration tests
+bun test webhooks.test.ts     # Webhook system tests
+bun test handlers.test.ts     # Handler execution tests
+
+# Webhook testing
+curl -X POST localhost:5050/webhooks/github \
+  -H "X-GitHub-Event: push" \
+  -d '{"test": "payload"}'
+
+# Handler validation testing
+curl -X POST localhost:5050/api/handlers/validate \
+  -d '{"code": "export default { handler: async () => ({success: true}) };"}'
 ```
 
 ### Testing Best Practices
@@ -397,6 +691,110 @@ await withProgress(
 5. Add tests in `src/__tests__/`
 6. Update golden files if help output changes
 
+### Creating a Custom Webhook Handler
+1. **Initialize handler structure** (if not done):
+   ```bash
+   curl -X POST localhost:5050/api/handlers/init
+   ```
+
+2. **Create handler file** in appropriate directory:
+   ```bash
+   # For GitHub events
+   touch ./arbiter/handlers/github/my-handler.ts
+   
+   # For GitLab events  
+   touch ./arbiter/handlers/gitlab/my-handler.ts
+   ```
+
+3. **Implement handler using the standard structure**:
+   ```typescript
+   import type { HandlerModule, WebhookHandler } from '../types.js';
+   
+   const handleEvent: WebhookHandler = async (payload, context) => {
+     // Implementation here
+     return { success: true, message: 'Processed' };
+   };
+   
+   export default {
+     handler: handleEvent,
+     config: { enabled: true, timeout: 30000 },
+     metadata: { name: 'My Handler', version: '1.0.0' }
+   } satisfies HandlerModule;
+   ```
+
+4. **Test and validate**:
+   ```bash
+   # Validate syntax
+   POST /api/handlers/validate
+   
+   # Test execution
+   POST /api/handlers/my-handler/execute
+   
+   # Monitor execution
+   GET /api/handlers/executions
+   ```
+
+### Setting Up Webhook Integration
+1. **Configure environment**:
+   ```bash
+   export WEBHOOKS_ENABLED=true
+   export WEBHOOK_SECRET=your-secure-secret
+   export GITHUB_WEBHOOK_SECRET=github-specific-secret
+   ```
+
+2. **Start secure tunnel**:
+   ```bash
+   TUNNEL_MODE=webhook-only ./scripts/cloudflare-tunnel.sh start
+   ```
+
+3. **Configure repository webhook**:
+   - **URL**: `https://your-tunnel.cfargotunnel.com/webhooks/github`
+   - **Content-Type**: `application/json`
+   - **Events**: `push`, `pull_request`
+   - **Secret**: Use your `WEBHOOK_SECRET`
+
+4. **Test webhook reception**:
+   ```bash
+   # Check webhook logs
+   tail -f /tmp/cloudflare-tunnel.log
+   
+   # Monitor handler execution
+   curl localhost:5050/api/handlers/executions
+   ```
+
+### Debugging Webhook Issues
+1. **Check webhook configuration**:
+   ```bash
+   echo $WEBHOOKS_ENABLED
+   echo $WEBHOOK_SECRET
+   ./scripts/cloudflare-tunnel.sh status
+   ```
+
+2. **Test webhook endpoint directly**:
+   ```bash
+   curl -X POST https://your-tunnel.cfargotunnel.com/webhooks/github \
+     -H "Content-Type: application/json" \
+     -H "X-GitHub-Event: push" \
+     -d '{"test": true}'
+   ```
+
+3. **Check signature verification**:
+   ```bash
+   # Generate test signature
+   echo -n '{"test":true}' | openssl dgst -sha256 -hmac "your-secret"
+   
+   # Test with signature
+   curl -X POST localhost:5050/webhooks/github \
+     -H "X-Hub-Signature-256: sha256=generated-signature" \
+     -d '{"test": true}'
+   ```
+
+4. **Monitor real-time events**:
+   ```javascript
+   const ws = new WebSocket('ws://localhost:5050/events');
+   ws.onmessage = (event) => console.log(JSON.parse(event.data));
+   ```
+
 ### Updating Golden Tests
 ```bash
 # Update all golden files
@@ -476,6 +874,12 @@ UPDATE_GOLDEN=1 bun test     # Update golden files
 - `packages/cli/src/__tests__/golden.test.ts` - Golden file testing
 - `packages/cli/src/__tests__/ecosystem.test.ts` - Integration testing
 - `apps/api/src/server.ts` - API server implementation
+- `apps/api/src/webhooks.ts` - Webhook processing and signature verification
+- `apps/api/src/events.ts` - Real-time WebSocket event broadcasting  
+- `apps/api/src/handlers/manager.ts` - Custom handlers system management
+- `apps/api/src/handlers/executor.ts` - Sandboxed handler execution engine
+- `scripts/cloudflare-tunnel.sh` - Secure tunnel setup and management
+- `arbiter/handlers/examples/` - Example handler implementations
 
 ### Exit Codes
 - `0` - Success
@@ -484,5 +888,5 @@ UPDATE_GOLDEN=1 bun test     # Update golden files
 
 ---
 
-*Last Updated: 2025-09-07*  
-*This document reflects the current state of the Arbiter project after CLI simplification and test cleanup.*
+*Last Updated: 2025-09-14*  
+*This document reflects the current state of the Arbiter project including the comprehensive webhook integration, custom handlers system, secure Cloudflare tunnel, and AI agent capabilities.*

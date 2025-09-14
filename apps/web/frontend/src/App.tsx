@@ -22,6 +22,7 @@ import {
   ResolvedViewer,
   ArchitectureDiagram
 } from './components/diagrams';
+import { Handlers } from './components/Handlers';
 
 import type { DiagramTab, LeftTab, RightTab } from './types/ui';
 
@@ -100,6 +101,11 @@ function AppContent() {
       id: 'architecture',
       label: 'Architecture',
       content: currentProject ? <ArchitectureDiagram projectId={currentProject.id} /> : <DiagramPlaceholder type="System Architecture" />,
+    },
+    {
+      id: 'handlers',
+      label: 'Handlers',
+      content: <Handlers />,
     },
   ];
 

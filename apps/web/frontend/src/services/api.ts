@@ -5,17 +5,22 @@
 import type {
   CreateFragmentRequest,
   CreateFragmentResponse,
+  CreateHandlerRequest,
   Fragment,
   FreezeRequest,
   FreezeResponse,
   GapSet,
+  HandlerExecution,
+  HandlerStats,
   IRKind,
   IRResponse,
   ProblemDetails,
   Project,
   ResolvedSpecResponse,
+  UpdateHandlerRequest,
   ValidationRequest,
   ValidationResponse,
+  WebhookHandler,
 } from "../types/api";
 import { createLogger } from "../utils/logger";
 
@@ -232,6 +237,63 @@ class ApiService {
     return this.request<FreezeResponse>(`/api/freeze`, {
       method: "POST",
       body: JSON.stringify({ projectId, ...request }),
+    });
+  }
+
+  // Webhook Handler endpoints
+  async getHandlers(): Promise<WebhookHandler[]> {
+    return this.request<WebhookHandler[]>("/api/handlers");
+  }
+
+  async getHandler(handlerId: string): Promise<WebhookHandler> {
+    return this.request<WebhookHandler>(`/api/handlers/${handlerId}`);
+  }
+
+  async createHandler(request: CreateHandlerRequest): Promise<WebhookHandler> {
+    return this.request<WebhookHandler>("/api/handlers", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async updateHandler(handlerId: string, request: UpdateHandlerRequest): Promise<WebhookHandler> {
+    return this.request<WebhookHandler>(`/api/handlers/${handlerId}`, {
+      method: "PUT",
+      body: JSON.stringify(request),
+    });
+  }
+
+  async deleteHandler(handlerId: string): Promise<void> {
+    await this.request<void>(`/api/handlers/${handlerId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async toggleHandler(handlerId: string, enabled: boolean): Promise<WebhookHandler> {
+    return this.request<WebhookHandler>(`/api/handlers/${handlerId}/toggle`, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  async getHandlerStats(handlerId: string): Promise<HandlerStats> {
+    return this.request<HandlerStats>(`/api/handlers/${handlerId}/stats`);
+  }
+
+  async getHandlerExecutions(handlerId: string, limit?: number): Promise<HandlerExecution[]> {
+    const params = limit ? `?limit=${limit}` : '';
+    return this.request<HandlerExecution[]>(`/api/handlers/${handlerId}/executions${params}`);
+  }
+
+  async testHandler(handlerId: string, payload: Record<string, unknown>): Promise<{
+    status: "success" | "error";
+    result?: Record<string, unknown>;
+    error?: string;
+    duration_ms: number;
+  }> {
+    return this.request(`/api/handlers/${handlerId}/test`, {
+      method: "POST",
+      body: JSON.stringify({ payload }),
     });
   }
 

@@ -7,6 +7,8 @@ import { SpecWorkbenchDB } from "./db.ts";
 import { EventService } from "./events.ts";
 import { IRGenerator } from "./ir.ts";
 import { SpecEngine } from "./specEngine.ts";
+import { WebhookService } from "./webhooks.ts";
+import { HandlerAPIController } from "./handlers/api.js";
 import type {
   AuthContext,
   CreateFragmentRequest,
@@ -34,6 +36,8 @@ export class SpecWorkbenchServer {
   private specEngine: SpecEngine;
   private irGenerator: IRGenerator;
   private events: EventService;
+  private webhooks: WebhookService;
+  private handlersApi: HandlerAPIController;
   private rateLimiter: TokenBucket;
 
   constructor(private config: ServerConfig) {
@@ -42,6 +46,8 @@ export class SpecWorkbenchServer {
     this.specEngine = new SpecEngine(config);
     this.irGenerator = new IRGenerator();
     this.events = new EventService(config);
+    this.webhooks = new WebhookService(config, this.events, this.db);
+    this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
     this.rateLimiter = new TokenBucket(
       config.rate_limit.max_tokens,
       config.rate_limit.refill_rate,
@@ -243,6 +249,11 @@ export class SpecWorkbenchServer {
       return await this.handleMcpRequest(request, corsHeaders);
     }
 
+    // Webhook endpoints
+    if (pathname.startsWith("/webhooks/")) {
+      return await this.handleWebhookRequest(request, corsHeaders);
+    }
+
     // Root and frontend routes - serve the React app
     if (pathname === "/" || (!pathname.startsWith("/api/") && !pathname.startsWith("/ws") && 
         pathname !== "/health" && pathname !== "/status" && pathname !== "/mcp")) {
@@ -423,6 +434,14 @@ export class SpecWorkbenchServer {
 
     if (pathname === "/api/projects") {
       return await this.handleProjectsApi(request, authContext, corsHeaders);
+    }
+
+    if (pathname.startsWith("/api/webhooks")) {
+      return await this.handleWebhooksApi(request, authContext, corsHeaders);
+    }
+
+    if (pathname.startsWith("/api/handlers")) {
+      return await this.handleHandlersApi(request, authContext, corsHeaders);
     }
 
     return this.createErrorResponse(
@@ -1194,6 +1213,320 @@ export class SpecWorkbenchServer {
   }
 
   /**
+   * Handle webhooks API (GET /api/webhooks, POST /api/webhooks, DELETE /api/webhooks/:projectId)
+   */
+  private async handleWebhooksApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    const pathParts = pathname.split('/');
+    
+    if (request.method === "GET" && pathParts.length === 3) {
+      // GET /api/webhooks - list all webhook configs
+      return await this.handleWebhooksListApi(request, authContext, corsHeaders);
+    } else if (request.method === "GET" && pathParts.length === 4) {
+      // GET /api/webhooks/:projectId - get webhook config for project
+      const projectId = pathParts[3];
+      return await this.handleWebhookGetApi(projectId, authContext, corsHeaders);
+    } else if (request.method === "POST") {
+      // POST /api/webhooks - create/update webhook config
+      return await this.handleWebhookCreateApi(request, authContext, corsHeaders);
+    } else if (request.method === "DELETE" && pathParts.length === 4) {
+      // DELETE /api/webhooks/:projectId - delete webhook config
+      const projectId = pathParts[3];
+      return await this.handleWebhookDeleteApi(projectId, authContext, corsHeaders);
+    } else {
+      return this.createErrorResponse(
+        createProblemDetails(405, "Method Not Allowed", "Invalid webhook API endpoint"),
+        corsHeaders,
+      );
+    }
+  }
+
+  private async handleWebhooksListApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      // For now, return basic webhook status
+      const webhookStatus = {
+        enabled: this.config.webhooks?.enabled || false,
+        providers: ["github", "gitlab"],
+        endpoints: {
+          github: "/webhooks/github",
+          gitlab: "/webhooks/gitlab"
+        },
+        configuration: this.config.webhooks
+      };
+
+      return new Response(JSON.stringify(webhookStatus), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    } catch (error) {
+      logger.error("Webhooks list API error", error instanceof Error ? error : undefined);
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to list webhooks"),
+        corsHeaders,
+      );
+    }
+  }
+
+  private async handleWebhookGetApi(
+    projectId: string,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      // Check project access
+      const accessCheck = this.auth.createProjectAccessMiddleware()(authContext, projectId);
+      if (!accessCheck.authorized) {
+        return accessCheck.response!;
+      }
+
+      const config = await this.webhooks.getWebhookConfig(projectId);
+      
+      if (!config) {
+        return this.createErrorResponse(
+          createProblemDetails(404, "Not Found", "No webhook configuration found"),
+          corsHeaders,
+        );
+      }
+
+      return new Response(JSON.stringify(config), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    } catch (error) {
+      logger.error("Webhook get API error", error instanceof Error ? error : undefined);
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to get webhook config"),
+        corsHeaders,
+      );
+    }
+  }
+
+  private async handleWebhookCreateApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      const body = await request.json();
+      const projectId = body.project_id;
+
+      if (!projectId) {
+        return this.createErrorResponse(
+          createProblemDetails(400, "Bad Request", "project_id is required"),
+          corsHeaders,
+        );
+      }
+
+      // Check project access
+      const accessCheck = this.auth.createProjectAccessMiddleware()(authContext, projectId);
+      if (!accessCheck.authorized) {
+        return accessCheck.response!;
+      }
+
+      const config = await this.webhooks.updateWebhookConfig(body);
+
+      return new Response(JSON.stringify(config), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    } catch (error) {
+      logger.error("Webhook create API error", error instanceof Error ? error : undefined);
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to create webhook config"),
+        corsHeaders,
+      );
+    }
+  }
+
+  private async handleWebhookDeleteApi(
+    projectId: string,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    try {
+      // Check project access
+      const accessCheck = this.auth.createProjectAccessMiddleware()(authContext, projectId);
+      if (!accessCheck.authorized) {
+        return accessCheck.response!;
+      }
+
+      const success = await this.webhooks.deleteWebhookConfig(projectId);
+      
+      if (!success) {
+        return this.createErrorResponse(
+          createProblemDetails(404, "Not Found", "No webhook configuration found"),
+          corsHeaders,
+        );
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+    } catch (error) {
+      logger.error("Webhook delete API error", error instanceof Error ? error : undefined);
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to delete webhook config"),
+        corsHeaders,
+      );
+    }
+  }
+
+  /**
+   * Handle handlers API endpoints
+   */
+  private async handleHandlersApi(
+    request: Request,
+    authContext: AuthContext,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    const pathParts = pathname.split('/').filter(p => p.length > 0);
+    
+    try {
+      // GET /api/handlers - List all handlers
+      if (request.method === "GET" && pathParts.length === 2) {
+        const searchParams = url.searchParams;
+        const listRequest = {
+          provider: searchParams.get('provider') as 'github' | 'gitlab' | undefined,
+          event: searchParams.get('event') || undefined,
+          enabled: searchParams.get('enabled') ? searchParams.get('enabled') === 'true' : undefined
+        };
+        
+        const response = await this.handlersApi.listHandlers(listRequest);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // GET /api/handlers/stats - Get handler statistics
+      if (request.method === "GET" && pathParts.length === 3 && pathParts[2] === 'stats') {
+        const response = await this.handlersApi.getHandlerStats();
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // GET /api/handlers/executions - Get execution history
+      if (request.method === "GET" && pathParts.length === 3 && pathParts[2] === 'executions') {
+        const searchParams = url.searchParams;
+        const historyRequest = {
+          handlerId: searchParams.get('handlerId') || undefined,
+          projectId: searchParams.get('projectId') || undefined,
+          provider: searchParams.get('provider') as 'github' | 'gitlab' | undefined,
+          event: searchParams.get('event') || undefined,
+          limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
+          offset: searchParams.get('offset') ? parseInt(searchParams.get('offset')!) : undefined
+        };
+        
+        const response = await this.handlersApi.getExecutionHistory(historyRequest);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // POST /api/handlers/init - Initialize handler structure
+      if (request.method === "POST" && pathParts.length === 3 && pathParts[2] === 'init') {
+        const response = await this.handlersApi.initializeHandlerStructure();
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // POST /api/handlers/validate - Validate handler
+      if (request.method === "POST" && pathParts.length === 3 && pathParts[2] === 'validate') {
+        const body = await request.json();
+        const response = await this.handlersApi.validateHandler(body);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // GET /api/handlers/:id - Get specific handler
+      if (request.method === "GET" && pathParts.length === 3) {
+        const handlerId = pathParts[2];
+        const response = await this.handlersApi.getHandler({ id: handlerId });
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // PUT /api/handlers/:id - Update handler
+      if (request.method === "PUT" && pathParts.length === 3) {
+        const handlerId = pathParts[2];
+        const updates = await request.json();
+        const response = await this.handlersApi.updateHandler({ id: handlerId, updates });
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // DELETE /api/handlers/:id - Remove handler
+      if (request.method === "DELETE" && pathParts.length === 3) {
+        const handlerId = pathParts[2];
+        const response = await this.handlersApi.removeHandler({ id: handlerId });
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // POST /api/handlers/:id/toggle - Toggle handler enable/disable
+      if (request.method === "POST" && pathParts.length === 4 && pathParts[3] === 'toggle') {
+        const handlerId = pathParts[2];
+        const body = await request.json();
+        const response = await this.handlersApi.toggleHandler({ id: handlerId, enabled: body.enabled });
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // POST /api/handlers/:id/reload - Reload handler
+      if (request.method === "POST" && pathParts.length === 4 && pathParts[3] === 'reload') {
+        const handlerId = pathParts[2];
+        const response = await this.handlersApi.reloadHandler({ id: handlerId });
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, "content-type": "application/json" },
+        });
+      }
+
+      // Method not allowed for other paths
+      return this.createErrorResponse(
+        createProblemDetails(405, "Method Not Allowed", "Invalid handlers API endpoint"),
+        corsHeaders,
+      );
+
+    } catch (error) {
+      logger.error("Handlers API error", error as Error);
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to process handlers API request"),
+        corsHeaders,
+      );
+    }
+  }
+
+  /**
    * Handle health check
    */
   private async handleHealthCheck(corsHeaders: Record<string, string>): Promise<Response> {
@@ -1284,6 +1617,81 @@ export class SpecWorkbenchServer {
             ...corsHeaders,
           },
         },
+      );
+    }
+  }
+
+  /**
+   * Handle webhook requests
+   */
+  private async handleWebhookRequest(
+    request: Request,
+    corsHeaders: Record<string, string>,
+  ): Promise<Response> {
+    if (request.method !== "POST") {
+      return this.createErrorResponse(
+        createProblemDetails(405, "Method Not Allowed", "Webhooks only support POST requests"),
+        corsHeaders,
+      );
+    }
+
+    try {
+      const url = new URL(request.url);
+      const pathname = url.pathname;
+      const pathParts = pathname.split('/');
+      
+      // Extract provider from path like /webhooks/{provider}
+      const provider = pathParts[2] as "github" | "gitlab";
+      
+      if (!provider || !["github", "gitlab"].includes(provider)) {
+        return this.createErrorResponse(
+          createProblemDetails(400, "Bad Request", "Invalid webhook provider. Use 'github' or 'gitlab'"),
+          corsHeaders,
+        );
+      }
+
+      // Get headers for signature verification
+      const signature = provider === "github" 
+        ? request.headers.get("x-hub-signature-256")
+        : request.headers.get("x-gitlab-token");
+      
+      const event = provider === "github"
+        ? request.headers.get("x-github-event")
+        : request.headers.get("x-gitlab-event");
+
+      if (!event) {
+        return this.createErrorResponse(
+          createProblemDetails(400, "Bad Request", "Missing event header"),
+          corsHeaders,
+        );
+      }
+
+      // Parse payload
+      const payload = await request.json();
+
+      // Process webhook
+      const result = await this.webhooks.processWebhook(
+        provider,
+        event,
+        signature || undefined,
+        payload,
+        Object.fromEntries(request.headers.entries())
+      );
+
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      });
+
+    } catch (error) {
+      logger.error("Webhook request handling error", error instanceof Error ? error : undefined);
+      
+      return this.createErrorResponse(
+        createProblemDetails(500, "Internal Server Error", "Failed to process webhook"),
+        corsHeaders,
       );
     }
   }
@@ -1799,6 +2207,15 @@ const defaultConfig: ServerConfig = {
   websocket: {
     max_connections: parseInt(process.env.WS_MAX_CONNECTIONS || "1000", 10),
     ping_interval_ms: parseInt(process.env.WS_PING_INTERVAL || "30000", 10),
+  },
+  webhooks: {
+    enabled: process.env.WEBHOOKS_ENABLED === "true",
+    secret: process.env.WEBHOOK_SECRET,
+    github_secret: process.env.GITHUB_WEBHOOK_SECRET,
+    gitlab_secret: process.env.GITLAB_WEBHOOK_SECRET,
+    allowed_repos: process.env.WEBHOOK_ALLOWED_REPOS?.split(",") || [],
+    sync_on_push: process.env.WEBHOOK_SYNC_ON_PUSH !== "false",
+    validate_on_merge: process.env.WEBHOOK_VALIDATE_ON_MERGE !== "false",
   },
 };
 

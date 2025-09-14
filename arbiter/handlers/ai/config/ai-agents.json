@@ -1,0 +1,421 @@
+{
+  "version": "2.0.0",
+  "description": "AI Agent Handler configuration for Arbiter webhook system",
+  "lastUpdated": "2024-09-14T12:00:00Z",
+
+  "globalSettings": {
+    "logLevel": "info",
+    "logDirectory": "./logs/ai-handlers",
+    "enableSignatureValidation": true,
+    "defaultTimeout": 60000,
+    "retryAttempts": 2,
+    "retryDelayMs": 2000,
+    "maxConcurrentAgents": 5,
+    "enableMetrics": true,
+    "metricsRetentionDays": 30
+  },
+
+  "aiProviders": {
+    "claude": {
+      "enabled": true,
+      "config": {
+        "apiKey": "CLAUDE_API_KEY",
+        "baseUrl": "https://api.anthropic.com",
+        "model": "claude-3-5-sonnet-20241022",
+        "maxTokens": 4000,
+        "temperature": 0.7,
+        "timeout": 30000,
+        "systemPrompt": "You are an expert software development AI assistant specialized in code review, security analysis, and documentation generation. Provide precise, actionable feedback that helps developers improve their code quality."
+      }
+    },
+    "openai": {
+      "enabled": false,
+      "config": {
+        "apiKey": "OPENAI_API_KEY",
+        "baseUrl": "https://api.openai.com",
+        "model": "gpt-4-0125-preview",
+        "maxTokens": 4000,
+        "temperature": 0.7,
+        "timeout": 30000,
+        "organizationId": "OPENAI_ORG_ID"
+      }
+    },
+    "gemini": {
+      "enabled": false,
+      "config": {
+        "apiKey": "GEMINI_API_KEY",
+        "baseUrl": "https://generativelanguage.googleapis.com",
+        "model": "gemini-1.5-pro",
+        "maxTokens": 4000,
+        "temperature": 0.7,
+        "timeout": 30000,
+        "safetySettings": [
+          {
+            "category": "HARM_CATEGORY_HARASSMENT",
+            "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            "category": "HARM_CATEGORY_HATE_SPEECH",
+            "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
+      }
+    }
+  },
+
+  "agents": {
+    "code-review-agent": {
+      "enabled": false,
+      "type": "code-review",
+      "name": "AI Code Review Assistant",
+      "description": "Automated code review with quality, security, and performance analysis",
+      "version": "1.0.0",
+      "handler": "./ai/agents/CodeReviewAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.3,
+          "maxTokens": 8000
+        }
+      },
+
+      "commands": {
+        "enabled": ["review-code", "security-scan", "performance-check", "style-check", "architecture-review"],
+        "disabled": [],
+        "customPrompts": {}
+      },
+
+      "eventFilters": [
+        "github.pull_request",
+        "github.push",
+        "gitlab.merge_request"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 10,
+        "requestsPerHour": 100,
+        "requestsPerDay": 1000
+      },
+
+      "security": {
+        "requireUserMention": false,
+        "allowedUsers": [],
+        "allowedRepos": []
+      },
+
+      "behavior": {
+        "autoResponse": false,
+        "verboseLogging": false,
+        "dryRun": false
+      }
+    },
+
+    "issue-analysis-agent": {
+      "enabled": false,
+      "type": "issue-analysis",
+      "name": "AI Issue Analysis Assistant",
+      "description": "Automated issue categorization, prioritization, and triaging",
+      "version": "1.0.0",
+      "handler": "./ai/agents/IssueAnalysisAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.2,
+          "maxTokens": 4000
+        }
+      },
+
+      "commands": {
+        "enabled": ["analyze-issue", "categorize", "estimate", "triage", "suggest-assignee"],
+        "disabled": [],
+        "customPrompts": {}
+      },
+
+      "eventFilters": [
+        "github.issues",
+        "github.issue_comment"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 15,
+        "requestsPerHour": 200,
+        "requestsPerDay": 2000
+      },
+
+      "behavior": {
+        "autoResponse": false,
+        "verboseLogging": false,
+        "dryRun": false
+      }
+    },
+
+    "documentation-agent": {
+      "enabled": false,
+      "type": "documentation",
+      "name": "AI Documentation Assistant",
+      "description": "Automated documentation generation and maintenance",
+      "version": "1.0.0",
+      "handler": "./ai/agents/DocumentationAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.1,
+          "maxTokens": 6000
+        }
+      },
+
+      "commands": {
+        "enabled": ["generate-docs", "api-docs", "readme", "changelog", "migration-guide", "code-comments"],
+        "disabled": [],
+        "customPrompts": {
+          "generate-docs": "Focus on creating practical, example-driven documentation that helps developers understand and use the code effectively."
+        }
+      },
+
+      "eventFilters": [
+        "github.pull_request",
+        "github.push",
+        "gitlab.merge_request"
+      ],
+
+      "behavior": {
+        "autoResponse": false,
+        "verboseLogging": false,
+        "dryRun": false
+      }
+    },
+
+    "security-agent": {
+      "enabled": false,
+      "type": "security",
+      "name": "AI Security Scanner",
+      "description": "Automated security vulnerability detection and analysis",
+      "version": "1.0.0",
+      "handler": "./ai/agents/SecurityAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.1,
+          "maxTokens": 6000
+        }
+      },
+
+      "commands": {
+        "enabled": ["security-scan", "vulnerability-check", "dependency-audit", "auth-review", "data-privacy", "config-security"],
+        "disabled": [],
+        "customPrompts": {
+          "security-scan": "Prioritize critical and high-severity vulnerabilities. Focus on exploitable issues with clear remediation steps."
+        }
+      },
+
+      "eventFilters": [
+        "github.pull_request",
+        "github.push",
+        "gitlab.merge_request"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 5,
+        "requestsPerHour": 50,
+        "requestsPerDay": 500
+      },
+
+      "security": {
+        "requireUserMention": false,
+        "allowedUsers": [],
+        "allowedRepos": []
+      },
+
+      "behavior": {
+        "autoResponse": false,
+        "verboseLogging": true,
+        "dryRun": false
+      }
+    }
+  },
+
+  "webhookEndpoints": {
+    "github": {
+      "path": "/webhooks/ai/github",
+      "secret": "GITHUB_AI_WEBHOOK_SECRET",
+      "signatureHeader": "X-Hub-Signature-256"
+    },
+    "gitlab": {
+      "path": "/webhooks/ai/gitlab",
+      "secret": "GITLAB_AI_WEBHOOK_SECRET",
+      "signatureHeader": "X-Gitlab-Token"
+    }
+  },
+
+  "commandTriggers": {
+    "mentionPattern": "@arbiter-ai",
+    "commandPrefix": "/",
+    "supportedProviders": ["github", "gitlab"],
+    "responseFormat": "markdown",
+    "includeMetadata": true,
+    "maxResponseLength": 10000
+  },
+
+  "actionIntegrations": {
+    "github": {
+      "enabled": true,
+      "apiUrl": "https://api.github.com",
+      "token": "GITHUB_TOKEN",
+      "actions": {
+        "comment": true,
+        "label": true,
+        "assign": true,
+        "createIssue": true,
+        "requestReview": true
+      }
+    },
+    "gitlab": {
+      "enabled": false,
+      "apiUrl": "https://gitlab.com/api/v4",
+      "token": "GITLAB_TOKEN",
+      "actions": {
+        "comment": true,
+        "label": true,
+        "assign": true,
+        "createIssue": true
+      }
+    },
+    "slack": {
+      "enabled": false,
+      "webhookUrl": "SLACK_WEBHOOK_URL",
+      "channel": "#ai-notifications",
+      "notifyOn": ["security-critical", "error", "rate-limit"]
+    }
+  },
+
+  "monitoring": {
+    "metrics": {
+      "enabled": true,
+      "endpoint": "/metrics/ai",
+      "include": [
+        "agent_request_count",
+        "agent_response_time",
+        "agent_error_rate",
+        "provider_token_usage",
+        "command_usage_frequency"
+      ]
+    },
+    "healthCheck": {
+      "enabled": true,
+      "endpoint": "/health/ai",
+      "checks": [
+        "agents",
+        "providers",
+        "logging",
+        "rate-limits"
+      ]
+    },
+    "alerting": {
+      "enabled": false,
+      "thresholds": {
+        "errorRate": 0.1,
+        "responseTime": 30000,
+        "tokenUsageDaily": 100000
+      },
+      "webhooks": []
+    }
+  },
+
+  "uiConfiguration": {
+    "enabled": true,
+    "sections": [
+      {
+        "id": "ai-agents",
+        "title": "AI Agents",
+        "description": "Configure AI-powered webhook handlers for automated code review, issue analysis, and more.",
+        "icon": "🤖",
+        "order": 10
+      }
+    ],
+    "agentCards": {
+      "showStatus": true,
+      "showMetrics": true,
+      "showCommands": true,
+      "allowToggle": true,
+      "allowConfiguration": true
+    }
+  },
+
+  "examples": {
+    "usage": [
+      {
+        "title": "Code Review on Pull Request",
+        "description": "Automatically review code quality when PR is opened",
+        "command": "@arbiter-ai /review-code",
+        "context": "GitHub Pull Request comment"
+      },
+      {
+        "title": "Security Scan",
+        "description": "Scan for security vulnerabilities in code changes",
+        "command": "/security-scan critical",
+        "context": "Pull Request description or comment"
+      },
+      {
+        "title": "Issue Analysis",
+        "description": "Analyze and categorize new issues automatically",
+        "command": "/analyze-issue",
+        "context": "GitHub Issue opened event"
+      },
+      {
+        "title": "Generate Documentation",
+        "description": "Create API documentation for new endpoints",
+        "command": "/api-docs openapi",
+        "context": "Pull Request with API changes"
+      }
+    ],
+    "configurations": [
+      {
+        "name": "Development Team Setup",
+        "description": "Recommended configuration for small development teams",
+        "agents": {
+          "code-review-agent": {
+            "enabled": true,
+            "behavior": { "autoResponse": true }
+          },
+          "security-agent": {
+            "enabled": true,
+            "behavior": { "autoResponse": false }
+          }
+        }
+      },
+      {
+        "name": "Enterprise Setup",
+        "description": "Full AI assistance with compliance and security focus",
+        "agents": {
+          "code-review-agent": { "enabled": true },
+          "issue-analysis-agent": { "enabled": true },
+          "documentation-agent": { "enabled": true },
+          "security-agent": { "enabled": true }
+        }
+      }
+    ]
+  },
+
+  "migrations": {
+    "from": "1.0.0",
+    "to": "2.0.0",
+    "changes": [
+      "Added AI agent support",
+      "Introduced command-line style interfaces",
+      "Enhanced security scanning capabilities",
+      "Added multi-provider AI support"
+    ],
+    "backwardCompatible": true
+  }
+}

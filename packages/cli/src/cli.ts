@@ -31,6 +31,15 @@ import { coverCommand, scaffoldCommand } from "./commands/tests.js";
 import { validateCommand } from "./commands/validate.js";
 import { versionPlanCommand, versionReleaseCommand } from "./commands/version.js";
 import { watchCommand } from "./commands/watch.js";
+import { 
+  listWebhooksCommand, 
+  getWebhookCommand, 
+  setWebhookCommand, 
+  deleteWebhookCommand,
+  testWebhookCommand,
+  showWebhookHelp,
+  type WebhookOptions 
+} from "./commands/webhook.js";
 import { loadConfig, loadConfigWithGitDetection } from "./config.js";
 import type {
   CheckOptions,
@@ -2277,6 +2286,142 @@ specCmd
 // Commit functionality is handled automatically by the existing add/update commands
 // Revisions are created automatically when fragments are updated
 
+
+/**
+ * Webhook command - Manage webhooks for GitHub/GitLab integration
+ */
+const webhookCmd = program.command("webhook").description("manage repository webhooks for GitHub/GitLab integration");
+
+webhookCmd
+  .command("list")
+  .description("list webhook configuration and status")
+  .option("--format <format>", "output format", "table")
+  .action(async (options: WebhookOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await listWebhooksCommand(options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+webhookCmd
+  .command("get <project-id>")
+  .description("get webhook configuration for a project")
+  .option("--format <format>", "output format", "table")
+  .action(async (projectId: string, options: WebhookOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await getWebhookCommand(projectId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+webhookCmd
+  .command("set <project-id>")
+  .description("create or update webhook configuration for a project")
+  .option("--provider <provider>", "webhook provider (github|gitlab)")
+  .option("--repository <repo>", "repository URL")
+  .option("--events <events>", "comma-separated list of events", "push")
+  .option("--secret <secret>", "webhook secret")
+  .option("--enabled", "enable webhook", true)
+  .option("--disabled", "disable webhook")
+  .option("--format <format>", "output format", "table")
+  .option("--dry-run", "preview changes without applying")
+  .action(async (projectId: string, options: WebhookOptions & { disabled?: boolean }, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      // Handle disabled flag
+      if (options.disabled) {
+        options.enabled = false;
+      }
+
+      const exitCode = await setWebhookCommand(projectId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+webhookCmd
+  .command("delete <project-id>")
+  .description("delete webhook configuration for a project")
+  .option("--force", "confirm deletion")
+  .action(async (projectId: string, options: WebhookOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await deleteWebhookCommand(projectId, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+webhookCmd
+  .command("test <provider>")
+  .description("test webhook endpoint with sample payload")
+  .option("--secret <secret>", "webhook secret for testing")
+  .option("--format <format>", "output format", "table")
+  .option("--dry-run", "show test payload without sending")
+  .action(async (provider: "github" | "gitlab", options: WebhookOptions, command) => {
+    try {
+      const config = command.parent?.parent?.config;
+      if (!config) {
+        throw new Error("Configuration not loaded");
+      }
+
+      const exitCode = await testWebhookCommand(provider, options, config);
+      process.exit(exitCode);
+    } catch (error) {
+      console.error(
+        chalk.red("Command failed:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      process.exit(2);
+    }
+  });
+
+webhookCmd
+  .command("help")
+  .description("show webhook setup guide")
+  .action(() => {
+    showWebhookHelp();
+  });
 
 /**
  * Config command - Manage CLI configuration

@@ -1,0 +1,404 @@
+{
+  "version": "1.0.0",
+  "description": "Handler configuration for Arbiter webhook system",
+  "globalSettings": {
+    "logLevel": "info",
+    "logDirectory": "./logs/handlers",
+    "enableSignatureValidation": true,
+    "defaultTimeout": 30000,
+    "retryAttempts": 3,
+    "retryDelayMs": 1000
+  },
+  "handlers": {
+    "github": {
+      "push": {
+        "enabled": true,
+        "handler": "./github/push-handler.ts",
+        "config": {
+          "validateBranchNaming": true,
+          "requireConventionalCommits": true,
+          "protectedBranches": ["main", "master", "develop"],
+          "maxCommitsPerPush": 10,
+          "events": ["push"]
+        }
+      },
+      "pullRequest": {
+        "enabled": true,
+        "handler": "./github/pr-handler.ts",
+        "config": {
+          "validateBranchNaming": true,
+          "requireDescription": true,
+          "minDescriptionLength": 10,
+          "requireConventionalTitle": true,
+          "allowedTargetBranches": ["main", "master", "develop", "staging"],
+          "events": ["pull_request"]
+        }
+      }
+    },
+    "gitlab": {
+      "mergeRequest": {
+        "enabled": true,
+        "handler": "./gitlab/merge-request.ts",
+        "config": {
+          "validateBranchNaming": true,
+          "requireDescription": true,
+          "minDescriptionLength": 10,
+          "requireConventionalTitle": true,
+          "allowedTargetBranches": ["main", "master", "develop", "staging"],
+          "events": ["merge_request"]
+        }
+      }
+    },
+    "ai": {
+      "codeReview": {
+        "enabled": false,
+        "handler": "./ai/agents/CodeReviewAgent.ts",
+        "category": "AI Agent",
+        "description": "🤖 AI-powered code review using Claude, GPT, or Gemini. Analyzes code quality, security, and suggests improvements.",
+        "tags": ["ai", "code-review", "claude", "gpt", "gemini"],
+        "config": {
+          "provider": "claude",
+          "model": "claude-3-sonnet",
+          "events": ["pull_request", "push"],
+          "commands": [
+            {
+              "name": "review-code",
+              "description": "Comprehensive code review analysis",
+              "trigger": "/review-code"
+            },
+            {
+              "name": "security-scan", 
+              "description": "Security vulnerability scanning",
+              "trigger": "/security-scan"
+            },
+            {
+              "name": "performance-check",
+              "description": "Performance optimization suggestions",
+              "trigger": "/performance-check"
+            }
+          ],
+          "autoResponse": false,
+          "verboseLogging": false,
+          "requireApiKey": "CLAUDE_API_KEY"
+        }
+      },
+      "issueAnalysis": {
+        "enabled": false,
+        "handler": "./ai/agents/IssueAnalysisAgent.ts",
+        "category": "AI Agent",
+        "description": "🎯 Intelligent issue analysis and triaging. Categorizes issues, estimates complexity, and suggests labels automatically.",
+        "tags": ["ai", "issues", "triaging", "classification"],
+        "config": {
+          "provider": "gpt",
+          "model": "gpt-4",
+          "events": ["issues"],
+          "commands": [
+            {
+              "name": "analyze-issue",
+              "description": "Analyze issue and provide insights",
+              "trigger": "/analyze-issue"
+            },
+            {
+              "name": "categorize",
+              "description": "Categorize and label issue",
+              "trigger": "/categorize"
+            },
+            {
+              "name": "triage", 
+              "description": "Triage issue priority and assignment",
+              "trigger": "/triage"
+            }
+          ],
+          "autoLabeling": false,
+          "confidenceThreshold": 0.8,
+          "requireApiKey": "OPENAI_API_KEY"
+        }
+      },
+      "documentation": {
+        "enabled": false,
+        "handler": "./ai/agents/DocumentationAgent.ts",
+        "category": "AI Agent",
+        "description": "📚 Automated documentation generation for APIs, README files, and code changes. Uses multiple AI models for comprehensive docs.",
+        "tags": ["ai", "documentation", "api-docs", "readme"],
+        "config": {
+          "provider": "gemini",
+          "model": "gemini-pro",
+          "events": ["push", "pull_request"],
+          "commands": [
+            {
+              "name": "generate-docs",
+              "description": "Generate API documentation",
+              "trigger": "/generate-docs"
+            },
+            {
+              "name": "update-readme",
+              "description": "Update project README",
+              "trigger": "/update-readme"
+            },
+            {
+              "name": "create-changelog",
+              "description": "Generate changelog from commits",
+              "trigger": "/changelog"
+            }
+          ],
+          "docTypes": ["api", "readme", "changelog", "architecture"],
+          "autoCommit": false,
+          "requireApiKey": "GEMINI_API_KEY"
+        }
+      },
+      "security": {
+        "enabled": false,
+        "handler": "./ai/agents/SecurityAgent.ts", 
+        "category": "AI Agent",
+        "description": "🛡️ Advanced security vulnerability scanning using AI. Detects injection attacks, auth issues, and dependency vulnerabilities.",
+        "tags": ["ai", "security", "vulnerability", "scanning"],
+        "config": {
+          "provider": "claude",
+          "model": "claude-3-opus",
+          "events": ["push", "pull_request"],
+          "commands": [
+            {
+              "name": "vulnerability-check",
+              "description": "Scan for security vulnerabilities",
+              "trigger": "/vuln-scan"
+            },
+            {
+              "name": "dependency-audit",
+              "description": "Audit third-party dependencies",
+              "trigger": "/dep-audit"
+            },
+            {
+              "name": "auth-review",
+              "description": "Review authentication/authorization",
+              "trigger": "/auth-review"
+            }
+          ],
+          "securityLevels": ["critical", "high", "medium", "low"],
+          "reportFormat": "detailed",
+          "requireApiKey": "CLAUDE_API_KEY"
+        }
+      }
+    }
+  },
+  "webhookEndpoints": {
+    "github": {
+      "path": "/webhooks/github",
+      "secret": "GITHUB_WEBHOOK_SECRET",
+      "signatureHeader": "X-Hub-Signature-256"
+    },
+    "gitlab": {
+      "path": "/webhooks/gitlab",
+      "secret": "GITLAB_WEBHOOK_SECRET",
+      "signatureHeader": "X-Gitlab-Token"
+    }
+  },
+  "branchNamingRules": {
+    "feature": {
+      "pattern": "^feature\\/[a-z0-9-]+$",
+      "description": "Feature branches: feature/your-feature-name",
+      "examples": ["feature/user-authentication", "feature/payment-integration"]
+    },
+    "hotfix": {
+      "pattern": "^hotfix\\/[a-z0-9-]+$",
+      "description": "Hotfix branches: hotfix/your-fix-name",
+      "examples": ["hotfix/security-patch", "hotfix/critical-bug"]
+    },
+    "bugfix": {
+      "pattern": "^bugfix\\/[a-z0-9-]+$",
+      "description": "Bugfix branches: bugfix/your-fix-name",
+      "examples": ["bugfix/login-error", "bugfix/ui-alignment"]
+    },
+    "release": {
+      "pattern": "^release\\/v?\\d+\\.\\d+(\\.\\d+)?$",
+      "description": "Release branches: release/v1.2.3 or release/1.2.3",
+      "examples": ["release/v1.0.0", "release/2.1.0"]
+    }
+  },
+  "conventionalCommitTypes": {
+    "feat": "A new feature",
+    "fix": "A bug fix",
+    "docs": "Documentation only changes",
+    "style": "Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)",
+    "refactor": "A code change that neither fixes a bug nor adds a feature",
+    "test": "Adding missing tests or correcting existing tests",
+    "chore": "Changes to the build process or auxiliary tools and libraries such as documentation generation",
+    "ci": "Changes to CI configuration files and scripts",
+    "perf": "A code change that improves performance",
+    "revert": "Reverts a previous commit"
+  },
+  "notifications": {
+    "enabled": false,
+    "channels": {
+      "slack": {
+        "webhookUrl": "SLACK_WEBHOOK_URL",
+        "channel": "#development",
+        "events": ["merge", "error"]
+      },
+      "email": {
+        "smtp": {
+          "host": "smtp.example.com",
+          "port": 587,
+          "secure": false,
+          "auth": {
+            "user": "EMAIL_USER",
+            "pass": "EMAIL_PASS"
+          }
+        },
+        "from": "arbiter@example.com",
+        "to": ["team@example.com"],
+        "events": ["error"]
+      }
+    }
+  },
+  "security": {
+    "requireSignature": true,
+    "allowedIps": [],
+    "rateLimiting": {
+      "windowMs": 900000,
+      "maxRequests": 100
+    }
+  },
+  "monitoring": {
+    "metrics": {
+      "enabled": true,
+      "endpoint": "/metrics",
+      "include": ["request_count", "response_time", "error_rate"]
+    },
+    "healthCheck": {
+      "enabled": true,
+      "endpoint": "/health",
+      "checks": ["handlers", "logging", "filesystem"]
+    }
+  },
+  "aiProviders": {
+    "claude": {
+      "description": "Anthropic Claude API - Advanced reasoning and code analysis",
+      "baseUrl": "https://api.anthropic.com/v1",
+      "models": {
+        "claude-3-opus": {
+          "maxTokens": 4000,
+          "costPer1kTokens": 0.015,
+          "bestFor": ["complex reasoning", "security analysis", "architectural review"]
+        },
+        "claude-3-sonnet": {
+          "maxTokens": 4000,
+          "costPer1kTokens": 0.003,
+          "bestFor": ["code review", "documentation", "general analysis"]
+        },
+        "claude-3-haiku": {
+          "maxTokens": 4000,
+          "costPer1kTokens": 0.00025,
+          "bestFor": ["quick analysis", "simple tasks", "high-volume processing"]
+        }
+      },
+      "rateLimit": {
+        "requestsPerMinute": 100,
+        "tokensPerMinute": 400000
+      },
+      "requiresApiKey": true,
+      "environmentVariable": "CLAUDE_API_KEY"
+    },
+    "gpt": {
+      "description": "OpenAI GPT API - Versatile language model with code understanding",
+      "baseUrl": "https://api.openai.com/v1",
+      "models": {
+        "gpt-4": {
+          "maxTokens": 8192,
+          "costPer1kTokens": 0.03,
+          "bestFor": ["code analysis", "issue triaging", "comprehensive reviews"]
+        },
+        "gpt-4-turbo": {
+          "maxTokens": 128000,
+          "costPer1kTokens": 0.01,
+          "bestFor": ["large codebase analysis", "complex documentation", "architectural analysis"]
+        },
+        "gpt-3.5-turbo": {
+          "maxTokens": 16384,
+          "costPer1kTokens": 0.0015,
+          "bestFor": ["quick analysis", "simple code reviews", "basic documentation"]
+        }
+      },
+      "rateLimit": {
+        "requestsPerMinute": 200,
+        "tokensPerMinute": 800000
+      },
+      "requiresApiKey": true,
+      "environmentVariable": "OPENAI_API_KEY"
+    },
+    "gemini": {
+      "description": "Google Gemini API - Multimodal AI with advanced reasoning",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1",
+      "models": {
+        "gemini-pro": {
+          "maxTokens": 32768,
+          "costPer1kTokens": 0.0005,
+          "bestFor": ["documentation generation", "code explanation", "multimodal analysis"]
+        },
+        "gemini-pro-vision": {
+          "maxTokens": 16384,
+          "costPer1kTokens": 0.0025,
+          "bestFor": ["UI analysis", "diagram interpretation", "visual documentation"]
+        }
+      },
+      "rateLimit": {
+        "requestsPerMinute": 60,
+        "tokensPerMinute": 320000
+      },
+      "requiresApiKey": true,
+      "environmentVariable": "GEMINI_API_KEY"
+    }
+  },
+  "aiCommands": {
+    "review-code": {
+      "description": "Comprehensive code review with quality, security, and performance analysis",
+      "supportedProviders": ["claude", "gpt", "gemini"],
+      "recommendedProvider": "claude",
+      "parameters": {
+        "focus": ["quality", "security", "performance", "all"],
+        "severity": ["low", "medium", "high", "critical"]
+      }
+    },
+    "security-scan": {
+      "description": "Security vulnerability detection and analysis",
+      "supportedProviders": ["claude", "gpt"],
+      "recommendedProvider": "claude",
+      "parameters": {
+        "scanType": ["injection", "auth", "dependencies", "all"],
+        "severity": ["medium", "high", "critical"]
+      }
+    },
+    "generate-docs": {
+      "description": "Automated documentation generation",
+      "supportedProviders": ["claude", "gpt", "gemini"],
+      "recommendedProvider": "gemini",
+      "parameters": {
+        "docType": ["api", "readme", "changelog", "architecture"],
+        "format": ["markdown", "html", "json"]
+      }
+    },
+    "analyze-issue": {
+      "description": "Issue analysis, categorization, and triaging",
+      "supportedProviders": ["gpt", "claude"],
+      "recommendedProvider": "gpt",
+      "parameters": {
+        "analysisType": ["classification", "priority", "effort", "all"],
+        "confidence": [0.6, 0.7, 0.8, 0.9]
+      }
+    }
+  },
+  "setupInstructions": {
+    "aiAgents": {
+      "description": "AI agents are disabled by default and require API keys to function",
+      "steps": [
+        "1. Choose your AI provider (Claude, OpenAI GPT, or Google Gemini)",
+        "2. Sign up for API access and obtain API keys",
+        "3. Set environment variables (CLAUDE_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY)",
+        "4. Enable desired agents in this configuration file",
+        "5. Configure webhook endpoints to trigger AI analysis",
+        "6. Use /commands in PR comments or issue descriptions"
+      ],
+      "costWarning": "AI agents incur costs per API request. Monitor usage and set rate limits appropriately.",
+      "securityNote": "API keys provide access to AI services. Store them securely and use environment variables."
+    }
+  }
+}

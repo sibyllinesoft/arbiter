@@ -52,7 +52,7 @@ export interface AppState {
 
 // Tab types - separate left and right tab groups
 export type LeftTab = "source" | "friendly";
-export type RightTab = "flow" | "site" | "fsm" | "view" | "gaps" | "resolved" | "architecture";
+export type RightTab = "flow" | "site" | "fsm" | "view" | "gaps" | "resolved" | "architecture" | "handlers";
 
 // Legacy type for backwards compatibility
 export type DiagramTab = LeftTab | RightTab;

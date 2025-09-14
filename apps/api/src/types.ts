@@ -56,7 +56,10 @@ export type EventType =
   | "validation_started"
   | "validation_completed"
   | "validation_failed"
-  | "version_frozen";
+  | "version_frozen"
+  | "webhook_received"
+  | "git_push_processed"
+  | "git_merge_processed";
 
 // API request/response types
 export interface CreateFragmentRequest {
@@ -209,6 +212,71 @@ export interface ProblemDetails {
   [key: string]: unknown;
 }
 
+// Webhook types
+export interface WebhookPayload {
+  repository: {
+    full_name: string;
+    clone_url: string;
+    default_branch?: string;
+  };
+  commits?: Array<{
+    id: string;
+    message: string;
+    author: {
+      name: string;
+      email: string;
+    };
+    modified?: string[];
+    added?: string[];
+    removed?: string[];
+  }>;
+  ref?: string;
+  before?: string;
+  after?: string;
+  action?: string;
+  merge_request?: {
+    id: number;
+    state: string;
+    target_branch: string;
+    source_branch: string;
+  };
+  pull_request?: {
+    id: number;
+    state: string;
+    base: { ref: string };
+    head: { ref: string };
+  };
+}
+
+export interface WebhookConfig {
+  id: string;
+  project_id: string;
+  provider: "github" | "gitlab";
+  repository_url: string;
+  secret_hash?: string;
+  enabled: boolean;
+  events: WebhookEventType[];
+  created_at: string;
+  updated_at: string;
+}
+
+export type WebhookEventType = "push" | "merge_request" | "pull_request" | "tag";
+
+export interface WebhookRequest {
+  provider: "github" | "gitlab";
+  event: string;
+  signature?: string;
+  payload: WebhookPayload;
+  timestamp: string;
+}
+
+export interface WebhookResponse {
+  success: boolean;
+  message: string;
+  actions_taken?: string[];
+  project_id?: string;
+}
+
 // Configuration
 export interface ServerConfig {
   port: number;
@@ -229,4 +297,22 @@ export interface ServerConfig {
     ping_interval_ms: number;
   };
   nats?: NatsConfig;
+  webhooks?: {
+    enabled: boolean;
+    secret?: string;
+    github_secret?: string;
+    gitlab_secret?: string;
+    allowed_repos?: string[];
+    sync_on_push: boolean;
+    validate_on_merge: boolean;
+  };
+  handlers?: {
+    enableAutoReload: boolean;
+    maxConcurrentExecutions: number;
+    defaultTimeout: number;
+    defaultRetries: number;
+    sandboxEnabled: boolean;
+    allowedModules: string[];
+    enableMetrics: boolean;
+  };
 }

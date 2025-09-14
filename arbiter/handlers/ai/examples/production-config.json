@@ -1,0 +1,469 @@
+{
+  "version": "2.0.0",
+  "description": "Production-ready AI Agent configuration with security and performance optimizations",
+  "lastUpdated": "2024-09-14T12:00:00Z",
+  "_comment": "This is an example production configuration. Customize for your environment.",
+
+  "globalSettings": {
+    "logLevel": "warn",
+    "logDirectory": "/var/log/arbiter/ai-handlers",
+    "enableSignatureValidation": true,
+    "defaultTimeout": 45000,
+    "retryAttempts": 3,
+    "retryDelayMs": 2000,
+    "maxConcurrentAgents": 3,
+    "enableMetrics": true,
+    "metricsRetentionDays": 90
+  },
+
+  "aiProviders": {
+    "claude": {
+      "enabled": true,
+      "config": {
+        "apiKey": "CLAUDE_API_KEY",
+        "baseUrl": "https://api.anthropic.com",
+        "model": "claude-3-5-sonnet-20241022",
+        "maxTokens": 4000,
+        "temperature": 0.3,
+        "timeout": 30000,
+        "systemPrompt": "You are an expert software development assistant. Focus on security, performance, and maintainability. Provide concise, actionable feedback."
+      }
+    },
+    "openai": {
+      "enabled": false,
+      "config": {
+        "apiKey": "OPENAI_API_KEY",
+        "baseUrl": "https://api.openai.com",
+        "model": "gpt-4-0125-preview",
+        "maxTokens": 3000,
+        "temperature": 0.2,
+        "timeout": 30000,
+        "organizationId": "OPENAI_ORG_ID"
+      }
+    },
+    "gemini": {
+      "enabled": false,
+      "config": {
+        "apiKey": "GEMINI_API_KEY",
+        "model": "gemini-1.5-flash",
+        "maxTokens": 3000,
+        "temperature": 0.2
+      }
+    }
+  },
+
+  "agents": {
+    "code-review-agent": {
+      "enabled": true,
+      "type": "code-review",
+      "name": "Production Code Review Assistant",
+      "description": "Automated code review focusing on security and maintainability",
+      "version": "1.0.0",
+      "handler": "./ai/agents/CodeReviewAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.2,
+          "maxTokens": 6000
+        }
+      },
+
+      "commands": {
+        "enabled": ["review-code", "security-scan", "architecture-review"],
+        "disabled": ["style-check", "performance-check"],
+        "customPrompts": {
+          "review-code": "Focus on security vulnerabilities, maintainability issues, and code quality. Prioritize findings by risk level. Provide specific remediation steps.",
+          "security-scan": "Conduct thorough security analysis following OWASP guidelines. Flag any critical or high-severity issues immediately."
+        }
+      },
+
+      "eventFilters": [
+        "github.pull_request",
+        "gitlab.merge_request"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 8,
+        "requestsPerHour": 80,
+        "requestsPerDay": 500
+      },
+
+      "security": {
+        "requireUserMention": false,
+        "allowedUsers": [],
+        "allowedRepos": [
+          "company/critical-app",
+          "company/payment-service",
+          "company/auth-service"
+        ]
+      },
+
+      "behavior": {
+        "autoResponse": true,
+        "verboseLogging": false,
+        "dryRun": false
+      }
+    },
+
+    "security-agent": {
+      "enabled": true,
+      "type": "security",
+      "name": "Production Security Scanner",
+      "description": "Automated security vulnerability detection with compliance focus",
+      "version": "1.0.0",
+      "handler": "./ai/agents/SecurityAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.1,
+          "maxTokens": 8000
+        }
+      },
+
+      "commands": {
+        "enabled": ["security-scan", "vulnerability-check", "dependency-audit", "auth-review", "data-privacy"],
+        "disabled": ["config-security"],
+        "customPrompts": {
+          "security-scan": "Prioritize CRITICAL and HIGH severity vulnerabilities. Reference CVE numbers when applicable. Focus on exploitable issues with clear remediation steps.",
+          "dependency-audit": "Check against latest CVE database. Flag any packages with known vulnerabilities or suspicious activity. Prioritize direct dependencies.",
+          "data-privacy": "Focus on GDPR and CCPA compliance. Identify any personal data processing without proper consent mechanisms."
+        }
+      },
+
+      "eventFilters": [
+        "github.pull_request",
+        "gitlab.merge_request"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 5,
+        "requestsPerHour": 40,
+        "requestsPerDay": 200
+      },
+
+      "security": {
+        "requireUserMention": false,
+        "allowedUsers": ["security-team", "senior-dev"],
+        "allowedRepos": [
+          "company/critical-app",
+          "company/payment-service",
+          "company/auth-service",
+          "company/user-data-service"
+        ]
+      },
+
+      "behavior": {
+        "autoResponse": true,
+        "verboseLogging": true,
+        "dryRun": false
+      }
+    },
+
+    "issue-analysis-agent": {
+      "enabled": true,
+      "type": "issue-analysis",
+      "name": "Production Issue Triager",
+      "description": "Automated issue analysis and prioritization for production systems",
+      "version": "1.0.0",
+      "handler": "./ai/agents/IssueAnalysisAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.3,
+          "maxTokens": 4000
+        }
+      },
+
+      "commands": {
+        "enabled": ["analyze-issue", "triage", "estimate"],
+        "disabled": ["categorize", "suggest-assignee"],
+        "customPrompts": {
+          "analyze-issue": "Focus on business impact and technical severity. Provide clear priority recommendations (P0-P3). Include estimated resolution time.",
+          "triage": "Consider production impact, user impact, and security implications. Escalate P0/P1 issues immediately."
+        }
+      },
+
+      "eventFilters": [
+        "github.issues"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 10,
+        "requestsPerHour": 100,
+        "requestsPerDay": 800
+      },
+
+      "behavior": {
+        "autoResponse": true,
+        "verboseLogging": false,
+        "dryRun": false
+      }
+    },
+
+    "documentation-agent": {
+      "enabled": false,
+      "type": "documentation",
+      "name": "Production Documentation Assistant",
+      "description": "Automated documentation for critical system changes",
+      "version": "1.0.0",
+      "handler": "./ai/agents/DocumentationAgent.js",
+      
+      "provider": {
+        "type": "claude",
+        "config": {
+          "model": "claude-3-5-sonnet-20241022",
+          "temperature": 0.2,
+          "maxTokens": 6000
+        }
+      },
+
+      "commands": {
+        "enabled": ["api-docs", "migration-guide", "changelog"],
+        "disabled": ["readme", "generate-docs", "code-comments"],
+        "customPrompts": {
+          "api-docs": "Generate production-ready API documentation with authentication details, error codes, and rate limiting information.",
+          "migration-guide": "Include rollback procedures, testing steps, and monitoring recommendations."
+        }
+      },
+
+      "eventFilters": [
+        "github.pull_request"
+      ],
+
+      "rateLimits": {
+        "enabled": true,
+        "requestsPerMinute": 3,
+        "requestsPerHour": 20,
+        "requestsPerDay": 100
+      },
+
+      "behavior": {
+        "autoResponse": false,
+        "verboseLogging": false,
+        "dryRun": false
+      }
+    }
+  },
+
+  "webhookEndpoints": {
+    "github": {
+      "path": "/webhooks/ai/github",
+      "secret": "GITHUB_AI_WEBHOOK_SECRET",
+      "signatureHeader": "X-Hub-Signature-256"
+    },
+    "gitlab": {
+      "path": "/webhooks/ai/gitlab", 
+      "secret": "GITLAB_AI_WEBHOOK_SECRET",
+      "signatureHeader": "X-Gitlab-Token"
+    }
+  },
+
+  "commandTriggers": {
+    "mentionPattern": "@security-ai",
+    "commandPrefix": "/",
+    "supportedProviders": ["github", "gitlab"],
+    "responseFormat": "markdown",
+    "includeMetadata": false,
+    "maxResponseLength": 8000
+  },
+
+  "actionIntegrations": {
+    "github": {
+      "enabled": true,
+      "apiUrl": "https://api.github.com",
+      "token": "GITHUB_TOKEN",
+      "actions": {
+        "comment": true,
+        "label": true,
+        "assign": true,
+        "createIssue": true,
+        "requestReview": false
+      }
+    },
+    "gitlab": {
+      "enabled": false,
+      "apiUrl": "https://gitlab.company.com/api/v4",
+      "token": "GITLAB_TOKEN",
+      "actions": {
+        "comment": true,
+        "label": true,
+        "assign": true,
+        "createIssue": true
+      }
+    },
+    "slack": {
+      "enabled": true,
+      "webhookUrl": "SLACK_WEBHOOK_URL",
+      "channel": "#security-alerts",
+      "notifyOn": ["security-critical", "error", "rate-limit"],
+      "messageFormat": {
+        "security-critical": "🚨 CRITICAL: Security issue in {{repo}} {{pr_url}}\n{{message}}",
+        "error": "❌ AI Agent Error: {{error}} in {{repo}}",
+        "rate-limit": "⚠️ Rate limit reached for {{agent}} - {{remaining}} requests left"
+      }
+    },
+    "pagerduty": {
+      "enabled": true,
+      "integrationKey": "PAGERDUTY_INTEGRATION_KEY",
+      "triggerOn": ["security-critical"],
+      "severity": "critical"
+    },
+    "jira": {
+      "enabled": true,
+      "baseUrl": "https://company.atlassian.net",
+      "username": "JIRA_USERNAME", 
+      "apiToken": "JIRA_API_TOKEN",
+      "projectKey": "SEC",
+      "issueType": "Security Finding",
+      "createIssueOn": ["security-high", "security-critical"]
+    }
+  },
+
+  "monitoring": {
+    "metrics": {
+      "enabled": true,
+      "endpoint": "/metrics/ai",
+      "include": [
+        "agent_request_count",
+        "agent_response_time",
+        "agent_error_rate",
+        "provider_token_usage",
+        "security_findings_count",
+        "critical_alerts_count"
+      ]
+    },
+    "healthCheck": {
+      "enabled": true,
+      "endpoint": "/health/ai",
+      "checks": [
+        "agents",
+        "providers",
+        "logging",
+        "rate-limits",
+        "integrations"
+      ]
+    },
+    "alerting": {
+      "enabled": true,
+      "thresholds": {
+        "errorRate": 0.05,
+        "responseTime": 45000,
+        "tokenUsageDaily": 50000,
+        "criticalFindings": 1
+      },
+      "webhooks": [
+        "MONITORING_WEBHOOK_URL"
+      ]
+    }
+  },
+
+  "compliance": {
+    "dataRetention": {
+      "logRetentionDays": 90,
+      "metricsRetentionDays": 365,
+      "auditLogRetentionDays": 2555
+    },
+    "dataPrivacy": {
+      "anonymizeUserData": true,
+      "excludePersonalInfo": true,
+      "gdprCompliant": true
+    },
+    "auditLogging": {
+      "enabled": true,
+      "includePayloads": false,
+      "includeResponses": false,
+      "logSecurityFindings": true
+    }
+  },
+
+  "security": {
+    "requireSignature": true,
+    "allowedIps": [
+      "192.30.252.0/22",
+      "185.199.108.0/22",
+      "140.82.112.0/20"
+    ],
+    "rateLimiting": {
+      "windowMs": 3600000,
+      "maxRequests": 1000,
+      "skipSuccessfulRequests": false
+    },
+    "apiKeyRotation": {
+      "enabled": true,
+      "rotationIntervalDays": 90,
+      "notifyBeforeDays": 14
+    }
+  },
+
+  "performance": {
+    "caching": {
+      "enabled": true,
+      "provider": "redis",
+      "ttlSeconds": 3600,
+      "cacheKeys": [
+        "similar-code-analysis",
+        "dependency-scan-results"
+      ]
+    },
+    "optimization": {
+      "enableRequestDeduplication": true,
+      "enableResponseCaching": true,
+      "enableTokenOptimization": true
+    }
+  },
+
+  "uiConfiguration": {
+    "enabled": true,
+    "theme": "production",
+    "sections": [
+      {
+        "id": "ai-security",
+        "title": "AI Security Agents",
+        "description": "Production security scanning and compliance monitoring",
+        "icon": "🛡️",
+        "order": 5
+      }
+    ],
+    "agentCards": {
+      "showStatus": true,
+      "showMetrics": true,
+      "showCommands": false,
+      "allowToggle": false,
+      "allowConfiguration": false
+    }
+  },
+
+  "backup": {
+    "configBackup": {
+      "enabled": true,
+      "schedule": "daily",
+      "retentionDays": 30,
+      "location": "/backup/ai-config"
+    },
+    "metricsBackup": {
+      "enabled": true,
+      "schedule": "weekly", 
+      "retentionWeeks": 52,
+      "location": "/backup/ai-metrics"
+    }
+  },
+
+  "_metadata": {
+    "environment": "production",
+    "version": "2.0.0",
+    "deployedBy": "devops-team",
+    "deployedAt": "2024-09-14T12:00:00Z",
+    "configHash": "sha256:abcd1234...",
+    "lastValidated": "2024-09-14T11:59:00Z",
+    "validationStatus": "passed"
+  }
+}
