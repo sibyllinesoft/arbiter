@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -euo pipefail
+
+if ! command -v bunx >/dev/null 2>&1; then
+  echo "husky pre-commit: bunx is required but not found" >&2
+  exit 1
+fi
+
+bunx lint-staged
