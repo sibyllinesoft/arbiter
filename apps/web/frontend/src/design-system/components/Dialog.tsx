@@ -20,44 +20,44 @@ export interface DialogAction {
 export interface DialogProps {
   /** Whether the dialog is open */
   open: boolean;
-  
+
   /** Callback when the dialog should be closed */
   onClose: () => void;
-  
+
   /** Dialog title */
   title: string;
-  
+
   /** Dialog description */
   description?: string;
-  
+
   /** Dialog type */
   type?: 'default' | 'confirmation' | 'destructive' | 'success' | 'warning' | 'error' | 'info';
-  
+
   /** Custom dialog content */
   children?: ReactNode;
-  
+
   /** Action buttons */
   actions?: DialogAction[];
-  
+
   /** Whether to show the cancel button */
   showCancel?: boolean;
-  
+
   /** Custom cancel label */
   cancelLabel?: string;
-  
+
   /** Whether to close on backdrop click */
   closeOnBackdropClick?: boolean;
-  
+
   /** Whether to close on escape key */
   closeOnEscape?: boolean;
-  
+
   /** Custom className */
   className?: string;
 }
 
 const typeToVariant = {
   default: 'default',
-  confirmation: 'info', 
+  confirmation: 'info',
   destructive: 'error',
   success: 'success',
   warning: 'warning',
@@ -115,11 +115,15 @@ export function Dialog({
 
   // Generate default actions if none provided
   const finalActions = actions || [
-    ...(showCancel ? [{
-      label: cancelLabel,
-      variant: 'secondary' as const,
-      onClick: onClose,
-    }] : []),
+    ...(showCancel
+      ? [
+          {
+            label: cancelLabel,
+            variant: 'secondary' as const,
+            onClick: onClose,
+          },
+        ]
+      : []),
     {
       label: defaults.primaryLabel,
       variant: defaults.primaryVariant,
@@ -188,7 +192,7 @@ export function ConfirmDialog({
   loading = false,
 }: ConfirmDialogProps) {
   const defaults = typeDefaults[type];
-  
+
   const actions: DialogAction[] = [
     {
       label: cancelLabel,
@@ -269,113 +273,128 @@ export interface UseDialogReturn {
 }
 
 export function useDialog(): UseDialogReturn {
-  const [dialogs, setDialogs] = React.useState<Array<{
-    id: string;
-    component: React.ReactNode;
-    resolve: (value: any) => void;
-  }>>([]);
+  const [dialogs, setDialogs] = React.useState<
+    Array<{
+      id: string;
+      component: React.ReactNode;
+      resolve: (value: any) => void;
+    }>
+  >([]);
 
-  const createDialog = React.useCallback(<T,>(
-    component: React.ReactNode,
-    defaultValue: T
-  ): Promise<T> => {
-    return new Promise((resolve) => {
-      const id = Math.random().toString(36).substr(2, 9);
-      setDialogs(prev => [...prev, { id, component, resolve }]);
-      
-      // Auto-resolve with default value if no action taken
-      setTimeout(() => {
-        setDialogs(prev => {
-          const exists = prev.find(d => d.id === id);
-          if (exists) {
-            exists.resolve(defaultValue);
-            return prev.filter(d => d.id !== id);
-          }
-          return prev;
-        });
-      }, 30000); // 30 second timeout
-    });
-  }, []);
+  const createDialog = React.useCallback(
+    <T,>(component: React.ReactNode, defaultValue: T): Promise<T> => {
+      return new Promise(resolve => {
+        const id = Math.random().toString(36).substr(2, 9);
+        setDialogs(prev => [...prev, { id, component, resolve }]);
+
+        // Auto-resolve with default value if no action taken
+        setTimeout(() => {
+          setDialogs(prev => {
+            const exists = prev.find(d => d.id === id);
+            if (exists) {
+              exists.resolve(defaultValue);
+              return prev.filter(d => d.id !== id);
+            }
+            return prev;
+          });
+        }, 30000); // 30 second timeout
+      });
+    },
+    []
+  );
 
   const removeDialog = React.useCallback((id: string) => {
     setDialogs(prev => prev.filter(d => d.id !== id));
   }, []);
 
-  const confirm = React.useCallback((options: Omit<ConfirmDialogProps, 'open' | 'onClose'>) => {
-    return createDialog<boolean>(
-      <ConfirmDialog
-        {...options}
-        open={true}
-        onClose={() => {
-          const dialog = dialogs[dialogs.length - 1];
-          if (dialog) {
-            dialog.resolve(false);
-            removeDialog(dialog.id);
-          }
-        }}
-        onConfirm={() => {
-          const dialog = dialogs[dialogs.length - 1];
-          if (dialog) {
-            dialog.resolve(true);
-            removeDialog(dialog.id);
-          }
-        }}
-      />,
-      false
-    );
-  }, [createDialog, dialogs, removeDialog]);
+  const confirm = React.useCallback(
+    (options: Omit<ConfirmDialogProps, 'open' | 'onClose'>) => {
+      return createDialog<boolean>(
+        <ConfirmDialog
+          {...options}
+          open={true}
+          onClose={() => {
+            const dialog = dialogs[dialogs.length - 1];
+            if (dialog) {
+              dialog.resolve(false);
+              removeDialog(dialog.id);
+            }
+          }}
+          onConfirm={() => {
+            const dialog = dialogs[dialogs.length - 1];
+            if (dialog) {
+              dialog.resolve(true);
+              removeDialog(dialog.id);
+            }
+          }}
+        />,
+        false
+      );
+    },
+    [createDialog, dialogs, removeDialog]
+  );
 
-  const alert = React.useCallback((options: Omit<AlertDialogProps, 'open' | 'onClose'>) => {
-    return createDialog<void>(
-      <AlertDialog
-        {...options}
-        open={true}
-        onClose={() => {
-          const dialog = dialogs[dialogs.length - 1];
-          if (dialog) {
-            dialog.resolve(undefined);
-            removeDialog(dialog.id);
-          }
-        }}
-      />,
-      undefined
-    );
-  }, [createDialog, dialogs, removeDialog]);
+  const alert = React.useCallback(
+    (options: Omit<AlertDialogProps, 'open' | 'onClose'>) => {
+      return createDialog<void>(
+        <AlertDialog
+          {...options}
+          open={true}
+          onClose={() => {
+            const dialog = dialogs[dialogs.length - 1];
+            if (dialog) {
+              dialog.resolve(undefined);
+              removeDialog(dialog.id);
+            }
+          }}
+        />,
+        undefined
+      );
+    },
+    [createDialog, dialogs, removeDialog]
+  );
 
-  const dialog = React.useCallback((options: Omit<DialogProps, 'open' | 'onClose'>) => {
-    return createDialog<void>(
-      <Dialog
-        {...options}
-        open={true}
-        onClose={() => {
-          const dialog = dialogs[dialogs.length - 1];
-          if (dialog) {
-            dialog.resolve(undefined);
-            removeDialog(dialog.id);
-          }
-        }}
-      />,
-      undefined
-    );
-  }, [createDialog, dialogs, removeDialog]);
+  const dialog = React.useCallback(
+    (options: Omit<DialogProps, 'open' | 'onClose'>) => {
+      return createDialog<void>(
+        <Dialog
+          {...options}
+          open={true}
+          onClose={() => {
+            const dialog = dialogs[dialogs.length - 1];
+            if (dialog) {
+              dialog.resolve(undefined);
+              removeDialog(dialog.id);
+            }
+          }}
+        />,
+        undefined
+      );
+    },
+    [createDialog, dialogs, removeDialog]
+  );
 
   // Render all active dialogs
-  const DialogProvider = React.useCallback(() => (
-    <>
-      {dialogs.map(d => (
-        <React.Fragment key={d.id}>
-          {d.component}
-        </React.Fragment>
-      ))}
-    </>
-  ), [dialogs]);
+  const DialogProvider = React.useCallback(
+    () => (
+      <>
+        {dialogs.map(d => (
+          <React.Fragment key={d.id}>{d.component}</React.Fragment>
+        ))}
+      </>
+    ),
+    [dialogs]
+  );
 
-  return React.useMemo(() => ({
-    confirm,
-    alert,
-    dialog,
-    DialogProvider,
-  }), [confirm, alert, dialog, DialogProvider]);
+  return React.useMemo(
+    () => ({
+      confirm,
+      alert,
+      dialog,
+      DialogProvider,
+    }),
+    [confirm, alert, dialog, DialogProvider]
+  );
 }
 
 export default Dialog;

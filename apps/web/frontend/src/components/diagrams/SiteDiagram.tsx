@@ -51,7 +51,7 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
       try {
         setLoading(true);
         setError(null);
-        
+
         const response: IRResponse = await apiService.getIR(projectId, 'site');
         setSiteData(response.data as SiteIRData);
       } catch (err) {
@@ -89,14 +89,13 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
     const routes = Array.isArray(data.routes) ? data.routes : data.routes?.nodes || [];
     routes.forEach(route => {
       const capabilities = route.capabilities || [];
-      const capabilityText = capabilities.length > 0 
-        ? `\\nCapabilities: ${capabilities.join(', ')}`
-        : '';
-      
+      const capabilityText =
+        capabilities.length > 0 ? `\\nCapabilities: ${capabilities.join(', ')}` : '';
+
       // Color nodes based on capabilities
       let fillColor = '#f9fafb'; // default
       let borderColor = '#d1d5db';
-      
+
       if (capabilities.includes('create')) {
         fillColor = '#dcfce7'; // green
         borderColor = '#16a34a';
@@ -110,8 +109,9 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
         fillColor = '#dbeafe'; // blue
         borderColor = '#2563eb';
       }
-      
-      const routeId = route.id || route.label || route.path || `route_${Math.random().toString(36).substr(2, 9)}`;
+
+      const routeId =
+        route.id || route.label || route.path || `route_${Math.random().toString(36).substr(2, 9)}`;
       const nodeId = routeId.replace(/[^a-zA-Z0-9]/g, '_');
       dot += `
         ${nodeId} [
@@ -135,13 +135,15 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
       });
     } else {
       // Create implicit dependencies based on route hierarchy
-      const sortedRoutes = [...routes].sort((a, b) => (a.path || '').length - (b.path || '').length);
-      
+      const sortedRoutes = [...routes].sort(
+        (a, b) => (a.path || '').length - (b.path || '').length
+      );
+
       sortedRoutes.forEach(route => {
         if (route.path) {
           const parentPath = route.path.split('/').slice(0, -1).join('/') || '/';
           const parentRoute = sortedRoutes.find(r => r.path === parentPath && r.id !== route.id);
-          
+
           if (parentRoute && route.id && parentRoute.id) {
             const fromId = parentRoute.id.replace(/[^a-zA-Z0-9]/g, '_');
             const toId = route.id.replace(/[^a-zA-Z0-9]/g, '_');
@@ -161,15 +163,15 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
     try {
       // Generate SVG from DOT source
       const svg = graphviz.dot(dotSource);
-      
+
       // Clear previous content
       containerRef.current.innerHTML = '';
-      
+
       // Create a container for the SVG
       const svgContainer = document.createElement('div');
       svgContainer.className = 'flex justify-center items-center min-h-[400px]';
       svgContainer.innerHTML = svg;
-      
+
       // Style the SVG for responsiveness
       const svgElement = svgContainer.querySelector('svg');
       if (svgElement) {
@@ -180,7 +182,7 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
         svgElement.style.borderRadius = '8px';
         svgElement.style.padding = '20px';
       }
-      
+
       containerRef.current.appendChild(svgContainer);
     } catch (err) {
       console.error('Failed to render Graphviz diagram:', err);
@@ -211,8 +213,18 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center">
           <div className="text-red-500 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <p className="text-red-700 font-medium">Error loading site diagram</p>
@@ -235,7 +247,8 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
           <div className="mb-4">
             <h3 className="text-lg font-medium text-gray-900">Site Route DAG</h3>
             <p className="text-sm text-gray-600">
-              Showing {siteData.routes.length} route{siteData.routes.length !== 1 ? 's' : ''} and their relationships
+              Showing {siteData.routes.length} route{siteData.routes.length !== 1 ? 's' : ''} and
+              their relationships
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               <div className="flex items-center gap-1">

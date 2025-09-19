@@ -30,9 +30,9 @@ describe('SplitPane', () => {
 
   beforeEach(() => {
     Element.prototype.getBoundingClientRect = mockGetBoundingClientRect;
-    Object.defineProperty(document.body, 'style', { 
-      value: { cursor: '', userSelect: '' }, 
-      writable: true 
+    Object.defineProperty(document.body, 'style', {
+      value: { cursor: '', userSelect: '' },
+      writable: true,
     });
   });
 
@@ -245,7 +245,7 @@ describe('SplitPane', () => {
 
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Move mouse to 25% position
       fireEvent.mouseMove(document, { clientX: 200, clientY: 300 });
 
@@ -265,7 +265,7 @@ describe('SplitPane', () => {
 
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Try to move to very small size (10% = 80px, less than 300px minimum)
       fireEvent.mouseMove(document, { clientX: 80, clientY: 300 });
 
@@ -286,7 +286,7 @@ describe('SplitPane', () => {
 
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Try to move to very large size (80%)
       fireEvent.mouseMove(document, { clientX: 640, clientY: 300 });
 
@@ -343,16 +343,18 @@ describe('SplitPane', () => {
       );
 
       const resizer = document.querySelector('.cursor-col-resize');
-      const event = new MouseEvent('mousedown', { 
-        bubbles: true, 
+      const event = new MouseEvent('mousedown', {
+        bubbles: true,
         cancelable: true,
         clientX: 400,
-        clientY: 300 
+        clientY: 300,
       });
-      
+
       let defaultPrevented = false;
-      event.preventDefault = () => { defaultPrevented = true; };
-      
+      event.preventDefault = () => {
+        defaultPrevented = true;
+      };
+
       resizer!.dispatchEvent(event);
       expect(defaultPrevented).toBe(true);
     });
@@ -386,7 +388,7 @@ describe('SplitPane', () => {
 
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Move mouse vertically to 25% position
       fireEvent.mouseMove(document, { clientX: 400, clientY: 150 });
 
@@ -417,7 +419,7 @@ describe('SplitPane', () => {
         </SplitPane>
       );
 
-      // Since resizer is not rendered when allowResize=false, 
+      // Since resizer is not rendered when allowResize=false,
       // we can't test mousedown on it, but we can verify no resizer exists
       const resizer = document.querySelector('.cursor-col-resize');
       expect(resizer).not.toBeInTheDocument();
@@ -457,10 +459,10 @@ describe('SplitPane', () => {
       );
 
       const resizer = document.querySelector('.cursor-col-resize');
-      
+
       // Mock containerRef.current to be null during drag
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // This should not throw an error
       expect(() => {
         fireEvent.mouseMove(document, { clientX: 200, clientY: 300 });
@@ -501,12 +503,12 @@ describe('SplitPane', () => {
 
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Move to 10% (should be constrained to 25% minimum)
       fireEvent.mouseMove(document, { clientX: 80, clientY: 300 });
       expect(leftPane).toHaveStyle({ width: '25%' });
 
-      // Move to 90% (should be constrained to 75% maximum)  
+      // Move to 90% (should be constrained to 75% maximum)
       fireEvent.mouseMove(document, { clientX: 720, clientY: 300 });
       expect(leftPane).toHaveStyle({ width: '75%' });
     });
@@ -524,7 +526,7 @@ describe('SplitPane', () => {
 
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Move to 10% (80px, should be constrained to 200px = 25%)
       fireEvent.mouseMove(document, { clientX: 80, clientY: 300 });
       expect(leftPane).toHaveStyle({ width: '25%' });
@@ -561,17 +563,17 @@ describe('SplitPane', () => {
       );
 
       const resizer = document.querySelector('.cursor-col-resize');
-      
+
       // Start dragging
       fireEvent.mouseDown(resizer!, { clientX: 400, clientY: 300 });
-      
+
       // Simulate rapid movements
       const startTime = performance.now();
       for (let i = 0; i < 100; i++) {
         fireEvent.mouseMove(document, { clientX: 200 + i, clientY: 300 });
       }
       const endTime = performance.now();
-      
+
       // Should complete within reasonable time (< 100ms for 100 movements)
       expect(endTime - startTime).toBeLessThan(100);
     });

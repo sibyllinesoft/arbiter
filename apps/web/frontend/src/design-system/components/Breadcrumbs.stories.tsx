@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { Breadcrumbs, breadcrumbIcons, type BreadcrumbItem } from './Breadcrumbs';
-import { 
-  Home, 
-  Folder, 
-  File, 
-  Database, 
-  Settings, 
-  Users, 
-  Code, 
+import {
+  Home,
+  Folder,
+  File,
+  Database,
+  Settings,
+  Users,
+  Code,
   GitBranch,
-  FolderOpen
+  FolderOpen,
 } from 'lucide-react';
 
 const meta: Meta<typeof Breadcrumbs> = {
@@ -19,7 +19,8 @@ const meta: Meta<typeof Breadcrumbs> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional breadcrumb navigation for hierarchical content. Supports collapsing, custom separators, and various size variants.',
+        component:
+          'Professional breadcrumb navigation for hierarchical content. Supports collapsing, custom separators, and various size variants.',
       },
     },
   },
@@ -190,7 +191,7 @@ export const Default: Story = {
     items: basicItems,
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -204,7 +205,7 @@ export const WithIcons: Story = {
     showHomeIcon: true,
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -218,7 +219,7 @@ export const ChevronSeparator: Story = {
     separator: 'chevron',
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -232,7 +233,7 @@ export const SlashSeparator: Story = {
     separator: 'slash',
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -246,7 +247,7 @@ export const DotSeparator: Story = {
     separator: 'dot',
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -260,7 +261,7 @@ export const CustomSeparator: Story = {
     separator: <span className="text-blue-500 font-bold">→</span>,
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -274,7 +275,7 @@ export const CollapsedBreadcrumbs: Story = {
     maxItems: 4,
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -283,7 +284,8 @@ export const CollapsedBreadcrumbs: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'When there are too many items, breadcrumbs automatically collapse with an expandable "..." indicator. Click the dots to expand all items.',
+        story:
+          'When there are too many items, breadcrumbs automatically collapse with an expandable "..." indicator. Click the dots to expand all items.',
       },
     },
   },
@@ -294,27 +296,15 @@ export const SizeVariants: Story = {
     <div className="w-full max-w-4xl space-y-8">
       <div className="p-6 bg-white rounded-lg border">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Small (sm)</h3>
-        <Breadcrumbs 
-          items={fileSystemItems}
-          size="sm"
-          showHomeIcon={true}
-        />
+        <Breadcrumbs items={fileSystemItems} size="sm" showHomeIcon={true} />
       </div>
       <div className="p-6 bg-white rounded-lg border">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Medium (md) - Default</h3>
-        <Breadcrumbs 
-          items={fileSystemItems}
-          size="md"
-          showHomeIcon={true}
-        />
+        <Breadcrumbs items={fileSystemItems} size="md" showHomeIcon={true} />
       </div>
       <div className="p-6 bg-white rounded-lg border">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Large (lg)</h3>
-        <Breadcrumbs 
-          items={fileSystemItems}
-          size="lg"
-          showHomeIcon={true}
-        />
+        <Breadcrumbs items={fileSystemItems} size="lg" showHomeIcon={true} />
       </div>
     </div>
   ),
@@ -337,19 +327,17 @@ export const InteractiveExample: Story = {
       <div className="w-full max-w-4xl space-y-8">
         <div className="p-6 bg-white rounded-lg border">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">File Explorer Navigation</h3>
-          <Breadcrumbs 
-            items={fileSystemItems}
-            onItemClick={handleItemClick}
-            showHomeIcon={true}
-          />
+          <Breadcrumbs items={fileSystemItems} onItemClick={handleItemClick} showHomeIcon={true} />
           <p className="text-sm text-gray-600 mt-4">
             Click on any breadcrumb item to see the navigation callback.
           </p>
         </div>
-        
+
         <div className="p-6 bg-white rounded-lg border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Deep Nested Path (Auto-collapsed)</h3>
-          <Breadcrumbs 
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Deep Nested Path (Auto-collapsed)
+          </h3>
+          <Breadcrumbs
             items={deepNestedItems}
             maxItems={5}
             onItemClick={handleItemClick}
@@ -359,14 +347,10 @@ export const InteractiveExample: Story = {
             Deep paths are automatically collapsed. Click the "..." to expand all items.
           </p>
         </div>
-        
+
         <div className="p-6 bg-white rounded-lg border">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Admin Panel Navigation</h3>
-          <Breadcrumbs 
-            items={adminPanelItems}
-            separator="dot"
-            onItemClick={handleItemClick}
-          />
+          <Breadcrumbs items={adminPanelItems} separator="dot" onItemClick={handleItemClick} />
           <p className="text-sm text-gray-600 mt-4">
             Different separator styles for different contexts.
           </p>
@@ -377,7 +361,8 @@ export const InteractiveExample: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive breadcrumbs with click handlers and different configurations for various use cases.',
+        story:
+          'Interactive breadcrumbs with click handlers and different configurations for various use cases.',
       },
     },
   },
@@ -388,33 +373,23 @@ export const ResponsiveBreadcrumbs: Story = {
     <div className="w-full space-y-8">
       <div className="max-w-xs p-4 bg-white rounded-lg border">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Mobile Width (maxItems: 2)</h3>
-        <Breadcrumbs 
-          items={deepNestedItems}
-          maxItems={2}
-          size="sm"
-        />
+        <Breadcrumbs items={deepNestedItems} maxItems={2} size="sm" />
       </div>
       <div className="max-w-md p-4 bg-white rounded-lg border">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Tablet Width (maxItems: 4)</h3>
-        <Breadcrumbs 
-          items={deepNestedItems}
-          maxItems={4}
-          size="md"
-        />
+        <Breadcrumbs items={deepNestedItems} maxItems={4} size="md" />
       </div>
       <div className="max-w-4xl p-6 bg-white rounded-lg border">
         <h3 className="text-sm font-semibold text-gray-700 mb-4">Desktop Width (No limit)</h3>
-        <Breadcrumbs 
-          items={deepNestedItems}
-          size="lg"
-        />
+        <Breadcrumbs items={deepNestedItems} size="lg" />
       </div>
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Responsive breadcrumb behavior with different maxItems values for different screen sizes.',
+        story:
+          'Responsive breadcrumb behavior with different maxItems values for different screen sizes.',
       },
     },
   },

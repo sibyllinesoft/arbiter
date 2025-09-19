@@ -4,13 +4,20 @@
  */
 
 // Core types for the plugin system
+export interface ComponentProp {
+  name: string;
+  type: string;
+  required: boolean;
+}
+
 export interface ComponentConfig {
   name: string;
   type: 'page' | 'component' | 'layout' | 'hook' | 'util';
-  props?: Record<string, string>;
+  props?: ComponentProp[];
   dependencies?: string[];
   styles?: boolean;
   tests?: boolean;
+  testId?: string;
 }
 
 export interface ServiceConfig {
@@ -20,6 +27,7 @@ export interface ServiceConfig {
   database?: boolean;
   auth?: boolean;
   validation?: boolean;
+  methods?: Array<Record<string, any>>;
 }
 
 export interface ProjectConfig {
@@ -52,6 +60,15 @@ export interface GenerationResult {
   scripts?: Record<string, string>;
 }
 
+export interface LanguagePluginCapabilities {
+  components?: boolean;
+  services?: boolean;
+  testing?: boolean;
+  api?: boolean;
+  infrastructure?: boolean;
+  [capability: string]: boolean | undefined;
+}
+
 // Main plugin interface
 export interface LanguagePlugin {
   readonly name: string;
@@ -59,19 +76,20 @@ export interface LanguagePlugin {
   readonly version: string;
   readonly description: string;
   readonly supportedFeatures: string[];
+  readonly capabilities?: LanguagePluginCapabilities;
 
   // Component generation (primarily for frontend languages)
   generateComponent?(config: ComponentConfig): Promise<GenerationResult>;
-  
+
   // Service/API scaffolding
   generateService(config: ServiceConfig): Promise<GenerationResult>;
-  
+
   // Project structure setup
   initializeProject(config: ProjectConfig): Promise<GenerationResult>;
-  
+
   // Build configuration
   generateBuildConfig(config: BuildConfig): Promise<GenerationResult>;
-  
+
   // Language-specific utilities
   validateConfig?(config: any): Promise<boolean>;
   getTemplates?(): string[];
@@ -121,11 +139,11 @@ export async function generateComponent(
   if (!plugin) {
     throw new Error(`No plugin found for language: ${language}`);
   }
-  
+
   if (!plugin.generateComponent) {
     throw new Error(`Component generation not supported for language: ${language}`);
   }
-  
+
   return plugin.generateComponent(config);
 }
 
@@ -137,7 +155,7 @@ export async function generateService(
   if (!plugin) {
     throw new Error(`No plugin found for language: ${language}`);
   }
-  
+
   return plugin.generateService(config);
 }
 
@@ -149,7 +167,7 @@ export async function initializeProject(
   if (!plugin) {
     throw new Error(`No plugin found for language: ${language}`);
   }
-  
+
   return plugin.initializeProject(config);
 }
 
@@ -161,15 +179,15 @@ export async function generateBuildConfig(
   if (!plugin) {
     throw new Error(`No plugin found for language: ${language}`);
   }
-  
+
   return plugin.generateBuildConfig(config);
 }
 
+import { GoPlugin } from './go.js';
+import { PythonPlugin } from './python.js';
+import { RustPlugin } from './rust.js';
 // Import and register all plugins
 import { TypeScriptPlugin } from './typescript.js';
-import { PythonPlugin } from './python.js';
-import { GoPlugin } from './go.js';
-import { RustPlugin } from './rust.js';
 
 // Auto-register plugins
 registerPlugin(new TypeScriptPlugin());

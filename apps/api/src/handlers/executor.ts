@@ -4,27 +4,27 @@
  */
 
 import { setTimeout } from 'node:timers/promises';
+import type { SpecWorkbenchDB } from '../db.js';
+import type { EventService } from '../events.js';
+import { logger as defaultLogger, generateId, getCurrentTimestamp } from '../utils.js';
+import type { HandlerDiscovery } from './discovery.js';
 import type {
-  WebhookHandler,
-  HandlerContext,
-  HandlerResult,
-  RegisteredHandler,
   EnhancedWebhookPayload,
+  HandlerContext,
   HandlerExecution,
+  HandlerResult,
   HandlerServices,
   Logger,
+  RegisteredHandler,
+  WebhookHandler,
   WebhookPayload,
-  WebhookRequest
+  WebhookRequest,
 } from './types.js';
-import type { EventService } from '../events.js';
-import type { SpecWorkbenchDB } from '../db.js';
-import { logger as defaultLogger, generateId, getCurrentTimestamp } from '../utils.js';
-import { HandlerDiscovery } from './discovery.js';
 
 export class HandlerExecutor {
   private activeExecutions = new Map<string, AbortController>();
   private executionHistory: HandlerExecution[] = [];
-  
+
   constructor(
     private discovery: HandlerDiscovery,
     private services: HandlerServices,
@@ -34,15 +34,12 @@ export class HandlerExecutor {
   /**
    * Execute handlers for a webhook event
    */
-  async executeHandlers(
-    projectId: string,
-    request: WebhookRequest
-  ): Promise<HandlerResult[]> {
+  async executeHandlers(projectId: string, request: WebhookRequest): Promise<HandlerResult[]> {
     const { provider, event } = request;
-    
+
     // Get handlers for this event
     const handlers = this.discovery.getHandlersForEvent(provider, event);
-    
+
     if (handlers.length === 0) {
       this.logger.debug('No handlers found for event', { provider, event });
       return [];
@@ -52,25 +49,25 @@ export class HandlerExecutor {
       projectId,
       provider,
       event,
-      handlerCount: handlers.length
+      handlerCount: handlers.length,
     });
 
     // Enhance payload with parsed data
     const enhancedPayload = await this.enhancePayload(request);
-    
+
     // Execute handlers in parallel
-    const executions = handlers.map(handler => 
+    const executions = handlers.map(handler =>
       this.executeHandler(projectId, handler, enhancedPayload)
     );
-    
+
     const results = await Promise.allSettled(executions);
-    
+
     // Process results
     const handlerResults: HandlerResult[] = [];
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const handler = handlers[i];
-      
+
       if (result.status === 'fulfilled') {
         handlerResults.push(result.value.result);
         this.updateHandlerStats(handler.id, result.value.result);
@@ -78,11 +75,13 @@ export class HandlerExecutor {
         const errorResult: HandlerResult = {
           success: false,
           message: `Handler execution failed: ${result.reason}`,
-          errors: [{
-            code: 'EXECUTION_FAILED',
-            message: result.reason?.message || 'Unknown error',
-            stack: result.reason?.stack
-          }]
+          errors: [
+            {
+              code: 'EXECUTION_FAILED',
+              message: result.reason?.message || 'Unknown error',
+              stack: result.reason?.stack,
+            },
+          ],
         };
         handlerResults.push(errorResult);
         this.updateHandlerStats(handler.id, errorResult);
@@ -103,12 +102,12 @@ export class HandlerExecutor {
     const executionId = generateId();
     const startTime = Date.now();
     const startedAt = getCurrentTimestamp();
-    
+
     this.logger.debug('Starting handler execution', {
       executionId,
       handlerId: handler.id,
       handlerName: handler.metadata?.name,
-      projectId
+      projectId,
     });
 
     // Create abort controller for timeout
@@ -122,7 +121,7 @@ export class HandlerExecutor {
     try {
       // Load handler module
       const handlerModule = await this.loadHandlerModule(handler);
-      
+
       // Create execution context
       const context = await this.createHandlerContext(
         projectId,
@@ -130,67 +129,64 @@ export class HandlerExecutor {
         executionId,
         abortController.signal
       );
-      
+
       // Execute with timeout
       const timeoutPromise = setTimeout(handler.config.timeout, null, {
-        signal: abortController.signal
+        signal: abortController.signal,
       });
-      
+
       const executionPromise = this.executeWithRetries(
         handlerModule.handler,
         payload,
         context,
         handler.config.retries
       );
-      
-      const raceResult = await Promise.race([
-        executionPromise,
-        timeoutPromise
-      ]);
-      
+
+      const raceResult = await Promise.race([executionPromise, timeoutPromise]);
+
       if (raceResult === null) {
         throw new Error(`Handler execution timed out after ${handler.config.timeout}ms`);
       }
-      
+
       result = raceResult as HandlerResult;
-      
+
       // Add timing information
       const endTime = Date.now();
       duration = endTime - startTime;
       completedAt = getCurrentTimestamp();
       result.duration = duration;
-      
+
       this.logger.info('Handler execution completed', {
         executionId,
         handlerId: handler.id,
         success: result.success,
         duration,
-        actionsCount: result.actions?.length || 0
+        actionsCount: result.actions?.length || 0,
       });
-      
     } catch (error) {
       const endTime = Date.now();
       duration = endTime - startTime;
       completedAt = getCurrentTimestamp();
-      
+
       this.logger.error('Handler execution failed', error as Error, {
         executionId,
         handlerId: handler.id,
         projectId,
-        duration
+        duration,
       });
-      
+
       result = {
         success: false,
         message: error instanceof Error ? error.message : 'Unknown error',
         duration,
-        errors: [{
-          code: 'HANDLER_EXECUTION_ERROR',
-          message: error instanceof Error ? error.message : 'Unknown error',
-          stack: error instanceof Error ? error.stack : undefined
-        }]
+        errors: [
+          {
+            code: 'HANDLER_EXECUTION_ERROR',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+          },
+        ],
       };
-      
     } finally {
       // Clean up
       this.activeExecutions.delete(executionId);
@@ -208,11 +204,11 @@ export class HandlerExecutor {
       result,
       startedAt,
       completedAt,
-      duration
+      duration,
     };
-    
+
     this.executionHistory.push(execution);
-    
+
     // Trim history to prevent memory leaks (keep last 1000 executions)
     if (this.executionHistory.length > 1000) {
       this.executionHistory = this.executionHistory.slice(-1000);
@@ -231,39 +227,38 @@ export class HandlerExecutor {
     retries: number
   ): Promise<HandlerResult> {
     let lastError: Error | undefined;
-    
+
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         if (attempt > 0) {
-          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff
+          const delay = Math.min(1000 * 2 ** (attempt - 1), 5000); // Exponential backoff
           await setTimeout(delay);
-          
+
           this.logger.info('Retrying handler execution', {
             attempt,
             maxRetries: retries,
-            delay
+            delay,
           });
         }
-        
+
         const result = await handler(payload, context);
-        
+
         // If successful or explicitly non-retryable, return immediately
         if (result.success || !this.isRetryableError(result)) {
           return result;
         }
-        
+
         lastError = new Error(result.message);
-        
       } catch (error) {
         lastError = error as Error;
-        
+
         // If not retryable, fail immediately
         if (!this.isRetryableError(error)) {
           throw error;
         }
       }
     }
-    
+
     // All retries exhausted
     throw new Error(`Handler failed after ${retries + 1} attempts: ${lastError?.message}`);
   }
@@ -274,31 +269,33 @@ export class HandlerExecutor {
   private isRetryableError(error: unknown): boolean {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
-      
+
       // Network/timeout errors are retryable
-      if (message.includes('timeout') || 
-          message.includes('network') || 
-          message.includes('connection') ||
-          message.includes('econnreset') ||
-          message.includes('enotfound')) {
+      if (
+        message.includes('timeout') ||
+        message.includes('network') ||
+        message.includes('connection') ||
+        message.includes('econnreset') ||
+        message.includes('enotfound')
+      ) {
         return true;
       }
-      
+
       // HTTP 5xx errors are retryable
       if (message.includes('5') && message.includes('error')) {
         return true;
       }
     }
-    
+
     if (typeof error === 'object' && error !== null) {
       const result = error as HandlerResult;
       if (result.errors) {
-        return result.errors.some(e => 
+        return result.errors.some(e =>
           ['TIMEOUT', 'NETWORK_ERROR', 'SERVICE_UNAVAILABLE'].includes(e.code)
         );
       }
     }
-    
+
     return false;
   }
 
@@ -311,7 +308,9 @@ export class HandlerExecutor {
       const module = await import(handler.handlerPath);
       return module.default || module.handler || module;
     } catch (error) {
-      throw new Error(`Failed to load handler module: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to load handler module: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -333,8 +332,8 @@ export class HandlerExecutor {
         handlerPath: handler.handlerPath,
         version: handler.metadata?.version || '1.0.0',
         executionId,
-        timestamp: getCurrentTimestamp()
-      }
+        timestamp: getCurrentTimestamp(),
+      },
     };
   }
 
@@ -354,7 +353,7 @@ export class HandlerExecutor {
       },
       debug: (message: string, meta?: Record<string, unknown>) => {
         this.logger.debug(message, { ...meta, handlerId, executionId });
-      }
+      },
     };
   }
 
@@ -363,13 +362,13 @@ export class HandlerExecutor {
    */
   private async enhancePayload(request: WebhookRequest): Promise<EnhancedWebhookPayload> {
     const { provider, event, payload } = request;
-    
+
     // Parse payload based on provider and event type
     const parsed = await this.parsePayload(provider, event, payload);
-    
+
     return {
       ...payload,
-      parsed
+      parsed,
     };
   }
 
@@ -386,7 +385,7 @@ export class HandlerExecutor {
       author: {
         name: 'Unknown',
         email: undefined,
-        username: undefined
+        username: undefined,
       },
       repository: {
         name: payload.repository?.full_name?.split('/').pop() || 'unknown',
@@ -394,8 +393,8 @@ export class HandlerExecutor {
         owner: payload.repository?.full_name?.split('/')[0] || 'unknown',
         url: payload.repository?.clone_url || '',
         defaultBranch: payload.repository?.default_branch || 'main',
-        isPrivate: false
-      }
+        isPrivate: false,
+      },
     };
 
     // Provider-specific parsing
@@ -439,7 +438,7 @@ export class HandlerExecutor {
             timestamp: commit.timestamp,
             added: commit.added || [],
             modified: commit.modified || [],
-            removed: commit.removed || []
+            removed: commit.removed || [],
           }));
         }
         break;
@@ -456,7 +455,7 @@ export class HandlerExecutor {
             headBranch: payload.pull_request.head.ref,
             url: payload.pull_request.html_url,
             merged: payload.pull_request.merged,
-            mergeable: payload.pull_request.mergeable
+            mergeable: payload.pull_request.mergeable,
           };
         }
         break;
@@ -471,7 +470,7 @@ export class HandlerExecutor {
             state: payload.issue.state,
             labels: payload.issue.labels?.map((l: any) => l.name) || [],
             assignees: payload.issue.assignees?.map((a: any) => a.login) || [],
-            url: payload.issue.html_url
+            url: payload.issue.html_url,
           };
         }
         break;
@@ -513,7 +512,7 @@ export class HandlerExecutor {
             timestamp: commit.timestamp,
             added: commit.added || [],
             modified: commit.modified || [],
-            removed: commit.removed || []
+            removed: commit.removed || [],
           }));
         }
         break;
@@ -530,7 +529,7 @@ export class HandlerExecutor {
             headBranch: payload.merge_request.source_branch,
             url: payload.merge_request.url,
             merged: payload.merge_request.state === 'merged',
-            mergeable: payload.merge_request.merge_status === 'can_be_merged'
+            mergeable: payload.merge_request.merge_status === 'can_be_merged',
           };
         }
         break;
@@ -545,15 +544,15 @@ export class HandlerExecutor {
     if (handler) {
       handler.executionCount++;
       handler.lastExecuted = getCurrentTimestamp();
-      
+
       if (!result.success) {
         handler.errorCount++;
       }
-      
+
       this.discovery.updateHandlerConfig(handlerId, {
         executionCount: handler.executionCount,
         errorCount: handler.errorCount,
-        lastExecuted: handler.lastExecuted
+        lastExecuted: handler.lastExecuted,
       });
     }
   }

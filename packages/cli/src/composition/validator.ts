@@ -1,6 +1,6 @@
-import fs from "fs-extra";
-import { spawn } from "node:child_process";
-import type { ValidationError, ValidationWarning } from "../types.js";
+import { spawn } from 'node:child_process';
+import fs from 'fs-extra';
+import type { ValidationError, ValidationWarning } from '../types.js';
 
 /**
  * SRF and CUE specification validator
@@ -21,7 +21,7 @@ export class SRFValidator {
     };
 
     try {
-      const content = await fs.readFile(filePath, "utf-8");
+      const content = await fs.readFile(filePath, 'utf-8');
 
       // Basic SRF structure validation
       const structureValidation = this.validateSRFStructure(content);
@@ -49,7 +49,7 @@ export class SRFValidator {
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Failed to read SRF file: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to read SRF file: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -73,7 +73,7 @@ export class SRFValidator {
     try {
       // Write spec to temporary file for CUE validation
       const tempFile = `/tmp/arbiter-spec-${Date.now()}.cue`;
-      await fs.writeFile(tempFile, spec, "utf-8");
+      await fs.writeFile(tempFile, spec, 'utf-8');
 
       try {
         // Use CUE CLI to validate the specification
@@ -105,7 +105,7 @@ export class SRFValidator {
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Spec validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Spec validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -129,10 +129,10 @@ export class SRFValidator {
     try {
       // Check for required SRF sections
       const requiredSections = [
-        "## Project Metadata",
-        "## Requirements Analysis",
-        "## Technical Specifications",
-        "## Quality Attributes",
+        '## Project Metadata',
+        '## Requirements Analysis',
+        '## Technical Specifications',
+        '## Quality Attributes',
       ];
 
       for (const section of requiredSections) {
@@ -143,27 +143,27 @@ export class SRFValidator {
       }
 
       // Check for SRF version declaration
-      if (!content.includes("# SRF v1.1") && !content.includes("# SRF v1.0")) {
-        result.warnings.push("SRF version not explicitly declared");
+      if (!content.includes('# SRF v1.1') && !content.includes('# SRF v1.0')) {
+        result.warnings.push('SRF version not explicitly declared');
       }
 
       // Check for proper YAML metadata blocks
       const yamlBlocks = content.match(/```yaml[\\s\\S]*?```/g) || [];
       if (yamlBlocks.length === 0) {
         result.isValid = false;
-        result.errors.push("No YAML metadata blocks found");
+        result.errors.push('No YAML metadata blocks found');
       }
 
       // Validate YAML syntax in each block
       for (let i = 0; i < yamlBlocks.length; i++) {
-        const yamlContent = yamlBlocks[i].replace(/```yaml\\n?|```/g, "");
+        const yamlContent = yamlBlocks[i].replace(/```yaml\\n?|```/g, '');
         try {
           // Basic YAML structure validation
-          const lines = yamlContent.split("\\n");
+          const lines = yamlContent.split('\\n');
           const indentLevel = 0;
 
           for (const line of lines) {
-            if (line.trim() === "") continue;
+            if (line.trim() === '') continue;
 
             const currentIndent = line.length - line.trimStart().length;
             if (currentIndent % 2 !== 0) {
@@ -178,7 +178,7 @@ export class SRFValidator {
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Structure validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Structure validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -204,7 +204,7 @@ export class SRFValidator {
       const yamlMatch = content.match(/```yaml([\\s\\S]*?)```/);
       if (!yamlMatch) {
         result.isValid = false;
-        result.errors.push("No metadata YAML block found");
+        result.errors.push('No metadata YAML block found');
         return result;
       }
 
@@ -212,11 +212,11 @@ export class SRFValidator {
 
       // Check for required metadata fields
       const requiredFields = [
-        "srf.metadata:",
-        "project_name:",
-        "description:",
-        "created_at:",
-        "version:",
+        'srf.metadata:',
+        'project_name:',
+        'description:',
+        'created_at:',
+        'version:',
       ];
 
       for (const field of requiredFields) {
@@ -230,18 +230,18 @@ export class SRFValidator {
       const dateRegex = /\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}/;
       const createdAtMatch = yamlContent.match(/created_at:\\s*"([^"]+)"/);
       if (createdAtMatch && !dateRegex.test(createdAtMatch[1])) {
-        result.warnings.push("created_at should be in ISO 8601 format");
+        result.warnings.push('created_at should be in ISO 8601 format');
       }
 
       // Validate version format
       const versionMatch = yamlContent.match(/version:\\s*"([^"]+)"/);
       if (versionMatch && !/^\\d+\\.\\d+(\\.\\d+)?/.test(versionMatch[1])) {
-        result.warnings.push("version should follow semantic versioning format");
+        result.warnings.push('version should follow semantic versioning format');
       }
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Metadata validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Metadata validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -265,15 +265,15 @@ export class SRFValidator {
     try {
       // Check for empty sections
       const sections = [
-        "## Requirements Analysis",
-        "## Technical Specifications",
-        "## Quality Attributes",
-        "## Integration Points",
+        '## Requirements Analysis',
+        '## Technical Specifications',
+        '## Quality Attributes',
+        '## Integration Points',
       ];
 
       for (const section of sections) {
         const sectionRegex = new RegExp(
-          `${section.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}([\\s\\S]*?)(?=##|$)`,
+          `${section.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}([\\s\\S]*?)(?=##|$)`
         );
         const sectionMatch = content.match(sectionRegex);
 
@@ -287,15 +287,15 @@ export class SRFValidator {
 
       // Validate priority levels (Must/Should/Could/Won't)
       const requirements = content.match(/^\\s*[-*]\\s+(.+)$/gm) || [];
-      const priorityKeywords = ["must", "should", "could", "won't", "will not"];
+      const priorityKeywords = ['must', 'should', 'could', "won't", 'will not'];
 
       for (const req of requirements) {
-        const hasKeyword = priorityKeywords.some((keyword) =>
-          req.toLowerCase().includes(keyword.toLowerCase()),
+        const hasKeyword = priorityKeywords.some(keyword =>
+          req.toLowerCase().includes(keyword.toLowerCase())
         );
         if (!hasKeyword) {
           result.warnings.push(
-            `Requirement may be missing priority level: "${req.slice(0, 50)}..."`,
+            `Requirement may be missing priority level: "${req.slice(0, 50)}..."`
           );
         }
       }
@@ -306,19 +306,19 @@ export class SRFValidator {
         const techContent = techSpecSection[1];
 
         // Look for common technical elements
-        const techElements = ["API", "database", "architecture", "framework", "library", "service"];
-        const foundElements = techElements.filter((element) =>
-          techContent.toLowerCase().includes(element),
+        const techElements = ['API', 'database', 'architecture', 'framework', 'library', 'service'];
+        const foundElements = techElements.filter(element =>
+          techContent.toLowerCase().includes(element)
         );
 
         if (foundElements.length === 0) {
-          result.warnings.push("Technical Specifications section may lack technical details");
+          result.warnings.push('Technical Specifications section may lack technical details');
         }
       }
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Content validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Content validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -333,29 +333,29 @@ export class SRFValidator {
     errors: string[];
     warnings: string[];
   }> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const result = {
         success: true,
         errors: [] as string[],
         warnings: [] as string[],
       };
 
-      const cueProcess = spawn("cue", ["vet", filePath], {
-        stdio: ["pipe", "pipe", "pipe"],
+      const cueProcess = spawn('cue', ['vet', filePath], {
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
-      let stdout = "";
-      let stderr = "";
+      let stdout = '';
+      let stderr = '';
 
-      cueProcess.stdout?.on("data", (data) => {
+      cueProcess.stdout?.on('data', data => {
         stdout += data.toString();
       });
 
-      cueProcess.stderr?.on("data", (data) => {
+      cueProcess.stderr?.on('data', data => {
         stderr += data.toString();
       });
 
-      cueProcess.on("close", (code) => {
+      cueProcess.on('close', code => {
         if (code !== 0) {
           result.success = false;
           if (stderr) {
@@ -369,7 +369,7 @@ export class SRFValidator {
         resolve(result);
       });
 
-      cueProcess.on("error", (error) => {
+      cueProcess.on('error', error => {
         result.success = false;
         result.errors.push(`CUE validation failed: ${error.message}`);
         resolve(result);
@@ -377,9 +377,9 @@ export class SRFValidator {
 
       // Timeout after 10 seconds
       setTimeout(() => {
-        cueProcess.kill("SIGTERM");
+        cueProcess.kill('SIGTERM');
         result.success = false;
-        result.errors.push("CUE validation timed out");
+        result.errors.push('CUE validation timed out');
         resolve(result);
       }, 10000);
     });
@@ -399,7 +399,7 @@ export class SRFValidator {
 
     try {
       // Basic syntax checks
-      const lines = spec.split("\\n");
+      const lines = spec.split('\\n');
       let braceCount = 0;
       let bracketCount = 0;
       let parenCount = 0;
@@ -411,22 +411,22 @@ export class SRFValidator {
         // Count brackets, braces, parens
         for (const char of line) {
           switch (char) {
-            case "{":
+            case '{':
               braceCount++;
               break;
-            case "}":
+            case '}':
               braceCount--;
               break;
-            case "[":
+            case '[':
               bracketCount++;
               break;
-            case "]":
+            case ']':
               bracketCount--;
               break;
-            case "(":
+            case '(':
               parenCount++;
               break;
-            case ")":
+            case ')':
               parenCount--;
               break;
           }
@@ -450,20 +450,20 @@ export class SRFValidator {
       // Check for unclosed brackets/braces/parens
       if (braceCount > 0) {
         result.isValid = false;
-        result.errors.push("Unclosed braces detected");
+        result.errors.push('Unclosed braces detected');
       }
       if (bracketCount > 0) {
         result.isValid = false;
-        result.errors.push("Unclosed brackets detected");
+        result.errors.push('Unclosed brackets detected');
       }
       if (parenCount > 0) {
         result.isValid = false;
-        result.errors.push("Unclosed parentheses detected");
+        result.errors.push('Unclosed parentheses detected');
       }
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Syntax validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Syntax validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -486,18 +486,18 @@ export class SRFValidator {
 
     try {
       // Check for package declaration
-      if (!spec.includes("package ")) {
-        result.warnings.push("No package declaration found");
+      if (!spec.includes('package ')) {
+        result.warnings.push('No package declaration found');
       }
 
       // Check for duplicate field definitions
       const fieldMatches = spec.match(/^\\s*([a-zA-Z_][a-zA-Z0-9_]*):.*$/gm) || [];
-      const fieldNames = fieldMatches.map((match) => match.trim().split(":")[0]);
+      const fieldNames = fieldMatches.map(match => match.trim().split(':')[0]);
       const duplicates = fieldNames.filter((name, index) => fieldNames.indexOf(name) !== index);
 
       if (duplicates.length > 0) {
         result.warnings.push(
-          `Potential duplicate field definitions: ${[...new Set(duplicates)].join(", ")}`,
+          `Potential duplicate field definitions: ${[...new Set(duplicates)].join(', ')}`
         );
       }
 
@@ -505,7 +505,7 @@ export class SRFValidator {
       const references = spec.match(/#[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
       const definitions = spec.match(/#[a-zA-Z_][a-zA-Z0-9_]*\\s*:/g) || [];
 
-      const definedTypes = new Set(definitions.map((def) => def.replace(/\\s*:.*/, "")));
+      const definedTypes = new Set(definitions.map(def => def.replace(/\\s*:.*/, '')));
       const usedTypes = new Set(references);
 
       for (const usedType of usedTypes) {
@@ -516,7 +516,7 @@ export class SRFValidator {
     } catch (error) {
       result.isValid = false;
       result.errors.push(
-        `Semantic validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Semantic validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 

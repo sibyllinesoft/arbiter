@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Plus, 
-  Settings, 
-  Trash2, 
-  Power, 
-  PowerOff, 
+import {
+  Plus,
+  Settings,
+  Trash2,
+  Power,
+  PowerOff,
   Play,
   BarChart3,
   Clock,
@@ -17,23 +17,12 @@ import {
   XCircle,
   AlertTriangle,
   Search,
-  Filter
+  Filter,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { apiService } from '../../services/api';
-import { 
-  Button, 
-  StatusBadge, 
-  Input, 
-  Select, 
-  Card,
-  cn
-} from '../../design-system';
-import type { 
-  WebhookHandler, 
-  WebhookProvider,
-  CreateHandlerRequest
-} from '../../types/api';
+import { Button, StatusBadge, Input, Select, Card, cn } from '../../design-system';
+import type { WebhookHandler, WebhookProvider, CreateHandlerRequest } from '../../types/api';
 import { createLogger } from '../../utils/logger';
 
 const log = createLogger('HandlersList');
@@ -41,11 +30,11 @@ const log = createLogger('HandlersList');
 // Provider icons mapping
 const PROVIDER_ICONS: Record<WebhookProvider, string> = {
   github: '🐙',
-  gitlab: '🦊', 
+  gitlab: '🦊',
   bitbucket: '🪣',
   slack: '💬',
   discord: '💬',
-  custom: '⚙️'
+  custom: '⚙️',
 };
 
 // Provider colors for badges
@@ -55,7 +44,7 @@ const PROVIDER_COLORS: Record<WebhookProvider, string> = {
   bitbucket: 'bg-blue-100 text-blue-800',
   slack: 'bg-purple-100 text-purple-800',
   discord: 'bg-indigo-100 text-indigo-800',
-  custom: 'bg-green-100 text-green-800'
+  custom: 'bg-green-100 text-green-800',
 };
 
 interface HandlersListProps {
@@ -103,10 +92,11 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(handler => 
-        handler.name.toLowerCase().includes(query) ||
-        handler.event_type.toLowerCase().includes(query) ||
-        handler.provider.toLowerCase().includes(query)
+      filtered = filtered.filter(
+        handler =>
+          handler.name.toLowerCase().includes(query) ||
+          handler.event_type.toLowerCase().includes(query) ||
+          handler.provider.toLowerCase().includes(query)
       );
     }
 
@@ -117,7 +107,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
 
     // Apply status filter
     if (filterStatus !== 'all') {
-      filtered = filtered.filter(handler => 
+      filtered = filtered.filter(handler =>
         filterStatus === 'enabled' ? handler.enabled : !handler.enabled
       );
     }
@@ -129,14 +119,10 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
   const handleToggleHandler = useCallback(async (handler: WebhookHandler) => {
     try {
       const updatedHandler = await apiService.toggleHandler(handler.id, !handler.enabled);
-      
-      setHandlers(prev => prev.map(h => 
-        h.id === handler.id ? updatedHandler : h
-      ));
 
-      toast.success(
-        `Handler ${updatedHandler.enabled ? 'enabled' : 'disabled'} successfully`
-      );
+      setHandlers(prev => prev.map(h => (h.id === handler.id ? updatedHandler : h)));
+
+      toast.success(`Handler ${updatedHandler.enabled ? 'enabled' : 'disabled'} successfully`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to toggle handler';
       toast.error(message);
@@ -146,7 +132,11 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
 
   // Delete handler
   const handleDeleteHandler = useCallback(async (handler: WebhookHandler) => {
-    if (!confirm(`Are you sure you want to delete handler "${handler.name}"? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete handler "${handler.name}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -164,14 +154,14 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
   // Test handler execution
   const handleTestHandler = useCallback(async (handler: WebhookHandler) => {
     try {
-      const testPayload = { 
-        test: true, 
+      const testPayload = {
+        test: true,
         timestamp: new Date().toISOString(),
-        source: 'manual-test'
+        source: 'manual-test',
       };
-      
+
       const result = await apiService.testHandler(handler.id, testPayload);
-      
+
       if (result.status === 'success') {
         toast.success(`Handler test completed in ${result.duration_ms}ms`);
       } else {
@@ -187,7 +177,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
   // Format last execution time
   const formatLastExecution = (timestamp: string | undefined) => {
     if (!timestamp) return 'Never';
-    
+
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -237,9 +227,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Webhook Handlers</h1>
-          <p className="text-gray-600 mt-1">
-            Manage webhook handlers for automated processing
-          </p>
+          <p className="text-gray-600 mt-1">Manage webhook handlers for automated processing</p>
         </div>
         <Button onClick={onCreateHandler} leftIcon={<Plus className="h-4 w-4" />}>
           New Handler
@@ -254,15 +242,15 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
             <Input
               placeholder="Search handlers..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               leftIcon={<Search className="h-4 w-4" />}
             />
           </div>
-          
+
           {/* Provider filter */}
           <Select
             value={filterProvider}
-            onChange={(value) => setFilterProvider(value as WebhookProvider | 'all')}
+            onChange={value => setFilterProvider(value as WebhookProvider | 'all')}
             options={[
               { value: 'all', label: 'All Providers' },
               { value: 'github', label: '🐙 GitHub' },
@@ -278,7 +266,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
           {/* Status filter */}
           <Select
             value={filterStatus}
-            onChange={(value) => setFilterStatus(value as 'all' | 'enabled' | 'disabled')}
+            onChange={value => setFilterStatus(value as 'all' | 'enabled' | 'disabled')}
             options={[
               { value: 'all', label: 'All Status' },
               { value: 'enabled', label: 'Enabled' },
@@ -313,53 +301,47 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredHandlers.map((handler) => (
+          {filteredHandlers.map(handler => (
             <Card key={handler.id} className="p-6 hover:shadow-md transition-shadow">
               {/* Handler Header */}
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-start gap-3">
-                  <div className="text-2xl">
-                    {PROVIDER_ICONS[handler.provider]}
-                  </div>
+                  <div className="text-2xl">{PROVIDER_ICONS[handler.provider]}</div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">
-                      {handler.name}
-                    </h3>
+                    <h3 className="font-semibold text-gray-900 mb-1">{handler.name}</h3>
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={cn(
-                        'px-2 py-1 text-xs font-medium rounded-full',
-                        PROVIDER_COLORS[handler.provider]
-                      )}>
+                      <span
+                        className={cn(
+                          'px-2 py-1 text-xs font-medium rounded-full',
+                          PROVIDER_COLORS[handler.provider]
+                        )}
+                      >
                         {handler.provider}
                       </span>
-                      <StatusBadge
-                        variant={handler.enabled ? 'success' : 'error'}
-                        size="sm"
-                      >
+                      <StatusBadge variant={handler.enabled ? 'success' : 'error'} size="sm">
                         {handler.enabled ? 'Enabled' : 'Disabled'}
                       </StatusBadge>
                     </div>
-                    <p className="text-sm text-gray-600">
-                      {handler.event_type}
-                    </p>
+                    <p className="text-sm text-gray-600">{handler.event_type}</p>
                   </div>
                 </div>
-                
+
                 {/* Toggle switch */}
                 <button
                   onClick={() => handleToggleHandler(handler)}
                   className={cn(
                     'p-2 rounded-lg transition-colors',
-                    handler.enabled 
-                      ? 'text-green-600 hover:bg-green-50' 
+                    handler.enabled
+                      ? 'text-green-600 hover:bg-green-50'
                       : 'text-gray-400 hover:bg-gray-50'
                   )}
                   title={handler.enabled ? 'Disable handler' : 'Enable handler'}
                 >
-                  {handler.enabled ? 
-                    <Power className="h-4 w-4" /> : 
+                  {handler.enabled ? (
+                    <Power className="h-4 w-4" />
+                  ) : (
                     <PowerOff className="h-4 w-4" />
-                  }
+                  )}
                 </button>
               </div>
 
@@ -397,7 +379,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
                 >
                   Edit
                 </Button>
-                
+
                 <Button
                   onClick={() => onViewStats(handler)}
                   variant="secondary"

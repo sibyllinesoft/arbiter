@@ -7,10 +7,34 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import {
-  Save, Download, Play, Pause, Settings, Search, Bell, User,
-  GitBranch, Database, Shield, Globe, Code, FileText, Terminal,
-  Activity, Clock, CheckCircle, AlertTriangle, XCircle,
-  Folder, Eye, Edit, Trash2, Plus, ArrowRight, Home, Monitor
+  Save,
+  Download,
+  Play,
+  Pause,
+  Settings,
+  Search,
+  Bell,
+  User,
+  GitBranch,
+  Database,
+  Shield,
+  Globe,
+  Code,
+  FileText,
+  Terminal,
+  Activity,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Folder,
+  Eye,
+  Edit,
+  Trash2,
+  Plus,
+  ArrowRight,
+  Home,
+  Monitor,
 } from 'lucide-react';
 
 // Import components
@@ -27,7 +51,7 @@ import TopBar from './Layout/TopBar';
 import SplitPane from './Layout/SplitPane';
 import ProjectBrowser from './Layout/ProjectBrowser';
 
-// Import editor components  
+// Import editor components
 import FileTree from './Editor/FileTree';
 import MonacoEditor from './Editor/MonacoEditor';
 import EditorPane from './Editor/EditorPane';
@@ -83,7 +107,7 @@ export const CompleteInterface: Story = {
     return (
       <div className="h-screen bg-gray-50 flex flex-col">
         {/* Top Navigation */}
-        <TopBar 
+        <TopBar
           projectName={storybookData.projects[0].name}
           user={storybookData.users.currentUser}
           onSave={() => console.log('Save clicked')}
@@ -95,7 +119,9 @@ export const CompleteInterface: Story = {
         {/* Main Content Area */}
         <div className="flex-1 flex">
           {/* Left Sidebar */}
-          <div className={`${sidebarExpanded ? 'w-80' : 'w-12'} transition-all duration-200 bg-white border-r border-gray-200`}>
+          <div
+            className={`${sidebarExpanded ? 'w-80' : 'w-12'} transition-all duration-200 bg-white border-r border-gray-200`}
+          >
             <div className="h-full flex flex-col">
               {sidebarExpanded && (
                 <>
@@ -103,7 +129,9 @@ export const CompleteInterface: Story = {
                   <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="font-semibold text-gray-900">{storybookData.projects[0].name}</h2>
+                        <h2 className="font-semibold text-gray-900">
+                          {storybookData.projects[0].name}
+                        </h2>
                         <p className="text-sm text-gray-600">Specification Workbench</p>
                       </div>
                       <StatusBadge variant="success" size="xs" showDot>
@@ -115,20 +143,20 @@ export const CompleteInterface: Story = {
                   {/* Navigation Tabs */}
                   <div className="px-4 py-2 border-b border-gray-200">
                     <div className="flex space-x-1">
-                      <button 
+                      <button
                         className={`px-3 py-2 text-sm rounded-md ${
-                          activeTab === 'files' 
-                            ? 'bg-blue-100 text-blue-700' 
+                          activeTab === 'files'
+                            ? 'bg-blue-100 text-blue-700'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                         onClick={() => setActiveTab('files')}
                       >
                         Files
                       </button>
-                      <button 
+                      <button
                         className={`px-3 py-2 text-sm rounded-md ${
-                          activeTab === 'projects' 
-                            ? 'bg-blue-100 text-blue-700' 
+                          activeTab === 'projects'
+                            ? 'bg-blue-100 text-blue-700'
                             : 'text-gray-600 hover:text-gray-900'
                         }`}
                         onClick={() => setActiveTab('projects')}
@@ -146,7 +174,7 @@ export const CompleteInterface: Story = {
                           fragments={storybookData.fragments}
                           activeFragmentId={storybookData.fragments[0]?.id}
                           unsavedChanges={new Set([storybookData.fragments[0]?.id])}
-                          onFileSelect={(fragmentId) => {
+                          onFileSelect={fragmentId => {
                             const fragment = storybookData.fragments.find(f => f.id === fragmentId);
                             if (fragment) {
                               setActiveFile(fragment.path);
@@ -158,7 +186,7 @@ export const CompleteInterface: Story = {
 
                     {activeTab === 'projects' && (
                       <div className="p-4 space-y-3">
-                        {storybookData.projects.map((project) => (
+                        {storybookData.projects.map(project => (
                           <Card
                             key={project.id}
                             variant="interactive"
@@ -171,7 +199,9 @@ export const CompleteInterface: Story = {
                                   <Code className="h-4 w-4 text-blue-600" />
                                 </div>
                                 <div>
-                                  <div className="font-medium text-gray-900 text-sm">{project.name}</div>
+                                  <div className="font-medium text-gray-900 text-sm">
+                                    {project.name}
+                                  </div>
                                   <div className="text-xs text-gray-600">
                                     Updated {new Date(project.updated_at).toLocaleDateString()}
                                   </div>
@@ -210,9 +240,7 @@ export const CompleteInterface: Story = {
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-md">
                   <FileText className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-900">
-                    {activeFile}
-                  </span>
+                  <span className="text-sm font-medium text-gray-900">{activeFile}</span>
                   <div className="w-2 h-2 bg-orange-400 rounded-full" title="Unsaved changes" />
                 </div>
                 <Button variant="ghost" size="sm">
@@ -234,7 +262,7 @@ export const CompleteInterface: Story = {
                   folding: true,
                   wordWrap: 'on',
                 }}
-                onChange={(value) => console.log('Editor changed:', value?.substring(0, 50))}
+                onChange={value => console.log('Editor changed:', value?.substring(0, 50))}
               />
             </div>
           </div>
@@ -256,14 +284,14 @@ export const CompleteInterface: Story = {
                       Passed
                     </StatusBadge>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Validation</span>
                     <StatusBadge variant="warning" size="xs" icon={<AlertTriangle />}>
                       2 Issues
                     </StatusBadge>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Test Coverage</span>
                     <StatusBadge variant="success" size="xs">
@@ -283,12 +311,8 @@ export const CompleteInterface: Story = {
                         <div className="flex items-start gap-2">
                           <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-red-900">
-                              {error.type} Error
-                            </p>
-                            <p className="text-sm text-red-700 mt-1">
-                              {error.message}
-                            </p>
+                            <p className="text-sm font-medium text-red-900">{error.type} Error</p>
+                            <p className="text-sm text-red-700 mt-1">{error.message}</p>
                             {error.location && (
                               <p className="text-xs text-red-600 mt-1 font-mono">
                                 {error.location}
@@ -300,16 +324,17 @@ export const CompleteInterface: Story = {
                     ))}
 
                     {storybookData.validation.warnings.map((warning, index) => (
-                      <div key={index} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div
+                        key={index}
+                        className="p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                      >
                         <div className="flex items-start gap-2">
                           <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
                           <div className="flex-1">
                             <p className="text-sm font-medium text-amber-900">
                               {warning.type} Warning
                             </p>
-                            <p className="text-sm text-amber-700 mt-1">
-                              {warning.message}
-                            </p>
+                            <p className="text-sm text-amber-700 mt-1">{warning.message}</p>
                             {warning.location && (
                               <p className="text-xs text-amber-600 mt-1 font-mono">
                                 {warning.location}
@@ -348,10 +373,10 @@ export const CompleteInterface: Story = {
               <span>•</span>
               <span>YAML</span>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                {storybookData.users.teamMembers.slice(0, 3).map((user) => (
+                {storybookData.users.teamMembers.slice(0, 3).map(user => (
                   <div key={user.id} className="flex items-center gap-1">
                     <img
                       src={user.avatar}
@@ -362,7 +387,7 @@ export const CompleteInterface: Story = {
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                 <span>Connected</span>
@@ -415,7 +440,7 @@ export const DashboardView: Story = {
   render: () => (
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <TopBar 
+      <TopBar
         projectName="Dashboard"
         user={storybookData.users.currentUser}
         onSave={() => {}}
@@ -430,15 +455,15 @@ export const DashboardView: Story = {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Projects Dashboard</h1>
-            <p className="text-gray-600 mt-1">Manage your specification projects and monitor system health</p>
+            <p className="text-gray-600 mt-1">
+              Manage your specification projects and monitor system health
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="secondary" leftIcon={<Plus />}>
               New Project
             </Button>
-            <Button leftIcon={<Settings />}>
-              Settings
-            </Button>
+            <Button leftIcon={<Settings />}>Settings</Button>
           </div>
         </div>
 
@@ -447,7 +472,9 @@ export const DashboardView: Story = {
           <Card variant="elevated">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-gray-900">{storybookData.projects.length}</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {storybookData.projects.length}
+                </div>
                 <div className="text-sm text-gray-600">Active Projects</div>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -483,7 +510,9 @@ export const DashboardView: Story = {
           <Card variant="elevated">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-2xl font-bold text-gray-900">{storybookData.users.teamMembers.length + 1}</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {storybookData.users.teamMembers.length + 1}
+                </div>
                 <div className="text-sm text-gray-600">Team Members</div>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -504,16 +533,28 @@ export const DashboardView: Story = {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 ${
-                      index === 0 ? 'bg-blue-100' : 
-                      index === 1 ? 'bg-green-100' : 
-                      index === 2 ? 'bg-purple-100' : 'bg-amber-100'
-                    } rounded-lg flex items-center justify-center`}>
-                      <Code className={`h-5 w-5 ${
-                        index === 0 ? 'text-blue-600' : 
-                        index === 1 ? 'text-green-600' : 
-                        index === 2 ? 'text-purple-600' : 'text-amber-600'
-                      }`} />
+                    <div
+                      className={`w-10 h-10 ${
+                        index === 0
+                          ? 'bg-blue-100'
+                          : index === 1
+                            ? 'bg-green-100'
+                            : index === 2
+                              ? 'bg-purple-100'
+                              : 'bg-amber-100'
+                      } rounded-lg flex items-center justify-center`}
+                    >
+                      <Code
+                        className={`h-5 w-5 ${
+                          index === 0
+                            ? 'text-blue-600'
+                            : index === 1
+                              ? 'text-green-600'
+                              : index === 2
+                                ? 'text-purple-600'
+                                : 'text-amber-600'
+                        }`}
+                      />
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900">{project.name}</h3>
@@ -523,10 +564,24 @@ export const DashboardView: Story = {
                     </div>
                   </div>
                   <StatusBadge
-                    variant={index === 0 ? 'success' : index === 1 ? 'pending' : index === 2 ? 'warning' : 'active'}
+                    variant={
+                      index === 0
+                        ? 'success'
+                        : index === 1
+                          ? 'pending'
+                          : index === 2
+                            ? 'warning'
+                            : 'active'
+                    }
                     size="xs"
                   >
-                    {index === 0 ? 'Active' : index === 1 ? 'Building' : index === 2 ? 'Issues' : 'Ready'}
+                    {index === 0
+                      ? 'Active'
+                      : index === 1
+                        ? 'Building'
+                        : index === 2
+                          ? 'Issues'
+                          : 'Ready'}
                   </StatusBadge>
                 </div>
 
@@ -537,12 +592,14 @@ export const DashboardView: Story = {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Coverage:</span>
-                    <span className="font-medium text-gray-900">{Math.round(85 + Math.random() * 15)}%</span>
+                    <span className="font-medium text-gray-900">
+                      {Math.round(85 + Math.random() * 15)}%
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Contributors:</span>
                     <div className="flex -space-x-1">
-                      {storybookData.users.teamMembers.slice(0, 3).map((user) => (
+                      {storybookData.users.teamMembers.slice(0, 3).map(user => (
                         <img
                           key={user.id}
                           src={user.avatar}
@@ -560,7 +617,7 @@ export const DashboardView: Story = {
                     View
                   </Button>
                   <Button size="sm" variant="ghost" leftIcon={<Edit />}>
-                    Edit  
+                    Edit
                   </Button>
                   <Button size="sm" variant="ghost" leftIcon={<Download />}>
                     Export

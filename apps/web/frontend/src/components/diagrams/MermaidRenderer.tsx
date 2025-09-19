@@ -122,14 +122,10 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
 
   return (
     <div className={className}>
-      {title && (
-        <h4 className="text-sm font-semibold text-gray-700 mb-4 text-center">
-          {title}
-        </h4>
-      )}
+      {title && <h4 className="text-sm font-semibold text-gray-700 mb-4 text-center">{title}</h4>}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div 
-          ref={containerRef} 
+        <div
+          ref={containerRef}
           className="mermaid-container flex items-center justify-center min-h-[200px]"
         />
       </div>

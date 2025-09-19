@@ -6,10 +6,22 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import { 
-  Code, Database, Settings, Terminal, FileText, 
-  GitBranch, Play, Bug, Activity, Globe, 
-  Users, Shield, Zap, AlertTriangle, CheckCircle
+import {
+  Code,
+  Database,
+  Settings,
+  Terminal,
+  FileText,
+  GitBranch,
+  Play,
+  Bug,
+  Activity,
+  Globe,
+  Users,
+  Shield,
+  Zap,
+  AlertTriangle,
+  CheckCircle,
 } from 'lucide-react';
 import Tabs from './Tabs';
 import Button from './Button';
@@ -22,7 +34,8 @@ const meta = {
     layout: 'padded',
     docs: {
       description: {
-        component: 'Professional tabs component with comprehensive features including scrollable tabs, closable tabs, loading states, and keyboard navigation. Designed for developer tools with sophisticated graphite theme.',
+        component:
+          'Professional tabs component with comprehensive features including scrollable tabs, closable tabs, loading states, and keyboard navigation. Designed for developer tools with sophisticated graphite theme.',
       },
     },
   },
@@ -72,8 +85,8 @@ const OverviewContent = () => (
         </div>
       </div>
       <p className="text-graphite-600">
-        This project contains the main application code with TypeScript, React components, 
-        and comprehensive test coverage.
+        This project contains the main application code with TypeScript, React components, and
+        comprehensive test coverage.
       </p>
     </div>
   </div>
@@ -87,14 +100,14 @@ const CodeContent = () => (
       <div className="text-white">
         <span className="text-purple-400">export</span>{' '}
         <span className="text-blue-400">interface</span>{' '}
-        <span className="text-yellow-400">TabItem</span>{' '}
-        <span className="text-white">{'{'}</span>
+        <span className="text-yellow-400">TabItem</span> <span className="text-white">{'{'}</span>
       </div>
       <div className="text-white ml-4">
         <span className="text-cyan-400">id</span>: <span className="text-green-400">string</span>;
       </div>
       <div className="text-white ml-4">
-        <span className="text-cyan-400">label</span>: <span className="text-green-400">string</span>;
+        <span className="text-cyan-400">label</span>: <span className="text-green-400">string</span>
+        ;
       </div>
       <div className="text-white">{'}'}</div>
     </div>
@@ -173,17 +186,17 @@ export const Variants: Story = {
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Underline</h4>
           <Tabs variant="underline" items={items} />
         </div>
-        
+
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Pills</h4>
           <Tabs variant="pills" items={items} />
         </div>
-        
+
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Bordered</h4>
           <Tabs variant="bordered" items={items} />
         </div>
-        
+
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Buttons</h4>
           <Tabs variant="buttons" items={items} />
@@ -194,7 +207,8 @@ export const Variants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different visual variants of tabs: underline (default), pills, bordered, and buttons.',
+        story:
+          'Different visual variants of tabs: underline (default), pills, bordered, and buttons.',
       },
     },
   },
@@ -204,24 +218,24 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => {
     const items = [
-      { 
-        id: 'tab1', 
-        label: 'Small', 
+      {
+        id: 'tab1',
+        label: 'Small',
         icon: <Code />,
-        content: <div className="p-4">Small tab content</div> 
+        content: <div className="p-4">Small tab content</div>,
       },
-      { 
-        id: 'tab2', 
-        label: 'Medium', 
+      {
+        id: 'tab2',
+        label: 'Medium',
         icon: <Database />,
         badge: '5',
-        content: <div className="p-4">Medium tab content</div> 
+        content: <div className="p-4">Medium tab content</div>,
       },
-      { 
-        id: 'tab3', 
-        label: 'Large', 
+      {
+        id: 'tab3',
+        label: 'Large',
         icon: <Settings />,
-        content: <div className="p-4">Large tab content</div> 
+        content: <div className="p-4">Large tab content</div>,
       },
     ];
 
@@ -231,12 +245,12 @@ export const Sizes: Story = {
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Small</h4>
           <Tabs size="sm" items={items} />
         </div>
-        
+
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Medium</h4>
           <Tabs size="md" items={items} />
         </div>
-        
+
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Large</h4>
           <Tabs size="lg" items={items} />
@@ -387,11 +401,7 @@ export const ClosableTabs: Story = {
             New File
           </Button>
         </div>
-        <Tabs 
-          items={tabs} 
-          variant="bordered" 
-          onTabClose={handleTabClose}
-        />
+        <Tabs items={tabs} variant="bordered" onTabClose={handleTabClose} />
         {tabs.length === 0 && (
           <div className="text-center py-8 text-graphite-500">
             No files open. Click "New File" to create a tab.
@@ -429,21 +439,12 @@ export const ScrollableTabs: Story = {
       <div className="space-y-6">
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Scrollable with Buttons</h4>
-          <Tabs 
-            items={tabs} 
-            variant="bordered"
-            scrollable
-            showScrollButtons
-          />
+          <Tabs items={tabs} variant="bordered" scrollable showScrollButtons />
         </div>
-        
+
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Scrollable without Buttons</h4>
-          <Tabs 
-            items={tabs} 
-            variant="pills"
-            scrollable
-          />
+          <Tabs items={tabs} variant="pills" scrollable />
         </div>
       </div>
     );
@@ -478,10 +479,22 @@ export const DeveloperToolExamples: Story = {
             </div>
             <div className="bg-graphite-900 rounded-lg p-4 text-sm font-mono text-white">
               <div className="text-green-400">// Main application entry point</div>
-              <div><span className="text-purple-400">import</span> {'{ App }'} <span className="text-purple-400">from</span> <span className="text-yellow-300">'./App'</span>;</div>
-              <div><span className="text-purple-400">import</span> <span className="text-yellow-300">'./main.css'</span>;</div>
+              <div>
+                <span className="text-purple-400">import</span> {'{ App }'}{' '}
+                <span className="text-purple-400">from</span>{' '}
+                <span className="text-yellow-300">'./App'</span>;
+              </div>
+              <div>
+                <span className="text-purple-400">import</span>{' '}
+                <span className="text-yellow-300">'./main.css'</span>;
+              </div>
               <br />
-              <div><span className="text-blue-400">const</span> <span className="text-cyan-400">app</span> = <span className="text-purple-400">new</span> <span className="text-yellow-400">App</span>();</div>
+              <div>
+                <span className="text-blue-400">const</span>{' '}
+                <span className="text-cyan-400">app</span> ={' '}
+                <span className="text-purple-400">new</span>{' '}
+                <span className="text-yellow-400">App</span>();
+              </div>
             </div>
           </div>
         ),
@@ -500,7 +513,9 @@ export const DeveloperToolExamples: Story = {
                 Unsaved Changes
               </StatusBadge>
             </div>
-            <p className="text-graphite-600">Main React application component with routing and global state management.</p>
+            <p className="text-graphite-600">
+              Main React application component with routing and global state management.
+            </p>
           </div>
         ),
       },
@@ -610,14 +625,23 @@ export const DeveloperToolExamples: Story = {
                 { name: 'Marcus Johnson', role: 'Backend Engineer', status: 'away' },
                 { name: 'Emily Rodriguez', role: 'DevOps Engineer', status: 'offline' },
               ].map((member, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-white border border-graphite-200 rounded-lg">
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 bg-white border border-graphite-200 rounded-lg"
+                >
                   <div>
                     <div className="font-medium text-graphite-900">{member.name}</div>
                     <div className="text-sm text-graphite-600">{member.role}</div>
                   </div>
-                  <StatusBadge 
-                    variant={member.status === 'online' ? 'active' : member.status === 'away' ? 'pending' : 'inactive'} 
-                    size="xs" 
+                  <StatusBadge
+                    variant={
+                      member.status === 'online'
+                        ? 'active'
+                        : member.status === 'away'
+                          ? 'pending'
+                          : 'inactive'
+                    }
+                    size="xs"
                     showDot
                     pulse={member.status === 'online'}
                   >
@@ -673,22 +697,22 @@ export const DeveloperToolExamples: Story = {
         <div className="border-b border-graphite-200 pb-4">
           <h3 className="text-lg font-semibold text-graphite-800 mb-4">Developer Tool Examples</h3>
           <div className="flex gap-2">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant={activeSection === 'ide' ? 'primary' : 'secondary'}
               onClick={() => setActiveSection('ide')}
             >
               IDE Editor
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant={activeSection === 'deployment' ? 'primary' : 'secondary'}
               onClick={() => setActiveSection('deployment')}
             >
               Deployment
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant={activeSection === 'team' ? 'primary' : 'secondary'}
               onClick={() => setActiveSection('team')}
             >
@@ -701,12 +725,7 @@ export const DeveloperToolExamples: Story = {
         {activeSection === 'ide' && (
           <div>
             <h4 className="text-sm font-medium text-graphite-700 mb-4">Code Editor - File Tabs</h4>
-            <Tabs 
-              items={ideEditorTabs} 
-              variant="bordered" 
-              scrollable
-              showScrollButtons
-            />
+            <Tabs items={ideEditorTabs} variant="bordered" scrollable showScrollButtons />
           </div>
         )}
 
@@ -714,10 +733,7 @@ export const DeveloperToolExamples: Story = {
         {activeSection === 'deployment' && (
           <div>
             <h4 className="text-sm font-medium text-graphite-700 mb-4">Deployment Dashboard</h4>
-            <Tabs 
-              items={deploymentTabs} 
-              variant="underline"
-            />
+            <Tabs items={deploymentTabs} variant="underline" />
           </div>
         )}
 
@@ -725,10 +741,7 @@ export const DeveloperToolExamples: Story = {
         {activeSection === 'team' && (
           <div>
             <h4 className="text-sm font-medium text-graphite-700 mb-4">Team Management Console</h4>
-            <Tabs 
-              items={teamTabs} 
-              variant="pills"
-            />
+            <Tabs items={teamTabs} variant="pills" />
           </div>
         )}
       </div>
@@ -737,7 +750,8 @@ export const DeveloperToolExamples: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Real-world examples of tabs in developer tools: IDE file tabs, deployment dashboards, and team management interfaces.',
+        story:
+          'Real-world examples of tabs in developer tools: IDE file tabs, deployment dashboards, and team management interfaces.',
       },
     },
   },
@@ -777,7 +791,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with all tabs props. Use the controls panel below to test different combinations.',
+        story:
+          'Interactive playground to experiment with all tabs props. Use the controls panel below to test different combinations.',
       },
     },
   },

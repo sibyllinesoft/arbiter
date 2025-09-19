@@ -1,91 +1,43 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Ensure the script aborts on errors, unset variables, or failed pipelines
+set -euo pipefail
 
-# Local CI validation script that mirrors GitHub Actions exactly
-# Run this before pushing to ensure all CI checks will pass
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${ROOT_DIR}"
 
-set -e  # Exit on any error
+TOTAL_STEPS=6
+STEP=1
 
-echo "🔍 Starting local CI validation..."
-echo "================================="
+print_header() {
+  printf '\n========================================\n'
+  printf '%s\n' "$1"
+  printf '========================================\n'
+}
 
-# Color codes for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+run_step() {
+  local title=$1
+  shift
+  local cmd=("$@")
 
-# Step 1: Type checking
-echo -e "${BLUE}📋 Step 1: Type checking${NC}"
-if bun run typecheck; then
-    echo -e "${GREEN}✅ Type checking passed${NC}"
-else
-    echo -e "${RED}❌ Type checking failed${NC}"
-    exit 1
-fi
-echo ""
+  printf '\n[%d/%d] %s\n' "${STEP}" "${TOTAL_STEPS}" "${title}"
+  printf '----------------------------------------\n'
+  if "${cmd[@]}"; then
+    printf '✅ %s\n' "${title}"
+  else
+    local status=$?
+    printf '❌ %s (exit code %d)\n' "${title}" "${status}"
+    exit "${status}"
+  fi
+  STEP=$((STEP + 1))
+}
 
-# Step 2: Linting (non-test files only)
-echo -e "${BLUE}🔍 Step 2: Linting (non-test files)${NC}"
-if bunx @biomejs/biome lint src/server.ts src/db.ts src/specEngine.ts src/utils.ts src/nats.ts src/events.ts src/types.ts src/ir.ts; then
-    echo -e "${GREEN}✅ Linting passed${NC}"
-else
-    echo -e "${RED}❌ Linting failed${NC}"
-    echo -e "${YELLOW}💡 Hint: Run 'bun run lint:fix' to auto-fix many issues${NC}"
-    exit 1
-fi
-echo ""
+print_header "Arbiter Local CI"
 
-# Step 3: Format checking
-echo -e "${BLUE}📝 Step 3: Format checking${NC}"
-if bun run format:check; then
-    echo -e "${GREEN}✅ Format checking passed${NC}"
-else
-    echo -e "${RED}❌ Format checking failed${NC}"
-    echo -e "${YELLOW}💡 Hint: Run 'bun run format' to fix formatting${NC}"
-    exit 1
-fi
-echo ""
+run_step "Install dependencies" bun install --frozen-lockfile
+run_step "Check formatting & linting" bun run check:ci
+run_step "Type check (TS project references)" bun run typecheck
+run_step "Run unit and integration tests" bun run test
+run_step "Build workspaces" bun run build
+run_step "Audit dependencies" bun audit
 
-# Step 4: Build check
-echo -e "${BLUE}🏗️  Step 4: Build check${NC}"
-if bun run build; then
-    echo -e "${GREEN}✅ Build check passed${NC}"
-else
-    echo -e "${RED}❌ Build check failed${NC}"
-    exit 1
-fi
-echo ""
-
-# Step 5: Tests (commented out due to broken tests)
-echo -e "${BLUE}🧪 Step 5: Tests${NC}"
-echo -e "${YELLOW}⚠️  Tests currently have issues - skipping for now${NC}"
-echo -e "${YELLOW}    Fix tests separately before enabling in CI${NC}"
-# if bun test --bail; then
-#     echo -e "${GREEN}✅ Tests passed${NC}"
-# else
-#     echo -e "${RED}❌ Tests failed${NC}"
-#     exit 1
-# fi
-echo ""
-
-# Step 6: Security audit
-echo -e "${BLUE}🔒 Step 6: Security audit${NC}"
-if bun audit; then
-    echo -e "${GREEN}✅ Security audit passed${NC}"
-else
-    echo -e "${YELLOW}⚠️  Security audit found issues (not blocking)${NC}"
-fi
-echo ""
-
-echo -e "${GREEN}🎉 All local CI checks passed!${NC}"
-echo -e "${GREEN}Ready to push to GitHub 🚀${NC}"
-echo ""
-echo "================================="
-echo "Summary of checks performed:"
-echo "✅ Type checking (TypeScript)"
-echo "✅ Linting (Biome - non-test files)"
-echo "✅ Format checking (Biome)"
-echo "✅ Build check (Bun)"
-echo "⚠️  Tests (skipped - needs fixing)"
-echo "✅ Security audit (Bun)"
+printf '\nAll checks passed ✅\n'

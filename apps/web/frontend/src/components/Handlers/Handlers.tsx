@@ -73,10 +73,7 @@ export function Handlers() {
         )}
 
         {currentView === 'stats' && selectedHandler && (
-          <HandlerStats
-            handler={selectedHandler}
-            onClose={handleBackToList}
-          />
+          <HandlerStats handler={selectedHandler} onClose={handleBackToList} />
         )}
       </div>
     </HandlersErrorBoundary>

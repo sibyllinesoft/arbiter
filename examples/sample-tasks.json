@@ -15,7 +15,7 @@
   {
     "name": "Implement Sharded Storage",
     "description": "Create sharded CUE file storage architecture for better organization",
-    "type": "feature", 
+    "type": "feature",
     "priority": "high",
     "order": 1,
     "dependsOn": ["design-epic-and-task-schema"],
@@ -30,7 +30,7 @@
     "name": "Add CLI Commands",
     "description": "Implement CLI commands for epic and task management",
     "type": "feature",
-    "priority": "medium", 
+    "priority": "medium",
     "order": 2,
     "dependsOn": ["implement-sharded-storage"],
     "assignee": "frontend-dev",
@@ -72,7 +72,7 @@
     ]
   },
   {
-    "name": "Performance Optimization", 
+    "name": "Performance Optimization",
     "description": "Optimize sharded storage performance and memory usage",
     "type": "refactor",
     "priority": "low",

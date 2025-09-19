@@ -7,7 +7,9 @@
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   background: #ffffff;
@@ -38,7 +40,8 @@ html, body, #root {
   min-height: 0;
 }
 
-.left-pane, .right-pane {
+.left-pane,
+.right-pane {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -198,8 +201,12 @@ html, body, #root {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Error states */
@@ -228,7 +235,7 @@ html, body, #root {
   .main-content {
     flex-direction: column;
   }
-  
+
   .left-pane {
     border-right: none;
     border-bottom: 1px solid #e9ecef;

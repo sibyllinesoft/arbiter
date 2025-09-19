@@ -24,7 +24,9 @@ vi.mock('../hooks/useWebSocket', () => ({
 // Mock all the layout components
 vi.mock('../components/Layout/TopBar', () => ({
   default: ({ className }: { className?: string }) => (
-    <div data-testid="top-bar" className={className}>TopBar</div>
+    <div data-testid="top-bar" className={className}>
+      TopBar
+    </div>
   ),
 }));
 
@@ -38,11 +40,7 @@ vi.mock('../components/Layout/SplitPane', () => ({
 
 vi.mock('../components/Layout/Tabs', () => ({
   default: ({ activeTab, onTabChange, tabs, className }: any) => (
-    <div 
-      data-testid="tabs" 
-      data-active-tab={activeTab}
-      className={className}
-    >
+    <div data-testid="tabs" data-active-tab={activeTab} className={className}>
       {tabs.map((tab: any) => (
         <button
           key={tab.id}
@@ -130,7 +128,7 @@ describe('App', () => {
 
       const splitPane = screen.getByTestId('split-pane');
       const props = JSON.parse(splitPane.getAttribute('data-props') || '{}');
-      
+
       expect(props).toEqual({
         defaultSize: '40%',
         minSize: '300px',
@@ -144,7 +142,7 @@ describe('App', () => {
 
       const toastContainer = screen.getByTestId('toast-container');
       const props = JSON.parse(toastContainer.getAttribute('data-props') || '{}');
-      
+
       expect(props).toEqual({
         position: 'top-right',
         autoClose: 3000,
@@ -188,7 +186,7 @@ describe('App', () => {
 
       // Re-render should not trigger another load
       render(<App />);
-      
+
       // Should not be called again
       expect(mockGetProjects).not.toHaveBeenCalled();
     });
@@ -196,17 +194,14 @@ describe('App', () => {
     it('should handle API error gracefully', async () => {
       const mockGetProjects = vi.mocked(apiService.getProjects);
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       const error = new Error('API Error');
       mockGetProjects.mockRejectedValueOnce(error);
 
       render(<App />);
 
       await waitFor(() => {
-        expect(consoleSpy).toHaveBeenCalledWith(
-          'Failed to load initial project:',
-          error
-        );
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to load initial project:', error);
       });
 
       consoleSpy.mockRestore();
@@ -290,7 +285,7 @@ describe('App', () => {
   describe('WebSocket integration', () => {
     it('should initialize WebSocket with correct options', () => {
       const { useWebSocket } = require('../hooks/useWebSocket');
-      
+
       render(<App />);
 
       expect(useWebSocket).toHaveBeenCalledWith(null, {
@@ -319,7 +314,7 @@ describe('App', () => {
 describe('DiagramPlaceholder', () => {
   // We can't directly test the internal DiagramPlaceholder component
   // as it's not exported, but we can test its behavior through the main App
-  
+
   it('should display correct placeholder text for different diagram types', () => {
     render(<App />);
 
@@ -337,7 +332,7 @@ describe('DiagramPlaceholder', () => {
 describe('ErrorBoundary', () => {
   // Mock console.error to avoid noise in test output
   const originalError = console.error;
-  
+
   beforeEach(() => {
     console.error = vi.fn();
   });
@@ -388,9 +383,7 @@ describe('ErrorBoundary', () => {
         return (
           <div className="error-boundary">
             <h2>Something went wrong</h2>
-            <p className="text-gray-600 mb-4">
-              The application encountered an unexpected error.
-            </p>
+            <p className="text-gray-600 mb-4">The application encountered an unexpected error.</p>
             <details className="text-left">
               <summary className="cursor-pointer text-blue-600 hover:text-blue-700">
                 Error Details
@@ -432,7 +425,7 @@ describe('ErrorBoundary', () => {
 
     const reloadButton = screen.getByText('Reload Page');
     expect(reloadButton).toBeInTheDocument();
-    
+
     reloadButton.click();
     expect(mockReload).toHaveBeenCalledOnce();
   });

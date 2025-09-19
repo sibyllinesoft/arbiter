@@ -21,22 +21,22 @@ export interface BreadcrumbItem {
 export interface BreadcrumbsProps {
   /** Breadcrumb items */
   items: BreadcrumbItem[];
-  
+
   /** Separator between items */
   separator?: 'chevron' | 'slash' | 'dot' | ReactNode;
-  
+
   /** Maximum number of items to show before collapsing */
   maxItems?: number;
-  
+
   /** Size variant */
   size?: 'sm' | 'md' | 'lg';
-  
+
   /** Whether to show home icon for first item */
   showHomeIcon?: boolean;
-  
+
   /** Custom className */
   className?: string;
-  
+
   /** Callback when an item is clicked */
   onItemClick?: (item: BreadcrumbItem) => void;
 }
@@ -88,33 +88,38 @@ function BreadcrumbItem({
   };
 
   const content = (
-    <span className={cn(
-      'inline-flex items-center gap-1.5 rounded-md transition-colors duration-150',
-      sizes.item,
-      
-      // Current item styling
-      isCurrent && 'text-graphite-900 font-semibold',
-      
-      // Clickable item styling
-      isClickable && !isCurrent && [
-        'text-graphite-600 hover:text-graphite-900 hover:bg-graphite-50 cursor-pointer',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
-      ],
-      
-      // Non-clickable item styling
-      !isClickable && !isCurrent && 'text-graphite-600'
-    )}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md transition-colors duration-150',
+        sizes.item,
+
+        // Current item styling
+        isCurrent && 'text-graphite-900 font-semibold',
+
+        // Clickable item styling
+        isClickable &&
+          !isCurrent && [
+            'text-graphite-600 hover:text-graphite-900 hover:bg-graphite-50 cursor-pointer',
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+          ],
+
+        // Non-clickable item styling
+        !isClickable && !isCurrent && 'text-graphite-600'
+      )}
+    >
       {/* Icon */}
       {(showIcon || item.icon) && (
-        <span className={cn(
-          'flex-shrink-0',
-          sizes.icon,
-          isCurrent ? 'text-graphite-700' : 'text-graphite-500'
-        )}>
+        <span
+          className={cn(
+            'flex-shrink-0',
+            sizes.icon,
+            isCurrent ? 'text-graphite-700' : 'text-graphite-500'
+          )}
+        >
           {item.icon || <Folder className={sizes.icon} />}
         </span>
       )}
-      
+
       <span className="truncate">{item.label}</span>
     </span>
   );
@@ -133,10 +138,7 @@ function BreadcrumbItem({
   }
 
   return (
-    <span 
-      className="inline-flex items-center"
-      aria-current={isCurrent ? 'page' : undefined}
-    >
+    <span className="inline-flex items-center" aria-current={isCurrent ? 'page' : undefined}>
       {content}
     </span>
   );
@@ -159,15 +161,9 @@ function CollapsedItems({
       <>
         {items.map((item, index) => (
           <React.Fragment key={item.id}>
-            <BreadcrumbItem 
-              item={item} 
-              size={size} 
-              onItemClick={onItemClick} 
-            />
+            <BreadcrumbItem item={item} size={size} onItemClick={onItemClick} />
             {index < items.length - 1 && (
-              <span className="flex-shrink-0 mx-1">
-                {separators.chevron}
-              </span>
+              <span className="flex-shrink-0 mx-1">{separators.chevron}</span>
             )}
           </React.Fragment>
         ))}
@@ -202,18 +198,18 @@ export function Breadcrumbs({
   onItemClick,
 }: BreadcrumbsProps) {
   const sizes = sizeClasses[size];
-  
+
   // Handle collapsing items if maxItems is set
   let displayItems = items;
   let collapsedItems: BreadcrumbItem[] = [];
-  
+
   if (maxItems && items.length > maxItems) {
     // Always show first item, collapsed indicator, and last few items
     const keepFromEnd = Math.max(1, maxItems - 2);
     const firstItem = items[0];
     const lastItems = items.slice(-keepFromEnd);
     collapsedItems = items.slice(1, items.length - keepFromEnd);
-    
+
     displayItems = [firstItem, ...lastItems];
   }
 
@@ -225,57 +221,40 @@ export function Breadcrumbs({
   };
 
   return (
-    <nav 
-      aria-label="Breadcrumb" 
-      className={cn('flex items-center', sizes.container, className)}
-    >
+    <nav aria-label="Breadcrumb" className={cn('flex items-center', sizes.container, className)}>
       <ol className="flex items-center space-x-1">
         {displayItems.map((item, index) => {
           const isFirst = index === 0;
           const isLast = index === displayItems.length - 1;
           const showIcon = isFirst && showHomeIcon;
-          
+
           return (
             <li key={item.id} className="flex items-center">
               {/* Show collapsed items indicator */}
               {isFirst && collapsedItems.length > 0 && (
                 <>
-                  <BreadcrumbItem 
-                    item={item} 
-                    size={size} 
+                  <BreadcrumbItem
+                    item={item}
+                    size={size}
                     onItemClick={onItemClick}
                     showIcon={showIcon}
                   />
-                  <span className="flex-shrink-0 mx-1">
-                    {getSeparator()}
-                  </span>
-                  <CollapsedItems 
-                    items={collapsedItems} 
-                    size={size} 
-                    onItemClick={onItemClick}
-                  />
-                  {!isLast && (
-                    <span className="flex-shrink-0 mx-1">
-                      {getSeparator()}
-                    </span>
-                  )}
+                  <span className="flex-shrink-0 mx-1">{getSeparator()}</span>
+                  <CollapsedItems items={collapsedItems} size={size} onItemClick={onItemClick} />
+                  {!isLast && <span className="flex-shrink-0 mx-1">{getSeparator()}</span>}
                 </>
               )}
-              
+
               {/* Regular item */}
               {(isFirst && collapsedItems.length === 0) || !isFirst ? (
                 <>
-                  <BreadcrumbItem 
-                    item={item} 
-                    size={size} 
+                  <BreadcrumbItem
+                    item={item}
+                    size={size}
                     onItemClick={onItemClick}
                     showIcon={showIcon}
                   />
-                  {!isLast && (
-                    <span className="flex-shrink-0 mx-1">
-                      {getSeparator()}
-                    </span>
-                  )}
+                  {!isLast && <span className="flex-shrink-0 mx-1">{getSeparator()}</span>}
                 </>
               ) : null}
             </li>

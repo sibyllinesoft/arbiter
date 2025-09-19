@@ -3,7 +3,7 @@
  * Demonstrates the handler API and common patterns
  */
 
-import type { HandlerModule, WebhookHandler, HandlerResult } from '../types.js';
+import type { HandlerModule, HandlerResult, WebhookHandler } from '../types.js';
 
 // Handler function implementation
 const handlePush: WebhookHandler = async (payload, context) => {
@@ -13,21 +13,22 @@ const handlePush: WebhookHandler = async (payload, context) => {
   logger.info('Processing push event', {
     repository: parsed.repository.fullName,
     ref: payload.ref,
-    commits: parsed.commits?.length || 0
+    commits: parsed.commits?.length || 0,
   });
 
   const actions: string[] = [];
-  
+
   try {
     // Example: Check for spec file changes
-    const specChanges = parsed.commits?.some(commit => 
-      commit.modified.some(file => file.endsWith('.cue')) ||
-      commit.added.some(file => file.endsWith('.cue'))
+    const specChanges = parsed.commits?.some(
+      commit =>
+        commit.modified.some(file => file.endsWith('.cue')) ||
+        commit.added.some(file => file.endsWith('.cue'))
     );
 
     if (specChanges) {
       logger.info('Spec files changed, triggering validation');
-      
+
       // Trigger spec validation through events
       await services.events.broadcastToProject(projectId, {
         project_id: projectId,
@@ -36,16 +37,16 @@ const handlePush: WebhookHandler = async (payload, context) => {
           trigger: 'push_handler',
           repository: parsed.repository.fullName,
           ref: payload.ref,
-          commits: parsed.commits?.length || 0
-        }
+          commits: parsed.commits?.length || 0,
+        },
       });
-      
+
       actions.push('Triggered spec validation');
     }
 
     // Example: Send notification for main branch pushes
     if (payload.ref === `refs/heads/${parsed.repository.defaultBranch}`) {
-      const slackWebhook = context.config.secrets['SLACK_WEBHOOK'];
+      const slackWebhook = context.config.secrets.SLACK_WEBHOOK;
       if (slackWebhook) {
         await services.notifications.sendSlack(slackWebhook, {
           text: `📝 New commits pushed to ${parsed.repository.fullName}`,
@@ -54,17 +55,18 @@ const handlePush: WebhookHandler = async (payload, context) => {
               type: 'section',
               text: {
                 type: 'mrkdwn',
-                text: `*${parsed.commits?.length || 0} new commits* in <${parsed.repository.url}|${parsed.repository.fullName}>`
-              }
+                text: `*${parsed.commits?.length || 0} new commits* in <${parsed.repository.url}|${parsed.repository.fullName}>`,
+              },
             },
             {
               type: 'section',
-              fields: parsed.commits?.slice(0, 3).map(commit => ({
-                type: 'mrkdwn',
-                text: `• ${commit.message}\n  _by ${commit.author}_`
-              })) || []
-            }
-          ]
+              fields:
+                parsed.commits?.slice(0, 3).map(commit => ({
+                  type: 'mrkdwn',
+                  text: `• ${commit.message}\n  _by ${commit.author}_`,
+                })) || [],
+            },
+          ],
         });
         actions.push('Sent Slack notification');
       }
@@ -85,21 +87,22 @@ const handlePush: WebhookHandler = async (payload, context) => {
         repository: parsed.repository.fullName,
         ref: payload.ref,
         commitsProcessed: parsed.commits?.length || 0,
-        specFilesChanged: specChanges
-      }
+        specFilesChanged: specChanges,
+      },
     };
-
   } catch (error) {
     logger.error('Push handler failed', error as Error);
-    
+
     return {
       success: false,
       message: 'Push handler execution failed',
-      errors: [{
-        code: 'HANDLER_EXECUTION_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      }]
+      errors: [
+        {
+          code: 'HANDLER_EXECUTION_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+      ],
     };
   }
 };
@@ -112,7 +115,7 @@ const handlerModule: HandlerModule = {
     timeout: 30000, // 30 seconds
     retries: 2,
     environment: {},
-    secrets: {}
+    secrets: {},
   },
   metadata: {
     name: 'Push Event Handler',
@@ -120,8 +123,8 @@ const handlerModule: HandlerModule = {
     version: '1.0.0',
     author: 'Arbiter Team',
     supportedEvents: ['push', 'Push Hook'],
-    requiredPermissions: ['events:publish', 'notifications:send']
-  }
+    requiredPermissions: ['events:publish', 'notifications:send'],
+  },
 };
 
 export default handlerModule;

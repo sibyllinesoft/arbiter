@@ -12,22 +12,30 @@ export interface MigrationPath {
 export interface MigrationStep {
   id: string;
   description: string;
-  type: "schema" | "data" | "config" | "file";
+  type: 'schema' | 'data' | 'config' | 'file';
   required: boolean;
-  risk: "low" | "medium" | "high";
+  risk: 'low' | 'medium' | 'high';
 }
 
-export function getAvailableMigrationPaths(_fromVersion: string): MigrationPath[] {
+export function getAvailableMigrationPaths(_component: string): string[] {
   // Stub implementation
-  return [];
+  return [`${_component}: v1.0.0 -> v2.0.0`];
 }
 
-export function hasMigrationPath(_fromVersion: string, _toVersion: string): boolean {
+export function hasMigrationPath(
+  _component: string,
+  _fromVersion: string,
+  _toVersion: string
+): boolean {
   // Stub implementation
   return true;
 }
 
-export function estimateMigrationDuration(_fromVersion: string, _toVersion: string): number {
-  // Stub implementation - return seconds
-  return 60; // 1 minute default
+export function estimateMigrationDuration(
+  _component: string,
+  _fromVersion: string,
+  _toVersion: string
+): number {
+  // Stub implementation - return milliseconds
+  return 60000; // 1 minute default
 }

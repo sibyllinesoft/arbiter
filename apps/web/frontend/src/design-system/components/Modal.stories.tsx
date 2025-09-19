@@ -5,11 +5,11 @@ import Button from './Button';
 import Input from './Input';
 import Select from './Select';
 import Checkbox from './Checkbox';
-import { 
-  Settings, 
-  User, 
-  Bell, 
-  Shield, 
+import {
+  Settings,
+  User,
+  Bell,
+  Shield,
   Database,
   Code,
   FileText,
@@ -17,7 +17,7 @@ import {
   Upload,
   Trash,
   Edit,
-  Plus
+  Plus,
 } from 'lucide-react';
 
 const meta: Meta<typeof Modal> = {
@@ -27,7 +27,8 @@ const meta: Meta<typeof Modal> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional modal dialog component with comprehensive variants, accessibility features, and elegant animations. Perfect for complex forms, settings panels, and detailed content.',
+        component:
+          'Professional modal dialog component with comprehensive variants, accessibility features, and elegant animations. Perfect for complex forms, settings panels, and detailed content.',
       },
     },
   },
@@ -54,7 +55,7 @@ export const Default: Story = {
     return (
       <div className="p-8">
         <Button onClick={() => setOpen(true)}>Open Modal</Button>
-        
+
         <Modal
           open={open}
           onClose={() => setOpen(false)}
@@ -63,7 +64,8 @@ export const Default: Story = {
         >
           <div className="space-y-4">
             <p className="text-sm text-graphite-600">
-              This is your first time using Spec Workbench. Let's set up your workspace for optimal collaboration and productivity.
+              This is your first time using Spec Workbench. Let's set up your workspace for optimal
+              collaboration and productivity.
             </p>
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Getting Started Tips</h4>
@@ -89,11 +91,19 @@ export const WithVariants: Story = {
 
     return (
       <div className="p-8 space-x-4">
-        <Button onClick={() => setSuccessOpen(true)} variant="secondary">Success Modal</Button>
-        <Button onClick={() => setWarningOpen(true)} variant="secondary">Warning Modal</Button>
-        <Button onClick={() => setErrorOpen(true)} variant="secondary">Error Modal</Button>
-        <Button onClick={() => setInfoOpen(true)} variant="secondary">Info Modal</Button>
-        
+        <Button onClick={() => setSuccessOpen(true)} variant="secondary">
+          Success Modal
+        </Button>
+        <Button onClick={() => setWarningOpen(true)} variant="secondary">
+          Warning Modal
+        </Button>
+        <Button onClick={() => setErrorOpen(true)} variant="secondary">
+          Error Modal
+        </Button>
+        <Button onClick={() => setInfoOpen(true)} variant="secondary">
+          Info Modal
+        </Button>
+
         <Modal
           open={successOpen}
           onClose={() => setSuccessOpen(false)}
@@ -130,9 +140,7 @@ export const WithVariants: Story = {
           description="You have unsaved changes that will be lost if you continue."
         >
           <div className="space-y-4">
-            <p className="text-sm text-graphite-600">
-              The following files have been modified:
-            </p>
+            <p className="text-sm text-graphite-600">The following files have been modified:</p>
             <ul className="text-sm space-y-2">
               <li className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-yellow-500" />
@@ -159,7 +167,7 @@ export const WithVariants: Story = {
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <h4 className="text-sm font-medium text-red-900 mb-2">Error Details</h4>
               <pre className="text-xs text-red-800 bg-red-100 rounded p-2 overflow-x-auto">
-{`Error: validation failed at line 42
+                {`Error: validation failed at line 42
   --> spec-schema.cue:42:8
    |
 42 | name: string & =~"[a-zA-Z]+"
@@ -232,17 +240,12 @@ export const SizeVariants: Story = {
       <div className="p-8 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           {sizeOptions.map(({ key, label }) => (
-            <Button
-              key={key}
-              onClick={() => toggleSize(key)}
-              variant="secondary"
-              size="sm"
-            >
+            <Button key={key} onClick={() => toggleSize(key)} variant="secondary" size="sm">
               {label}
             </Button>
           ))}
         </div>
-        
+
         {sizeOptions.map(({ key, label }) => (
           <Modal
             key={key}
@@ -254,7 +257,7 @@ export const SizeVariants: Story = {
           >
             <div className="space-y-4">
               <p className="text-sm text-graphite-600">
-                Modal content scales appropriately with the size variant. This allows you to choose 
+                Modal content scales appropriately with the size variant. This allows you to choose
                 the right modal size based on your content requirements.
               </p>
               {key === '3xl' && (
@@ -317,7 +320,7 @@ export const SettingsModal: Story = {
         <Button onClick={() => setOpen(true)} icon={<Settings className="h-4 w-4" />}>
           Open Settings
         </Button>
-        
+
         <Modal
           open={open}
           onClose={() => setOpen(false)}
@@ -351,7 +354,7 @@ export const SettingsModal: Story = {
                     <label className="block text-sm font-medium text-graphite-700 mb-1">
                       Time Zone
                     </label>
-                    <Select 
+                    <Select
                       options={[
                         { value: 'utc', label: 'UTC' },
                         { value: 'pst', label: 'Pacific Standard Time' },
@@ -403,7 +406,8 @@ export const SettingsModal: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Complex settings modal with form controls, loading states, and custom footer actions.',
+        story:
+          'Complex settings modal with form controls, loading states, and custom footer actions.',
       },
     },
   },
@@ -422,9 +426,7 @@ export const DataExportModal: Story = {
           <Button variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button icon={<Download className="h-4 w-4" />}>
-            Start Export
-          </Button>
+          <Button icon={<Download className="h-4 w-4" />}>Start Export</Button>
         </div>
       </div>
     );
@@ -434,7 +436,7 @@ export const DataExportModal: Story = {
         <Button onClick={() => setOpen(true)} icon={<Database className="h-4 w-4" />}>
           Export Data
         </Button>
-        
+
         <Modal
           open={open}
           onClose={() => setOpen(false)}
@@ -487,7 +489,8 @@ export const DataExportModal: Story = {
                 <div>
                   <h4 className="text-sm font-medium text-yellow-900">Privacy Note</h4>
                   <p className="text-xs text-yellow-800 mt-1">
-                    Sensitive data like API keys and passwords will be excluded from the export for security.
+                    Sensitive data like API keys and passwords will be excluded from the export for
+                    security.
                   </p>
                 </div>
               </div>
@@ -522,7 +525,7 @@ export const LoadingModal: Story = {
     return (
       <div className="p-8">
         <Button onClick={handleOpen}>Open Loading Modal</Button>
-        
+
         <Modal
           open={open}
           onClose={() => setOpen(false)}
@@ -553,7 +556,8 @@ export const LoadingModal: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Modal with loading overlay that prevents interaction until the operation completes.',
+        story:
+          'Modal with loading overlay that prevents interaction until the operation completes.',
       },
     },
   },

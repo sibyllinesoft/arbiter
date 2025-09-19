@@ -9,9 +9,9 @@ export const DesignSystemDecorator: Decorator = (Story, context) => {
   // Apply theme class based on toolbar selection
   const theme = context.globals.designSystem || 'default';
   const colorScheme = context.globals.colorScheme || 'light';
-  
+
   return (
-    <div 
+    <div
       className={`storybook-decorator ${theme} ${colorScheme}`}
       style={{
         fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',

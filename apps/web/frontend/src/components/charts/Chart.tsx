@@ -8,7 +8,7 @@ export interface ChartData {
     labels?: string[];
     datasets: Array<{
       label?: string;
-      data: number[] | Array<{x: number, y: number}>;
+      data: number[] | Array<{ x: number; y: number }>;
       backgroundColor?: string | string[];
       borderColor?: string | string[];
       fill?: boolean;
@@ -34,7 +34,7 @@ export const Chart: React.FC<ChartProps> = ({
   data,
   width = 800,
   height = 400,
-  className = ''
+  className = '',
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -42,19 +42,19 @@ export const Chart: React.FC<ChartProps> = ({
     if (!svgRef.current || !data) return;
 
     // Clear previous chart
-    d3.select(svgRef.current).selectAll("*").remove();
+    d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current);
     const margin = { top: 40, right: 80, bottom: 60, left: 60 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left},${margin.top})`);
+    const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
     // Add title if present
     if (data.title) {
-      svg.append('text')
+      svg
+        .append('text')
         .attr('x', width / 2)
         .attr('y', 25)
         .attr('text-anchor', 'middle')
@@ -93,16 +93,19 @@ export const Chart: React.FC<ChartProps> = ({
       if (values.length === 0) return;
 
       // Create scales
-      const xScale = d3.scaleLinear()
+      const xScale = d3
+        .scaleLinear()
         .domain([0, values.length - 1])
         .range([0, innerWidth]);
 
-      const yScale = d3.scaleLinear()
+      const yScale = d3
+        .scaleLinear()
         .domain([0, d3.max(values) || 0])
         .range([innerHeight, 0]);
 
       // Create line generator
-      const line = d3.line<number>()
+      const line = d3
+        .line<number>()
         .x((d, i) => xScale(i))
         .y(d => yScale(d))
         .curve(d3.curveMonotoneX);
@@ -112,8 +115,7 @@ export const Chart: React.FC<ChartProps> = ({
         .attr('transform', `translate(0,${innerHeight})`)
         .call(d3.axisBottom(xScale).tickFormat((d, i) => labels[i] || d.toString()));
 
-      g.append('g')
-        .call(d3.axisLeft(yScale));
+      g.append('g').call(d3.axisLeft(yScale));
 
       // Add line
       g.append('path')
@@ -126,7 +128,8 @@ export const Chart: React.FC<ChartProps> = ({
       // Add dots
       g.selectAll('.dot')
         .data(values)
-        .enter().append('circle')
+        .enter()
+        .append('circle')
         .attr('class', 'dot')
         .attr('cx', (d, i) => xScale(i))
         .attr('cy', d => yScale(d))
@@ -137,7 +140,7 @@ export const Chart: React.FC<ChartProps> = ({
       g.append('text')
         .attr('transform', 'rotate(-90)')
         .attr('y', 0 - margin.left + 15)
-        .attr('x', 0 - (innerHeight / 2))
+        .attr('x', 0 - innerHeight / 2)
         .attr('dy', '1em')
         .style('text-anchor', 'middle')
         .style('font-size', '12px')
@@ -160,12 +163,14 @@ export const Chart: React.FC<ChartProps> = ({
       if (values.length === 0) return;
 
       // Create scales
-      const xScale = d3.scaleBand()
+      const xScale = d3
+        .scaleBand()
         .domain(labels.map((d, i) => i.toString()))
         .range([0, innerWidth])
         .padding(0.1);
 
-      const yScale = d3.scaleLinear()
+      const yScale = d3
+        .scaleLinear()
         .domain([0, d3.max(values) || 0])
         .range([innerHeight, 0]);
 
@@ -174,13 +179,13 @@ export const Chart: React.FC<ChartProps> = ({
         .attr('transform', `translate(0,${innerHeight})`)
         .call(d3.axisBottom(xScale).tickFormat((d, i) => labels[+d] || d));
 
-      g.append('g')
-        .call(d3.axisLeft(yScale));
+      g.append('g').call(d3.axisLeft(yScale));
 
       // Add bars
       g.selectAll('.bar')
         .data(values)
-        .enter().append('rect')
+        .enter()
+        .append('rect')
         .attr('class', 'bar')
         .attr('x', (d, i) => xScale(i.toString()) || 0)
         .attr('width', xScale.bandwidth())
@@ -194,31 +199,31 @@ export const Chart: React.FC<ChartProps> = ({
 
     function renderScatterPlot() {
       const dataset = data.data.datasets[0];
-      const points = dataset.data as Array<{x: number, y: number}>;
+      const points = dataset.data as Array<{ x: number; y: number }>;
 
       if (points.length === 0) return;
 
       // Create scales
-      const xScale = d3.scaleLinear()
+      const xScale = d3
+        .scaleLinear()
         .domain(d3.extent(points, d => d.x) as [number, number])
         .range([0, innerWidth]);
 
-      const yScale = d3.scaleLinear()
+      const yScale = d3
+        .scaleLinear()
         .domain(d3.extent(points, d => d.y) as [number, number])
         .range([innerHeight, 0]);
 
       // Add axes
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale));
+      g.append('g').attr('transform', `translate(0,${innerHeight})`).call(d3.axisBottom(xScale));
 
-      g.append('g')
-        .call(d3.axisLeft(yScale));
+      g.append('g').call(d3.axisLeft(yScale));
 
       // Add points
       g.selectAll('.point')
         .data(points)
-        .enter().append('circle')
+        .enter()
+        .append('circle')
         .attr('class', 'point')
         .attr('cx', d => xScale(d.x))
         .attr('cy', d => yScale(d.y))
@@ -239,12 +244,9 @@ export const Chart: React.FC<ChartProps> = ({
       const centerX = innerWidth / 2;
       const centerY = innerHeight / 2;
 
-      const pie = d3.pie<number>()
-        .value(d => d);
+      const pie = d3.pie<number>().value(d => d);
 
-      const arc = d3.arc<d3.PieArcDatum<number>>()
-        .innerRadius(0)
-        .outerRadius(radius);
+      const arc = d3.arc<d3.PieArcDatum<number>>().innerRadius(0).outerRadius(radius);
 
       const pieData = pie(values);
       const colors = dataset.backgroundColor as string[];
@@ -252,24 +254,28 @@ export const Chart: React.FC<ChartProps> = ({
       // Add pie slices
       g.selectAll('.arc')
         .data(pieData)
-        .enter().append('g')
+        .enter()
+        .append('g')
         .attr('class', 'arc')
         .attr('transform', `translate(${centerX}, ${centerY})`)
-        .each(function(d, i) {
+        .each(function (d, i) {
           const group = d3.select(this);
-          
-          group.append('path')
+
+          group
+            .append('path')
             .attr('d', arc)
             .attr('fill', colors[i] || '#3b82f6')
             .attr('stroke', '#ffffff')
             .attr('stroke-width', 2);
 
           // Add labels
-          const labelArc = d3.arc<d3.PieArcDatum<number>>()
+          const labelArc = d3
+            .arc<d3.PieArcDatum<number>>()
             .innerRadius(radius * 0.7)
             .outerRadius(radius * 0.7);
 
-          group.append('text')
+          group
+            .append('text')
             .attr('transform', `translate(${labelArc.centroid(d)})`)
             .attr('dy', '0.35em')
             .style('text-anchor', 'middle')
@@ -286,28 +292,28 @@ export const Chart: React.FC<ChartProps> = ({
       if (values.length === 0) return;
 
       // Create scales
-      const xScale = d3.scaleLinear()
+      const xScale = d3
+        .scaleLinear()
         .domain([0, values.length - 1])
         .range([0, innerWidth]);
 
-      const yScale = d3.scaleLinear()
+      const yScale = d3
+        .scaleLinear()
         .domain([0, d3.max(values) || 0])
         .range([innerHeight, 0]);
 
       // Create area generator
-      const area = d3.area<number>()
+      const area = d3
+        .area<number>()
         .x((d, i) => xScale(i))
         .y0(innerHeight)
         .y1(d => yScale(d))
         .curve(d3.curveMonotoneX);
 
       // Add axes
-      g.append('g')
-        .attr('transform', `translate(0,${innerHeight})`)
-        .call(d3.axisBottom(xScale));
+      g.append('g').attr('transform', `translate(0,${innerHeight})`).call(d3.axisBottom(xScale));
 
-      g.append('g')
-        .call(d3.axisLeft(yScale));
+      g.append('g').call(d3.axisLeft(yScale));
 
       // Add area
       g.append('path')
@@ -316,7 +322,6 @@ export const Chart: React.FC<ChartProps> = ({
         .attr('opacity', 0.7)
         .attr('d', area);
     }
-
   }, [data, width, height]);
 
   return (

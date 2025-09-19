@@ -4,13 +4,13 @@
  */
 
 import type {
-  LanguagePlugin,
-  ComponentConfig,
-  ServiceConfig,
-  ProjectConfig,
   BuildConfig,
-  GenerationResult,
+  ComponentConfig,
   GeneratedFile,
+  GenerationResult,
+  LanguagePlugin,
+  ProjectConfig,
+  ServiceConfig,
 } from './index.js';
 
 export class RustPlugin implements LanguagePlugin {
@@ -29,6 +29,11 @@ export class RustPlugin implements LanguagePlugin {
     'serialization',
     'error-handling',
   ];
+  readonly capabilities = {
+    services: true,
+    api: true,
+    testing: true,
+  };
 
   // Rust doesn't have UI components like frontend frameworks
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
@@ -256,7 +261,7 @@ export class RustPlugin implements LanguagePlugin {
   private generateAPIHandler(config: ServiceConfig): string {
     const structName = this.toPascalCase(config.name);
     const moduleName = config.name.toLowerCase();
-    
+
     return `use axum::{
     extract::{Path, Query, State},
     response::Json,
@@ -374,7 +379,7 @@ pub async fn delete_${moduleName}(
 
   private generateRoutes(config: ServiceConfig): string {
     const moduleName = config.name.toLowerCase();
-    
+
     return `use axum::{
     routing::{get, post, put, delete},
     Router,
@@ -403,7 +408,7 @@ pub fn create_${moduleName}_routes() -> Router<AppState> {
   private generateBusinessService(config: ServiceConfig): string {
     const structName = this.toPascalCase(config.name);
     const moduleName = config.name.toLowerCase();
-    
+
     return `use uuid::Uuid;
 use tracing::{info, error};
 ${config.database ? 'use sqlx::{PgPool, Row};' : ''}
@@ -414,13 +419,13 @@ use crate::{
 };
 
 /// Service for ${config.name} business logic
-pub struct ${structName}Service${config.database ? '<\'a>' : ''} {
-    ${config.database ? 'db_pool: &\'a PgPool,' : ''}
+pub struct ${structName}Service${config.database ? "<'a>" : ''} {
+    ${config.database ? "db_pool: &'a PgPool," : ''}
 }
 
-impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<\'a>' : ''} {
+impl${config.database ? "<'a>" : ''} ${structName}Service${config.database ? "<'a>" : ''} {
     /// Create a new service instance
-    pub fn new(${config.database ? 'db_pool: &\'a PgPool' : ''}) -> Self {
+    pub fn new(${config.database ? "db_pool: &'a PgPool" : ''}) -> Self {
         Self {
             ${config.database ? 'db_pool,' : ''}
         }
@@ -430,7 +435,9 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
     pub async fn get_all(&self, page: u32, limit: u32) -> Result<(Vec<${structName}>, u64), AppError> {
         info!("Fetching all ${config.name} items (page: {}, limit: {})", page, limit);
         
-        ${config.database ? `
+        ${
+          config.database
+            ? `
         let offset = (page - 1) * limit;
         
         // Get total count
@@ -465,19 +472,23 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
         })?;
 
         Ok((items, total))
-        ` : `
+        `
+            : `
         // Placeholder implementation without database
         let items = vec![];
         let total = 0;
         Ok((items, total))
-        `}
+        `
+        }
     }
 
     /// Get ${config.name} by ID
     pub async fn get_by_id(&self, id: Uuid) -> Result<${structName}, AppError> {
         info!("Fetching ${config.name} with ID: {}", id);
         
-        ${config.database ? `
+        ${
+          config.database
+            ? `
         let item = sqlx::query_as!(
             ${structName},
             "SELECT id, name, description, is_active, created_at, updated_at 
@@ -497,17 +508,21 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
         })?;
 
         Ok(item)
-        ` : `
+        `
+            : `
         // Placeholder implementation without database
         Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))
-        `}
+        `
+        }
     }
 
     /// Create new ${config.name}
     pub async fn create(&self, request: Create${structName}Request) -> Result<${structName}, AppError> {
         info!("Creating new ${config.name}");
         
-        ${config.database ? `
+        ${
+          config.database
+            ? `
         let id = Uuid::new_v4();
         let now = chrono::Utc::now();
 
@@ -529,7 +544,8 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
         })?;
 
         Ok(item)
-        ` : `
+        `
+            : `
         // Placeholder implementation without database
         let item = ${structName} {
             id: Uuid::new_v4(),
@@ -540,14 +556,17 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
             updated_at: chrono::Utc::now(),
         };
         Ok(item)
-        `}
+        `
+        }
     }
 
     /// Update ${config.name}
     pub async fn update(&self, id: Uuid, request: Update${structName}Request) -> Result<${structName}, AppError> {
         info!("Updating ${config.name} with ID: {}", id);
         
-        ${config.database ? `
+        ${
+          config.database
+            ? `
         let now = chrono::Utc::now();
 
         let item = sqlx::query_as!(
@@ -577,17 +596,21 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
         })?;
 
         Ok(item)
-        ` : `
+        `
+            : `
         // Placeholder implementation without database
         Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))
-        `}
+        `
+        }
     }
 
     /// Delete ${config.name} (soft delete)
     pub async fn delete(&self, id: Uuid) -> Result<(), AppError> {
         info!("Deleting ${config.name} with ID: {}", id);
         
-        ${config.database ? `
+        ${
+          config.database
+            ? `
         let now = chrono::Utc::now();
 
         let result = sqlx::query!(
@@ -608,10 +631,12 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
         }
 
         Ok(())
-        ` : `
+        `
+            : `
         // Placeholder implementation without database
         Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))
-        `}
+        `
+        }
     }
 }
 `;
@@ -619,7 +644,7 @@ impl${config.database ? '<\'a>' : ''} ${structName}Service${config.database ? '<
 
   private generateModel(config: ServiceConfig): string {
     const structName = this.toPascalCase(config.name);
-    
+
     return `use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
@@ -732,7 +757,7 @@ mod tests {
 
   private generateMiddleware(config: ServiceConfig): string {
     const middlewareName = this.toPascalCase(config.name);
-    
+
     return `use axum::{
     extract::Request,
     middleware::Next,
@@ -766,11 +791,13 @@ pub async fn ${config.name.toLowerCase()}_middleware(
   }
 
   private generateCargoToml(config: ProjectConfig): string {
-    const dependencies = {
+    type CargoDependency = string | { version: string; features?: string[] };
+
+    const dependencies: Record<string, CargoDependency> = {
       axum: '0.7',
       tokio: { version: '1.0', features: ['full'] },
       serde: { version: '1.0', features: ['derive'] },
-      'serde_json': '1.0',
+      serde_json: '1.0',
       tracing: '0.1',
       'tracing-subscriber': { version: '0.3', features: ['env-filter'] },
       tower: '0.4',
@@ -782,15 +809,15 @@ pub async fn ${config.name.toLowerCase()}_middleware(
     };
 
     if (config.database) {
-      dependencies['sqlx'] = {
+      dependencies.sqlx = {
         version: '0.7',
         features: ['runtime-tokio-rustls', 'postgres', 'uuid', 'chrono', 'macros'],
       };
     }
 
     if (config.auth) {
-      dependencies['jsonwebtoken'] = '9.0';
-      dependencies['bcrypt'] = '0.15';
+      dependencies.jsonwebtoken = '9.0';
+      dependencies.bcrypt = '0.15';
     }
 
     if (config.testing) {
@@ -804,16 +831,19 @@ edition = "2021"
 description = "${config.description || `Modern Rust application: ${config.name}`}"
 
 [dependencies]
-${Object.entries(dependencies).map(([name, version]) => {
-  if (typeof version === 'string') {
-    return `${name} = "${version}"`;
-  } else {
+${Object.entries(dependencies)
+  .map(([name, version]) => {
+    if (typeof version === 'string') {
+      return `${name} = "${version}"`;
+    }
     const versionStr = version.version ? `version = "${version.version}"` : '';
-    const featuresStr = version.features ? `features = [${version.features.map((f: string) => `"${f}"`).join(', ')}]` : '';
+    const featuresStr = version.features
+      ? `features = [${version.features.map((f: string) => `"${f}"`).join(', ')}]`
+      : '';
     const parts = [versionStr, featuresStr].filter(Boolean);
     return `${name} = { ${parts.join(', ')} }`;
-  }
-}).join('\n')}
+  })
+  .join('\n')}
 
 [dev-dependencies]
 tower-test = "0.4"
@@ -861,7 +891,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration
     let config = Config::from_env()?;
     
-    ${config.database ? `// Create database connection pool
+    ${
+      config.database
+        ? `// Create database connection pool
     let db_pool = create_pool(&config.database_url).await?;
     info!("Database connection pool created");
 
@@ -873,7 +905,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             error!("Failed to run migrations: {}", e);
             e
         })?;
-    info!("Database migrations completed");` : ''}
+    info!("Database migrations completed");`
+        : ''
+    }
 
     // Create application
     let app = create_app(${config.database ? 'db_pool' : ''}).await?;
@@ -920,11 +954,19 @@ impl Config {
         let environment = env::var("ENVIRONMENT")
             .unwrap_or_else(|_| "development".to_string());
 
-        ${config.database ? `let database_url = env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://user:password@localhost:5432/${config.name.toLowerCase()}".to_string());` : ''}
+        ${
+          config.database
+            ? `let database_url = env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://user:password@localhost:5432/${config.name.toLowerCase()}".to_string());`
+            : ''
+        }
 
-        ${config.auth ? `let jwt_secret = env::var("JWT_SECRET")
-            .unwrap_or_else(|_| "your-secret-key".to_string());` : ''}
+        ${
+          config.auth
+            ? `let jwt_secret = env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "your-secret-key".to_string());`
+            : ''
+        }
 
         let log_level = env::var("LOG_LEVEL")
             .unwrap_or_else(|_| "info".to_string());
@@ -1082,8 +1124,12 @@ pub enum AppError {
     #[error("Database error: {0}")]
     DatabaseError(String),
 
-    ${this.supportedFeatures.includes('validation') ? `#[error("Validation error")]
-    ValidationError(#[from] ValidationErrors),` : ''}
+    ${
+      this.supportedFeatures.includes('validation')
+        ? `#[error("Validation error")]
+    ValidationError(#[from] ValidationErrors),`
+        : ''
+    }
 
     #[error("Serialization error: {0}")]
     SerializationError(String),
@@ -1100,10 +1146,14 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Database error occurred".to_string(),
             ),
-            ${this.supportedFeatures.includes('validation') ? `AppError::ValidationError(errors) => (
+            ${
+              this.supportedFeatures.includes('validation')
+                ? `AppError::ValidationError(errors) => (
                 StatusCode::BAD_REQUEST,
                 format!("Validation error: {}", errors),
-            ),` : ''}
+            ),`
+                : ''
+            }
             AppError::SerializationError(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Serialization error occurred".to_string(),
@@ -1295,11 +1345,19 @@ PORT=3000
 ENVIRONMENT=development
 LOG_LEVEL=info
 
-${config.database ? `# Database Configuration
-DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}` : ''}
+${
+  config.database
+    ? `# Database Configuration
+DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}`
+    : ''
+}
 
-${config.auth ? `# Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-in-production` : ''}
+${
+  config.auth
+    ? `# Authentication
+JWT_SECRET=your-super-secret-jwt-key-change-in-production`
+    : ''
+}
 
 # Additional configuration as needed
 `;
@@ -1324,12 +1382,16 @@ pub mod common {
         TestServer::new(app).unwrap()
     }
 
-    ${this.supportedFeatures.includes('database') ? `/// Create a test database pool
+    ${
+      this.supportedFeatures.includes('database')
+        ? `/// Create a test database pool
     pub async fn create_test_db_pool() -> PgPool {
         // Implementation would create a test database connection
         // This is a placeholder
         todo!("Implement test database setup")
-    }` : ''}
+    }`
+        : ''
+    }
 }
 `;
   }
@@ -1425,7 +1487,9 @@ clean:
 install-dev:
     cargo install cargo-watch cargo-tarpaulin
 
-${config.database ? `# Run database migrations
+${
+  config.database
+    ? `# Run database migrations
 migrate:
     sqlx migrate run
 
@@ -1435,9 +1499,13 @@ migrate-create name:
 
 # Revert the last migration
 migrate-revert:
-    sqlx migrate revert` : ''}
+    sqlx migrate revert`
+    : ''
+}
 
-${config.docker ? `# Build Docker image
+${
+  config.docker
+    ? `# Build Docker image
 docker-build:
     docker build -t ${config.name.toLowerCase()}:latest .
 
@@ -1451,7 +1519,9 @@ docker-up:
 
 # Stop Docker Compose
 docker-down:
-    docker-compose down` : ''}
+    docker-compose down`
+    : ''
+}
 
 # Run all checks (format, lint, test)
 ci: fmt lint test
@@ -1512,7 +1582,9 @@ CMD ["app"]
   }
 
   private generateDockerCompose(config: ProjectConfig): string {
-    const dbService = config.database === 'postgres' ? `
+    const dbService =
+      config.database === 'postgres'
+        ? `
   database:
     image: postgres:15-alpine
     environment:
@@ -1527,7 +1599,8 @@ CMD ["app"]
       test: ["CMD-SHELL", "pg_isready -U ${config.name.toLowerCase()}"]
       interval: 10s
       timeout: 5s
-      retries: 5` : '';
+      retries: 5`
+        : '';
 
     return `version: '3.8'
 
@@ -1539,14 +1612,22 @@ services:
     environment:
       - ENVIRONMENT=development
       ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ''}
-    ${config.database ? `depends_on:
+    ${
+      config.database
+        ? `depends_on:
       database:
-        condition: service_healthy` : ''}
+        condition: service_healthy`
+        : ''
+    }
     restart: unless-stopped
 ${dbService}
 
-${config.database === 'postgres' ? `volumes:
-  postgres_data:` : ''}
+${
+  config.database === 'postgres'
+    ? `volumes:
+  postgres_data:`
+    : ''
+}
 `;
   }
 
@@ -1635,9 +1716,9 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: $` + `{{ runner.os }}` + `-cargo-$` + `{{ hashFiles('**/Cargo.lock') }}` + `
+        key: \${{ runner.os }}-cargo-\${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          $` + `{{ runner.os }}` + `-cargo-
+          \${{ runner.os }}-cargo-
     
     - name: Check formatting
       run: cargo fmt -- --check
@@ -1650,7 +1731,9 @@ jobs:
         DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
       run: cargo test --verbose
 
-  ${config.target === 'production' ? `build:
+  ${
+    config.target === 'production'
+      ? `build:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -1666,14 +1749,25 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build -f Dockerfile.prod -t your-registry/app:$` + `{{ github.sha }}` + ` .
-        docker tag your-registry/app:$` + `{{ github.sha }}` + ` your-registry/app:latest
+        docker build -f Dockerfile.prod -t your-registry/app:$` +
+        '{{ github.sha }}' +
+        ` .
+        docker tag your-registry/app:$` +
+        '{{ github.sha }}' +
+        ` your-registry/app:latest
     
     - name: Push Docker image
       run: |
-        echo "$` + `{{ secrets.DOCKER_PASSWORD }}` + `" | docker login -u "$` + `{{ secrets.DOCKER_USERNAME }}` + `" --password-stdin
-        docker push your-registry/app:$` + `{{ github.sha }}
-        docker push your-registry/app:latest` : ''}
+        echo "$` +
+        '{{ secrets.DOCKER_PASSWORD }}' +
+        `" | docker login -u "$` +
+        '{{ secrets.DOCKER_USERNAME }}' +
+        `" --password-stdin
+        docker push your-registry/app:$` +
+        `{{ github.sha }}
+        docker push your-registry/app:latest`
+      : ''
+  }
 
   security-audit:
     runs-on: ubuntu-latest
@@ -1698,12 +1792,16 @@ rustc-wrapper = "sccache"
 [registries.crates-io]
 protocol = "sparse"
 
-${config.optimization ? `[profile.release]
+${
+  config.optimization
+    ? `[profile.release]
 lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
-opt-level = 3` : ''}
+opt-level = 3`
+    : ''
+}
 `;
   }
 

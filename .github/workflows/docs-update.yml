@@ -21,15 +21,15 @@ jobs:
   docs-check:
     name: Documentation Quality Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Check for broken links
         run: |
           echo "🔍 Checking for broken internal links..."
-          
+
           # Simple check for broken relative links
           find . -name "*.md" -not -path "./node_modules/*" | while read -r file; do
             echo "Checking $file..."
@@ -56,17 +56,17 @@ jobs:
               fi
             done
           done
-          
+
       - name: Check documentation structure
         run: |
           echo "📚 Checking documentation structure..."
-          
+
           # Check for required documentation files
           required_files=(
             "README.md"
             "CHANGELOG.md"
           )
-          
+
           for file in "${required_files[@]}"; do
             if [ -f "$file" ]; then
               echo "✅ Found required file: $file"
@@ -74,7 +74,7 @@ jobs:
               echo "⚠️  Missing recommended file: $file"
             fi
           done
-          
+
           # Check for README files in major directories
           for dir in packages/*/; do
             if [ -d "$dir" ]; then
@@ -85,11 +85,11 @@ jobs:
               fi
             fi
           done
-          
+
       - name: Validate markdown format
         run: |
           echo "📝 Validating markdown format..."
-          
+
           # Check for basic markdown issues
           find . -name "*.md" -not -path "./node_modules/*" | while read -r file; do
             # Check for heading hierarchy
@@ -106,11 +106,11 @@ jobs:
               echo "⚠️  $file: Contains trailing spaces"
             fi
           done
-          
+
       - name: Check code examples
         run: |
           echo "💻 Checking code examples in documentation..."
-          
+
           # Find code blocks and check for common issues
           find . -name "*.md" -not -path "./node_modules/*" | while read -r file; do
             # Check for shell commands that might need updating
@@ -126,22 +126,22 @@ jobs:
     name: Generate Table of Contents
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Generate README TOC
         run: |
           echo "📑 Generating table of contents for README.md..."
-          
+
           if [ -f "README.md" ]; then
             # Simple TOC generation for README
             cat > temp_toc.md << 'EOF'
           ## Table of Contents
-          
+
           EOF
             
             # Extract headings and create TOC
@@ -161,20 +161,20 @@ jobs:
             
             rm -f temp_toc.md
           fi
-          
+
       - name: Update documentation index
         run: |
           echo "📚 Updating documentation index..."
-          
+
           # Create or update docs index if docs directory exists
           if [ -d "docs" ]; then
             cat > docs/INDEX.md << 'EOF'
           # Documentation Index
-          
+
           *Auto-generated documentation index*
-          
+
           ## Documentation Files
-          
+
           EOF
             
             find docs/ -name "*.md" -not -name "INDEX.md" | sort | while read -r file; do
@@ -194,33 +194,33 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [docs-check, generate-toc]
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Pages
-        if: github.repository_owner == github.actor  # Only deploy if we own the repo
+        if: github.repository_owner == github.actor # Only deploy if we own the repo
         uses: actions/configure-pages@v3
         continue-on-error: true
-        
+
       - name: Build documentation site
         run: |
           echo "🏗️  Building documentation site..."
-          
+
           # Create a simple documentation site
           mkdir -p _site
-          
+
           # Copy README as index
           if [ -f "README.md" ]; then
             cp README.md _site/index.md
           fi
-          
+
           # Copy all documentation
           if [ -d "docs" ]; then
             cp -r docs/* _site/
           fi
-          
+
           # Create a simple HTML wrapper if needed
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
@@ -264,28 +264,28 @@ jobs:
           </body>
           </html>
           EOF
-          
+
           echo "✅ Documentation site built in _site/"
-          
+
       - name: Upload documentation artifacts
         uses: actions/upload-artifact@v4
         with:
           name: documentation-site
           path: _site/
           retention-days: 30
-          
+
       - name: Create documentation summary
         run: |
           echo "# 📚 Documentation Update Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Files Processed" >> $GITHUB_STEP_SUMMARY
-          
+
           find . -name "*.md" -not -path "./node_modules/*" | wc -l | xargs echo "- Markdown files found:" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ -d "_site" ]; then
             find _site/ -type f | wc -l | xargs echo "- Site files generated:" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Quality Checks" >> $GITHUB_STEP_SUMMARY
           echo "- ✅ Link validation completed" >> $GITHUB_STEP_SUMMARY

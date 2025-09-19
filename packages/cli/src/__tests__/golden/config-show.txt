@@ -1,7 +1,7 @@
 Current configuration:
 {
   "apiUrl": "http://localhost:XXXX",
-  "timeout": 5000,
+  "timeout": 750,
   "format": "table",
   "color": true,
   "projectDir": "/project/root"

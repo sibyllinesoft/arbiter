@@ -8,10 +8,10 @@ metadata:
     component: kitchen
 spec:
   ports:
-  - port: 8080
-    protocol: TCP
-    targetPort: 8080
-    name: client
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+      name: client
   selector:
     app: souschef
 ---
@@ -29,13 +29,13 @@ spec:
         component: kitchen
     spec:
       containers:
-      - image: gcr.io/myproj/souschef:v0.5.3
-        ports:
-        - containerPort: 8080
-        name: souschef
-        livenessProbe:
-          httpGet:
-            path: /debug/health
-            port: 8080
-          initialDelaySeconds: 40
-          periodSeconds: 3
+        - image: gcr.io/myproj/souschef:v0.5.3
+          ports:
+            - containerPort: 8080
+          name: souschef
+          livenessProbe:
+            httpGet:
+              path: /debug/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 3

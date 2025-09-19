@@ -2,7 +2,7 @@
  * Test utilities and common helpers for Playwright tests
  */
 
-import { Page, Locator, expect } from '@playwright/test';
+import { type Locator, type Page, expect } from '@playwright/test';
 
 // Base URLs and configuration
 export const TEST_CONFIG = {
@@ -28,17 +28,17 @@ export const SELECTORS = {
   SAVE_BUTTON: '[data-testid="save-button"], button:has-text("Save")',
   VALIDATE_BUTTON: '[data-testid="validate-button"], button:has-text("Validate")',
   FREEZE_BUTTON: '[data-testid="freeze-button"], button:has-text("Freeze")',
-  
+
   // Navigation and tabs
   LEFT_TABS: '[data-testid="left-tabs"], .left-pane .tabs',
   RIGHT_TABS: '[data-testid="right-tabs"], .right-pane .tabs',
   TAB_BUTTON: '[role="tab"], .tab-button',
-  
+
   // Editor components
   MONACO_EDITOR: '[data-testid="monaco-editor"], .monaco-editor',
   EDITOR_PANE: '[data-testid="editor-pane"], .editor-pane',
   FILE_TREE: '[data-testid="file-tree"], .file-tree',
-  
+
   // Diagram components
   DIAGRAM_CONTAINER: '[data-testid="diagram-container"], .diagram-container',
   FLOW_DIAGRAM: '[data-testid="flow-diagram"]',
@@ -46,13 +46,13 @@ export const SELECTORS = {
   FSM_DIAGRAM: '[data-testid="fsm-diagram"]',
   VIEW_DIAGRAM: '[data-testid="view-diagram"]',
   ARCHITECTURE_DIAGRAM: '[data-testid="architecture-diagram"]',
-  
+
   // Common UI elements
   LOADING_SPINNER: '[data-testid="loading"], .spinner, .loading',
   ERROR_MESSAGE: '[data-testid="error"], .error, .alert-error',
   SUCCESS_MESSAGE: '[data-testid="success"], .success, .alert-success',
   TOAST: '.Toastify__toast',
-  
+
   // Status and validation
   VALIDATION_STATUS: '[data-testid="validation-status"]',
   STATUS_BADGE: '[data-testid="status-badge"], .status-badge',
@@ -68,7 +68,7 @@ export class StorybookHelper {
   async navigateToStory(storyPath: string): Promise<void> {
     const url = `${TEST_CONFIG.STORYBOOK_URL}/iframe.html?args=&id=${storyPath}&viewMode=story`;
     await this.page.goto(url, { waitUntil: 'networkidle' });
-    
+
     // Wait for story to load
     await this.page.waitForTimeout(1000);
   }
@@ -106,7 +106,10 @@ export class BasePage {
   /**
    * Wait for multiple elements to be visible
    */
-  async waitForElements(selectors: string[], timeout = TEST_CONFIG.TIMEOUT.MEDIUM): Promise<Locator[]> {
+  async waitForElements(
+    selectors: string[],
+    timeout = TEST_CONFIG.TIMEOUT.MEDIUM
+  ): Promise<Locator[]> {
     const promises = selectors.map(selector => this.waitForElement(selector, timeout));
     return Promise.all(promises);
   }
@@ -129,7 +132,7 @@ export class BasePage {
   async waitForLoadingComplete(): Promise<void> {
     // Wait for any loading spinners to disappear
     const loadingSelectors = [SELECTORS.LOADING_SPINNER];
-    
+
     for (const selector of loadingSelectors) {
       try {
         await this.page.locator(selector).waitFor({ state: 'hidden', timeout: 5000 });
@@ -163,12 +166,12 @@ export class BasePage {
     try {
       // Inject axe-core if not already present
       await this.page.addScriptTag({
-        url: 'https://unpkg.com/axe-core@4.7.0/axe.min.js'
+        url: 'https://unpkg.com/axe-core@4.7.0/axe.min.js',
       });
 
       // Run accessibility check
       const results = await this.page.evaluate(() => {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           // @ts-ignore - axe is loaded from CDN
           axe.run(document, (err: any, results: any) => {
             if (err) throw err;
@@ -232,12 +235,12 @@ export class TopBarPage extends BasePage {
   async getValidationStatus(): Promise<string> {
     const statusElement = this.page.locator(SELECTORS.VALIDATION_STATUS);
     if (await statusElement.isVisible()) {
-      return await statusElement.textContent() || '';
+      return (await statusElement.textContent()) || '';
     }
-    
+
     // Fallback to status badge
     const badgeElement = this.page.locator(SELECTORS.STATUS_BADGE);
-    return await badgeElement.textContent() || '';
+    return (await badgeElement.textContent()) || '';
   }
 }
 
@@ -252,9 +255,12 @@ export class EditorPage extends BasePage {
 
   async waitForMonacoToLoad(): Promise<void> {
     // Wait for Monaco editor to be fully initialized
-    await this.page.waitForFunction(() => {
-      return window.monaco && window.monaco.editor;
-    }, { timeout: TEST_CONFIG.TIMEOUT.LONG });
+    await this.page.waitForFunction(
+      () => {
+        return window.monaco?.editor;
+      },
+      { timeout: TEST_CONFIG.TIMEOUT.LONG }
+    );
 
     // Wait for editor content to be visible
     await this.waitForElement(SELECTORS.MONACO_EDITOR);
@@ -262,7 +268,7 @@ export class EditorPage extends BasePage {
 
   async getEditorContent(): Promise<string> {
     await this.waitForMonacoToLoad();
-    
+
     // Try to get content from Monaco editor instance
     const content = await this.page.evaluate(() => {
       const editorElements = document.querySelectorAll('.monaco-editor');
@@ -281,8 +287,8 @@ export class EditorPage extends BasePage {
 
   async setEditorContent(content: string): Promise<void> {
     await this.waitForMonacoToLoad();
-    
-    await this.page.evaluate((text) => {
+
+    await this.page.evaluate(text => {
       const editor = (window as any).monaco?.editor?.getEditors?.()?.[0];
       if (editor) {
         editor.setValue(text);
@@ -307,12 +313,16 @@ export class DiagramPage extends BasePage {
 
   async waitForDiagramToRender(): Promise<void> {
     await this.waitForElement(SELECTORS.DIAGRAM_CONTAINER);
-    
+
     // Wait for any SVG, Canvas, or diagram-specific content to load
-    const diagramContent = this.page.locator(`${SELECTORS.DIAGRAM_CONTAINER} svg, ${SELECTORS.DIAGRAM_CONTAINER} canvas, ${SELECTORS.DIAGRAM_CONTAINER} .diagram-content`);
-    
+    const diagramContent = this.page.locator(
+      `${SELECTORS.DIAGRAM_CONTAINER} svg, ${SELECTORS.DIAGRAM_CONTAINER} canvas, ${SELECTORS.DIAGRAM_CONTAINER} .diagram-content`
+    );
+
     try {
-      await diagramContent.first().waitFor({ state: 'visible', timeout: TEST_CONFIG.TIMEOUT.MEDIUM });
+      await diagramContent
+        .first()
+        .waitFor({ state: 'visible', timeout: TEST_CONFIG.TIMEOUT.MEDIUM });
     } catch {
       // Diagram might not have visual content yet, just wait for container
     }
@@ -322,25 +332,27 @@ export class DiagramPage extends BasePage {
 
   async getDiagramType(): Promise<string> {
     const container = await this.getDiagramContainer();
-    const classes = await container.getAttribute('class') || '';
-    
+    const classes = (await container.getAttribute('class')) || '';
+
     // Try to determine diagram type from class names or data attributes
     if (classes.includes('flow')) return 'flow';
     if (classes.includes('site')) return 'site';
     if (classes.includes('fsm')) return 'fsm';
     if (classes.includes('view')) return 'view';
     if (classes.includes('architecture')) return 'architecture';
-    
+
     return 'unknown';
   }
 
   async checkDiagramInteractivity(): Promise<boolean> {
     const container = await this.getDiagramContainer();
-    
+
     // Check if diagram has interactive elements
-    const interactiveElements = container.locator('button, [role="button"], .clickable, .interactive');
+    const interactiveElements = container.locator(
+      'button, [role="button"], .clickable, .interactive'
+    );
     const count = await interactiveElements.count();
-    
+
     return count > 0;
   }
 }
@@ -357,7 +369,7 @@ export class TabsPage extends BasePage {
   async clickTab(tabName: string, side: 'left' | 'right' = 'right'): Promise<void> {
     const tabsContainer = side === 'left' ? await this.getLeftTabs() : await this.getRightTabs();
     const tab = tabsContainer.locator(SELECTORS.TAB_BUTTON).filter({ hasText: tabName });
-    
+
     await tab.click();
     await this.waitForLoadingComplete();
   }
@@ -365,28 +377,31 @@ export class TabsPage extends BasePage {
   async getActiveTab(side: 'left' | 'right' = 'right'): Promise<string> {
     const tabsContainer = side === 'left' ? await this.getLeftTabs() : await this.getRightTabs();
     const activeTab = tabsContainer.locator('.active, [aria-selected="true"]');
-    
-    return await activeTab.textContent() || '';
+
+    return (await activeTab.textContent()) || '';
   }
 
   async getAllTabNames(side: 'left' | 'right' = 'right'): Promise<string[]> {
     const tabsContainer = side === 'left' ? await this.getLeftTabs() : await this.getRightTabs();
     const tabs = tabsContainer.locator(SELECTORS.TAB_BUTTON);
-    
+
     const count = await tabs.count();
     const names: string[] = [];
-    
+
     for (let i = 0; i < count; i++) {
       const name = await tabs.nth(i).textContent();
       if (name) names.push(name.trim());
     }
-    
+
     return names;
   }
 }
 
 // Utility functions
-export async function waitForToast(page: Page, type: 'success' | 'error' | 'warning' | 'info' = 'success'): Promise<void> {
+export async function waitForToast(
+  page: Page,
+  type: 'success' | 'error' | 'warning' | 'info' = 'success'
+): Promise<void> {
   const toastSelector = `${SELECTORS.TOAST}.Toastify__toast--${type}`;
   try {
     await page.locator(toastSelector).waitFor({ state: 'visible', timeout: 5000 });
@@ -399,12 +414,12 @@ export async function waitForToast(page: Page, type: 'success' | 'error' | 'warn
 
 export async function checkNetworkErrors(page: Page): Promise<string[]> {
   const errors: string[] = [];
-  
-  page.on('requestfailed', (request) => {
+
+  page.on('requestfailed', request => {
     errors.push(`Failed request: ${request.url()} - ${request.failure()?.errorText}`);
   });
 
-  page.on('response', (response) => {
+  page.on('response', response => {
     if (response.status() >= 400) {
       errors.push(`HTTP ${response.status()}: ${response.url()}`);
     }
@@ -415,7 +430,7 @@ export async function checkNetworkErrors(page: Page): Promise<string[]> {
 
 export async function mockApiResponses(page: Page): Promise<void> {
   // Mock common API endpoints for testing
-  await page.route('**/api/projects', async (route) => {
+  await page.route('**/api/projects', async route => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -430,7 +445,7 @@ export async function mockApiResponses(page: Page): Promise<void> {
     });
   });
 
-  await page.route('**/api/projects/*/validate', async (route) => {
+  await page.route('**/api/projects/*/validate', async route => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -443,7 +458,7 @@ export async function mockApiResponses(page: Page): Promise<void> {
     });
   });
 
-  await page.route('**/api/projects/*/fragments/**', async (route) => {
+  await page.route('**/api/projects/*/fragments/**', async route => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 200,

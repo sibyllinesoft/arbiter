@@ -5,11 +5,11 @@
 
 import React, { useState, useCallback } from 'react';
 import { clsx } from 'clsx';
-import { 
-  File, 
-  Folder, 
-  FolderOpen, 
-  Plus, 
+import {
+  File,
+  Folder,
+  FolderOpen,
+  Plus,
   MoreHorizontal,
   Trash2,
   Edit,
@@ -20,7 +20,7 @@ import {
   Settings,
   Database,
   Image,
-  Archive
+  Archive,
 } from 'lucide-react';
 import { useApp, useCurrentProject } from '../../contexts/AppContext';
 import { apiService } from '../../services/api';
@@ -66,60 +66,63 @@ export interface FileTreeProps {
 export function FileTree({ className }: FileTreeProps) {
   const { state, dispatch, setActiveFragment, setError } = useApp();
   const currentProject = useCurrentProject();
-  
+
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newFragmentPath, setNewFragmentPath] = useState('');
 
   // Build tree structure from flat fragment list
-  const buildFileTree = useCallback((fragments: Fragment[]): FileTreeItem[] => {
-    const tree: FileTreeItem[] = [];
-    const pathMap = new Map<string, FileTreeItem>();
+  const buildFileTree = useCallback(
+    (fragments: Fragment[]): FileTreeItem[] => {
+      const tree: FileTreeItem[] = [];
+      const pathMap = new Map<string, FileTreeItem>();
 
-    // Sort fragments by path
-    const sortedFragments = [...fragments].sort((a, b) => a.path.localeCompare(b.path));
+      // Sort fragments by path
+      const sortedFragments = [...fragments].sort((a, b) => a.path.localeCompare(b.path));
 
-    for (const fragment of sortedFragments) {
-      const parts = fragment.path.split('/').filter(Boolean);
-      let currentPath = '';
-      let currentLevel = tree;
+      for (const fragment of sortedFragments) {
+        const parts = fragment.path.split('/').filter(Boolean);
+        let currentPath = '';
+        let currentLevel = tree;
 
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        currentPath = currentPath ? `${currentPath}/${part}` : part;
-        const isFile = i === parts.length - 1;
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          const isFile = i === parts.length - 1;
 
-        // Check if item already exists at this level
-        let existingItem = currentLevel.find(item => item.path === currentPath);
+          // Check if item already exists at this level
+          let existingItem = currentLevel.find(item => item.path === currentPath);
 
-        if (!existingItem) {
-          const newItem: FileTreeItem = {
-            id: isFile ? fragment.id : currentPath,
-            path: currentPath,
-            type: isFile ? 'file' : 'directory',
-            children: isFile ? undefined : [],
-            hasUnsavedChanges: isFile ? state.unsavedChanges.has(fragment.id) : undefined,
-          };
+          if (!existingItem) {
+            const newItem: FileTreeItem = {
+              id: isFile ? fragment.id : currentPath,
+              path: currentPath,
+              type: isFile ? 'file' : 'directory',
+              children: isFile ? undefined : [],
+              hasUnsavedChanges: isFile ? state.unsavedChanges.has(fragment.id) : undefined,
+            };
 
-          currentLevel.push(newItem);
-          pathMap.set(currentPath, newItem);
-          existingItem = newItem;
-        }
+            currentLevel.push(newItem);
+            pathMap.set(currentPath, newItem);
+            existingItem = newItem;
+          }
 
-        // Update unsaved changes status for files
-        if (isFile && existingItem.hasUnsavedChanges !== state.unsavedChanges.has(fragment.id)) {
-          existingItem.hasUnsavedChanges = state.unsavedChanges.has(fragment.id);
-        }
+          // Update unsaved changes status for files
+          if (isFile && existingItem.hasUnsavedChanges !== state.unsavedChanges.has(fragment.id)) {
+            existingItem.hasUnsavedChanges = state.unsavedChanges.has(fragment.id);
+          }
 
-        // Move to next level for directories
-        if (!isFile && existingItem.children) {
-          currentLevel = existingItem.children;
+          // Move to next level for directories
+          if (!isFile && existingItem.children) {
+            currentLevel = existingItem.children;
+          }
         }
       }
-    }
 
-    return tree;
-  }, [state.unsavedChanges]);
+      return tree;
+    },
+    [state.unsavedChanges]
+  );
 
   const fileTree = buildFileTree(state.fragments);
 
@@ -137,9 +140,12 @@ export function FileTree({ className }: FileTreeProps) {
   }, []);
 
   // Handle file selection
-  const handleFileSelect = useCallback((fragmentId: string) => {
-    setActiveFragment(fragmentId);
-  }, [setActiveFragment]);
+  const handleFileSelect = useCallback(
+    (fragmentId: string) => {
+      setActiveFragment(fragmentId);
+    },
+    [setActiveFragment]
+  );
 
   // Handle create new fragment
   const handleCreateFragment = useCallback(async () => {
@@ -183,30 +189,33 @@ export function FileTree({ className }: FileTreeProps) {
   }, [currentProject, newFragmentPath, dispatch, setActiveFragment, setError]);
 
   // Handle delete fragment
-  const handleDeleteFragment = useCallback(async (fragmentId: string, fragmentPath: string) => {
-    if (!currentProject) return;
+  const handleDeleteFragment = useCallback(
+    async (fragmentId: string, fragmentPath: string) => {
+      if (!currentProject) return;
 
-    if (!confirm(`Are you sure you want to delete "${fragmentPath}"?`)) {
-      return;
-    }
+      if (!confirm(`Are you sure you want to delete "${fragmentPath}"?`)) {
+        return;
+      }
 
-    try {
-      await apiService.deleteFragment(currentProject.id, fragmentId);
-      dispatch({ type: 'DELETE_FRAGMENT', payload: fragmentId });
+      try {
+        await apiService.deleteFragment(currentProject.id, fragmentId);
+        dispatch({ type: 'DELETE_FRAGMENT', payload: fragmentId });
 
-      toast.success(`Deleted fragment: ${fragmentPath}`, {
-        position: 'top-right',
-        autoClose: 2000,
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to delete fragment';
-      setError(message);
-      toast.error(message, {
-        position: 'top-right',
-        autoClose: 5000,
-      });
-    }
-  }, [currentProject, dispatch, setError]);
+        toast.success(`Deleted fragment: ${fragmentPath}`, {
+          position: 'top-right',
+          autoClose: 2000,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to delete fragment';
+        setError(message);
+        toast.error(message, {
+          position: 'top-right',
+          autoClose: 5000,
+        });
+      }
+    },
+    [currentProject, dispatch, setError]
+  );
 
   return (
     <div className={cn('h-full flex flex-col bg-white', className)}>
@@ -215,9 +224,7 @@ export function FileTree({ className }: FileTreeProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Folder className="h-4 w-4 text-graphite-500" />
-            <h3 className="font-semibold text-sm text-graphite-800">
-              Explorer
-            </h3>
+            <h3 className="font-semibold text-sm text-graphite-800">Explorer</h3>
             <span className="px-2 py-0.5 bg-graphite-200 text-graphite-600 text-xs rounded-full font-medium">
               {state.fragments.length}
             </span>
@@ -227,9 +234,9 @@ export function FileTree({ className }: FileTreeProps) {
             size="xs"
             onClick={() => setShowCreateForm(!showCreateForm)}
             className={cn(
-              "text-graphite-500 hover:text-graphite-700 hover:bg-graphite-100/80",
-              "transition-all duration-200 rounded-md",
-              showCreateForm && "bg-blue-50 text-blue-700 hover:text-blue-800 hover:bg-blue-100"
+              'text-graphite-500 hover:text-graphite-700 hover:bg-graphite-100/80',
+              'transition-all duration-200 rounded-md',
+              showCreateForm && 'bg-blue-50 text-blue-700 hover:text-blue-800 hover:bg-blue-100'
             )}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -240,15 +247,13 @@ export function FileTree({ className }: FileTreeProps) {
         {showCreateForm && (
           <div className="mt-4 space-y-3 p-3 bg-white border border-graphite-200 rounded-lg shadow-sm">
             <div className="space-y-2">
-              <label className="block text-xs font-medium text-graphite-700">
-                Fragment Path
-              </label>
+              <label className="block text-xs font-medium text-graphite-700">Fragment Path</label>
               <Input
                 size="sm"
                 placeholder="api/routes.cue"
                 value={newFragmentPath}
-                onChange={(e) => setNewFragmentPath(e.target.value)}
-                onKeyDown={(e) => {
+                onChange={e => setNewFragmentPath(e.target.value)}
+                onKeyDown={e => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     handleCreateFragment();
@@ -296,9 +301,7 @@ export function FileTree({ className }: FileTreeProps) {
             <div className="w-16 h-16 bg-graphite-100 rounded-2xl flex items-center justify-center mb-4">
               <Folder className="h-8 w-8 text-graphite-400" />
             </div>
-            <h4 className="text-sm font-medium text-graphite-900 mb-2">
-              No fragments yet
-            </h4>
+            <h4 className="text-sm font-medium text-graphite-900 mb-2">No fragments yet</h4>
             <p className="text-xs text-graphite-600 mb-4 max-w-xs">
               Create your first CUE fragment to start building specifications
             </p>
@@ -313,7 +316,7 @@ export function FileTree({ className }: FileTreeProps) {
           </div>
         ) : (
           <div className="space-y-0.5">
-            {fileTree.map((item) => (
+            {fileTree.map(item => (
               <FileTreeItemComponent
                 key={item.id}
                 item={item}
@@ -370,7 +373,7 @@ function FileTreeItemComponent({
 
   const fileName = item.path.split('/').pop() || item.path;
   const FileIcon = item.type === 'file' ? getFileIcon(fileName) : null;
-  
+
   // Enhanced indentation with connecting lines
   const indentationElements = [];
   for (let i = 0; i < level; i++) {
@@ -398,7 +401,7 @@ function FileTreeItemComponent({
             'bg-gradient-to-r from-blue-50 to-blue-50/30',
             'border border-blue-200/60',
             'shadow-sm shadow-blue-100/50',
-            'text-blue-700'
+            'text-blue-700',
           ],
           // Directory styling
           item.type === 'directory' && 'font-medium',
@@ -416,9 +419,7 @@ function FileTreeItemComponent({
       >
         {/* Hierarchy connector line */}
         {level > 0 && (
-          <div className="absolute left-0 top-0 bottom-0 flex">
-            {indentationElements}
-          </div>
+          <div className="absolute left-0 top-0 bottom-0 flex">{indentationElements}</div>
         )}
 
         {/* Expand/collapse chevron for directories */}
@@ -433,36 +434,41 @@ function FileTreeItemComponent({
         )}
 
         {/* Icon */}
-        <div className={cn(
-          "flex-shrink-0 transition-all duration-200",
-          item.type === 'directory' ? 'text-graphite-600' : 'text-graphite-500'
-        )}>
+        <div
+          className={cn(
+            'flex-shrink-0 transition-all duration-200',
+            item.type === 'directory' ? 'text-graphite-600' : 'text-graphite-500'
+          )}
+        >
           {item.type === 'directory' ? (
             isExpanded ? (
-              <FolderOpen className={cn(
-                "h-4 w-4",
-                isExpanded && "text-blue-600"
-              )} />
+              <FolderOpen className={cn('h-4 w-4', isExpanded && 'text-blue-600')} />
             ) : (
               <Folder className="h-4 w-4" />
             )
           ) : (
-            FileIcon && <FileIcon className={cn(
-              "h-4 w-4",
-              isActive ? "text-blue-600" : "text-graphite-500",
-              // Special styling for CUE files
-              fileName.endsWith('.cue') && "text-purple-500"
-            )} />
+            FileIcon && (
+              <FileIcon
+                className={cn(
+                  'h-4 w-4',
+                  isActive ? 'text-blue-600' : 'text-graphite-500',
+                  // Special styling for CUE files
+                  fileName.endsWith('.cue') && 'text-purple-500'
+                )}
+              />
+            )
           )}
         </div>
 
         {/* Name */}
-        <span className={cn(
-          'flex-1 truncate transition-colors duration-200',
-          isActive ? 'text-blue-800 font-medium' : 'text-graphite-700',
-          item.type === 'directory' && 'font-medium',
-          item.hasUnsavedChanges && 'text-amber-800 font-semibold'
-        )}>
+        <span
+          className={cn(
+            'flex-1 truncate transition-colors duration-200',
+            isActive ? 'text-blue-800 font-medium' : 'text-graphite-700',
+            item.type === 'directory' && 'font-medium',
+            item.hasUnsavedChanges && 'text-amber-800 font-semibold'
+          )}
+        >
           {fileName}
         </span>
 
@@ -475,17 +481,19 @@ function FileTreeItemComponent({
 
         {/* Actions */}
         {item.type === 'file' && (
-          <div className={cn(
-            "flex-shrink-0 flex items-center gap-0.5 transition-all duration-200",
-            showActions ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2"
-          )}>
+          <div
+            className={cn(
+              'flex-shrink-0 flex items-center gap-0.5 transition-all duration-200',
+              showActions ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+            )}
+          >
             <button
               type="button"
               className={cn(
-                "p-1.5 rounded-md transition-all duration-200",
-                "text-graphite-400 hover:text-red-600 hover:bg-red-50",
-                "focus:outline-none focus:ring-1 focus:ring-red-500/50",
-                "shadow-sm hover:shadow"
+                'p-1.5 rounded-md transition-all duration-200',
+                'text-graphite-400 hover:text-red-600 hover:bg-red-50',
+                'focus:outline-none focus:ring-1 focus:ring-red-500/50',
+                'shadow-sm hover:shadow'
               )}
               onClick={handleDelete}
               title="Delete fragment"
@@ -510,17 +518,15 @@ function FileTreeItemComponent({
       {item.type === 'directory' && item.children && (
         <div
           className={cn(
-            "overflow-hidden transition-all duration-300 ease-out",
-            isExpanded 
-              ? "max-h-screen opacity-100" 
-              : "max-h-0 opacity-0"
+            'overflow-hidden transition-all duration-300 ease-out',
+            isExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
           )}
           style={{
             transitionProperty: 'max-height, opacity',
           }}
         >
           <div className="space-y-0.5">
-            {item.children.map((child) => (
+            {item.children.map(child => (
               <FileTreeItemComponent
                 key={child.id}
                 item={child}

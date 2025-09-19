@@ -1,118 +1,18 @@
-# Dependencies
-node_modules/
-bun.lockb
-
-# Development
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-*.db-shm
-*.db-wal
-
-# Build outputs
+# Build artifacts
+*.out
 dist/
 build/
-*.tsbuildinfo
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-.nyc_output/
-
-# Temporary folders
-tmp/
-temp/
-workdir/
-cache/
-data/
-
-# Screenshots and test artifacts
-screenshots/
-*.png
-*.jpg
-*.jpeg
-*.gif
-
-# Test files and debugging scripts
-*test*.js
-*debug*.js
-api-test.*
-verification-test.*
-frontend-test.*
-network-test.*
-investigate-*.js
-capture-screenshots.*
-comprehensive-screenshots.*
-simple-screenshots.*
-quick-test.*
-
-# Progress reports and analysis files
-*REPORT*.md
-*SUMMARY*.md
-*VERIFICATION*.md
-*ANALYSIS*.md
-TODO.md
-*demo*.ts
-*demo*.md
-test-config.md
-arbiter.txt
-scribe_analysis.json
-
-# MCP and tool directories
-.playwright-mcp/
-.serena/
-.scribeignore
-
-# Editor directories and files
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS generated files
+# OS files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 
-# Bun
-.bun
-
-# TypeScript
-*.tsbuildinfo
-
-# ESLint
-.eslintcache
-
-# Prettier
-.prettiercache
-
-# Built CLI binary (large file, build locally with: bun run build:standalone)
-arbiter-cli
-
-# Arbiter output directories
-.arbiter/
+# Temporary files
+*.tmp
+*.temp

@@ -56,9 +56,9 @@ vi.mock('lucide-react', () => ({
 // Mock design system components
 vi.mock('../../design-system', () => ({
   Button: ({ children, onClick, disabled, className, size, variant, ...props }: any) => (
-    <button 
-      onClick={onClick} 
-      disabled={disabled} 
+    <button
+      onClick={onClick}
+      disabled={disabled}
       className={className}
       data-size={size}
       data-variant={variant}
@@ -67,7 +67,16 @@ vi.mock('../../design-system', () => ({
       {children}
     </button>
   ),
-  Input: ({ value, onChange, onKeyDown, placeholder, className, autoFocus, size, ...props }: any) => (
+  Input: ({
+    value,
+    onChange,
+    onKeyDown,
+    placeholder,
+    className,
+    autoFocus,
+    size,
+    ...props
+  }: any) => (
     <input
       value={value}
       onChange={onChange}
@@ -104,7 +113,7 @@ const mockFragments: Fragment[] = [
   },
   {
     id: 'fragment-2',
-    project_id: 'project-1', 
+    project_id: 'project-1',
     path: 'api/middleware/auth.cue',
     content: 'package middleware\nauth: {}',
     created_at: '2024-01-01T00:00:00Z',
@@ -178,7 +187,7 @@ describe('FileTree', () => {
 
     it('applies custom className', () => {
       render(<FileTree className="custom-file-tree" />);
-      
+
       const container = screen.getByText('Explorer').closest('.custom-file-tree');
       expect(container).toBeInTheDocument();
     });
@@ -252,7 +261,7 @@ describe('FileTree', () => {
       render(<FileTree />);
 
       await user.click(screen.getByRole('button', { name: /Create Fragment/i }));
-      
+
       // Should show create form
       expect(screen.getByTestId('file-tree-input')).toBeInTheDocument();
     });
@@ -263,7 +272,7 @@ describe('FileTree', () => {
       render(<FileTree />);
 
       const apiFolder = screen.getByText('api');
-      
+
       // Initially collapsed, middleware folder not visible
       expect(screen.queryByText('middleware')).not.toBeInTheDocument();
 
@@ -283,7 +292,7 @@ describe('FileTree', () => {
       render(<FileTree />);
 
       const apiFolder = screen.getByText('api');
-      
+
       // Collapsed folder should show right chevron
       expect(screen.getByTestId('chevron-right-icon')).toBeInTheDocument();
 
@@ -387,7 +396,10 @@ describe('FileTree', () => {
       });
 
       expect(mockSetActiveFragment).toHaveBeenCalledWith('new-fragment');
-      expect(toast.success).toHaveBeenCalledWith('Created fragment: new-file.cue', expect.any(Object));
+      expect(toast.success).toHaveBeenCalledWith(
+        'Created fragment: new-file.cue',
+        expect.any(Object)
+      );
     });
 
     it('creates fragment with Enter key', async () => {
@@ -505,7 +517,10 @@ describe('FileTree', () => {
         payload: 'fragment-1',
       });
 
-      expect(toast.success).toHaveBeenCalledWith('Deleted fragment: api/routes.cue', expect.any(Object));
+      expect(toast.success).toHaveBeenCalledWith(
+        'Deleted fragment: api/routes.cue',
+        expect.any(Object)
+      );
     });
 
     it('requires confirmation before deletion', async () => {
@@ -521,7 +536,9 @@ describe('FileTree', () => {
       const deleteButton = screen.getByTestId('trash-icon').closest('button');
       await user.click(deleteButton!);
 
-      expect(global.confirm).toHaveBeenCalledWith('Are you sure you want to delete "api/routes.cue"?');
+      expect(global.confirm).toHaveBeenCalledWith(
+        'Are you sure you want to delete "api/routes.cue"?'
+      );
       expect(mockDeleteFragment).not.toHaveBeenCalled();
     });
 
@@ -583,9 +600,7 @@ describe('FileTree', () => {
     });
 
     it('shows generic file icon for unknown extensions', () => {
-      const fragments: Fragment[] = [
-        { ...mockFragments[0], path: 'unknown.xyz' },
-      ];
+      const fragments: Fragment[] = [{ ...mockFragments[0], path: 'unknown.xyz' }];
 
       mockUseApp.mockReturnValue({
         state: { ...mockAppState, fragments },
@@ -679,7 +694,7 @@ describe('FileTree', () => {
       render(<FileTree />);
 
       const apiFolder = screen.getByText('api');
-      
+
       const startTime = performance.now();
       await user.click(apiFolder);
       const endTime = performance.now();
@@ -698,9 +713,7 @@ describe('FileTree', () => {
     });
 
     it('handles empty fragment paths', () => {
-      const fragmentsWithEmptyPaths: Fragment[] = [
-        { ...mockFragments[0], path: '' },
-      ];
+      const fragmentsWithEmptyPaths: Fragment[] = [{ ...mockFragments[0], path: '' }];
 
       mockUseApp.mockReturnValue({
         state: { ...mockAppState, fragments: fragmentsWithEmptyPaths },

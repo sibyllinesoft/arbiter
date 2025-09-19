@@ -28,7 +28,7 @@ export interface AIAgentConfig {
 
   // Event filtering
   eventFilters?: string[]; // Array of "provider.eventType" strings
-  
+
   // Rate limiting
   rateLimits?: {
     enabled: boolean;
@@ -40,16 +40,51 @@ export interface AIAgentConfig {
   // Security settings
   security?: {
     requireUserMention: boolean; // Only respond when @mentioned
-    allowedUsers?: string[];     // Restrict to specific users
-    allowedRepos?: string[];     // Restrict to specific repositories
+    allowedUsers?: string[]; // Restrict to specific users
+    allowedRepos?: string[]; // Restrict to specific repositories
   };
 
   // Behavior settings
   behavior?: {
-    autoResponse: boolean;       // Respond automatically without commands
-    verboseLogging: boolean;     // Enable detailed logging
-    dryRun: boolean;            // Don't perform actions, just analyze
+    autoResponse: boolean; // Respond automatically without commands
+    verboseLogging: boolean; // Enable detailed logging
+    dryRun: boolean; // Don't perform actions, just analyze
   };
+
+  actionIntegrations?: ActionIntegrationsConfig;
+}
+
+export interface GitHubActionIntegrationConfig {
+  enabled: boolean;
+  apiUrl?: string;
+  token?: string;
+  tokenEnv?: string;
+  actions?: {
+    comment?: boolean;
+    label?: boolean;
+    assign?: boolean;
+    createIssue?: boolean;
+    requestReview?: boolean;
+  };
+}
+
+export interface GitLabActionIntegrationConfig {
+  enabled: boolean;
+  apiUrl?: string;
+  token?: string;
+  tokenEnv?: string;
+  actions?: {
+    comment?: boolean;
+    label?: boolean;
+    assign?: boolean;
+    createIssue?: boolean;
+  };
+}
+
+export interface ActionIntegrationsConfig {
+  github?: GitHubActionIntegrationConfig;
+  gitlab?: GitLabActionIntegrationConfig;
+  [key: string]: unknown;
 }
 
 /**
@@ -99,18 +134,18 @@ export interface AICommand {
   description: string;
   usage: string;
   examples: string[];
-  
+
   // Command behavior
   requiresArgs: boolean;
   minArgs?: number;
   maxArgs?: number;
-  
+
   // AI processing settings
   prompt: string;
   model?: string;
   temperature?: number;
   maxTokens?: number;
-  
+
   // Command permissions
   permissions?: {
     requiredRole?: 'admin' | 'maintainer' | 'contributor';
@@ -134,17 +169,17 @@ export interface AICommand {
 export interface AIProvider {
   getName(): string;
   getConfig(): AIProviderConfig;
-  
+
   /**
    * Process an AI command with context
    */
   processCommand(command: AICommand, context: AIContext): Promise<AIResponse>;
-  
+
   /**
    * Test the provider connection and configuration
    */
   testConnection(): Promise<{ success: boolean; error?: string }>;
-  
+
   /**
    * Get provider status and usage metrics
    */
@@ -160,7 +195,7 @@ export interface AIContext {
   eventData: any;
   originalEvent: any;
   config: AIAgentConfig;
-  
+
   // Additional context
   repository?: {
     name: string;
@@ -168,13 +203,13 @@ export interface AIContext {
     url: string;
     defaultBranch: string;
   };
-  
+
   user?: {
     login: string;
     name?: string;
     email?: string;
   };
-  
+
   metadata?: Record<string, any>;
 }
 
@@ -185,7 +220,7 @@ export interface AIResponse {
   success: boolean;
   message?: string;
   error?: string;
-  
+
   // AI-generated content
   data?: {
     analysis?: string;
@@ -194,10 +229,10 @@ export interface AIResponse {
     documentation?: string;
     summary?: string;
   };
-  
+
   // Actions to execute
   actions?: AIAction[];
-  
+
   // Usage metrics
   usage?: {
     inputTokens: number;
@@ -212,17 +247,17 @@ export interface AIResponse {
  */
 export interface AIAction {
   type: 'comment' | 'issue' | 'label' | 'assign' | 'merge' | 'close' | 'webhook';
-  
+
   // Action-specific data
   data: {
-    body?: string;           // For comments/issues
-    title?: string;          // For issues
-    labels?: string[];       // For labeling
-    assignees?: string[];    // For assignments
-    webhookUrl?: string;     // For webhook calls
+    body?: string; // For comments/issues
+    title?: string; // For issues
+    labels?: string[]; // For labeling
+    assignees?: string[]; // For assignments
+    webhookUrl?: string; // For webhook calls
     [key: string]: any;
   };
-  
+
   // Action conditions
   conditions?: {
     requiresApproval?: boolean;
@@ -237,7 +272,7 @@ export interface AIAction {
 export interface CodeReviewResult {
   overallRating: 'excellent' | 'good' | 'needs-improvement' | 'poor';
   summary: string;
-  
+
   files: Array<{
     path: string;
     rating: 'excellent' | 'good' | 'needs-improvement' | 'poor';
@@ -248,17 +283,17 @@ export interface CodeReviewResult {
       suggestion?: string;
     }>;
   }>;
-  
+
   security: {
     riskLevel: 'low' | 'medium' | 'high';
     issues: string[];
   };
-  
+
   performance: {
     concerns: string[];
     suggestions: string[];
   };
-  
+
   maintainability: {
     score: number; // 1-10
     issues: string[];
@@ -272,14 +307,14 @@ export interface AIProviderStatus {
   name: string;
   connected: boolean;
   model: string;
-  
+
   usage: {
     requestsToday: number;
     tokensToday: number;
     costToday?: number;
     rateLimitRemaining?: number;
   };
-  
+
   performance: {
     averageResponseTime: number;
     successRate: number;
@@ -293,7 +328,7 @@ export interface AIProviderStatus {
 export interface WebhookEventData {
   success: boolean;
   error?: string;
-  
+
   data: {
     // Common fields
     repository: {
@@ -302,14 +337,14 @@ export interface WebhookEventData {
       url: string;
       defaultBranch: string;
     };
-    
+
     user: {
       login: string;
       name?: string;
       email?: string;
       avatarUrl?: string;
     };
-    
+
     // Event-specific data
     pullRequest?: {
       number: number;
@@ -325,7 +360,7 @@ export interface WebhookEventData {
       deletions: number;
       changedFiles: number;
     };
-    
+
     issue?: {
       number: number;
       title: string;
@@ -335,7 +370,7 @@ export interface WebhookEventData {
       assignees: string[];
       url: string;
     };
-    
+
     push?: {
       branch: string;
       commits: Array<{
@@ -347,7 +382,7 @@ export interface WebhookEventData {
       before: string;
       after: string;
     };
-    
+
     comment?: {
       id: number;
       body: string;
@@ -355,7 +390,7 @@ export interface WebhookEventData {
       url: string;
       created: string;
     };
-    
+
     // Raw event data for advanced processing
     raw?: any;
   };

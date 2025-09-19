@@ -1,8 +1,8 @@
 /**
  * Authentication and authorization module
  */
-import type { AuthContext, ServerConfig } from "./types.ts";
-import { logger, parseBearerToken } from "./utils.ts";
+import type { AuthContext, ServerConfig } from './types.ts';
+import { logger, parseBearerToken } from './utils.ts';
 
 export class AuthService {
   private validTokens: Set<string> = new Set();
@@ -11,9 +11,9 @@ export class AuthService {
 
   constructor(private config: ServerConfig) {
     // Initialize with some default tokens for development
-    if (process.env.NODE_ENV === "development") {
-      this.addToken("dev-token", "dev-user", ["*"]);
-      logger.info("Development mode: added default auth token");
+    if (process.env.NODE_ENV === 'development') {
+      this.addToken('dev-token', 'dev-user', ['*']);
+      logger.info('Development mode: added default auth token');
     }
   }
 
@@ -25,7 +25,7 @@ export class AuthService {
     this.tokenToUserMap.set(token, userId);
     this.userProjectAccess.set(userId, projectAccess);
 
-    logger.info("Token added for user", {
+    logger.info('Token added for user', {
       userId,
       projectCount: projectAccess.length,
     });
@@ -42,7 +42,7 @@ export class AuthService {
 
     if (userId) {
       this.userProjectAccess.delete(userId);
-      logger.info("Token removed for user", { userId });
+      logger.info('Token removed for user', { userId });
     }
   }
 
@@ -69,7 +69,7 @@ export class AuthService {
    */
   hasProjectAccess(authContext: AuthContext, projectId: string): boolean {
     // Wildcard access
-    if (authContext.project_access.includes("*")) {
+    if (authContext.project_access.includes('*')) {
       return true;
     }
 
@@ -84,13 +84,13 @@ export class AuthService {
     if (!this.config.auth_required) {
       // Return a default context when auth is disabled
       return {
-        token: "no-auth",
-        user_id: "anonymous",
-        project_access: ["*"],
+        token: 'no-auth',
+        user_id: 'anonymous',
+        project_access: ['*'],
       };
     }
 
-    const authHeader = headers.get("authorization");
+    const authHeader = headers.get('authorization');
     const token = parseBearerToken(authHeader ?? undefined);
 
     if (!token) {
@@ -105,7 +105,7 @@ export class AuthService {
    */
   createAuthMiddleware() {
     return async (
-      request: Request,
+      request: Request
     ): Promise<{
       authorized: boolean;
       authContext?: AuthContext;
@@ -119,39 +119,39 @@ export class AuthService {
             authorized: false,
             response: new Response(
               JSON.stringify({
-                type: "https://httpstatuses.com/401",
-                title: "Unauthorized",
+                type: 'https://httpstatuses.com/401',
+                title: 'Unauthorized',
                 status: 401,
-                detail: "Valid bearer token required",
+                detail: 'Valid bearer token required',
               }),
               {
                 status: 401,
                 headers: {
-                  "Content-Type": "application/problem+json",
-                  "WWW-Authenticate": "Bearer",
+                  'Content-Type': 'application/problem+json',
+                  'WWW-Authenticate': 'Bearer',
                 },
-              },
+              }
             ),
           };
         }
 
         return { authorized: true, authContext };
       } catch (error) {
-        logger.error("Auth middleware error", error instanceof Error ? error : undefined);
+        logger.error('Auth middleware error', error instanceof Error ? error : undefined);
 
         return {
           authorized: false,
           response: new Response(
             JSON.stringify({
-              type: "https://httpstatuses.com/500",
-              title: "Internal Server Error",
+              type: 'https://httpstatuses.com/500',
+              title: 'Internal Server Error',
               status: 500,
-              detail: "Authentication service error",
+              detail: 'Authentication service error',
             }),
             {
               status: 500,
-              headers: { "Content-Type": "application/problem+json" },
-            },
+              headers: { 'Content-Type': 'application/problem+json' },
+            }
           ),
         };
       }
@@ -164,7 +164,7 @@ export class AuthService {
   createProjectAccessMiddleware() {
     return (
       authContext: AuthContext,
-      projectId: string,
+      projectId: string
     ): {
       authorized: boolean;
       response?: Response;
@@ -174,15 +174,15 @@ export class AuthService {
           authorized: false,
           response: new Response(
             JSON.stringify({
-              type: "https://httpstatuses.com/403",
-              title: "Forbidden",
+              type: 'https://httpstatuses.com/403',
+              title: 'Forbidden',
               status: 403,
               detail: `Access denied to project: ${projectId}`,
             }),
             {
               status: 403,
-              headers: { "Content-Type": "application/problem+json" },
-            },
+              headers: { 'Content-Type': 'application/problem+json' },
+            }
           ),
         };
       }
@@ -214,7 +214,7 @@ export class AuthService {
     userId?: string;
     projectCount: number;
   }> {
-    return Array.from(this.validTokens).map((token) => {
+    return Array.from(this.validTokens).map(token => {
       const userId = this.tokenToUserMap.get(token);
       const projectAccess = userId ? (this.userProjectAccess.get(userId) ?? []) : [];
 
@@ -224,5 +224,57 @@ export class AuthService {
         projectCount: projectAccess.length,
       };
     });
+  }
+
+  /**
+   * Start OAuth service if enabled (placeholder when OAuth is disabled)
+   */
+  async startOAuthService(): Promise<void> {
+    // OAuth functionality requires SuperTokens integration
+    // Currently disabled - no OAuth service to start
+  }
+
+  /**
+   * Stop OAuth service if enabled (placeholder when OAuth is disabled)
+   */
+  async stopOAuthService(): Promise<void> {
+    // OAuth functionality requires SuperTokens integration
+    // Currently disabled - no OAuth service to stop
+  }
+
+  /**
+   * Get OAuth service instance (placeholder when OAuth is disabled)
+   */
+  getOAuthService(): undefined {
+    return undefined;
+  }
+
+  /**
+   * Get protected resource metadata for OAuth (placeholder when OAuth is disabled)
+   */
+  getProtectedResourceMetadata(): undefined {
+    return undefined;
+  }
+
+  /**
+   * Get OAuth authorization server instance (placeholder when OAuth is disabled)
+   */
+  getAuthorizationServer(): undefined {
+    return undefined;
+  }
+
+  /**
+   * Get OAuth provider instance (placeholder when OAuth is disabled)
+   */
+  getOAuthProvider(): undefined {
+    return undefined;
+  }
+
+  /**
+   * Create OAuth-aware auth middleware (falls back to regular auth when OAuth is disabled)
+   */
+  createOAuthAwareAuthMiddleware() {
+    // When OAuth is disabled, fall back to regular auth middleware
+    return this.createAuthMiddleware();
   }
 }

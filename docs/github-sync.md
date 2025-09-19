@@ -1,6 +1,8 @@
 # GitHub Synchronization
 
-The Arbiter CLI now supports synchronizing epics and tasks to GitHub issues and milestones. This feature enables you to keep your project management in sync between Arbiter and GitHub.
+The Arbiter CLI now supports synchronizing epics and tasks to GitHub issues and
+milestones. This feature enables you to keep your project management in sync
+between Arbiter and GitHub.
 
 ## Configuration
 
@@ -70,8 +72,10 @@ arbiter generate --dry-run --sync-github
 
 - `owner`: GitHub repository owner/organization
 - `repo`: GitHub repository name
-- `token`: GitHub personal access token (can also use `GITHUB_TOKEN` environment variable)
-- `tokenEnv`: Environment variable name for GitHub token (defaults to `GITHUB_TOKEN`). Allows customization for different deployment environments.
+- `token`: GitHub personal access token (can also use `GITHUB_TOKEN` environment
+  variable)
+- `tokenEnv`: Environment variable name for GitHub token (defaults to
+  `GITHUB_TOKEN`). Allows customization for different deployment environments.
 - `baseUrl`: Custom GitHub API URL (defaults to github.com)
 
 ### Mapping
@@ -85,13 +89,16 @@ arbiter generate --dry-run --sync-github
 ### Behavior
 
 - `createMilestones`: Create GitHub milestones for epics (default: false)
-- `autoClose`: Automatically close issues when epics/tasks are completed (default: false)
-- `syncAcceptanceCriteria`: Include acceptance criteria in task descriptions (default: false)
+- `autoClose`: Automatically close issues when epics/tasks are completed
+  (default: false)
+- `syncAcceptanceCriteria`: Include acceptance criteria in task descriptions
+  (default: false)
 - `syncAssignees`: Sync assignees between systems (default: false)
 
 ## Authentication
 
-The GitHub sync feature requires a GitHub personal access token with the following permissions:
+The GitHub sync feature requires a GitHub personal access token with the
+following permissions:
 
 - `repo` scope (for private repositories)
 - `public_repo` scope (for public repositories)
@@ -101,9 +108,11 @@ You can provide the token in three ways:
 
 1. In the configuration file: `"token": "your-github-token"`
 2. As an environment variable: `GITHUB_TOKEN=your-github-token`
-3. As a custom environment variable: Set `"tokenEnv": "CUSTOM_TOKEN_NAME"` in config and use `CUSTOM_TOKEN_NAME=your-github-token`
+3. As a custom environment variable: Set `"tokenEnv": "CUSTOM_TOKEN_NAME"` in
+   config and use `CUSTOM_TOKEN_NAME=your-github-token`
 
-The tokenEnv option is useful for different deployment environments where you might need to use different environment variable names.
+The tokenEnv option is useful for different deployment environments where you
+might need to use different environment variable names.
 
 ## Idempotent Operations
 
@@ -143,6 +152,7 @@ When `createMilestones` is enabled:
 ## Example Workflow
 
 1. Create epics and tasks in Arbiter:
+
    ```bash
    arbiter epic create "User Authentication"
    arbiter epic task add "User Authentication" "Create login form" --type feature
@@ -150,11 +160,13 @@ When `createMilestones` is enabled:
    ```
 
 2. Preview what would be synced:
+
    ```bash
    arbiter generate --github-dry-run
    ```
 
 3. Generate files and sync to GitHub:
+
    ```bash
    arbiter generate --sync-github
    ```
@@ -192,6 +204,7 @@ arbiter generate --sync-github --verbose
 ```
 
 This will show:
+
 - Number of epics and tasks loaded
 - Detailed sync results for each item
 - Full error messages if sync fails

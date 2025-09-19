@@ -1,32 +1,35 @@
-import type { WebhookEvent, HandlerResponse } from '../../shared/utils.js';
-import type { AIAgentConfig, AICommand } from '../base/types.js';
-import { AIAgentHandler } from '../base/AIAgentHandler.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
+import { Octokit } from '@octokit/rest';
+import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
+import { createResponse } from '../../shared/utils.js';
 import { GitHubPRAdapter } from '../adapters/github/GitHubPRAdapter.js';
 import { GitHubPushAdapter } from '../adapters/github/GitHubPushAdapter.js';
 import { GitLabMRAdapter } from '../adapters/gitlab/GitLabMRAdapter.js';
-import { createResponse } from '../../shared/utils.js';
+import { AIAgentHandler } from '../base/AIAgentHandler.js';
+import type { AIAgentConfig, AICommand, GitHubActionIntegrationConfig } from '../base/types.js';
+import { ClaudeProvider } from '../providers/ClaudeProvider.js';
+import { GeminiProvider } from '../providers/GeminiProvider.js';
+import { OpenAIProvider } from '../providers/OpenAIProvider.js';
 
 /**
  * AI-powered Code Review Agent
- * 
+ *
  * This agent automatically reviews pull requests and pushes, providing:
  * - Code quality analysis
  * - Security vulnerability detection
  * - Performance recommendations
  * - Best practices compliance
  * - Automated feedback via comments
- * 
+ *
  * Supported commands:
  * - /review-code - Comprehensive code review
- * - /security-scan - Security-focused analysis  
+ * - /security-scan - Security-focused analysis
  * - /performance-check - Performance analysis
  * - /style-check - Code style and formatting review
  * - /architecture-review - High-level design analysis
  */
 export class CodeReviewAgent extends AIAgentHandler {
+  private githubClient?: Octokit;
+
   constructor(config: AIAgentConfig) {
     // Initialize AI provider based on config
     let provider;
@@ -45,7 +48,7 @@ export class CodeReviewAgent extends AIAgentHandler {
     }
 
     super(config, provider);
-    
+
     // Register adapters for different platforms
     this.registerAdapter('github', 'pull_request', new GitHubPRAdapter());
     this.registerAdapter('github', 'push', new GitHubPushAdapter());
@@ -59,13 +62,10 @@ export class CodeReviewAgent extends AIAgentHandler {
     // Comprehensive code review command
     this.registerCommand('review-code', {
       name: 'review-code',
-      description: 'Perform comprehensive code review including quality, security, and performance analysis',
+      description:
+        'Perform comprehensive code review including quality, security, and performance analysis',
       usage: '/review-code [focus-area]',
-      examples: [
-        '/review-code',
-        '/review-code security',
-        '/review-code performance',
-      ],
+      examples: ['/review-code', '/review-code security', '/review-code performance'],
       requiresArgs: false,
       prompt: `Perform a comprehensive code review of the changes in this pull request or push. Analyze:
 
@@ -93,11 +93,7 @@ Provide specific, actionable feedback that will help the developer improve their
       name: 'security-scan',
       description: 'Focused security analysis of code changes',
       usage: '/security-scan [severity-level]',
-      examples: [
-        '/security-scan',
-        '/security-scan high-only',
-        '/security-scan all',
-      ],
+      examples: ['/security-scan', '/security-scan high-only', '/security-scan all'],
       requiresArgs: false,
       prompt: `Perform a thorough security analysis of the code changes. Focus on:
 
@@ -166,11 +162,7 @@ For each performance concern:
       name: 'style-check',
       description: 'Review code style, formatting, and conventions',
       usage: '/style-check [language]',
-      examples: [
-        '/style-check',
-        '/style-check typescript',
-        '/style-check python',
-      ],
+      examples: ['/style-check', '/style-check typescript', '/style-check python'],
       requiresArgs: false,
       prompt: `Review the code changes for style, formatting, and convention compliance. Analyze:
 
@@ -233,23 +225,25 @@ For architectural concerns:
   /**
    * Process standard events (automatic code review)
    */
-  protected async processEvent(eventData: any, originalEvent: WebhookEvent): Promise<HandlerResponse> {
+  protected async processEvent(
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<HandlerResponse> {
     // Check if automatic review is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, 'Automatic review disabled', { 
+      return createResponse(true, 'Automatic review disabled', {
         skipped: true,
-        reason: 'auto_response_disabled' 
+        reason: 'auto_response_disabled',
       });
     }
 
     // Only auto-review pull requests and pushes to protected branches
-    const shouldAutoReview = eventData.pullRequest || 
-      (eventData.push && eventData.push.isProtectedBranch);
+    const shouldAutoReview = eventData.pullRequest || eventData.push?.isProtectedBranch;
 
     if (!shouldAutoReview) {
-      return createResponse(true, 'Event does not require automatic review', { 
+      return createResponse(true, 'Event does not require automatic review', {
         skipped: true,
-        reason: 'not_reviewable' 
+        reason: 'not_reviewable',
       });
     }
 
@@ -265,7 +259,7 @@ For architectural concerns:
       };
 
       const aiResponse = await this.provider.processCommand(reviewCommand, aiContext);
-      
+
       if (!aiResponse.success) {
         return createResponse(false, `Automatic review failed: ${aiResponse.error}`);
       }
@@ -280,7 +274,6 @@ For architectural concerns:
         review: aiResponse.data,
         actions: actionResults,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return createResponse(false, `Automatic review error: ${errorMessage}`);
@@ -290,85 +283,407 @@ For architectural concerns:
   /**
    * Execute actions returned by the AI (post comments, add labels, etc.)
    */
-  protected async executeAction(action: any, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  protected async executeAction(
+    action: any,
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     switch (action.type) {
       case 'comment':
         return await this.postComment(action.data, eventData, originalEvent);
-      
+
       case 'label':
         return await this.addLabels(action.data, eventData, originalEvent);
-      
+
       case 'assign':
         return await this.assignUsers(action.data, eventData, originalEvent);
-      
+
       default:
         throw new Error(`Unsupported action type: ${action.type}`);
     }
   }
 
+  private getGitHubIntegration(): GitHubActionIntegrationConfig | undefined {
+    const integration = this.config.actionIntegrations?.github;
+    if (!integration || integration.enabled === false) {
+      return undefined;
+    }
+    return integration;
+  }
+
+  private getGitHubClient(integration: GitHubActionIntegrationConfig): Octokit | null {
+    if (this.githubClient) {
+      return this.githubClient;
+    }
+
+    const potentialEnvNames: string[] = [];
+    if (integration.tokenEnv) {
+      potentialEnvNames.push(integration.tokenEnv);
+    }
+
+    if (integration.token && /^[A-Z0-9_]+$/.test(integration.token)) {
+      potentialEnvNames.push(integration.token);
+    }
+
+    const envToken = potentialEnvNames
+      .map(name => process.env[name])
+      .find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+    const explicitToken =
+      integration.token && !/^[A-Z0-9_]+$/.test(integration.token) ? integration.token : undefined;
+
+    const fallbackToken = process.env.GITHUB_TOKEN || process.env.ARBITER_GITHUB_TOKEN;
+    const token = envToken || explicitToken || fallbackToken;
+
+    if (!token) {
+      return null;
+    }
+
+    const baseUrl =
+      integration.apiUrl && integration.apiUrl.trim().length > 0 ? integration.apiUrl : undefined;
+
+    this.githubClient = new Octokit({
+      auth: token,
+      ...(baseUrl ? { baseUrl } : {}),
+      userAgent: `arbiter-ai-code-review/${this.config.version}`,
+    });
+
+    return this.githubClient;
+  }
+
+  private extractRepository(eventData: any): { owner: string; repo: string } | null {
+    const repoData = eventData?.repository;
+    if (!repoData) {
+      return null;
+    }
+
+    const fullName: string | undefined = repoData.fullName || repoData.full_name;
+    const name: string | undefined = repoData.name;
+    const owner: string | undefined = repoData.owner?.login || repoData.owner?.name;
+
+    if (fullName && fullName.includes('/')) {
+      const [repoOwner, repoName] = fullName.split('/');
+      return { owner: repoOwner, repo: repoName };
+    }
+
+    if (owner && name) {
+      return { owner, repo: name };
+    }
+
+    return null;
+  }
+
+  private resolveGitHubAction(
+    action: 'comment' | 'label' | 'assign',
+    eventData: any
+  ): { client: Octokit; owner: string; repo: string; issueNumber: number } | null {
+    const integration = this.getGitHubIntegration();
+    if (!integration) {
+      return null;
+    }
+
+    const actionEnabled = integration.actions?.[action];
+    if (actionEnabled === false) {
+      return null;
+    }
+
+    const repo = this.extractRepository(eventData);
+    const issueNumber = eventData?.pullRequest?.number ?? eventData?.issue?.number;
+
+    if (!repo || typeof issueNumber !== 'number') {
+      return null;
+    }
+
+    const client = this.getGitHubClient(integration);
+    if (!client) {
+      return null;
+    }
+
+    return {
+      client,
+      owner: repo.owner,
+      repo: repo.repo,
+      issueNumber,
+    };
+  }
+
+  private isDryRun(): boolean {
+    return this.config.behavior?.dryRun === true;
+  }
+
+  private formatGitHubError(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    if (error && typeof error === 'object') {
+      const maybeStatus = (error as any).status;
+      const message = (error as any).message || (error as any).response?.data?.message;
+      if (message && maybeStatus) {
+        return `${message} (status ${maybeStatus})`;
+      }
+      if (message) {
+        return message;
+      }
+      if (maybeStatus) {
+        return `GitHub API error (status ${maybeStatus})`;
+      }
+    }
+
+    return typeof error === 'string' ? error : 'Unknown GitHub API error';
+  }
+
   /**
    * Post a comment on the PR/issue
    */
-  private async postComment(data: { body: string }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
-    // This is a stub implementation
-    // In production, you would integrate with GitHub/GitLab APIs
-    
-    await this.logActivity({
-      type: 'ai.agent.action.comment',
-      timestamp: new Date().toISOString(),
-      agentId: this.config.id,
-      action: 'comment',
-      target: eventData.pullRequest ? 
-        `PR #${eventData.pullRequest.number}` : 
-        `Issue #${eventData.issue?.number}`,
-      preview: data.body.substring(0, 100),
-    });
+  private async postComment(
+    data: { body: string },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
+    const actionContext = this.resolveGitHubAction('comment', eventData);
+    const preview = data.body?.substring(0, 120) || '';
 
-    return {
-      action: 'comment',
-      status: 'success',
-      message: 'Comment posted successfully',
-      preview: data.body.substring(0, 100),
-    };
+    if (!actionContext) {
+      await this.logActivity({
+        type: 'ai.agent.action.comment.skipped',
+        timestamp: new Date().toISOString(),
+        reason: 'github_integration_disabled',
+        agentId: this.config.id,
+        preview,
+      });
+
+      return {
+        action: 'comment',
+        status: 'skipped',
+        reason: 'github_integration_disabled',
+        preview,
+      };
+    }
+
+    if (this.isDryRun()) {
+      await this.logActivity({
+        type: 'ai.agent.action.comment.dry_run',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
+        preview,
+      });
+
+      return {
+        action: 'comment',
+        status: 'dry-run',
+        preview,
+      };
+    }
+
+    try {
+      const response = await actionContext.client.rest.issues.createComment({
+        owner: actionContext.owner,
+        repo: actionContext.repo,
+        issue_number: actionContext.issueNumber,
+        body: data.body,
+      });
+
+      await this.logActivity({
+        type: 'ai.agent.action.comment',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
+        url: response.data.html_url,
+        preview,
+      });
+
+      return {
+        action: 'comment',
+        status: 'success',
+        url: response.data.html_url,
+        id: response.data.id,
+      };
+    } catch (error) {
+      const message = this.formatGitHubError(error);
+      await this.logActivity({
+        type: 'ai.agent.action.comment.error',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        error: message,
+      });
+
+      throw new Error(`Failed to post GitHub comment: ${message}`);
+    }
   }
 
   /**
    * Add labels to the PR/issue
    */
-  private async addLabels(data: { labels: string[] }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
-    await this.logActivity({
-      type: 'ai.agent.action.label',
-      timestamp: new Date().toISOString(),
-      agentId: this.config.id,
-      action: 'label',
-      labels: data.labels,
-    });
+  private async addLabels(
+    data: { labels: string[] },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
+    if (!data.labels || data.labels.length === 0) {
+      return {
+        action: 'label',
+        status: 'skipped',
+        reason: 'no_labels_requested',
+      };
+    }
 
-    return {
-      action: 'label',
-      status: 'success',
-      labels: data.labels,
-      message: `Added labels: ${data.labels.join(', ')}`,
-    };
+    const actionContext = this.resolveGitHubAction('label', eventData);
+
+    if (!actionContext) {
+      await this.logActivity({
+        type: 'ai.agent.action.label.skipped',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        reason: 'github_integration_disabled',
+        labels: data.labels,
+      });
+
+      return {
+        action: 'label',
+        status: 'skipped',
+        reason: 'github_integration_disabled',
+        labels: data.labels,
+      };
+    }
+
+    if (this.isDryRun()) {
+      await this.logActivity({
+        type: 'ai.agent.action.label.dry_run',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        labels: data.labels,
+        target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
+      });
+
+      return {
+        action: 'label',
+        status: 'dry-run',
+        labels: data.labels,
+      };
+    }
+
+    try {
+      const response = await actionContext.client.rest.issues.addLabels({
+        owner: actionContext.owner,
+        repo: actionContext.repo,
+        issue_number: actionContext.issueNumber,
+        labels: data.labels,
+      });
+
+      await this.logActivity({
+        type: 'ai.agent.action.label',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        labels: data.labels,
+        target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
+        appliedLabels: response.data.map(label => label.name),
+      });
+
+      return {
+        action: 'label',
+        status: 'success',
+        labels: response.data.map(label => label.name),
+      };
+    } catch (error) {
+      const message = this.formatGitHubError(error);
+      await this.logActivity({
+        type: 'ai.agent.action.label.error',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        error: message,
+        labels: data.labels,
+      });
+
+      throw new Error(`Failed to add GitHub labels: ${message}`);
+    }
   }
 
   /**
    * Assign users to the PR/issue
    */
-  private async assignUsers(data: { assignees: string[] }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
-    await this.logActivity({
-      type: 'ai.agent.action.assign',
-      timestamp: new Date().toISOString(),
-      agentId: this.config.id,
-      action: 'assign',
-      assignees: data.assignees,
-    });
+  private async assignUsers(
+    data: { assignees: string[] },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
+    if (!data.assignees || data.assignees.length === 0) {
+      return {
+        action: 'assign',
+        status: 'skipped',
+        reason: 'no_assignees_provided',
+      };
+    }
 
-    return {
-      action: 'assign',
-      status: 'success',
-      assignees: data.assignees,
-      message: `Assigned to: ${data.assignees.join(', ')}`,
-    };
+    const actionContext = this.resolveGitHubAction('assign', eventData);
+
+    if (!actionContext) {
+      await this.logActivity({
+        type: 'ai.agent.action.assign.skipped',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        reason: 'github_integration_disabled',
+        assignees: data.assignees,
+      });
+
+      return {
+        action: 'assign',
+        status: 'skipped',
+        reason: 'github_integration_disabled',
+        assignees: data.assignees,
+      };
+    }
+
+    if (this.isDryRun()) {
+      await this.logActivity({
+        type: 'ai.agent.action.assign.dry_run',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        assignees: data.assignees,
+        target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
+      });
+
+      return {
+        action: 'assign',
+        status: 'dry-run',
+        assignees: data.assignees,
+      };
+    }
+
+    try {
+      const response = await actionContext.client.rest.issues.addAssignees({
+        owner: actionContext.owner,
+        repo: actionContext.repo,
+        issue_number: actionContext.issueNumber,
+        assignees: data.assignees,
+      });
+
+      await this.logActivity({
+        type: 'ai.agent.action.assign',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        assignees: data.assignees,
+        target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
+        addedAssignees: response.data.assignees?.map(assignee => assignee.login),
+      });
+
+      return {
+        action: 'assign',
+        status: 'success',
+        assignees: response.data.assignees?.map(assignee => assignee.login) ?? data.assignees,
+      };
+    } catch (error) {
+      const message = this.formatGitHubError(error);
+      await this.logActivity({
+        type: 'ai.agent.action.assign.error',
+        timestamp: new Date().toISOString(),
+        agentId: this.config.id,
+        error: message,
+        assignees: data.assignees,
+      });
+
+      throw new Error(`Failed to assign GitHub users: ${message}`);
+    }
   }
 }

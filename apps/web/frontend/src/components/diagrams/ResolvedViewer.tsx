@@ -21,7 +21,7 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await apiService.getResolvedSpec(projectId);
         setResolvedData(response);
       } catch (err) {
@@ -57,7 +57,7 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
 
   const getAllPaths = (obj: any, prefix = ''): string[] => {
     const paths: string[] = [];
-    
+
     if (obj && typeof obj === 'object') {
       Object.keys(obj).forEach(key => {
         const path = prefix ? `${prefix}.${key}` : key;
@@ -67,7 +67,7 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
         }
       });
     }
-    
+
     return paths;
   };
 
@@ -95,11 +95,17 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
         const parts = value.split(regex);
         return (
           <span className="text-purple-600">
-            "{parts.map((part, index) => 
-              regex.test(part) ? 
-                <mark key={index} className="bg-yellow-200 px-1 rounded">{part}</mark> : 
+            "
+            {parts.map((part, index) =>
+              regex.test(part) ? (
+                <mark key={index} className="bg-yellow-200 px-1 rounded">
+                  {part}
+                </mark>
+              ) : (
                 part
-            )}"
+              )
+            )}
+            "
           </span>
         );
       }
@@ -159,11 +165,14 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
             <div className="ml-4 border-l border-gray-200 pl-4 mt-1">
               {keys.map(key => {
                 const childPath = `${path}.${key}`;
-                const shouldHighlight = searchTerm && key.toLowerCase().includes(searchTerm.toLowerCase());
-                
+                const shouldHighlight =
+                  searchTerm && key.toLowerCase().includes(searchTerm.toLowerCase());
+
                 return (
                   <div key={key} className="mb-2">
-                    <span className={`font-medium text-sm mr-2 ${shouldHighlight ? 'bg-yellow-200 px-1 rounded' : 'text-blue-800'}`}>
+                    <span
+                      className={`font-medium text-sm mr-2 ${shouldHighlight ? 'bg-yellow-200 px-1 rounded' : 'text-blue-800'}`}
+                    >
                       "{key}":
                     </span>
                     {renderValue(value[key], childPath, depth + 1)}
@@ -181,7 +190,7 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
 
   const copyToClipboard = async () => {
     if (!resolvedData?.resolved) return;
-    
+
     try {
       await navigator.clipboard.writeText(JSON.stringify(resolvedData.resolved, null, 2));
       // You could add a toast notification here
@@ -192,11 +201,11 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
 
   const downloadJson = () => {
     if (!resolvedData?.resolved) return;
-    
+
     const jsonString = JSON.stringify(resolvedData.resolved, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement('a');
     a.href = url;
     a.download = `resolved-spec-${resolvedData.spec_hash.substring(0, 8)}.json`;
@@ -222,8 +231,18 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center">
           <div className="text-red-500 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <p className="text-red-700 font-medium">Error loading resolved spec</p>
@@ -257,7 +276,10 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
           <div>
             <h3 className="text-lg font-medium text-gray-900">Resolved Specification</h3>
             <p className="text-sm text-gray-600">
-              Hash: <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{resolvedData.spec_hash}</code>
+              Hash:{' '}
+              <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
+                {resolvedData.spec_hash}
+              </code>
               <span className="ml-2">
                 Updated: {new Date(resolvedData.last_updated).toLocaleString()}
               </span>
@@ -269,8 +291,18 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
               className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
               title="Copy JSON to clipboard"
             >
-              <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              <svg
+                className="w-4 h-4 inline mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
               </svg>
               Copy
             </button>
@@ -279,8 +311,18 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
               className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
               title="Download JSON file"
             >
-              <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              <svg
+                className="w-4 h-4 inline mr-1"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               Download
             </button>
@@ -290,14 +332,24 @@ const ResolvedViewer: React.FC<ResolvedViewerProps> = ({ projectId, className = 
         {/* Search and expand controls */}
         <div className="flex items-center gap-4">
           <div className="flex-1 relative">
-            <svg className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <svg
+              className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
             <input
               type="text"
               placeholder="Search keys and values..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>

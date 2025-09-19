@@ -60,7 +60,7 @@
       "description": "Automated code review focusing on security and maintainability",
       "version": "1.0.0",
       "handler": "./ai/agents/CodeReviewAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -79,10 +79,7 @@
         }
       },
 
-      "eventFilters": [
-        "github.pull_request",
-        "gitlab.merge_request"
-      ],
+      "eventFilters": ["github.pull_request", "gitlab.merge_request"],
 
       "rateLimits": {
         "enabled": true,
@@ -115,7 +112,7 @@
       "description": "Automated security vulnerability detection with compliance focus",
       "version": "1.0.0",
       "handler": "./ai/agents/SecurityAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -126,7 +123,13 @@
       },
 
       "commands": {
-        "enabled": ["security-scan", "vulnerability-check", "dependency-audit", "auth-review", "data-privacy"],
+        "enabled": [
+          "security-scan",
+          "vulnerability-check",
+          "dependency-audit",
+          "auth-review",
+          "data-privacy"
+        ],
         "disabled": ["config-security"],
         "customPrompts": {
           "security-scan": "Prioritize CRITICAL and HIGH severity vulnerabilities. Reference CVE numbers when applicable. Focus on exploitable issues with clear remediation steps.",
@@ -135,10 +138,7 @@
         }
       },
 
-      "eventFilters": [
-        "github.pull_request",
-        "gitlab.merge_request"
-      ],
+      "eventFilters": ["github.pull_request", "gitlab.merge_request"],
 
       "rateLimits": {
         "enabled": true,
@@ -172,7 +172,7 @@
       "description": "Automated issue analysis and prioritization for production systems",
       "version": "1.0.0",
       "handler": "./ai/agents/IssueAnalysisAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -191,9 +191,7 @@
         }
       },
 
-      "eventFilters": [
-        "github.issues"
-      ],
+      "eventFilters": ["github.issues"],
 
       "rateLimits": {
         "enabled": true,
@@ -216,7 +214,7 @@
       "description": "Automated documentation for critical system changes",
       "version": "1.0.0",
       "handler": "./ai/agents/DocumentationAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -235,9 +233,7 @@
         }
       },
 
-      "eventFilters": [
-        "github.pull_request"
-      ],
+      "eventFilters": ["github.pull_request"],
 
       "rateLimits": {
         "enabled": true,
@@ -261,7 +257,7 @@
       "signatureHeader": "X-Hub-Signature-256"
     },
     "gitlab": {
-      "path": "/webhooks/ai/gitlab", 
+      "path": "/webhooks/ai/gitlab",
       "secret": "GITLAB_AI_WEBHOOK_SECRET",
       "signatureHeader": "X-Gitlab-Token"
     }
@@ -320,7 +316,7 @@
     "jira": {
       "enabled": true,
       "baseUrl": "https://company.atlassian.net",
-      "username": "JIRA_USERNAME", 
+      "username": "JIRA_USERNAME",
       "apiToken": "JIRA_API_TOKEN",
       "projectKey": "SEC",
       "issueType": "Security Finding",
@@ -360,9 +356,7 @@
         "tokenUsageDaily": 50000,
         "criticalFindings": 1
       },
-      "webhooks": [
-        "MONITORING_WEBHOOK_URL"
-      ]
+      "webhooks": ["MONITORING_WEBHOOK_URL"]
     }
   },
 
@@ -387,11 +381,7 @@
 
   "security": {
     "requireSignature": true,
-    "allowedIps": [
-      "192.30.252.0/22",
-      "185.199.108.0/22",
-      "140.82.112.0/20"
-    ],
+    "allowedIps": ["192.30.252.0/22", "185.199.108.0/22", "140.82.112.0/20"],
     "rateLimiting": {
       "windowMs": 3600000,
       "maxRequests": 1000,
@@ -409,10 +399,7 @@
       "enabled": true,
       "provider": "redis",
       "ttlSeconds": 3600,
-      "cacheKeys": [
-        "similar-code-analysis",
-        "dependency-scan-results"
-      ]
+      "cacheKeys": ["similar-code-analysis", "dependency-scan-results"]
     },
     "optimization": {
       "enableRequestDeduplication": true,
@@ -451,7 +438,7 @@
     },
     "metricsBackup": {
       "enabled": true,
-      "schedule": "weekly", 
+      "schedule": "weekly",
       "retentionWeeks": 52,
       "location": "/backup/ai-metrics"
     }

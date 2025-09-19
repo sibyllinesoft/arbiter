@@ -30,9 +30,9 @@ class DependencyChecker {
    */
   getVersion(command, versionFlag = '--version') {
     try {
-      const output = execSync(`${command} ${versionFlag}`, { 
+      const output = execSync(`${command} ${versionFlag}`, {
         encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore']
+        stdio: ['ignore', 'pipe', 'ignore'],
       });
       return output.trim();
     } catch (error) {
@@ -45,7 +45,7 @@ class DependencyChecker {
    */
   checkDocker() {
     console.log('🐳 Checking Docker...');
-    
+
     if (!this.commandExists('docker')) {
       this.errors.push('Docker is not installed or not in PATH');
       return;
@@ -68,7 +68,7 @@ class DependencyChecker {
    */
   checkDockerCompose() {
     console.log('🔧 Checking Docker Compose...');
-    
+
     // Check for docker-compose (standalone)
     if (this.commandExists('docker-compose')) {
       const version = this.getVersion('docker-compose');
@@ -90,9 +90,11 @@ class DependencyChecker {
    */
   checkCue() {
     console.log('📝 Checking CUE...');
-    
+
     if (!this.commandExists('cue')) {
-      this.errors.push('CUE is not installed. Please install CUE from https://cuelang.org/docs/install/');
+      this.errors.push(
+        'CUE is not installed. Please install CUE from https://cuelang.org/docs/install/'
+      );
       return;
     }
 
@@ -105,7 +107,7 @@ class DependencyChecker {
    */
   checkNode() {
     console.log('🟢 Checking Node.js...');
-    
+
     if (!this.commandExists('node')) {
       this.errors.push('Node.js is not installed');
       return;
@@ -118,7 +120,7 @@ class DependencyChecker {
     try {
       const versionNum = execSync('node --version', { encoding: 'utf8' }).trim();
       const majorVersion = parseInt(versionNum.replace('v', '').split('.')[0]);
-      
+
       if (majorVersion < 18) {
         this.warnings.push(`Node.js version ${versionNum} is older than recommended (18+)`);
       }
@@ -132,7 +134,7 @@ class DependencyChecker {
    */
   checkNpm() {
     console.log('📦 Checking npm...');
-    
+
     if (!this.commandExists('npm')) {
       this.errors.push('npm is not installed');
       return;
@@ -147,7 +149,7 @@ class DependencyChecker {
    */
   checkDiskSpace() {
     console.log('💾 Checking disk space...');
-    
+
     try {
       const output = execSync('df -h .', { encoding: 'utf8' });
       const lines = output.trim().split('\n');
@@ -155,11 +157,11 @@ class DependencyChecker {
         const spaceInfo = lines[1].split(/\s+/);
         const available = spaceInfo[3];
         console.log(`  ✅ Available disk space: ${available}`);
-        
+
         // Parse available space (rough check)
         const availableNum = parseFloat(available);
         const unit = available.slice(-1);
-        
+
         if (unit === 'M' && availableNum < 500) {
           this.warnings.push('Less than 500MB disk space available');
         } else if (unit === 'G' && availableNum < 1) {
@@ -176,17 +178,17 @@ class DependencyChecker {
    */
   checkTestFiles() {
     console.log('📁 Checking test files...');
-    
+
     const requiredFiles = [
       'specs/docker-compose.cue',
       'services/node-app/package.json',
       'services/node-app/server.js',
       'services/node-app/Dockerfile',
-      'services/nginx/nginx.conf'
+      'services/nginx/nginx.conf',
     ];
 
     const basePath = path.join(__dirname, '..');
-    
+
     for (const file of requiredFiles) {
       const filePath = path.join(basePath, file);
       if (!fs.existsSync(filePath)) {
@@ -202,7 +204,7 @@ class DependencyChecker {
    */
   checkNetworkConnectivity() {
     console.log('🌐 Checking network connectivity...');
-    
+
     try {
       // Test Docker Hub connectivity
       execSync('docker pull hello-world:latest', { stdio: 'ignore' });
@@ -229,7 +231,7 @@ class DependencyChecker {
 
     // Print results
     console.log('\n📊 Dependency Check Results:');
-    
+
     if (this.errors.length === 0) {
       console.log('✅ All required dependencies are available!');
     } else {

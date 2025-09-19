@@ -1,13 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { action } from '@storybook/addon-actions';
 import { CueViewer } from './CueViewer';
-import { 
-  basicRequirementsCue, 
-  assemblySpecCue, 
+import {
+  basicRequirementsCue,
+  assemblySpecCue,
   validationErrorsCue,
   complexTypescriptProjectCue,
   rustMicroserviceCue,
-  sampleResolvedData 
+  sampleResolvedData,
 } from '../../test/cue-samples';
 
 const meta: Meta<typeof CueViewer> = {
@@ -68,7 +68,7 @@ The viewer can display validation results from CUE's type checker, including:
       description: 'Whether the CUE content can be edited',
     },
     showLineNumbers: {
-      control: 'boolean', 
+      control: 'boolean',
       description: 'Show line numbers in the editor',
     },
     showCopyButton: {
@@ -198,7 +198,7 @@ export const TypeScriptProject: Story = {
  */
 export const RustMicroservice: Story = {
   args: {
-    title: 'High-Performance Rust Service', 
+    title: 'High-Performance Rust Service',
     cueSource: rustMicroserviceCue,
     mode: 'view',
     showLineNumbers: true,
@@ -333,9 +333,7 @@ export const DarkTheme: Story = {
   parameters: {
     backgrounds: {
       default: 'dark',
-      values: [
-        { name: 'dark', value: '#1a1a1a' },
-      ],
+      values: [{ name: 'dark', value: '#1a1a1a' }],
     },
   },
 };

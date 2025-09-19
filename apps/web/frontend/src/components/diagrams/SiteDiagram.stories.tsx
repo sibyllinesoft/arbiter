@@ -535,36 +535,41 @@ const cloudNativeNetwork = [
   // Client Layer
   { id: 'web', label: 'Web App\n(React)', group: 'client', color: '#3b82f6' },
   { id: 'mobile', label: 'Mobile App\n(React Native)', group: 'client', color: '#3b82f6' },
-  
+
   // Edge/CDN Layer
   { id: 'cloudfront', label: 'CloudFront\n(CDN)', group: 'edge', color: '#f59e0b' },
   { id: 'alb', label: 'Application\nLoad Balancer', group: 'edge', color: '#f59e0b' },
-  
+
   // Container Platform
   { id: 'eks', label: 'EKS Cluster\n(Kubernetes)', group: 'platform', color: '#8b5cf6' },
   { id: 'appmesh', label: 'App Mesh\n(Service Mesh)', group: 'platform', color: '#8b5cf6' },
-  
+
   // Application Services
   { id: 'auth', label: 'Auth Service\nPods (3x)', group: 'application', color: '#10b981' },
   { id: 'user', label: 'User Service\nPods (2x)', group: 'application', color: '#10b981' },
   { id: 'product', label: 'Product Service\nPods (4x)', group: 'application', color: '#10b981' },
   { id: 'order', label: 'Order Service\nPods (3x)', group: 'application', color: '#10b981' },
-  
+
   // Managed Databases
   { id: 'rds', label: 'RDS PostgreSQL\n(Multi-AZ)', group: 'database', color: '#374151' },
   { id: 'elasticache', label: 'ElastiCache\n(Redis Cluster)', group: 'database', color: '#dc2626' },
   { id: 'opensearch', label: 'OpenSearch\n(3 nodes)', group: 'database', color: '#374151' },
-  
+
   // Messaging
   { id: 'amazonmq', label: 'Amazon MQ\n(RabbitMQ)', group: 'messaging', color: '#f59e0b' },
   { id: 'sqs', label: 'SQS Queues\n(Multiple)', group: 'messaging', color: '#f59e0b' },
   { id: 'eventbridge', label: 'EventBridge\n(Event Bus)', group: 'messaging', color: '#f59e0b' },
-  
+
   // Storage
   { id: 's3', label: 'S3 Buckets\n(Assets & Backups)', group: 'storage', color: '#059669' },
-  
+
   // Monitoring
-  { id: 'cloudwatch', label: 'CloudWatch\n(Metrics & Logs)', group: 'monitoring', color: '#7c3aed' },
+  {
+    id: 'cloudwatch',
+    label: 'CloudWatch\n(Metrics & Logs)',
+    group: 'monitoring',
+    color: '#7c3aed',
+  },
   { id: 'xray', label: 'X-Ray\n(Tracing)', group: 'monitoring', color: '#7c3aed' },
   { id: 'prometheus', label: 'Prometheus\n(Metrics)', group: 'monitoring', color: '#7c3aed' },
 ];
@@ -574,41 +579,41 @@ const cloudNativeNetworkEdges = [
   { from: 'web', to: 'cloudfront', label: 'HTTPS' },
   { from: 'mobile', to: 'alb', label: 'API calls' },
   { from: 'cloudfront', to: 'alb', label: 'origin' },
-  
+
   // Edge to Platform
   { from: 'alb', to: 'eks', label: 'ingress' },
   { from: 'eks', to: 'appmesh', label: 'mesh' },
-  
+
   // Platform to Applications
   { from: 'appmesh', to: 'auth', label: 'traffic' },
   { from: 'appmesh', to: 'user', label: 'traffic' },
   { from: 'appmesh', to: 'product', label: 'traffic' },
   { from: 'appmesh', to: 'order', label: 'traffic' },
-  
+
   // Service Dependencies
   { from: 'user', to: 'auth', label: 'validation', dashes: true },
   { from: 'order', to: 'user', label: 'profile', dashes: true },
   { from: 'order', to: 'product', label: 'inventory', dashes: true },
-  
+
   // Database Connections
   { from: 'auth', to: 'rds', label: 'auth_db' },
   { from: 'user', to: 'rds', label: 'user_db' },
   { from: 'product', to: 'rds', label: 'product_db' },
   { from: 'order', to: 'rds', label: 'order_db' },
-  
+
   { from: 'auth', to: 'elasticache', label: 'sessions' },
   { from: 'product', to: 'elasticache', label: 'cache' },
   { from: 'product', to: 'opensearch', label: 'search' },
-  
+
   // Messaging
   { from: 'order', to: 'amazonmq', label: 'events' },
   { from: 'auth', to: 'sqs', label: 'email queue' },
   { from: 'order', to: 'eventbridge', label: 'order events' },
-  
+
   // Storage
   { from: 'user', to: 's3', label: 'uploads' },
   { from: 'product', to: 's3', label: 'images' },
-  
+
   // Monitoring (dotted lines)
   { from: 'auth', to: 'cloudwatch', dashes: true, color: '#9ca3af' },
   { from: 'user', to: 'cloudwatch', dashes: true, color: '#9ca3af' },
@@ -999,10 +1004,11 @@ const serverlessMermaid = `graph TB
 
 export const MicroservicesArchitecture: Story = {
   args: {
-    title: "Microservices Architecture Overview",
-    description: "Complete microservices deployment with service mesh, monitoring, and multi-database architecture.",
-    dataPanelTitle: "Architecture Configuration (YAML)",
-    diagramPanelTitle: "Service Architecture Diagram",
+    title: 'Microservices Architecture Overview',
+    description:
+      'Complete microservices deployment with service mesh, monitoring, and multi-database architecture.',
+    dataPanelTitle: 'Architecture Configuration (YAML)',
+    diagramPanelTitle: 'Service Architecture Diagram',
     dataPanel: (
       <DataViewer
         data={microservicesArchYaml}
@@ -1010,30 +1016,22 @@ export const MicroservicesArchitecture: Story = {
         title="microservices-architecture.yml"
       />
     ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={microservicesMermaid}
-        title="Microservices Platform"
-      />
-    ),
+    diagramPanel: <MermaidRenderer chart={microservicesMermaid} title="Microservices Platform" />,
   },
 };
 
 export const CloudNativeArchitecture: Story = {
   args: {
-    title: "Cloud Native Platform (AWS)",
-    description: "Kubernetes-based cloud native architecture with managed services and auto-scaling capabilities.",
-    dataPanelTitle: "Cloud Configuration (YAML)",
-    diagramPanelTitle: "Cloud Architecture Network",
+    title: 'Cloud Native Platform (AWS)',
+    description:
+      'Kubernetes-based cloud native architecture with managed services and auto-scaling capabilities.',
+    dataPanelTitle: 'Cloud Configuration (YAML)',
+    diagramPanelTitle: 'Cloud Architecture Network',
     dataPanel: (
-      <DataViewer
-        data={cloudNativeYaml}
-        language="yaml"
-        title="cloud-native-architecture.yml"
-      />
+      <DataViewer data={cloudNativeYaml} language="yaml" title="cloud-native-architecture.yml" />
     ),
     diagramPanel: (
-      <NetworkDiagram 
+      <NetworkDiagram
         nodes={cloudNativeNetwork}
         edges={cloudNativeNetworkEdges}
         title="AWS Cloud Native Architecture"
@@ -1064,22 +1062,16 @@ export const CloudNativeArchitecture: Story = {
 
 export const ServerlessArchitecture: Story = {
   args: {
-    title: "Serverless Architecture (AWS Lambda)",
-    description: "Event-driven serverless platform with API Gateway, Lambda functions, and managed services.",
-    dataPanelTitle: "Serverless Configuration (YAML)",
-    diagramPanelTitle: "Serverless Architecture Flow",
+    title: 'Serverless Architecture (AWS Lambda)',
+    description:
+      'Event-driven serverless platform with API Gateway, Lambda functions, and managed services.',
+    dataPanelTitle: 'Serverless Configuration (YAML)',
+    diagramPanelTitle: 'Serverless Architecture Flow',
     dataPanel: (
-      <DataViewer
-        data={serverlessArchYaml}
-        language="yaml"
-        title="serverless-architecture.yml"
-      />
+      <DataViewer data={serverlessArchYaml} language="yaml" title="serverless-architecture.yml" />
     ),
     diagramPanel: (
-      <MermaidRenderer 
-        chart={serverlessMermaid}
-        title="Serverless Event-Driven Architecture"
-      />
+      <MermaidRenderer chart={serverlessMermaid} title="Serverless Event-Driven Architecture" />
     ),
   },
 };

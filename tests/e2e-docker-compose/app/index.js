@@ -7,7 +7,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'E2E Test App',
     environment: process.env.NODE_ENV,
-    version: '1.0.0'
+    version: '1.0.0',
   });
 });
 
@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
 app.get('/redis', (req, res) => {
   res.json({
     redis_url: process.env.REDIS_URL || 'not configured',
-    status: 'connected'
+    status: 'connected',
   });
 });
 
@@ -32,7 +32,7 @@ app.get('/redis', (req, res) => {
 app.get('/database', (req, res) => {
   res.json({
     database_url: process.env.DATABASE_URL ? 'configured' : 'not configured',
-    status: 'connected'
+    status: 'connected',
   });
 });
 

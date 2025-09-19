@@ -1,10 +1,14 @@
 # Kubernetes Deployment with Arbiter
 
-This tutorial demonstrates how to use Arbiter to generate production-ready Kubernetes manifests from CUE specifications. Arbiter's four-layer architecture (Domain → Contracts → Capabilities → Execution) provides a structured approach to modeling and deploying cloud-native applications.
+This tutorial demonstrates how to use Arbiter to generate production-ready
+Kubernetes manifests from CUE specifications. Arbiter's four-layer architecture
+(Domain → Contracts → Capabilities → Execution) provides a structured approach
+to modeling and deploying cloud-native applications.
 
 ## Overview
 
-Arbiter generates Kubernetes deployments as part of its comprehensive full-stack code generation. This tutorial covers:
+Arbiter generates Kubernetes deployments as part of its comprehensive full-stack
+code generation. This tutorial covers:
 
 1. **Modeling Applications**: Define your application using Arbiter's v2 schema
 2. **Infrastructure Generation**: Generate Kubernetes manifests automatically
@@ -41,7 +45,7 @@ schema: "v2"
 application: {
     name: "my-microservices"
     version: "1.0.0"
-    
+
     // Domain layer - business entities
     domain: {
         entities: {
@@ -58,7 +62,7 @@ application: {
             }
         }
     }
-    
+
     // Contracts layer - API definitions
     contracts: {
         apis: {
@@ -91,7 +95,7 @@ application: {
             }
         }
     }
-    
+
     // Capabilities layer - services and features
     capabilities: {
         services: {
@@ -126,7 +130,7 @@ application: {
             }
         }
     }
-    
+
     // Execution layer - deployment configuration
     execution: {
         environments: {
@@ -196,6 +200,7 @@ arbiter generate my-microservices --target=kubernetes
 ```
 
 This generates:
+
 - Deployment manifests for each service
 - Service definitions for network communication
 - ConfigMaps for application configuration
@@ -204,10 +209,10 @@ This generates:
 - Namespace definitions
 - RBAC configurations
 
-
 ## Generated Kubernetes Structure
 
-When you run `arbiter generate`, the generated Kubernetes manifests are organized in a structured directory:
+When you run `arbiter generate`, the generated Kubernetes manifests are
+organized in a structured directory:
 
 ```
 generated/
@@ -238,6 +243,7 @@ generated/
 ```
 
 All generated manifests include:
+
 - Proper resource limits and requests
 - Health checks and readiness probes
 - Security contexts and RBAC
@@ -275,44 +281,44 @@ spec:
     spec:
       serviceAccountName: my-microservices-sa
       containers:
-      - name: user-service
-        image: my-microservices/user-service:latest
-        ports:
-        - containerPort: 3001
-          name: http
-        env:
-        - name: NODE_ENV
-          value: "production"
-        - name: PORT
-          value: "3001"
-        - name: DATABASE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: user-service-config
-              key: database-url
-        resources:
-          requests:
-            cpu: 500m
-            memory: 512Mi
-          limits:
-            cpu: 1000m
-            memory: 1Gi
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3001
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 3001
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          runAsNonRoot: true
-          runAsUser: 1000
+        - name: user-service
+          image: my-microservices/user-service:latest
+          ports:
+            - containerPort: 3001
+              name: http
+          env:
+            - name: NODE_ENV
+              value: 'production'
+            - name: PORT
+              value: '3001'
+            - name: DATABASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: user-service-config
+                  key: database-url
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
 ```
 
 ### Service Definition
@@ -331,13 +337,12 @@ spec:
   selector:
     app: user-service
   ports:
-  - name: http
-    port: 80
-    targetPort: 3001
-    protocol: TCP
+    - name: http
+      port: 80
+      targetPort: 3001
+      protocol: TCP
   type: ClusterIP
 ```
-
 
 ## Deployment Workflows
 
@@ -376,7 +381,8 @@ kubectl get ingress -n my-microservices-prod
 
 ### Environment-Specific Deployments
 
-Arbiter supports multiple environment configurations. You can define staging, production, and development environments:
+Arbiter supports multiple environment configurations. You can define staging,
+production, and development environments:
 
 ```cue
 execution: {
@@ -424,7 +430,8 @@ arbiter generate my-microservices --environment=production
 
 ### Custom Resource Management
 
-Arbiter can also generate custom Kubernetes resources like HorizontalPodAutoscaler (HPA) and PodDisruptionBudget (PDB):
+Arbiter can also generate custom Kubernetes resources like
+HorizontalPodAutoscaler (HPA) and PodDisruptionBudget (PDB):
 
 ```cue
 execution: {
@@ -516,23 +523,23 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Bun
-      uses: oven-sh/setup-bun@v1
-    
-    - name: Install Arbiter CLI
-      run: bun install -g @arbiter/cli
-    
-    - name: Generate Kubernetes manifests
-      run: arbiter generate my-microservices --environment=production
-    
-    - name: Deploy to Kubernetes
-      run: |
-        kubectl apply -f generated/kubernetes/
-        kubectl rollout status deployment/user-service -n my-microservices-prod
-        kubectl rollout status deployment/order-service -n my-microservices-prod
-        kubectl rollout status deployment/frontend -n my-microservices-prod
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+
+      - name: Install Arbiter CLI
+        run: bun install -g @arbiter/cli
+
+      - name: Generate Kubernetes manifests
+        run: arbiter generate my-microservices --environment=production
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f generated/kubernetes/
+          kubectl rollout status deployment/user-service -n my-microservices-prod
+          kubectl rollout status deployment/order-service -n my-microservices-prod
+          kubectl rollout status deployment/frontend -n my-microservices-prod
 ```
 
 ## Troubleshooting Common Issues
@@ -668,7 +675,7 @@ capabilities: {
                 }
                 readinessProbe: {
                     httpGet: {
-                        path: "/ready" 
+                        path: "/ready"
                         port: 3001
                     }
                     initialDelaySeconds: 5
@@ -703,6 +710,7 @@ capabilities: {
 ```
 
 This generates:
+
 - PersistentVolumeClaim for database storage
 - PostgreSQL deployment with proper initialization
 - ConfigMap with database connection details
@@ -710,15 +718,21 @@ This generates:
 
 ## Conclusion
 
-Arbiter provides a powerful, specification-driven approach to Kubernetes deployment that:
+Arbiter provides a powerful, specification-driven approach to Kubernetes
+deployment that:
 
-1. **Reduces Boilerplate**: Generate comprehensive Kubernetes manifests from concise CUE specifications
-2. **Ensures Consistency**: All deployments follow the same patterns and best practices
-3. **Improves Maintainability**: Single source of truth for your application architecture
+1. **Reduces Boilerplate**: Generate comprehensive Kubernetes manifests from
+   concise CUE specifications
+2. **Ensures Consistency**: All deployments follow the same patterns and best
+   practices
+3. **Improves Maintainability**: Single source of truth for your application
+   architecture
 4. **Enables Automation**: Agent-friendly CLI design perfect for CI/CD pipelines
-5. **Supports Growth**: Easy to add new services, environments, and configurations
+5. **Supports Growth**: Easy to add new services, environments, and
+   configurations
 
 The generated manifests include production-ready features like:
+
 - Proper resource limits and health checks
 - Security contexts and RBAC
 - ConfigMaps and secret management
@@ -726,13 +740,20 @@ The generated manifests include production-ready features like:
 - Horizontal Pod Autoscaling
 - Pod Disruption Budgets
 
-Start with a simple microservices application and gradually add complexity as your needs grow. Arbiter's four-layer architecture ensures your application remains well-structured and maintainable at any scale.
+Start with a simple microservices application and gradually add complexity as
+your needs grow. Arbiter's four-layer architecture ensures your application
+remains well-structured and maintainable at any scale.
 
 ## Next Steps
 
-1. **Explore the Demo Project**: Check out the `demo-project/` directory for a complete working example
-2. **Read the Core Concepts**: Review `docs/core-concepts.md` for deeper architecture understanding
-3. **CLI Reference**: See `docs/cli-reference.md` for complete command documentation
-4. **Join the Community**: Connect with other Arbiter users for tips and best practices
+1. **Explore the Demo Project**: Check out the `demo-project/` directory for a
+   complete working example
+2. **Read the Core Concepts**: Review `docs/core-concepts.md` for deeper
+   architecture understanding
+3. **CLI Reference**: See `docs/cli-reference.md` for complete command
+   documentation
+4. **Join the Community**: Connect with other Arbiter users for tips and best
+   practices
 
-For questions and support, see the project documentation or open an issue on GitHub.
+For questions and support, see the project documentation or open an issue on
+GitHub.

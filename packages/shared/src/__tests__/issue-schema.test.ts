@@ -1,20 +1,20 @@
 /**
  * Tests for the issue schema specification and validation
  */
-import { describe, test, expect } from 'bun:test';
-import { 
-  IssueSpec, 
-  validateIssue, 
-  createIssue, 
+import { describe, expect, test } from 'bun:test';
+import {
+  DEFAULT_ISSUE_VALIDATION,
+  type IssueSpec,
   createChecklistItem,
-  DEFAULT_ISSUE_VALIDATION 
+  createIssue,
+  validateIssue,
 } from '../types.js';
 
 describe('Issue Schema Validation', () => {
   test('validates valid issue with required fields only', () => {
     const issue: IssueSpec = {
       title: 'Test Issue',
-      body: 'This is a test issue description'
+      body: 'This is a test issue description',
     };
 
     const result = validateIssue(issue);
@@ -30,9 +30,9 @@ describe('Issue Schema Validation', () => {
       acceptance_criteria: ['Should fix the bug', 'Should include tests'],
       checklist: [
         { id: 'item-1', text: 'Fix the code', done: false },
-        { id: 'item-2', text: 'Write tests', done: true }
+        { id: 'item-2', text: 'Write tests', done: true },
       ],
-      links: ['https://github.com/example/repo/issues/123']
+      links: ['https://github.com/example/repo/issues/123'],
     };
 
     const result = validateIssue(issue);
@@ -42,7 +42,7 @@ describe('Issue Schema Validation', () => {
 
   test('rejects issue with missing title', () => {
     const issue = {
-      body: 'This has no title'
+      body: 'This has no title',
     } as Partial<IssueSpec>;
 
     const result = validateIssue(issue);
@@ -52,7 +52,7 @@ describe('Issue Schema Validation', () => {
 
   test('rejects issue with missing body', () => {
     const issue = {
-      title: 'Title Only'
+      title: 'Title Only',
     } as Partial<IssueSpec>;
 
     const result = validateIssue(issue);
@@ -63,7 +63,7 @@ describe('Issue Schema Validation', () => {
   test('rejects issue with empty title', () => {
     const issue = {
       title: '   ',
-      body: 'This has empty title'
+      body: 'This has empty title',
     } as Partial<IssueSpec>;
 
     const result = validateIssue(issue);
@@ -75,7 +75,7 @@ describe('Issue Schema Validation', () => {
     const longTitle = 'a'.repeat(256);
     const issue: IssueSpec = {
       title: longTitle,
-      body: 'This title is too long'
+      body: 'This title is too long',
     };
 
     const result = validateIssue(issue);
@@ -90,8 +90,8 @@ describe('Issue Schema Validation', () => {
       checklist: [
         { id: 'valid-item', text: 'Valid item', done: false },
         { id: '', text: 'Invalid item - no id', done: false },
-        { id: 'no-text', text: '', done: false }
-      ]
+        { id: 'no-text', text: '', done: false },
+      ],
     };
 
     const result = validateIssue(issue);
@@ -105,7 +105,7 @@ describe('Issue Creation Helpers', () => {
   test('createIssue creates valid issue with defaults', () => {
     const issue = createIssue({
       title: 'New Issue',
-      body: 'New issue description'
+      body: 'New issue description',
     });
 
     expect(issue.title).toBe('New Issue');
@@ -125,7 +125,7 @@ describe('Issue Creation Helpers', () => {
       body: 'New issue description',
       labels: ['feature'],
       acceptance_criteria: ['Must work'],
-      links: ['https://example.com']
+      links: ['https://example.com'],
     });
 
     expect(issue.labels).toEqual(['feature']);
@@ -135,7 +135,7 @@ describe('Issue Creation Helpers', () => {
 
   test('createChecklistItem generates proper structure', () => {
     const item = createChecklistItem('Test item', true);
-    
+
     expect(item.text).toBe('Test item');
     expect(item.done).toBe(true);
     expect(item.id).toMatch(/^item-\d+-[a-z0-9]+$/);
@@ -143,7 +143,7 @@ describe('Issue Creation Helpers', () => {
 
   test('createChecklistItem defaults done to false', () => {
     const item = createChecklistItem('Test item');
-    
+
     expect(item.done).toBe(false);
   });
 });
@@ -152,12 +152,12 @@ describe('Issue Validation Configuration', () => {
   test('uses custom validation config', () => {
     const customConfig = {
       maxTitleLength: 50,
-      requiredFields: ['title'] as (keyof IssueSpec)[]
+      requiredFields: ['title'] as (keyof IssueSpec)[],
     };
 
     const issue: IssueSpec = {
       title: 'a'.repeat(51), // Exceeds custom limit
-      body: 'Body is not required in custom config'
+      body: 'Body is not required in custom config',
     };
 
     const result = validateIssue(issue, customConfig);

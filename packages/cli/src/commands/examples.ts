@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-import fs from "node:fs/promises";
-import path from "node:path";
-import chalk from "chalk";
-import type { Config } from "../config.js";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import chalk from 'chalk';
+import type { Config } from '../config.js';
 
 /**
  * Options for examples command
  */
 export interface ExamplesOptions {
-  type?: "profile" | "language";
+  type?: 'profile' | 'language';
   profile?: string;
   language?: string;
   output?: string;
@@ -23,7 +23,7 @@ export interface ExamplesOptions {
 interface ExampleTemplate {
   name: string;
   description: string;
-  type: "profile" | "language";
+  type: 'profile' | 'language';
   tags: string[];
   files: Record<string, string>;
   structure: string[];
@@ -35,17 +35,17 @@ interface ExampleTemplate {
 export async function examplesCommand(
   type: string,
   options: ExamplesOptions,
-  _config: Config,
+  _config: Config
 ): Promise<number> {
   try {
-    console.log(chalk.blue("🏗️  Generating example projects..."));
+    console.log(chalk.blue('🏗️  Generating example projects...'));
 
-    const outputDir = options.output || "./examples";
-    const exampleType = type as "profile" | "language";
+    const outputDir = options.output || './examples';
+    const exampleType = type as 'profile' | 'language';
 
-    if (!["profile", "language"].includes(exampleType)) {
+    if (!['profile', 'language'].includes(exampleType)) {
       console.error(chalk.red(`Invalid type: ${type}`));
-      console.log(chalk.dim("Valid types: profile, language"));
+      console.log(chalk.dim('Valid types: profile, language'));
       return 1;
     }
 
@@ -55,7 +55,7 @@ export async function examplesCommand(
 
     // Get available templates
     const templates = getExampleTemplates();
-    const filteredTemplates = templates.filter((t) => t.type === exampleType);
+    const filteredTemplates = templates.filter(t => t.type === exampleType);
 
     if (filteredTemplates.length === 0) {
       console.log(chalk.yellow(`No examples available for type: ${exampleType}`));
@@ -67,19 +67,19 @@ export async function examplesCommand(
 
     if (options.profile) {
       templatesToGenerate = filteredTemplates.filter(
-        (t) => t.name === options.profile || t.tags.includes(options.profile),
+        t => t.name === options.profile || t.tags.includes(options.profile)
       );
     }
 
     if (options.language) {
-      templatesToGenerate = filteredTemplates.filter((t) => t.tags.includes(options.language));
+      templatesToGenerate = filteredTemplates.filter(t => t.tags.includes(options.language));
     }
 
     if (templatesToGenerate.length === 0) {
-      console.log(chalk.yellow(`No matching examples found`));
-      console.log(chalk.dim("Available examples:"));
+      console.log(chalk.yellow('No matching examples found'));
+      console.log(chalk.dim('Available examples:'));
       for (const template of filteredTemplates) {
-        console.log(chalk.dim(`  ${template.name} (${template.tags.join(", ")})`));
+        console.log(chalk.dim(`  ${template.name} (${template.tags.join(', ')})`));
       }
       return 1;
     }
@@ -90,16 +90,16 @@ export async function examplesCommand(
     }
 
     // Show next steps
-    console.log(chalk.blue("\n🎯 Next steps:"));
+    console.log(chalk.blue('\n🎯 Next steps:'));
     console.log(chalk.dim(`  📁 Browse examples: cd ${outputDir}`));
-    console.log(chalk.dim("  🏃 Try an example: cd <example-dir> && arbiter init"));
-    console.log(chalk.dim("  📚 Learn more: arbiter docs schema --examples"));
+    console.log(chalk.dim('  🏃 Try an example: cd <example-dir> && arbiter init'));
+    console.log(chalk.dim('  📚 Learn more: arbiter docs schema --examples'));
 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("Example generation failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Example generation failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 2;
   }
@@ -112,131 +112,131 @@ function getExampleTemplates(): ExampleTemplate[] {
   return [
     // Profile-based examples
     {
-      name: "typescript-library",
-      description: "TypeScript library with comprehensive tooling",
-      type: "profile",
-      tags: ["typescript", "library", "npm", "testing"],
+      name: 'typescript-library',
+      description: 'TypeScript library with comprehensive tooling',
+      type: 'profile',
+      tags: ['typescript', 'library', 'npm', 'testing'],
       structure: [
-        "src/",
-        "src/index.ts",
-        "src/types.ts",
-        "test/",
-        "test/index.test.ts",
-        "package.json",
-        "tsconfig.json",
-        "arbiter.assembly.cue",
+        'src/',
+        'src/index.ts',
+        'src/types.ts',
+        'test/',
+        'test/index.test.ts',
+        'package.json',
+        'tsconfig.json',
+        'arbiter.assembly.cue',
       ],
       files: {
-        "package.json": getTypescriptLibraryPackageJson(),
-        "tsconfig.json": getTypescriptConfig(),
-        "src/index.ts": getTypescriptLibrarySrc(),
-        "src/types.ts": getTypescriptLibraryTypes(),
-        "test/index.test.ts": getTypescriptLibraryTests(),
-        "arbiter.assembly.cue": getLibraryAssemblyCue(),
-        "README.md": getTypescriptLibraryReadme(),
+        'package.json': getTypescriptLibraryPackageJson(),
+        'tsconfig.json': getTypescriptConfig(),
+        'src/index.ts': getTypescriptLibrarySrc(),
+        'src/types.ts': getTypescriptLibraryTypes(),
+        'test/index.test.ts': getTypescriptLibraryTests(),
+        'arbiter.assembly.cue': getLibraryAssemblyCue(),
+        'README.md': getTypescriptLibraryReadme(),
       },
     },
 
     {
-      name: "typescript-cli",
-      description: "TypeScript CLI tool with argument parsing",
-      type: "profile",
-      tags: ["typescript", "cli", "commander", "testing"],
+      name: 'typescript-cli',
+      description: 'TypeScript CLI tool with argument parsing',
+      type: 'profile',
+      tags: ['typescript', 'cli', 'commander', 'testing'],
       structure: [
-        "src/",
-        "src/cli.ts",
-        "src/commands/",
-        "bin/",
-        "test/",
-        "package.json",
-        "arbiter.assembly.cue",
+        'src/',
+        'src/cli.ts',
+        'src/commands/',
+        'bin/',
+        'test/',
+        'package.json',
+        'arbiter.assembly.cue',
       ],
       files: {
-        "package.json": getCliPackageJson(),
-        "src/cli.ts": getCliSrc(),
-        "src/commands/hello.ts": getCliHelloCommand(),
-        "bin/cli.js": getCliBin(),
-        "test/cli.test.ts": getCliTests(),
-        "arbiter.assembly.cue": getCliAssemblyCue(),
-        "README.md": getCliReadme(),
+        'package.json': getCliPackageJson(),
+        'src/cli.ts': getCliSrc(),
+        'src/commands/hello.ts': getCliHelloCommand(),
+        'bin/cli.js': getCliBin(),
+        'test/cli.test.ts': getCliTests(),
+        'arbiter.assembly.cue': getCliAssemblyCue(),
+        'README.md': getCliReadme(),
       },
     },
 
     {
-      name: "python-service",
-      description: "Python FastAPI service with async patterns",
-      type: "profile",
-      tags: ["python", "service", "fastapi", "async"],
+      name: 'python-service',
+      description: 'Python FastAPI service with async patterns',
+      type: 'profile',
+      tags: ['python', 'service', 'fastapi', 'async'],
       structure: [
-        "src/",
-        "src/main.py",
-        "src/api/",
-        "tests/",
-        "pyproject.toml",
-        "arbiter.assembly.cue",
+        'src/',
+        'src/main.py',
+        'src/api/',
+        'tests/',
+        'pyproject.toml',
+        'arbiter.assembly.cue',
       ],
       files: {
-        "pyproject.toml": getPythonServicePyproject(),
-        "src/main.py": getPythonServiceMain(),
-        "src/api/routes.py": getPythonServiceRoutes(),
-        "tests/test_main.py": getPythonServiceTests(),
-        "arbiter.assembly.cue": getServiceAssemblyCue(),
-        "README.md": getPythonServiceReadme(),
+        'pyproject.toml': getPythonServicePyproject(),
+        'src/main.py': getPythonServiceMain(),
+        'src/api/routes.py': getPythonServiceRoutes(),
+        'tests/test_main.py': getPythonServiceTests(),
+        'arbiter.assembly.cue': getServiceAssemblyCue(),
+        'README.md': getPythonServiceReadme(),
       },
     },
 
     {
-      name: "rust-library",
-      description: "Rust library with zero-cost abstractions",
-      type: "profile",
-      tags: ["rust", "library", "performance", "safety"],
-      structure: ["src/", "src/lib.rs", "tests/", "Cargo.toml", "arbiter.assembly.cue"],
+      name: 'rust-library',
+      description: 'Rust library with zero-cost abstractions',
+      type: 'profile',
+      tags: ['rust', 'library', 'performance', 'safety'],
+      structure: ['src/', 'src/lib.rs', 'tests/', 'Cargo.toml', 'arbiter.assembly.cue'],
       files: {
-        "Cargo.toml": getRustLibraryCargoToml(),
-        "src/lib.rs": getRustLibrarySrc(),
-        "tests/integration_test.rs": getRustLibraryTests(),
-        "arbiter.assembly.cue": getRustLibraryAssemblyCue(),
-        "README.md": getRustLibraryReadme(),
+        'Cargo.toml': getRustLibraryCargoToml(),
+        'src/lib.rs': getRustLibrarySrc(),
+        'tests/integration_test.rs': getRustLibraryTests(),
+        'arbiter.assembly.cue': getRustLibraryAssemblyCue(),
+        'README.md': getRustLibraryReadme(),
       },
     },
 
     {
-      name: "go-microservice",
-      description: "Go microservice with concurrency patterns",
-      type: "profile",
-      tags: ["go", "service", "microservice", "concurrency"],
-      structure: ["cmd/", "cmd/server/", "internal/", "pkg/", "go.mod", "arbiter.assembly.cue"],
+      name: 'go-microservice',
+      description: 'Go microservice with concurrency patterns',
+      type: 'profile',
+      tags: ['go', 'service', 'microservice', 'concurrency'],
+      structure: ['cmd/', 'cmd/server/', 'internal/', 'pkg/', 'go.mod', 'arbiter.assembly.cue'],
       files: {
-        "go.mod": getGoServiceGoMod(),
-        "cmd/server/main.go": getGoServiceMain(),
-        "internal/handlers/health.go": getGoServiceHandlers(),
-        "pkg/config/config.go": getGoServiceConfig(),
-        "arbiter.assembly.cue": getGoServiceAssemblyCue(),
-        "README.md": getGoServiceReadme(),
+        'go.mod': getGoServiceGoMod(),
+        'cmd/server/main.go': getGoServiceMain(),
+        'internal/handlers/health.go': getGoServiceHandlers(),
+        'pkg/config/config.go': getGoServiceConfig(),
+        'arbiter.assembly.cue': getGoServiceAssemblyCue(),
+        'README.md': getGoServiceReadme(),
       },
     },
 
     // Language-based examples
     {
-      name: "typescript-monorepo",
-      description: "Multi-package TypeScript monorepo setup",
-      type: "language",
-      tags: ["typescript", "monorepo", "workspaces", "lerna"],
+      name: 'typescript-monorepo',
+      description: 'Multi-package TypeScript monorepo setup',
+      type: 'language',
+      tags: ['typescript', 'monorepo', 'workspaces', 'lerna'],
       structure: [
-        "packages/",
-        "packages/core/",
-        "packages/cli/",
-        "packages/web/",
-        "package.json",
-        "arbiter.assembly.cue",
+        'packages/',
+        'packages/core/',
+        'packages/cli/',
+        'packages/web/',
+        'package.json',
+        'arbiter.assembly.cue',
       ],
       files: {
-        "package.json": getMonorepoPackageJson(),
-        "packages/core/package.json": getMonorepoCorePackageJson(),
-        "packages/cli/package.json": getMonorepoCliPackageJson(),
-        "packages/web/package.json": getMonorepoWebPackageJson(),
-        "arbiter.assembly.cue": getMonorepoAssemblyCue(),
-        "README.md": getMonorepoReadme(),
+        'package.json': getMonorepoPackageJson(),
+        'packages/core/package.json': getMonorepoCorePackageJson(),
+        'packages/cli/package.json': getMonorepoCliPackageJson(),
+        'packages/web/package.json': getMonorepoWebPackageJson(),
+        'arbiter.assembly.cue': getMonorepoAssemblyCue(),
+        'README.md': getMonorepoReadme(),
       },
     },
   ];
@@ -248,7 +248,7 @@ function getExampleTemplates(): ExampleTemplate[] {
 async function generateExampleProject(
   template: ExampleTemplate,
   outputDir: string,
-  options: ExamplesOptions,
+  options: ExamplesOptions
 ): Promise<void> {
   const projectDir = path.join(outputDir, template.name);
 
@@ -259,7 +259,7 @@ async function generateExampleProject(
   await fs.mkdir(projectDir, { recursive: true });
 
   // Create directory structure
-  for (const dir of template.structure.filter((item) => item.endsWith("/"))) {
+  for (const dir of template.structure.filter(item => item.endsWith('/'))) {
     const dirPath = path.join(projectDir, dir);
     await fs.mkdir(dirPath, { recursive: true });
   }
@@ -280,7 +280,7 @@ async function generateExampleProject(
       finalContent = expandContent(content, template);
     }
 
-    await fs.writeFile(fullPath, finalContent, "utf-8");
+    await fs.writeFile(fullPath, finalContent, 'utf-8');
   }
 
   console.log(chalk.green(`   ✅ Generated at: ${projectDir}`));
@@ -478,7 +478,7 @@ export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;`;
 }
 
 function getTypescriptLibraryTests(): string {
-  return `import { describe, it, expect } from 'vitest';
+  return `import { describe, it, expect } from 'bun:test';
 import { ExampleProcessor, createProcessor } from '../src/index.js';
 import type { LibraryConfig, ProcessingOptions } from '../src/types.js';
 
@@ -817,7 +817,7 @@ require('../dist/cli.js');`;
 }
 
 function getCliTests(): string {
-  return `import { describe, it, expect } from 'vitest';
+  return `import { describe, it, expect } from 'bun:test';
 import { helloCommand } from '../src/commands/hello.js';
 
 describe('helloCommand', () => {
@@ -1138,11 +1138,11 @@ function getRustLibraryAssemblyCue(): string {
   return `// Rust Library Assembly\nArtifact: { kind: "library", language: "rust" }\n`;
 }
 function getRustLibraryReadme(): string {
-  return `# Example Rust Library\n\nRust library with zero-cost abstractions.\n`;
+  return '# Example Rust Library\n\nRust library with zero-cost abstractions.\n';
 }
 
 function getGoServiceGoMod(): string {
-  return `module example-service\n\ngo 1.21\n\nrequire github.com/gin-gonic/gin v1.9.0\n`;
+  return 'module example-service\n\ngo 1.21\n\nrequire github.com/gin-gonic/gin v1.9.0\n';
 }
 function getGoServiceMain(): string {
   return `package main\n\nimport "github.com/gin-gonic/gin"\n\nfunc main() {\n\tr := gin.Default()\n\tr.GET("/health", func(c *gin.Context) {\n\t\tc.JSON(200, gin.H{"status": "healthy"})\n\t})\n\tr.Run(":8080")\n}\n`;
@@ -1151,13 +1151,13 @@ function getGoServiceHandlers(): string {
   return `package handlers\n\nimport "github.com/gin-gonic/gin"\n\nfunc Health(c *gin.Context) {\n\tc.JSON(200, gin.H{"status": "healthy"})\n}\n`;
 }
 function getGoServiceConfig(): string {
-  return `package config\n\ntype Config struct {\n\tPort string\n}\n`;
+  return 'package config\n\ntype Config struct {\n\tPort string\n}\n';
 }
 function getGoServiceAssemblyCue(): string {
   return `// Go Service Assembly\nArtifact: { kind: "service", language: "go" }\n`;
 }
 function getGoServiceReadme(): string {
-  return `# Example Go Service\n\nGo microservice with concurrency patterns.\n`;
+  return '# Example Go Service\n\nGo microservice with concurrency patterns.\n';
 }
 
 function getMonorepoPackageJson(): string {
@@ -1190,7 +1190,7 @@ function getMonorepoAssemblyCue(): string {
   return `// Monorepo Assembly\nArtifact: { kind: "monorepo", language: "typescript" }\n`;
 }
 function getMonorepoReadme(): string {
-  return `# Example Monorepo\n\nMulti-package TypeScript monorepo.\n`;
+  return '# Example Monorepo\n\nMulti-package TypeScript monorepo.\n';
 }
 
 /**
@@ -1199,9 +1199,9 @@ function getMonorepoReadme(): string {
 function minimizeContent(content: string): string {
   // Remove comments and extra whitespace for minimal examples
   return content
-    .replace(/\/\*[\s\S]*?\*\//g, "") // Remove block comments
-    .replace(/\/\/.*$/gm, "") // Remove line comments
-    .replace(/\n\s*\n/g, "\n") // Remove empty lines
+    .replace(/\/\*[\s\S]*?\*\//g, '') // Remove block comments
+    .replace(/\/\/.*$/gm, '') // Remove line comments
+    .replace(/\n\s*\n/g, '\n') // Remove empty lines
     .trim();
 }
 
@@ -1210,7 +1210,7 @@ function minimizeContent(content: string): string {
  */
 function expandContent(content: string, template: ExampleTemplate): string {
   // Add additional examples and documentation for complete examples
-  if (template.name.includes("typescript")) {
+  if (template.name.includes('typescript')) {
     return `${content}\n\n// Additional examples and comprehensive documentation would go here`;
   }
   return content;

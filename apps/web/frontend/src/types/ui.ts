@@ -9,7 +9,7 @@ import type {
   Project,
   ValidationError,
   ValidationWarning,
-} from "./api";
+} from './api';
 
 // Application state
 export interface AppState {
@@ -23,9 +23,6 @@ export interface AppState {
 
   // UI state
   activeFragmentId: string | null;
-  activeFragmentTab: string;
-  leftTab: LeftTab;
-  rightTab: RightTab;
   isLoading: boolean;
   error: string | null;
 
@@ -51,39 +48,43 @@ export interface AppState {
 }
 
 // Tab types - separate left and right tab groups
-export type LeftTab = "source" | "friendly";
-export type RightTab = "flow" | "site" | "fsm" | "view" | "gaps" | "resolved" | "architecture" | "handlers";
+export type LeftTab = 'source' | 'friendly';
+export type RightTab =
+  | 'flow'
+  | 'site'
+  | 'fsm'
+  | 'view'
+  | 'gaps'
+  | 'resolved'
+  | 'architecture'
+  | 'handlers';
 
 // Legacy type for backwards compatibility
 export type DiagramTab = LeftTab | RightTab;
 
 // UI actions
 export type AppAction =
-  | { type: "SET_PROJECT"; payload: Project | null }
-  | { type: "SET_PROJECTS"; payload: Project[] }
-  | { type: "SET_CURRENT_PROJECT"; payload: Project }
-  | { type: "SET_FRAGMENTS"; payload: Fragment[] }
-  | { type: "UPDATE_FRAGMENT"; payload: Fragment }
-  | { type: "DELETE_FRAGMENT"; payload: string }
-  | { type: "SET_RESOLVED"; payload: { resolved: Record<string, unknown>; specHash: string } }
-  | { type: "SET_GAPS"; payload: GapSet }
-  | { type: "SET_IR"; payload: { kind: string; data: IRResponse } }
-  | { type: "SET_ACTIVE_FRAGMENT"; payload: string | null }
-  | { type: "SET_ACTIVE_FRAGMENT_TAB"; payload: string }
-  | { type: "SET_LEFT_TAB"; payload: LeftTab }
-  | { type: "SET_RIGHT_TAB"; payload: RightTab }
-  | { type: "SET_ACTIVE_TAB"; payload: DiagramTab } // Legacy compatibility
-  | { type: "SET_LOADING"; payload: boolean }
-  | { type: "SET_ERROR"; payload: string | null }
-  | { type: "SET_EDITOR_CONTENT"; payload: { fragmentId: string; content: string } }
-  | { type: "MARK_UNSAVED"; payload: string }
-  | { type: "MARK_SAVED"; payload: string }
-  | { type: "SET_CONNECTION_STATUS"; payload: boolean }
-  | { type: "INCREMENT_RECONNECT_ATTEMPTS" }
-  | { type: "RESET_RECONNECT_ATTEMPTS" }
-  | { type: "SET_LAST_SYNC"; payload: string }
+  | { type: 'SET_PROJECT'; payload: Project | null }
+  | { type: 'SET_PROJECTS'; payload: Project[] }
+  | { type: 'SET_CURRENT_PROJECT'; payload: Project }
+  | { type: 'SET_FRAGMENTS'; payload: Fragment[] }
+  | { type: 'UPDATE_FRAGMENT'; payload: Fragment }
+  | { type: 'DELETE_FRAGMENT'; payload: string }
+  | { type: 'SET_RESOLVED'; payload: { resolved: Record<string, unknown>; specHash: string } }
+  | { type: 'SET_GAPS'; payload: GapSet }
+  | { type: 'SET_IR'; payload: { kind: string; data: IRResponse } }
+  | { type: 'SET_ACTIVE_FRAGMENT'; payload: string | null }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_EDITOR_CONTENT'; payload: { fragmentId: string; content: string } }
+  | { type: 'MARK_UNSAVED'; payload: string }
+  | { type: 'MARK_SAVED'; payload: string }
+  | { type: 'SET_CONNECTION_STATUS'; payload: boolean }
+  | { type: 'INCREMENT_RECONNECT_ATTEMPTS' }
+  | { type: 'RESET_RECONNECT_ATTEMPTS' }
+  | { type: 'SET_LAST_SYNC'; payload: string }
   | {
-      type: "SET_VALIDATION_STATE";
+      type: 'SET_VALIDATION_STATE';
       payload: {
         errors: ValidationError[];
         warnings: ValidationWarning[];
@@ -92,8 +93,8 @@ export type AppAction =
         specHash: string | null;
       };
     }
-  | { type: "SET_SELECTED_CUE_FILE"; payload: string | null }
-  | { type: "SET_AVAILABLE_CUE_FILES"; payload: string[] };
+  | { type: 'SET_SELECTED_CUE_FILE'; payload: string | null }
+  | { type: 'SET_AVAILABLE_CUE_FILES'; payload: string[] };
 
 // Component props
 export interface SplitPaneProps {
@@ -102,7 +103,7 @@ export interface SplitPaneProps {
   minSize?: number | string;
   maxSize?: number | string;
   allowResize?: boolean;
-  split?: "vertical" | "horizontal";
+  split?: 'vertical' | 'horizontal';
   className?: string;
 }
 
@@ -125,7 +126,7 @@ export interface TabItem {
 export interface FileTreeItem {
   id: string;
   path: string;
-  type: "file" | "directory";
+  type: 'file' | 'directory';
   children?: FileTreeItem[];
   hasUnsavedChanges?: boolean;
 }
@@ -165,7 +166,7 @@ export interface ExcalidrawDiagramProps extends DiagramRendererProps {
 // Toast notification types
 export interface ToastNotification {
   id: string;
-  type: "info" | "success" | "warning" | "error";
+  type: 'info' | 'success' | 'warning' | 'error';
   message: string;
   duration?: number;
   timestamp: string;
@@ -183,12 +184,12 @@ export interface WebSocketState {
 // Worker message types
 export interface WorkerMessage {
   id: string;
-  type: "render" | "response" | "error";
+  type: 'render' | 'response' | 'error';
   data: any;
 }
 
 export interface WorkerResponse extends WorkerMessage {
-  type: "response";
+  type: 'response';
   success: boolean;
   result?: any;
   error?: string;
@@ -207,7 +208,7 @@ export interface CoverageMeterProps {
 
 // Interactive gaps types
 export interface GapItemProps {
-  type: "missing_capability" | "orphaned_token" | "coverage_gap" | "duplicate";
+  type: 'missing_capability' | 'orphaned_token' | 'coverage_gap' | 'duplicate';
   data: any;
   onResolve?: (id: string) => void;
   onNavigate?: (location: string) => void;

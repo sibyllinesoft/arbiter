@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { DataViewer } from './DataViewer';
-import { 
+import {
   basicRequirementsCue,
   assemblySpecCue,
   complexTypescriptProjectCue,
-  sampleResolvedData 
+  sampleResolvedData,
 } from '../../test/cue-samples';
 
 const meta: Meta<typeof DataViewer> = {

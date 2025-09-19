@@ -23,7 +23,7 @@ interface AccordionSection {
 export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
   projectId,
   className = '',
-  title = 'CUE Specification Overview'
+  title = 'CUE Specification Overview',
 }) => {
   const [resolvedData, setResolvedData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,13 +68,17 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
     if (value === null) {
       return <span className="text-gray-400 italic">null</span>;
     }
-    
+
     if (value === undefined) {
       return <span className="text-gray-400 italic">undefined</span>;
     }
 
     if (typeof value === 'boolean') {
-      return <span className={`font-mono ${value ? 'text-green-600' : 'text-red-600'}`}>{String(value)}</span>;
+      return (
+        <span className={`font-mono ${value ? 'text-green-600' : 'text-red-600'}`}>
+          {String(value)}
+        </span>
+      );
     }
 
     if (typeof value === 'number') {
@@ -89,7 +93,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
       if (value.length === 0) {
         return <span className="text-gray-400 italic">[]</span>;
       }
-      
+
       return (
         <div className="space-y-1">
           <span className="text-gray-600 text-sm">Array ({value.length} items)</span>
@@ -99,9 +103,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
                 <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded font-mono">
                   [{index}]
                 </span>
-                <div className="flex-1">
-                  {renderValue(item, level + 1)}
-                </div>
+                <div className="flex-1">{renderValue(item, level + 1)}</div>
               </div>
             ))}
           </div>
@@ -125,9 +127,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
                   <span className="font-medium text-gray-800">{key}</span>
                   <span className="text-gray-400">:</span>
                 </div>
-                <div className="ml-4">
-                  {renderValue(val, level + 1)}
-                </div>
+                <div className="ml-4">{renderValue(val, level + 1)}</div>
               </div>
             ))}
           </div>
@@ -144,16 +144,18 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
       label: key,
       value,
       isExpanded: expandedSections.has(key),
-      level: 0
+      level: 0,
     }));
   };
 
   const renderAccordionSection = (section: AccordionSection) => {
     const { key, label, value, isExpanded } = section;
-    const hasContent = value !== null && value !== undefined && 
-                      (typeof value !== 'object' || 
-                       (Array.isArray(value) && value.length > 0) || 
-                       (!Array.isArray(value) && Object.keys(value as object).length > 0));
+    const hasContent =
+      value !== null &&
+      value !== undefined &&
+      (typeof value !== 'object' ||
+        (Array.isArray(value) && value.length > 0) ||
+        (!Array.isArray(value) && Object.keys(value as object).length > 0));
 
     return (
       <div key={key} className="border border-gray-200 rounded-lg bg-white shadow-sm">
@@ -172,26 +174,20 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
             ) : (
               <div className="w-5 h-5" />
             )}
-            <h3 className="text-lg font-semibold text-gray-900 text-left">
-              {label}
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 text-left">{label}</h3>
           </div>
           <div className="flex items-center space-x-2">
             {hasContent ? (
               <CheckCircle className="w-4 h-4 text-green-500" />
             ) : (
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                empty
-              </span>
+              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">empty</span>
             )}
           </div>
         </button>
-        
+
         {isExpanded && hasContent && (
           <div className="border-t border-gray-200 p-4 bg-gray-50/50">
-            <div className="space-y-3">
-              {renderValue(value)}
-            </div>
+            <div className="space-y-3">{renderValue(value)}</div>
           </div>
         )}
       </div>
@@ -277,7 +273,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
             )}
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setExpandedSections(new Set())}
@@ -297,9 +293,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
       </div>
 
       {/* Content */}
-      <div className="space-y-3">
-        {sections.map(section => renderAccordionSection(section))}
-      </div>
+      <div className="space-y-3">{sections.map(section => renderAccordionSection(section))}</div>
     </div>
   );
 };

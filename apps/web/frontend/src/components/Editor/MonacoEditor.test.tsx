@@ -115,47 +115,26 @@ describe('MonacoEditor', () => {
 
   describe('Basic Rendering', () => {
     it('renders editor container', () => {
-      render(
-        <MonacoEditor
-          value="test content"
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="test content" onChange={mockOnChange} />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
     it('displays loading state initially', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       expect(screen.getByText('Loading editor...')).toBeInTheDocument();
     });
 
     it('applies custom className', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          className="custom-editor"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} className="custom-editor" />);
 
       const container = screen.getByTestId('monaco-editor').closest('.custom-editor');
       expect(container).toBeInTheDocument();
     });
 
     it('renders with default CUE language', async () => {
-      render(
-        <MonacoEditor
-          value="package main"
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="package main" onChange={mockOnChange} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('editor-textarea')).toHaveValue('package main');
@@ -165,12 +144,7 @@ describe('MonacoEditor', () => {
 
   describe('Editor Configuration', () => {
     it('applies default editor options', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
       // Default options are applied internally, we verify the editor renders
@@ -183,37 +157,19 @@ describe('MonacoEditor', () => {
         customOption: true,
       };
 
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          options={customOptions}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} options={customOptions} />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
     it('supports different themes', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          theme="vs-dark"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} theme="vs-dark" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
     it('supports different languages', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          language="json"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} language="json" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
@@ -222,13 +178,8 @@ describe('MonacoEditor', () => {
   describe('Content Handling', () => {
     it('displays initial value', async () => {
       const initialContent = 'package example\n\nvalue: "test"';
-      
-      render(
-        <MonacoEditor
-          value={initialContent}
-          onChange={mockOnChange}
-        />
-      );
+
+      render(<MonacoEditor value={initialContent} onChange={mockOnChange} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('editor-textarea')).toHaveValue(initialContent);
@@ -236,12 +187,7 @@ describe('MonacoEditor', () => {
     });
 
     it('calls onChange when content changes', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       const textarea = screen.getByTestId('editor-textarea');
       await user.type(textarea, 'new content');
@@ -250,36 +196,21 @@ describe('MonacoEditor', () => {
     });
 
     it('handles undefined value gracefully', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       const textarea = screen.getByTestId('editor-textarea');
-      
+
       // Simulate undefined value from editor
       fireEvent.change(textarea, { target: { value: undefined } });
-      
+
       // Should not call onChange with undefined
       expect(mockOnChange).not.toHaveBeenCalledWith(undefined);
     });
 
     it('updates value when prop changes', async () => {
-      const { rerender } = render(
-        <MonacoEditor
-          value="initial"
-          onChange={mockOnChange}
-        />
-      );
+      const { rerender } = render(<MonacoEditor value="initial" onChange={mockOnChange} />);
 
-      rerender(
-        <MonacoEditor
-          value="updated"
-          onChange={mockOnChange}
-        />
-      );
+      rerender(<MonacoEditor value="updated" onChange={mockOnChange} />);
 
       await waitFor(() => {
         expect(screen.getByTestId('editor-textarea')).toHaveValue('updated');
@@ -289,27 +220,18 @@ describe('MonacoEditor', () => {
 
   describe('Editor Mount and Lifecycle', () => {
     it('calls onEditorReady when editor mounts', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          onEditorReady={mockOnEditorReady}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} onEditorReady={mockOnEditorReady} />);
 
-      await waitFor(() => {
-        expect(mockOnEditorReady).toHaveBeenCalledWith(mockEditor);
-      }, { timeout: 100 });
+      await waitFor(
+        () => {
+          expect(mockOnEditorReady).toHaveBeenCalledWith(mockEditor);
+        },
+        { timeout: 100 }
+      );
     });
 
     it('sets up save keyboard shortcut when onSave provided', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          onSave={mockOnSave}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} onSave={mockOnSave} />);
 
       await waitFor(() => {
         expect(mockEditor.addCommand).toHaveBeenCalled();
@@ -317,12 +239,7 @@ describe('MonacoEditor', () => {
     });
 
     it('sets up editor event listeners', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       await waitFor(() => {
         expect(mockEditor.getModel).toHaveBeenCalled();
@@ -337,13 +254,7 @@ describe('MonacoEditor', () => {
     });
 
     it('renders with CUE language specified', async () => {
-      render(
-        <MonacoEditor
-          value="package main"
-          onChange={mockOnChange}
-          language="cue"
-        />
-      );
+      render(<MonacoEditor value="package main" onChange={mockOnChange} language="cue" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
       await waitFor(() => {
@@ -352,14 +263,7 @@ describe('MonacoEditor', () => {
     });
 
     it('renders with CUE theme specified', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          language="cue"
-          theme="cue-light"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} language="cue" theme="cue-light" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
@@ -367,13 +271,7 @@ describe('MonacoEditor', () => {
 
   describe('Auto-completion', () => {
     it('renders editor for auto-completion features', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          language="cue"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} language="cue" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
       // Note: Actual completion testing would require integration with real Monaco instance
@@ -382,13 +280,7 @@ describe('MonacoEditor', () => {
 
   describe('Hover Information', () => {
     it('renders editor for hover features', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          language="cue"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} language="cue" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
       // Note: Actual hover testing would require integration with real Monaco instance
@@ -397,13 +289,7 @@ describe('MonacoEditor', () => {
 
   describe('Save Functionality', () => {
     it('calls onSave when save shortcut is triggered', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          onSave={mockOnSave}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} onSave={mockOnSave} />);
 
       await waitFor(() => {
         expect(mockEditor.addCommand).toHaveBeenCalled();
@@ -418,12 +304,7 @@ describe('MonacoEditor', () => {
     });
 
     it('does not add save command when onSave not provided', async () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       await waitFor(() => {
         expect(mockEditor.getModel).toHaveBeenCalled();
@@ -436,24 +317,13 @@ describe('MonacoEditor', () => {
 
   describe('Fragment ID Handling', () => {
     it('accepts fragmentId prop', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          fragmentId="fragment-123"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} fragmentId="fragment-123" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
 
     it('works without fragmentId', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });
@@ -463,28 +333,17 @@ describe('MonacoEditor', () => {
     it('handles editor mount errors gracefully', () => {
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
-      
+
       consoleError.mockRestore();
     });
 
     it('handles language registration errors gracefully', async () => {
       // Simulate a language registration error scenario
       expect(() => {
-        render(
-          <MonacoEditor
-            value=""
-            onChange={mockOnChange}
-            language="cue"
-          />
-        );
+        render(<MonacoEditor value="" onChange={mockOnChange} language="cue" />);
       }).not.toThrow();
     });
 
@@ -494,12 +353,7 @@ describe('MonacoEditor', () => {
       });
 
       expect(() => {
-        render(
-          <MonacoEditor
-            value=""
-            onChange={errorOnChange}
-          />
-        );
+        render(<MonacoEditor value="" onChange={errorOnChange} />);
       }).not.toThrow();
     });
   });
@@ -507,14 +361,9 @@ describe('MonacoEditor', () => {
   describe('Performance', () => {
     it('renders quickly with large content', () => {
       const largeContent = 'package example\n'.repeat(1000);
-      
+
       const startTime = performance.now();
-      render(
-        <MonacoEditor
-          value={largeContent}
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value={largeContent} onChange={mockOnChange} />);
       const endTime = performance.now();
 
       expect(endTime - startTime).toBeLessThan(100);
@@ -522,21 +371,11 @@ describe('MonacoEditor', () => {
     });
 
     it('handles rapid content changes efficiently', async () => {
-      const { rerender } = render(
-        <MonacoEditor
-          value="initial"
-          onChange={mockOnChange}
-        />
-      );
+      const { rerender } = render(<MonacoEditor value="initial" onChange={mockOnChange} />);
 
       const startTime = performance.now();
       for (let i = 0; i < 100; i++) {
-        rerender(
-          <MonacoEditor
-            value={`content ${i}`}
-            onChange={mockOnChange}
-          />
-        );
+        rerender(<MonacoEditor value={`content ${i}`} onChange={mockOnChange} />);
       }
       const endTime = performance.now();
 
@@ -546,28 +385,18 @@ describe('MonacoEditor', () => {
 
   describe('Accessibility', () => {
     it('provides accessible editor interface', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       const textarea = screen.getByTestId('editor-textarea');
       expect(textarea).toBeInTheDocument();
     });
 
     it('supports keyboard navigation', async () => {
-      render(
-        <MonacoEditor
-          value="test content"
-          onChange={mockOnChange}
-        />
-      );
+      render(<MonacoEditor value="test content" onChange={mockOnChange} />);
 
       const textarea = screen.getByTestId('editor-textarea');
       await user.click(textarea);
-      
+
       expect(textarea).toHaveFocus();
     });
   });
@@ -575,11 +404,7 @@ describe('MonacoEditor', () => {
   describe('Memory Management', () => {
     it('cleans up editor resources on unmount', async () => {
       const { unmount } = render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          onEditorReady={mockOnEditorReady}
-        />
+        <MonacoEditor value="" onChange={mockOnChange} onEditorReady={mockOnEditorReady} />
       );
 
       await waitFor(() => {
@@ -593,12 +418,7 @@ describe('MonacoEditor', () => {
     });
 
     it('handles unmount before editor is ready', () => {
-      const { unmount } = render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-        />
-      );
+      const { unmount } = render(<MonacoEditor value="" onChange={mockOnChange} />);
 
       // Unmount immediately before editor mounts
       expect(() => unmount()).not.toThrow();
@@ -607,28 +427,14 @@ describe('MonacoEditor', () => {
 
   describe('Theme Handling', () => {
     it('applies CUE light theme when theme is vs', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          theme="vs"
-          language="cue"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} theme="vs" language="cue" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
       // Theme application is internal to Monaco Editor
     });
 
     it('preserves custom theme when not using CUE light', () => {
-      render(
-        <MonacoEditor
-          value=""
-          onChange={mockOnChange}
-          theme="vs-dark"
-          language="cue"
-        />
-      );
+      render(<MonacoEditor value="" onChange={mockOnChange} theme="vs-dark" language="cue" />);
 
       expect(screen.getByTestId('monaco-editor')).toBeInTheDocument();
     });

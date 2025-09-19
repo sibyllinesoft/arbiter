@@ -5,12 +5,36 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { 
-  Save, Download, Trash2, Plus, ArrowRight, Loader2, 
-  CheckCircle, AlertTriangle, XCircle, Info, Clock,
-  GitBranch, Users, Database, Shield, Activity, Settings,
-  FileText, Code, Eye, Play, Pause, Search, Bell,
-  Home, Folder, Monitor, Terminal, Globe
+import {
+  Save,
+  Download,
+  Trash2,
+  Plus,
+  ArrowRight,
+  Loader2,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Info,
+  Clock,
+  GitBranch,
+  Users,
+  Database,
+  Shield,
+  Activity,
+  Settings,
+  FileText,
+  Code,
+  Eye,
+  Play,
+  Pause,
+  Search,
+  Bell,
+  Home,
+  Folder,
+  Monitor,
+  Terminal,
+  Globe,
 } from 'lucide-react';
 
 // Import all design system components
@@ -84,7 +108,7 @@ export const ApplicationShowcase: Story = {
               </div>
               <span className="text-xl font-semibold text-gray-900">Arbiter</span>
             </div>
-            
+
             <nav className="flex items-center gap-1">
               <NavItem icon={<Home />} label="Dashboard" active />
               <NavItem icon={<Folder />} label="Projects" />
@@ -93,7 +117,7 @@ export const ApplicationShowcase: Story = {
               <NavItem icon={<Settings />} label="Settings" />
             </nav>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <div className="relative">
               <Input
@@ -107,9 +131,9 @@ export const ApplicationShowcase: Story = {
               <Bell className="h-4 w-4" />
             </Button>
             <div className="flex items-center gap-2">
-              <img 
-                src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face" 
-                alt="User" 
+              <img
+                src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face"
+                alt="User"
                 className="w-8 h-8 rounded-full"
               />
               <span className="text-sm font-medium text-gray-700">Sarah Chen</span>
@@ -126,7 +150,7 @@ export const ApplicationShowcase: Story = {
             items={[
               { label: 'Projects', href: '#' },
               { label: 'E-commerce Platform', href: '#' },
-              { label: 'Dashboard', href: '#', current: true }
+              { label: 'Dashboard', href: '#', current: true },
             ]}
           />
         </div>
@@ -141,9 +165,7 @@ export const ApplicationShowcase: Story = {
             <Button variant="secondary" leftIcon={<Download />}>
               Export Specs
             </Button>
-            <Button leftIcon={<Save />}>
-              Save Changes
-            </Button>
+            <Button leftIcon={<Save />}>Save Changes</Button>
           </div>
         </div>
 
@@ -160,7 +182,9 @@ export const ApplicationShowcase: Story = {
               </div>
             </div>
             <div className="mt-3">
-              <StatusBadge variant="success" size="xs">All Valid</StatusBadge>
+              <StatusBadge variant="success" size="xs">
+                All Valid
+              </StatusBadge>
             </div>
           </Card>
 
@@ -175,7 +199,9 @@ export const ApplicationShowcase: Story = {
               </div>
             </div>
             <div className="mt-3">
-              <StatusBadge variant="success" size="xs">Excellent</StatusBadge>
+              <StatusBadge variant="success" size="xs">
+                Excellent
+              </StatusBadge>
             </div>
           </Card>
 
@@ -190,7 +216,9 @@ export const ApplicationShowcase: Story = {
               </div>
             </div>
             <div className="mt-3">
-              <StatusBadge variant="warning" size="xs">Needs Attention</StatusBadge>
+              <StatusBadge variant="warning" size="xs">
+                Needs Attention
+              </StatusBadge>
             </div>
           </Card>
 
@@ -205,7 +233,9 @@ export const ApplicationShowcase: Story = {
               </div>
             </div>
             <div className="mt-3">
-              <StatusBadge variant="active" size="xs" pulse>Running</StatusBadge>
+              <StatusBadge variant="active" size="xs" pulse>
+                Running
+              </StatusBadge>
             </div>
           </Card>
         </div>
@@ -218,14 +248,29 @@ export const ApplicationShowcase: Story = {
             <Card title="Recent Projects" subtitle="Your most active specification projects">
               <div className="space-y-4">
                 {storybookData.projects.slice(0, 3).map((project, index) => (
-                  <div key={project.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div
+                    key={project.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                  >
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 ${
-                        index === 0 ? 'bg-blue-100' : index === 1 ? 'bg-green-100' : 'bg-purple-100'
-                      } rounded-lg flex items-center justify-center`}>
-                        <Code className={`h-5 w-5 ${
-                          index === 0 ? 'text-blue-600' : index === 1 ? 'text-green-600' : 'text-purple-600'
-                        }`} />
+                      <div
+                        className={`w-10 h-10 ${
+                          index === 0
+                            ? 'bg-blue-100'
+                            : index === 1
+                              ? 'bg-green-100'
+                              : 'bg-purple-100'
+                        } rounded-lg flex items-center justify-center`}
+                      >
+                        <Code
+                          className={`h-5 w-5 ${
+                            index === 0
+                              ? 'text-blue-600'
+                              : index === 1
+                                ? 'text-green-600'
+                                : 'text-purple-600'
+                          }`}
+                        />
                       </div>
                       <div>
                         <div className="font-medium text-gray-900">{project.name}</div>
@@ -235,8 +280,8 @@ export const ApplicationShowcase: Story = {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <StatusBadge 
-                        variant={index === 0 ? 'success' : index === 1 ? 'pending' : 'warning'} 
+                      <StatusBadge
+                        variant={index === 0 ? 'success' : index === 1 ? 'pending' : 'warning'}
                         size="xs"
                       >
                         {index === 0 ? 'Active' : index === 1 ? 'Building' : 'Issues'}
@@ -251,14 +296,16 @@ export const ApplicationShowcase: Story = {
             </Card>
 
             {/* Build Pipeline */}
-            <Card 
-              title="Build Pipeline" 
+            <Card
+              title="Build Pipeline"
               subtitle="Continuous integration and deployment status"
               header={
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-900">Build Pipeline</h3>
-                    <p className="text-sm text-gray-600">Continuous integration and deployment status</p>
+                    <p className="text-sm text-gray-600">
+                      Continuous integration and deployment status
+                    </p>
                   </div>
                   <Button variant="ghost" size="sm">
                     <Settings className="h-4 w-4" />
@@ -276,9 +323,11 @@ export const ApplicationShowcase: Story = {
                       <div className="text-sm text-gray-600">Completed in 2m 34s</div>
                     </div>
                   </div>
-                  <StatusBadge variant="success" size="sm">Passed</StatusBadge>
+                  <StatusBadge variant="success" size="sm">
+                    Passed
+                  </StatusBadge>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 border border-blue-200 bg-blue-50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
@@ -287,9 +336,11 @@ export const ApplicationShowcase: Story = {
                       <div className="text-sm text-gray-600">In progress...</div>
                     </div>
                   </div>
-                  <StatusBadge variant="pending" size="sm" loading>Deploying</StatusBadge>
+                  <StatusBadge variant="pending" size="sm" loading>
+                    Deploying
+                  </StatusBadge>
                 </div>
-                
+
                 <div className="flex items-center justify-between p-3 border border-gray-200 bg-gray-50 rounded-lg opacity-60">
                   <div className="flex items-center gap-3">
                     <Clock className="h-5 w-5 text-gray-400" />
@@ -298,7 +349,9 @@ export const ApplicationShowcase: Story = {
                       <div className="text-sm text-gray-500">Waiting for approval</div>
                     </div>
                   </div>
-                  <StatusBadge variant="neutral" size="sm">Pending</StatusBadge>
+                  <StatusBadge variant="neutral" size="sm">
+                    Pending
+                  </StatusBadge>
                 </div>
               </div>
             </Card>
@@ -311,21 +364,21 @@ export const ApplicationShowcase: Story = {
               <div className="space-y-4">
                 {storybookData.users.teamMembers.slice(0, 4).map((member, index) => (
                   <div key={member.id} className="flex items-center gap-3">
-                    <img 
-                      src={member.avatar} 
-                      alt={member.name}
-                      className="w-8 h-8 rounded-full"
-                    />
+                    <img src={member.avatar} alt={member.name} className="w-8 h-8 rounded-full" />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-gray-900 truncate">
                         {member.name}
                       </div>
-                      <div className="text-xs text-gray-600 truncate">
-                        {member.role}
-                      </div>
+                      <div className="text-xs text-gray-600 truncate">{member.role}</div>
                     </div>
-                    <StatusBadge 
-                      variant={member.status === 'online' ? 'active' : member.status === 'away' ? 'warning' : 'inactive'}
+                    <StatusBadge
+                      variant={
+                        member.status === 'online'
+                          ? 'active'
+                          : member.status === 'away'
+                            ? 'warning'
+                            : 'inactive'
+                      }
                       size="xs"
                       pulse={member.status === 'online'}
                     >
@@ -344,23 +397,29 @@ export const ApplicationShowcase: Story = {
                     <Globe className="h-4 w-4 text-gray-600" />
                     <span className="text-sm text-gray-900">API Gateway</span>
                   </div>
-                  <StatusBadge variant="active" size="xs" showDot>Online</StatusBadge>
+                  <StatusBadge variant="active" size="xs" showDot>
+                    Online
+                  </StatusBadge>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Database className="h-4 w-4 text-gray-600" />
                     <span className="text-sm text-gray-900">Database</span>
                   </div>
-                  <StatusBadge variant="warning" size="xs" showDot>Degraded</StatusBadge>
+                  <StatusBadge variant="warning" size="xs" showDot>
+                    Degraded
+                  </StatusBadge>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-gray-600" />
                     <span className="text-sm text-gray-900">Auth Service</span>
                   </div>
-                  <StatusBadge variant="active" size="xs" showDot>Online</StatusBadge>
+                  <StatusBadge variant="active" size="xs" showDot>
+                    Online
+                  </StatusBadge>
                 </div>
               </div>
             </Card>
@@ -420,14 +479,14 @@ export const ColorPalette: Story = {
     <div className="p-8 space-y-8">
       <div>
         <h2 className="text-2xl font-semibold text-gray-900 mb-6">Graphite Color System</h2>
-        
+
         {/* Primary Graphite Scale */}
         <div className="mb-8">
           <h3 className="text-lg font-medium text-gray-800 mb-4">Primary Graphite Scale</h3>
           <div className="grid grid-cols-10 gap-2">
             {Object.entries(colors.graphite).map(([weight, color]) => (
               <div key={weight} className="space-y-2">
-                <div 
+                <div
                   className="h-16 rounded-lg shadow-sm border"
                   style={{ backgroundColor: color }}
                 />
@@ -443,14 +502,14 @@ export const ColorPalette: Story = {
         {/* Semantic Colors */}
         <div className="space-y-6">
           <h3 className="text-lg font-medium text-gray-800">Semantic Color Scales</h3>
-          
+
           {Object.entries(colors.semantic).map(([name, scale]) => (
             <div key={name} className="space-y-3">
               <h4 className="text-base font-medium text-gray-700 capitalize">{name}</h4>
               <div className="grid grid-cols-10 gap-2">
                 {Object.entries(scale).map(([weight, color]) => (
                   <div key={weight} className="space-y-1">
-                    <div 
+                    <div
                       className="h-12 rounded shadow-sm border"
                       style={{ backgroundColor: color }}
                     />
@@ -474,41 +533,57 @@ export const ColorPalette: Story = {
                   <CheckCircle className="h-5 w-5 text-green-500" />
                   <span className="font-medium text-gray-900">Success State</span>
                 </div>
-                <StatusBadge variant="success" size="sm">Build Successful</StatusBadge>
-                <Button variant="primary" size="sm">Primary Action</Button>
+                <StatusBadge variant="success" size="sm">
+                  Build Successful
+                </StatusBadge>
+                <Button variant="primary" size="sm">
+                  Primary Action
+                </Button>
               </div>
             </Card>
-            
+
             <Card>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
                   <span className="font-medium text-gray-900">Warning State</span>
                 </div>
-                <StatusBadge variant="warning" size="sm">Needs Review</StatusBadge>
-                <Button variant="secondary" size="sm">Secondary Action</Button>
+                <StatusBadge variant="warning" size="sm">
+                  Needs Review
+                </StatusBadge>
+                <Button variant="secondary" size="sm">
+                  Secondary Action
+                </Button>
               </div>
             </Card>
-            
+
             <Card>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <XCircle className="h-5 w-5 text-red-500" />
                   <span className="font-medium text-gray-900">Error State</span>
                 </div>
-                <StatusBadge variant="error" size="sm">Build Failed</StatusBadge>
-                <Button variant="danger" size="sm">Destructive Action</Button>
+                <StatusBadge variant="error" size="sm">
+                  Build Failed
+                </StatusBadge>
+                <Button variant="danger" size="sm">
+                  Destructive Action
+                </Button>
               </div>
             </Card>
-            
+
             <Card>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <Info className="h-5 w-5 text-blue-500" />
                   <span className="font-medium text-gray-900">Info State</span>
                 </div>
-                <StatusBadge variant="info" size="sm">Information</StatusBadge>
-                <Button variant="ghost" size="sm">Ghost Action</Button>
+                <StatusBadge variant="info" size="sm">
+                  Information
+                </StatusBadge>
+                <Button variant="ghost" size="sm">
+                  Ghost Action
+                </Button>
               </div>
             </Card>
           </div>
@@ -539,7 +614,7 @@ export const Typography: Story = {
     <div className="p-8 space-y-8 max-w-4xl">
       <div>
         <h2 className="text-2xl font-semibold text-gray-900 mb-6">Typography System</h2>
-        
+
         {/* Font Scales */}
         <div className="space-y-6">
           <div className="space-y-4">
@@ -573,27 +648,16 @@ export const Typography: Story = {
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-gray-800">Typography Hierarchy</h3>
             <div className="space-y-6 p-6 border rounded-lg">
-              <h1 className="text-4xl font-bold text-gray-900">
-                Heading 1 - Page Title
-              </h1>
-              <h2 className="text-3xl font-semibold text-gray-900">
-                Heading 2 - Section Title
-              </h2>
-              <h3 className="text-2xl font-semibold text-gray-900">
-                Heading 3 - Subsection
-              </h3>
-              <h4 className="text-xl font-medium text-gray-900">
-                Heading 4 - Component Title
-              </h4>
-              <h5 className="text-lg font-medium text-gray-900">
-                Heading 5 - Card Title
-              </h5>
-              <h6 className="text-base font-medium text-gray-900">
-                Heading 6 - Label
-              </h6>
+              <h1 className="text-4xl font-bold text-gray-900">Heading 1 - Page Title</h1>
+              <h2 className="text-3xl font-semibold text-gray-900">Heading 2 - Section Title</h2>
+              <h3 className="text-2xl font-semibold text-gray-900">Heading 3 - Subsection</h3>
+              <h4 className="text-xl font-medium text-gray-900">Heading 4 - Component Title</h4>
+              <h5 className="text-lg font-medium text-gray-900">Heading 5 - Card Title</h5>
+              <h6 className="text-base font-medium text-gray-900">Heading 6 - Label</h6>
               <p className="text-base text-gray-700 leading-relaxed">
-                Body text for reading content. This is the standard paragraph text used throughout 
-                the application. It maintains good readability with appropriate line height and spacing.
+                Body text for reading content. This is the standard paragraph text used throughout
+                the application. It maintains good readability with appropriate line height and
+                spacing.
               </p>
               <p className="text-sm text-gray-600">
                 Small text for captions, metadata, and secondary information.
@@ -632,7 +696,7 @@ export const ComponentShowcase: Story = {
     <div className="p-8 space-y-12">
       <div>
         <h2 className="text-2xl font-semibold text-gray-900 mb-6">Component Library</h2>
-        
+
         {/* Buttons */}
         <section className="space-y-4">
           <h3 className="text-lg font-medium text-gray-800">Buttons</h3>
@@ -647,22 +711,32 @@ export const ComponentShowcase: Story = {
                   <Button variant="danger">Danger</Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">With Icons</h4>
                 <div className="flex flex-wrap gap-3">
-                  <Button variant="primary" leftIcon={<Save />}>Save Changes</Button>
-                  <Button variant="secondary" leftIcon={<Download />}>Export</Button>
-                  <Button variant="ghost" rightIcon={<ArrowRight />}>Continue</Button>
+                  <Button variant="primary" leftIcon={<Save />}>
+                    Save Changes
+                  </Button>
+                  <Button variant="secondary" leftIcon={<Download />}>
+                    Export
+                  </Button>
+                  <Button variant="ghost" rightIcon={<ArrowRight />}>
+                    Continue
+                  </Button>
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">Loading States</h4>
                 <div className="flex flex-wrap gap-3">
                   <Button loading>Processing</Button>
-                  <Button variant="secondary" loading>Building</Button>
-                  <Button variant="ghost" loading>Validating</Button>
+                  <Button variant="secondary" loading>
+                    Building
+                  </Button>
+                  <Button variant="ghost" loading>
+                    Validating
+                  </Button>
                 </div>
               </div>
             </div>
@@ -675,21 +749,41 @@ export const ComponentShowcase: Story = {
           <Card>
             <div className="space-y-4">
               <div className="flex flex-wrap gap-3">
-                <StatusBadge variant="success" showDot>Success</StatusBadge>
-                <StatusBadge variant="warning" showDot>Warning</StatusBadge>
-                <StatusBadge variant="error" showDot>Error</StatusBadge>
-                <StatusBadge variant="info" showDot>Info</StatusBadge>
-                <StatusBadge variant="active" showDot pulse>Active</StatusBadge>
-                <StatusBadge variant="pending" showDot>Pending</StatusBadge>
+                <StatusBadge variant="success" showDot>
+                  Success
+                </StatusBadge>
+                <StatusBadge variant="warning" showDot>
+                  Warning
+                </StatusBadge>
+                <StatusBadge variant="error" showDot>
+                  Error
+                </StatusBadge>
+                <StatusBadge variant="info" showDot>
+                  Info
+                </StatusBadge>
+                <StatusBadge variant="active" showDot pulse>
+                  Active
+                </StatusBadge>
+                <StatusBadge variant="pending" showDot>
+                  Pending
+                </StatusBadge>
               </div>
-              
+
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">With Icons</h4>
                 <div className="flex flex-wrap gap-3">
-                  <StatusBadge variant="success" icon={<CheckCircle />}>Deployed</StatusBadge>
-                  <StatusBadge variant="warning" icon={<AlertTriangle />}>Warning</StatusBadge>
-                  <StatusBadge variant="error" icon={<XCircle />}>Failed</StatusBadge>
-                  <StatusBadge variant="pending" icon={<Clock />} loading>Building</StatusBadge>
+                  <StatusBadge variant="success" icon={<CheckCircle />}>
+                    Deployed
+                  </StatusBadge>
+                  <StatusBadge variant="warning" icon={<AlertTriangle />}>
+                    Warning
+                  </StatusBadge>
+                  <StatusBadge variant="error" icon={<XCircle />}>
+                    Failed
+                  </StatusBadge>
+                  <StatusBadge variant="pending" icon={<Clock />} loading>
+                    Building
+                  </StatusBadge>
                 </div>
               </div>
             </div>
@@ -702,27 +796,19 @@ export const ComponentShowcase: Story = {
           <Card>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
-                <Input
-                  label="Project Name"
-                  placeholder="Enter project name"
-                  leftIcon={<Code />}
-                />
-                <Input
-                  label="Repository URL"
-                  placeholder="https://github.com/..."
-                  type="url"
-                />
+                <Input label="Project Name" placeholder="Enter project name" leftIcon={<Code />} />
+                <Input label="Repository URL" placeholder="https://github.com/..." type="url" />
                 <Select
                   label="Environment"
                   placeholder="Select environment"
                   options={[
                     { value: 'dev', label: 'Development' },
                     { value: 'staging', label: 'Staging' },
-                    { value: 'prod', label: 'Production' }
+                    { value: 'prod', label: 'Production' },
                   ]}
                 />
               </div>
-              
+
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Features</label>
@@ -732,7 +818,7 @@ export const ComponentShowcase: Story = {
                     <Checkbox label="API access" defaultChecked />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">Deployment Type</label>
                   <div className="space-y-2">

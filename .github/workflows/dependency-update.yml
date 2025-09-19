@@ -32,34 +32,34 @@ jobs:
     outputs:
       has-updates: ${{ steps.check.outputs.has-updates }}
       update-summary: ${{ steps.check.outputs.update-summary }}
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-          
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-        
+
       - name: Check for outdated dependencies
         id: check
         run: |
           echo "🔍 Checking for outdated dependencies..."
-          
+
           # Check for outdated packages
           UPDATE_TYPE="${{ github.event.inputs.update-type || 'patch' }}"
-          
+
           # Create update summary
           echo "# Dependency Analysis" > update-summary.md
           echo "" >> update-summary.md
           echo "**Update Type**: $UPDATE_TYPE" >> update-summary.md
           echo "**Date**: $(date -u +%Y-%m-%d)" >> update-summary.md
           echo "" >> update-summary.md
-          
+
           # Check root dependencies
           echo "## Root Package Dependencies" >> update-summary.md
           if command -v bun >/dev/null 2>&1; then
@@ -68,11 +68,11 @@ jobs:
           else
             echo "Bun not available for dependency checking" >> update-summary.md
           fi
-          
+
           # Check workspace dependencies
           echo "" >> update-summary.md
           echo "## Workspace Dependencies" >> update-summary.md
-          
+
           for pkg in packages/*/package.json apps/*/package.json; do
             if [ -f "$pkg" ]; then
               pkg_name=$(dirname "$pkg")
@@ -89,11 +89,11 @@ jobs:
               fi
             fi
           done
-          
+
           # Check for security vulnerabilities
           echo "" >> update-summary.md
           echo "## Security Analysis" >> update-summary.md
-          
+
           if bun audit --json > audit-results.json 2>/dev/null; then
             vuln_count=$(cat audit-results.json | grep -o '"severity"' | wc -l || echo "0")
             echo "- Vulnerabilities found: $vuln_count" >> update-summary.md
@@ -107,12 +107,12 @@ jobs:
             echo "- Could not run security audit" >> update-summary.md
             echo "has-updates=false" >> $GITHUB_OUTPUT
           fi
-          
+
           # Save summary to output
           echo "update-summary<<EOF" >> $GITHUB_OUTPUT
           cat update-summary.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
-          
+
       - name: Upload analysis report
         uses: actions/upload-artifact@v4
         with:
@@ -127,30 +127,30 @@ jobs:
     runs-on: ubuntu-latest
     needs: analyze-dependencies
     if: needs.analyze-dependencies.outputs.has-updates == 'true'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-          
+
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-        
+
       - name: Update vulnerable dependencies
         run: |
           echo "🔧 Applying security updates..."
-          
+
           # Try to fix vulnerabilities automatically
           if bun audit --fix 2>/dev/null; then
             echo "✅ Security updates applied automatically"
@@ -158,14 +158,14 @@ jobs:
             echo "⚠️ Could not apply automatic security fixes"
             echo "Manual review may be required"
           fi
-          
+
       - name: Test after security updates
         run: |
           echo "🧪 Testing after security updates..."
-          
+
           # Reinstall and test
           bun install
-          
+
           # Run basic build test
           if bun run build:all; then
             echo "✅ Build successful after security updates"
@@ -175,32 +175,32 @@ jobs:
             git checkout -- .
             exit 1
           fi
-          
+
           # Run basic tests if available
           if bun run test 2>/dev/null; then
             echo "✅ Tests passed after security updates"
           else
             echo "⚠️ Tests failed or not available - proceeding with caution"
           fi
-          
+
       - name: Commit security updates
         run: |
           if git diff --quiet; then
             echo "ℹ️ No changes to commit"
             exit 0
           fi
-          
+
           git add .
           git commit -m "security: Update vulnerable dependencies
-          
+
           - Applied automatic security fixes
           - Verified build and tests still pass
           - Generated by GitHub Actions
-          
+
           Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-          
+
           echo "✅ Security updates committed"
-          
+
       - name: Create security update PR
         if: github.event.inputs.create-pr != 'false'
         run: |
@@ -208,30 +208,30 @@ jobs:
           BRANCH_NAME="security-updates-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH_NAME"
           git push origin "$BRANCH_NAME"
-          
+
           # Create PR using GitHub CLI if available
           if command -v gh >/dev/null 2>&1; then
             gh pr create \
               --title "🔒 Security: Update vulnerable dependencies" \
               --body "$(cat <<'EOF'
           ## Security Dependency Updates
-          
+
           This PR contains automatic security updates for vulnerable dependencies.
-          
+
           ### Changes
           - ✅ Applied automatic security fixes via \`bun audit --fix\`
           - ✅ Verified build continues to work
           - ✅ Basic tests confirmed passing
-          
+
           ### Testing
           - [ ] Review the specific package updates
           - [ ] Run full test suite
           - [ ] Verify no breaking changes in development
           - [ ] Check for any new deprecation warnings
-          
+
           ### Security Impact
           This PR addresses security vulnerabilities found in dependencies. Review the changes carefully before merging.
-          
+
           ---
           *🤖 Auto-generated by GitHub Actions*
           EOF
@@ -250,32 +250,32 @@ jobs:
     name: Dependency Updates
     runs-on: ubuntu-latest
     if: github.event.inputs.update-type != '' && github.event.inputs.update-type != 'security-only'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-          
+
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-        
+
       - name: Update dependencies
         run: |
           echo "🔄 Updating dependencies (${{ github.event.inputs.update-type }})..."
-          
+
           UPDATE_TYPE="${{ github.event.inputs.update-type }}"
-          
+
           case "$UPDATE_TYPE" in
             "patch")
               echo "Updating patch versions only..."
@@ -294,32 +294,32 @@ jobs:
               # Add logic for all updates
               ;;
           esac
-          
+
           # For now, we'll do a conservative update
           echo "ℹ️ Conservative dependency update strategy"
           echo "Manual updates recommended for this workflow"
-          
+
       - name: Test after updates
         run: |
           echo "🧪 Testing after dependency updates..."
-          
+
           # Reinstall with new versions
           rm -rf node_modules packages/*/node_modules apps/*/node_modules
           bun install
-          
+
           # Test build
           if ! bun run build:all; then
             echo "❌ Build failed after dependency updates"
             exit 1
           fi
-          
+
           # Test packages
           if ! bun run test; then
             echo "❌ Tests failed after dependency updates"
             echo "Consider reverting problematic updates"
             exit 1
           fi
-          
+
           echo "✅ All tests passed after dependency updates"
 
   report:
@@ -327,7 +327,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [analyze-dependencies, security-updates, dependency-updates]
     if: always()
-    
+
     steps:
       - name: Download analysis
         uses: actions/download-artifact@v4
@@ -335,12 +335,12 @@ jobs:
           name: dependency-analysis
           path: analysis/
         continue-on-error: true
-        
+
       - name: Generate report
         run: |
           echo "# 🔍 Dependency Update Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Analysis results
           echo "## Analysis Results" >> $GITHUB_STEP_SUMMARY
           if [ -f "analysis/update-summary.md" ]; then
@@ -348,9 +348,9 @@ jobs:
           else
             echo "Analysis summary not available" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Job results
           echo "## Job Results" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
@@ -358,9 +358,9 @@ jobs:
           echo "| Analysis | ${{ needs.analyze-dependencies.result == 'success' && '✅' || '❌' }} ${{ needs.analyze-dependencies.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Security Updates | ${{ needs.security-updates.result == 'success' && '✅' || needs.security-updates.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.security-updates.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Dependency Updates | ${{ needs.dependency-updates.result == 'success' && '✅' || needs.dependency-updates.result == 'skipped' && '⏭️' || '❌' }} ${{ needs.dependency-updates.result }} |" >> $GITHUB_STEP_SUMMARY
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           # Next steps
           echo "## Next Steps" >> $GITHUB_STEP_SUMMARY
           if [ "${{ needs.security-updates.result }}" = "success" ]; then

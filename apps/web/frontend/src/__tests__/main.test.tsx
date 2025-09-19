@@ -24,7 +24,7 @@ vi.mock('../minimal.css', () => ({}));
 describe('main.tsx', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Set up DOM
     document.body.innerHTML = '<div id="root"></div>';
   });
@@ -40,13 +40,11 @@ describe('main.tsx', () => {
     await import('../main');
 
     // Verify createRoot was called with root element
-    expect(createRoot).toHaveBeenCalledWith(
-      document.getElementById('root')
-    );
+    expect(createRoot).toHaveBeenCalledWith(document.getElementById('root'));
 
     // Verify render was called
     expect(mockRender).toHaveBeenCalledOnce();
-    
+
     // The render call should include StrictMode wrapper
     const renderCall = mockRender.mock.calls[0][0];
     expect(renderCall).toBeDefined();
@@ -156,7 +154,7 @@ describe('integration', () => {
 
   it('should handle initialization errors gracefully', async () => {
     const { createRoot } = await import('react-dom/client');
-    
+
     // Mock createRoot to throw an error
     vi.mocked(createRoot).mockImplementation(() => {
       throw new Error('Failed to create root');
@@ -172,17 +170,17 @@ describe('integration', () => {
 describe('module structure', () => {
   it('should be an ES module', async () => {
     const mainModule = await import('../main');
-    
+
     // ES modules should be objects
     expect(typeof mainModule).toBe('object');
   });
 
   it('should not export anything (side-effect only module)', async () => {
     const mainModule = await import('../main');
-    
+
     // main.tsx is typically a side-effect only module
     const exports = Object.keys(mainModule);
-    
+
     // Should have no exports or only Symbol.toStringTag
     expect(exports.length).toBeLessThanOrEqual(1);
     if (exports.length === 1) {

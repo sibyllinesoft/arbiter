@@ -1,29 +1,37 @@
 # AI Agent Webhook Handlers
 
-**Intelligent automation for your Git workflows with AI-powered code review, issue analysis, documentation generation, and security scanning.**
+**Intelligent automation for your Git workflows with AI-powered code review,
+issue analysis, documentation generation, and security scanning.**
 
 ## 🤖 Overview
 
-This AI agent system extends Arbiter's webhook handlers with powerful AI capabilities, providing automated assistance for common development tasks. The system features:
+This AI agent system extends Arbiter's webhook handlers with powerful AI
+capabilities, providing automated assistance for common development tasks. The
+system features:
 
-- **Command-line style interface** - Trigger AI actions with `/commands` in comments
+- **Command-line style interface** - Trigger AI actions with `/commands` in
+  comments
 - **Multiple AI providers** - Support for Claude, OpenAI GPT, and Google Gemini
 - **Extensible architecture** - Easy to add new agents and customize behavior
-- **Production ready** - Rate limiting, error handling, and comprehensive logging
+- **Production ready** - Rate limiting, error handling, and comprehensive
+  logging
 - **Security focused** - Built-in security scanning and vulnerability detection
 
 ## 🎯 Key Features
 
 ### AI-Powered Agents
 
-- **Code Review Agent**: Automated code quality, security, and performance analysis
-- **Issue Analysis Agent**: Intelligent issue categorization, prioritization, and triaging
+- **Code Review Agent**: Automated code quality, security, and performance
+  analysis
+- **Issue Analysis Agent**: Intelligent issue categorization, prioritization,
+  and triaging
 - **Documentation Agent**: Automated documentation generation and maintenance
 - **Security Agent**: Comprehensive security vulnerability scanning and analysis
 
 ### Command-Line Interface
 
-Interact with AI agents using simple commands in PR comments, issue descriptions, or commit messages:
+Interact with AI agents using simple commands in PR comments, issue
+descriptions, or commit messages:
 
 ```bash
 # Code review commands
@@ -88,6 +96,7 @@ Edit `ai-agents.json` to enable the code review agent:
 ### 3. Set Up Webhooks
 
 Configure your repository webhooks to point to:
+
 - GitHub: `https://your-domain.com/webhooks/ai/github`
 - GitLab: `https://your-domain.com/webhooks/ai/gitlab`
 
@@ -110,6 +119,7 @@ The AI agent will analyze your code and provide detailed feedback!
 Automated code review with comprehensive analysis:
 
 **Capabilities:**
+
 - Code quality assessment (structure, readability, maintainability)
 - Security vulnerability detection
 - Performance analysis and optimization suggestions
@@ -117,6 +127,7 @@ Automated code review with comprehensive analysis:
 - Testing coverage and quality analysis
 
 **Commands:**
+
 - `/review-code` - Comprehensive review
 - `/security-scan [severity]` - Security-focused analysis
 - `/performance-check [metric]` - Performance analysis
@@ -124,6 +135,7 @@ Automated code review with comprehensive analysis:
 - `/architecture-review [aspect]` - Design pattern analysis
 
 **Configuration:**
+
 ```json
 {
   "code-review-agent": {
@@ -146,6 +158,7 @@ Automated code review with comprehensive analysis:
 Intelligent issue management and triaging:
 
 **Capabilities:**
+
 - Automatic issue categorization (bug, feature, enhancement, etc.)
 - Priority assessment (critical, high, medium, low)
 - Complexity estimation with story points
@@ -153,6 +166,7 @@ Intelligent issue management and triaging:
 - Next steps and action item generation
 
 **Commands:**
+
 - `/analyze-issue` - Comprehensive analysis
 - `/categorize` - Categorization and labeling
 - `/estimate` - Complexity estimation
@@ -160,6 +174,7 @@ Intelligent issue management and triaging:
 - `/suggest-assignee` - Assignment recommendations
 
 **Auto-triggers:**
+
 - Runs automatically on new issue creation
 - Analyzes issue content and suggests improvements
 
@@ -168,6 +183,7 @@ Intelligent issue management and triaging:
 Automated documentation generation and maintenance:
 
 **Capabilities:**
+
 - API documentation generation (OpenAPI/Swagger)
 - README creation and updates
 - Code comment suggestions
@@ -175,6 +191,7 @@ Automated documentation generation and maintenance:
 - Migration guide creation
 
 **Commands:**
+
 - `/generate-docs [type]` - Comprehensive documentation
 - `/api-docs [format]` - API documentation
 - `/readme [section]` - README generation
@@ -187,6 +204,7 @@ Automated documentation generation and maintenance:
 Comprehensive security analysis and vulnerability detection:
 
 **Capabilities:**
+
 - OWASP Top 10 vulnerability detection
 - Dependency security auditing
 - Authentication/authorization review
@@ -194,6 +212,7 @@ Comprehensive security analysis and vulnerability detection:
 - Security configuration analysis
 
 **Commands:**
+
 - `/security-scan [severity]` - Full security analysis
 - `/vulnerability-check [type]` - Specific vulnerability detection
 - `/dependency-audit` - Third-party security audit
@@ -319,10 +338,7 @@ Configure different agents for different repositories:
 ```json
 {
   "security": {
-    "allowedRepos": [
-      "owner/critical-repo",
-      "owner/public-repo"
-    ]
+    "allowedRepos": ["owner/critical-repo", "owner/public-repo"]
   }
 }
 ```
@@ -400,7 +416,8 @@ Comprehensive logging for debugging and auditing:
 
 ### Data Privacy
 
-- AI agents process code and issue content - ensure compliance with your data policies
+- AI agents process code and issue content - ensure compliance with your data
+  policies
 - Consider data residency requirements for different AI providers
 - Implement data retention policies for logs and metrics
 - Review AI provider terms of service for data handling
@@ -410,12 +427,14 @@ Comprehensive logging for debugging and auditing:
 ### Common Issues
 
 **Agent not responding to commands:**
+
 1. Check agent is enabled in configuration
 2. Verify webhook endpoints are correctly configured
 3. Check API key is valid and has sufficient quota
 4. Review logs for error messages
 
 **Rate limit exceeded:**
+
 ```bash
 # Check current usage
 curl https://your-domain.com/metrics/ai | grep rate_limit
@@ -429,6 +448,7 @@ curl https://your-domain.com/metrics/ai | grep rate_limit
 ```
 
 **Provider connection failures:**
+
 ```bash
 # Test provider connectivity
 curl -X POST https://your-domain.com/api/ai/test-providers
@@ -665,8 +685,9 @@ Create JIRA tickets for security findings:
 - **Metrics**: View usage metrics at `/metrics/ai`
 - **Logs**: Check application logs for detailed troubleshooting
 
-For issues, feature requests, or contributions, please refer to the main Arbiter documentation or contact your system administrator.
+For issues, feature requests, or contributions, please refer to the main Arbiter
+documentation or contact your system administrator.
 
 ---
 
-*Last Updated: 2024-09-14 | Version: 2.0.0*
+_Last Updated: 2024-09-14 | Version: 2.0.0_

@@ -4,13 +4,13 @@
  */
 
 import type {
-  LanguagePlugin,
-  ComponentConfig,
-  ServiceConfig,
-  ProjectConfig,
   BuildConfig,
-  GenerationResult,
+  ComponentConfig,
   GeneratedFile,
+  GenerationResult,
+  LanguagePlugin,
+  ProjectConfig,
+  ServiceConfig,
 } from './index.js';
 
 export class TypeScriptPlugin implements LanguagePlugin {
@@ -29,6 +29,12 @@ export class TypeScriptPlugin implements LanguagePlugin {
     'build-optimization',
     'type-safety',
   ];
+  readonly capabilities = {
+    components: true,
+    services: true,
+    testing: true,
+    api: true,
+  };
 
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
@@ -75,7 +81,7 @@ export type { ${config.name}Props } from './types';`,
       dependencies,
       instructions: [
         `Component ${config.name} created successfully`,
-        'Import with: import { ' + config.name + ' } from "./components/' + config.name + '";',
+        `Import with: import { ${config.name} } from "./components/${config.name}";`,
       ],
     };
   }
@@ -216,7 +222,7 @@ export type { ${config.name}Props } from './types';`,
   }
 
   private generateComponentContent(config: ComponentConfig): string {
-    const hasProps = config.props && Object.keys(config.props).length > 0;
+    const hasProps = config.props && config.props.length > 0;
     const propsImport = hasProps ? `import type { ${config.name}Props } from './types';` : '';
     const propsParam = hasProps ? `props: ${config.name}Props` : '';
     const cssImport = config.styles ? `import styles from './${config.name}.module.css';` : '';
@@ -242,9 +248,12 @@ ${config.name}.displayName = '${config.name}';
   }
 
   private generateComponentTypes(config: ComponentConfig): string {
-    const props = config.props ? Object.entries(config.props)
-      .map(([key, type]) => `  ${key}: ${type};`)
-      .join('\n') : '  // No props defined';
+    const props =
+      config.props && config.props.length > 0
+        ? config.props
+            .map(prop => `  ${prop.name}${prop.required ? '' : '?'}: ${prop.type};`)
+            .join('\n')
+        : '  // No props defined';
 
     return `export interface ${config.name}Props {
 ${props}
@@ -422,27 +431,31 @@ export type Update${config.name} = z.infer<typeof Update${config.name}Schema>;
   }
 
   private generatePackageJson(config: ProjectConfig): string {
-    return JSON.stringify({
-      name: config.name,
-      private: true,
-      version: '0.0.0',
-      type: 'module',
-      description: config.description || `A modern TypeScript project: ${config.name}`,
-      scripts: {
-        dev: 'vite',
-        build: 'tsc && vite build',
-        preview: 'vite preview',
-        test: config.testing ? 'vitest' : undefined,
-        'test:ui': config.testing ? 'vitest --ui' : undefined,
-        lint: 'eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0',
-        'type-check': 'tsc --noEmit',
+    return JSON.stringify(
+      {
+        name: config.name,
+        private: true,
+        version: '0.0.0',
+        type: 'module',
+        description: config.description || `A modern TypeScript project: ${config.name}`,
+        scripts: {
+          dev: 'vite',
+          build: 'tsc && vite build',
+          preview: 'vite preview',
+          test: config.testing ? 'vitest' : undefined,
+          'test:ui': config.testing ? 'vitest --ui' : undefined,
+          lint: 'eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0',
+          'type-check': 'tsc --noEmit',
+        },
+        dependencies: {},
+        devDependencies: {},
+        engines: {
+          node: '>=18.0.0',
+        },
       },
-      dependencies: {},
-      devDependencies: {},
-      engines: {
-        node: '>=18.0.0',
-      },
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   private generateViteConfig(config: ProjectConfig): string {
@@ -468,14 +481,16 @@ export default defineConfig({
   }
 
   private generateOptimizedViteConfig(config: BuildConfig): string {
-    const optimizations = config.optimization ? `
+    const optimizations = config.optimization
+      ? `
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
         },
       },
-    },` : '';
+    },`
+      : '';
 
     return `import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -492,44 +507,56 @@ export default defineConfig({
   }
 
   private generateTSConfig(): string {
-    return JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        lib: ['ES2023', 'DOM', 'DOM.Iterable'],
-        module: 'ESNext',
-        skipLibCheck: true,
-        moduleResolution: 'bundler',
-        allowImportingTsExtensions: true,
-        resolveJsonModule: true,
-        isolatedModules: true,
-        noEmit: true,
-        jsx: 'react-jsx',
-        strict: true,
-        noUnusedLocals: true,
-        noUnusedParameters: true,
-        noFallthroughCasesInSwitch: true,
+    return JSON.stringify(
+      {
+        compilerOptions: {
+          target: 'ES2022',
+          lib: ['ES2023', 'DOM', 'DOM.Iterable'],
+          module: 'ESNext',
+          skipLibCheck: true,
+          moduleResolution: 'bundler',
+          allowImportingTsExtensions: true,
+          resolveJsonModule: true,
+          isolatedModules: true,
+          noEmit: true,
+          jsx: 'react-jsx',
+          strict: true,
+          noUnusedLocals: true,
+          noUnusedParameters: true,
+          noFallthroughCasesInSwitch: true,
+        },
+        include: ['src'],
+        references: [{ path: './tsconfig.node.json' }],
       },
-      include: ['src'],
-      references: [{ path: './tsconfig.node.json' }],
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   private generateBuildTSConfig(): string {
-    return JSON.stringify({
-      extends: './tsconfig.json',
-      compilerOptions: {
-        noEmit: false,
-        declaration: true,
-        outDir: './dist',
+    return JSON.stringify(
+      {
+        extends: './tsconfig.json',
+        compilerOptions: {
+          noEmit: false,
+          declaration: true,
+          outDir: './dist',
+        },
+        exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
       },
-      exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    }, null, 2);
+      null,
+      2
+    );
   }
 
   private generateMainApp(config: ProjectConfig): string {
     const routing = config.features.includes('routing');
-    const routingImport = routing ? "import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';" : '';
-    const routingWrapper = routing ? '<Router>\n      <Routes>\n        <Route path="/" element={<h1>Welcome to {name}</h1>} />\n      </Routes>\n    </Router>' : '<h1>Welcome to {name}</h1>';
+    const routingImport = routing
+      ? "import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';"
+      : '';
+    const routingWrapper = routing
+      ? '<Router>\n      <Routes>\n        <Route path="/" element={<h1>Welcome to {name}</h1>} />\n      </Routes>\n    </Router>'
+      : '<h1>Welcome to {name}</h1>';
 
     return `${routingImport}
 import './App.css';

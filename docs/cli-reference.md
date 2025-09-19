@@ -2,7 +2,9 @@
 
 **Complete command documentation for the Arbiter CLI**
 
-The Arbiter CLI is designed to be **agent-first**, with non-interactive commands, structured outputs, and comprehensive APIs that make it ideal for both human developers and AI automation.
+The Arbiter CLI is designed to be **agent-first**, with non-interactive
+commands, structured outputs, and comprehensive APIs that make it ideal for both
+human developers and AI automation.
 
 ## Installation
 
@@ -10,7 +12,7 @@ The Arbiter CLI is designed to be **agent-first**, with non-interactive commands
 # Via npm
 npm install -g @arbiter/cli
 
-# Via bun  
+# Via bun
 bun install -g @arbiter/cli
 
 # Download standalone binary
@@ -25,7 +27,7 @@ All commands support these global options:
 - `-v, --version` - Display version number
 - `-c, --config <path>` - Path to configuration file
 - `--no-color` - Disable colored output
-- `--api-url <url>` - API server URL (default: http://localhost:5050)  
+- `--api-url <url>` - API server URL (default: http://localhost:5050)
 - `--timeout <ms>` - Request timeout in milliseconds
 - `-h, --help` - Display help for command
 
@@ -38,6 +40,7 @@ All commands support these global options:
 Initialize a new CUE project with templates in the current directory.
 
 **Usage:**
+
 ```bash
 # Initialize with directory name
 arbiter init
@@ -53,11 +56,13 @@ arbiter init --force
 ```
 
 **Options:**
+
 - `-t, --template <name>` - Project template (basic, kubernetes, api)
 - `-f, --force` - Overwrite existing files
 - `--list-templates` - List available templates
 
 **Examples:**
+
 ```bash
 # Quick start
 mkdir my-project && cd my-project
@@ -72,9 +77,11 @@ arbiter init --list-templates
 
 #### `arbiter onboard [project-path]`
 
-Intelligently onboard existing projects to Arbiter by analyzing the codebase and generating appropriate specifications.
+Intelligently onboard existing projects to Arbiter by analyzing the codebase and
+generating appropriate specifications.
 
 **Usage:**
+
 ```bash
 # Onboard current directory
 arbiter onboard
@@ -92,9 +99,11 @@ arbiter onboard --dry-run
 
 #### `arbiter add`
 
-Incrementally build specifications using compositional commands. This is the primary way to build complex systems piece by piece.
+Incrementally build specifications using compositional commands. This is the
+primary way to build complex systems piece by piece.
 
 **Usage:**
+
 ```bash
 # Add a new service
 arbiter add service user-service
@@ -110,6 +119,7 @@ arbiter add job cleanup-users --schedule "0 2 * * *"
 ```
 
 **Subcommands:**
+
 - `arbiter add service <name>` - Add a new service
 - `arbiter add endpoint <method> <path>` - Add API endpoint
 - `arbiter add model <name>` - Add domain model
@@ -122,6 +132,7 @@ arbiter add job cleanup-users --schedule "0 2 * * *"
 Generate project files from stored specifications.
 
 **Usage:**
+
 ```bash
 # Generate all files from default spec
 arbiter generate
@@ -137,6 +148,7 @@ arbiter generate --target typescript,docker
 ```
 
 **Options:**
+
 - `--dry-run` - Preview what would be generated
 - `--target <targets>` - Comma-separated list of targets
 - `--force` - Overwrite existing files
@@ -151,6 +163,7 @@ arbiter generate --target typescript,docker
 Validate CUE files in the current directory.
 
 **Usage:**
+
 ```bash
 # Check all CUE files
 arbiter check
@@ -166,6 +179,7 @@ arbiter check --format json
 ```
 
 **Options:**
+
 - `--format <format>` - Output format (table, json, yaml)
 - `--strict` - Enable strict validation mode
 - `--schema <path>` - Validate against specific schema
@@ -175,11 +189,12 @@ arbiter check --format json
 Validate CUE files with explicit schema and configuration.
 
 **Usage:**
+
 ```bash
 # Validate against default schema
 arbiter validate spec.cue
 
-# Validate against custom schema  
+# Validate against custom schema
 arbiter validate --schema ./schemas/v2.cue spec.cue
 
 # Validate multiple files
@@ -188,9 +203,11 @@ arbiter validate user.cue order.cue product.cue
 
 #### `arbiter surface <language>`
 
-Extract API surface from source code and generate project-specific surface files.
+Extract API surface from source code and generate project-specific surface
+files.
 
 **Usage:**
+
 ```bash
 # Extract TypeScript API surface
 arbiter surface typescript
@@ -213,6 +230,7 @@ arbiter surface go --docs
 Cross-platform file watcher with live validation and planning.
 
 **Usage:**
+
 ```bash
 # Watch current directory
 arbiter watch
@@ -228,6 +246,7 @@ arbiter watch --auto-generate
 ```
 
 **Options:**
+
 - `--pattern <glob>` - File patterns to watch
 - `--auto-generate` - Automatically run generate on changes
 - `--debounce <ms>` - Debounce delay for file changes
@@ -237,6 +256,7 @@ arbiter watch --auto-generate
 Compare two CUE schema versions and analyze changes.
 
 **Usage:**
+
 ```bash
 # Compare schema versions
 arbiter diff schema-v1.cue schema-v2.cue
@@ -253,6 +273,7 @@ arbiter diff --breaking-only v1.cue v2.cue
 Automatically migrate CUE schemas to latest format.
 
 **Usage:**
+
 ```bash
 # Migrate all CUE files
 arbiter migrate
@@ -270,9 +291,11 @@ arbiter migrate --dry-run
 
 #### `arbiter sync`
 
-Synchronize project manifests (package.json, pyproject.toml, etc.) with Arbiter specifications.
+Synchronize project manifests (package.json, pyproject.toml, etc.) with Arbiter
+specifications.
 
 **Usage:**
+
 ```bash
 # Sync all manifests
 arbiter sync
@@ -289,8 +312,9 @@ arbiter sync --dry-run
 Generate CI/CD workflows with contract coverage and quality gates.
 
 **Usage:**
+
 ```bash
-# Generate GitHub Actions workflows  
+# Generate GitHub Actions workflows
 arbiter integrate --platform github
 
 # Generate GitLab CI/CD
@@ -307,6 +331,7 @@ arbiter integrate --platform jenkins
 Semver-aware version planning and release management.
 
 **Usage:**
+
 ```bash
 # Show current version info
 arbiter version
@@ -327,6 +352,7 @@ arbiter version bump --to 2.1.0
 Manage epics and their ordered tasks using sharded CUE storage.
 
 **Usage:**
+
 ```bash
 # List all epics
 arbiter epic list
@@ -346,6 +372,7 @@ arbiter epic run auth-epic
 Manage ordered tasks within epics.
 
 **Usage:**
+
 ```bash
 # List tasks in current epic
 arbiter task list
@@ -365,6 +392,7 @@ arbiter task show auth-001
 Execute Epic v2 for deterministic, agent-first code generation.
 
 **Usage:**
+
 ```bash
 # Execute entire epic
 arbiter execute user-auth-epic
@@ -385,6 +413,7 @@ arbiter execute user-auth-epic --task auth-001
 Export CUE configurations to various formats.
 
 **Usage:**
+
 ```bash
 # Export to JSON
 arbiter export spec.cue --format json
@@ -401,6 +430,7 @@ arbiter export spec.cue --format json,yaml,toml
 Manage and use CUE schema templates.
 
 **Usage:**
+
 ```bash
 # List available templates
 arbiter template list
@@ -417,6 +447,7 @@ arbiter template create my-template --from ./template-dir
 Manage template aliases for code generation.
 
 **Usage:**
+
 ```bash
 # List template aliases
 arbiter templates list
@@ -433,6 +464,7 @@ arbiter templates remove api-service
 Create new schemas and configurations interactively.
 
 **Usage:**
+
 ```bash
 # Create new service schema
 arbiter create service
@@ -440,7 +472,7 @@ arbiter create service
 # Create API specification
 arbiter create api
 
-# Create deployment configuration  
+# Create deployment configuration
 arbiter create deployment
 ```
 
@@ -453,6 +485,7 @@ arbiter create deployment
 Generate documentation from CUE schemas and API surfaces.
 
 **Usage:**
+
 ```bash
 # Generate all documentation
 arbiter docs
@@ -472,6 +505,7 @@ arbiter docs --output ./docs
 Generate plain-English summary of project specifications.
 
 **Usage:**
+
 ```bash
 # Explain current specification
 arbiter explain
@@ -491,6 +525,7 @@ arbiter explain --format markdown
 Show what would be generated without creating files (deterministic output).
 
 **Usage:**
+
 ```bash
 # Preview all generation
 arbiter preview
@@ -511,6 +546,7 @@ arbiter preview --detailed
 Test management, scaffolding, and coverage analysis.
 
 **Usage:**
+
 ```bash
 # Generate test scaffolds
 arbiter tests scaffold
@@ -534,6 +570,7 @@ arbiter tests report --format html
 Comprehensive Arbiter server health check.
 
 **Usage:**
+
 ```bash
 # Basic health check
 arbiter health
@@ -553,6 +590,7 @@ arbiter health --format json
 Start local Arbiter server (development).
 
 **Usage:**
+
 ```bash
 # Start development server
 arbiter server
@@ -572,6 +610,7 @@ arbiter server --prod
 Manage CLI configuration.
 
 **Usage:**
+
 ```bash
 # Show current configuration
 arbiter config show
@@ -592,6 +631,7 @@ arbiter config reset
 Manage trusted import registry for CUE files.
 
 **Usage:**
+
 ```bash
 # Initialize import registry
 arbiter import init
@@ -615,6 +655,7 @@ arbiter import update
 Generate example projects by profile or language type.
 
 **Usage:**
+
 ```bash
 # List available examples
 arbiter examples list
@@ -631,6 +672,7 @@ arbiter examples microservice --language typescript
 Migrate existing files to project-specific naming conventions.
 
 **Usage:**
+
 ```bash
 # Rename all files to match conventions
 arbiter rename
@@ -647,6 +689,7 @@ arbiter rename --types cue,typescript
 Manage spec fragments and revisions with git-style operations.
 
 **Usage:**
+
 ```bash
 # List spec revisions
 arbiter spec list
@@ -666,6 +709,7 @@ arbiter spec diff HEAD~1
 Manage GitHub issue templates configuration.
 
 **Usage:**
+
 ```bash
 # Generate GitHub templates
 arbiter github-templates generate
@@ -684,6 +728,7 @@ arbiter github-templates list
 The Arbiter CLI is specifically designed for AI agents and automation:
 
 ### Structured Output
+
 ```bash
 # All commands support --format json
 arbiter check --format json
@@ -692,18 +737,22 @@ arbiter version --format json
 ```
 
 ### Exit Codes
+
 - `0` - Success
 - `1` - Command error (validation failure, file not found)
 - `2` - Configuration error (server unreachable, invalid config)
 
 ### Non-Interactive Operation
+
 All commands work without user prompts and support:
+
 - `--force` - Override confirmations
 - `--dry-run` - Preview operations
 - `--quiet` - Minimal output
 - `--verbose` - Detailed logging
 
 ### Batch Operations
+
 ```bash
 # Process multiple files
 arbiter check *.cue
@@ -718,6 +767,7 @@ arbiter generate && arbiter check && arbiter tests run
 ## Configuration
 
 ### Configuration File
+
 Create `.arbiter.json` in your project root:
 
 ```json
@@ -734,6 +784,7 @@ Create `.arbiter.json` in your project root:
 ```
 
 ### Environment Variables
+
 ```bash
 ARBITER_API_URL=http://localhost:5050
 ARBITER_TIMEOUT=30000
@@ -748,33 +799,37 @@ ARBITER_NO_COLOR=true
 ### Common Issues
 
 1. **Server Connection Errors**
+
    ```bash
    # Check server status
    arbiter health
-   
+
    # Start development server
    bun run dev
    ```
 
 2. **CUE Validation Errors**
+
    ```bash
    # Check syntax
    arbiter check --strict
-   
+
    # Show detailed error information
    arbiter check --verbose
    ```
 
 3. **Generation Failures**
+
    ```bash
    # Preview generation
    arbiter generate --dry-run
-   
+
    # Force overwrite conflicts
    arbiter generate --force
    ```
 
 ### Getting Help
+
 ```bash
 # Command-specific help
 arbiter init --help
@@ -789,4 +844,6 @@ arbiter --version
 
 ---
 
-*The Arbiter CLI provides a comprehensive toolkit for specification-driven development, designed to work seamlessly with both human developers and AI automation systems.*
+_The Arbiter CLI provides a comprehensive toolkit for specification-driven
+development, designed to work seamlessly with both human developers and AI
+automation systems._

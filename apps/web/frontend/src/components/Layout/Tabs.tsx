@@ -13,7 +13,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
     <div className={clsx('flex flex-col h-full min-h-0', className)}>
       {/* Tab headers */}
       <div className="flex border-b border-gray-200 bg-gray-50">
-        {tabs.map((tab) => (
+        {tabs.map(tab => (
           <TabHeader
             key={tab.id}
             tab={tab}
@@ -24,9 +24,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">
-        {activeTabContent}
-      </div>
+      <div className="flex-1 min-h-0 min-w-0 overflow-hidden">{activeTabContent}</div>
     </div>
   );
 }
@@ -57,12 +55,12 @@ function TabHeader({ tab, isActive, onClick }: TabHeaderProps) {
       <span className="flex items-center gap-2">
         {tab.label}
         {tab.badge && (
-          <span className={clsx(
-            'inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium',
-            isActive 
-              ? 'bg-blue-100 text-blue-800'
-              : 'bg-gray-200 text-gray-600'
-          )}>
+          <span
+            className={clsx(
+              'inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium',
+              isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-600'
+            )}
+          >
             {tab.badge}
           </span>
         )}

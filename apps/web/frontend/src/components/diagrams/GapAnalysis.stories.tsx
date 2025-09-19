@@ -34,21 +34,23 @@ interface GapVisualizationProps {
 
 const GapVisualization: React.FC<GapVisualizationProps> = ({ data, title }) => {
   const maxValue = Math.max(...data.map(d => d.expected));
-  
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'good': return '#10b981';
-      case 'warning': return '#f59e0b';
-      case 'critical': return '#ef4444';
-      default: return '#6b7280';
+      case 'good':
+        return '#10b981';
+      case 'warning':
+        return '#f59e0b';
+      case 'critical':
+        return '#ef4444';
+      default:
+        return '#6b7280';
     }
   };
 
   return (
     <div className="bg-white p-6 rounded-lg">
-      {title && (
-        <h4 className="text-lg font-semibold mb-4 text-center">{title}</h4>
-      )}
+      {title && <h4 className="text-lg font-semibold mb-4 text-center">{title}</h4>}
       <div className="space-y-4">
         {data.map((item, index) => (
           <div key={index} className="space-y-2">
@@ -60,7 +62,7 @@ const GapVisualization: React.FC<GapVisualizationProps> = ({ data, title }) => {
                 <span className="text-gray-500">
                   {item.actual}% / {item.expected}%
                 </span>
-                <div 
+                <div
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: getStatusColor(item.status) }}
                 />
@@ -70,26 +72,26 @@ const GapVisualization: React.FC<GapVisualizationProps> = ({ data, title }) => {
               {/* Background bar (expected) */}
               <div className="w-full h-6 bg-gray-100 rounded-full overflow-hidden">
                 {/* Expected coverage (light background) */}
-                <div 
+                <div
                   className="h-full bg-gray-200"
                   style={{ width: `${(item.expected / maxValue) * 100}%` }}
                 />
                 {/* Actual coverage (colored foreground) */}
-                <div 
+                <div
                   className="absolute top-0 left-0 h-full rounded-full opacity-80"
-                  style={{ 
+                  style={{
                     width: `${(item.actual / maxValue) * 100}%`,
-                    backgroundColor: getStatusColor(item.status)
+                    backgroundColor: getStatusColor(item.status),
                   }}
                 />
               </div>
               {/* Gap indicator */}
               {item.actual < item.expected && (
-                <div 
+                <div
                   className="absolute top-0 h-full border-r-2 border-red-500"
-                  style={{ 
+                  style={{
                     left: `${(item.actual / maxValue) * 100}%`,
-                    width: `${((item.expected - item.actual) / maxValue) * 100}%`
+                    width: `${((item.expected - item.actual) / maxValue) * 100}%`,
                   }}
                 >
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
@@ -99,7 +101,7 @@ const GapVisualization: React.FC<GapVisualizationProps> = ({ data, title }) => {
           </div>
         ))}
       </div>
-      
+
       {/* Legend */}
       <div className="mt-6 pt-4 border-t border-gray-200">
         <div className="flex flex-wrap gap-4 text-xs">
@@ -480,12 +482,27 @@ remediation_roadmap:
 
 const complianceData: CoverageData[] = [
   { capability: 'SOC2 - Access Controls (CC6.1)', expected: 100, actual: 85, status: 'critical' },
-  { capability: 'SOC2 - Access Provisioning (CC6.2)', expected: 100, actual: 92, status: 'warning' },
+  {
+    capability: 'SOC2 - Access Provisioning (CC6.2)',
+    expected: 100,
+    actual: 92,
+    status: 'warning',
+  },
   { capability: 'SOC2 - System Monitoring (CC7.1)', expected: 100, actual: 78, status: 'critical' },
   { capability: 'PCI-DSS - Data Protection (Req 3)', expected: 100, actual: 95, status: 'good' },
   { capability: 'PCI-DSS - Data Transit (Req 4)', expected: 100, actual: 88, status: 'warning' },
-  { capability: 'PCI-DSS - Secure Development (Req 6)', expected: 100, actual: 82, status: 'critical' },
-  { capability: 'PCI-DSS - Security Testing (Req 11)', expected: 100, actual: 71, status: 'critical' },
+  {
+    capability: 'PCI-DSS - Secure Development (Req 6)',
+    expected: 100,
+    actual: 82,
+    status: 'critical',
+  },
+  {
+    capability: 'PCI-DSS - Security Testing (Req 11)',
+    expected: 100,
+    actual: 71,
+    status: 'critical',
+  },
   { capability: 'GDPR - Data Processing', expected: 100, actual: 94, status: 'good' },
   { capability: 'GDPR - Subject Rights', expected: 100, actual: 87, status: 'warning' },
   { capability: 'GDPR - Impact Assessment', expected: 100, actual: 76, status: 'critical' },
@@ -757,32 +774,25 @@ const gapAnalysisMermaid = `graph TD
 
 export const TestCoverageGapAnalysis: Story = {
   args: {
-    title: "Test Coverage Gap Analysis",
-    description: "Comprehensive analysis of test coverage gaps across all system components with prioritized remediation plan.",
-    dataPanelTitle: "Coverage Analysis Report (YAML)",
-    diagramPanelTitle: "Coverage Gap Visualization",
+    title: 'Test Coverage Gap Analysis',
+    description:
+      'Comprehensive analysis of test coverage gaps across all system components with prioritized remediation plan.',
+    dataPanelTitle: 'Coverage Analysis Report (YAML)',
+    diagramPanelTitle: 'Coverage Gap Visualization',
     dataPanel: (
-      <DataViewer
-        data={testCoverageGapYaml}
-        language="yaml"
-        title="test-coverage-analysis.yml"
-      />
+      <DataViewer data={testCoverageGapYaml} language="yaml" title="test-coverage-analysis.yml" />
     ),
-    diagramPanel: (
-      <GapVisualization 
-        data={coverageData}
-        title="Test Coverage by Component"
-      />
-    ),
+    diagramPanel: <GapVisualization data={coverageData} title="Test Coverage by Component" />,
   },
 };
 
 export const SecurityComplianceGapAnalysis: Story = {
   args: {
-    title: "Security Compliance Gap Analysis",
-    description: "Multi-framework security compliance assessment (SOC2, PCI-DSS, GDPR) with risk-based remediation planning.",
-    dataPanelTitle: "Compliance Assessment (YAML)",
-    diagramPanelTitle: "Compliance Gap Visualization",
+    title: 'Security Compliance Gap Analysis',
+    description:
+      'Multi-framework security compliance assessment (SOC2, PCI-DSS, GDPR) with risk-based remediation planning.',
+    dataPanelTitle: 'Compliance Assessment (YAML)',
+    diagramPanelTitle: 'Compliance Gap Visualization',
     dataPanel: (
       <DataViewer
         data={securityComplianceYaml}
@@ -790,43 +800,33 @@ export const SecurityComplianceGapAnalysis: Story = {
         title="security-compliance-analysis.yml"
       />
     ),
-    diagramPanel: (
-      <GapVisualization 
-        data={complianceData}
-        title="Security Compliance Status"
-      />
-    ),
+    diagramPanel: <GapVisualization data={complianceData} title="Security Compliance Status" />,
   },
 };
 
 export const ApiCoverageGapAnalysis: Story = {
   args: {
-    title: "API Coverage Gap Analysis", 
-    description: "Comprehensive API testing and documentation coverage analysis with endpoint-level gap identification.",
-    dataPanelTitle: "API Analysis Report (YAML)",
-    diagramPanelTitle: "API Coverage Visualization",
+    title: 'API Coverage Gap Analysis',
+    description:
+      'Comprehensive API testing and documentation coverage analysis with endpoint-level gap identification.',
+    dataPanelTitle: 'API Analysis Report (YAML)',
+    diagramPanelTitle: 'API Coverage Visualization',
     dataPanel: (
-      <DataViewer
-        data={apiCoverageYaml}
-        language="yaml"
-        title="api-coverage-analysis.yml"
-      />
+      <DataViewer data={apiCoverageYaml} language="yaml" title="api-coverage-analysis.yml" />
     ),
     diagramPanel: (
-      <GapVisualization 
-        data={apiCoverageData}
-        title="API Testing & Documentation Coverage"
-      />
+      <GapVisualization data={apiCoverageData} title="API Testing & Documentation Coverage" />
     ),
   },
 };
 
 export const GapAnalysisProcess: Story = {
   args: {
-    title: "Gap Analysis Methodology",
-    description: "Complete gap analysis process flow from data collection through remediation and continuous improvement.",
-    dataPanelTitle: "Process Documentation (YAML)",
-    diagramPanelTitle: "Gap Analysis Process Flow",
+    title: 'Gap Analysis Methodology',
+    description:
+      'Complete gap analysis process flow from data collection through remediation and continuous improvement.',
+    dataPanelTitle: 'Process Documentation (YAML)',
+    diagramPanelTitle: 'Gap Analysis Process Flow',
     dataPanel: (
       <DataViewer
         data={`# Gap Analysis Process Methodology
@@ -887,11 +887,6 @@ success_criteria:
         title="gap-analysis-methodology.yml"
       />
     ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={gapAnalysisMermaid}
-        title="Gap Analysis Process Flow"
-      />
-    ),
+    diagramPanel: <MermaidRenderer chart={gapAnalysisMermaid} title="Gap Analysis Process Flow" />,
   },
 };

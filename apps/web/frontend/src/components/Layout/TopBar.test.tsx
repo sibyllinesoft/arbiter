@@ -35,7 +35,12 @@ vi.mock('../../contexts/AppContext', () => ({
 }));
 
 // Import the mocked context hooks
-import { useApp, useCurrentProject, useConnectionStatus, useValidationState } from '../../contexts/AppContext';
+import {
+  useApp,
+  useCurrentProject,
+  useConnectionStatus,
+  useValidationState,
+} from '../../contexts/AppContext';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({
@@ -145,7 +150,7 @@ describe('TopBar', () => {
 
     it('applies custom className', () => {
       render(<TopBar className="custom-topbar" />);
-      
+
       const container = screen.getByText('Test Project').closest('.custom-topbar');
       expect(container).toBeInTheDocument();
     });
@@ -172,7 +177,10 @@ describe('TopBar', () => {
       // Check that connection status shows "Live" with success variant
       const liveText = screen.getByText('Live');
       expect(liveText).toBeInTheDocument();
-      expect(liveText.closest('[data-testid="status-badge"]')).toHaveAttribute('data-variant', 'success');
+      expect(liveText.closest('[data-testid="status-badge"]')).toHaveAttribute(
+        'data-variant',
+        'success'
+      );
       expect(screen.getByTestId('wifi-icon')).toBeInTheDocument();
     });
 
@@ -188,7 +196,10 @@ describe('TopBar', () => {
       // Check that connection status shows "Offline (3)" with error variant
       const offlineText = screen.getByText('Offline (3)');
       expect(offlineText).toBeInTheDocument();
-      expect(offlineText.closest('[data-testid="status-badge"]')).toHaveAttribute('data-variant', 'error');
+      expect(offlineText.closest('[data-testid="status-badge"]')).toHaveAttribute(
+        'data-variant',
+        'error'
+      );
       expect(screen.getByTestId('wifi-off-icon')).toBeInTheDocument();
     });
 
@@ -220,7 +231,10 @@ describe('TopBar', () => {
       // Check that validation status shows "Valid" with success variant
       const validText = screen.getByText('Valid');
       expect(validText).toBeInTheDocument();
-      expect(validText.closest('[data-testid="status-badge"]')).toHaveAttribute('data-variant', 'success');
+      expect(validText.closest('[data-testid="status-badge"]')).toHaveAttribute(
+        'data-variant',
+        'success'
+      );
     });
 
     it('shows error status with count', () => {
@@ -236,7 +250,10 @@ describe('TopBar', () => {
       // Check that validation status shows "2 errors" with error variant
       const errorText = screen.getByText('2 errors');
       expect(errorText).toBeInTheDocument();
-      expect(errorText.closest('[data-testid="status-badge"]')).toHaveAttribute('data-variant', 'error');
+      expect(errorText.closest('[data-testid="status-badge"]')).toHaveAttribute(
+        'data-variant',
+        'error'
+      );
     });
 
     it('shows warning status with count', () => {
@@ -252,7 +269,10 @@ describe('TopBar', () => {
       // Check that validation status shows "3 warnings" with warning variant
       const warningText = screen.getByText('3 warnings');
       expect(warningText).toBeInTheDocument();
-      expect(warningText.closest('[data-testid="status-badge"]')).toHaveAttribute('data-variant', 'warning');
+      expect(warningText.closest('[data-testid="status-badge"]')).toHaveAttribute(
+        'data-variant',
+        'warning'
+      );
     });
 
     it('shows validating status with spinner', () => {
@@ -268,7 +288,10 @@ describe('TopBar', () => {
       // Check that validation status shows "Validating..." with info variant
       const validatingText = screen.getByText('Validating...');
       expect(validatingText).toBeInTheDocument();
-      expect(validatingText.closest('[data-testid="status-badge"]')).toHaveAttribute('data-variant', 'info');
+      expect(validatingText.closest('[data-testid="status-badge"]')).toHaveAttribute(
+        'data-variant',
+        'info'
+      );
     });
 
     it('displays spec hash when available', () => {
@@ -331,8 +354,16 @@ describe('TopBar', () => {
       await user.click(screen.getByRole('button', { name: /Save 2/i }));
 
       expect(mockUpdateFragment).toHaveBeenCalledTimes(2);
-      expect(mockUpdateFragment).toHaveBeenCalledWith('project-1', 'fragment-1', 'updated content 1');
-      expect(mockUpdateFragment).toHaveBeenCalledWith('project-1', 'fragment-2', 'updated content 2');
+      expect(mockUpdateFragment).toHaveBeenCalledWith(
+        'project-1',
+        'fragment-1',
+        'updated content 1'
+      );
+      expect(mockUpdateFragment).toHaveBeenCalledWith(
+        'project-1',
+        'fragment-2',
+        'updated content 2'
+      );
     });
 
     it('shows success toast after successful save', async () => {
@@ -354,7 +385,7 @@ describe('TopBar', () => {
       render(<TopBar />);
 
       await user.click(screen.getByRole('button', { name: /Save 2/i }));
-      
+
       await waitFor(() => {
         expect(mockSetError).toHaveBeenCalledWith('Network error');
         expect(toast.error).toHaveBeenCalledWith('Network error', expect.any(Object));
@@ -427,7 +458,10 @@ describe('TopBar', () => {
       await user.click(screen.getByRole('button', { name: /Validate/i }));
 
       await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith('Validation completed successfully', expect.any(Object));
+        expect(toast.success).toHaveBeenCalledWith(
+          'Validation completed successfully',
+          expect.any(Object)
+        );
       });
     });
 
@@ -445,7 +479,10 @@ describe('TopBar', () => {
       await user.click(screen.getByRole('button', { name: /Validate/i }));
 
       await waitFor(() => {
-        expect(toast.warning).toHaveBeenCalledWith('Validation found 0 errors and 1 warnings', expect.any(Object));
+        expect(toast.warning).toHaveBeenCalledWith(
+          'Validation found 0 errors and 1 warnings',
+          expect.any(Object)
+        );
       });
     });
 
@@ -507,8 +544,9 @@ describe('TopBar', () => {
     });
 
     it('prompts for version name when freeze button clicked', async () => {
-      global.prompt = vi.fn()
-        .mockReturnValueOnce('v1.0.0')  // version name
+      global.prompt = vi
+        .fn()
+        .mockReturnValueOnce('v1.0.0') // version name
         .mockReturnValueOnce('Release version'); // description
 
       const mockFreezeVersion = apiService.freezeVersion as any;
@@ -523,9 +561,7 @@ describe('TopBar', () => {
     });
 
     it('calls freeze API with correct parameters', async () => {
-      global.prompt = vi.fn()
-        .mockReturnValueOnce('v2.0.0')
-        .mockReturnValueOnce('Major release');
+      global.prompt = vi.fn().mockReturnValueOnce('v2.0.0').mockReturnValueOnce('Major release');
 
       const mockFreezeVersion = apiService.freezeVersion as any;
       mockFreezeVersion.mockResolvedValue({ success: true });
@@ -543,9 +579,7 @@ describe('TopBar', () => {
     });
 
     it('handles empty description gracefully', async () => {
-      global.prompt = vi.fn()
-        .mockReturnValueOnce('v1.1.0')
-        .mockReturnValueOnce(''); // empty description
+      global.prompt = vi.fn().mockReturnValueOnce('v1.1.0').mockReturnValueOnce(''); // empty description
 
       const mockFreezeVersion = apiService.freezeVersion as any;
       mockFreezeVersion.mockResolvedValue({ success: true });
@@ -575,9 +609,7 @@ describe('TopBar', () => {
     });
 
     it('shows success toast after successful freeze', async () => {
-      global.prompt = vi.fn()
-        .mockReturnValueOnce('v1.0.0')
-        .mockReturnValueOnce('');
+      global.prompt = vi.fn().mockReturnValueOnce('v1.0.0').mockReturnValueOnce('');
 
       const mockFreezeVersion = apiService.freezeVersion as any;
       mockFreezeVersion.mockResolvedValue({ success: true });
@@ -587,7 +619,10 @@ describe('TopBar', () => {
       await user.click(screen.getByRole('button', { name: /Freeze/i }));
 
       await waitFor(() => {
-        expect(toast.success).toHaveBeenCalledWith('Version "v1.0.0" frozen successfully', expect.any(Object));
+        expect(toast.success).toHaveBeenCalledWith(
+          'Version "v1.0.0" frozen successfully',
+          expect.any(Object)
+        );
       });
     });
 
@@ -615,9 +650,7 @@ describe('TopBar', () => {
     });
 
     it('disables freeze button during freezing', async () => {
-      global.prompt = vi.fn()
-        .mockReturnValueOnce('v1.0.0')
-        .mockReturnValueOnce('');
+      global.prompt = vi.fn().mockReturnValueOnce('v1.0.0').mockReturnValueOnce('');
 
       let resolveFreezePromise: (value: any) => void;
       const freezePromise = new Promise(resolve => {
@@ -650,7 +683,7 @@ describe('TopBar', () => {
       const projectButton = screen.getByRole('button', { name: /Test Project spec/i });
       await user.click(projectButton);
 
-      // This would typically show a dropdown, but since it's not implemented 
+      // This would typically show a dropdown, but since it's not implemented
       // in the component yet, we just verify the button works
       expect(projectButton).toBeInTheDocument();
     });
@@ -674,7 +707,9 @@ describe('TopBar', () => {
       render(<TopBar />);
 
       // Check for main container structure
-      const container = screen.getByText('Test Project').closest('.flex.items-center.justify-between');
+      const container = screen
+        .getByText('Test Project')
+        .closest('.flex.items-center.justify-between');
       expect(container).toBeInTheDocument();
     });
   });
@@ -709,9 +744,7 @@ describe('TopBar', () => {
     });
 
     it('handles API errors gracefully during freeze', async () => {
-      global.prompt = vi.fn()
-        .mockReturnValueOnce('v1.0.0')
-        .mockReturnValueOnce('');
+      global.prompt = vi.fn().mockReturnValueOnce('v1.0.0').mockReturnValueOnce('');
 
       const mockFreezeVersion = apiService.freezeVersion as any;
       mockFreezeVersion.mockRejectedValue(new Error('Freeze API Error'));

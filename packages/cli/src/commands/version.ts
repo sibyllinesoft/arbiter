@@ -1,10 +1,10 @@
-import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import chalk from "chalk";
-import type { CLIConfig } from "../types.js";
-import { resolveSmartNaming } from "../utils/smart-naming.js";
-import type { APISurface } from "./surface.js";
+import { existsSync } from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import chalk from 'chalk';
+import type { CLIConfig } from '../types.js';
+import { resolveSmartNaming } from '../utils/smart-naming.js';
+import type { APISurface } from './surface.js';
 
 // Import traceability system (commented out - dependency missing)
 // const require = createRequire(import.meta.url);
@@ -13,7 +13,7 @@ import type { APISurface } from "./surface.js";
 /**
  * Semantic version bump types
  */
-export type VersionBump = "MAJOR" | "MINOR" | "PATCH";
+export type VersionBump = 'MAJOR' | 'MINOR' | 'PATCH';
 
 /**
  * Version plan analysis options
@@ -53,7 +53,7 @@ export interface VersionReleaseOptions {
  * API change classification
  */
 export interface APIChange {
-  type: "added" | "removed" | "modified";
+  type: 'added' | 'removed' | 'modified';
   symbol: string;
   symbolType: string;
   breaking: boolean;
@@ -134,7 +134,7 @@ export interface VersionPlan {
  * Language-specific manifest information
  */
 export interface ManifestInfo {
-  type: "npm" | "python" | "rust" | "go" | "generic";
+  type: 'npm' | 'python' | 'rust' | 'go' | 'generic';
   path: string;
   current_version?: string;
   version_field: string;
@@ -145,25 +145,25 @@ export interface ManifestInfo {
  */
 export async function versionPlanCommand(
   options: VersionPlanOptions,
-  _config: CLIConfig,
+  _config: CLIConfig
 ): Promise<number> {
   try {
-    console.log(chalk.blue("📊 Analyzing API changes for version planning..."));
+    console.log(chalk.blue('📊 Analyzing API changes for version planning...'));
 
     // Resolve smart naming for output file
-    const planNaming = await resolveSmartNaming("versionPlan", {
+    const planNaming = await resolveSmartNaming('versionPlan', {
       output: options.output,
-      useGenericNames: options.output === "version_plan.json", // Use generic if explicitly specified
+      useGenericNames: options.output === 'version_plan.json', // Use generic if explicitly specified
     });
 
     // Load current and previous surfaces - use smart naming for defaults too
     let currentPath = options.current;
     if (!currentPath) {
-      const surfaceNaming = await resolveSmartNaming("surface", { useGenericNames: false });
+      const surfaceNaming = await resolveSmartNaming('surface', { useGenericNames: false });
       currentPath = surfaceNaming.fullPath;
       // Fallback to generic if project-specific doesn't exist
       if (!existsSync(currentPath)) {
-        currentPath = "surface.json";
+        currentPath = 'surface.json';
       }
     }
 
@@ -171,7 +171,7 @@ export async function versionPlanCommand(
 
     if (!existsSync(currentPath)) {
       console.error(chalk.red(`❌ Current surface file not found: ${currentPath}`));
-      console.log(chalk.dim("Run `arbiter surface <language>` to generate it"));
+      console.log(chalk.dim('Run `arbiter surface <language>` to generate it'));
       return 1;
     }
 
@@ -186,7 +186,7 @@ export async function versionPlanCommand(
       console.log(chalk.dim(`Comparing against: ${previousPath}`));
     } else {
       console.log(chalk.yellow(`⚠️  No previous surface found at ${previousPath}`));
-      console.log(chalk.dim("Assuming this is the initial version"));
+      console.log(chalk.dim('Assuming this is the initial version'));
     }
 
     // Perform change analysis
@@ -206,9 +206,9 @@ export async function versionPlanCommand(
     displayVersionPlan(plan, options.verbose);
 
     // Return non-zero if strict mode violations detected
-    if (options.strict && plan.required_bump === "MAJOR" && plan.breaking_changes.length > 0) {
+    if (options.strict && plan.required_bump === 'MAJOR' && plan.breaking_changes.length > 0) {
       console.log(
-        chalk.red("\n❌ STRICT MODE: Breaking changes detected requiring MAJOR version bump"),
+        chalk.red('\n❌ STRICT MODE: Breaking changes detected requiring MAJOR version bump')
       );
       return 1;
     }
@@ -216,8 +216,8 @@ export async function versionPlanCommand(
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("❌ Version plan failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('❌ Version plan failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -228,16 +228,16 @@ export async function versionPlanCommand(
  */
 export async function versionReleaseCommand(
   options: VersionReleaseOptions,
-  _config: CLIConfig,
+  _config: CLIConfig
 ): Promise<number> {
   try {
     const isDryRun = !options.apply; // Default to dry-run unless --apply specified
 
-    console.log(chalk.blue(`🚀 ${isDryRun ? "Planning" : "Executing"} version release...`));
+    console.log(chalk.blue(`🚀 ${isDryRun ? 'Planning' : 'Executing'} version release...`));
 
     if (isDryRun) {
-      console.log(chalk.yellow("🔍 DRY-RUN MODE: No files will be modified"));
-      console.log(chalk.dim("Use --apply to execute changes"));
+      console.log(chalk.yellow('🔍 DRY-RUN MODE: No files will be modified'));
+      console.log(chalk.dim('Use --apply to execute changes'));
     }
 
     // Load version plan
@@ -248,7 +248,7 @@ export async function versionReleaseCommand(
         return 1;
       }
 
-      const planContent = await readFile(options.plan, "utf-8");
+      const planContent = await readFile(options.plan, 'utf-8');
       plan = JSON.parse(planContent);
       console.log(chalk.dim(`Using plan: ${options.plan}`));
     }
@@ -257,16 +257,16 @@ export async function versionReleaseCommand(
     const manifests = await detectManifests();
 
     if (manifests.length === 0) {
-      console.error(chalk.red("❌ No supported manifests found"));
-      console.log(chalk.dim("Supported: package.json, pyproject.toml, Cargo.toml"));
+      console.error(chalk.red('❌ No supported manifests found'));
+      console.log(chalk.dim('Supported: package.json, pyproject.toml, Cargo.toml'));
       return 1;
     }
 
-    console.log(chalk.cyan("📦 Detected manifests:"));
-    manifests.forEach((manifest) => {
+    console.log(chalk.cyan('📦 Detected manifests:'));
+    manifests.forEach(manifest => {
       const versionInfo = manifest.current_version
         ? ` (v${manifest.current_version})`
-        : " (version not found)";
+        : ' (version not found)';
       console.log(`  ${manifest.type}: ${manifest.path}${versionInfo}`);
     });
 
@@ -277,59 +277,59 @@ export async function versionReleaseCommand(
       console.log(chalk.cyan(`🎯 Target version (explicit): ${targetVersion}`));
     } else if (plan) {
       targetVersion = calculateNextVersion(
-        manifests[0].current_version || "0.0.0",
-        plan.required_bump,
+        manifests[0].current_version || '0.0.0',
+        plan.required_bump
       );
       console.log(chalk.cyan(`🎯 Target version (${plan.required_bump}): ${targetVersion}`));
       console.log(chalk.dim(`Rationale: ${plan.rationale}`));
     } else {
-      console.error(chalk.red("❌ No version specified and no plan provided"));
-      console.log(chalk.dim("Use --version <version> or --plan <plan-file>"));
+      console.error(chalk.red('❌ No version specified and no plan provided'));
+      console.log(chalk.dim('Use --version <version> or --plan <plan-file>'));
       return 1;
     }
 
     // Generate changelog
     if (plan) {
-      const changelogPath = options.changelog || "CHANGELOG.md";
+      const changelogPath = options.changelog || 'CHANGELOG.md';
       await generateChangelog(plan, targetVersion, changelogPath, isDryRun);
       console.log(
-        chalk.green(`📝 Changelog ${isDryRun ? "preview" : "updated"}: ${changelogPath}`),
+        chalk.green(`📝 Changelog ${isDryRun ? 'preview' : 'updated'}: ${changelogPath}`)
       );
     }
 
     // Update manifests
-    console.log(chalk.blue("\n📝 Updating manifests..."));
+    console.log(chalk.blue('\n📝 Updating manifests...'));
     for (const manifest of manifests) {
       await updateManifest(manifest, targetVersion, isDryRun, options.verbose);
     }
 
     // Git tag recommendations for Go/Bash
-    const hasGoFiles = existsSync("go.mod");
-    const hasBashScripts = existsSync("scripts") || existsSync("bin");
+    const hasGoFiles = existsSync('go.mod');
+    const hasBashScripts = existsSync('scripts') || existsSync('bin');
 
     if (hasGoFiles || hasBashScripts) {
-      console.log(chalk.blue("\n🏷️  Git tag recommendations:"));
+      console.log(chalk.blue('\n🏷️  Git tag recommendations:'));
       console.log(chalk.cyan(`  git tag v${targetVersion}`));
       console.log(chalk.cyan(`  git push origin v${targetVersion}`));
 
       if (hasGoFiles) {
-        console.log(chalk.dim("  (Go modules use git tags for versioning)"));
+        console.log(chalk.dim('  (Go modules use git tags for versioning)'));
       }
     }
 
     if (isDryRun) {
-      console.log(chalk.green("\n✅ Version release plan complete"));
-      console.log(chalk.yellow("Use --apply to execute these changes"));
+      console.log(chalk.green('\n✅ Version release plan complete'));
+      console.log(chalk.yellow('Use --apply to execute these changes'));
     } else {
-      console.log(chalk.green("\n🎉 Version release complete!"));
+      console.log(chalk.green('\n🎉 Version release complete!'));
       console.log(chalk.dim(`All manifests updated to v${targetVersion}`));
     }
 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("❌ Version release failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('❌ Version release failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -340,9 +340,9 @@ export async function versionReleaseCommand(
  */
 function findPreviousSurface(currentPath: string): string {
   // For now, look for surface-prev.json or similar
-  const dir = currentPath.includes("/") ? currentPath.split("/").slice(0, -1).join("/") : ".";
-  const basename = currentPath.includes("/") ? currentPath.split("/").pop()! : currentPath;
-  const name = basename.replace(".json", "");
+  const dir = currentPath.includes('/') ? currentPath.split('/').slice(0, -1).join('/') : '.';
+  const basename = currentPath.includes('/') ? currentPath.split('/').pop()! : currentPath;
+  const name = basename.replace('.json', '');
 
   return join(dir, `${name}-prev.json`);
 }
@@ -352,7 +352,7 @@ function findPreviousSurface(currentPath: string): string {
  */
 async function loadSurface(path: string): Promise<APISurface | null> {
   try {
-    const content = await readFile(path, "utf-8");
+    const content = await readFile(path, 'utf-8');
     return JSON.parse(content);
   } catch (error) {
     console.error(chalk.red(`Failed to load surface from ${path}:`), error);
@@ -365,7 +365,7 @@ async function loadSurface(path: string): Promise<APISurface | null> {
  */
 async function analyzeAPIChanges(
   previous: APISurface | null,
-  current: APISurface,
+  current: APISurface
 ): Promise<APIChange[]> {
   // Handle initial version case
   if (!previous) {
@@ -374,7 +374,7 @@ async function analyzeAPIChanges(
 
   // Create lookup maps for comparison
   const comparisonMaps = createSymbolComparisonMaps(previous, current);
-  
+
   // Collect all change types
   const addedChanges = findAddedSymbols(current, comparisonMaps.previousMap);
   const removedChanges = findRemovedSymbols(previous, comparisonMaps.currentMap);
@@ -388,10 +388,10 @@ async function analyzeAPIChanges(
  */
 function createInitialVersionChanges(current: APISurface): APIChange[] {
   const changes: APIChange[] = [];
-  
+
   for (const symbol of current.symbols) {
     changes.push({
-      type: "added",
+      type: 'added',
       symbol: symbol.name,
       symbolType: symbol.type,
       breaking: false, // New APIs are not breaking
@@ -400,7 +400,7 @@ function createInitialVersionChanges(current: APISurface): APIChange[] {
       newSignature: symbol.signature,
     });
   }
-  
+
   return changes;
 }
 
@@ -408,9 +408,9 @@ function createInitialVersionChanges(current: APISurface): APIChange[] {
  * Create lookup maps for symbol comparison
  */
 function createSymbolComparisonMaps(previous: APISurface, current: APISurface) {
-  const previousMap = new Map(previous.symbols.map((s) => [`${s.name}:${s.type}`, s]));
-  const currentMap = new Map(current.symbols.map((s) => [`${s.name}:${s.type}`, s]));
-  
+  const previousMap = new Map(previous.symbols.map(s => [`${s.name}:${s.type}`, s]));
+  const currentMap = new Map(current.symbols.map(s => [`${s.name}:${s.type}`, s]));
+
   return { previousMap, currentMap };
 }
 
@@ -419,12 +419,12 @@ function createSymbolComparisonMaps(previous: APISurface, current: APISurface) {
  */
 function findAddedSymbols(current: APISurface, previousMap: Map<string, any>): APIChange[] {
   const changes: APIChange[] = [];
-  
+
   for (const symbol of current.symbols) {
     const key = `${symbol.name}:${symbol.type}`;
     if (!previousMap.has(key)) {
       changes.push({
-        type: "added",
+        type: 'added',
         symbol: symbol.name,
         symbolType: symbol.type,
         breaking: false,
@@ -434,7 +434,7 @@ function findAddedSymbols(current: APISurface, previousMap: Map<string, any>): A
       });
     }
   }
-  
+
   return changes;
 }
 
@@ -443,12 +443,12 @@ function findAddedSymbols(current: APISurface, previousMap: Map<string, any>): A
  */
 function findRemovedSymbols(previous: APISurface, currentMap: Map<string, any>): APIChange[] {
   const changes: APIChange[] = [];
-  
+
   for (const symbol of previous.symbols) {
     const key = `${symbol.name}:${symbol.type}`;
     if (!currentMap.has(key)) {
       changes.push({
-        type: "removed",
+        type: 'removed',
         symbol: symbol.name,
         symbolType: symbol.type,
         breaking: true, // Removals are always breaking
@@ -458,7 +458,7 @@ function findRemovedSymbols(previous: APISurface, currentMap: Map<string, any>):
       });
     }
   }
-  
+
   return changes;
 }
 
@@ -467,7 +467,7 @@ function findRemovedSymbols(previous: APISurface, currentMap: Map<string, any>):
  */
 function findModifiedSymbols(current: APISurface, previousMap: Map<string, any>): APIChange[] {
   const changes: APIChange[] = [];
-  
+
   for (const symbol of current.symbols) {
     const key = `${symbol.name}:${symbol.type}`;
     const prevSymbol = previousMap.get(key);
@@ -477,22 +477,22 @@ function findModifiedSymbols(current: APISurface, previousMap: Map<string, any>)
       const isBreaking = isSignatureChangeBreaking(
         prevSymbol.signature,
         symbol.signature,
-        symbol.type,
+        symbol.type
       );
 
       changes.push({
-        type: "modified",
+        type: 'modified',
         symbol: symbol.name,
         symbolType: symbol.type,
         breaking: isBreaking,
-        description: `Modified ${symbol.type} '${symbol.name}'${isBreaking ? " (BREAKING)" : ""}`,
+        description: `Modified ${symbol.type} '${symbol.name}'${isBreaking ? ' (BREAKING)' : ''}`,
         location: symbol.location,
         oldSignature: prevSymbol.signature,
         newSignature: symbol.signature,
       });
     }
   }
-  
+
   return changes;
 }
 
@@ -503,7 +503,7 @@ function findModifiedSymbols(current: APISurface, previousMap: Map<string, any>)
 function isSignatureChangeBreaking(
   oldSignature?: string,
   newSignature?: string,
-  symbolType?: string,
+  symbolType?: string
 ): boolean {
   if (!oldSignature || !newSignature) {
     return false; // Missing signature info, assume non-breaking for better UX
@@ -516,12 +516,12 @@ function isSignatureChangeBreaking(
 
   // Enhanced language-specific analysis
   switch (symbolType) {
-    case "function":
+    case 'function':
       return analyzeFunctionSignatureChange(oldSignature, newSignature);
-    case "interface":
-    case "type":
+    case 'interface':
+    case 'type':
       return analyzeTypeSignatureChange(oldSignature, newSignature);
-    case "class":
+    case 'class':
       return analyzeClassSignatureChange(oldSignature, newSignature);
     default:
       return analyzeGenericSignatureChange(oldSignature, newSignature);
@@ -574,32 +574,32 @@ function parseFunctionSignature(signature: string): {
 } {
   // Extract function name
   const nameMatch = signature.match(/(?:function\s+|^)(\w+)/);
-  const name = nameMatch?.[1] || "unknown";
+  const name = nameMatch?.[1] || 'unknown';
 
   // Extract parameters
   const paramsMatch = signature.match(/\(([^)]*)\)/);
-  const paramsStr = paramsMatch?.[1] || "";
+  const paramsStr = paramsMatch?.[1] || '';
 
   const parameters = paramsStr
-    .split(",")
-    .map((param) => {
+    .split(',')
+    .map(param => {
       const trimmed = param.trim();
       if (!trimmed) return null;
 
-      const optional = trimmed.includes("?");
-      const hasDefault = trimmed.includes("=");
+      const optional = trimmed.includes('?');
+      const hasDefault = trimmed.includes('=');
 
       // Extract name and type
-      const colonIndex = trimmed.indexOf(":");
+      const colonIndex = trimmed.indexOf(':');
       const name =
-        colonIndex > -1 ? trimmed.substring(0, colonIndex).replace("?", "").trim() : trimmed;
+        colonIndex > -1 ? trimmed.substring(0, colonIndex).replace('?', '').trim() : trimmed;
       const type =
         colonIndex > -1
           ? trimmed
               .substring(colonIndex + 1)
-              .split("=")[0]
+              .split('=')[0]
               .trim()
-          : "any";
+          : 'any';
 
       return { name, type, optional, hasDefault };
     })
@@ -612,11 +612,11 @@ function parseFunctionSignature(signature: string): {
 
   // Extract return type
   const returnMatch = signature.match(/->\s*([^{]+)|:\s*([^{=>]+)/);
-  const returnType = (returnMatch?.[1] || returnMatch?.[2] || "void").trim();
+  const returnType = (returnMatch?.[1] || returnMatch?.[2] || 'void').trim();
 
   // Extract generics (basic)
   const genericsMatch = signature.match(/<([^>]+)>/);
-  const generics = genericsMatch?.[1]?.split(",").map((g) => g.trim());
+  const generics = genericsMatch?.[1]?.split(',').map(g => g.trim());
 
   return { name, parameters, returnType, generics };
 }
@@ -626,20 +626,20 @@ function parseFunctionSignature(signature: string): {
  */
 function analyzeParameterChanges(
   oldParams: Array<{ name: string; type: string; optional: boolean; hasDefault: boolean }>,
-  newParams: Array<{ name: string; type: string; optional: boolean; hasDefault: boolean }>,
+  newParams: Array<{ name: string; type: string; optional: boolean; hasDefault: boolean }>
 ): { isBreaking: boolean; reason?: string } {
   // Count required parameters
-  const oldRequired = oldParams.filter((p) => !p.optional && !p.hasDefault).length;
-  const newRequired = newParams.filter((p) => !p.optional && !p.hasDefault).length;
+  const oldRequired = oldParams.filter(p => !p.optional && !p.hasDefault).length;
+  const newRequired = newParams.filter(p => !p.optional && !p.hasDefault).length;
 
   // Adding required parameters is breaking
   if (newRequired > oldRequired) {
-    return { isBreaking: true, reason: "Added required parameters" };
+    return { isBreaking: true, reason: 'Added required parameters' };
   }
 
   // Removing any parameters is breaking (even optional ones can break)
   if (newParams.length < oldParams.length) {
-    return { isBreaking: true, reason: "Removed parameters" };
+    return { isBreaking: true, reason: 'Removed parameters' };
   }
 
   // Check parameter type changes
@@ -677,24 +677,24 @@ function analyzeParameterChanges(
  */
 function isTypeNarrowing(oldType: string, newType: string): boolean {
   // Basic type narrowing detection
-  if (oldType === "any" && newType !== "any") {
+  if (oldType === 'any' && newType !== 'any') {
     return false; // any -> specific type is not breaking (it's improvement)
   }
 
-  if (oldType === "unknown" && newType !== "unknown") {
+  if (oldType === 'unknown' && newType !== 'unknown') {
     return false; // unknown -> specific type is not breaking
   }
 
   // Union type to single type
-  if (oldType.includes("|") && !newType.includes("|")) {
+  if (oldType.includes('|') && !newType.includes('|')) {
     return true; // Union to single type is narrowing
   }
 
   // Check for common widening patterns
   const wideningPatterns = [
-    ["number", "string"], // number to string could be breaking
-    ["string", "number"], // string to number is definitely breaking
-    ["object", "string"], // object to string is breaking
+    ['number', 'string'], // number to string could be breaking
+    ['string', 'number'], // string to number is definitely breaking
+    ['object', 'string'], // object to string is breaking
   ];
 
   for (const [from, to] of wideningPatterns) {
@@ -710,15 +710,15 @@ function isTypeNarrowing(oldType: string, newType: string): boolean {
  * Check if union type options were removed (breaking)
  */
 function isUnionTypeReduction(oldType: string, newType: string): boolean {
-  if (!oldType.includes("|") || !newType.includes("|")) {
+  if (!oldType.includes('|') || !newType.includes('|')) {
     return false;
   }
 
-  const oldTypes = oldType.split("|").map((t) => t.trim());
-  const newTypes = newType.split("|").map((t) => t.trim());
+  const oldTypes = oldType.split('|').map(t => t.trim());
+  const newTypes = newType.split('|').map(t => t.trim());
 
   // If any old type is no longer present, it's breaking
-  return oldTypes.some((ot) => !newTypes.includes(ot));
+  return oldTypes.some(ot => !newTypes.includes(ot));
 }
 
 /**
@@ -747,14 +747,14 @@ function analyzeGenericConstraintChanges(oldGenerics: string[], newGenerics: str
  */
 function extractGenericConstraint(generic: string): string {
   const match = generic.match(/extends\s+(.+)/);
-  return match?.[1]?.trim() || "any";
+  return match?.[1]?.trim() || 'any';
 }
 
 /**
  * Check if generic constraint became more restrictive
  */
 function isConstraintNarrowing(oldConstraint: string, newConstraint: string): boolean {
-  if (oldConstraint === "any" && newConstraint !== "any") {
+  if (oldConstraint === 'any' && newConstraint !== 'any') {
     return true; // any -> specific constraint is narrowing
   }
 
@@ -793,7 +793,7 @@ function hasRemovedProperties(oldSig: string, newSig: string): boolean {
   const newProps = extractPropertyNames(newSig);
 
   // Check if any old property is missing in new signature
-  return oldProps.some((prop) => !newProps.includes(prop));
+  return oldProps.some(prop => !newProps.includes(prop));
 }
 
 /**
@@ -817,8 +817,8 @@ function extractPropertyNames(signature: string): string[] {
 function hasNarrowedPropertyTypes(oldSig: string, newSig: string): boolean {
   // This is a simplified implementation
   // In practice, you'd want to parse the AST properly
-  const oldContent = oldSig.replace(/\s+/g, " ").trim();
-  const newContent = newSig.replace(/\s+/g, " ").trim();
+  const oldContent = oldSig.replace(/\s+/g, ' ').trim();
+  const newContent = newSig.replace(/\s+/g, ' ').trim();
 
   // If new signature is significantly shorter, likely properties were removed or types narrowed
   return newContent.length < oldContent.length * 0.8;
@@ -891,7 +891,7 @@ function hasRemovedPublicMembers(oldSig: string, newSig: string): boolean {
   const oldPublicMembers = extractPublicMembers(oldSig);
   const newPublicMembers = extractPublicMembers(newSig);
 
-  return oldPublicMembers.some((member) => !newPublicMembers.includes(member));
+  return oldPublicMembers.some(member => !newPublicMembers.includes(member));
 }
 
 /**
@@ -914,8 +914,8 @@ function extractPublicMembers(signature: string): string[] {
  */
 function analyzeGenericSignatureChange(oldSig: string, newSig: string): boolean {
   // Conservative approach for unknown signature types
-  const oldContent = oldSig.replace(/\s+/g, " ").trim();
-  const newContent = newSig.replace(/\s+/g, " ").trim();
+  const oldContent = oldSig.replace(/\s+/g, ' ').trim();
+  const newContent = newSig.replace(/\s+/g, ' ').trim();
 
   // Significant length reduction suggests removal (potentially breaking)
   if (newContent.length < oldContent.length * 0.7) {
@@ -925,7 +925,7 @@ function analyzeGenericSignatureChange(oldSig: string, newSig: string): boolean 
   // Look for common breaking change patterns
   const breakingPatterns = [/removed?\s+\w+/i, /delete[sd]?\s+\w+/i, /deprecated?\s+\w+/i];
 
-  return breakingPatterns.some((pattern) => pattern.test(newSig));
+  return breakingPatterns.some(pattern => pattern.test(newSig));
 }
 
 /**
@@ -935,10 +935,10 @@ function analyzeGenericSignatureChange(oldSig: string, newSig: string): boolean 
  * Extract traceability information for version changes
  */
 async function extractVersionTraceability(
-  changes: APIChange[],
+  changes: APIChange[]
 ): Promise<VersionTraceability | undefined> {
   try {
-    console.log(chalk.dim("  🔗 Extracting traceability information..."));
+    console.log(chalk.dim('  🔗 Extracting traceability information...'));
 
     // Load traceability data (mocked - dependency missing)
     const _requirements: any[] = []; // await traceabilityLib.extractRequirements();
@@ -970,16 +970,16 @@ async function extractVersionTraceability(
           node.name?.toLowerCase().includes(changeSignature)
         ) {
           switch (node.nodeType) {
-            case "requirement":
+            case 'requirement':
               relatedRequirements.add(node);
               break;
-            case "specification":
+            case 'specification':
               relatedSpecs.add(node);
               break;
-            case "test":
+            case 'test':
               relatedTests.add(node);
               break;
-            case "code":
+            case 'code':
               relatedCode.add(node);
               break;
           }
@@ -987,9 +987,9 @@ async function extractVersionTraceability(
       }
 
       // Also search for links to artifacts that contain the change
-      const matchingLinks = graph.links.filter((link) => {
-        const sourceNode = graph.nodes.find((n) => n.id === link.source);
-        const targetNode = graph.nodes.find((n) => n.id === link.target);
+      const matchingLinks = graph.links.filter(link => {
+        const sourceNode = graph.nodes.find(n => n.id === link.source);
+        const targetNode = graph.nodes.find(n => n.id === link.target);
 
         return (
           sourceNode?.content?.toLowerCase().includes(changeSignature) ||
@@ -1001,23 +1001,23 @@ async function extractVersionTraceability(
 
       // Add linked artifacts
       for (const link of matchingLinks) {
-        const sourceNode = graph.nodes.find((n) => n.id === link.source);
-        const targetNode = graph.nodes.find((n) => n.id === link.target);
+        const sourceNode = graph.nodes.find(n => n.id === link.source);
+        const targetNode = graph.nodes.find(n => n.id === link.target);
 
-        [sourceNode, targetNode].forEach((node) => {
+        [sourceNode, targetNode].forEach(node => {
           if (!node) return;
 
           switch (node.nodeType) {
-            case "requirement":
+            case 'requirement':
               relatedRequirements.add(node);
               break;
-            case "specification":
+            case 'specification':
               relatedSpecs.add(node);
               break;
-            case "test":
+            case 'test':
               relatedTests.add(node);
               break;
-            case "code":
+            case 'code':
               relatedCode.add(node);
               break;
           }
@@ -1060,16 +1060,16 @@ async function extractVersionTraceability(
 
     console.log(
       chalk.dim(
-        `    Found ${traceability.coverage.requirements_linked} requirements, ${traceability.coverage.specifications_linked} specs, ${traceability.coverage.tests_linked} tests, ${traceability.coverage.code_linked} code artifacts`,
-      ),
+        `    Found ${traceability.coverage.requirements_linked} requirements, ${traceability.coverage.specifications_linked} specs, ${traceability.coverage.tests_linked} tests, ${traceability.coverage.code_linked} code artifacts`
+      )
     );
 
     return traceability;
   } catch (error) {
     console.warn(
       chalk.yellow(
-        `⚠️  Could not extract traceability information: ${error instanceof Error ? error.message : String(error)}`,
-      ),
+        `⚠️  Could not extract traceability information: ${error instanceof Error ? error.message : String(error)}`
+      )
     );
     return undefined;
   }
@@ -1077,45 +1077,45 @@ async function extractVersionTraceability(
 
 async function generateVersionPlan(
   changes: APIChange[],
-  options: VersionPlanOptions,
+  options: VersionPlanOptions
 ): Promise<VersionPlan> {
-  const breakingChanges = changes.filter((c) => c.breaking);
-  const newFeatures = changes.filter((c) => c.type === "added" && !c.breaking);
-  const bugFixes = changes.filter((c) => c.type === "modified" && !c.breaking);
+  const breakingChanges = changes.filter(c => c.breaking);
+  const newFeatures = changes.filter(c => c.type === 'added' && !c.breaking);
+  const bugFixes = changes.filter(c => c.type === 'modified' && !c.breaking);
 
   // Determine required bump
   let requiredBump: VersionBump;
   let rationale: string;
 
   if (breakingChanges.length > 0) {
-    requiredBump = "MAJOR";
+    requiredBump = 'MAJOR';
     rationale = `${breakingChanges.length} breaking change(s) detected`;
   } else if (newFeatures.length > 0) {
-    requiredBump = "MINOR";
+    requiredBump = 'MINOR';
     rationale = `${newFeatures.length} new feature(s) added`;
   } else if (bugFixes.length > 0) {
-    requiredBump = "PATCH";
+    requiredBump = 'PATCH';
     rationale = `${bugFixes.length} bug fix(es) or internal change(s)`;
   } else {
-    requiredBump = "PATCH";
-    rationale = "No API changes detected, assume internal changes";
+    requiredBump = 'PATCH';
+    rationale = 'No API changes detected, assume internal changes';
   }
 
   // Generate recommendations
   const recommendations: string[] = [];
 
   if (options.strict && breakingChanges.length > 0) {
-    recommendations.push("STRICT MODE: Breaking changes require explicit MAJOR version bump");
+    recommendations.push('STRICT MODE: Breaking changes require explicit MAJOR version bump');
   }
 
   if (breakingChanges.length > 0) {
-    recommendations.push("Update documentation to reflect breaking changes");
-    recommendations.push("Consider providing migration guide for users");
+    recommendations.push('Update documentation to reflect breaking changes');
+    recommendations.push('Consider providing migration guide for users');
   }
 
   if (newFeatures.length > 5) {
     recommendations.push(
-      "Large number of new features - consider splitting into multiple releases",
+      'Large number of new features - consider splitting into multiple releases'
     );
   }
 
@@ -1126,7 +1126,7 @@ async function generateVersionPlan(
   if (traceabilityInfo) {
     if (traceabilityInfo.coverage.requirements_linked === 0) {
       recommendations.push(
-        "Consider linking changes to specific requirements for better traceability",
+        'Consider linking changes to specific requirements for better traceability'
       );
     }
 
@@ -1134,12 +1134,12 @@ async function generateVersionPlan(
       traceabilityInfo.coverage.tests_linked === 0 &&
       (breakingChanges.length > 0 || newFeatures.length > 0)
     ) {
-      recommendations.push("Add tests to validate the changes and improve traceability");
+      recommendations.push('Add tests to validate the changes and improve traceability');
     }
 
     if (traceabilityInfo.requirements.length > 0) {
       recommendations.push(
-        `Changes linked to ${traceabilityInfo.requirements.length} requirement(s) - ensure all are addressed`,
+        `Changes linked to ${traceabilityInfo.requirements.length} requirement(s) - ensure all are addressed`
       );
     }
   }
@@ -1167,25 +1167,25 @@ async function generateVersionPlan(
  * Display version plan summary
  */
 function displayVersionPlan(plan: VersionPlan, verbose?: boolean): void {
-  console.log(chalk.cyan("\n📋 Version Plan Summary:"));
+  console.log(chalk.cyan('\n📋 Version Plan Summary:'));
   console.log(
-    `  Required bump: ${chalk.bold(getBumpColor(plan.required_bump)(plan.required_bump))}`,
+    `  Required bump: ${chalk.bold(getBumpColor(plan.required_bump)(plan.required_bump))}`
   );
   console.log(`  Rationale: ${plan.rationale}`);
 
-  console.log(chalk.cyan("\n📊 Change Statistics:"));
+  console.log(chalk.cyan('\n📊 Change Statistics:'));
   console.log(`  Breaking changes: ${chalk.red(plan.statistics.breaking_count)}`);
   console.log(`  New features: ${chalk.green(plan.statistics.feature_count)}`);
   console.log(`  Bug fixes: ${chalk.blue(plan.statistics.fix_count)}`);
   console.log(`  Total changes: ${plan.statistics.total_changes}`);
 
   if (plan.strict_mode) {
-    console.log(chalk.yellow("\n⚠️  STRICT MODE ENABLED"));
+    console.log(chalk.yellow('\n⚠️  STRICT MODE ENABLED'));
   }
 
   if (plan.recommendations.length > 0) {
-    console.log(chalk.cyan("\n💡 Recommendations:"));
-    plan.recommendations.forEach((rec) => {
+    console.log(chalk.cyan('\n💡 Recommendations:'));
+    plan.recommendations.forEach(rec => {
       console.log(`  • ${rec}`);
     });
   }
@@ -1193,7 +1193,7 @@ function displayVersionPlan(plan: VersionPlan, verbose?: boolean): void {
   // Display traceability information
   if (plan.traceability) {
     const trace = plan.traceability;
-    console.log(chalk.cyan("\n🔗 Traceability Information:"));
+    console.log(chalk.cyan('\n🔗 Traceability Information:'));
 
     if (trace.coverage.requirements_linked > 0) {
       console.log(`  Requirements linked: ${chalk.green(trace.coverage.requirements_linked)}`);
@@ -1209,10 +1209,10 @@ function displayVersionPlan(plan: VersionPlan, verbose?: boolean): void {
     }
 
     if (verbose && trace.requirements.length > 0) {
-      console.log(chalk.cyan("\n📋 Related Requirements:"));
-      trace.requirements.slice(0, 3).forEach((req) => {
+      console.log(chalk.cyan('\n📋 Related Requirements:'));
+      trace.requirements.slice(0, 3).forEach(req => {
         console.log(
-          `  • ${chalk.bold(req.id)}: ${req.content.substring(0, 80)}${req.content.length > 80 ? "..." : ""}`,
+          `  • ${chalk.bold(req.id)}: ${req.content.substring(0, 80)}${req.content.length > 80 ? '...' : ''}`
         );
         console.log(chalk.dim(`    Source: ${req.source}:${req.location.line}`));
       });
@@ -1222,13 +1222,13 @@ function displayVersionPlan(plan: VersionPlan, verbose?: boolean): void {
       }
     }
   } else {
-    console.log(chalk.dim("\n🔗 No traceability information available"));
+    console.log(chalk.dim('\n🔗 No traceability information available'));
   }
 
   if (verbose && (plan.breaking_changes.length > 0 || plan.new_features.length > 0)) {
     if (plan.breaking_changes.length > 0) {
-      console.log(chalk.red("\n💥 Breaking Changes:"));
-      plan.breaking_changes.forEach((change) => {
+      console.log(chalk.red('\n💥 Breaking Changes:'));
+      plan.breaking_changes.forEach(change => {
         console.log(`  • ${change.description}`);
         if (change.oldSignature && change.newSignature) {
           console.log(chalk.dim(`    Old: ${change.oldSignature}`));
@@ -1238,8 +1238,8 @@ function displayVersionPlan(plan: VersionPlan, verbose?: boolean): void {
     }
 
     if (plan.new_features.length > 0 && verbose) {
-      console.log(chalk.green("\n✨ New Features:"));
-      plan.new_features.slice(0, 5).forEach((change) => {
+      console.log(chalk.green('\n✨ New Features:'));
+      plan.new_features.slice(0, 5).forEach(change => {
         console.log(`  • ${change.description}`);
       });
 
@@ -1255,11 +1255,11 @@ function displayVersionPlan(plan: VersionPlan, verbose?: boolean): void {
  */
 function getBumpColor(bump: VersionBump): (text: string) => string {
   switch (bump) {
-    case "MAJOR":
+    case 'MAJOR':
       return chalk.red;
-    case "MINOR":
+    case 'MINOR':
       return chalk.yellow;
-    case "PATCH":
+    case 'PATCH':
       return chalk.green;
   }
 }
@@ -1303,11 +1303,11 @@ async function checkManifestFile(config: ManifestConfig): Promise<ManifestInfo |
   }
 
   try {
-    const content = await readFile(config.filePath, "utf-8");
+    const content = await readFile(config.filePath, 'utf-8');
     const version = config.parser(content);
-    
+
     return {
-      type: config.type,
+      type: config.type as ManifestInfo['type'],
       path: config.filePath,
       current_version: version,
       version_field: config.versionField,
@@ -1322,15 +1322,15 @@ async function checkManifestFile(config: ManifestConfig): Promise<ManifestInfo |
  * Create Go manifest info (no file parsing needed)
  */
 function createGoManifest(): ManifestInfo | null {
-  if (!existsSync("go.mod")) {
+  if (!existsSync('go.mod')) {
     return null;
   }
 
   return {
-    type: "go",
-    path: "go.mod",
+    type: 'go',
+    path: 'go.mod',
     current_version: undefined, // Go uses git tags
-    version_field: "git-tag",
+    version_field: 'git-tag',
   };
 }
 
@@ -1340,21 +1340,21 @@ function createGoManifest(): ManifestInfo | null {
 function getManifestConfigs(): ManifestConfig[] {
   return [
     {
-      filePath: "package.json",
-      type: "npm",
-      versionField: "version",
+      filePath: 'package.json',
+      type: 'npm',
+      versionField: 'version',
       parser: parsePackageJsonVersion,
     },
     {
-      filePath: "pyproject.toml",
-      type: "python",
-      versionField: "project.version",
+      filePath: 'pyproject.toml',
+      type: 'python',
+      versionField: 'project.version',
       parser: parseTomlVersion,
     },
     {
-      filePath: "Cargo.toml",
-      type: "rust",
-      versionField: "package.version",
+      filePath: 'Cargo.toml',
+      type: 'rust',
+      versionField: 'package.version',
       parser: parseTomlVersion,
     },
   ];
@@ -1388,7 +1388,7 @@ async function detectManifests(): Promise<ManifestInfo[]> {
  * Calculate next version based on current version and bump type
  */
 function calculateNextVersion(currentVersion: string, bump: VersionBump): string {
-  const parts = currentVersion.replace(/^v/, "").split(".").map(Number);
+  const parts = currentVersion.replace(/^v/, '').split('.').map(Number);
 
   // Ensure we have at least 3 parts
   while (parts.length < 3) {
@@ -1396,11 +1396,11 @@ function calculateNextVersion(currentVersion: string, bump: VersionBump): string
   }
 
   switch (bump) {
-    case "MAJOR":
+    case 'MAJOR':
       return `${parts[0] + 1}.0.0`;
-    case "MINOR":
+    case 'MINOR':
       return `${parts[0]}.${parts[1] + 1}.0`;
-    case "PATCH":
+    case 'PATCH':
       return `${parts[0]}.${parts[1]}.${parts[2] + 1}`;
   }
 }
@@ -1412,32 +1412,32 @@ async function updateManifest(
   manifest: ManifestInfo,
   version: string,
   isDryRun: boolean,
-  verbose?: boolean,
+  verbose?: boolean
 ): Promise<void> {
   try {
-    if (manifest.type === "go") {
+    if (manifest.type === 'go') {
       // Go uses git tags, not file updates
       console.log(`  ${manifest.type}: Use git tag v${version} (no file changes needed)`);
       return;
     }
 
-    const content = await readFile(manifest.path, "utf-8");
+    const content = await readFile(manifest.path, 'utf-8');
     let newContent: string;
 
     switch (manifest.type) {
-      case "npm": {
+      case 'npm': {
         const pkg = JSON.parse(content);
         pkg.version = version;
         newContent = `${JSON.stringify(pkg, null, 2)}\n`;
         break;
       }
 
-      case "python": {
+      case 'python': {
         newContent = content.replace(/version\s*=\s*"[^"]+"/, `version = "${version}"`);
         break;
       }
 
-      case "rust": {
+      case 'rust': {
         newContent = content.replace(/version\s*=\s*"[^"]+"/, `version = "${version}"`);
         break;
       }
@@ -1446,7 +1446,7 @@ async function updateManifest(
         throw new Error(`Unsupported manifest type: ${manifest.type}`);
     }
 
-    const oldVersion = manifest.current_version || "unknown";
+    const oldVersion = manifest.current_version || 'unknown';
     console.log(`  ${manifest.type}: ${oldVersion} → ${version}`);
 
     if (verbose && isDryRun) {
@@ -1472,38 +1472,38 @@ async function generateChangelog(
   plan: VersionPlan,
   version: string,
   path: string,
-  isDryRun: boolean,
+  isDryRun: boolean
 ): Promise<void> {
-  const date = new Date().toISOString().split("T")[0];
+  const date = new Date().toISOString().split('T')[0];
 
   let changelogEntry = `## [${version}] - ${date}\n\n`;
 
   if (plan.breaking_changes.length > 0) {
-    changelogEntry += `### 💥 BREAKING CHANGES\n\n`;
-    plan.breaking_changes.forEach((change) => {
+    changelogEntry += '### 💥 BREAKING CHANGES\n\n';
+    plan.breaking_changes.forEach(change => {
       changelogEntry += `- ${change.description}\n`;
       if (change.oldSignature && change.newSignature) {
         changelogEntry += `  - **Before:** \`${change.oldSignature}\`\n`;
         changelogEntry += `  - **After:** \`${change.newSignature}\`\n`;
       }
     });
-    changelogEntry += "\n";
+    changelogEntry += '\n';
   }
 
   if (plan.new_features.length > 0) {
-    changelogEntry += `### ✨ Features\n\n`;
-    plan.new_features.forEach((change) => {
+    changelogEntry += '### ✨ Features\n\n';
+    plan.new_features.forEach(change => {
       changelogEntry += `- ${change.description}\n`;
     });
-    changelogEntry += "\n";
+    changelogEntry += '\n';
   }
 
   if (plan.bug_fixes.length > 0) {
-    changelogEntry += `### 🐛 Bug Fixes\n\n`;
-    plan.bug_fixes.forEach((change) => {
+    changelogEntry += '### 🐛 Bug Fixes\n\n';
+    plan.bug_fixes.forEach(change => {
       changelogEntry += `- ${change.description}\n`;
     });
-    changelogEntry += "\n";
+    changelogEntry += '\n';
   }
 
   // Add traceability information
@@ -1511,11 +1511,11 @@ async function generateChangelog(
     plan.traceability &&
     (plan.traceability.requirements.length > 0 || plan.traceability.tests.length > 0)
   ) {
-    changelogEntry += `### 🔗 Traceability\n\n`;
+    changelogEntry += '### 🔗 Traceability\n\n';
 
     if (plan.traceability.requirements.length > 0) {
-      changelogEntry += `**Related Requirements:**\n`;
-      plan.traceability.requirements.slice(0, 5).forEach((req) => {
+      changelogEntry += '**Related Requirements:**\n';
+      plan.traceability.requirements.slice(0, 5).forEach(req => {
         const shortContent =
           req.content.length > 60 ? `${req.content.substring(0, 60)}...` : req.content;
         changelogEntry += `- [${req.id}](${req.source}#L${req.location.line}): ${shortContent}\n`;
@@ -1524,24 +1524,24 @@ async function generateChangelog(
       if (plan.traceability.requirements.length > 5) {
         changelogEntry += `- _... and ${plan.traceability.requirements.length - 5} more requirements_\n`;
       }
-      changelogEntry += "\n";
+      changelogEntry += '\n';
     }
 
     if (plan.traceability.tests.length > 0) {
-      changelogEntry += `**Validation Tests:**\n`;
-      plan.traceability.tests.slice(0, 3).forEach((test) => {
+      changelogEntry += '**Validation Tests:**\n';
+      plan.traceability.tests.slice(0, 3).forEach(test => {
         changelogEntry += `- [${test.id}](${test.source}): ${test.name}\n`;
       });
 
       if (plan.traceability.tests.length > 3) {
         changelogEntry += `- _... and ${plan.traceability.tests.length - 3} more tests_\n`;
       }
-      changelogEntry += "\n";
+      changelogEntry += '\n';
     }
   }
 
   // Add statistics
-  changelogEntry += `### 📊 Statistics\n\n`;
+  changelogEntry += '### 📊 Statistics\n\n';
   changelogEntry += `- Total changes: ${plan.statistics.total_changes}\n`;
   changelogEntry += `- API additions: ${plan.statistics.feature_count}\n`;
   changelogEntry += `- Breaking changes: ${plan.statistics.breaking_count}\n`;
@@ -1552,32 +1552,32 @@ async function generateChangelog(
     changelogEntry += `- Tests linked: ${plan.traceability.coverage.tests_linked}\n`;
   }
 
-  changelogEntry += "\n";
+  changelogEntry += '\n';
 
   if (isDryRun) {
-    console.log(chalk.cyan("📝 Changelog preview:"));
-    console.log(chalk.dim("─".repeat(60)));
+    console.log(chalk.cyan('📝 Changelog preview:'));
+    console.log(chalk.dim('─'.repeat(60)));
     console.log(changelogEntry.trim());
-    console.log(chalk.dim("─".repeat(60)));
+    console.log(chalk.dim('─'.repeat(60)));
   } else {
     // Prepend to existing changelog or create new one
-    let existingContent = "";
+    let existingContent = '';
     if (existsSync(path)) {
-      existingContent = await readFile(path, "utf-8");
+      existingContent = await readFile(path, 'utf-8');
     } else {
-      existingContent = "# Changelog\n\n";
+      existingContent = '# Changelog\n\n';
     }
 
     // Insert new entry after title
-    const lines = existingContent.split("\n");
-    const titleIndex = lines.findIndex((line) => line.startsWith("# "));
+    const lines = existingContent.split('\n');
+    const titleIndex = lines.findIndex(line => line.startsWith('# '));
 
     if (titleIndex !== -1) {
-      lines.splice(titleIndex + 2, 0, changelogEntry.trim(), "");
+      lines.splice(titleIndex + 2, 0, changelogEntry.trim(), '');
     } else {
-      lines.unshift(changelogEntry.trim(), "");
+      lines.unshift(changelogEntry.trim(), '');
     }
 
-    await writeFile(path, lines.join("\n"));
+    await writeFile(path, lines.join('\n'));
   }
 }

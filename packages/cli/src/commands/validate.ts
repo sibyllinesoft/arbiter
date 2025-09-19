@@ -1,16 +1,16 @@
-import path from "node:path";
-import chalk from "chalk";
-import fs from "fs-extra";
-import { ApiClient } from "../api-client.js";
-import type { CLIConfig, ValidateOptions, ValidationResult } from "../types.js";
+import path from 'node:path';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import { ApiClient } from '../api-client.js';
+import type { CLIConfig, ValidateOptions, ValidationResult } from '../types.js';
 import {
   formatErrorDetails,
   formatJson,
   formatSummary,
   formatValidationTable,
   formatWarningDetails,
-} from "../utils/formatting.js";
-import { withProgress } from "../utils/progress.js";
+} from '../utils/formatting.js';
+import { withProgress } from '../utils/progress.js';
 
 /**
  * Validate command implementation
@@ -19,11 +19,11 @@ import { withProgress } from "../utils/progress.js";
 export async function validateCommand(
   files: string[],
   options: ValidateOptions,
-  config: CLIConfig,
+  config: CLIConfig
 ): Promise<number> {
   try {
     if (files.length === 0) {
-      console.error(chalk.red("No files specified for validation"));
+      console.error(chalk.red('No files specified for validation'));
       return 1;
     }
 
@@ -31,7 +31,7 @@ export async function validateCommand(
     const resolvedFiles = await resolveFiles(files, config.projectDir);
 
     if (resolvedFiles.length === 0) {
-      console.error(chalk.red("No valid files found"));
+      console.error(chalk.red('No valid files found'));
       return 1;
     }
 
@@ -41,7 +41,7 @@ export async function validateCommand(
     let schemaContent: string | undefined;
     if (options.schema) {
       try {
-        schemaContent = await fs.readFile(options.schema, "utf-8");
+        schemaContent = await fs.readFile(options.schema, 'utf-8');
       } catch (_error) {
         console.error(chalk.red(`Cannot read schema file: ${options.schema}`));
         return 1;
@@ -52,7 +52,7 @@ export async function validateCommand(
     let configContent: string | undefined;
     if (options.config) {
       try {
-        configContent = await fs.readFile(options.config, "utf-8");
+        configContent = await fs.readFile(options.config, 'utf-8');
       } catch (_error) {
         console.error(chalk.red(`Cannot read config file: ${options.config}`));
         return 1;
@@ -65,23 +65,23 @@ export async function validateCommand(
       config,
       options,
       schemaContent,
-      configContent,
+      configContent
     );
 
     // Format and display results
-    if (options.format === "json") {
+    if (options.format === 'json') {
       console.log(formatJson(results, config.color));
     } else {
       displayResults(results, options, config);
     }
 
     // Determine exit code
-    const hasErrors = results.some((r) => r.status === "invalid" || r.status === "error");
+    const hasErrors = results.some(r => r.status === 'invalid' || r.status === 'error');
     return hasErrors ? 1 : 0;
   } catch (error) {
     console.error(
-      chalk.red("Validate command failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Validate command failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 2;
   }
@@ -103,9 +103,7 @@ async function resolveFiles(files: string[], cwd: string): Promise<string[]> {
       } else if (stats.isDirectory()) {
         // Find .cue files in directory
         const dirFiles = await fs.readdir(fullPath);
-        const cueFiles = dirFiles
-          .filter((f) => f.endsWith(".cue"))
-          .map((f) => path.join(fullPath, f));
+        const cueFiles = dirFiles.filter(f => f.endsWith('.cue')).map(f => path.join(fullPath, f));
         resolved.push(...cueFiles);
       }
     } catch (_error) {
@@ -124,11 +122,11 @@ async function validateFiles(
   config: CLIConfig,
   options: ValidateOptions,
   schemaContent?: string,
-  configContent?: string,
+  configContent?: string
 ): Promise<ValidationResult[]> {
   const apiClient = await initializeValidationClient(config);
-  
-  return withProgress({ text: `Validating ${files.length} files...`, color: "blue" }, async () => {
+
+  return withProgress({ text: `Validating ${files.length} files...`, color: 'blue' }, async () => {
     return await processValidationFiles(files, apiClient, options, schemaContent, configContent);
   });
 }
@@ -138,12 +136,12 @@ async function validateFiles(
  */
 async function initializeValidationClient(config: CLIConfig): Promise<ApiClient> {
   const apiClient = new ApiClient(config);
-  
+
   const healthCheck = await apiClient.health();
   if (!healthCheck.success) {
     throw new Error(`Cannot connect to Arbiter server: ${healthCheck.error}`);
   }
-  
+
   return apiClient;
 }
 
@@ -155,25 +153,19 @@ async function processValidationFiles(
   apiClient: ApiClient,
   options: ValidateOptions,
   schemaContent?: string,
-  configContent?: string,
+  configContent?: string
 ): Promise<ValidationResult[]> {
   const results: ValidationResult[] = [];
-  
+
   for (const file of files) {
-    const result = await validateSingleFile(
-      file,
-      apiClient,
-      options,
-      schemaContent,
-      configContent,
-    );
+    const result = await validateSingleFile(file, apiClient, options, schemaContent, configContent);
     results.push(result);
-    
+
     if (options.verbose) {
       displayValidationProgress(result, file);
     }
   }
-  
+
   return results;
 }
 
@@ -190,12 +182,12 @@ function displayValidationProgress(result: ValidationResult, file: string): void
  */
 function getValidationStatusIcon(status: string): string {
   switch (status) {
-    case "valid":
-      return chalk.green("✓");
-    case "invalid":
-      return chalk.red("✗");
+    case 'valid':
+      return chalk.green('✓');
+    case 'invalid':
+      return chalk.red('✗');
     default:
-      return chalk.yellow("!");
+      return chalk.yellow('!');
   }
 }
 
@@ -207,13 +199,13 @@ async function validateSingleFile(
   apiClient: ApiClient,
   options: ValidateOptions,
   schemaContent?: string,
-  configContent?: string,
+  configContent?: string
 ): Promise<ValidationResult> {
   const startTime = Date.now();
 
   try {
     // Read file content
-    const content = await fs.readFile(filePath, "utf-8");
+    const content = await fs.readFile(filePath, 'utf-8');
 
     // Combine content with schema and config if provided
     let fullContent = content;
@@ -234,14 +226,14 @@ async function validateSingleFile(
     if (!validationResult.success || !validationResult.data) {
       return {
         file: path.basename(filePath),
-        status: "error",
+        status: 'error',
         errors: [
           {
             line: 0,
             column: 0,
-            message: validationResult.error || "Unknown validation error",
-            severity: "error" as const,
-            category: "api",
+            message: validationResult.error || 'Unknown validation error',
+            severity: 'error' as const,
+            category: 'api',
           },
         ],
         warnings: [],
@@ -253,37 +245,37 @@ async function validateSingleFile(
 
     // Process errors
     const errors =
-      data.errors?.map((error) => ({
+      data.errors?.map(error => ({
         line: error.line || 0,
         column: error.column || 0,
         message: error.message,
-        severity: "error" as const,
-        category: "validation",
+        severity: 'error' as const,
+        category: 'validation',
       })) || [];
 
     // Process warnings
     const warnings =
-      data.warnings?.map((warning) => ({
+      data.warnings?.map(warning => ({
         line: warning.line || 0,
         column: warning.column || 0,
         message: warning.message,
-        category: "validation",
+        category: 'validation',
       })) || [];
 
     // In strict mode, treat warnings as errors
     if (options.strict && warnings.length > 0) {
-      warnings.forEach((warning) => {
+      warnings.forEach(warning => {
         errors.push({
           line: warning.line,
           column: warning.column,
           message: warning.message,
-          severity: "error" as const,
+          severity: 'error' as const,
           category: warning.category,
         });
       });
     }
 
-    const status = data.success && (!options.strict || warnings.length === 0) ? "valid" : "invalid";
+    const status = data.success && (!options.strict || warnings.length === 0) ? 'valid' : 'invalid';
 
     return {
       file: path.basename(filePath),
@@ -295,14 +287,14 @@ async function validateSingleFile(
   } catch (error) {
     return {
       file: path.basename(filePath),
-      status: "error",
+      status: 'error',
       errors: [
         {
           line: 0,
           column: 0,
           message: error instanceof Error ? error.message : String(error),
-          severity: "error" as const,
-          category: "system",
+          severity: 'error' as const,
+          category: 'system',
         },
       ],
       warnings: [],
@@ -317,13 +309,13 @@ async function validateSingleFile(
 function displayResults(
   results: ValidationResult[],
   options: ValidateOptions,
-  _config: CLIConfig,
+  _config: CLIConfig
 ): void {
   // Show table
   console.log(`\n${formatValidationTable(results)}`);
 
   // Show detailed errors if present
-  if (options.verbose || results.some((r) => r.errors.length > 0)) {
+  if (options.verbose || results.some(r => r.errors.length > 0)) {
     const errorDetails = formatErrorDetails(results);
     if (errorDetails) {
       console.log(errorDetails);
@@ -331,7 +323,7 @@ function displayResults(
   }
 
   // Show warnings if verbose and not in strict mode
-  if (options.verbose && !options.strict && results.some((r) => r.warnings.length > 0)) {
+  if (options.verbose && !options.strict && results.some(r => r.warnings.length > 0)) {
     const warningDetails = formatWarningDetails(results);
     if (warningDetails) {
       console.log(warningDetails);
@@ -343,6 +335,6 @@ function displayResults(
 
   // Show strict mode note if enabled
   if (options.strict) {
-    console.log(chalk.dim("\nNote: Running in strict mode (warnings treated as errors)"));
+    console.log(chalk.dim('\nNote: Running in strict mode (warnings treated as errors)'));
   }
 }

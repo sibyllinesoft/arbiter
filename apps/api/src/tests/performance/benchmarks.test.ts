@@ -2,12 +2,12 @@
  * Performance validation and benchmarking tests
  * Validates all performance targets: 500ms validation, 100ms WebSocket broadcast, 1.5s initial load
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
-import { SpecWorkbenchServer } from "../../server.ts";
-import type { ServerConfig } from "../../types.ts";
-import { generateId } from "../../utils.ts";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
+import { SpecWorkbenchServer } from '../../server.ts';
+import type { ServerConfig } from '../../types.ts';
+import { generateId } from '../../utils.ts';
 
-describe("Performance Validation and Benchmarks", () => {
+describe('Performance Validation and Benchmarks', () => {
   let server: SpecWorkbenchServer;
   let baseUrl: string;
   let testConfig: ServerConfig;
@@ -18,11 +18,11 @@ describe("Performance Validation and Benchmarks", () => {
 
     testConfig = {
       port,
-      host: "localhost",
-      database_path: ":memory:",
+      host: 'localhost',
+      database_path: ':memory:',
       spec_workdir: `/tmp/perf-test-${Date.now()}`,
-      cue_binary_path: "cue",
-      jq_binary_path: "jq",
+      cue_binary_path: 'cue',
+      jq_binary_path: 'jq',
       auth_required: false,
       rate_limit: {
         max_tokens: 10000, // High limit for performance testing
@@ -40,7 +40,7 @@ describe("Performance Validation and Benchmarks", () => {
     baseUrl = `http://localhost:${port}`;
 
     await server.start();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1000));
   });
 
   afterAll(async () => {
@@ -49,8 +49,8 @@ describe("Performance Validation and Benchmarks", () => {
     }
 
     // Print performance summary
-    console.log("\n🎯 PERFORMANCE BENCHMARK SUMMARY");
-    console.log("=".repeat(50));
+    console.log('\n🎯 PERFORMANCE BENCHMARK SUMMARY');
+    console.log('='.repeat(50));
 
     for (const [testName, measurements] of performanceResults) {
       const avg = measurements.reduce((a, b) => a + b, 0) / measurements.length;
@@ -82,8 +82,8 @@ describe("Performance Validation and Benchmarks", () => {
   async function benchmark<T>(
     name: string,
     fn: () => Promise<T>,
-    runs: number = 5,
-    warmupRuns: number = 1,
+    runs = 5,
+    warmupRuns = 1
   ): Promise<{ result: T; avgDuration: number; allDurations: number[] }> {
     // Warmup runs
     for (let i = 0; i < warmupRuns; i++) {
@@ -115,22 +115,22 @@ describe("Performance Validation and Benchmarks", () => {
    */
   async function createTestFragments(
     projectId: string,
-    complexity: "simple" | "medium" | "complex" = "medium",
+    complexity: 'simple' | 'medium' | 'complex' = 'medium'
   ) {
     const fragments: Array<{ path: string; content: string }> = [];
 
     switch (complexity) {
-      case "simple":
+      case 'simple':
         fragments.push({
-          path: "simple.cue",
+          path: 'simple.cue',
           content: `package spec\n\nconfig: {\n\tapi_version: "v1"\n\tport: 8080\n}`,
         });
         break;
 
-      case "medium":
+      case 'medium':
         fragments.push(
           {
-            path: "routes.cue",
+            path: 'routes.cue',
             content: `package spec
 
 routes: {
@@ -163,7 +163,7 @@ routes: {
 }`,
           },
           {
-            path: "capabilities.cue",
+            path: 'capabilities.cue',
             content: `package spec
 
 capabilities: {
@@ -189,14 +189,14 @@ flows: {
     ]
   }
 }`,
-          },
+          }
         );
         break;
 
-      case "complex":
+      case 'complex':
         fragments.push(
           {
-            path: "complex_routes.cue",
+            path: 'complex_routes.cue',
             content: `package spec
 
 routes: {
@@ -225,7 +225,7 @@ routes: {
 }`,
           },
           {
-            path: "complex_validation.cue",
+            path: 'complex_validation.cue',
             content: `package spec
 
 #User: {
@@ -264,47 +264,47 @@ routes: {
     _error: "Too many contributors"
   }
 }`,
-          },
+          }
         );
         break;
     }
 
-    const createPromises = fragments.map((fragment) =>
+    const createPromises = fragments.map(fragment =>
       fetch(`${baseUrl}/api/fragments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: projectId,
           path: fragment.path,
           content: fragment.content,
         }),
-      }),
+      })
     );
 
     const responses = await Promise.all(createPromises);
-    responses.forEach((response) => {
+    responses.forEach(response => {
       expect(response.status).toBe(201);
     });
 
     return fragments.length;
   }
 
-  describe("Validation Performance Targets", () => {
+  describe('Validation Performance Targets', () => {
     let testProjectId: string;
 
     beforeEach(() => {
       testProjectId = generateId();
     });
 
-    it("should validate simple projects under 200ms (target: <500ms)", async () => {
-      await createTestFragments(testProjectId, "simple");
+    it('should validate simple projects under 200ms (target: <500ms)', async () => {
+      await createTestFragments(testProjectId, 'simple');
 
       const benchmark_result = await benchmark(
-        "Simple Validation",
+        'Simple Validation',
         async () => {
           const response = await fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_id: testProjectId }),
           });
 
@@ -313,25 +313,25 @@ routes: {
           expect(result.success).toBe(true);
           return result;
         },
-        10, // More runs for simple cases
+        10 // More runs for simple cases
       );
 
       // Should be well under target for simple cases
       expect(benchmark_result.avgDuration).toBeLessThan(200);
       console.log(
-        `✅ Simple validation: ${benchmark_result.avgDuration.toFixed(1)}ms avg (target: <500ms)`,
+        `✅ Simple validation: ${benchmark_result.avgDuration.toFixed(1)}ms avg (target: <500ms)`
       );
     });
 
-    it("should validate medium projects under 500ms (performance target)", async () => {
-      await createTestFragments(testProjectId, "medium");
+    it('should validate medium projects under 500ms (performance target)', async () => {
+      await createTestFragments(testProjectId, 'medium');
 
       const benchmark_result = await benchmark(
-        "Medium Validation",
+        'Medium Validation',
         async () => {
           const response = await fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_id: testProjectId }),
           });
 
@@ -340,25 +340,25 @@ routes: {
           expect(result.success).toBe(true);
           return result;
         },
-        8,
+        8
       );
 
       // Must meet performance target
       expect(benchmark_result.avgDuration).toBeLessThan(500);
       console.log(
-        `✅ Medium validation: ${benchmark_result.avgDuration.toFixed(1)}ms avg (target: <500ms)`,
+        `✅ Medium validation: ${benchmark_result.avgDuration.toFixed(1)}ms avg (target: <500ms)`
       );
     });
 
-    it("should validate complex projects under 1000ms (stress test)", async () => {
-      await createTestFragments(testProjectId, "complex");
+    it('should validate complex projects under 1000ms (stress test)', async () => {
+      await createTestFragments(testProjectId, 'complex');
 
       const benchmark_result = await benchmark(
-        "Complex Validation",
+        'Complex Validation',
         async () => {
           const response = await fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_id: testProjectId }),
           });
 
@@ -367,18 +367,18 @@ routes: {
           expect(result.success).toBe(true);
           return result;
         },
-        5,
+        5
       );
 
       // Stress test - should handle complex cases reasonably
       expect(benchmark_result.avgDuration).toBeLessThan(1000);
       console.log(
-        `✅ Complex validation: ${benchmark_result.avgDuration.toFixed(1)}ms avg (stress test: <1000ms)`,
+        `✅ Complex validation: ${benchmark_result.avgDuration.toFixed(1)}ms avg (stress test: <1000ms)`
       );
     });
 
-    it("should maintain performance under concurrent validation load", async () => {
-      await createTestFragments(testProjectId, "medium");
+    it('should maintain performance under concurrent validation load', async () => {
+      await createTestFragments(testProjectId, 'medium');
 
       const concurrentRequests = 5;
       const requestPromises = [];
@@ -389,8 +389,8 @@ routes: {
         const promise = (async () => {
           const start = performance.now();
           const response = await fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_id: testProjectId }),
           });
           const duration = performance.now() - start;
@@ -411,7 +411,7 @@ routes: {
       // Individual requests should still meet target
       results.forEach(({ duration }) => {
         expect(duration).toBeLessThan(750); // Slightly higher under load
-        recordPerformance("Concurrent Validation", duration);
+        recordPerformance('Concurrent Validation', duration);
       });
 
       // All requests should complete within reasonable time
@@ -419,41 +419,41 @@ routes: {
 
       const avgDuration = results.reduce((sum, { duration }) => sum + duration, 0) / results.length;
       console.log(
-        `✅ Concurrent validation: ${concurrentRequests} requests, ${avgDuration.toFixed(1)}ms avg, ${overallDuration.toFixed(1)}ms total`,
+        `✅ Concurrent validation: ${concurrentRequests} requests, ${avgDuration.toFixed(1)}ms avg, ${overallDuration.toFixed(1)}ms total`
       );
     });
   });
 
-  describe("API Response Time Benchmarks", () => {
+  describe('API Response Time Benchmarks', () => {
     let testProjectId: string;
 
     beforeEach(async () => {
       testProjectId = generateId();
-      await createTestFragments(testProjectId, "medium");
+      await createTestFragments(testProjectId, 'medium');
     });
 
-    it("should retrieve fragments under 100ms", async () => {
+    it('should retrieve fragments under 100ms', async () => {
       const benchmark_result = await benchmark(
-        "Fragment Retrieval",
+        'Fragment Retrieval',
         async () => {
           const response = await fetch(`${baseUrl}/api/fragments?project_id=${testProjectId}`);
           expect(response.status).toBe(200);
           return await response.json();
         },
-        10,
+        10
       );
 
       expect(benchmark_result.avgDuration).toBeLessThan(100);
       console.log(`✅ Fragment retrieval: ${benchmark_result.avgDuration.toFixed(1)}ms avg`);
     });
 
-    it("should create fragments under 150ms", async () => {
+    it('should create fragments under 150ms', async () => {
       const benchmark_result = await benchmark(
-        "Fragment Creation",
+        'Fragment Creation',
         async () => {
           const response = await fetch(`${baseUrl}/api/fragments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               project_id: testProjectId,
               path: `perf_test_${Date.now()}.cue`,
@@ -463,56 +463,56 @@ routes: {
           expect(response.status).toBe(201);
           return await response.json();
         },
-        8,
+        8
       );
 
       expect(benchmark_result.avgDuration).toBeLessThan(150);
       console.log(`✅ Fragment creation: ${benchmark_result.avgDuration.toFixed(1)}ms avg`);
     });
 
-    it("should retrieve resolved spec under 200ms", async () => {
+    it('should retrieve resolved spec under 200ms', async () => {
       // Ensure project is validated first
       await fetch(`${baseUrl}/api/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: testProjectId }),
       });
 
       const benchmark_result = await benchmark(
-        "Resolved Spec Retrieval",
+        'Resolved Spec Retrieval',
         async () => {
           const response = await fetch(`${baseUrl}/api/resolved?project_id=${testProjectId}`);
           expect(response.status).toBe(200);
           return await response.json();
         },
-        8,
+        8
       );
 
       expect(benchmark_result.avgDuration).toBeLessThan(200);
       console.log(`✅ Resolved spec retrieval: ${benchmark_result.avgDuration.toFixed(1)}ms avg`);
     });
 
-    it("should generate IR under 300ms", async () => {
+    it('should generate IR under 300ms', async () => {
       // Ensure project is validated first
       await fetch(`${baseUrl}/api/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: testProjectId }),
       });
 
-      const irTypes = ["capabilities", "flows", "dependencies", "coverage"];
+      const irTypes = ['capabilities', 'flows', 'dependencies', 'coverage'];
 
       for (const irType of irTypes) {
         const benchmark_result = await benchmark(
           `IR Generation (${irType})`,
           async () => {
             const response = await fetch(
-              `${baseUrl}/api/ir?project_id=${testProjectId}&type=${irType}`,
+              `${baseUrl}/api/ir?project_id=${testProjectId}&type=${irType}`
             );
             expect(response.status).toBe(200);
             return await response.json();
           },
-          5,
+          5
         );
 
         expect(benchmark_result.avgDuration).toBeLessThan(300);
@@ -521,12 +521,12 @@ routes: {
     });
   });
 
-  describe("Initial Load Performance", () => {
-    it("should handle complete project initialization under 1.5s (target)", async () => {
+  describe('Initial Load Performance', () => {
+    it('should handle complete project initialization under 1.5s (target)', async () => {
       const testProjectId = generateId();
 
       const benchmark_result = await benchmark(
-        "Complete Project Initialization",
+        'Complete Project Initialization',
         async () => {
           // Simulate complete project setup
           const start = performance.now();
@@ -536,29 +536,29 @@ routes: {
           for (let i = 0; i < 5; i++) {
             fragmentPromises.push(
               fetch(`${baseUrl}/api/fragments`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   project_id: testProjectId,
                   path: `init_${i}.cue`,
                   content: `package spec\n\ninit${i}: {\n\tid: ${i}\n\tvalue: "initialization_${i}"\n}`,
                 }),
-              }),
+              })
             );
           }
           await Promise.all(fragmentPromises);
 
           // Step 2: Validate project
           const validationResponse = await fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_id: testProjectId }),
           });
           expect(validationResponse.status).toBe(200);
 
           // Step 3: Get resolved spec
           const resolvedResponse = await fetch(
-            `${baseUrl}/api/resolved?project_id=${testProjectId}`,
+            `${baseUrl}/api/resolved?project_id=${testProjectId}`
           );
           expect(resolvedResponse.status).toBe(200);
 
@@ -569,38 +569,38 @@ routes: {
           const totalDuration = performance.now() - start;
           return { totalDuration };
         },
-        3, // Fewer runs for this comprehensive test
+        3 // Fewer runs for this comprehensive test
       );
 
       // Must meet the 1.5s target
       expect(benchmark_result.avgDuration).toBeLessThan(1500);
       console.log(
-        `✅ Complete project initialization: ${benchmark_result.avgDuration.toFixed(1)}ms avg (target: <1500ms)`,
+        `✅ Complete project initialization: ${benchmark_result.avgDuration.toFixed(1)}ms avg (target: <1500ms)`
       );
     });
 
-    it("should handle cold start scenario efficiently", async () => {
+    it('should handle cold start scenario efficiently', async () => {
       // Test server responsiveness after idle period
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // 2s idle
+      await new Promise(resolve => setTimeout(resolve, 2000)); // 2s idle
 
       const testProjectId = generateId();
 
       const benchmark_result = await benchmark(
-        "Cold Start Response",
+        'Cold Start Response',
         async () => {
           const response = await fetch(`${baseUrl}/api/fragments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               project_id: testProjectId,
-              path: "cold_start.cue",
-              content: `package spec\n\ncold_start: true`,
+              path: 'cold_start.cue',
+              content: 'package spec\n\ncold_start: true',
             }),
           });
           expect(response.status).toBe(201);
           return await response.json();
         },
-        5,
+        5
       );
 
       // Cold start should still be reasonable
@@ -609,8 +609,8 @@ routes: {
     });
   });
 
-  describe("Memory and Resource Usage", () => {
-    it("should handle large projects without performance degradation", async () => {
+  describe('Memory and Resource Usage', () => {
+    it('should handle large projects without performance degradation', async () => {
       const testProjectId = generateId();
       const fragmentCount = 20;
 
@@ -637,14 +637,14 @@ large_section_${i}: {
 
         fragmentPromises.push(
           fetch(`${baseUrl}/api/fragments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               project_id: testProjectId,
               path: `large_${i}.cue`,
               content,
             }),
-          }),
+          })
         );
       }
 
@@ -654,8 +654,8 @@ large_section_${i}: {
       // Validate large project
       const validationStart = performance.now();
       const validationResponse = await fetch(`${baseUrl}/api/validate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ project_id: testProjectId }),
       });
       const validationDuration = performance.now() - validationStart;
@@ -668,76 +668,76 @@ large_section_${i}: {
       expect(createDuration).toBeLessThan(5000); // 5s for 20 fragments
       expect(validationDuration).toBeLessThan(2000); // 2s for large validation
 
-      recordPerformance("Large Project Creation", createDuration);
-      recordPerformance("Large Project Validation", validationDuration);
+      recordPerformance('Large Project Creation', createDuration);
+      recordPerformance('Large Project Validation', validationDuration);
 
       console.log(
-        `✅ Large project: ${fragmentCount} fragments created in ${createDuration.toFixed(1)}ms, validated in ${validationDuration.toFixed(1)}ms`,
+        `✅ Large project: ${fragmentCount} fragments created in ${createDuration.toFixed(1)}ms, validated in ${validationDuration.toFixed(1)}ms`
       );
     });
   });
 
-  describe("Golden File Performance Comparison", () => {
-    it("should match golden file performance baselines", async () => {
+  describe('Golden File Performance Comparison', () => {
+    it('should match golden file performance baselines', async () => {
       // Load the same test project used in golden files
-      const goldenProjectId = "golden-performance-baseline";
+      const goldenProjectId = 'golden-performance-baseline';
 
       // Create the exact same fragments as in golden tests
       await fetch(`${baseUrl}/api/fragments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: goldenProjectId,
-          path: "ui.routes.cue",
+          path: 'ui.routes.cue',
           content: await Bun.file(
-            "/home/nathan/Projects/arbiter/golden-test-project/ui.routes.cue",
+            '/home/nathan/Projects/arbiter/golden-test-project/ui.routes.cue'
           ).text(),
         }),
       });
 
       await fetch(`${baseUrl}/api/fragments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: goldenProjectId,
-          path: "locators.cue",
+          path: 'locators.cue',
           content: await Bun.file(
-            "/home/nathan/Projects/arbiter/golden-test-project/locators.cue",
+            '/home/nathan/Projects/arbiter/golden-test-project/locators.cue'
           ).text(),
         }),
       });
 
       await fetch(`${baseUrl}/api/fragments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: goldenProjectId,
-          path: "flows.cue",
+          path: 'flows.cue',
           content: await Bun.file(
-            "/home/nathan/Projects/arbiter/golden-test-project/flows.cue",
+            '/home/nathan/Projects/arbiter/golden-test-project/flows.cue'
           ).text(),
         }),
       });
 
       await fetch(`${baseUrl}/api/fragments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: goldenProjectId,
-          path: "completion.cue",
+          path: 'completion.cue',
           content: await Bun.file(
-            "/home/nathan/Projects/arbiter/golden-test-project/completion.cue",
+            '/home/nathan/Projects/arbiter/golden-test-project/completion.cue'
           ).text(),
         }),
       });
 
       // Benchmark the same operations as golden tests
       const validationBenchmark = await benchmark(
-        "Golden File Validation Baseline",
+        'Golden File Validation Baseline',
         async () => {
           const response = await fetch(`${baseUrl}/api/validate`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ project_id: goldenProjectId }),
           });
           expect(response.status).toBe(200);
@@ -745,25 +745,25 @@ large_section_${i}: {
           expect(result.success).toBe(true);
           return result;
         },
-        10,
+        10
       );
 
       // Should match golden file performance target (2000ms)
       expect(validationBenchmark.avgDuration).toBeLessThan(2000);
 
       // Generate all IR types and measure
-      const irTypes = ["capabilities", "flows", "dependencies", "coverage"];
+      const irTypes = ['capabilities', 'flows', 'dependencies', 'coverage'];
       for (const irType of irTypes) {
         const irBenchmark = await benchmark(
           `Golden File IR Generation (${irType})`,
           async () => {
             const response = await fetch(
-              `${baseUrl}/api/ir?project_id=${goldenProjectId}&type=${irType}`,
+              `${baseUrl}/api/ir?project_id=${goldenProjectId}&type=${irType}`
             );
             expect(response.status).toBe(200);
             return await response.json();
           },
-          5,
+          5
         );
 
         // Should match golden file IR target (500ms)
@@ -771,13 +771,13 @@ large_section_${i}: {
       }
 
       console.log(
-        `✅ Golden file performance baseline validated: ${validationBenchmark.avgDuration.toFixed(1)}ms validation`,
+        `✅ Golden file performance baseline validated: ${validationBenchmark.avgDuration.toFixed(1)}ms validation`
       );
     });
 
-    it("should demonstrate performance consistency across test runs", async () => {
+    it('should demonstrate performance consistency across test runs', async () => {
       const testProjectId = generateId();
-      await createTestFragments(testProjectId, "medium");
+      await createTestFragments(testProjectId, 'medium');
 
       const consistencyRuns = 10;
       const measurements: number[] = [];
@@ -785,8 +785,8 @@ large_section_${i}: {
       for (let i = 0; i < consistencyRuns; i++) {
         const start = performance.now();
         const response = await fetch(`${baseUrl}/api/validate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ project_id: testProjectId }),
         });
         const duration = performance.now() - start;
@@ -795,7 +795,7 @@ large_section_${i}: {
         measurements.push(duration);
 
         // Small delay between runs
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // Calculate consistency metrics
@@ -808,10 +808,10 @@ large_section_${i}: {
       // Performance should be consistent (CV < 30%)
       expect(coefficientOfVariation).toBeLessThan(0.3);
 
-      recordPerformance("Validation Consistency", avg);
+      recordPerformance('Validation Consistency', avg);
 
       console.log(
-        `✅ Performance consistency: ${avg.toFixed(1)}ms avg, ${stdDev.toFixed(1)}ms std dev, ${(coefficientOfVariation * 100).toFixed(1)}% CV`,
+        `✅ Performance consistency: ${avg.toFixed(1)}ms avg, ${stdDev.toFixed(1)}ms std dev, ${(coefficientOfVariation * 100).toFixed(1)}% CV`
       );
     });
   });

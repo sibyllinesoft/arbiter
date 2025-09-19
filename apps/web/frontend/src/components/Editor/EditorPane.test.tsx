@@ -20,7 +20,7 @@ vi.mock('./MonacoEditor', () => ({
     React.useEffect(() => {
       if (onEditorReady) {
         const mockEditor = {
-          onDidBlurEditorText: vi.fn((callback) => {
+          onDidBlurEditorText: vi.fn(callback => {
             // Simulate editor blur event for auto-save testing
             setTimeout(callback, 100);
           }),
@@ -34,7 +34,7 @@ vi.mock('./MonacoEditor', () => ({
         <textarea
           data-testid="editor-textarea"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={e => onChange(e.target.value)}
         />
         <button data-testid="editor-save" onClick={onSave}>
           Save from Editor
@@ -218,7 +218,9 @@ describe('EditorPane', () => {
 
       render(<EditorPane />);
 
-      expect(screen.getByText(/Create your first fragment using the \+ button/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Create your first fragment using the \+ button/)
+      ).toBeInTheDocument();
     });
   });
 
@@ -277,10 +279,10 @@ describe('EditorPane', () => {
       const textarea = screen.getByTestId('editor-textarea');
       // First change to something different to ensure we have a baseline
       fireEvent.change(textarea, { target: { value: 'different content' } });
-      
+
       // Verify markUnsaved was called first
       expect(mockMarkUnsaved).toHaveBeenCalledWith('fragment-1');
-      
+
       // Then change back to original content
       fireEvent.change(textarea, { target: { value: 'package api\nroutes: {}' } });
 
@@ -364,11 +366,7 @@ describe('EditorPane', () => {
       const saveButton = screen.getByTestId('save-icon').closest('button');
       await user.click(saveButton!);
 
-      expect(mockUpdateFragment).toHaveBeenCalledWith(
-        'project-1',
-        'fragment-1',
-        'updated content'
-      );
+      expect(mockUpdateFragment).toHaveBeenCalledWith('project-1', 'fragment-1', 'updated content');
     });
 
     it('updates fragment state after successful save', async () => {
@@ -469,9 +467,12 @@ describe('EditorPane', () => {
       render(<EditorPane />);
 
       // Auto-save should be triggered by the mock editor's blur handler
-      await waitFor(() => {
-        expect(mockUpdateFragment).toHaveBeenCalled();
-      }, { timeout: 500 });
+      await waitFor(
+        () => {
+          expect(mockUpdateFragment).toHaveBeenCalled();
+        },
+        { timeout: 500 }
+      );
     });
 
     it('does not auto-save when no unsaved changes', async () => {
@@ -575,7 +576,7 @@ describe('EditorPane', () => {
   describe('Performance', () => {
     it('handles large content efficiently', () => {
       const largeContent = 'package api\n'.repeat(1000) + 'value: "large content"';
-      
+
       mockUseActiveFragment.mockReturnValue({
         ...mockActiveFragment,
         content: largeContent,

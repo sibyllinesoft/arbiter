@@ -1,14 +1,14 @@
 /**
  * GitHub Template management command
- * 
+ *
  * Handles GitHub template scaffolding, generation, and management
  */
 
-import fs from "fs-extra";
-import path from "node:path";
-import chalk from "chalk";
-import type { CLIConfig } from "../types.js";
-import { FileBasedTemplateManager } from "../utils/file-based-template-manager.js";
+import path from 'node:path';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import type { CLIConfig } from '../types.js';
+import { FileBasedTemplateManager } from '../utils/file-based-template-manager.js';
 
 export interface GitHubTemplateOptions {
   /** List available templates */
@@ -34,7 +34,10 @@ export interface GitHubTemplateOptions {
 /**
  * Main GitHub template command handler
  */
-export async function githubTemplateCommand(options: GitHubTemplateOptions, config: CLIConfig): Promise<number> {
+export async function githubTemplateCommand(
+  options: GitHubTemplateOptions,
+  config: CLIConfig
+): Promise<number> {
   try {
     if (options.list) {
       return await listTemplates(options, config);
@@ -53,22 +56,25 @@ export async function githubTemplateCommand(options: GitHubTemplateOptions, conf
     }
 
     // Show help by default
-    console.log(chalk.blue("Arbiter GitHub Template Management\n"));
-    console.log("Available commands:");
-    console.log("  --list          List available GitHub templates");
-    console.log("  --init          Initialize default template files");
-    console.log("  --scaffold      Scaffold template directory structure");
-    console.log("  --validate      Validate template configuration");
-    console.log("  --generate TYPE Generate a specific template");
-    console.log("\nTemplate types: epic, task, bug-report, feature-request");
-    console.log("\nOptions:");
-    console.log("  --output-dir DIR    Output directory for templates");
-    console.log("  --force             Force overwrite existing files");
-    console.log("  --verbose           Verbose output");
+    console.log(chalk.blue('Arbiter GitHub Template Management\n'));
+    console.log('Available commands:');
+    console.log('  --list          List available GitHub templates');
+    console.log('  --init          Initialize default template files');
+    console.log('  --scaffold      Scaffold template directory structure');
+    console.log('  --validate      Validate template configuration');
+    console.log('  --generate TYPE Generate a specific template');
+    console.log('\nTemplate types: epic, task, bug-report, feature-request');
+    console.log('\nOptions:');
+    console.log('  --output-dir DIR    Output directory for templates');
+    console.log('  --force             Force overwrite existing files');
+    console.log('  --verbose           Verbose output');
 
     return 0;
   } catch (error) {
-    console.error(chalk.red("GitHub template command failed:"), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red('GitHub template command failed:'),
+      error instanceof Error ? error.message : String(error)
+    );
     return 1;
   }
 }
@@ -78,7 +84,7 @@ export async function githubTemplateCommand(options: GitHubTemplateOptions, conf
  */
 async function listTemplates(options: GitHubTemplateOptions, config: CLIConfig): Promise<number> {
   try {
-    console.log(chalk.blue("📋 Available GitHub Templates\n"));
+    console.log(chalk.blue('📋 Available GitHub Templates\n'));
 
     // Load template manager
     const templatesConfig = config.github?.templates || {};
@@ -88,7 +94,7 @@ async function listTemplates(options: GitHubTemplateOptions, config: CLIConfig):
     const discovered = await templateManager.discoverTemplates();
 
     if (discovered.length === 0) {
-      console.log(chalk.yellow("No templates found. Use --init to create default templates."));
+      console.log(chalk.yellow('No templates found. Use --init to create default templates.'));
       return 0;
     }
 
@@ -105,20 +111,20 @@ async function listTemplates(options: GitHubTemplateOptions, config: CLIConfig):
     // Display templates by directory
     for (const [directory, templates] of Object.entries(byDirectory)) {
       console.log(chalk.cyan(`📁 ${path.relative(config.projectDir, directory)}/`));
-      
+
       templates.forEach(template => {
         const filename = path.basename(template.templatePath);
         const metadata = template.metadata;
-        
+
         console.log(`  • ${chalk.green(filename)}`);
         if (metadata?.name) {
-          console.log(`    ${chalk.dim("Name:")} ${metadata.name}`);
+          console.log(`    ${chalk.dim('Name:')} ${metadata.name}`);
         }
         if (metadata?.description) {
-          console.log(`    ${chalk.dim("Description:")} ${metadata.description}`);
+          console.log(`    ${chalk.dim('Description:')} ${metadata.description}`);
         }
         if (metadata?.inherits) {
-          console.log(`    ${chalk.dim("Inherits:")} ${metadata.inherits}`);
+          console.log(`    ${chalk.dim('Inherits:')} ${metadata.inherits}`);
         }
         console.log();
       });
@@ -130,16 +136,16 @@ async function listTemplates(options: GitHubTemplateOptions, config: CLIConfig):
       .filter(([, value]) => value);
 
     if (configuredTemplates.length > 0) {
-      console.log(chalk.blue("🔧 Configured Templates\n"));
+      console.log(chalk.blue('🔧 Configured Templates\n'));
       configuredTemplates.forEach(([type, templateRef]) => {
         console.log(`  • ${chalk.green(type)}`);
         if ('file' in templateRef) {
-          console.log(`    ${chalk.dim("File:")} ${templateRef.file}`);
+          console.log(`    ${chalk.dim('File:')} ${templateRef.file}`);
           if (templateRef.inherits) {
-            console.log(`    ${chalk.dim("Inherits:")} ${templateRef.inherits}`);
+            console.log(`    ${chalk.dim('Inherits:')} ${templateRef.inherits}`);
           }
         } else if ('templateFile' in templateRef && templateRef.templateFile) {
-          console.log(`    ${chalk.dim("File:")} ${templateRef.templateFile}`);
+          console.log(`    ${chalk.dim('File:')} ${templateRef.templateFile}`);
         }
         console.log();
       });
@@ -147,7 +153,10 @@ async function listTemplates(options: GitHubTemplateOptions, config: CLIConfig):
 
     return 0;
   } catch (error) {
-    console.error(chalk.red("Failed to list templates:"), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red('Failed to list templates:'),
+      error instanceof Error ? error.message : String(error)
+    );
     return 1;
   }
 }
@@ -155,11 +164,15 @@ async function listTemplates(options: GitHubTemplateOptions, config: CLIConfig):
 /**
  * Scaffold template files and directory structure
  */
-async function scaffoldTemplates(options: GitHubTemplateOptions, config: CLIConfig): Promise<number> {
+async function scaffoldTemplates(
+  options: GitHubTemplateOptions,
+  config: CLIConfig
+): Promise<number> {
   try {
-    const outputDir = options.outputDir || path.join(config.projectDir, '.arbiter', 'templates', 'github');
-    
-    console.log(chalk.blue("🏗️ Scaffolding GitHub templates..."));
+    const outputDir =
+      options.outputDir || path.join(config.projectDir, '.arbiter', 'templates', 'github');
+
+    console.log(chalk.blue('🏗️ Scaffolding GitHub templates...'));
     console.log(chalk.dim(`Output directory: ${outputDir}\n`));
 
     // Ensure output directory exists
@@ -167,21 +180,21 @@ async function scaffoldTemplates(options: GitHubTemplateOptions, config: CLIConf
 
     // Copy templates from the existing created directory
     const existingTemplatesDir = path.join(config.projectDir, '.arbiter', 'templates', 'github');
-    
+
     const templates = [
       { name: 'base.hbs', description: 'Base template for all GitHub issues' },
       { name: 'epic.hbs', description: 'Epic template with task overview' },
       { name: 'task.hbs', description: 'Task template with implementation details' },
       { name: 'bug-report.hbs', description: 'Bug report template with reproduction steps' },
-      { name: 'feature-request.hbs', description: 'Feature request template with use cases' }
+      { name: 'feature-request.hbs', description: 'Feature request template with use cases' },
     ];
 
     // Create template files
     for (const template of templates) {
       const sourcePath = path.join(existingTemplatesDir, template.name);
       const targetPath = path.join(outputDir, template.name);
-      
-      if (await fs.pathExists(targetPath) && !options.force) {
+
+      if ((await fs.pathExists(targetPath)) && !options.force) {
         console.log(chalk.yellow(`⚠️  Skipping ${template.name} (already exists)`));
         continue;
       }
@@ -192,7 +205,7 @@ async function scaffoldTemplates(options: GitHubTemplateOptions, config: CLIConf
       } else {
         console.log(chalk.red(`❌ Source template ${template.name} not found`));
       }
-      
+
       if (options.verbose) {
         console.log(chalk.dim(`   ${template.description}`));
       }
@@ -201,13 +214,16 @@ async function scaffoldTemplates(options: GitHubTemplateOptions, config: CLIConf
     // Update or create config.json to reference templates
     await updateConfigForTemplates(config, outputDir);
 
-    console.log(chalk.green("\n🎉 Template scaffolding complete!"));
-    console.log(chalk.dim("Edit the template files to customize your GitHub issue templates."));
+    console.log(chalk.green('\n🎉 Template scaffolding complete!'));
+    console.log(chalk.dim('Edit the template files to customize your GitHub issue templates.'));
     console.log(chalk.dim("Use 'arbiter github-template --validate' to check your templates."));
 
     return 0;
   } catch (error) {
-    console.error(chalk.red("Failed to scaffold templates:"), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red('Failed to scaffold templates:'),
+      error instanceof Error ? error.message : String(error)
+    );
     return 1;
   }
 }
@@ -215,18 +231,21 @@ async function scaffoldTemplates(options: GitHubTemplateOptions, config: CLIConf
 /**
  * Validate template configuration and files
  */
-async function validateTemplates(options: GitHubTemplateOptions, config: CLIConfig): Promise<number> {
+async function validateTemplates(
+  options: GitHubTemplateOptions,
+  config: CLIConfig
+): Promise<number> {
   try {
-    console.log(chalk.blue("🔍 Validating template configuration...\n"));
+    console.log(chalk.blue('🔍 Validating template configuration...\n'));
 
     const templatesConfig = config.github?.templates || {};
     const templateManager = new FileBasedTemplateManager(templatesConfig, config.projectDir);
 
     // Validate configuration
     const errors = await templateManager.validateTemplateConfig();
-    
+
     if (errors.length === 0) {
-      console.log(chalk.green("✅ All template configurations are valid"));
+      console.log(chalk.green('✅ All template configurations are valid'));
     } else {
       console.log(chalk.red(`❌ Found ${errors.length} validation error(s):\n`));
       errors.forEach(error => {
@@ -245,7 +264,7 @@ async function validateTemplates(options: GitHubTemplateOptions, config: CLIConf
       try {
         // Test template loading with sample data
         const sampleData = getSampleDataForTemplate(templateType);
-        
+
         if (templateType === 'task') {
           await templateManager.generateTaskTemplate(sampleData.task, sampleData.epic);
         } else if (templateType === 'epic') {
@@ -255,7 +274,7 @@ async function validateTemplates(options: GitHubTemplateOptions, config: CLIConf
         } else if (templateType === 'featureRequest') {
           await templateManager.generateFeatureRequestTemplate(sampleData);
         }
-        
+
         console.log(chalk.green(`✅ ${templateType} template syntax is valid`));
       } catch (error) {
         syntaxErrors++;
@@ -265,16 +284,18 @@ async function validateTemplates(options: GitHubTemplateOptions, config: CLIConf
     }
 
     const totalErrors = errors.length + syntaxErrors;
-    
+
     if (totalErrors === 0) {
-      console.log(chalk.green("\n🎉 All templates are valid and ready to use!"));
+      console.log(chalk.green('\n🎉 All templates are valid and ready to use!'));
       return 0;
-    } else {
-      console.log(chalk.red(`\n💥 Found ${totalErrors} error(s) in templates.`));
-      return 1;
     }
+    console.log(chalk.red(`\n💥 Found ${totalErrors} error(s) in templates.`));
+    return 1;
   } catch (error) {
-    console.error(chalk.red("Failed to validate templates:"), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red('Failed to validate templates:'),
+      error instanceof Error ? error.message : String(error)
+    );
     return 1;
   }
 }
@@ -282,7 +303,11 @@ async function validateTemplates(options: GitHubTemplateOptions, config: CLIConf
 /**
  * Generate a specific template for testing
  */
-async function generateTemplate(templateType: string, options: GitHubTemplateOptions, config: CLIConfig): Promise<number> {
+async function generateTemplate(
+  templateType: string,
+  options: GitHubTemplateOptions,
+  config: CLIConfig
+): Promise<number> {
   try {
     console.log(chalk.blue(`🎯 Generating ${templateType} template...\n`));
 
@@ -310,26 +335,29 @@ async function generateTemplate(templateType: string, options: GitHubTemplateOpt
         break;
       default:
         console.error(chalk.red(`Unknown template type: ${templateType}`));
-        console.log("Available types: epic, task, bug-report, feature-request");
+        console.log('Available types: epic, task, bug-report, feature-request');
         return 1;
     }
 
-    console.log(chalk.green("Generated Template Output:\n"));
+    console.log(chalk.green('Generated Template Output:\n'));
     console.log(chalk.cyan(`Title: ${result.title}\n`));
-    console.log(chalk.dim("Body:"));
+    console.log(chalk.dim('Body:'));
     console.log(result.body);
-    
+
     if (result.labels.length > 0) {
       console.log(chalk.dim(`\nLabels: ${result.labels.join(', ')}`));
     }
-    
+
     if (result.assignees && result.assignees.length > 0) {
       console.log(chalk.dim(`Assignees: ${result.assignees.join(', ')}`));
     }
 
     return 0;
   } catch (error) {
-    console.error(chalk.red(`Failed to generate ${templateType} template:`), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red(`Failed to generate ${templateType} template:`),
+      error instanceof Error ? error.message : String(error)
+    );
     return 1;
   }
 }
@@ -339,7 +367,7 @@ async function generateTemplate(templateType: string, options: GitHubTemplateOpt
  */
 async function updateConfigForTemplates(config: CLIConfig, templatesDir: string): Promise<void> {
   const configPath = path.join(config.projectDir, '.arbiter', 'config.json');
-  
+
   // Read existing config
   let existingConfig: any = {};
   if (await fs.pathExists(configPath)) {
@@ -360,54 +388,54 @@ async function updateConfigForTemplates(config: CLIConfig, templatesDir: string)
   // Update templates configuration
   existingConfig.github.templates = {
     ...existingConfig.github.templates,
-    discoveryPaths: [relativeTemplatesDir, "~/.arbiter/templates/github"],
-    defaultExtension: "hbs",
+    discoveryPaths: [relativeTemplatesDir, '~/.arbiter/templates/github'],
+    defaultExtension: 'hbs',
     base: {
-      file: "base.hbs",
+      file: 'base.hbs',
       metadata: {
-        name: "Arbiter Base Template",
-        description: "Base template for all Arbiter-managed GitHub issues"
-      }
+        name: 'Arbiter Base Template',
+        description: 'Base template for all Arbiter-managed GitHub issues',
+      },
     },
     epic: {
-      file: "epic.hbs",
-      inherits: "base.hbs",
+      file: 'epic.hbs',
+      inherits: 'base.hbs',
       metadata: {
-        name: "Epic",
-        description: "Template for epic issues",
-        labels: ["epic", "priority:{{priority}}", "status:{{status}}"]
-      }
+        name: 'Epic',
+        description: 'Template for epic issues',
+        labels: ['epic', 'priority:{{priority}}', 'status:{{status}}'],
+      },
     },
     task: {
-      file: "task.hbs",
-      inherits: "base.hbs",
+      file: 'task.hbs',
+      inherits: 'base.hbs',
       metadata: {
-        name: "Task",
-        description: "Template for task issues",
-        labels: ["type:{{type}}", "priority:{{priority}}", "status:{{status}}", "epic:{{epicId}}"]
-      }
+        name: 'Task',
+        description: 'Template for task issues',
+        labels: ['type:{{type}}', 'priority:{{priority}}', 'status:{{status}}', 'epic:{{epicId}}'],
+      },
     },
     bugReport: {
-      file: "bug-report.hbs",
+      file: 'bug-report.hbs',
       metadata: {
-        name: "Bug Report",
-        description: "Template for bug report issues",
-        labels: ["type:bug", "priority:{{priority}}"]
-      }
+        name: 'Bug Report',
+        description: 'Template for bug report issues',
+        labels: ['type:bug', 'priority:{{priority}}'],
+      },
     },
     featureRequest: {
-      file: "feature-request.hbs",
+      file: 'feature-request.hbs',
       metadata: {
-        name: "Feature Request",
-        description: "Template for feature request issues",
-        labels: ["type:feature", "priority:{{priority}}"]
-      }
-    }
+        name: 'Feature Request',
+        description: 'Template for feature request issues',
+        labels: ['type:feature', 'priority:{{priority}}'],
+      },
+    },
   };
 
   // Write updated config
   await fs.writeJson(configPath, existingConfig, { spaces: 2 });
-  console.log(chalk.dim("📝 Updated .arbiter/config.json with template references"));
+  console.log(chalk.dim('📝 Updated .arbiter/config.json with template references'));
 }
 
 /**
@@ -415,138 +443,152 @@ async function updateConfigForTemplates(config: CLIConfig, templatesDir: string)
  */
 function getSampleDataForTemplate(templateType: string): any {
   const baseData = {
-    id: "sample-001",
-    name: "Sample Item",
-    description: "This is a sample description for testing the template.",
-    priority: "high",
-    status: "in_progress",
-    assignee: "sample-user",
+    id: 'sample-001',
+    name: 'Sample Item',
+    description: 'This is a sample description for testing the template.',
+    priority: 'high',
+    status: 'in_progress',
+    assignee: 'sample-user',
     estimatedHours: 8,
     acceptanceCriteria: [
-      "First acceptance criterion",
-      "Second acceptance criterion",
-      "Third acceptance criterion"
+      'First acceptance criterion',
+      'Second acceptance criterion',
+      'Third acceptance criterion',
     ],
-    dependencies: [
-      "Complete prerequisite task A",
-      "Review with stakeholders"
-    ]
+    dependencies: ['Complete prerequisite task A', 'Review with stakeholders'],
   };
 
   switch (templateType.toLowerCase()) {
     case 'epic':
       return {
         ...baseData,
-        name: "Sample Epic",
-        successCriteria: "Epic is complete when all tasks are done and users can successfully use the new feature",
-        inScope: ["Feature A development", "Integration testing", "User documentation"],
-        outOfScope: ["Advanced analytics", "Mobile app updates"],
+        name: 'Sample Epic',
+        successCriteria:
+          'Epic is complete when all tasks are done and users can successfully use the new feature',
+        inScope: ['Feature A development', 'Integration testing', 'User documentation'],
+        outOfScope: ['Advanced analytics', 'Mobile app updates'],
         tasks: [
           {
-            id: "task-001",
-            name: "Implement core functionality",
-            type: "feature",
-            priority: "high",
-            status: "todo",
-            estimatedHours: 5
+            id: 'task-001',
+            name: 'Implement core functionality',
+            type: 'feature',
+            priority: 'high',
+            status: 'todo',
+            estimatedHours: 5,
           },
           {
-            id: "task-002", 
-            name: "Add error handling",
-            type: "feature",
-            priority: "medium",
-            status: "todo",
-            estimatedHours: 3
-          }
+            id: 'task-002',
+            name: 'Add error handling',
+            type: 'feature',
+            priority: 'medium',
+            status: 'todo',
+            estimatedHours: 3,
+          },
         ],
         stakeholders: [
-          { role: "Product Owner", username: "product-owner" },
-          { role: "Tech Lead", username: "tech-lead" }
-        ]
+          { role: 'Product Owner', username: 'product-owner' },
+          { role: 'Tech Lead', username: 'tech-lead' },
+        ],
       };
 
     case 'task':
       return {
         task: {
           ...baseData,
-          name: "Sample Task",
-          type: "feature",
-          context: "This task is needed to implement the new user authentication flow.",
-          implementationNotes: "Use the existing authentication library and extend it for SSO support.",
+          name: 'Sample Task',
+          type: 'feature',
+          context: 'This task is needed to implement the new user authentication flow.',
+          implementationNotes:
+            'Use the existing authentication library and extend it for SSO support.',
           testScenarios: [
-            "User logs in with SSO",
-            "User logs in with existing credentials",
-            "Invalid credentials are handled correctly"
+            'User logs in with SSO',
+            'User logs in with existing credentials',
+            'Invalid credentials are handled correctly',
           ],
-          technicalNotes: "Requires updating the user model and adding new API endpoints.",
+          technicalNotes: 'Requires updating the user model and adding new API endpoints.',
           subtasks: [
-            { name: "Update user model", description: "Add SSO fields to user schema" },
-            { name: "Create SSO endpoints", description: "Implement /auth/sso endpoints" }
-          ]
+            { name: 'Update user model', description: 'Add SSO fields to user schema' },
+            { name: 'Create SSO endpoints', description: 'Implement /auth/sso endpoints' },
+          ],
         },
         epic: {
-          id: "epic-001",
-          name: "User Authentication Epic"
-        }
+          id: 'epic-001',
+          name: 'User Authentication Epic',
+        },
       };
 
     case 'bug-report':
     case 'bug':
       return {
         ...baseData,
-        summary: "Login button not responding on Safari",
+        summary: 'Login button not responding on Safari',
         stepsToReproduce: [
-          "Open the application in Safari browser",
-          "Navigate to the login page",
+          'Open the application in Safari browser',
+          'Navigate to the login page',
           "Click the 'Log In' button",
-          "Observe that nothing happens"
+          'Observe that nothing happens',
         ],
-        expectedBehavior: "Login modal should appear when clicking the Log In button",
-        actualBehavior: "Clicking the button has no effect and no modal appears",
+        expectedBehavior: 'Login modal should appear when clicking the Log In button',
+        actualBehavior: 'Clicking the button has no effect and no modal appears',
         environment: {
-          os: "macOS 12.6",
-          browser: "Safari 16.1",
-          version: "v2.1.0",
-          additional: "Issue only occurs on Safari, works fine on Chrome and Firefox"
+          os: 'macOS 12.6',
+          browser: 'Safari 16.1',
+          version: 'v2.1.0',
+          additional: 'Issue only occurs on Safari, works fine on Chrome and Firefox',
         },
         impact: {
-          affectedUsers: "~15% of users using Safari browser",
-          frequency: "Every time user tries to log in via Safari",
-          businessImpact: "Users cannot access the application, leading to potential churn"
+          affectedUsers: '~15% of users using Safari browser',
+          frequency: 'Every time user tries to log in via Safari',
+          businessImpact: 'Users cannot access the application, leading to potential churn',
         },
-        workaround: "Users can use Chrome or Firefox browser as an alternative",
-        severity: "high",
-        reportedBy: "qa-tester"
+        workaround: 'Users can use Chrome or Firefox browser as an alternative',
+        severity: 'high',
+        reportedBy: 'qa-tester',
       };
 
     case 'feature-request':
     case 'feature':
       return {
         ...baseData,
-        summary: "Add dark mode support",
-        problemStatement: "Many users work in low-light environments and find the current light theme straining on their eyes, especially during extended usage sessions.",
-        proposedSolution: "Implement a dark mode theme that users can toggle between light and dark modes. The preference should be saved and persist across sessions.",
+        summary: 'Add dark mode support',
+        problemStatement:
+          'Many users work in low-light environments and find the current light theme straining on their eyes, especially during extended usage sessions.',
+        proposedSolution:
+          'Implement a dark mode theme that users can toggle between light and dark modes. The preference should be saved and persist across sessions.',
         useCases: [
-          { userType: "developer", goal: "work in low-light environments", benefit: "I can reduce eye strain during long coding sessions" },
-          { userType: "designer", goal: "review designs in different contexts", benefit: "I can see how designs look in both light and dark themes" },
-          { userType: "power user", goal: "customize my interface", benefit: "I can personalize my workspace according to my preferences" }
+          {
+            userType: 'developer',
+            goal: 'work in low-light environments',
+            benefit: 'I can reduce eye strain during long coding sessions',
+          },
+          {
+            userType: 'designer',
+            goal: 'review designs in different contexts',
+            benefit: 'I can see how designs look in both light and dark themes',
+          },
+          {
+            userType: 'power user',
+            goal: 'customize my interface',
+            benefit: 'I can personalize my workspace according to my preferences',
+          },
         ],
-        alternativesConsidered: "We considered automatic dark mode based on system settings, but decided to give users explicit control over the theme choice.",
+        alternativesConsidered:
+          'We considered automatic dark mode based on system settings, but decided to give users explicit control over the theme choice.',
         impact: {
-          potentialUsers: "Survey indicates 60% of users would use dark mode",
-          businessValue: "Improved user satisfaction and reduced eye strain complaints",
-          technicalComplexity: "Medium - requires CSS theme system and preference storage",
-          dependencies: "None - can be implemented independently"
+          potentialUsers: 'Survey indicates 60% of users would use dark mode',
+          businessValue: 'Improved user satisfaction and reduced eye strain complaints',
+          technicalComplexity: 'Medium - requires CSS theme system and preference storage',
+          dependencies: 'None - can be implemented independently',
         },
         technicalRequirements: [
-          "CSS custom properties for theme switching",
-          "User preference storage in localStorage/database", 
-          "Toggle component in user settings",
-          "Dark mode versions of all UI components"
+          'CSS custom properties for theme switching',
+          'User preference storage in localStorage/database',
+          'Toggle component in user settings',
+          'Dark mode versions of all UI components',
         ],
-        targetVersion: "v2.2.0",
-        effortEstimate: "2-3 sprints",
-        requestedBy: "user-research-team"
+        targetVersion: 'v2.2.0',
+        effortEstimate: '2-3 sprints',
+        requestedBy: 'user-research-team',
       };
 
     default:

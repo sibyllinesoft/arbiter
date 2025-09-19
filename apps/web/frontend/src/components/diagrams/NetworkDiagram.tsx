@@ -134,13 +134,13 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
     networkRef.current = new Network(containerRef.current, data, defaultOptions);
 
     // Add event listeners
-    networkRef.current.on('click', (params) => {
+    networkRef.current.on('click', params => {
       if (params.nodes.length > 0) {
         console.log('Node clicked:', params.nodes[0]);
       }
     });
 
-    networkRef.current.on('hoverNode', (params) => {
+    networkRef.current.on('hoverNode', params => {
       document.body.style.cursor = 'pointer';
     });
 
@@ -160,17 +160,9 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
 
   return (
     <div className={className}>
-      {title && (
-        <h4 className="text-sm font-semibold text-gray-700 mb-4 text-center">
-          {title}
-        </h4>
-      )}
+      {title && <h4 className="text-sm font-semibold text-gray-700 mb-4 text-center">{title}</h4>}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div 
-          ref={containerRef}
-          className="w-full h-96"
-          style={{ minHeight: '400px' }}
-        />
+        <div ref={containerRef} className="w-full h-96" style={{ minHeight: '400px' }} />
       </div>
     </div>
   );

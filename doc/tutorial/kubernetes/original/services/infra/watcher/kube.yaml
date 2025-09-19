@@ -16,16 +16,15 @@ spec:
         component: infra
     spec:
       volumes:
-      - name: secret-volume
-        secret:
-          secretName: star-example-com-secrets
+        - name: secret-volume
+          secret:
+            secretName: star-example-com-secrets
       containers:
-      - image: gcr.io/myproj/watcher:v0.1.0
-        ports:
-        - containerPort: 7080
-        - containerPort: 7788
-        name: watcher
-        volumeMounts:
-          - mountPath: /etc/ssl
-            name: secret-volume
-
+        - image: gcr.io/myproj/watcher:v0.1.0
+          ports:
+            - containerPort: 7080
+            - containerPort: 7788
+          name: watcher
+          volumeMounts:
+            - mountPath: /etc/ssl
+              name: secret-volume

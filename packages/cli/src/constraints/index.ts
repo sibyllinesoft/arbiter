@@ -1,38 +1,38 @@
-import { EventEmitter } from "node:events";
-import chalk from "chalk";
-import type { CLIConfig } from "../types.js";
+import { EventEmitter } from 'node:events';
+import chalk from 'chalk';
+import type { CLIConfig } from '../types.js';
 import {
-  type Constraints,
   ConstraintViolationError,
-  constrainedOperation,
+  type Constraints,
   DEFAULT_CONSTRAINTS,
+  constrainedOperation,
   globalConstraintEnforcer,
-} from "./core.js";
+} from './core.js';
 import {
+  type FileSystemOperation,
   bundleStandalone,
   copyStandalone,
-  type FileSystemOperation,
   globalFileSystemConstraints,
   safeFileOperation,
-} from "./filesystem.js";
+} from './filesystem.js';
 import {
-  globalIdempotencyValidator,
   type IdempotentOperation,
+  globalIdempotencyValidator,
   validateIdempotentEdits,
   withIdempotencyValidation,
-} from "./idempotency.js";
+} from './idempotency.js';
 import {
+  type SandboxValidator,
+  type SandboxedOperation,
   createSandboxValidator,
   initializeSandboxConfig,
-  type SandboxedOperation,
-  type SandboxValidator,
-} from "./sandbox.js";
+} from './sandbox.js';
 import {
+  LATEST_API_VERSION,
   ensureLatestSchema,
   globalSchemaValidator,
-  LATEST_API_VERSION,
   validateReadData,
-} from "./schema.js";
+} from './schema.js';
 
 /**
  * Comprehensive constraint violation summary
@@ -107,7 +107,7 @@ export class ConstraintSystem extends EventEmitter {
       idempotent?: IdempotentOperation;
     },
     executor: () => Promise<T>,
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<T> {
     return constrainedOperation(
       operation,
@@ -126,7 +126,7 @@ export class ConstraintSystem extends EventEmitter {
             result = await withIdempotencyValidation(
               operationType.idempotent,
               { operation, metadata },
-              executor,
+              executor
             );
           } else {
             result = await executor();
@@ -145,7 +145,7 @@ export class ConstraintSystem extends EventEmitter {
           }
         }
       },
-      metadata,
+      metadata
     );
   }
 
@@ -155,7 +155,7 @@ export class ConstraintSystem extends EventEmitter {
   async validateFileOperation(
     operation: FileSystemOperation,
     filePaths: string[],
-    operationId?: string,
+    operationId?: string
   ): Promise<void> {
     for (const filePath of filePaths) {
       await globalFileSystemConstraints.validatePath(filePath, operation, operationId);
@@ -193,7 +193,7 @@ export class ConstraintSystem extends EventEmitter {
   async exportWithConstraints(
     files: Record<string, string>,
     outputDir: string,
-    format?: string,
+    format?: string
   ): Promise<void> {
     const operationId = this.startExportOperation(files, outputDir, format);
 
@@ -210,9 +210,9 @@ export class ConstraintSystem extends EventEmitter {
   private startExportOperation(
     files: Record<string, string>,
     outputDir: string,
-    format?: string,
+    format?: string
   ): string {
-    return globalConstraintEnforcer.startOperation("constrained_export", {
+    return globalConstraintEnforcer.startOperation('constrained_export', {
       fileCount: Object.keys(files).length,
       outputDir,
       format,
@@ -225,7 +225,7 @@ export class ConstraintSystem extends EventEmitter {
   private async performConstrainedExport(
     files: Record<string, string>,
     outputDir: string,
-    operationId: string,
+    operationId: string
   ): Promise<void> {
     this.validateFilePayloads(files, operationId);
     await this.executeFileSystemExport(files, outputDir, operationId);
@@ -238,7 +238,7 @@ export class ConstraintSystem extends EventEmitter {
   private async executeFileSystemExport(
     files: Record<string, string>,
     outputDir: string,
-    operationId: string,
+    operationId: string
   ): Promise<void> {
     await globalFileSystemConstraints.exportFiles(files, outputDir, operationId);
   }
@@ -247,14 +247,14 @@ export class ConstraintSystem extends EventEmitter {
    * Bundle files with constraint enforcement
    */
   async bundleWithConstraints(files: string[], outputDir: string): Promise<void> {
-    const operationId = globalConstraintEnforcer.startOperation("constrained_bundle", {
+    const operationId = globalConstraintEnforcer.startOperation('constrained_bundle', {
       fileCount: files.length,
       outputDir,
     });
 
     try {
       // Validate all file paths first
-      await this.validateFileOperation("bundle", files, operationId);
+      await this.validateFileOperation('bundle', files, operationId);
 
       // Use standalone copy bundling (no symlinks)
       await bundleStandalone(files, outputDir, operationId);
@@ -326,71 +326,71 @@ export class ConstraintSystem extends EventEmitter {
     const status = this.getSystemStatus();
     const lines: string[] = [];
 
-    lines.push(chalk.bold("🛡️  Constraint System Status"));
-    lines.push("");
+    lines.push(chalk.bold('🛡️  Constraint System Status'));
+    lines.push('');
 
     // Overall health
     const healthColor = status.isHealthy ? chalk.green : chalk.red;
-    const healthStatus = status.isHealthy ? "HEALTHY" : "VIOLATIONS DETECTED";
+    const healthStatus = status.isHealthy ? 'HEALTHY' : 'VIOLATIONS DETECTED';
     lines.push(`Overall Status: ${healthColor(healthStatus)}`);
     lines.push(`Compliance Rate: ${this.formatComplianceRate(status.violations.complianceRate)}`);
-    lines.push("");
+    lines.push('');
 
     // Constraint details
-    lines.push(chalk.bold("Constraint Limits:"));
+    lines.push(chalk.bold('Constraint Limits:'));
     lines.push(`  Max Payload Size: ${this.formatBytes(status.constraints.maxPayloadSize)}`);
     lines.push(`  Max Operation Time: ${status.constraints.maxOperationTime}ms`);
     lines.push(
-      `  Rate Limit: ${status.constraints.rateLimit.requests} req/${status.constraints.rateLimit.windowMs}ms`,
+      `  Rate Limit: ${status.constraints.rateLimit.requests} req/${status.constraints.rateLimit.windowMs}ms`
     );
     lines.push(`  API Version: ${status.constraints.apiVersion}`);
     lines.push(`  Symlink Depth: ${status.constraints.maxSymlinkDepth} (symlinks forbidden)`);
-    lines.push("");
+    lines.push('');
 
     // Violations
     if (status.violations.totalViolations > 0) {
-      lines.push(chalk.bold(chalk.red("Violations:")));
+      lines.push(chalk.bold(chalk.red('Violations:')));
       for (const [constraint, count] of Object.entries(status.violations.byConstraint)) {
         if (count > 0) {
-          lines.push(`  ${chalk.red("✗")} ${constraint}: ${count} violations`);
+          lines.push(`  ${chalk.red('✗')} ${constraint}: ${count} violations`);
         }
       }
 
       if (status.violations.criticalViolations.length > 0) {
-        lines.push("");
-        lines.push(chalk.bold(chalk.red("Critical Issues:")));
+        lines.push('');
+        lines.push(chalk.bold(chalk.red('Critical Issues:')));
         for (const critical of status.violations.criticalViolations) {
-          lines.push(`  ${chalk.red("⚠")} ${critical}`);
+          lines.push(`  ${chalk.red('⚠')} ${critical}`);
         }
       }
 
-      lines.push("");
-      lines.push(chalk.bold("Suggestions:"));
+      lines.push('');
+      lines.push(chalk.bold('Suggestions:'));
       for (const suggestion of status.violations.suggestions) {
-        lines.push(`  ${chalk.yellow("💡")} ${suggestion}`);
+        lines.push(`  ${chalk.yellow('💡')} ${suggestion}`);
       }
     } else {
-      lines.push(chalk.green("✅ No constraint violations detected"));
+      lines.push(chalk.green('✅ No constraint violations detected'));
     }
 
-    lines.push("");
+    lines.push('');
 
     // Component status
-    lines.push(chalk.bold("Component Status:"));
+    lines.push(chalk.bold('Component Status:'));
     lines.push(
-      `  Sandbox: ${status.sandbox.activeOperations} active ops, ${status.sandbox.complianceRate.toFixed(1)}% compliant`,
+      `  Sandbox: ${status.sandbox.activeOperations} active ops, ${status.sandbox.complianceRate.toFixed(1)}% compliant`
     );
     lines.push(
-      `  File System: ${status.fileSystem.symlinks} symlinks, ${status.fileSystem.invalidPaths} invalid paths`,
+      `  File System: ${status.fileSystem.symlinks} symlinks, ${status.fileSystem.invalidPaths} invalid paths`
     );
     lines.push(
-      `  Idempotency: ${status.idempotency.cacheSize} cached, ${status.idempotency.validations} validated`,
+      `  Idempotency: ${status.idempotency.cacheSize} cached, ${status.idempotency.validations} validated`
     );
     lines.push(
-      `  Schema: version ${status.schema.latestVersion}, ${status.schema.deprecatedWarnings} warnings`,
+      `  Schema: version ${status.schema.latestVersion}, ${status.schema.deprecatedWarnings} warnings`
     );
 
-    return lines.join("\n");
+    return lines.join('\n');
   }
 
   /**
@@ -404,7 +404,7 @@ export class ConstraintSystem extends EventEmitter {
     this.removeAllListeners();
     globalConstraintEnforcer.removeAllListeners();
 
-    this.emit("constraint_system:shutdown");
+    this.emit('constraint_system:shutdown');
   }
 
   /**
@@ -412,24 +412,19 @@ export class ConstraintSystem extends EventEmitter {
    */
   private setupViolationTracking(): void {
     // Track violations from core enforcer
-    globalConstraintEnforcer.on("constraint:violation", (event) => {
+    globalConstraintEnforcer.on('constraint:violation', event => {
       this.incrementViolationCount(event.constraint);
-      this.emit("violation", {
+      this.emit('violation', {
         constraint: event.constraint,
         violation: event.violation,
         timestamp: Date.now(),
       });
     });
 
-    // Track sandbox violations
-    this.sandboxValidator.on?.("constraint:violation", (_event) => {
-      this.incrementViolationCount("sandboxCompliance");
-    });
-
     // Track performance violations
-    globalConstraintEnforcer.on("operation:end", (event) => {
+    globalConstraintEnforcer.on('operation:end', event => {
       if (event.duration > this.constraints.maxOperationTime) {
-        this.incrementViolationCount("maxOperationTime");
+        this.incrementViolationCount('maxOperationTime');
       }
     });
   }
@@ -443,16 +438,16 @@ export class ConstraintSystem extends EventEmitter {
       () => {
         globalIdempotencyValidator.clearExpiredCache();
       },
-      5 * 60 * 1000,
+      5 * 60 * 1000
     );
 
     // Reset violation counts daily
     setInterval(
       () => {
         this.violationCounts.clear();
-        this.emit("violation_counts:reset");
+        this.emit('violation_counts:reset');
       },
-      24 * 60 * 60 * 1000,
+      24 * 60 * 60 * 1000
     );
   }
 
@@ -460,7 +455,7 @@ export class ConstraintSystem extends EventEmitter {
    * Check if data looks like API envelope data
    */
   private isApiData(data: unknown): data is Record<string, unknown> {
-    return typeof data === "object" && data !== null && "apiVersion" in data && "kind" in data;
+    return typeof data === 'object' && data !== null && 'apiVersion' in data && 'kind' in data;
   }
 
   /**
@@ -480,23 +475,23 @@ export class ConstraintSystem extends EventEmitter {
     for (const [constraint, count] of this.violationCounts.entries()) {
       if (count > 0) {
         switch (constraint) {
-          case "maxPayloadSize":
-            critical.push("Payload size limits exceeded - requests/responses too large");
+          case 'maxPayloadSize':
+            critical.push('Payload size limits exceeded - requests/responses too large');
             break;
-          case "maxOperationTime":
-            critical.push("Operations taking too long - performance issues detected");
+          case 'maxOperationTime':
+            critical.push('Operations taking too long - performance issues detected');
             break;
-          case "sandboxCompliance":
-            critical.push("Direct tool execution detected - must use server endpoints");
+          case 'sandboxCompliance':
+            critical.push('Direct tool execution detected - must use server endpoints');
             break;
-          case "symlinkPrevention":
-            critical.push("Symlinks detected - must use standalone file copies");
+          case 'symlinkPrevention':
+            critical.push('Symlinks detected - must use standalone file copies');
             break;
-          case "apiVersion":
-            critical.push("Outdated API versions in use - must use latest schema");
+          case 'apiVersion':
+            critical.push('Outdated API versions in use - must use latest schema');
             break;
-          case "idempotency":
-            critical.push("Non-idempotent operations detected - results are inconsistent");
+          case 'idempotency':
+            critical.push('Non-idempotent operations detected - results are inconsistent');
             break;
         }
       }
@@ -514,24 +509,24 @@ export class ConstraintSystem extends EventEmitter {
     for (const [constraint, count] of this.violationCounts.entries()) {
       if (count > 0) {
         switch (constraint) {
-          case "maxPayloadSize":
-            suggestions.push("Consider pagination or compression for large datasets");
+          case 'maxPayloadSize':
+            suggestions.push('Consider pagination or compression for large datasets');
             break;
-          case "maxOperationTime":
-            suggestions.push("Optimize algorithms or implement caching for better performance");
+          case 'maxOperationTime':
+            suggestions.push('Optimize algorithms or implement caching for better performance');
             break;
-          case "rateLimit":
-            suggestions.push("Implement request queuing or batch operations");
+          case 'rateLimit':
+            suggestions.push('Implement request queuing or batch operations');
             break;
-          case "sandboxCompliance":
+          case 'sandboxCompliance':
             suggestions.push(
-              "Ensure all analyze/validate operations use API client instead of direct tools",
+              'Ensure all analyze/validate operations use API client instead of direct tools'
             );
             break;
-          case "symlinkPrevention":
-            suggestions.push("Use file copying utilities that create standalone copies");
+          case 'symlinkPrevention':
+            suggestions.push('Use file copying utilities that create standalone copies');
             break;
-          case "apiVersion":
+          case 'apiVersion':
             suggestions.push(`Update all schemas to use API version ${LATEST_API_VERSION}`);
             break;
         }
@@ -554,13 +549,13 @@ export class ConstraintSystem extends EventEmitter {
    * Format bytes in human-readable format
    */
   private formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 B";
+    if (bytes === 0) return '0 B';
 
     const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
+    const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-    return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+    return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
   }
 }
 
@@ -600,7 +595,7 @@ export {
  */
 export function createConstraintSystem(
   config: CLIConfig,
-  constraints?: Partial<Constraints>,
+  constraints?: Partial<Constraints>
 ): ConstraintSystem {
   return new ConstraintSystem(config, constraints);
 }
@@ -615,7 +610,7 @@ let globalConstraintSystem: ConstraintSystem | null = null;
  */
 export function initializeGlobalConstraintSystem(
   config: CLIConfig,
-  constraints?: Partial<Constraints>,
+  constraints?: Partial<Constraints>
 ): ConstraintSystem {
   globalConstraintSystem = new ConstraintSystem(config, constraints);
   return globalConstraintSystem;
@@ -627,7 +622,7 @@ export function initializeGlobalConstraintSystem(
 export function getGlobalConstraintSystem(): ConstraintSystem {
   if (!globalConstraintSystem) {
     throw new Error(
-      "Constraint system not initialized. Call initializeGlobalConstraintSystem first.",
+      'Constraint system not initialized. Call initializeGlobalConstraintSystem first.'
     );
   }
   return globalConstraintSystem;

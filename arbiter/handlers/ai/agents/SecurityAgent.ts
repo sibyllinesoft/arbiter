@@ -1,17 +1,17 @@
-import type { WebhookEvent, HandlerResponse } from '../../shared/utils.js';
-import type { AIAgentConfig, AICommand } from '../base/types.js';
-import { AIAgentHandler } from '../base/AIAgentHandler.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
+import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
+import { createResponse } from '../../shared/utils.js';
 import { GitHubPRAdapter } from '../adapters/github/GitHubPRAdapter.js';
 import { GitHubPushAdapter } from '../adapters/github/GitHubPushAdapter.js';
 import { GitLabMRAdapter } from '../adapters/gitlab/GitLabMRAdapter.js';
-import { createResponse } from '../../shared/utils.js';
+import { AIAgentHandler } from '../base/AIAgentHandler.js';
+import type { AIAgentConfig, AICommand } from '../base/types.js';
+import { ClaudeProvider } from '../providers/ClaudeProvider.js';
+import { GeminiProvider } from '../providers/GeminiProvider.js';
+import { OpenAIProvider } from '../providers/OpenAIProvider.js';
 
 /**
  * AI-powered Security Agent
- * 
+ *
  * This agent automatically scans code for security vulnerabilities, providing:
  * - Vulnerability detection and analysis
  * - Security best practices compliance
@@ -19,7 +19,7 @@ import { createResponse } from '../../shared/utils.js';
  * - Authentication and authorization review
  * - Data protection and privacy compliance
  * - Security configuration analysis
- * 
+ *
  * Supported commands:
  * - /security-scan - Comprehensive security analysis
  * - /vulnerability-check - Specific vulnerability detection
@@ -47,7 +47,7 @@ export class SecurityAgent extends AIAgentHandler {
     }
 
     super(config, provider);
-    
+
     // Register adapters for different platforms
     this.registerAdapter('github', 'pull_request', new GitHubPRAdapter());
     this.registerAdapter('github', 'push', new GitHubPushAdapter());
@@ -247,12 +247,7 @@ For each dependency issue:
       name: 'auth-review',
       description: 'Authentication and authorization security review',
       usage: '/auth-review [focus]',
-      examples: [
-        '/auth-review',
-        '/auth-review oauth',
-        '/auth-review jwt',
-        '/auth-review rbac',
-      ],
+      examples: ['/auth-review', '/auth-review oauth', '/auth-review jwt', '/auth-review rbac'],
       requiresArgs: false,
       prompt: `Review authentication and authorization mechanisms in the code changes. Focus on:
 
@@ -426,12 +421,15 @@ Provide specific configuration recommendations and potential security risks of c
   /**
    * Process standard events (automatic security scanning)
    */
-  protected async processEvent(eventData: any, originalEvent: WebhookEvent): Promise<HandlerResponse> {
+  protected async processEvent(
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<HandlerResponse> {
     // Check if automatic security scanning is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, 'Automatic security scanning disabled', { 
+      return createResponse(true, 'Automatic security scanning disabled', {
         skipped: true,
-        reason: 'auto_response_disabled' 
+        reason: 'auto_response_disabled',
       });
     }
 
@@ -439,9 +437,9 @@ Provide specific configuration recommendations and potential security risks of c
     const shouldAutoScan = this.shouldPerformSecurityScan(eventData);
 
     if (!shouldAutoScan) {
-      return createResponse(true, 'Event does not require automatic security scan', { 
+      return createResponse(true, 'Event does not require automatic security scan', {
         skipped: true,
-        reason: 'no_security_scan_needed' 
+        reason: 'no_security_scan_needed',
       });
     }
 
@@ -457,7 +455,7 @@ Provide specific configuration recommendations and potential security risks of c
       };
 
       const aiResponse = await this.provider.processCommand(scanCommand, aiContext);
-      
+
       if (!aiResponse.success) {
         return createResponse(false, `Automatic security scan failed: ${aiResponse.error}`);
       }
@@ -472,7 +470,6 @@ Provide specific configuration recommendations and potential security risks of c
         securityScan: aiResponse.data,
         actions: actionResults,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return createResponse(false, `Automatic security scan error: ${errorMessage}`);
@@ -484,14 +481,15 @@ Provide specific configuration recommendations and potential security risks of c
    */
   private shouldPerformSecurityScan(eventData: any): boolean {
     // Scan all PRs to protected branches
-    if (eventData.pullRequest && 
-        eventData.pullRequest.targetBranch &&
-        ['main', 'master', 'develop', 'production'].includes(eventData.pullRequest.targetBranch)) {
+    if (
+      eventData.pullRequest?.targetBranch &&
+      ['main', 'master', 'develop', 'production'].includes(eventData.pullRequest.targetBranch)
+    ) {
       return true;
     }
 
     // Scan pushes to protected branches
-    if (eventData.push && eventData.push.isProtectedBranch) {
+    if (eventData.push?.isProtectedBranch) {
       return true;
     }
 
@@ -508,17 +506,32 @@ Provide specific configuration recommendations and potential security risks of c
    */
   private hasSecurityRelevantChanges(eventData: any): boolean {
     const securityKeywords = [
-      'auth', 'security', 'password', 'token', 'jwt', 'oauth',
-      'encrypt', 'decrypt', 'hash', 'crypto', 'ssl', 'tls',
-      'permission', 'role', 'access', 'privilege', 'cors',
-      'csrf', 'xss', 'injection', 'vulnerability', 'cve'
+      'auth',
+      'security',
+      'password',
+      'token',
+      'jwt',
+      'oauth',
+      'encrypt',
+      'decrypt',
+      'hash',
+      'crypto',
+      'ssl',
+      'tls',
+      'permission',
+      'role',
+      'access',
+      'privilege',
+      'cors',
+      'csrf',
+      'xss',
+      'injection',
+      'vulnerability',
+      'cve',
     ];
 
-    const searchText = (
-      eventData.pullRequest?.title + ' ' +
-      eventData.pullRequest?.body + ' ' +
-      (eventData.push?.commits?.map((c: any) => c.message).join(' ') || '')
-    ).toLowerCase();
+    const searchText =
+      `${eventData.pullRequest?.title} ${eventData.pullRequest?.body} ${eventData.push?.commits?.map((c: any) => c.message).join(' ') || ''}`.toLowerCase();
 
     return securityKeywords.some(keyword => searchText.includes(keyword));
   }
@@ -526,20 +539,24 @@ Provide specific configuration recommendations and potential security risks of c
   /**
    * Execute security-specific actions
    */
-  protected async executeAction(action: any, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  protected async executeAction(
+    action: any,
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     switch (action.type) {
       case 'comment':
         return await this.postSecurityComment(action.data, eventData, originalEvent);
-      
+
       case 'label':
         return await this.addSecurityLabels(action.data, eventData, originalEvent);
-      
+
       case 'issue':
         return await this.createSecurityIssue(action.data, eventData, originalEvent);
-      
+
       case 'webhook':
         return await this.triggerSecurityWebhook(action.data, eventData, originalEvent);
-      
+
       default:
         throw new Error(`Unsupported action type: ${action.type}`);
     }
@@ -548,15 +565,19 @@ Provide specific configuration recommendations and potential security risks of c
   /**
    * Post security analysis comment
    */
-  private async postSecurityComment(data: { body: string }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async postSecurityComment(
+    data: { body: string },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     await this.logActivity({
       type: 'ai.agent.action.comment',
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
       action: 'security_comment',
-      target: eventData.pullRequest ? 
-        `PR #${eventData.pullRequest.number}` : 
-        `Push to ${eventData.push?.branch}`,
+      target: eventData.pullRequest
+        ? `PR #${eventData.pullRequest.number}`
+        : `Push to ${eventData.push?.branch}`,
       preview: data.body.substring(0, 100),
     });
 
@@ -572,13 +593,17 @@ Provide specific configuration recommendations and potential security risks of c
   /**
    * Add security-related labels
    */
-  private async addSecurityLabels(data: { labels: string[] }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async addSecurityLabels(
+    data: { labels: string[] },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     // Ensure security labels are prefixed appropriately
     const securityLabels = data.labels.map(label => {
       if (!label.startsWith('security') && !label.startsWith('vulnerability')) {
-        return label.includes('critical') || label.includes('high') ? 
-          `security:${label}` : 
-          `security:${label}`;
+        return label.includes('critical') || label.includes('high')
+          ? `security:${label}`
+          : `security:${label}`;
       }
       return label;
     });
@@ -588,9 +613,7 @@ Provide specific configuration recommendations and potential security risks of c
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
       action: 'security_label',
-      target: eventData.pullRequest ? 
-        `PR #${eventData.pullRequest.number}` : 
-        'Repository',
+      target: eventData.pullRequest ? `PR #${eventData.pullRequest.number}` : 'Repository',
       labels: securityLabels,
     });
 
@@ -606,9 +629,13 @@ Provide specific configuration recommendations and potential security risks of c
   /**
    * Create security issue for vulnerabilities
    */
-  private async createSecurityIssue(data: { title: string; body: string; labels?: string[]; severity?: string }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async createSecurityIssue(
+    data: { title: string; body: string; labels?: string[]; severity?: string },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     const securityLabels = ['security', ...(data.labels || [])];
-    
+
     if (data.severity) {
       securityLabels.push(`severity:${data.severity.toLowerCase()}`);
     }
@@ -637,7 +664,11 @@ Provide specific configuration recommendations and potential security risks of c
   /**
    * Trigger security webhook (for SIEM, security tools, etc.)
    */
-  private async triggerSecurityWebhook(data: { webhookUrl: string; severity?: string; [key: string]: any }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async triggerSecurityWebhook(
+    data: { webhookUrl: string; severity?: string; [key: string]: any },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     await this.logActivity({
       type: 'ai.agent.action.webhook',
       timestamp: new Date().toISOString(),

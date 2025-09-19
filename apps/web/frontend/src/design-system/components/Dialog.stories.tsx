@@ -2,11 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { Dialog, ConfirmDialog, AlertDialog, useDialog } from './Dialog';
 import Button from './Button';
-import { 
-  Trash, 
-  AlertTriangle, 
-  CheckCircle, 
-  Info, 
+import {
+  Trash,
+  AlertTriangle,
+  CheckCircle,
+  Info,
   XCircle,
   Download,
   Upload,
@@ -14,7 +14,7 @@ import {
   RefreshCw,
   Settings,
   Shield,
-  Zap
+  Zap,
 } from 'lucide-react';
 
 const meta: Meta<typeof Dialog> = {
@@ -24,7 +24,8 @@ const meta: Meta<typeof Dialog> = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Simple confirmation and alert dialogs with predefined actions. Perfect for quick confirmations, alerts, and simple user interactions.',
+        component:
+          'Simple confirmation and alert dialogs with predefined actions. Perfect for quick confirmations, alerts, and simple user interactions.',
       },
     },
   },
@@ -47,7 +48,7 @@ export const Default: Story = {
     return (
       <div className="p-8">
         <Button onClick={() => setOpen(true)}>Open Dialog</Button>
-        
+
         <Dialog
           open={open}
           onClose={() => setOpen(false)}
@@ -75,13 +76,13 @@ export const ConfirmationDialog: Story = {
         <Button onClick={() => setOpen(true)} variant="secondary">
           Save Changes
         </Button>
-        
+
         {result && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-sm text-green-800">{result}</p>
           </div>
         )}
-        
+
         <ConfirmDialog
           open={open}
           onClose={() => setOpen(false)}
@@ -120,20 +121,16 @@ export const DestructiveDialog: Story = {
 
     return (
       <div className="p-8">
-        <Button 
-          onClick={() => setOpen(true)} 
-          variant="danger"
-          icon={<Trash className="h-4 w-4" />}
-        >
+        <Button onClick={() => setOpen(true)} variant="danger" icon={<Trash className="h-4 w-4" />}>
           Delete Project
         </Button>
-        
+
         {result && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-800">{result}</p>
           </div>
         )}
-        
+
         <ConfirmDialog
           open={open}
           onClose={() => setOpen(false)}
@@ -177,7 +174,7 @@ export const AlertDialogs: Story = {
         <Button onClick={() => setInfoOpen(true)} variant="secondary">
           Info Alert
         </Button>
-        
+
         <AlertDialog
           open={successOpen}
           onClose={() => setSuccessOpen(false)}
@@ -306,16 +303,14 @@ export const CustomActionsDialog: Story = {
 
     return (
       <div className="p-8">
-        <Button onClick={() => setOpen(true)}>
-          Publish Specification
-        </Button>
-        
+        <Button onClick={() => setOpen(true)}>Publish Specification</Button>
+
         {result && (
           <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">{result}</p>
           </div>
         )}
-        
+
         <Dialog
           open={open}
           onClose={() => setOpen(false)}
@@ -335,7 +330,8 @@ export const CustomActionsDialog: Story = {
               </ul>
             </div>
             <div className="text-sm text-graphite-600">
-              <strong>Note:</strong> Publishing will make these changes available to all team members.
+              <strong>Note:</strong> Publishing will make these changes available to all team
+              members.
             </div>
           </div>
         </Dialog>
@@ -360,29 +356,29 @@ export const SystemDialogs: Story = {
     return (
       <div className="p-8 space-y-4">
         <div className="space-x-4">
-          <Button 
-            onClick={() => setLogoutOpen(true)} 
+          <Button
+            onClick={() => setLogoutOpen(true)}
             variant="secondary"
             icon={<LogOut className="h-4 w-4" />}
           >
             Sign Out
           </Button>
-          <Button 
-            onClick={() => setUpdateOpen(true)} 
+          <Button
+            onClick={() => setUpdateOpen(true)}
             variant="secondary"
             icon={<Download className="h-4 w-4" />}
           >
             Install Update
           </Button>
-          <Button 
-            onClick={() => setResetOpen(true)} 
+          <Button
+            onClick={() => setResetOpen(true)}
             variant="secondary"
             icon={<RefreshCw className="h-4 w-4" />}
           >
             Reset Settings
           </Button>
         </div>
-        
+
         <ConfirmDialog
           open={logoutOpen}
           onClose={() => setLogoutOpen(false)}
@@ -470,7 +466,7 @@ export const ImperativeDialogHook: Story = {
         confirmLabel: 'Delete',
         type: 'destructive',
       });
-      
+
       setResult(confirmed ? 'File deleted' : 'Delete cancelled');
       setTimeout(() => setResult(''), 3000);
     };
@@ -481,7 +477,7 @@ export const ImperativeDialogHook: Story = {
         description: 'Your specification has been validated successfully.',
         type: 'success',
       });
-      
+
       setResult('Alert dismissed');
       setTimeout(() => setResult(''), 3000);
     };
@@ -520,13 +516,13 @@ export const ImperativeDialogHook: Story = {
             Confirm Dialog
           </Button>
           <Button onClick={handleAlertExample} variant="secondary">
-            Alert Dialog  
+            Alert Dialog
           </Button>
           <Button onClick={handleCustomDialog} variant="secondary">
             Custom Dialog
           </Button>
         </div>
-        
+
         {result && (
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <p className="text-sm text-gray-800">Result: {result}</p>

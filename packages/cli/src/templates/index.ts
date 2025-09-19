@@ -5,12 +5,12 @@
  * that keeps implementation details separate from CUE specifications.
  */
 
-import fs from "fs-extra";
-import path from "node:path";
-import os from "node:os";
-import { spawn } from "node:child_process";
-import { promisify } from "node:util";
-import chalk from "chalk";
+import { spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import { promisify } from 'node:util';
+import chalk from 'chalk';
+import fs from 'fs-extra';
 
 /**
  * Helper function to replace execa with spawn
@@ -18,24 +18,24 @@ import chalk from "chalk";
 async function execCommand(
   command: string,
   args: string[],
-  options: { env?: Record<string, string>; cwd?: string } = {},
+  options: { env?: Record<string, string>; cwd?: string } = {}
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
-      stdio: "inherit",
+      stdio: 'inherit',
       env: { ...process.env, ...options.env },
       cwd: options.cwd || process.cwd(),
     });
 
-    child.on("close", (code) => {
+    child.on('close', code => {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(`Command failed with exit code ${code}: ${command} ${args.join(" ")}`));
+        reject(new Error(`Command failed with exit code ${code}: ${command} ${args.join(' ')}`));
       }
     });
 
-    child.on("error", (error) => {
+    child.on('error', error => {
       reject(error);
     });
   });
@@ -119,13 +119,13 @@ export class TemplateManager {
    */
   private loadDefaultEngines(): void {
     // Cookiecutter engine
-    this.engines.set("cookiecutter", new CookiecutterEngine());
+    this.engines.set('cookiecutter', new CookiecutterEngine());
 
     // Yeoman engine (future implementation)
     // this.engines.set('yeoman', new YeomanEngine());
 
     // Custom script engine for simple templates
-    this.engines.set("script", new ScriptEngine());
+    this.engines.set('script', new ScriptEngine());
   }
 
   /**
@@ -155,13 +155,13 @@ export class TemplateManager {
    */
   private async getDefaultConfigPath(): Promise<string> {
     // Look for .arbiter/templates.json first
-    const projectPath = path.join(process.cwd(), ".arbiter", "templates.json");
+    const projectPath = path.join(process.cwd(), '.arbiter', 'templates.json');
     if (await fs.pathExists(projectPath)) {
       return projectPath;
     }
 
     // Fall back to global config
-    return path.join(os.homedir(), ".arbiter", "templates.json");
+    return path.join(os.homedir(), '.arbiter', 'templates.json');
   }
 
   /**
@@ -171,41 +171,41 @@ export class TemplateManager {
     return {
       engines: {
         cookiecutter: {
-          command: "cookiecutter",
-          defaultArgs: ["--no-input"],
+          command: 'cookiecutter',
+          defaultArgs: ['--no-input'],
           timeout: 300000, // 5 minutes
         },
         script: {
-          command: "sh",
+          command: 'sh',
           defaultArgs: [],
           timeout: 60000, // 1 minute
         },
       },
       aliases: {
-        "bun-hono": {
-          engine: "cookiecutter",
-          source: "https://github.com/arbiter-templates/bun-hono.git",
-          description: "Bun + Hono API service with Drizzle ORM",
+        'bun-hono': {
+          engine: 'cookiecutter',
+          source: 'https://github.com/arbiter-templates/bun-hono.git',
+          description: 'Bun + Hono API service with Drizzle ORM',
         },
-        "rust-axum": {
-          engine: "cookiecutter",
-          source: "gh:arbiter-templates/rust-axum",
-          description: "Rust + Axum service with SQLx",
+        'rust-axum': {
+          engine: 'cookiecutter',
+          source: 'gh:arbiter-templates/rust-axum',
+          description: 'Rust + Axum service with SQLx',
         },
-        "react-vite": {
-          engine: "cookiecutter",
-          source: "/local/path/to/react-template",
-          description: "React + Vite frontend with Tailwind",
+        'react-vite': {
+          engine: 'cookiecutter',
+          source: '/local/path/to/react-template',
+          description: 'React + Vite frontend with Tailwind',
         },
-        "python-fastapi": {
-          engine: "cookiecutter",
-          source: "https://github.com/fastapi-users/fastapi-users-cookiecutter.git",
-          description: "FastAPI service with async SQLAlchemy",
+        'python-fastapi': {
+          engine: 'cookiecutter',
+          source: 'https://github.com/fastapi-users/fastapi-users-cookiecutter.git',
+          description: 'FastAPI service with async SQLAlchemy',
         },
       },
       settings: {
-        defaultEngine: "cookiecutter",
-        cacheDir: path.join(os.homedir(), ".arbiter", "template-cache"),
+        defaultEngine: 'cookiecutter',
+        cacheDir: path.join(os.homedir(), '.arbiter', 'template-cache'),
         timeout: 300000,
       },
     };
@@ -216,7 +216,7 @@ export class TemplateManager {
    */
   async saveConfig(configPath?: string): Promise<void> {
     if (!this.config) {
-      throw new Error("No configuration to save");
+      throw new Error('No configuration to save');
     }
 
     const targetPath = configPath || (await this.getDefaultConfigPath());
@@ -229,7 +229,7 @@ export class TemplateManager {
    */
   getAliases(): Record<string, TemplateAlias> {
     if (!this.config) {
-      throw new Error("Configuration not loaded. Call loadConfig() first.");
+      throw new Error('Configuration not loaded. Call loadConfig() first.');
     }
     return this.config.aliases;
   }
@@ -239,7 +239,7 @@ export class TemplateManager {
    */
   getAlias(name: string): TemplateAlias | undefined {
     if (!this.config) {
-      throw new Error("Configuration not loaded. Call loadConfig() first.");
+      throw new Error('Configuration not loaded. Call loadConfig() first.');
     }
     return this.config.aliases[name];
   }
@@ -249,7 +249,7 @@ export class TemplateManager {
    */
   async addAlias(name: string, alias: TemplateAlias): Promise<void> {
     if (!this.config) {
-      throw new Error("Configuration not loaded. Call loadConfig() first.");
+      throw new Error('Configuration not loaded. Call loadConfig() first.');
     }
 
     // Validate engine exists
@@ -266,7 +266,7 @@ export class TemplateManager {
    */
   async removeAlias(name: string): Promise<void> {
     if (!this.config) {
-      throw new Error("Configuration not loaded. Call loadConfig() first.");
+      throw new Error('Configuration not loaded. Call loadConfig() first.');
     }
 
     delete this.config.aliases[name];
@@ -279,7 +279,7 @@ export class TemplateManager {
   async executeTemplate(
     aliasName: string,
     destination: string,
-    variables: VariableContext,
+    variables: VariableContext
   ): Promise<void> {
     const alias = this.getAlias(aliasName);
     if (!alias) {
@@ -313,7 +313,7 @@ export class TemplateManager {
     for (const prereq of prerequisites) {
       // Simple command existence check
       try {
-        await execCommand("which", [prereq]);
+        await execCommand('which', [prereq]);
       } catch {
         throw new Error(`Prerequisite not found: ${prereq}`);
       }
@@ -339,13 +339,13 @@ export class TemplateManager {
  * Cookiecutter template engine implementation
  */
 export class CookiecutterEngine implements TemplateEngine {
-  name = "cookiecutter";
-  command = "cookiecutter";
-  defaultArgs = ["--no-input"];
+  name = 'cookiecutter';
+  command = 'cookiecutter';
+  defaultArgs = ['--no-input'];
 
   async validate(source: string): Promise<boolean> {
     try {
-      await execCommand("which", ["cookiecutter"]);
+      await execCommand('which', ['cookiecutter']);
       return true;
     } catch {
       return false;
@@ -355,7 +355,7 @@ export class CookiecutterEngine implements TemplateEngine {
   async execute(
     source: string,
     destination: string,
-    variables: Record<string, any>,
+    variables: Record<string, any>
   ): Promise<void> {
     try {
       // Build cookiecutter command
@@ -363,17 +363,17 @@ export class CookiecutterEngine implements TemplateEngine {
 
       // Add variables as command line arguments
       for (const [key, value] of Object.entries(variables)) {
-        args.push(`--extra-context`);
+        args.push('--extra-context');
         args.push(`${key}=${value}`);
       }
 
       // Add output directory
-      args.push("--output-dir", destination);
+      args.push('--output-dir', destination);
 
       // Add template source
       args.push(source);
 
-      await execCommand("cookiecutter", args);
+      await execCommand('cookiecutter', args);
     } catch (error) {
       throw new Error(`Cookiecutter execution failed: ${error}`);
     }
@@ -384,8 +384,8 @@ export class CookiecutterEngine implements TemplateEngine {
  * Simple script-based template engine
  */
 export class ScriptEngine implements TemplateEngine {
-  name = "script";
-  command = "sh";
+  name = 'script';
+  command = 'sh';
   defaultArgs = [];
 
   async validate(source: string): Promise<boolean> {
@@ -395,7 +395,7 @@ export class ScriptEngine implements TemplateEngine {
   async execute(
     source: string,
     destination: string,
-    variables: Record<string, any>,
+    variables: Record<string, any>
   ): Promise<void> {
     try {
       // Set variables as environment variables
@@ -403,11 +403,11 @@ export class ScriptEngine implements TemplateEngine {
         ...process.env,
         TEMPLATE_DESTINATION: destination,
         ...Object.fromEntries(
-          Object.entries(variables).map(([k, v]) => [`TEMPLATE_${k.toUpperCase()}`, String(v)]),
+          Object.entries(variables).map(([k, v]) => [`TEMPLATE_${k.toUpperCase()}`, String(v)])
         ),
       };
 
-      await execCommand("sh", [source], { env });
+      await execCommand('sh', [source], { env });
     } catch (error) {
       throw new Error(`Script execution failed: ${error}`);
     }
@@ -419,9 +419,9 @@ export class ScriptEngine implements TemplateEngine {
  */
 export function extractVariablesFromCue(content: string, serviceName?: string): VariableContext {
   const variables = initializeBaseVariables(serviceName);
-  
+
   extractProjectName(content, variables);
-  
+
   if (serviceName) {
     extractServiceInformation(content, serviceName, variables);
   }
@@ -434,8 +434,8 @@ export function extractVariablesFromCue(content: string, serviceName?: string): 
  */
 function initializeBaseVariables(serviceName?: string): VariableContext {
   return {
-    projectName: path.basename(process.cwd()).replace(/[^a-zA-Z0-9]/g, ""),
-    serviceName: serviceName || "api",
+    projectName: path.basename(process.cwd()).replace(/[^a-zA-Z0-9]/g, ''),
+    serviceName: serviceName || 'api',
   };
 }
 
@@ -452,10 +452,14 @@ function extractProjectName(content: string, variables: VariableContext): void {
 /**
  * Extract service-specific information from CUE content
  */
-function extractServiceInformation(content: string, serviceName: string, variables: VariableContext): void {
+function extractServiceInformation(
+  content: string,
+  serviceName: string,
+  variables: VariableContext
+): void {
   const serviceContent = extractServiceContent(content, serviceName);
   if (!serviceContent) return;
-  
+
   extractServiceLanguage(serviceContent, variables);
   extractServiceType(serviceContent, variables);
   extractServicePorts(serviceContent, variables);
@@ -465,7 +469,7 @@ function extractServiceInformation(content: string, serviceName: string, variabl
  * Extract service content block from CUE
  */
 function extractServiceContent(content: string, serviceName: string): string | null {
-  const serviceRegex = new RegExp(`${serviceName}:\\s*{([^}]+)}`, "s");
+  const serviceRegex = new RegExp(`${serviceName}:\\s*{([^}]+)}`, 's');
   const serviceMatch = content.match(serviceRegex);
   return serviceMatch ? serviceMatch[1] : null;
 }
@@ -498,7 +502,7 @@ function extractServicePorts(serviceContent: string, variables: VariableContext)
   if (portsMatch) {
     const portsContent = portsMatch[1];
     const portMatches = portsContent.matchAll(/port:\s*(\d+)/g);
-    variables.ports = Array.from(portMatches).map((m) => parseInt(m[1], 10));
+    variables.ports = Array.from(portMatches).map(m => Number.parseInt(m[1], 10));
   }
 }
 

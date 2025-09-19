@@ -3,36 +3,48 @@
  *
  * This is the primary command for generating project files, CI workflows,
  * language-specific configurations, and other artifacts based on the
- * arbiter.assembly.cue specification.
+ * specification stored in the .arbiter/ directory.
  */
 
-import fs from "fs-extra";
-import path from "node:path";
-import { spawn } from "node:child_process";
-import { promisify } from "node:util";
-import chalk from "chalk";
-import type { Config } from "../config.js";
-import { ApiClient } from "../api-client.js";
-import type { CLIConfig } from "../types.js";
+import { spawn } from 'node:child_process';
+import path from 'node:path';
+import { promisify } from 'node:util';
 import type {
-  ServiceConfig,
-  DeploymentConfig,
+  AppSpec,
   AssemblyConfig,
+  ConfigWithVersion,
+  DeploymentConfig,
+  ServiceConfig as DeploymentServiceConfig,
   DeploymentTarget,
-  TestSuite,
+  EnhancedGenerateOptions,
+  SchemaVersion,
   TestCase,
   TestCompositionResult,
-  EnhancedGenerateOptions,
-  AppSpec,
-  ConfigWithVersion,
-  SchemaVersion,
-} from "@arbiter/shared";
-import { templateManager, extractVariablesFromCue } from "../templates/index.js";
-import { registry as languageRegistry, generateComponent, generateService, initializeProject } from "../language-plugins/index.js";
-import { validateSpecification, formatWarnings } from "../validation/warnings.js";
-import { GitHubSyncClient } from "../utils/github-sync.js";
-import { ShardedCUEStorage } from "../utils/sharded-storage.js";
-import { getSmartRepositoryConfig, createRepositoryConfig, validateRepositoryConfig } from "../utils/git-detection.js";
+  TestSuite,
+} from '@arbiter/shared';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import { ApiClient } from '../api-client.js';
+import {
+  generateComponent,
+  generateService,
+  initializeProject,
+  registry as languageRegistry,
+} from '../language-plugins/index.js';
+import type {
+  ProjectConfig as LanguageProjectConfig,
+  ServiceConfig as LanguageServiceConfig,
+} from '../language-plugins/index.js';
+import { extractVariablesFromCue, templateManager } from '../templates/index.js';
+import type { CLIConfig } from '../types.js';
+import {
+  createRepositoryConfig,
+  getSmartRepositoryConfig,
+  validateRepositoryConfig,
+} from '../utils/git-detection.js';
+import { GitHubSyncClient } from '../utils/github-sync.js';
+import { ShardedCUEStorage } from '../utils/sharded-storage.js';
+import { formatWarnings, validateSpecification } from '../validation/warnings.js';
 
 export interface GenerateOptions {
   output?: string;
@@ -41,7 +53,7 @@ export interface GenerateOptions {
   force?: boolean;
   dryRun?: boolean;
   verbose?: boolean;
-  format?: "auto" | "json" | "yaml" | "typescript" | "python" | "rust" | "go" | "shell";
+  format?: 'auto' | 'json' | 'yaml' | 'typescript' | 'python' | 'rust' | 'go' | 'shell';
   spec?: string; // New: specify which spec to use
   syncGithub?: boolean; // New: sync epics and tasks to GitHub
   githubDryRun?: boolean; // New: preview GitHub sync without changes
@@ -53,26 +65,26 @@ export interface GenerateOptions {
 async function executeCommand(
   command: string,
   args: string[],
-  options: { cwd?: string; timeout?: number } = {},
+  options: { cwd?: string; timeout?: number } = {}
 ): Promise<{ success: boolean; stdout: string; stderr: string }> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const proc = spawn(command, args, {
       cwd: options.cwd || process.cwd(),
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
 
-    let stdout = "";
-    let stderr = "";
+    let stdout = '';
+    let stderr = '';
 
-    proc.stdout?.on("data", (data) => (stdout += data.toString()));
-    proc.stderr?.on("data", (data) => (stderr += data.toString()));
+    proc.stdout?.on('data', data => (stdout += data.toString()));
+    proc.stderr?.on('data', data => (stderr += data.toString()));
 
     const timeout = setTimeout(() => {
       proc.kill();
-      resolve({ success: false, stdout, stderr: "Command timed out" });
+      resolve({ success: false, stdout, stderr: 'Command timed out' });
     }, options.timeout || 10000);
 
-    proc.on("close", (code) => {
+    proc.on('close', code => {
       clearTimeout(timeout);
       resolve({
         success: code === 0,
@@ -81,7 +93,7 @@ async function executeCommand(
       });
     });
 
-    proc.on("error", (error) => {
+    proc.on('error', error => {
       clearTimeout(timeout);
       resolve({ success: false, stdout, stderr: error.message });
     });
@@ -94,14 +106,14 @@ async function executeCommand(
 function discoverSpecs(): Array<{ name: string; path: string }> {
   const specs: Array<{ name: string; path: string }> = [];
 
-  if (fs.existsSync(".arbiter")) {
+  if (fs.existsSync('.arbiter')) {
     const specDirs = fs
-      .readdirSync(".arbiter", { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory())
-      .map((dirent) => dirent.name);
+      .readdirSync('.arbiter', { withFileTypes: true })
+      .filter(dirent => dirent.isDirectory())
+      .map(dirent => dirent.name);
 
     for (const specName of specDirs) {
-      const assemblyPath = path.join(".arbiter", specName, "assembly.cue");
+      const assemblyPath = path.join('.arbiter', specName, 'assembly.cue');
       if (fs.existsSync(assemblyPath)) {
         specs.push({ name: specName, path: assemblyPath });
       }
@@ -114,32 +126,31 @@ function discoverSpecs(): Array<{ name: string; path: string }> {
 /**
  * Handle GitHub synchronization for epics and tasks
  */
-async function handleGitHubSync(
-  options: GenerateOptions,
-  config: Config & CLIConfig,
-): Promise<void> {
+async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Promise<void> {
   if (options.verbose) {
-    console.log(chalk.dim("🔄 Starting GitHub sync handler..."));
+    console.log(chalk.dim('🔄 Starting GitHub sync handler...'));
   }
-  
+
   try {
     // Smart repository configuration with Git auto-detection
-    const smartRepoConfig = getSmartRepositoryConfig(
-      config.github?.repository,
-      {
-        useConfig: options.useConfig,
-        useGitRemote: options.useGitRemote,
-        verbose: options.verbose
-      }
-    );
+    const smartRepoConfig = getSmartRepositoryConfig(config.github?.repository, {
+      useConfig: options.useConfig,
+      useGitRemote: options.useGitRemote,
+      verbose: options.verbose,
+    });
 
     // Handle case where no repository info could be determined
     if (!smartRepoConfig) {
-      console.error(chalk.red("❌ No GitHub repository configuration found"));
-      console.log(chalk.dim("Options to fix this:"));
-      console.log(chalk.dim("  1. Initialize Git and add GitHub remote: git remote add origin https://github.com/owner/repo.git"));
-      console.log(chalk.dim("  2. Or add GitHub configuration to your .arbiter/config.json:"));
-      console.log(chalk.dim(`{
+      console.error(chalk.red('❌ No GitHub repository configuration found'));
+      console.log(chalk.dim('Options to fix this:'));
+      console.log(
+        chalk.dim(
+          '  1. Initialize Git and add GitHub remote: git remote add origin https://github.com/owner/repo.git'
+        )
+      );
+      console.log(chalk.dim('  2. Or add GitHub configuration to your .arbiter/config.json:'));
+      console.log(
+        chalk.dim(`{
   "github": {
     "repository": {
       "owner": "your-org",
@@ -157,23 +168,24 @@ async function handleGitHubSync(
       "syncAssignees": false
     }
   }
-}`));
-      console.log(chalk.dim("\\nAnd set your GitHub token as an environment variable:"));
-      console.log(chalk.dim("  export GITHUB_TOKEN=your_github_personal_access_token"));
+}`)
+      );
+      console.log(chalk.dim('\\nAnd set your GitHub token as an environment variable:'));
+      console.log(chalk.dim('  export GITHUB_TOKEN=your_github_personal_access_token'));
       return;
     }
 
     const finalRepo = smartRepoConfig.repo;
-    
+
     // Validate the final repository configuration
     const validation = validateRepositoryConfig(finalRepo);
     if (!validation.valid) {
-      console.error(chalk.red("❌ Invalid repository configuration:"));
+      console.error(chalk.red('❌ Invalid repository configuration:'));
       validation.errors.forEach(error => {
         console.log(chalk.red(`  • ${error}`));
       });
       if (validation.suggestions.length > 0) {
-        console.log(chalk.dim("\\nSuggestions:"));
+        console.log(chalk.dim('\\nSuggestions:'));
         validation.suggestions.forEach(suggestion => {
           console.log(chalk.dim(`  • ${suggestion}`));
         });
@@ -183,8 +195,12 @@ async function handleGitHubSync(
 
     // Ensure we have owner and repo from somewhere
     if (!finalRepo.owner || !finalRepo.repo) {
-      console.error(chalk.red("❌ Repository owner and name are required"));
-      console.log(chalk.dim("Either configure them in .arbiter/config.json or ensure your Git remote is set correctly"));
+      console.error(chalk.red('❌ Repository owner and name are required'));
+      console.log(
+        chalk.dim(
+          'Either configure them in .arbiter/config.json or ensure your Git remote is set correctly'
+        )
+      );
       return;
     }
 
@@ -192,58 +208,63 @@ async function handleGitHubSync(
     const githubConfig = {
       repository: finalRepo,
       mapping: config.github?.mapping || {
-        epicPrefix: "[Epic]",
-        taskPrefix: "[Task]",
-        defaultLabels: ["arbiter-generated"]
+        epicPrefix: '[Epic]',
+        taskPrefix: '[Task]',
+        defaultLabels: ['arbiter-generated'],
       },
       behavior: config.github?.behavior || {
         createMilestones: true,
         autoClose: true,
         syncAcceptanceCriteria: true,
-        syncAssignees: false
-      }
+        syncAssignees: false,
+      },
     };
 
     // Display repository info
-    if (options.verbose || smartRepoConfig.source !== "config") {
-      const sourceInfo = smartRepoConfig.source === "detected" 
-        ? "auto-detected from Git remote" 
-        : smartRepoConfig.source === "merged"
-        ? "merged from config and Git remote"
-        : "from configuration";
-      
+    if (options.verbose || smartRepoConfig.source !== 'config') {
+      const sourceInfo =
+        smartRepoConfig.source === 'detected'
+          ? 'auto-detected from Git remote'
+          : smartRepoConfig.source === 'merged'
+            ? 'merged from config and Git remote'
+            : 'from configuration';
+
       console.log(chalk.dim(`📁 Repository: ${finalRepo.owner}/${finalRepo.repo} (${sourceInfo})`));
     }
 
     // Load epics from the project
-    console.log(chalk.blue("📋 Loading epics and tasks..."));
+    console.log(chalk.blue('📋 Loading epics and tasks...'));
     const storage = new ShardedCUEStorage();
     await storage.initialize();
     const epics = await storage.listEpics();
-    
+
     if (epics.length === 0) {
-      console.log(chalk.yellow("⚠️  No epics found to sync"));
-      console.log(chalk.dim("Create epics with: arbiter epic create <name>"));
+      console.log(chalk.yellow('⚠️  No epics found to sync'));
+      console.log(chalk.dim('Create epics with: arbiter epic create <name>'));
       return;
     }
-    
-    console.log(chalk.dim(`Found ${epics.length} epics with ${epics.reduce((sum, epic) => sum + epic.tasks.length, 0)} total tasks`));
+
+    console.log(
+      chalk.dim(
+        `Found ${epics.length} epics with ${epics.reduce((sum, epic) => sum + epic.tasks.length, 0)} total tasks`
+      )
+    );
 
     // Create GitHub sync client
     const githubClient = new GitHubSyncClient(githubConfig);
-    
+
     // Determine if this is a dry run
     const isDryRun = options.githubDryRun || options.dryRun;
-    
+
     if (isDryRun) {
-      console.log(chalk.blue("🔍 GitHub Sync Preview (dry run)"));
-      
+      console.log(chalk.blue('🔍 GitHub Sync Preview (dry run)'));
+
       // Generate preview
       const preview = await githubClient.generateSyncPreview(epics);
-      
+
       // Display preview results
-      console.log(chalk.green("\\n📊 Sync Preview:"));
-      
+      console.log(chalk.green('\\n📊 Sync Preview:'));
+
       // Epics
       if (preview.epics.create.length > 0) {
         console.log(chalk.cyan(`\\n  📝 Epics to create: ${preview.epics.create.length}`));
@@ -251,21 +272,21 @@ async function handleGitHubSync(
           console.log(chalk.dim(`    • ${epic.name}`));
         });
       }
-      
+
       if (preview.epics.update.length > 0) {
         console.log(chalk.yellow(`\\n  📝 Epics to update: ${preview.epics.update.length}`));
         preview.epics.update.forEach(({ epic }) => {
           console.log(chalk.dim(`    • ${epic.name}`));
         });
       }
-      
+
       if (preview.epics.close.length > 0) {
         console.log(chalk.red(`\\n  📝 Epics to close: ${preview.epics.close.length}`));
         preview.epics.close.forEach(({ epic }) => {
           console.log(chalk.dim(`    • ${epic.name} (${epic.status})`));
         });
       }
-      
+
       // Tasks
       if (preview.tasks.create.length > 0) {
         console.log(chalk.cyan(`\\n  🔧 Tasks to create: ${preview.tasks.create.length}`));
@@ -273,119 +294,148 @@ async function handleGitHubSync(
           console.log(chalk.dim(`    • ${task.name} (${task.type})`));
         });
       }
-      
+
       if (preview.tasks.update.length > 0) {
         console.log(chalk.yellow(`\\n  🔧 Tasks to update: ${preview.tasks.update.length}`));
         preview.tasks.update.forEach(({ task }) => {
           console.log(chalk.dim(`    • ${task.name} (${task.type})`));
         });
       }
-      
+
       if (preview.tasks.close.length > 0) {
         console.log(chalk.red(`\\n  🔧 Tasks to close: ${preview.tasks.close.length}`));
         preview.tasks.close.forEach(({ task }) => {
           console.log(chalk.dim(`    • ${task.name} (${task.status})`));
         });
       }
-      
+
       // Milestones
       if (preview.milestones.create.length > 0) {
-        console.log(chalk.cyan(`\\n  🎯 Milestones to create: ${preview.milestones.create.length}`));
+        console.log(
+          chalk.cyan(`\\n  🎯 Milestones to create: ${preview.milestones.create.length}`)
+        );
         preview.milestones.create.forEach(epic => {
           console.log(chalk.dim(`    • Epic: ${epic.name}`));
         });
       }
-      
+
       if (preview.milestones.update.length > 0) {
-        console.log(chalk.yellow(`\\n  🎯 Milestones to update: ${preview.milestones.update.length}`));
+        console.log(
+          chalk.yellow(`\\n  🎯 Milestones to update: ${preview.milestones.update.length}`)
+        );
         preview.milestones.update.forEach(({ epic }) => {
           console.log(chalk.dim(`    • Epic: ${epic.name}`));
         });
       }
-      
+
       if (preview.milestones.close.length > 0) {
         console.log(chalk.red(`\\n  🎯 Milestones to close: ${preview.milestones.close.length}`));
         preview.milestones.close.forEach(({ epic }) => {
           console.log(chalk.dim(`    • Epic: ${epic.name} (${epic.status})`));
         });
       }
-      
-      const totalChanges = 
-        preview.epics.create.length + preview.epics.update.length + preview.epics.close.length +
-        preview.tasks.create.length + preview.tasks.update.length + preview.tasks.close.length +
-        preview.milestones.create.length + preview.milestones.update.length + preview.milestones.close.length;
-      
+
+      const totalChanges =
+        preview.epics.create.length +
+        preview.epics.update.length +
+        preview.epics.close.length +
+        preview.tasks.create.length +
+        preview.tasks.update.length +
+        preview.tasks.close.length +
+        preview.milestones.create.length +
+        preview.milestones.update.length +
+        preview.milestones.close.length;
+
       if (totalChanges === 0) {
-        console.log(chalk.green("\\n✅ No changes needed - everything is already in sync"));
+        console.log(chalk.green('\\n✅ No changes needed - everything is already in sync'));
       } else {
-        console.log(chalk.blue(`\\n💡 Run without --github-dry-run or --dry-run to apply these changes`));
+        console.log(
+          chalk.blue('\\n💡 Run without --github-dry-run or --dry-run to apply these changes')
+        );
       }
     } else {
-      console.log(chalk.blue("🚀 Syncing to GitHub..."));
-      
+      console.log(chalk.blue('🚀 Syncing to GitHub...'));
+
       // Perform actual sync
       const syncResults = await githubClient.syncToGitHub(epics, false);
-      
+
       // Group and display results
-      const created = syncResults.filter(r => r.action === "created");
-      const updated = syncResults.filter(r => r.action === "updated");
-      const closed = syncResults.filter(r => r.action === "closed");
-      const skipped = syncResults.filter(r => r.action === "skipped");
-      
-      console.log(chalk.green(`\\n✅ GitHub Sync Complete:`));
-      
+      const created = syncResults.filter(r => r.action === 'created');
+      const updated = syncResults.filter(r => r.action === 'updated');
+      const closed = syncResults.filter(r => r.action === 'closed');
+      const skipped = syncResults.filter(r => r.action === 'skipped');
+
+      console.log(chalk.green('\\n✅ GitHub Sync Complete:'));
+
       if (created.length > 0) {
         console.log(chalk.cyan(`  📝 Created: ${created.length} items`));
         created.forEach(result => {
           if (result.githubNumber) {
-            console.log(chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`));
+            console.log(
+              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`)
+            );
           } else {
             console.log(chalk.dim(`    • ${result.type}: ${result.details}`));
           }
         });
       }
-      
+
       if (updated.length > 0) {
         console.log(chalk.yellow(`  📝 Updated: ${updated.length} items`));
         updated.forEach(result => {
           if (result.githubNumber) {
-            console.log(chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`));
+            console.log(
+              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`)
+            );
           } else {
             console.log(chalk.dim(`    • ${result.type}: ${result.details}`));
           }
         });
       }
-      
+
       if (closed.length > 0) {
         console.log(chalk.red(`  📝 Closed: ${closed.length} items`));
         closed.forEach(result => {
           if (result.githubNumber) {
-            console.log(chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`));
+            console.log(
+              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`)
+            );
           } else {
             console.log(chalk.dim(`    • ${result.type}: ${result.details}`));
           }
         });
       }
-      
+
       if (skipped.length > 0 && options.verbose) {
         console.log(chalk.dim(`  ⏭️  Skipped: ${skipped.length} items (no changes needed)`));
       }
-      
-      console.log(chalk.green(`\\n🔗 Check your GitHub repository: https://github.com/${finalRepo.owner}/${finalRepo.repo}/issues`));
+
+      console.log(
+        chalk.green(
+          `\\n🔗 Check your GitHub repository: https://github.com/${finalRepo.owner}/${finalRepo.repo}/issues`
+        )
+      );
     }
   } catch (error) {
-    console.error(chalk.red("❌ GitHub sync failed:"), error instanceof Error ? error.message : String(error));
+    console.error(
+      chalk.red('❌ GitHub sync failed:'),
+      error instanceof Error ? error.message : String(error)
+    );
     if (options.verbose) {
-      console.error(chalk.dim("Full error:"), error);
+      console.error(chalk.dim('Full error:'), error);
     }
-    
-    console.log(chalk.dim("\\nTroubleshooting tips:"));
-    console.log(chalk.dim("  • Ensure GITHUB_TOKEN environment variable is set with proper permissions"));
+
+    console.log(chalk.dim('\\nTroubleshooting tips:'));
+    console.log(
+      chalk.dim('  • Ensure GITHUB_TOKEN environment variable is set with proper permissions')
+    );
     console.log(chalk.dim("  • Verify your GitHub token has 'repo' or 'issues:write' permission"));
-    console.log(chalk.dim("  • Check that the repository owner/name is correct"));
-    console.log(chalk.dim("  • Ensure Git remote origin points to the correct GitHub repository"));
-    console.log(chalk.dim("  • Use --verbose for more error details"));
-    console.log(chalk.dim("  • Use --use-config or --use-git-remote to resolve repository conflicts"));
+    console.log(chalk.dim('  • Check that the repository owner/name is correct'));
+    console.log(chalk.dim('  • Ensure Git remote origin points to the correct GitHub repository'));
+    console.log(chalk.dim('  • Use --verbose for more error details'));
+    console.log(
+      chalk.dim('  • Use --use-config or --use-git-remote to resolve repository conflicts')
+    );
   }
 }
 
@@ -394,14 +444,14 @@ async function handleGitHubSync(
  */
 export async function generateCommand(
   options: GenerateOptions,
-  config: Config & CLIConfig,
-  specName?: string,
+  config: CLIConfig,
+  specName?: string
 ): Promise<number> {
   if (options.verbose) {
-    console.log(chalk.dim("🔧 Generate options:"), JSON.stringify(options, null, 2));
+    console.log(chalk.dim('🔧 Generate options:'), JSON.stringify(options, null, 2));
   }
   try {
-    console.log(chalk.blue("🏗️  Generating project artifacts from assembly.cue..."));
+    console.log(chalk.blue('🏗️  Generating project artifacts from assembly.cue...'));
 
     // First, try to emit the CUE file from stored specification in service
     await emitSpecificationFromService(config);
@@ -413,7 +463,7 @@ export async function generateCommand(
     if (specName || options.spec) {
       // Use specified spec name
       const targetSpec = specName || options.spec!;
-      assemblyPath = path.join(".arbiter", targetSpec, "assembly.cue");
+      assemblyPath = path.join('.arbiter', targetSpec, 'assembly.cue');
 
       if (!fs.existsSync(assemblyPath)) {
         console.error(chalk.red(`❌ Spec "${targetSpec}" not found at ${assemblyPath}`));
@@ -421,13 +471,13 @@ export async function generateCommand(
         // Show available specs
         const availableSpecs = discoverSpecs();
         if (availableSpecs.length > 0) {
-          console.log(chalk.yellow("\n📋 Available specs:"));
-          availableSpecs.forEach((spec) => {
+          console.log(chalk.yellow('\n📋 Available specs:'));
+          availableSpecs.forEach(spec => {
             console.log(chalk.cyan(`  • ${spec.name}`));
           });
           console.log(chalk.dim(`\n💡 Usage: arbiter generate ${availableSpecs[0].name}`));
         } else {
-          console.log(chalk.dim("No specs found in .arbiter/ directory"));
+          console.log(chalk.dim('No specs found in .arbiter/ directory'));
         }
         return 1;
       }
@@ -439,19 +489,15 @@ export async function generateCommand(
 
       if (availableSpecs.length === 0) {
         // Check for assembly.cue in .arbiter directory first
-        const arbiterPath = path.resolve(".arbiter", "assembly.cue");
-        const legacyPath = path.resolve("arbiter.assembly.cue");
-        
+        const arbiterPath = path.resolve('.arbiter', 'assembly.cue');
+
         if (fs.existsSync(arbiterPath)) {
           assemblyPath = arbiterPath;
-          console.log(chalk.dim("📁 Using .arbiter/assembly.cue"));
-        } else if (fs.existsSync(legacyPath)) {
-          assemblyPath = legacyPath;
-          console.log(chalk.yellow("⚠️  Using legacy arbiter.assembly.cue from current directory"));
+          console.log(chalk.dim('📁 Using .arbiter/assembly.cue'));
         } else {
-          console.error(chalk.red("❌ No assembly specifications found"));
-          console.log(chalk.dim("Create a spec with: arbiter add service <name>"));
-          console.log(chalk.dim("Or initialize with: arbiter init"));
+          console.error(chalk.red('❌ No assembly specifications found'));
+          console.log(chalk.dim('Create a spec with: arbiter add service <name>'));
+          console.log(chalk.dim('Or initialize with: arbiter init'));
           return 1;
         }
       } else if (availableSpecs.length === 1) {
@@ -460,67 +506,91 @@ export async function generateCommand(
         console.log(chalk.green(`✅ Auto-detected spec: ${availableSpecs[0].name}`));
       } else {
         // Multiple specs found - require user to specify
-        console.error(chalk.red("❌ Multiple specs found. Please specify which one to use:"));
-        console.log(chalk.yellow("\n📋 Available specs:"));
-        availableSpecs.forEach((spec) => {
+        console.error(chalk.red('❌ Multiple specs found. Please specify which one to use:'));
+        console.log(chalk.yellow('\n📋 Available specs:'));
+        availableSpecs.forEach(spec => {
           console.log(chalk.cyan(`  • arbiter generate ${spec.name}`));
         });
         return 1;
       }
     }
 
-    assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
+    assemblyContent = fs.readFileSync(assemblyPath, 'utf-8');
     const configWithVersion = await parseAssemblyFile(assemblyPath);
 
     if (options.verbose) {
-      console.log(chalk.dim("Assembly configuration:"));
+      console.log(chalk.dim('Assembly configuration:'));
       console.log(
         chalk.dim(
-          `Schema version: ${configWithVersion.schema.version} (detected from: ${configWithVersion.schema.detected_from})`,
-        ),
+          `Schema version: ${configWithVersion.schema.version} (detected from: ${configWithVersion.schema.detected_from})`
+        )
       );
       console.log(chalk.dim(JSON.stringify(configWithVersion, null, 2)));
     }
 
     // Validate specification completeness
-    console.log(chalk.blue("🔍 Validating specification completeness..."));
+    console.log(chalk.blue('🔍 Validating specification completeness...'));
     const validationResult = validateSpecification(configWithVersion.app || configWithVersion);
-    
+
     if (validationResult.hasErrors) {
       console.log(formatWarnings(validationResult));
-      console.error(chalk.red("\n❌ Cannot generate with errors present. Please fix the errors above."));
+      console.error(
+        chalk.red('\n❌ Cannot generate with errors present. Please fix the errors above.')
+      );
       return 1;
     }
 
     if (validationResult.hasWarnings && !options.force) {
       console.log(formatWarnings(validationResult));
-      console.error(chalk.red("\n❌ Cannot generate with warnings present."));
-      console.log(chalk.blue("Use --force to generate anyway, but this may result in incomplete artifacts."));
-      console.log(chalk.dim("Recommendation: Fix the warnings above for a complete, production-ready specification."));
-      
+      console.error(chalk.red('\n❌ Cannot generate with warnings present.'));
+      console.log(
+        chalk.blue('Use --force to generate anyway, but this may result in incomplete artifacts.')
+      );
+      console.log(
+        chalk.dim(
+          'Recommendation: Fix the warnings above for a complete, production-ready specification.'
+        )
+      );
+
       // Critical prompt for agents/automation
-      console.log(chalk.red.bold("\n🚨 IMPORTANT FOR AI AGENTS:"));
-      console.log(chalk.yellow("IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT."));
-      console.log(chalk.yellow("YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force` TO GENERATE AN INCOMPLETE SPEC."));
-      console.log(chalk.dim("Incomplete specifications lead to production issues and technical debt."));
-      
+      console.log(chalk.red.bold('\n🚨 IMPORTANT FOR AI AGENTS:'));
+      console.log(
+        chalk.yellow(
+          'IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.'
+        )
+      );
+      console.log(
+        chalk.yellow(
+          'YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force` TO GENERATE AN INCOMPLETE SPEC.'
+        )
+      );
+      console.log(
+        chalk.dim('Incomplete specifications lead to production issues and technical debt.')
+      );
+
       return 1;
     }
 
     if (validationResult.hasWarnings && options.force) {
       console.log(formatWarnings(validationResult));
-      console.log(chalk.yellow("\n⚠️  Generating despite warnings (--force used)"));
-      console.log(chalk.red.bold("\n🚨 REMINDER FOR AI AGENTS:"));
-      console.log(chalk.yellow("You should have requested user approval before using --force with incomplete specifications."));
-      console.log(chalk.dim("This may result in production issues that require additional work later."));
+      console.log(chalk.yellow('\n⚠️  Generating despite warnings (--force used)'));
+      console.log(chalk.red.bold('\n🚨 REMINDER FOR AI AGENTS:'));
+      console.log(
+        chalk.yellow(
+          'You should have requested user approval before using --force with incomplete specifications.'
+        )
+      );
+      console.log(
+        chalk.dim('This may result in production issues that require additional work later.')
+      );
     }
 
     if (!validationResult.hasWarnings && !validationResult.hasErrors) {
-      console.log(chalk.green("✅ Specification validation passed"));
+      console.log(chalk.green('✅ Specification validation passed'));
     }
 
     // Determine output directory
-    const outputDir = options.outputDir || ".";
+    const outputDir = options.outputDir || '.';
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -530,20 +600,20 @@ export async function generateCommand(
 
     // Generate application artifacts
     if (configWithVersion.app) {
-      console.log(chalk.blue("🎨 Generating application artifacts..."));
+      console.log(chalk.blue('🎨 Generating application artifacts...'));
       const appResults = await generateAppArtifacts(configWithVersion.app, outputDir, options);
       results.push(...appResults);
     } else {
-      throw new Error("Invalid configuration: missing app specification data");
+      throw new Error('Invalid configuration: missing app specification data');
     }
 
     // Report results
     if (options.dryRun) {
-      console.log(chalk.yellow("🔍 Dry run - files that would be generated:"));
-      results.forEach((file) => console.log(chalk.dim(`  ${file}`)));
+      console.log(chalk.yellow('🔍 Dry run - files that would be generated:'));
+      results.forEach(file => console.log(chalk.dim(`  ${file}`)));
     } else {
       console.log(chalk.green(`✅ Generated ${results.length} files:`));
-      results.forEach((file) => console.log(chalk.dim(`  ✓ ${file}`)));
+      results.forEach(file => console.log(chalk.dim(`  ✓ ${file}`)));
     }
 
     // Handle GitHub synchronization if requested
@@ -554,8 +624,8 @@ export async function generateCommand(
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("❌ Generate failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('❌ Generate failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -567,12 +637,12 @@ export async function generateCommand(
 async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersion> {
   try {
     // Use CUE to evaluate and export as JSON
-    const result = await executeCommand("cue", ["eval", "--out", "json", assemblyPath], {
+    const result = await executeCommand('cue', ['eval', '--out', 'json', assemblyPath], {
       timeout: 10000,
     });
 
     if (!result.success) {
-      console.error("CUE evaluation failed:", result.stderr);
+      console.error('CUE evaluation failed:', result.stderr);
       return fallbackParseAssembly(assemblyPath);
     }
 
@@ -584,7 +654,7 @@ async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersio
     // Parse app schema
     return parseAppSchema(cueData, schemaVersion);
   } catch (error) {
-    console.error("Error parsing CUE file:", error);
+    console.error('Error parsing CUE file:', error);
     return fallbackParseAssembly(assemblyPath);
   }
 }
@@ -595,8 +665,8 @@ async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersio
 function detectSchemaVersion(cueData: any): SchemaVersion {
   // Always use app schema - it's the primary and only supported schema now
   return {
-    version: "app",
-    detected_from: "unified",
+    version: 'app',
+    detected_from: 'metadata',
   };
 }
 
@@ -606,7 +676,7 @@ function detectSchemaVersion(cueData: any): SchemaVersion {
 function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
   const appSpec: AppSpec = {
     product: cueData.product || {
-      name: "Unknown App",
+      name: 'Unknown App',
     },
     config: cueData.config,
     ui: cueData.ui || {
@@ -629,21 +699,20 @@ function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithV
   };
 }
 
-
 // Fallback to file-based regex parsing if CUE evaluation fails
 async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVersion> {
-  const content = await fs.readFile(assemblyPath, "utf-8");
+  const content = await fs.readFile(assemblyPath, 'utf-8');
 
   // Always use app schema
-  const schemaVersion: SchemaVersion = { version: "app", detected_from: "fallback" };
-  
-  console.warn("⚠️  CUE evaluation failed - using limited fallback parsing");
+  const schemaVersion: SchemaVersion = { version: 'app', detected_from: 'default' };
+
+  console.warn('⚠️  CUE evaluation failed - using limited fallback parsing');
 
   // Extract basic information from the CUE file
   const nameMatch = content.match(/name:\s*"([^"]+)"/);
   const languageMatch = content.match(/language:\s*"([^"]+)"/);
-  const productName = nameMatch ? nameMatch[1] : "Unknown App";
-  const language = languageMatch ? languageMatch[1] : "typescript";
+  const productName = nameMatch ? nameMatch[1] : 'Unknown App';
+  const language = languageMatch ? languageMatch[1] : 'typescript';
 
   const appSpec: AppSpec = {
     product: { name: productName },
@@ -665,7 +734,7 @@ async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVe
 async function generateAppArtifacts(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -708,62 +777,59 @@ async function generateAppArtifacts(
   return files;
 }
 
-
 /**
  * Generate UI components from app spec routes
  */
 async function generateUIComponents(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
-  
+
   // Determine language from options or app config
-  const language = options.format || appSpec.config?.language || "typescript";
-  
+  const language = options.format || appSpec.config?.language || 'typescript';
+
   console.log(chalk.blue(`🎨 Generating ${language} UI components from routes...`));
 
   // Check if language plugin supports components
   const plugin = languageRegistry.get(language);
   if (!plugin?.capabilities?.components) {
-    console.log(chalk.yellow(`⚠️  Language '${language}' doesn't support UI components, skipping...`));
+    console.log(
+      chalk.yellow(`⚠️  Language '${language}' doesn't support UI components, skipping...`)
+    );
     return files;
   }
 
   // Generate components for each route using language plugin
   for (const route of appSpec.ui.routes) {
     const componentName = route.id
-      .split(":")
-      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-      .join("");
+      .split(':')
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('');
 
     try {
       const result = await generateComponent(language, {
         name: componentName,
-        type: "page",
-        props: {
-          // Convert capabilities to props
-          ...Object.fromEntries(
-            route.capabilities.map(cap => [cap, "boolean"])
-          )
-        },
-        testId: route.id,
-        children: route.components || [],
+        type: 'page',
+        props: (route.capabilities || []).map(capability => ({
+          name: capability,
+          type: 'boolean',
+          required: false,
+        })),
         styles: true,
-        tests: true
-      }, outputDir);
+        tests: true,
+      });
 
       if (!options.dryRun) {
-        // Write generated files
-        for (const [filePath, content] of Object.entries(result.files)) {
-          const fullPath = path.join(outputDir, filePath);
+        for (const file of result.files) {
+          const fullPath = path.join(outputDir, file.path);
           await fs.ensureDir(path.dirname(fullPath));
-          await fs.writeFile(fullPath, content);
+          await fs.writeFile(fullPath, file.content);
         }
       }
 
-      files.push(...Object.keys(result.files));
+      files.push(...result.files.map(file => file.path));
     } catch (error) {
       console.error(chalk.red(`❌ Failed to generate component ${componentName}:`), error);
     }
@@ -778,21 +844,23 @@ async function generateUIComponents(
 async function generateFlowBasedTests(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
-  console.log(chalk.blue("🧪 Generating tests from flows..."));
-  
+  console.log(chalk.blue('🧪 Generating tests from flows...'));
+
   // Determine language for test generation
-  const language = appSpec.config?.language || "typescript";
+  const language = appSpec.config?.language || 'typescript';
   const plugin = languageRegistry.get(language);
-  
+
   if (!plugin) {
-    console.log(chalk.yellow(`⚠️  No plugin available for ${language}, using default Playwright tests`));
+    console.log(
+      chalk.yellow(`⚠️  No plugin available for ${language}, using default Playwright tests`)
+    );
   }
 
-  const testsDir = path.join(outputDir, "tests", "flows");
+  const testsDir = path.join(outputDir, 'tests', 'flows');
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
@@ -800,7 +868,7 @@ async function generateFlowBasedTests(
   for (const flow of appSpec.flows) {
     // Use plugin-specific test generation if available, otherwise fallback to default
     let testContent: string;
-    
+
     if (plugin?.capabilities?.testing) {
       // Generate using language plugin
       const testConfig = {
@@ -810,25 +878,27 @@ async function generateFlowBasedTests(
         flow: flow,
         locators: appSpec.locators,
       };
-      
+
       try {
         // Note: This would need to be implemented in each language plugin
         testContent = `// ${flow.id} flow test - Generated by Arbiter (${plugin.name})
 // TODO: Implement plugin-specific test generation
 import { test, expect } from '@playwright/test';`;
       } catch (error) {
-        console.warn(chalk.yellow(`⚠️  Plugin test generation failed, using default: ${error.message}`));
+        console.warn(
+          chalk.yellow(`⚠️  Plugin test generation failed, using default: ${error.message}`)
+        );
         testContent = generateDefaultFlowTest(flow, appSpec.locators);
       }
     } else {
       testContent = generateDefaultFlowTest(flow, appSpec.locators);
     }
-    
-    const testPath = path.join(testsDir, `${flow.id.replace(/:/g, "_")}.test.ts`);
+
+    const testPath = path.join(testsDir, `${flow.id.replace(/:/g, '_')}.test.ts`);
     if (!options.dryRun) {
       fs.writeFileSync(testPath, testContent);
     }
-    files.push(`tests/flows/${flow.id.replace(/:/g, "_")}.test.ts`);
+    files.push(`tests/flows/${flow.id.replace(/:/g, '_')}.test.ts`);
   }
 
   return files;
@@ -842,43 +912,47 @@ function generateDefaultFlowTest(flow: any, locators: any): string {
     ? `
   test.beforeEach(async ({ page }) => {
     // Setup preconditions
-    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ""}
-    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ""}
+    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ''}
+    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ''}
     ${
       flow.preconditions.seed
         ? flow.preconditions.seed
             .map((seed: any) => `// Seed: ${seed.factory} as ${seed.as}`)
-            .join("\n    ")
-        : ""
+            .join('\n    ')
+        : ''
     }
   });
   `
-    : "";
+    : '';
 
   const stepsCode = flow.steps
     .map((step: any, index: number) => {
       if (step.visit) {
         return `// Step ${index + 1}: Visit ${step.visit}
-    await page.goto('${typeof step.visit === "string" ? step.visit : `/${step.visit.replace(":", "/")}`}');`;
-      } else if (step.click) {
+    await page.goto('${typeof step.visit === 'string' ? step.visit : `/${step.visit.replace(':', '/')}`}');`;
+      }
+      if (step.click) {
         const locator = locators[step.click];
         return `// Step ${index + 1}: Click ${step.click}
     await page.click('${locator || step.click}');`;
-      } else if (step.fill) {
+      }
+      if (step.fill) {
         const locator = locators[step.fill.locator];
         return `// Step ${index + 1}: Fill ${step.fill.locator} with "${step.fill.value}"
     await page.fill('${locator || step.fill.locator}', '${step.fill.value}');`;
-      } else if (step.expect) {
+      }
+      if (step.expect) {
         const locator = locators[step.expect.locator];
-        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || "visible"}
-    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === "visible" ? "toBeVisible" : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
-      } else if (step.expect_api) {
+        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || 'visible'}
+    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === 'visible' ? 'toBeVisible' : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
+      }
+      if (step.expect_api) {
         return `// Step ${index + 1}: Expect API ${step.expect_api.method} ${step.expect_api.path} to return ${step.expect_api.status}
     // TODO: Implement API expectation`;
       }
       return `// Step ${index + 1}: Unknown step type`;
     })
-    .join("\n    ");
+    .join('\n    ');
 
   const variantsCode = flow.variants
     ? flow.variants
@@ -886,10 +960,10 @@ function generateDefaultFlowTest(flow: any, locators: any): string {
           (variant: any) => `
   test('${flow.id} - ${variant.name} variant', async ({ page }) => {
     // TODO: Implement variant testing with override: ${JSON.stringify(variant.override)}
-  });`,
+  });`
         )
-        .join("")
-    : "";
+        .join('')
+    : '';
 
   return `// ${flow.id} flow test - Generated by Arbiter
 import { test, expect } from '@playwright/test';
@@ -909,55 +983,58 @@ test.describe('${flow.id} flow', () => {${preconditionsCode}
 async function generateAPISpecifications(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
-  console.log(chalk.blue("📋 Generating API specifications..."));
-  
+  console.log(chalk.blue('📋 Generating API specifications...'));
+
   // Determine language for API generation
-  const language = appSpec.config?.language || "typescript";
+  const language = appSpec.config?.language || 'typescript';
   const plugin = languageRegistry.get(language);
-  
-  const apiDir = path.join(outputDir, "api");
+
+  const apiDir = path.join(outputDir, 'api');
   if (!fs.existsSync(apiDir) && !options.dryRun) {
     fs.mkdirSync(apiDir, { recursive: true });
   }
-  
+
   // Generate API services using language plugin if available
   if (plugin?.capabilities?.api && appSpec.components) {
     console.log(chalk.blue(`🚀 Generating ${language} API services using ${plugin.name}...`));
-    
+
     // Generate services for each component that has API methods
     for (const [componentName, component] of Object.entries(appSpec.components || {})) {
       if (component.methods && component.methods.length > 0) {
-        const serviceConfig: ServiceConfig = {
+        const serviceConfig: LanguageServiceConfig = {
           name: componentName,
           type: 'api',
           methods: component.methods,
           validation: true,
         };
-        
+
         try {
           const result = await generateService(language, serviceConfig);
-          
+
           // Write all generated files
           for (const file of result.files) {
             const fullPath = path.join(apiDir, file.path.replace(/^src\//i, ''));
             const dir = path.dirname(fullPath);
-            
+
             if (!fs.existsSync(dir) && !options.dryRun) {
               fs.mkdirSync(dir, { recursive: true });
             }
-            
+
             if (!options.dryRun) {
               fs.writeFileSync(fullPath, file.content);
             }
-            
+
             files.push(`api/${file.path.replace(/^src\//i, '')}`);
           }
         } catch (error) {
-          console.error(chalk.red(`❌ Failed to generate ${language} service for ${componentName}:`), error.message);
+          console.error(
+            chalk.red(`❌ Failed to generate ${language} service for ${componentName}:`),
+            error.message
+          );
         }
       }
     }
@@ -966,29 +1043,28 @@ async function generateAPISpecifications(
   // Generate OpenAPI spec if paths are defined (universal, not language-specific)
   if (appSpec.paths) {
     const openApiSpec = {
-      openapi: "3.0.3",
+      openapi: '3.0.3',
       info: {
         title: appSpec.product.name,
-        version: "1.0.0",
-        description: appSpec.product.goals?.join("; ") || "Generated API specification",
+        version: '1.0.0',
+        description: appSpec.product.goals?.join('; ') || 'Generated API specification',
       },
-      paths: {} as any,
+      paths: {} as Record<string, any>,
+      components: { schemas: {} as Record<string, any> },
     };
 
     // Add component schemas if available
     if (appSpec.components?.schemas) {
-      openApiSpec.components = {
-        schemas: Object.fromEntries(
-          Object.entries(appSpec.components.schemas).map(([name, schema]) => [
-            name,
-            {
-              type: "object",
-              example: schema.example,
-              ...(schema.examples && { examples: schema.examples }),
-            },
-          ]),
-        ),
-      };
+      openApiSpec.components.schemas = Object.fromEntries(
+        Object.entries(appSpec.components.schemas).map(([name, schema]) => [
+          name,
+          {
+            type: 'object',
+            example: schema.example,
+            ...(schema.examples && { examples: schema.examples }),
+          },
+        ])
+      );
     }
 
     // Convert paths to OpenAPI format
@@ -1001,7 +1077,7 @@ async function generateAPISpecifications(
           ...(operation.request && {
             requestBody: {
               content: {
-                "application/json": {
+                'application/json': {
                   schema: operation.request.$ref ? { $ref: operation.request.$ref } : {},
                   example: operation.request.example,
                 },
@@ -1009,10 +1085,10 @@ async function generateAPISpecifications(
             },
           }),
           responses: {
-            [operation.status || (method === "get" ? 200 : 201)]: {
-              description: "Success",
+            [operation.status || (method === 'get' ? 200 : 201)]: {
+              description: 'Success',
               content: {
-                "application/json": {
+                'application/json': {
                   schema: operation.response?.$ref ? { $ref: operation.response.$ref } : {},
                   example: operation.response?.example,
                 },
@@ -1023,11 +1099,11 @@ async function generateAPISpecifications(
       }
     }
 
-    const specPath = path.join(apiDir, "openapi.json");
+    const specPath = path.join(apiDir, 'openapi.json');
     if (!options.dryRun) {
       fs.writeFileSync(specPath, JSON.stringify(openApiSpec, null, 2));
     }
-    files.push("api/openapi.json");
+    files.push('api/openapi.json');
   }
 
   return files;
@@ -1039,11 +1115,11 @@ async function generateAPISpecifications(
 async function generateLocatorDefinitions(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
-  console.log(chalk.blue("🎯 Generating locator definitions..."));
+  console.log(chalk.blue('🎯 Generating locator definitions...'));
 
   const locatorsContent = `// UI Locators - Generated by Arbiter
 // These locators provide a stable contract between tests and UI implementation
@@ -1051,7 +1127,7 @@ async function generateLocatorDefinitions(
 export const locators = {
 ${Object.entries(appSpec.locators)
   .map(([token, selector]) => `  '${token}': '${selector}',`)
-  .join("\n")}
+  .join('\n')}
 } as const;
 
 export type LocatorToken = keyof typeof locators;
@@ -1067,7 +1143,7 @@ export function loc(token: LocatorToken): string {
 }
 `;
 
-  const locatorsPath = path.join(outputDir, "src", "test-utils", "locators.ts");
+  const locatorsPath = path.join(outputDir, 'src', 'test-utils', 'locators.ts');
   const locatorsDir = path.dirname(locatorsPath);
 
   if (!fs.existsSync(locatorsDir) && !options.dryRun) {
@@ -1077,7 +1153,7 @@ export function loc(token: LocatorToken): string {
   if (!options.dryRun) {
     fs.writeFileSync(locatorsPath, locatorsContent);
   }
-  files.push("src/test-utils/locators.ts");
+  files.push('src/test-utils/locators.ts');
 
   return files;
 }
@@ -1088,21 +1164,21 @@ export function loc(token: LocatorToken): string {
 async function generateProjectStructure(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
   // Determine language from app spec config
-  const language = appSpec.config?.language || "typescript";
+  const language = appSpec.config?.language || 'typescript';
   const plugin = languageRegistry.get(language);
 
   if (plugin) {
     console.log(chalk.blue(`📦 Initializing ${language} project using ${plugin.name}...`));
 
     // Create project configuration for the language plugin
-    const projectConfig: ProjectConfig = {
-      name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
-      description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
+    const projectConfig: LanguageProjectConfig = {
+      name: appSpec.product.name.toLowerCase().replace(/\s+/g, '-'),
+      description: appSpec.product.goals?.join('; ') || 'Generated by Arbiter',
       features: [],
       testing: true,
     };
@@ -1128,29 +1204,29 @@ async function generateProjectStructure(
 
       // Log additional setup instructions from the language plugin
       if (result.instructions) {
-        result.instructions.forEach(instruction =>
-          console.log(chalk.green(`✅ ${instruction}`))
-        );
+        result.instructions.forEach(instruction => console.log(chalk.green(`✅ ${instruction}`)));
       }
     } catch (error) {
       console.error(chalk.red(`❌ Failed to initialize ${language} project:`), error.message);
       return files;
     }
   } else {
-    console.log(chalk.yellow(`⚠️  No language plugin available for '${language}', using minimal structure`));
-    
+    console.log(
+      chalk.yellow(`⚠️  No language plugin available for '${language}', using minimal structure`)
+    );
+
     // Fallback: create minimal project structure
     const packageJson = {
-      name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
-      version: "1.0.0",
-      description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
+      name: appSpec.product.name.toLowerCase().replace(/\s+/g, '-'),
+      version: '1.0.0',
+      description: appSpec.product.goals?.join('; ') || 'Generated by Arbiter',
     };
 
-    const packagePath = path.join(outputDir, "package.json");
+    const packagePath = path.join(outputDir, 'package.json');
     if (!options.dryRun) {
       fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
     }
-    files.push("package.json");
+    files.push('package.json');
   }
 
   // Generate README
@@ -1160,25 +1236,25 @@ Generated by Arbiter from app specification.
 
 ## Overview
 
-${appSpec.product.goals ? appSpec.product.goals.map((goal) => `- ${goal}`).join("\n") : "No goals specified"}
+${appSpec.product.goals ? appSpec.product.goals.map(goal => `- ${goal}`).join('\n') : 'No goals specified'}
 
 ${
   appSpec.product.constraints
     ? `
 ## Constraints
 
-${appSpec.product.constraints.map((constraint) => `- ${constraint}`).join("\n")}
+${appSpec.product.constraints.map(constraint => `- ${constraint}`).join('\n')}
 `
-    : ""
+    : ''
 }
 
 ## Routes
 
-${appSpec.ui.routes.map((route) => `- **${route.path}** (${route.id}): ${route.capabilities.join(", ")}`).join("\n")}
+${appSpec.ui.routes.map(route => `- **${route.path}** (${route.id}): ${route.capabilities.join(', ')}`).join('\n')}
 
 ## Flows
 
-${appSpec.flows.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).join("\n")}
+${appSpec.flows.map(flow => `- **${flow.id}**: ${flow.steps.length} steps`).join('\n')}
 
 ## Development
 
@@ -1201,11 +1277,11 @@ npm run build
 \`\`\`
 `;
 
-  const readmePath = path.join(outputDir, "README.md");
+  const readmePath = path.join(outputDir, 'README.md');
   if (!options.dryRun) {
     fs.writeFileSync(readmePath, readmeContent);
   }
-  files.push("README.md");
+  files.push('README.md');
 
   return files;
 }
@@ -1216,53 +1292,55 @@ npm run build
 async function generateServiceStructures(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
-  
+
   if (!appSpec.services || Object.keys(appSpec.services).length === 0) {
     return files;
   }
 
-  console.log(chalk.blue("🔧 Generating service structures..."));
+  console.log(chalk.blue('🔧 Generating service structures...'));
 
   // Process each service
   for (const [serviceName, service] of Object.entries(appSpec.services)) {
-    if (service.serviceType === "bespoke" && service.sourceDirectory) {
+    if (service.serviceType === 'bespoke' && service.sourceDirectory) {
       const serviceDir = path.join(outputDir, service.sourceDirectory);
-      
-      console.log(chalk.dim(`  • ${serviceName} (${service.language}) -> ${service.sourceDirectory}`));
-      
+
+      console.log(
+        chalk.dim(`  • ${serviceName} (${service.language}) -> ${service.sourceDirectory}`)
+      );
+
       // Create service directory
       if (!fs.existsSync(serviceDir) && !options.dryRun) {
         fs.mkdirSync(serviceDir, { recursive: true });
       }
 
       // Generate language-specific project structure
-      if (service.language === "rust") {
+      if (service.language === 'rust') {
         const rustFiles = await generateRustFiles(
-          { name: serviceName, version: "1.0.0" },
+          { name: serviceName, version: '1.0.0' },
           serviceDir,
           options
         );
         files.push(...rustFiles.map(file => path.join(service.sourceDirectory, file)));
-      } else if (service.language === "typescript") {
+      } else if (service.language === 'typescript') {
         const tsFiles = await generateTypeScriptFiles(
-          { name: serviceName, version: "1.0.0" },
+          { name: serviceName, version: '1.0.0' },
           serviceDir,
           options
         );
         files.push(...tsFiles.map(file => path.join(service.sourceDirectory, file)));
-      } else if (service.language === "go") {
+      } else if (service.language === 'go') {
         const goFiles = await generateGoFiles(
-          { name: serviceName, version: "1.0.0" },
+          { name: serviceName, version: '1.0.0' },
           serviceDir,
           options
         );
         files.push(...goFiles.map(file => path.join(service.sourceDirectory, file)));
-      } else if (service.language === "python") {
+      } else if (service.language === 'python') {
         const pythonFiles = await generatePythonFiles(
-          { name: serviceName, version: "1.0.0" },
+          { name: serviceName, version: '1.0.0' },
           serviceDir,
           options
         );
@@ -1281,61 +1359,59 @@ async function generateLanguageFiles(
   config: any,
   outputDir: string,
   options: GenerateOptions,
-  assemblyConfig?: any,
+  assemblyConfig?: any
 ): Promise<string[]> {
   const files: string[] = [];
 
   // Use language plugin system for code generation
-  const language = config.language || "typescript";
+  const language = config.language || 'typescript';
   const plugin = languageRegistry.get(language);
-  
+
   if (plugin) {
     console.log(chalk.blue(`📦 Generating ${language} project using ${plugin.name}...`));
-    
+
     // Initialize project using the language plugin
-    const projectConfig: ProjectConfig = {
+    const projectConfig: LanguageProjectConfig = {
       name: config.name,
       description: config.description,
       features: config.features || [],
       testing: config.testing !== false,
     };
-    
+
     try {
       const result = await initializeProject(language, projectConfig);
-      
+
       // Write all generated files
       for (const file of result.files) {
         const fullPath = path.join(outputDir, file.path);
         const dir = path.dirname(fullPath);
-        
+
         if (!fs.existsSync(dir) && !options.dryRun) {
           fs.mkdirSync(dir, { recursive: true });
         }
-        
+
         if (!options.dryRun) {
           fs.writeFileSync(fullPath, file.content);
         }
-        
+
         files.push(file.path);
       }
-      
+
       // Log additional setup instructions
       if (result.instructions) {
-        result.instructions.forEach(instruction => 
-          console.log(chalk.green(`✅ ${instruction}`))
-        );
+        result.instructions.forEach(instruction => console.log(chalk.green(`✅ ${instruction}`)));
       }
     } catch (error) {
       console.error(chalk.red(`❌ Failed to generate ${language} project:`), error.message);
       // Fallback to legacy generation for unsupported languages
-      if (language === "shell" || language === "bash") {
+      if (language === 'shell' || language === 'bash') {
         files.push(...(await generateShellFiles(config, outputDir, options)));
       }
     }
   } else {
     console.log(chalk.yellow(`⚠️  No plugin available for language: ${language}`));
     // Fallback for unsupported languages
-    if (language === "shell" || language === "bash") {
+    if (language === 'shell' || language === 'bash') {
       files.push(...(await generateShellFiles(config, outputDir, options)));
     }
   }
@@ -1343,35 +1419,35 @@ async function generateLanguageFiles(
   // Generate deployment artifacts based on deployment target
   if (config.deploymentTarget) {
     switch (config.deploymentTarget) {
-      case "kubernetes":
-      case "k8s":
-        console.log(chalk.blue("🚀 Generating Kubernetes deployment (Terraform)..."));
+      case 'kubernetes':
+      case 'k8s':
+        console.log(chalk.blue('🚀 Generating Kubernetes deployment (Terraform)...'));
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)),
+          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
         );
         break;
-      case "aws":
-        console.log(chalk.blue("🚀 Generating AWS deployment..."));
+      case 'aws':
+        console.log(chalk.blue('🚀 Generating AWS deployment...'));
         // AWS-specific deployment logic would go here
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)),
+          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
         );
         break;
-      case "gcp":
-        console.log(chalk.blue("🚀 Generating GCP deployment..."));
+      case 'gcp':
+        console.log(chalk.blue('🚀 Generating GCP deployment...'));
         // GCP-specific deployment logic would go here
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)),
+          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
         );
         break;
       default:
         console.log(
           chalk.yellow(
-            `⚠️  Unknown deployment target: ${config.deploymentTarget}. Defaulting to Kubernetes.`,
-          ),
+            `⚠️  Unknown deployment target: ${config.deploymentTarget}. Defaulting to Kubernetes.`
+          )
         );
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options)),
+          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
         );
     }
   }
@@ -1380,8 +1456,8 @@ async function generateLanguageFiles(
   const cueData = assemblyConfig._fullCueData?.arbiterSpec;
   const testingArtifacts = cueData?.deployment?.testing?.artifacts || [];
 
-  if (testingArtifacts.includes("compose") || cueData?.deployment?.testing?.localDevelopment) {
-    console.log(chalk.green("🧪 Generating Docker Compose for local testing and development..."));
+  if (testingArtifacts.includes('compose') || cueData?.deployment?.testing?.localDevelopment) {
+    console.log(chalk.green('🧪 Generating Docker Compose for local testing and development...'));
     files.push(...(await generateDockerCompose(config, outputDir, assemblyConfig, options)));
   }
 
@@ -1394,7 +1470,7 @@ async function generateLanguageFiles(
 async function generateTypeScriptFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1402,51 +1478,51 @@ async function generateTypeScriptFiles(
   const packageJson = {
     name: config.name,
     version: config.version,
-    type: "module",
+    type: 'module',
     scripts: {
-      build: config.buildTool === "bun" ? "bun build" : "npm run build",
-      test: config.buildTool === "bun" ? "bun test" : "npm test",
-      lint: "eslint src/**/*.ts",
-      typecheck: "tsc --noEmit",
+      build: config.buildTool === 'bun' ? 'bun build' : 'npm run build',
+      test: config.buildTool === 'bun' ? 'bun test' : 'npm test',
+      lint: 'eslint src/**/*.ts',
+      typecheck: 'tsc --noEmit',
     },
     devDependencies: {
-      "@types/node": "^20.0.0",
-      typescript: "^5.0.0",
-      eslint: "^8.0.0",
+      '@types/node': '^20.0.0',
+      typescript: '^5.0.0',
+      eslint: '^8.0.0',
     },
   };
 
-  const packagePath = path.join(outputDir, "package.json");
+  const packagePath = path.join(outputDir, 'package.json');
   if (!options.dryRun) {
     fs.writeFileSync(packagePath, JSON.stringify(packageJson, null, 2));
   }
-  files.push("package.json");
+  files.push('package.json');
 
   // tsconfig.json
   const tsconfigJson = {
     compilerOptions: {
-      target: "ES2022",
-      module: "ESNext",
-      moduleResolution: "bundler",
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'bundler',
       strict: true,
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
-      outDir: "./dist",
-      rootDir: "./src",
+      outDir: './dist',
+      rootDir: './src',
     },
-    include: ["src/**/*"],
-    exclude: ["node_modules", "dist", "tests"],
+    include: ['src/**/*'],
+    exclude: ['node_modules', 'dist', 'tests'],
   };
 
-  const tsconfigPath = path.join(outputDir, "tsconfig.json");
+  const tsconfigPath = path.join(outputDir, 'tsconfig.json');
   if (!options.dryRun) {
     fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfigJson, null, 2));
   }
-  files.push("tsconfig.json");
+  files.push('tsconfig.json');
 
   // Create src directory and basic file
-  const srcDir = path.join(outputDir, "src");
+  const srcDir = path.join(outputDir, 'src');
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
@@ -1466,18 +1542,18 @@ if (import.meta.url === \`file://\${process.argv[1]}\`) {
 }
 `;
 
-  const indexPath = path.join(srcDir, "index.ts");
+  const indexPath = path.join(srcDir, 'index.ts');
   if (!options.dryRun) {
     fs.writeFileSync(indexPath, indexContent);
   }
-  files.push("src/index.ts");
+  files.push('src/index.ts');
 
   // Create tests directory
-  const testsDir = path.join(outputDir, "tests");
+  const testsDir = path.join(outputDir, 'tests');
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push("tests/");
+  files.push('tests/');
 
   return files;
 }
@@ -1488,7 +1564,7 @@ if (import.meta.url === \`file://\${process.argv[1]}\`) {
 async function generatePythonFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1511,25 +1587,25 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 `;
 
-  const pyprojectPath = path.join(outputDir, "pyproject.toml");
+  const pyprojectPath = path.join(outputDir, 'pyproject.toml');
   if (!options.dryRun) {
     fs.writeFileSync(pyprojectPath, pyprojectToml);
   }
-  files.push("pyproject.toml");
+  files.push('pyproject.toml');
 
   // requirements.txt
   const requirementsContent = `# Generated by Arbiter
 pytest>=7.0.0
 `;
 
-  const requirementsPath = path.join(outputDir, "requirements.txt");
+  const requirementsPath = path.join(outputDir, 'requirements.txt');
   if (!options.dryRun) {
     fs.writeFileSync(requirementsPath, requirementsContent);
   }
-  files.push("requirements.txt");
+  files.push('requirements.txt');
 
   // Create src directory
-  const srcDir = path.join(outputDir, "src", config.name);
+  const srcDir = path.join(outputDir, 'src', config.name);
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
@@ -1543,7 +1619,7 @@ __version__ = "${config.version}"
 `;
 
   if (!options.dryRun) {
-    fs.writeFileSync(path.join(srcDir, "__init__.py"), initContent);
+    fs.writeFileSync(path.join(srcDir, '__init__.py'), initContent);
   }
   files.push(`src/${config.name}/__init__.py`);
 
@@ -1558,16 +1634,16 @@ if __name__ == "__main__":
 `;
 
   if (!options.dryRun) {
-    fs.writeFileSync(path.join(srcDir, "main.py"), mainContent);
+    fs.writeFileSync(path.join(srcDir, 'main.py'), mainContent);
   }
   files.push(`src/${config.name}/main.py`);
 
   // Create tests directory
-  const testsDir = path.join(outputDir, "tests");
+  const testsDir = path.join(outputDir, 'tests');
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push("tests/");
+  files.push('tests/');
 
   return files;
 }
@@ -1578,7 +1654,7 @@ if __name__ == "__main__":
 async function generateRustFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1593,14 +1669,14 @@ edition = "2021"
 [dev-dependencies]
 `;
 
-  const cargoPath = path.join(outputDir, "Cargo.toml");
+  const cargoPath = path.join(outputDir, 'Cargo.toml');
   if (!options.dryRun) {
     fs.writeFileSync(cargoPath, cargoToml);
   }
-  files.push("Cargo.toml");
+  files.push('Cargo.toml');
 
   // Create src directory
-  const srcDir = path.join(outputDir, "src");
+  const srcDir = path.join(outputDir, 'src');
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
@@ -1624,16 +1700,16 @@ mod tests {
 `;
 
   if (!options.dryRun) {
-    fs.writeFileSync(path.join(srcDir, "lib.rs"), libContent);
+    fs.writeFileSync(path.join(srcDir, 'lib.rs'), libContent);
   }
-  files.push("src/lib.rs");
+  files.push('src/lib.rs');
 
   // Create tests directory
-  const testsDir = path.join(outputDir, "tests");
+  const testsDir = path.join(outputDir, 'tests');
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push("tests/");
+  files.push('tests/');
 
   return files;
 }
@@ -1644,7 +1720,7 @@ mod tests {
 async function generateGoFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1656,11 +1732,11 @@ go 1.21
 require ()
 `;
 
-  const goModPath = path.join(outputDir, "go.mod");
+  const goModPath = path.join(outputDir, 'go.mod');
   if (!options.dryRun) {
     fs.writeFileSync(goModPath, goMod);
   }
-  files.push("go.mod");
+  files.push('go.mod');
 
   // main.go
   const mainGo = `// ${config.name} - Generated by Arbiter
@@ -1674,18 +1750,18 @@ func main() {
 }
 `;
 
-  const mainGoPath = path.join(outputDir, "main.go");
+  const mainGoPath = path.join(outputDir, 'main.go');
   if (!options.dryRun) {
     fs.writeFileSync(mainGoPath, mainGo);
   }
-  files.push("main.go");
+  files.push('main.go');
 
   // Create test directory
-  const testDir = path.join(outputDir, "test");
+  const testDir = path.join(outputDir, 'test');
   if (!fs.existsSync(testDir) && !options.dryRun) {
     fs.mkdirSync(testDir, { recursive: true });
   }
-  files.push("test/");
+  files.push('test/');
 
   return files;
 }
@@ -1696,7 +1772,7 @@ func main() {
 async function generateShellFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1716,14 +1792,14 @@ clean:
 \trm -f *.log *.tmp
 `;
 
-  const makefilePath = path.join(outputDir, "Makefile");
+  const makefilePath = path.join(outputDir, 'Makefile');
   if (!options.dryRun) {
     fs.writeFileSync(makefilePath, makefile);
   }
-  files.push("Makefile");
+  files.push('Makefile');
 
   // Create src directory
-  const srcDir = path.join(outputDir, "src");
+  const srcDir = path.join(outputDir, 'src');
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
@@ -1752,11 +1828,11 @@ fi
   files.push(`src/${config.name}`);
 
   // Create tests directory
-  const testsDir = path.join(outputDir, "tests");
+  const testsDir = path.join(outputDir, 'tests');
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push("tests/");
+  files.push('tests/');
 
   return files;
 }
@@ -1767,12 +1843,12 @@ fi
 async function generateCIWorkflows(
   config: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
   // GitHub Actions workflow
-  const workflowDir = path.join(outputDir, ".github", "workflows");
+  const workflowDir = path.join(outputDir, '.github', 'workflows');
   if (!fs.existsSync(workflowDir) && !options.dryRun) {
     fs.mkdirSync(workflowDir, { recursive: true });
   }
@@ -1810,88 +1886,11 @@ jobs:
       run: ${getBuildCommand(config.language, config.buildTool)}
 `;
 
-  const workflowPath = path.join(workflowDir, "ci.yml");
+  const workflowPath = path.join(workflowDir, 'ci.yml');
   if (!options.dryRun) {
     fs.writeFileSync(workflowPath, workflow);
   }
-  files.push(".github/workflows/ci.yml");
-
-  return files;
-}
-
-/**
- * Generate project structure (README, etc.)
- */
-async function generateProjectStructure(
-  config: any,
-  outputDir: string,
-  options: GenerateOptions,
-): Promise<string[]> {
-  const files: string[] = [];
-
-  // README.md
-  const readme = `# ${config.name}
-
-Generated by Arbiter - Version ${config.version}
-
-## Overview
-
-This is a ${config.language} ${config.kind} generated from an Arbiter assembly specification.
-
-## Getting Started
-
-### Prerequisites
-
-${getPrerequisites(config.language, config.buildTool)}
-
-### Installation
-
-\`\`\`bash
-${getInstallCommand(config.language, config.buildTool)}
-\`\`\`
-
-### Usage
-
-\`\`\`bash
-${getRunCommand(config.language, config.buildTool)}
-\`\`\`
-
-### Testing
-
-\`\`\`bash
-${getTestCommand(config.language, config.buildTool)}
-\`\`\`
-
-## Development
-
-### Building
-
-\`\`\`bash
-${getBuildCommand(config.language, config.buildTool)}
-\`\`\`
-
-### Linting
-
-\`\`\`bash
-${getLintCommand(config.language, config.buildTool)}
-\`\`\`
-
-## Generated by Arbiter
-
-This project structure was generated by [Arbiter](https://github.com/arbiter-framework) based on the \`arbiter.assembly.cue\` specification.
-
-To regenerate or modify the structure:
-
-\`\`\`bash
-arbiter generate
-\`\`\`
-`;
-
-  const readmePath = path.join(outputDir, "README.md");
-  if (!options.dryRun) {
-    fs.writeFileSync(readmePath, readme);
-  }
-  files.push("README.md");
+  files.push('.github/workflows/ci.yml');
 
   return files;
 }
@@ -1902,7 +1901,7 @@ arbiter generate
 async function generateDocumentation(
   _config: any,
   _outputDir: string,
-  _options: GenerateOptions,
+  _options: GenerateOptions
 ): Promise<string[]> {
   // Documentation generation will be handled by the docs command
   return [];
@@ -1911,28 +1910,28 @@ async function generateDocumentation(
 // Helper functions for CI workflow generation
 function getSetupAction(language: string): string {
   switch (language) {
-    case "typescript":
-      return "actions/setup-node@v4";
-    case "python":
-      return "actions/setup-python@v4";
-    case "rust":
-      return "actions-rs/toolchain@v1";
-    case "go":
-      return "actions/setup-go@v4";
+    case 'typescript':
+      return 'actions/setup-node@v4';
+    case 'python':
+      return 'actions/setup-python@v4';
+    case 'rust':
+      return 'actions-rs/toolchain@v1';
+    case 'go':
+      return 'actions/setup-go@v4';
     default:
-      return "actions/setup-node@v4";
+      return 'actions/setup-node@v4';
   }
 }
 
 function getSetupActionConfig(language: string): string {
   switch (language) {
-    case "typescript":
+    case 'typescript':
       return "with:\n        node-version: '20'";
-    case "python":
+    case 'python':
       return "with:\n        python-version: '3.11'";
-    case "rust":
-      return "with:\n        toolchain: stable";
-    case "go":
+    case 'rust':
+      return 'with:\n        toolchain: stable';
+    case 'go':
       return "with:\n        go-version: '1.21'";
     default:
       return "with:\n        node-version: '20'";
@@ -1941,18 +1940,18 @@ function getSetupActionConfig(language: string): string {
 
 function getPrerequisites(language: string, buildTool?: string): string {
   switch (language) {
-    case "typescript":
-      return buildTool === "bun"
-        ? "- [Bun](https://bun.sh) v1.0+"
-        : "- [Node.js](https://nodejs.org) v18+\n- [npm](https://npmjs.com) or [yarn](https://yarnpkg.com)";
-    case "python":
-      return "- [Python](https://python.org) 3.8+\n- [pip](https://pip.pypa.io)";
-    case "rust":
-      return "- [Rust](https://rustup.rs) 1.70+";
-    case "go":
-      return "- [Go](https://golang.org) 1.21+";
-    case "shell":
-      return "- [Bash](https://www.gnu.org/software/bash/) 4.0+";
+    case 'typescript':
+      return buildTool === 'bun'
+        ? '- [Bun](https://bun.sh) v1.0+'
+        : '- [Node.js](https://nodejs.org) v18+\n- [npm](https://npmjs.com) or [yarn](https://yarnpkg.com)';
+    case 'python':
+      return '- [Python](https://python.org) 3.8+\n- [pip](https://pip.pypa.io)';
+    case 'rust':
+      return '- [Rust](https://rustup.rs) 1.70+';
+    case 'go':
+      return '- [Go](https://golang.org) 1.21+';
+    case 'shell':
+      return '- [Bash](https://www.gnu.org/software/bash/) 4.0+';
     default:
       return `- Development environment for ${language}`;
   }
@@ -1960,16 +1959,16 @@ function getPrerequisites(language: string, buildTool?: string): string {
 
 function getInstallCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case "typescript":
-      return buildTool === "bun" ? "bun install" : "npm install";
-    case "python":
-      return "pip install -e .";
-    case "rust":
-      return "cargo build";
-    case "go":
-      return "go mod tidy";
-    case "shell":
-      return "make install";
+    case 'typescript':
+      return buildTool === 'bun' ? 'bun install' : 'npm install';
+    case 'python':
+      return 'pip install -e .';
+    case 'rust':
+      return 'cargo build';
+    case 'go':
+      return 'go mod tidy';
+    case 'shell':
+      return 'make install';
     default:
       return 'echo "Install command not defined"';
   }
@@ -1977,16 +1976,16 @@ function getInstallCommand(language: string, buildTool?: string): string {
 
 function getRunCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case "typescript":
-      return buildTool === "bun" ? "bun run src/index.ts" : "npm start";
-    case "python":
-      return "python -m " + "PLACEHOLDER";
-    case "rust":
-      return "cargo run";
-    case "go":
-      return "go run main.go";
-    case "shell":
-      return "./src/PLACEHOLDER";
+    case 'typescript':
+      return buildTool === 'bun' ? 'bun run src/index.ts' : 'npm start';
+    case 'python':
+      return 'python -m ' + 'PLACEHOLDER';
+    case 'rust':
+      return 'cargo run';
+    case 'go':
+      return 'go run main.go';
+    case 'shell':
+      return './src/PLACEHOLDER';
     default:
       return 'echo "Run command not defined"';
   }
@@ -1994,16 +1993,16 @@ function getRunCommand(language: string, buildTool?: string): string {
 
 function getTestCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case "typescript":
-      return buildTool === "bun" ? "bun test" : "npm test";
-    case "python":
-      return "pytest";
-    case "rust":
-      return "cargo test";
-    case "go":
-      return "go test ./...";
-    case "shell":
-      return "make test";
+    case 'typescript':
+      return buildTool === 'bun' ? 'bun test' : 'npm test';
+    case 'python':
+      return 'pytest';
+    case 'rust':
+      return 'cargo test';
+    case 'go':
+      return 'go test ./...';
+    case 'shell':
+      return 'make test';
     default:
       return 'echo "Test command not defined"';
   }
@@ -2011,15 +2010,15 @@ function getTestCommand(language: string, buildTool?: string): string {
 
 function getBuildCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case "typescript":
-      return buildTool === "bun" ? "bun build" : "npm run build";
-    case "python":
-      return "python -m build";
-    case "rust":
-      return "cargo build --release";
-    case "go":
-      return "go build";
-    case "shell":
+    case 'typescript':
+      return buildTool === 'bun' ? 'bun build' : 'npm run build';
+    case 'python':
+      return 'python -m build';
+    case 'rust':
+      return 'cargo build --release';
+    case 'go':
+      return 'go build';
+    case 'shell':
       return 'echo "No build step needed"';
     default:
       return 'echo "Build command not defined"';
@@ -2028,16 +2027,16 @@ function getBuildCommand(language: string, buildTool?: string): string {
 
 function getLintCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case "typescript":
-      return buildTool === "bun" ? "bun run lint" : "npm run lint";
-    case "python":
-      return "ruff check . && mypy .";
-    case "rust":
-      return "cargo clippy -- -D warnings";
-    case "go":
-      return "golangci-lint run";
-    case "shell":
-      return "shellcheck src/*";
+    case 'typescript':
+      return buildTool === 'bun' ? 'bun run lint' : 'npm run lint';
+    case 'python':
+      return 'ruff check . && mypy .';
+    case 'rust':
+      return 'cargo clippy -- -D warnings';
+    case 'go':
+      return 'golangci-lint run';
+    case 'shell':
+      return 'shellcheck src/*';
     default:
       return 'echo "Lint command not defined"';
   }
@@ -2048,53 +2047,53 @@ async function generateTerraformKubernetes(
   config: any,
   outputDir: string,
   assemblyConfig: any,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
-  await fs.ensureDir(path.join(outputDir, "terraform"));
+  await fs.ensureDir(path.join(outputDir, 'terraform'));
 
   // Parse assembly to extract services and cluster references
   const { services, cluster } = parseDeploymentServices(assemblyConfig);
 
   // Generate main.tf with provider configuration
   const mainTf = generateTerraformMain(cluster, config.name);
-  const mainPath = path.join(outputDir, "terraform", "main.tf");
+  const mainPath = path.join(outputDir, 'terraform', 'main.tf');
   if (!options.dryRun) {
     await fs.writeFile(mainPath, mainTf);
   }
-  files.push("terraform/main.tf");
+  files.push('terraform/main.tf');
 
   // Generate variables.tf
   const variablesTf = generateTerraformVariables(services, cluster);
-  const variablesPath = path.join(outputDir, "terraform", "variables.tf");
+  const variablesPath = path.join(outputDir, 'terraform', 'variables.tf');
   if (!options.dryRun) {
     await fs.writeFile(variablesPath, variablesTf);
   }
-  files.push("terraform/variables.tf");
+  files.push('terraform/variables.tf');
 
   // Generate services.tf with Kubernetes resources
   const servicesTf = generateTerraformServices(services, config.name);
-  const servicesPath = path.join(outputDir, "terraform", "services.tf");
+  const servicesPath = path.join(outputDir, 'terraform', 'services.tf');
   if (!options.dryRun) {
     await fs.writeFile(servicesPath, servicesTf);
   }
-  files.push("terraform/services.tf");
+  files.push('terraform/services.tf');
 
   // Generate outputs.tf
   const outputsTf = generateTerraformOutputs(services, config.name);
-  const outputsPath = path.join(outputDir, "terraform", "outputs.tf");
+  const outputsPath = path.join(outputDir, 'terraform', 'outputs.tf');
   if (!options.dryRun) {
     await fs.writeFile(outputsPath, outputsTf);
   }
-  files.push("terraform/outputs.tf");
+  files.push('terraform/outputs.tf');
 
   // Generate README for Terraform deployment
   const readme = generateTerraformReadme(services, cluster, config.name);
-  const readmePath = path.join(outputDir, "terraform", "README.md");
+  const readmePath = path.join(outputDir, 'terraform', 'README.md');
   if (!options.dryRun) {
     await fs.writeFile(readmePath, readme);
   }
-  files.push("terraform/README.md");
+  files.push('terraform/README.md');
 
   return files;
 }
@@ -2112,10 +2111,10 @@ function parseDeploymentServices(assemblyConfig: any): {
   // Extract cluster configuration
   if (cueData?.deployment?.cluster) {
     cluster = {
-      name: cueData.deployment.cluster.name || "default",
-      provider: cueData.deployment.cluster.provider || "kubernetes",
+      name: cueData.deployment.cluster.name || 'default',
+      provider: cueData.deployment.cluster.provider || 'kubernetes',
       context: cueData.deployment.cluster.context,
-      namespace: cueData.deployment.cluster.namespace || "default",
+      namespace: cueData.deployment.cluster.namespace || 'default',
       config: cueData.deployment.cluster.config || {},
     };
   }
@@ -2136,8 +2135,8 @@ function parseDeploymentServices(assemblyConfig: any): {
 interface DeploymentService {
   name: string;
   language: string;
-  serviceType: "bespoke" | "prebuilt" | "external";
-  type: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
+  serviceType: 'bespoke' | 'prebuilt' | 'external';
+  type: 'deployment' | 'statefulset' | 'daemonset' | 'job' | 'cronjob';
   image?: string;
   sourceDirectory?: string;
   buildContext?: {
@@ -2151,7 +2150,7 @@ interface DeploymentService {
     name: string;
     path: string;
     size?: string;
-    type?: "persistentVolumeClaim" | "configMap" | "secret";
+    type?: 'persistentVolumeClaim' | 'configMap' | 'secret';
   }>;
   config?: {
     files?: Array<{ name: string; content: string | Record<string, any> }>;
@@ -2174,7 +2173,7 @@ interface DeploymentService {
 
 interface ClusterConfig {
   name: string;
-  provider: "kubernetes" | "eks" | "gke" | "aks";
+  provider: 'kubernetes' | 'eks' | 'gke' | 'aks';
   context?: string;
   namespace: string;
   config: Record<string, any>;
@@ -2182,24 +2181,24 @@ interface ClusterConfig {
 
 function parseDeploymentServiceConfig(name: string, config: any): DeploymentService | null {
   // Determine service type based on configuration
-  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
+  let serviceType: 'bespoke' | 'prebuilt' | 'external' = 'prebuilt';
 
   if (
     config.sourceDirectory ||
-    (config.language && config.language !== "container" && !config.image)
+    (config.language && config.language !== 'container' && !config.image)
   ) {
-    serviceType = "bespoke";
-  } else if (config.image && (config.language === "container" || !config.language)) {
-    serviceType = "prebuilt";
+    serviceType = 'bespoke';
+  } else if (config.image && (config.language === 'container' || !config.language)) {
+    serviceType = 'prebuilt';
   } else if (config.external) {
-    serviceType = "external";
+    serviceType = 'external';
   }
 
   const service: DeploymentService = {
     name: name,
-    language: config.language || "container",
+    language: config.language || 'container',
     serviceType: serviceType,
-    type: config.type || "deployment",
+    type: config.type || 'deployment',
     replicas: config.replicas || 1,
   };
 
@@ -2212,7 +2211,7 @@ function parseDeploymentServiceConfig(name: string, config: any): DeploymentServ
   if (config.volumes) {
     service.volumes = config.volumes.map((vol: any) => ({
       ...vol,
-      type: vol.type || "persistentVolumeClaim",
+      type: vol.type || 'persistentVolumeClaim',
     }));
   }
   if (config.resources) service.resources = config.resources;
@@ -2226,7 +2225,7 @@ function parseDeploymentServiceConfig(name: string, config: any): DeploymentServ
 
 // Terraform generation functions
 function generateTerraformMain(cluster: ClusterConfig | null, projectName: string): string {
-  const clusterName = cluster?.name || "default";
+  const clusterName = cluster?.name || 'default';
   const namespace = cluster?.namespace || projectName.toLowerCase();
 
   return `terraform {
@@ -2247,7 +2246,7 @@ provider "kubernetes" {
 }
 
 # Create namespace if it doesn't exist
-resource "kubernetes_namespace" "${namespace.replace(/-/g, "_")}" {
+resource "kubernetes_namespace" "${namespace.replace(/-/g, '_')}" {
   metadata {
     name = "${namespace}"
     labels = {
@@ -2261,9 +2260,9 @@ resource "kubernetes_namespace" "${namespace.replace(/-/g, "_")}" {
 
 function generateTerraformVariables(
   services: DeploymentService[],
-  cluster: ClusterConfig | null,
+  cluster: ClusterConfig | null
 ): string {
-  const clusterName = cluster?.name || "default";
+  const clusterName = cluster?.name || 'default';
 
   return `variable "kubeconfig_path" {
   description = "Path to the kubeconfig file"
@@ -2280,7 +2279,7 @@ variable "cluster_context" {
 variable "namespace" {
   description = "Kubernetes namespace for deployment"
   type        = string
-  default     = "${cluster?.namespace || "default"}"
+  default     = "${cluster?.namespace || 'default'}"
 }
 
 variable "image_tag" {
@@ -2290,48 +2289,48 @@ variable "image_tag" {
 }
 
 ${services
-  .map((service) => {
-    const serviceName = service.name.replace(/-/g, "_");
+  .map(service => {
+    const serviceName = service.name.replace(/-/g, '_');
     return `variable "${serviceName}_replicas" {
   description = "Number of replicas for ${service.name}"
   type        = number
   default     = ${service.replicas || 1}
 }`;
   })
-  .join("\n\n")}
+  .join('\n\n')}
 `;
 }
 
 function generateTerraformServices(services: DeploymentService[], projectName: string): string {
-  return services.map((service) => generateTerraformService(service, projectName)).join("\n\n");
+  return services.map(service => generateTerraformService(service, projectName)).join('\n\n');
 }
 
 function generateTerraformService(service: DeploymentService, projectName: string): string {
-  const serviceName = service.name.replace(/-/g, "_");
+  const serviceName = service.name.replace(/-/g, '_');
   const namespace = projectName.toLowerCase();
 
   let terraform = `# ${service.name} ${service.type}
 resource "kubernetes_${service.type}" "${serviceName}" {
   metadata {
     name      = "${service.name}"
-    namespace = kubernetes_namespace.${namespace.replace(/-/g, "_")}.metadata[0].name
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
     labels = {
       app     = "${service.name}"
       project = "${projectName.toLowerCase()}"${
         service.labels
           ? Object.entries(service.labels)
               .map(([k, v]) => `\n      ${k} = "${v}"`)
-              .join("")
-          : ""
+              .join('')
+          : ''
       }
     }${
       service.annotations
         ? `
     annotations = {${Object.entries(service.annotations)
       .map(([k, v]) => `\n      "${k}" = "${v}"`)
-      .join("")}
+      .join('')}
     }`
-        : ""
+        : ''
     }
   }
 
@@ -2360,12 +2359,12 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 
   // Add ports
   if (service.ports && service.ports.length > 0) {
-    service.ports.forEach((port) => {
+    service.ports.forEach(port => {
       terraform += `
           port {
             name           = "${port.name}"
             container_port = ${port.targetPort || port.port}
-            protocol       = "${port.protocol || "TCP"}"
+            protocol       = "${port.protocol || 'TCP'}"
           }`;
     });
   }
@@ -2415,7 +2414,7 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 
   // Add volume mounts
   if (service.volumes && service.volumes.length > 0) {
-    service.volumes.forEach((volume) => {
+    service.volumes.forEach(volume => {
       terraform += `
           volume_mount {
             name       = "${volume.name}"
@@ -2429,12 +2428,12 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 
   // Add volumes
   if (service.volumes && service.volumes.length > 0) {
-    service.volumes.forEach((volume) => {
+    service.volumes.forEach(volume => {
       terraform += `
         volume {
           name = "${volume.name}"
           persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.${serviceName}_${volume.name.replace(/-/g, "_")}.metadata[0].name
+            claim_name = kubernetes_persistent_volume_claim.${serviceName}_${volume.name.replace(/-/g, '_')}.metadata[0].name
           }
         }`;
     });
@@ -2453,7 +2452,7 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 resource "kubernetes_service" "${serviceName}" {
   metadata {
     name      = "${service.name}"
-    namespace = kubernetes_namespace.${namespace.replace(/-/g, "_")}.metadata[0].name
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
     labels = {
       app     = "${service.name}"
       project = "${projectName.toLowerCase()}"
@@ -2467,34 +2466,34 @@ resource "kubernetes_service" "${serviceName}" {
 
 ${service.ports
   .map(
-    (port) => `    port {
+    port => `    port {
       name        = "${port.name}"
       port        = ${port.port}
       target_port = ${port.targetPort || port.port}
-      protocol    = "${port.protocol || "TCP"}"
-    }`,
+      protocol    = "${port.protocol || 'TCP'}"
+    }`
   )
-  .join("\n")}
+  .join('\n')}
   }
 }`;
   }
 
   // Generate PVCs for volumes
   if (service.volumes && service.volumes.length > 0) {
-    service.volumes.forEach((volume) => {
+    service.volumes.forEach(volume => {
       terraform += `
 
-resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.replace(/-/g, "_")}" {
+resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.replace(/-/g, '_')}" {
   metadata {
     name      = "${service.name}-${volume.name}"
-    namespace = kubernetes_namespace.${namespace.replace(/-/g, "_")}.metadata[0].name
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
   }
 
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${volume.size || "10Gi"}"
+        storage = "${volume.size || '10Gi'}"
       }
     }
   }
@@ -2507,9 +2506,9 @@ resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.repl
 
 function generateTerraformOutputs(services: DeploymentService[], projectName: string): string {
   const outputs = services
-    .filter((service) => service.ports && service.ports.length > 0)
-    .map((service) => {
-      const serviceName = service.name.replace(/-/g, "_");
+    .filter(service => service.ports && service.ports.length > 0)
+    .map(service => {
+      const serviceName = service.name.replace(/-/g, '_');
       return `output "${serviceName}_service_ip" {
   description = "Cluster IP of the ${service.name} service"
   value       = kubernetes_service.${serviceName}.spec[0].cluster_ip
@@ -2517,25 +2516,25 @@ function generateTerraformOutputs(services: DeploymentService[], projectName: st
 
 output "${serviceName}_ports" {
   description = "Ports exposed by ${service.name} service"
-  value       = [${service.ports!.map((p) => `"${p.port}"`).join(", ")}]
+  value       = [${service.ports?.map(p => `"${p.port}"`).join(', ')}]
 }`;
     });
 
   return `output "namespace" {
   description = "Kubernetes namespace"
-  value       = kubernetes_namespace.${projectName.toLowerCase().replace(/-/g, "_")}.metadata[0].name
+  value       = kubernetes_namespace.${projectName.toLowerCase().replace(/-/g, '_')}.metadata[0].name
 }
 
-${outputs.join("\n\n")}
+${outputs.join('\n\n')}
 `;
 }
 
 function generateTerraformReadme(
   services: DeploymentService[],
   cluster: ClusterConfig | null,
-  projectName: string,
+  projectName: string
 ): string {
-  const clusterName = cluster?.name || "default";
+  const clusterName = cluster?.name || 'default';
   const namespace = cluster?.namespace || projectName.toLowerCase();
 
   return `# ${projectName} - Terraform Kubernetes Deployment
@@ -2559,23 +2558,23 @@ This directory contains Terraform configurations for deploying ${projectName} to
 
 ${services
   .map(
-    (service) => `### ${service.name}
+    service => `### ${service.name}
 - **Language**: ${service.language}
 - **Type**: ${service.type}
 - **Image**: ${service.image || `${service.name}:latest`}${
       service.ports
         ? `
-- **Ports**: ${service.ports.map((p) => `${p.port}/${p.protocol || "TCP"} (${p.name})`).join(", ")}`
-        : ""
+- **Ports**: ${service.ports.map(p => `${p.port}/${p.protocol || 'TCP'} (${p.name})`).join(', ')}`
+        : ''
     }
 - **Replicas**: ${service.replicas || 1}${
       service.volumes
         ? `
-- **Storage**: ${service.volumes.map((v) => `${v.name} → ${v.path} (${v.size || "10Gi"})`).join(", ")}`
-        : ""
-    }`,
+- **Storage**: ${service.volumes.map(v => `${v.name} → ${v.path} (${v.size || '10Gi'})`).join(', ')}`
+        : ''
+    }`
   )
-  .join("\n\n")}
+  .join('\n\n')}
 
 ## Deployment
 
@@ -2613,22 +2612,22 @@ namespace       = "${namespace}"
 image_tag = "v1.0.0"
 
 # Service scaling
-${services.map((service) => `${service.name.replace(/-/g, "_")}_replicas = ${service.replicas || 1}`).join("\n")}
+${services.map(service => `${service.name.replace(/-/g, '_')}_replicas = ${service.replicas || 1}`).join('\n')}
 \`\`\`
 
 ## Access Services
 
 ${services
-  .filter((s) => s.ports && s.ports.length > 0)
+  .filter(s => s.ports && s.ports.length > 0)
   .map(
-    (service) => `### ${service.name}
+    service => `### ${service.name}
 \`\`\`bash
-kubectl port-forward -n ${namespace} service/${service.name} ${service.ports![0].port}:${service.ports![0].port}
+kubectl port-forward -n ${namespace} service/${service.name} ${service.ports?.[0].port}:${service.ports?.[0].port}
 \`\`\`
-Access at: http://localhost:${service.ports![0].port}
-`,
+Access at: http://localhost:${service.ports?.[0].port}
+`
   )
-  .join("\n")}
+  .join('\n')}
 
 ## State Management
 
@@ -2683,29 +2682,29 @@ async function generateDockerCompose(
   config: any,
   outputDir: string,
   assemblyConfig: any,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
-  await fs.ensureDir(path.join(outputDir, "compose"));
+  await fs.ensureDir(path.join(outputDir, 'compose'));
 
   // Parse assembly to extract services and deployment configuration
   const { services, deployment } = parseDockerComposeServices(assemblyConfig);
 
   // Generate docker-compose.yml
   const composeYml = generateDockerComposeFile(services, deployment, config.name);
-  const composePath = path.join(outputDir, "compose", "docker-compose.yml");
+  const composePath = path.join(outputDir, 'compose', 'docker-compose.yml');
   if (!options.dryRun) {
     await fs.writeFile(composePath, composeYml);
   }
-  files.push("compose/docker-compose.yml");
+  files.push('compose/docker-compose.yml');
 
   // Generate .env template
   const envTemplate = generateComposeEnvTemplate(services, config.name);
-  const envPath = path.join(outputDir, "compose", ".env.template");
+  const envPath = path.join(outputDir, 'compose', '.env.template');
   if (!options.dryRun) {
     await fs.writeFile(envPath, envTemplate);
   }
-  files.push("compose/.env.template");
+  files.push('compose/.env.template');
 
   // Generate build contexts for bespoke services
   const buildFiles = await generateBuildContexts(services, outputDir, options);
@@ -2713,27 +2712,27 @@ async function generateDockerCompose(
 
   // Generate compose README
   const readme = generateComposeReadme(services, deployment, config.name);
-  const readmePath = path.join(outputDir, "compose", "README.md");
+  const readmePath = path.join(outputDir, 'compose', 'README.md');
   if (!options.dryRun) {
     await fs.writeFile(readmePath, readme);
   }
-  files.push("compose/README.md");
+  files.push('compose/README.md');
 
   return files;
 }
 
 function parseDockerComposeServices(assemblyConfig: any): {
-  services: ServiceConfig[];
+  services: DeploymentServiceConfig[];
   deployment: DeploymentConfig;
 } {
-  const services: ServiceConfig[] = [];
+  const services: DeploymentServiceConfig[] = [];
   const cueData = assemblyConfig._fullCueData || assemblyConfig;
 
   // Extract deployment configuration
   const deployment: DeploymentConfig = {
-    target: cueData?.deployment?.target || "compose",
+    target: cueData?.deployment?.target || 'compose',
     compose: {
-      version: cueData?.deployment?.compose?.version || "3.8",
+      version: cueData?.deployment?.compose?.version || '3.8',
       networks: cueData?.deployment?.compose?.networks || {},
       volumes: cueData?.deployment?.compose?.volumes || {},
       profiles: cueData?.deployment?.compose?.profiles || [],
@@ -2754,24 +2753,24 @@ function parseDockerComposeServices(assemblyConfig: any): {
   return { services, deployment };
 }
 
-function parseServiceForCompose(name: string, config: any): ServiceConfig | null {
+function parseServiceForCompose(name: string, config: any): DeploymentServiceConfig | null {
   // Detect service type based on configuration
-  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
+  let serviceType: 'bespoke' | 'prebuilt' | 'external' = 'prebuilt';
 
   if (config.sourceDirectory) {
-    serviceType = "bespoke";
+    serviceType = 'bespoke';
   } else if (config.image) {
-    serviceType = "prebuilt";
+    serviceType = 'prebuilt';
   } else if (config.language && !config.image) {
     // Language specified but no image - likely bespoke
-    serviceType = "bespoke";
+    serviceType = 'bespoke';
   }
 
-  const service: ServiceConfig = {
+  const service: DeploymentServiceConfig = {
     name: name,
     serviceType: serviceType,
-    language: config.language || "container",
-    type: config.type || "deployment",
+    language: config.language || 'container',
+    type: config.type || 'deployment',
     replicas: config.replicas || 1,
     image: config.image,
     sourceDirectory: config.sourceDirectory,
@@ -2789,16 +2788,16 @@ function parseServiceForCompose(name: string, config: any): ServiceConfig | null
 }
 
 function generateDockerComposeFile(
-  services: ServiceConfig[],
+  services: DeploymentServiceConfig[],
   deployment: DeploymentConfig,
-  projectName: string,
+  projectName: string
 ): string {
-  const version = deployment.compose?.version || "3.8";
+  const version = deployment.compose?.version || '3.8';
 
   let compose = `version: "${version}"
 
 services:
-${services.map((service) => generateComposeService(service, projectName)).join("\n")}`;
+${services.map(service => generateComposeService(service, projectName)).join('\n')}`;
 
   // Add networks if specified
   if (deployment.compose?.networks && Object.keys(deployment.compose.networks).length > 0) {
@@ -2810,35 +2809,35 @@ ${Object.entries(deployment.compose.networks)
     ([name, config]) =>
       `  ${name}:
 ${Object.entries(config as any)
-  .map(([k, v]) => `    ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
-  .join("\n")}`,
+  .map(([k, v]) => `    ${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+  .join('\n')}`
   )
-  .join("\n")}`;
+  .join('\n')}`;
   }
 
   // Add named volumes if any services use them
-  const namedVolumes = services.flatMap((s) =>
+  const namedVolumes = services.flatMap(s =>
     (s.volumes || [])
-      .filter((v) => v.type === "persistentVolumeClaim")
-      .map((v) => `${s.name}_${v.name}`),
+      .filter(v => v.type === 'persistentVolumeClaim')
+      .map(v => `${s.name}_${v.name}`)
   );
 
   if (namedVolumes.length > 0) {
     compose += `
 
 volumes:
-${namedVolumes.map((volume) => `  ${volume}:`).join("\n")}`;
+${namedVolumes.map(volume => `  ${volume}:`).join('\n')}`;
   }
 
   return compose;
 }
 
-function generateComposeService(service: ServiceConfig, projectName: string): string {
+function generateComposeService(service: DeploymentServiceConfig, projectName: string): string {
   const serviceName = service.name;
   let serviceConfig = `  ${serviceName}:`;
 
   // Image or build configuration
-  if (service.serviceType === "bespoke") {
+  if (service.serviceType === 'bespoke') {
     // Build from source
     if (service.sourceDirectory) {
       serviceConfig += `
@@ -2860,7 +2859,7 @@ function generateComposeService(service: ServiceConfig, projectName: string): st
       args:
 ${Object.entries(service.buildContext.buildArgs)
   .map(([k, v]) => `        ${k}: ${v}`)
-  .join("\n")}`;
+  .join('\n')}`;
       }
     } else {
       // Fallback to image for bespoke without sourceDirectory
@@ -2885,7 +2884,7 @@ ${Object.entries(service.buildContext.buildArgs)
   if (service.ports && service.ports.length > 0) {
     serviceConfig += `
     ports:
-${service.ports.map((p) => `      - "${p.port}:${p.targetPort || p.port}"`).join("\n")}`;
+${service.ports.map(p => `      - "${p.port}:${p.targetPort || p.port}"`).join('\n')}`;
   }
 
   // Environment variables
@@ -2894,7 +2893,7 @@ ${service.ports.map((p) => `      - "${p.port}:${p.targetPort || p.port}"`).join
     environment:
 ${Object.entries(service.env)
   .map(([k, v]) => `      ${k}: ${v}`)
-  .join("\n")}`;
+  .join('\n')}`;
   }
 
   // Volumes
@@ -2902,13 +2901,13 @@ ${Object.entries(service.env)
     serviceConfig += `
     volumes:`;
 
-    service.volumes.forEach((volume) => {
-      if (volume.type === "persistentVolumeClaim") {
+    service.volumes.forEach(volume => {
+      if (volume.type === 'persistentVolumeClaim') {
         serviceConfig += `
       - ${serviceName}_${volume.name}:${volume.path}`;
-      } else if (volume.type === "configMap" && service.config?.files) {
+      } else if (volume.type === 'configMap' && service.config?.files) {
         // Handle config files
-        const configFile = service.config.files.find((f) => f.name === volume.name);
+        const configFile = service.config.files.find(f => f.name === volume.name);
         if (configFile) {
           serviceConfig += `
       - ./config/${serviceName}/${configFile.name}:${volume.path}:ro`;
@@ -2925,7 +2924,7 @@ ${Object.entries(service.env)
   const labels = {
     project: projectName,
     service: serviceName,
-    "service-type": service.serviceType,
+    'service-type': service.serviceType,
     ...service.labels,
   };
 
@@ -2933,11 +2932,11 @@ ${Object.entries(service.env)
     labels:
 ${Object.entries(labels)
   .map(([k, v]) => `      ${k}: "${v}"`)
-  .join("\n")}`;
+  .join('\n')}`;
 
   // Health check (basic)
   if (service.ports && service.ports.length > 0) {
-    const httpPort = service.ports.find((p) => p.name === "http" || p.name === "web");
+    const httpPort = service.ports.find(p => p.name === 'http' || p.name === 'web');
     if (httpPort) {
       serviceConfig += `
     healthcheck:
@@ -2953,11 +2952,11 @@ ${Object.entries(labels)
     const limits = service.resources.limits;
     if (limits.memory) {
       serviceConfig += `
-    mem_limit: ${limits.memory.replace("Mi", "m").replace("Gi", "g")}`;
+    mem_limit: ${limits.memory.replace('Mi', 'm').replace('Gi', 'g')}`;
     }
     if (limits.cpu) {
-      const cpuLimit = limits.cpu.replace("m", "");
-      const cpuFloat = (parseInt(cpuLimit) / 1000).toFixed(2);
+      const cpuLimit = limits.cpu.replace('m', '');
+      const cpuFloat = (Number.parseInt(cpuLimit) / 1000).toFixed(2);
       serviceConfig += `
     cpus: "${cpuFloat}"`;
     }
@@ -2966,13 +2965,16 @@ ${Object.entries(labels)
   return serviceConfig;
 }
 
-function generateComposeEnvTemplate(services: ServiceConfig[], projectName: string): string {
+function generateComposeEnvTemplate(
+  services: DeploymentServiceConfig[],
+  projectName: string
+): string {
   const envVars = new Set<string>();
 
   // Collect all environment variables from services
-  services.forEach((service) => {
+  services.forEach(service => {
     if (service.env) {
-      Object.keys(service.env).forEach((key) => envVars.add(key));
+      Object.keys(service.env).forEach(key => envVars.add(key));
     }
   });
 
@@ -2989,7 +2991,7 @@ IMAGE_TAG=latest
 `;
 
   // Add service-specific environment variables
-  services.forEach((service) => {
+  services.forEach(service => {
     if (service.env && Object.keys(service.env).length > 0) {
       envContent += `# ${service.name} Service
 `;
@@ -2997,7 +2999,7 @@ IMAGE_TAG=latest
         envContent += `${key}=${value}
 `;
       });
-      envContent += "\n";
+      envContent += '\n';
     }
   });
 
@@ -3005,23 +3007,23 @@ IMAGE_TAG=latest
 }
 
 async function generateBuildContexts(
-  services: ServiceConfig[],
+  services: DeploymentServiceConfig[],
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
 
   for (const service of services) {
-    if (service.serviceType === "bespoke" && service.config?.files) {
+    if (service.serviceType === 'bespoke' && service.config?.files) {
       // Generate config files for bespoke services
-      const configDir = path.join(outputDir, "compose", "config", service.name);
+      const configDir = path.join(outputDir, 'compose', 'config', service.name);
       if (!fs.existsSync(configDir) && !options.dryRun) {
         await fs.mkdirSync(configDir, { recursive: true });
       }
 
       for (const configFile of service.config.files) {
         const content =
-          typeof configFile.content === "string"
+          typeof configFile.content === 'string'
             ? configFile.content
             : JSON.stringify(configFile.content, null, 2);
 
@@ -3038,9 +3040,9 @@ async function generateBuildContexts(
 }
 
 function generateComposeReadme(
-  services: ServiceConfig[],
+  services: DeploymentServiceConfig[],
   deployment: DeploymentConfig,
-  projectName: string,
+  projectName: string
 ): string {
   return `# ${projectName} - Docker Compose Deployment
 
@@ -3055,26 +3057,26 @@ This directory contains Docker Compose configurations for running ${projectName}
 
 ${services
   .map(
-    (service) => `### ${service.name} (${service.serviceType})
+    service => `### ${service.name} (${service.serviceType})
 - **Language**: ${service.language}
 - **Type**: ${service.type}
 ${
-  service.serviceType === "bespoke"
-    ? `- **Source**: ${service.sourceDirectory || "Built from local source"}`
+  service.serviceType === 'bespoke'
+    ? `- **Source**: ${service.sourceDirectory || 'Built from local source'}`
     : `- **Image**: ${service.image}`
 }${
-  service.ports
-    ? `
-- **Ports**: ${service.ports.map((p) => `${p.port}:${p.targetPort || p.port}`).join(", ")}`
-    : ""
-}${
-  service.volumes
-    ? `
-- **Volumes**: ${service.volumes.map((v) => `${v.name} → ${v.path}`).join(", ")}`
-    : ""
-}`,
+      service.ports
+        ? `
+- **Ports**: ${service.ports.map(p => `${p.port}:${p.targetPort || p.port}`).join(', ')}`
+        : ''
+    }${
+      service.volumes
+        ? `
+- **Volumes**: ${service.volumes.map(v => `${v.name} → ${v.path}`).join(', ')}`
+        : ''
+    }`
   )
-  .join("\n\n")}
+  .join('\n\n')}
 
 ## Quick Start
 
@@ -3104,23 +3106,23 @@ docker compose down
 ### Build specific service
 \`\`\`bash
 ${services
-  .filter((s) => s.serviceType === "bespoke")
-  .map((s) => `docker compose build ${s.name}`)
-  .join("\n")}
+  .filter(s => s.serviceType === 'bespoke')
+  .map(s => `docker compose build ${s.name}`)
+  .join('\n')}
 \`\`\`
 
 ### Access services
 ${services
-  .filter((s) => s.ports && s.ports.length > 0)
+  .filter(s => s.ports && s.ports.length > 0)
   .map(
-    (service) => `
-**${service.name}**: http://localhost:${service.ports![0].port}`,
+    service => `
+**${service.name}**: http://localhost:${service.ports?.[0].port}`
   )
-  .join("")}
+  .join('')}
 
 ### Scale services
 \`\`\`bash
-${services.map((s) => `docker compose up -d --scale ${s.name}=${s.replicas || 1}`).join("\n")}
+${services.map(s => `docker compose up -d --scale ${s.name}=${s.replicas || 1}`).join('\n')}
 \`\`\`
 
 ## Development Workflow
@@ -3197,7 +3199,7 @@ Check that all source directories exist and contain proper build files (Dockerfi
 Check logs with \`docker compose logs <service>\` and verify configuration files.
 
 ### Network issues
-Services communicate using service names as hostnames (e.g., \`http://${services.length > 1 ? services[1].name : "api"}:${services.find((s) => s.ports)?.ports?.[0]?.port || "3000"}\`).
+Services communicate using service names as hostnames (e.g., \`http://${services.length > 1 ? services[1].name : 'api'}:${services.find(s => s.ports)?.ports?.[0]?.port || '3000'}\`).
 `;
 }
 
@@ -3222,7 +3224,7 @@ class TestCompositionEngine {
    */
   async discoverExistingTests(outputDir: string): Promise<TestSuite[]> {
     const testSuites: TestSuite[] = [];
-    const testDirs = ["tests", "test", "__tests__", "spec"];
+    const testDirs = ['tests', 'test', '__tests__', 'spec'];
 
     for (const testDir of testDirs) {
       const fullPath = path.join(outputDir, testDir);
@@ -3244,7 +3246,7 @@ class TestCompositionEngine {
    * Generate namespace for new tests based on spec and service
    */
   generateTestNamespace(serviceName: string): string {
-    return `${this.namespace}.${serviceName}`.toLowerCase().replace(/[^a-z0-9.]/g, "_");
+    return `${this.namespace}.${serviceName}`.toLowerCase().replace(/[^a-z0-9.]/g, '_');
   }
 
   /**
@@ -3260,7 +3262,7 @@ class TestCompositionEngine {
 
     // Create a map of existing tests by namespace
     const existingMap = new Map<string, TestSuite>();
-    existing.forEach((suite) => existingMap.set(suite.namespace, suite));
+    existing.forEach(suite => existingMap.set(suite.namespace, suite));
 
     // Process new test suites
     for (const newSuite of newSuites) {
@@ -3284,7 +3286,7 @@ class TestCompositionEngine {
     }
 
     // Add remaining existing suites (no conflicts)
-    existingMap.forEach((suite) => {
+    existingMap.forEach(suite => {
       result.merged.push(suite);
       result.preserved.push(...suite.cases);
     });
@@ -3297,23 +3299,27 @@ class TestCompositionEngine {
    */
   private mergeConflictingSuites(
     existing: TestSuite,
-    newSuite: TestSuite,
+    newSuite: TestSuite
   ): {
     suite: TestSuite;
-    conflicts: Array<{ test: string; reason: string; resolution: string }>;
+    conflicts: Array<{ test: string; reason: string; resolution: 'skip' | 'merge' | 'replace' }>;
     generated: TestCase[];
     preserved: TestCase[];
   } {
     const result = {
       suite: { ...existing },
-      conflicts: [] as Array<{ test: string; reason: string; resolution: string }>,
+      conflicts: [] as Array<{
+        test: string;
+        reason: string;
+        resolution: 'skip' | 'merge' | 'replace';
+      }>,
       generated: [] as TestCase[],
       preserved: [...existing.cases] as TestCase[],
     };
 
     // Create a map of existing test cases by name
     const existingCases = new Map<string, TestCase>();
-    existing.cases.forEach((testCase) => existingCases.set(testCase.name, testCase));
+    existing.cases.forEach(testCase => existingCases.set(testCase.name, testCase));
 
     // Process new test cases
     for (const newCase of newSuite.cases) {
@@ -3325,14 +3331,14 @@ class TestCompositionEngine {
         result.generated.push(newCase);
       } else if (this.isGeneratedTest(existingCase)) {
         // Existing test is generated - safe to replace
-        const index = result.suite.cases.findIndex((c) => c.name === newCase.name);
+        const index = result.suite.cases.findIndex(c => c.name === newCase.name);
         if (index >= 0) {
           result.suite.cases[index] = newCase;
           result.generated.push(newCase);
           result.conflicts.push({
             test: newCase.name,
-            reason: "Generated test updated",
-            resolution: "replace",
+            reason: 'Generated test updated',
+            resolution: 'replace',
           });
         }
       } else {
@@ -3346,8 +3352,8 @@ class TestCompositionEngine {
         result.generated.push(renamedCase);
         result.conflicts.push({
           test: newCase.name,
-          reason: "Custom test exists",
-          resolution: "skip",
+          reason: 'Custom test exists',
+          resolution: 'skip',
         });
       }
     }
@@ -3361,8 +3367,8 @@ class TestCompositionEngine {
   private isGeneratedTest(testCase: TestCase): boolean {
     return (
       testCase.metadata?.generated === true ||
-      testCase.metadata?.source === "arbiter" ||
-      testCase.namespace.includes("generated")
+      testCase.metadata?.source === 'arbiter' ||
+      testCase.namespace.includes('generated')
     );
   }
 
@@ -3370,7 +3376,7 @@ class TestCompositionEngine {
    * Generate base namespace from spec name
    */
   private generateBaseNamespace(specName: string): string {
-    return `arbiter.${specName}`.toLowerCase().replace(/[^a-z0-9.]/g, "_");
+    return `arbiter.${specName}`.toLowerCase().replace(/[^a-z0-9.]/g, '_');
   }
 
   /**
@@ -3403,7 +3409,7 @@ class TestCompositionEngine {
       /test_.*\.(py)$/,
     ];
 
-    return testPatterns.some((pattern) => pattern.test(filename));
+    return testPatterns.some(pattern => pattern.test(filename));
   }
 
   /**
@@ -3411,13 +3417,13 @@ class TestCompositionEngine {
    */
   private async parseTestFile(filePath: string): Promise<TestSuite | null> {
     try {
-      const content = await fs.readFile(filePath, "utf-8");
+      const content = await fs.readFile(filePath, 'utf-8');
       const ext = path.extname(filePath);
 
       // Basic parsing - in real implementation would use proper AST parsing
       const testCases: TestCase[] = [];
 
-      if (ext === ".js" || ext === ".ts") {
+      if (ext === '.js' || ext === '.ts') {
         // JavaScript/TypeScript test parsing
         const testMatches = content.match(/(?:test|it)\s*\(\s*['"`]([^'"`]+)['"`]/g);
         testMatches?.forEach((match, index) => {
@@ -3429,16 +3435,16 @@ class TestCompositionEngine {
               steps: [], // Would extract from test body in real implementation
               metadata: {
                 generated: false,
-                source: "existing",
+                source: 'existing',
                 lastModified: new Date().toISOString(),
               },
             });
           }
         });
-      } else if (ext === ".py") {
+      } else if (ext === '.py') {
         // Python test parsing
         const testMatches = content.match(/def\s+(test_\w+)/g);
-        testMatches?.forEach((match) => {
+        testMatches?.forEach(match => {
           const nameMatch = match.match(/def\s+(test_\w+)/);
           if (nameMatch) {
             testCases.push({
@@ -3447,7 +3453,7 @@ class TestCompositionEngine {
               steps: [],
               metadata: {
                 generated: false,
-                source: "existing",
+                source: 'existing',
                 lastModified: new Date().toISOString(),
               },
             });
@@ -3480,21 +3486,21 @@ class TestCompositionEngine {
 
     // Remove file extension and test suffix
     const fileName = path.basename(filePath, path.extname(filePath));
-    const cleanFileName = fileName.replace(/\.(test|spec)$/, "");
+    const cleanFileName = fileName.replace(/\.(test|spec)$/, '');
 
     // Build namespace from path
     const namespaceParts = [...parts.slice(0, -1), cleanFileName];
     return namespaceParts
-      .join(".")
+      .join('.')
       .toLowerCase()
-      .replace(/[^a-z0-9.]/g, "_");
+      .replace(/[^a-z0-9.]/g, '_');
   }
 }
 
 /**
  * Generate test cases for services based on their configuration
  */
-function generateServiceTests(services: ServiceConfig[], specName: string): TestSuite[] {
+function generateServiceTests(services: DeploymentServiceConfig[], specName: string): TestSuite[] {
   const testSuites: TestSuite[] = [];
   const engine = new TestCompositionEngine(specName);
 
@@ -3512,9 +3518,9 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         description: `Health check for ${service.name} service`,
         steps: [
           {
-            action: "http_request",
+            action: 'http_request',
             params: {
-              method: "GET",
+              method: 'GET',
               url: `http://localhost:${service.ports[0].port}/health`,
               timeout: 5000,
             },
@@ -3523,7 +3529,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         ],
         metadata: {
           generated: true,
-          source: "arbiter",
+          source: 'arbiter',
           lastModified: new Date().toISOString(),
         },
       });
@@ -3536,9 +3542,9 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
           description: `Test ${port.name || port.port} port connectivity`,
           steps: [
             {
-              action: "tcp_connect",
+              action: 'tcp_connect',
               params: {
-                host: "localhost",
+                host: 'localhost',
                 port: port.port,
                 timeout: 3000,
               },
@@ -3547,7 +3553,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
           ],
           metadata: {
             generated: true,
-            source: "arbiter",
+            source: 'arbiter',
             lastModified: new Date().toISOString(),
           },
         });
@@ -3562,7 +3568,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         description: `Verify environment variables for ${service.name}`,
         steps: [
           {
-            action: "check_environment",
+            action: 'check_environment',
             params: {
               service: service.name,
               variables: Object.keys(service.env),
@@ -3572,7 +3578,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         ],
         metadata: {
           generated: true,
-          source: "arbiter",
+          source: 'arbiter',
           lastModified: new Date().toISOString(),
         },
       });
@@ -3587,7 +3593,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
           description: `Verify ${volume.name} volume is mounted at ${volume.path}`,
           steps: [
             {
-              action: "check_volume_mount",
+              action: 'check_volume_mount',
               params: {
                 service: service.name,
                 path: volume.path,
@@ -3598,7 +3604,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
           ],
           metadata: {
             generated: true,
-            source: "arbiter",
+            source: 'arbiter',
             lastModified: new Date().toISOString(),
           },
         });
@@ -3606,7 +3612,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
     }
 
     // Generate service-type specific tests
-    if (service.serviceType === "prebuilt") {
+    if (service.serviceType === 'prebuilt') {
       // Test for pre-built services (like ClickHouse, Redis)
       testCases.push({
         name: `${service.name}_image_version`,
@@ -3614,7 +3620,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         description: `Verify ${service.name} is running expected image`,
         steps: [
           {
-            action: "check_image",
+            action: 'check_image',
             params: {
               service: service.name,
               expectedImage: service.image,
@@ -3624,7 +3630,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         ],
         metadata: {
           generated: true,
-          source: "arbiter",
+          source: 'arbiter',
           lastModified: new Date().toISOString(),
         },
       });
@@ -3637,7 +3643,7 @@ function generateServiceTests(services: ServiceConfig[], specName: string): Test
         cases: testCases,
         setup: [
           {
-            action: "wait_for_service",
+            action: 'wait_for_service',
             params: {
               service: service.name,
               timeout: 30000,
@@ -3659,10 +3665,10 @@ async function writeTestFiles(
   testResult: TestCompositionResult,
   outputDir: string,
   language: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
-  const testsDir = path.join(outputDir, "tests");
+  const testsDir = path.join(outputDir, 'tests');
 
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     await fs.mkdir(testsDir, { recursive: true });
@@ -3682,7 +3688,7 @@ async function writeTestFiles(
   }
 
   // Write test composition report
-  const reportPath = path.join(testsDir, "composition_report.json");
+  const reportPath = path.join(testsDir, 'composition_report.json');
   const report = {
     timestamp: new Date().toISOString(),
     summary: {
@@ -3693,46 +3699,46 @@ async function writeTestFiles(
     },
     details: {
       conflicts: testResult.conflicts,
-      generated: testResult.generated.map((t) => ({ name: t.name, namespace: t.namespace })),
-      preserved: testResult.preserved.map((t) => ({ name: t.name, namespace: t.namespace })),
+      generated: testResult.generated.map(t => ({ name: t.name, namespace: t.namespace })),
+      preserved: testResult.preserved.map(t => ({ name: t.name, namespace: t.namespace })),
     },
   };
 
   if (!options.dryRun) {
     await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
   }
-  files.push("tests/composition_report.json");
+  files.push('tests/composition_report.json');
 
   return files;
 }
 
 function getTestFileExtension(language: string): string {
   switch (language) {
-    case "typescript":
-      return "test.ts";
-    case "javascript":
-      return "test.js";
-    case "python":
-      return "test.py";
-    case "rust":
-      return "rs";
-    case "go":
-      return "go";
+    case 'typescript':
+      return 'test.ts';
+    case 'javascript':
+      return 'test.js';
+    case 'python':
+      return 'test.py';
+    case 'rust':
+      return 'rs';
+    case 'go':
+      return 'go';
     default:
-      return "test.js";
+      return 'test.js';
   }
 }
 
 function generateTestFileContent(suite: TestSuite, language: string): string {
   switch (language) {
-    case "typescript":
-    case "javascript":
+    case 'typescript':
+    case 'javascript':
       return generateJavaScriptTestContent(suite);
-    case "python":
+    case 'python':
       return generatePythonTestContent(suite);
-    case "rust":
+    case 'rust':
       return generateRustTestContent(suite);
-    case "go":
+    case 'go':
       return generateGoTestContent(suite);
     default:
       return generateJavaScriptTestContent(suite);
@@ -3750,34 +3756,34 @@ describe('${suite.name}', () => {
 ${
   suite.setup && suite.setup.length > 0
     ? `  beforeAll(async () => {
-${suite.setup.map((step) => `    // ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
+${suite.setup.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
   });
 
 `
-    : ""
+    : ''
 }${suite.cases
-  .map(
-    (testCase) => `  test('${testCase.name}', async () => {
-    // ${testCase.description || "Generated test"}
+    .map(
+      testCase => `  test('${testCase.name}', async () => {
+    // ${testCase.description || 'Generated test'}
 ${testCase.steps
   .map(
-    (step) => `    // ${step.action}: ${JSON.stringify(step.params)}
-    // Expected: ${JSON.stringify(step.expected)}`,
+    step => `    // ${step.action}: ${JSON.stringify(step.params)}
+    // Expected: ${JSON.stringify(step.expected)}`
   )
-  .join("\n")}
+  .join('\n')}
     
     // TODO: Implement test logic
     expect(true).toBe(true); // Placeholder
-  });`,
-  )
-  .join("\n\n")}
+  });`
+    )
+    .join('\n\n')}
 ${
   suite.teardown && suite.teardown.length > 0
     ? `
   afterAll(async () => {
-${suite.teardown.map((step) => `    // ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
+${suite.teardown.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
   });`
-    : ""
+    : ''
 }
 });
 `;
@@ -3794,7 +3800,7 @@ import asyncio
 from typing import Dict, Any
 
 
-class Test${suite.name.replace(/_/g, "")}:
+class Test${suite.name.replace(/_/g, '')}:
     """Test suite for ${suite.name}"""
 ${
   suite.setup && suite.setup.length > 0
@@ -3802,37 +3808,35 @@ ${
     @pytest.fixture(scope="class", autouse=True)
     async def setup_class(self):
         """Setup for test class"""
-${suite.setup.map((step) => `        # ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
+${suite.setup.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
         pass
 `
-    : ""
+    : ''
 }
 ${suite.cases
   .map(
-    (
-      testCase,
-    ) => `    async def test_${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}(self):
-        """${testCase.description || "Generated test"}"""
+    testCase => `    async def test_${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}(self):
+        """${testCase.description || 'Generated test'}"""
 ${testCase.steps
   .map(
-    (step) => `        # ${step.action}: ${JSON.stringify(step.params)}
-        # Expected: ${JSON.stringify(step.expected)}`,
+    step => `        # ${step.action}: ${JSON.stringify(step.params)}
+        # Expected: ${JSON.stringify(step.expected)}`
   )
-  .join("\n")}
+  .join('\n')}
         
         # TODO: Implement test logic
-        assert True  # Placeholder`,
+        assert True  # Placeholder`
   )
-  .join("\n\n")}
+  .join('\n\n')}
 ${
   suite.teardown && suite.teardown.length > 0
     ? `
     @pytest.fixture(scope="class", autouse=True)
     async def teardown_class(self):
         """Teardown for test class"""
-${suite.teardown.map((step) => `        # ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
+${suite.teardown.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
         pass`
-    : ""
+    : ''
 }
 `;
 }
@@ -3843,27 +3847,27 @@ function generateRustTestContent(suite: TestSuite): string {
 // Generated: ${new Date().toISOString()}
 
 #[cfg(test)]
-mod ${suite.name.replace(/-/g, "_")} {
+mod ${suite.name.replace(/-/g, '_')} {
     use super::*;
     use tokio_test;
 
 ${suite.cases
   .map(
-    (testCase) => `    #[tokio::test]
-    async fn ${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}() {
-        // ${testCase.description || "Generated test"}
+    testCase => `    #[tokio::test]
+    async fn ${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}() {
+        // ${testCase.description || 'Generated test'}
 ${testCase.steps
   .map(
-    (step) => `        // ${step.action}: ${JSON.stringify(step.params)}
-        // Expected: ${JSON.stringify(step.expected)}`,
+    step => `        // ${step.action}: ${JSON.stringify(step.params)}
+        // Expected: ${JSON.stringify(step.expected)}`
   )
-  .join("\n")}
+  .join('\n')}
         
         // TODO: Implement test logic
         assert!(true); // Placeholder
-    }`,
+    }`
   )
-  .join("\n\n")}
+  .join('\n\n')}
 }
 `;
 }
@@ -3883,22 +3887,22 @@ import (
 
 ${suite.cases
   .map(
-    (testCase) => `func Test${testCase.name.replace(/[^a-zA-Z0-9]/g, "")}(t *testing.T) {
-    // ${testCase.description || "Generated test"}
+    testCase => `func Test${testCase.name.replace(/[^a-zA-Z0-9]/g, '')}(t *testing.T) {
+    // ${testCase.description || 'Generated test'}
 ${testCase.steps
   .map(
-    (step) => `    // ${step.action}: ${JSON.stringify(step.params)}
-    // Expected: ${JSON.stringify(step.expected)}`,
+    step => `    // ${step.action}: ${JSON.stringify(step.params)}
+    // Expected: ${JSON.stringify(step.expected)}`
   )
-  .join("\n")}
+  .join('\n')}
     
     // TODO: Implement test logic
     if true != true { // Placeholder
         t.Errorf("Test failed")
     }
-}`,
+}`
   )
-  .join("\n\n")}
+  .join('\n\n')}
 `;
 }
 
@@ -3908,13 +3912,18 @@ ${testCase.steps
 async function generateAndComposeTests(
   assemblyConfig: any,
   outputDir: string,
-  options: GenerateOptions,
+  options: GenerateOptions
 ): Promise<string[]> {
   try {
     const testConfig = extractTestConfiguration(assemblyConfig);
     const testComposition = await composeTestSuites(testConfig, outputDir);
-    const files = await writeTestFiles(testComposition.result, outputDir, testConfig.language, options);
-    
+    const files = await writeTestFiles(
+      testComposition.result,
+      outputDir,
+      testConfig.language,
+      options
+    );
+
     if (options.verbose) {
       reportTestComposition(testComposition.result);
     }
@@ -3930,22 +3939,25 @@ async function generateAndComposeTests(
  */
 function extractTestConfiguration(assemblyConfig: any) {
   const { services } = parseDockerComposeServices(assemblyConfig);
-  const specName = assemblyConfig?.metadata?.name || "default";
-  const language = assemblyConfig?.config?.language || "typescript";
-  
+  const specName = assemblyConfig?.metadata?.name || 'default';
+  const language = assemblyConfig?.config?.language || 'typescript';
+
   return { services, specName, language };
 }
 
 /**
  * Compose test suites by merging existing and new tests
  */
-async function composeTestSuites(config: { services: any, specName: string, language: string }, outputDir: string) {
+async function composeTestSuites(
+  config: { services: any; specName: string; language: string },
+  outputDir: string
+) {
   const engine = new TestCompositionEngine(config.specName);
-  
+
   const existingTests = await engine.discoverExistingTests(outputDir);
   const newTestSuites = generateServiceTests(config.services, config.specName);
   const result = engine.mergeTestSuites(existingTests, newTestSuites);
-  
+
   return { engine, result };
 }
 
@@ -3953,7 +3965,7 @@ async function composeTestSuites(config: { services: any, specName: string, lang
  * Report test composition results
  */
 function reportTestComposition(testResult: any): void {
-  console.log(chalk.blue(`\n📋 Test Composition Summary:`));
+  console.log(chalk.blue('\n📋 Test Composition Summary:'));
   console.log(chalk.dim(`  Generated: ${testResult.generated.length} test cases`));
   console.log(chalk.dim(`  Preserved: ${testResult.preserved.length} existing test cases`));
   console.log(chalk.dim(`  Conflicts: ${testResult.conflicts.length} resolved`));
@@ -3967,11 +3979,9 @@ function reportTestComposition(testResult: any): void {
  * Report test conflict resolution details
  */
 function reportTestConflicts(conflicts: any[]): void {
-  console.log(chalk.yellow(`\n⚠️  Test Conflicts Resolved:`));
-  conflicts.forEach((conflict) => {
-    console.log(
-      chalk.dim(`  • ${conflict.test}: ${conflict.reason} (${conflict.resolution})`),
-    );
+  console.log(chalk.yellow('\n⚠️  Test Conflicts Resolved:'));
+  conflicts.forEach(conflict => {
+    console.log(chalk.dim(`  • ${conflict.test}: ${conflict.reason} (${conflict.resolution})`));
   });
 }
 
@@ -3981,8 +3991,8 @@ function reportTestConflicts(conflicts: any[]): void {
 function handleTestGenerationError(error: unknown): string[] {
   console.warn(
     chalk.yellow(
-      `⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`,
-    ),
+      `⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`
+    )
   );
   return [];
 }
@@ -3993,34 +4003,29 @@ function handleTestGenerationError(error: unknown): string[] {
 async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
   try {
     const apiClient = new ApiClient(config);
-    
+
     // Ensure .arbiter directory exists
     await fs.ensureDir('.arbiter');
-    
+
     // Try to get the stored specifications from service (sharded)
-    const assemblyPath = path.resolve(".arbiter", "assembly.cue");
+    const assemblyPath = path.resolve('.arbiter', 'assembly.cue');
     const storedSpec = await apiClient.getSpecification('assembly', assemblyPath);
-    
+
     if (storedSpec.success && storedSpec.data && storedSpec.data.content) {
       // Emit the main assembly CUE file to .arbiter directory
       await fs.writeFile(assemblyPath, storedSpec.data.content, 'utf-8');
-      console.log(chalk.green("📄 Emitted CUE specification from service to .arbiter/assembly.cue"));
-      
+      console.log(
+        chalk.green('📄 Emitted CUE specification from service to .arbiter/assembly.cue')
+      );
+
       // Also try to get any sharded specification files
       await emitShardedSpecifications(apiClient);
-      
     } else {
-      // No stored specification found, check for legacy files
-      const legacyPath = path.resolve("arbiter.assembly.cue");
-      if (fs.existsSync(legacyPath)) {
-        console.log(chalk.yellow("⚠️  Found legacy arbiter.assembly.cue, consider migrating to .arbiter directory"));
-      } else {
-        console.log(chalk.dim("💡 No stored specification found, using existing CUE files"));
-      }
+      console.log(chalk.dim('💡 No stored specification found, using existing CUE files'));
     }
   } catch (error) {
     // Service unavailable, continue with existing file-based workflow
-    console.log(chalk.dim("💡 Service unavailable, using existing CUE files"));
+    console.log(chalk.dim('💡 Service unavailable, using existing CUE files'));
   }
 }
 
@@ -4031,11 +4036,11 @@ async function emitShardedSpecifications(apiClient: ApiClient): Promise<void> {
   try {
     // Try to get any additional sharded files (services, endpoints, etc.)
     const shardTypes = ['services', 'endpoints', 'schemas', 'flows'];
-    
+
     for (const shardType of shardTypes) {
-      const shardPath = path.resolve(".arbiter", `${shardType}.cue`);
+      const shardPath = path.resolve('.arbiter', `${shardType}.cue`);
       const shardSpec = await apiClient.getSpecification(shardType, shardPath);
-      
+
       if (shardSpec.success && shardSpec.data && shardSpec.data.content) {
         await fs.writeFile(shardPath, shardSpec.data.content, 'utf-8');
         console.log(chalk.dim(`  📄 Emitted ${shardType} shard to .arbiter/${shardType}.cue`));

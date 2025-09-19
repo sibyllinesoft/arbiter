@@ -4,7 +4,7 @@ import { BaseHookAdapter } from '../base/IHookAdapter.js';
 
 /**
  * GitHub Issues adapter for AI processing
- * 
+ *
  * Extracts structured data from GitHub Issue webhooks including:
  * - Issue details (title, body, state, labels)
  * - Author and assignee information
@@ -18,15 +18,15 @@ export class GitHubIssueAdapter extends BaseHookAdapter {
   async extractEventData(event: WebhookEvent): Promise<WebhookEventData> {
     try {
       const payload = event.payload;
-      
+
       // Validate required fields
       const errors = this.validatePayload(payload, [
         'issue',
         'issue.number',
         'issue.title',
-        'repository'
+        'repository',
       ]);
-      
+
       if (errors.length > 0) {
         return this.createErrorResponse(`Validation failed: ${errors.join(', ')}`);
       }
@@ -48,14 +48,14 @@ export class GitHubIssueAdapter extends BaseHookAdapter {
         labels: (issue.labels || []).map((label: any) => label.name),
         assignees: (issue.assignees || []).map((assignee: any) => assignee.login),
         url: issue.html_url,
-        
+
         // Additional issue metadata
         locked: issue.locked || false,
         comments: issue.comments || 0,
         createdAt: issue.created_at,
         updatedAt: issue.updated_at,
         closedAt: issue.closed_at,
-        
+
         // Author information
         author: {
           login: issue.user?.login,
@@ -63,16 +63,18 @@ export class GitHubIssueAdapter extends BaseHookAdapter {
           avatarUrl: issue.user?.avatar_url,
           type: issue.user?.type, // 'User', 'Bot', etc.
         },
-        
+
         // Milestone information
-        milestone: issue.milestone ? {
-          number: issue.milestone.number,
-          title: issue.milestone.title,
-          description: issue.milestone.description,
-          state: issue.milestone.state,
-          dueOn: issue.milestone.due_on,
-        } : null,
-        
+        milestone: issue.milestone
+          ? {
+              number: issue.milestone.number,
+              title: issue.milestone.title,
+              description: issue.milestone.description,
+              state: issue.milestone.state,
+              dueOn: issue.milestone.due_on,
+            }
+          : null,
+
         // Reactions
         reactions: {
           totalCount: issue.reactions?.total_count || 0,
@@ -98,7 +100,7 @@ export class GitHubIssueAdapter extends BaseHookAdapter {
         isUnassigned: action === 'unassigned',
         isLabeled: action === 'labeled',
         isUnlabeled: action === 'unlabeled',
-        
+
         // Additional context for specific actions
         assignee: payload.assignee?.login,
         label: payload.label?.name,
@@ -109,15 +111,14 @@ export class GitHubIssueAdapter extends BaseHookAdapter {
         user,
         issue: issueData,
         action: actionData,
-        
+
         // Additional event context
         eventType: 'issues',
         timestamp: event.timestamp,
-        
+
         // Raw payload for advanced processing
         raw: payload,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return this.createErrorResponse(`Failed to extract GitHub issue data: ${errorMessage}`);
@@ -136,7 +137,7 @@ export class GitHubIssueAdapter extends BaseHookAdapter {
 
 /**
  * GitHub Issue Comment adapter for AI processing
- * 
+ *
  * Handles issue comment events (created, edited, deleted)
  */
 export class GitHubIssueCommentAdapter extends BaseHookAdapter {
@@ -146,13 +147,9 @@ export class GitHubIssueCommentAdapter extends BaseHookAdapter {
   async extractEventData(event: WebhookEvent): Promise<WebhookEventData> {
     try {
       const payload = event.payload;
-      
-      const errors = this.validatePayload(payload, [
-        'issue',
-        'comment',
-        'repository'
-      ]);
-      
+
+      const errors = this.validatePayload(payload, ['issue', 'comment', 'repository']);
+
       if (errors.length > 0) {
         return this.createErrorResponse(`Validation failed: ${errors.join(', ')}`);
       }
@@ -189,7 +186,7 @@ export class GitHubIssueCommentAdapter extends BaseHookAdapter {
         createdAt: comment.created_at,
         updatedAt: comment.updated_at,
         url: comment.html_url,
-        
+
         // Reactions on the comment
         reactions: {
           totalCount: comment.reactions?.total_count || 0,
@@ -209,15 +206,16 @@ export class GitHubIssueCommentAdapter extends BaseHookAdapter {
         issue: issueData,
         comment: commentData,
         action: payload.action,
-        
+
         eventType: 'issue_comment',
         timestamp: event.timestamp,
         raw: payload,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return this.createErrorResponse(`Failed to extract GitHub issue comment data: ${errorMessage}`);
+      return this.createErrorResponse(
+        `Failed to extract GitHub issue comment data: ${errorMessage}`
+      );
     }
   }
 

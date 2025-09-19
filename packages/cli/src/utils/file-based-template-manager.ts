@@ -1,22 +1,24 @@
 /**
  * File-Based GitHub Template Manager
- * 
+ *
  * This module provides file-based template loading with inheritance support
  * for GitHub issue templates using Handlebars.
  */
 
-import fs from "fs-extra";
-import path from "node:path";
-import Handlebars from "handlebars";
-import type { Epic, Task } from "./sharded-storage.js";
+import path from 'node:path';
+import fs from 'fs-extra';
+import Handlebars from 'handlebars';
 import type {
-  GitHubTemplatesConfig,
-  GitHubTemplateConfig,
   GitHubFileTemplateRef,
+  GitHubTemplateConfig,
   GitHubTemplateOptions,
-  IssueSpec
-} from "../types.js";
-import { validateIssue } from "../types.js";
+  GitHubTemplateSet,
+  GitHubTemplateSetSource,
+  GitHubTemplatesConfig,
+  IssueSpec,
+} from '../types.js';
+import { validateIssue } from '../types.js';
+import type { Epic, Task } from './sharded-storage.js';
 
 /** Generated template following exact issue schema specification */
 export interface GeneratedTemplate extends IssueSpec {
@@ -39,7 +41,7 @@ export interface TemplateLoadResult {
 
 export interface TemplateDiscoveryResult {
   templatePath: string;
-  metadata: TemplateLoadResult["metadata"];
+  metadata: TemplateLoadResult['metadata'];
 }
 
 /**
@@ -57,75 +59,128 @@ export class FileBasedTemplateManager {
     this.registerHelpers();
   }
 
+  private isFileReference(value: unknown): value is GitHubFileTemplateRef {
+    return typeof value === 'object' && value !== null && 'file' in value;
+  }
+
+  private isTemplateSet(value: unknown): value is GitHubTemplateSet {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      'sections' in value &&
+      typeof (value as GitHubTemplateSet).sections?.description === 'string'
+    );
+  }
+
+  private isTemplateConfigCandidate(value: unknown): value is GitHubTemplateConfig {
+    if (typeof value !== 'object' || value === null) return false;
+    if (this.isFileReference(value)) return false;
+
+    return (
+      'templateFile' in value || 'sections' in value || 'title' in value || 'description' in value
+    );
+  }
+
   /**
    * Generate epic template from file
    */
-  async generateEpicTemplate(epic: Epic, options: GitHubTemplateOptions = {}): Promise<GeneratedTemplate> {
+  async generateEpicTemplate(
+    epic: Epic,
+    options: GitHubTemplateOptions = {}
+  ): Promise<GeneratedTemplate> {
     const templateRef = this.config.epic;
     if (!templateRef) {
-      throw new Error("Epic template not configured");
+      throw new Error('Epic template not configured');
     }
 
     const template = await this.loadTemplate(templateRef);
     const context = this.createTemplateContext(epic, options);
-    
+
     return await this.renderTemplate(template, context, templateRef);
   }
 
   /**
    * Generate task template from file
    */
-  async generateTaskTemplate(task: Task, epic: Epic, options: GitHubTemplateOptions = {}): Promise<GeneratedTemplate> {
+  async generateTaskTemplate(
+    task: Task,
+    epic: Epic,
+    options: GitHubTemplateOptions = {}
+  ): Promise<GeneratedTemplate> {
     const templateRef = this.config.task;
     if (!templateRef) {
-      throw new Error("Task template not configured");
+      throw new Error('Task template not configured');
     }
 
     const template = await this.loadTemplate(templateRef);
     const context = this.createTemplateContext({ ...task, epic }, options);
-    
+
     return await this.renderTemplate(template, context, templateRef);
   }
 
   /**
    * Generate bug report template from file
    */
-  async generateBugReportTemplate(bugData: any, options: GitHubTemplateOptions = {}): Promise<GeneratedTemplate> {
+  async generateBugReportTemplate(
+    bugData: any,
+    options: GitHubTemplateOptions = {}
+  ): Promise<GeneratedTemplate> {
     const templateRef = this.config.bugReport;
     if (!templateRef) {
-      throw new Error("Bug report template not configured");
+      throw new Error('Bug report template not configured');
     }
 
     const template = await this.loadTemplate(templateRef);
     const context = this.createTemplateContext(bugData, options);
-    
+
     return await this.renderTemplate(template, context, templateRef);
   }
 
   /**
    * Generate feature request template from file
    */
-  async generateFeatureRequestTemplate(featureData: any, options: GitHubTemplateOptions = {}): Promise<GeneratedTemplate> {
+  async generateFeatureRequestTemplate(
+    featureData: any,
+    options: GitHubTemplateOptions = {}
+  ): Promise<GeneratedTemplate> {
     const templateRef = this.config.featureRequest;
     if (!templateRef) {
-      throw new Error("Feature request template not configured");
+      throw new Error('Feature request template not configured');
     }
 
     const template = await this.loadTemplate(templateRef);
     const context = this.createTemplateContext(featureData, options);
-    
+
     return await this.renderTemplate(template, context, templateRef);
   }
 
   /**
    * Load template from file or config
    */
-  private async loadTemplate(templateRef: GitHubTemplateConfig | GitHubFileTemplateRef): Promise<TemplateLoadResult> {
+  private async loadTemplate(
+    templateRef: GitHubTemplateConfig | GitHubFileTemplateRef | GitHubTemplateSetSource
+  ): Promise<TemplateLoadResult> {
     // Check if it's a file reference
-    if ('file' in templateRef) {
+    if (this.isFileReference(templateRef)) {
       return await this.loadTemplateFromFile(templateRef);
     }
-    
+
+    if (this.isTemplateSet(templateRef)) {
+      const config: GitHubTemplateConfig = {
+        name: templateRef.name,
+        description: templateRef.description,
+        sections: templateRef.sections,
+        labels: templateRef.labels,
+        validation: templateRef.validation,
+      };
+
+      return this.createInlineTemplate(config);
+    }
+
+    if (!this.isTemplateConfigCandidate(templateRef)) {
+      throw new Error('Unsupported template reference type for file-based templates');
+    }
+
     // Handle inline template config with possible file reference
     const config = templateRef as GitHubTemplateConfig;
     if (config.templateFile) {
@@ -136,8 +191,8 @@ export class FileBasedTemplateManager {
           name: config.name,
           description: config.description,
           labels: config.labels,
-          assignees: config.assignees
-        }
+          assignees: config.assignees,
+        },
       };
       return await this.loadTemplateFromFile(fileRef);
     }
@@ -149,27 +204,29 @@ export class FileBasedTemplateManager {
   /**
    * Load template from file with inheritance support
    */
-  private async loadTemplateFromFile(templateRef: GitHubFileTemplateRef): Promise<TemplateLoadResult> {
+  private async loadTemplateFromFile(
+    templateRef: GitHubFileTemplateRef
+  ): Promise<TemplateLoadResult> {
     const filePath = await this.resolveTemplatePath(templateRef.file);
-    
+
     // Check cache first
     const cacheKey = filePath;
     if (this.templateCache.has(cacheKey)) {
       return this.templateCache.get(cacheKey)!;
     }
 
-    if (!await fs.pathExists(filePath)) {
+    if (!(await fs.pathExists(filePath))) {
       throw new Error(`Template file not found: ${filePath}`);
     }
 
-    let content = await fs.readFile(filePath, "utf-8");
+    let content = await fs.readFile(filePath, 'utf-8');
     const metadata = this.extractTemplateMetadata(content);
 
     // Merge metadata from reference and file
     const combinedMetadata = {
       ...metadata,
       ...templateRef.metadata,
-      inherits: templateRef.inherits || metadata.inherits
+      inherits: templateRef.inherits || metadata.inherits,
     };
 
     // Handle inheritance
@@ -180,7 +237,7 @@ export class FileBasedTemplateManager {
 
     const result: TemplateLoadResult = {
       content,
-      metadata: combinedMetadata
+      metadata: combinedMetadata,
     };
 
     // Cache the result
@@ -202,7 +259,23 @@ export class FileBasedTemplateManager {
     const baseTemplates = ['base', 'epic', 'task', 'bugReport', 'featureRequest'] as const;
     for (const templateName of baseTemplates) {
       const templateRef = this.config[templateName];
-      if (templateRef && ('metadata' in templateRef ? templateRef.metadata?.name === inheritsRef : 'name' in templateRef && templateRef.name === inheritsRef)) {
+      if (!templateRef) continue;
+
+      if (this.isFileReference(templateRef)) {
+        if (templateRef.metadata?.name === inheritsRef) {
+          return await this.loadTemplate(templateRef);
+        }
+        continue;
+      }
+
+      if (this.isTemplateSet(templateRef)) {
+        if (templateRef.name === inheritsRef) {
+          return await this.loadTemplate(templateRef);
+        }
+        continue;
+      }
+
+      if (this.isTemplateConfigCandidate(templateRef) && templateRef.name === inheritsRef) {
         return await this.loadTemplate(templateRef);
       }
     }
@@ -219,22 +292,22 @@ export class FileBasedTemplateManager {
     if (childContent.includes('{{> base}}')) {
       return childContent.replace('{{> base}}', baseContent);
     }
-    
+
     // Look for @inherits comment and replace
     const inheritMatch = childContent.match(/{{!--\s*@inherits:\s*([^\s]+)\s*--}}/);
     if (inheritMatch) {
       return childContent.replace(inheritMatch[0], baseContent);
     }
-    
+
     // Fallback: prepend base content
-    return baseContent + '\n\n' + childContent;
+    return `${baseContent}\n\n${childContent}`;
   }
 
   /**
    * Extract metadata from template file comments
    */
-  private extractTemplateMetadata(content: string): TemplateLoadResult["metadata"] {
-    const metadata: TemplateLoadResult["metadata"] = {};
+  private extractTemplateMetadata(content: string): TemplateLoadResult['metadata'] {
+    const metadata: TemplateLoadResult['metadata'] = {};
 
     // Extract @inherits
     const inheritMatch = content.match(/{{!--\s*@inherits:\s*([^\s]+)\s*--}}/);
@@ -274,16 +347,16 @@ export class FileBasedTemplateManager {
 
     // Try discovery paths
     const discoveryPaths = this.config.discoveryPaths || ['.arbiter/templates/github'];
-    
+
     for (const discoveryPath of discoveryPaths) {
       const resolvedDiscoveryPath = this.resolveDiscoveryPath(discoveryPath);
       let candidatePath = path.join(resolvedDiscoveryPath, templateFile);
-      
+
       // Add extension if not present
       if (!path.extname(candidatePath) && this.config.defaultExtension) {
         candidatePath += `.${this.config.defaultExtension}`;
       }
-      
+
       if (await fs.pathExists(candidatePath)) {
         return candidatePath;
       }
@@ -305,15 +378,15 @@ export class FileBasedTemplateManager {
     if (discoveryPath.startsWith('~')) {
       const homeDir = process.env.HOME || process.env.USERPROFILE;
       if (!homeDir) {
-        throw new Error("Could not resolve home directory for template path");
+        throw new Error('Could not resolve home directory for template path');
       }
       return path.join(homeDir, discoveryPath.slice(1));
     }
-    
+
     if (path.isAbsolute(discoveryPath)) {
       return discoveryPath;
     }
-    
+
     return path.join(this.baseDir, discoveryPath);
   }
 
@@ -322,22 +395,22 @@ export class FileBasedTemplateManager {
    */
   private createInlineTemplate(config: GitHubTemplateConfig): TemplateLoadResult {
     let content = '';
-    
+
     if (config.sections?.description) {
-      content += config.sections.description + '\n\n';
+      content += `${config.sections.description}\n\n`;
     }
-    
+
     if (config.sections?.acceptanceCriteria) {
-      content += config.sections.acceptanceCriteria + '\n\n';
+      content += `${config.sections.acceptanceCriteria}\n\n`;
     }
-    
+
     if (config.sections?.dependencies) {
-      content += config.sections.dependencies + '\n\n';
+      content += `${config.sections.dependencies}\n\n`;
     }
 
     if (config.sections?.additional) {
       Object.values(config.sections.additional).forEach(section => {
-        content += section + '\n\n';
+        content += `${section}\n\n`;
       });
     }
 
@@ -347,8 +420,8 @@ export class FileBasedTemplateManager {
         name: config.name,
         description: config.description,
         labels: config.labels,
-        assignees: config.assignees
-      }
+        assignees: config.assignees,
+      },
     };
   }
 
@@ -356,14 +429,14 @@ export class FileBasedTemplateManager {
    * Render template with context
    */
   private async renderTemplate(
-    template: TemplateLoadResult, 
+    template: TemplateLoadResult,
     context: Record<string, any>,
     templateRef: GitHubTemplateConfig | GitHubFileTemplateRef
   ): Promise<GeneratedTemplate> {
     // Compile template if not cached
     const cacheKey = template.content;
     let compiledTemplate = this.compiledTemplateCache.get(cacheKey);
-    
+
     if (!compiledTemplate) {
       compiledTemplate = Handlebars.compile(template.content);
       this.compiledTemplateCache.set(cacheKey, compiledTemplate);
@@ -371,13 +444,13 @@ export class FileBasedTemplateManager {
 
     // Render content
     const body = compiledTemplate(context);
-    
+
     // Extract title - prefer context data or use template metadata
     let title = context.name || context.title || template.metadata?.name || 'Untitled';
-    
+
     // Ensure title length limit
     if (title.length > 255) {
-      title = title.substring(0, 252) + '...';
+      title = `${title.substring(0, 252)}...`;
     }
 
     // Process labels (semantic labels that map to GitHub/GitLab)
@@ -404,7 +477,7 @@ export class FileBasedTemplateManager {
       checklist,
       links,
       // GitHub-specific fields
-      assignees: assignees.length > 0 ? assignees : undefined
+      assignees: assignees.length > 0 ? assignees : undefined,
     };
 
     // Validate against issue schema
@@ -433,16 +506,16 @@ export class FileBasedTemplateManager {
    */
   private processAssignees(assigneeTemplates: string[], context: Record<string, any>): string[] {
     const assignees: string[] = [];
-    
+
     // Add assignees from context
     if (context.assignee) {
       assignees.push(context.assignee);
     }
-    
+
     if (context.owner && context.owner !== context.assignee) {
       assignees.push(context.owner);
     }
-    
+
     // Add assignees from template
     assigneeTemplates.forEach(template => {
       const compiled = Handlebars.compile(template);
@@ -451,7 +524,7 @@ export class FileBasedTemplateManager {
         assignees.push(assignee);
       }
     });
-    
+
     return [...new Set(assignees)]; // Remove duplicates
   }
 
@@ -466,8 +539,8 @@ export class FileBasedTemplateManager {
       helpers: {
         capitalize: (str: string) => str.charAt(0).toUpperCase() + str.slice(1),
         formatDate: (date: string) => new Date(date).toLocaleDateString(),
-        statusEmoji: (status: string) => this.getStatusEmoji(status)
-      }
+        statusEmoji: (status: string) => this.getStatusEmoji(status),
+      },
     };
   }
 
@@ -476,13 +549,11 @@ export class FileBasedTemplateManager {
    */
   private registerHelpers(): void {
     // Equality helper
-    Handlebars.registerHelper('eq', function(a, b) {
-      return a === b;
-    });
+    Handlebars.registerHelper('eq', (a, b) => a === b);
 
     // If helper for conditional rendering
-    Handlebars.registerHelper('ifEquals', function(arg1, arg2, options) {
-      return (arg1 == arg2) ? options.fn(this) : options.inverse(this);
+    Handlebars.registerHelper('ifEquals', function (arg1, arg2, options) {
+      return arg1 === arg2 ? options.fn(this) : options.inverse(this);
     });
 
     // Status emoji helper
@@ -506,15 +577,15 @@ export class FileBasedTemplateManager {
    */
   private getStatusEmoji(status: string): string {
     const emojis: Record<string, string> = {
-      todo: "📋",
-      planning: "📋", 
-      in_progress: "🚧",
-      review: "👀",
-      testing: "🧪",
-      completed: "✅",
-      cancelled: "❌",
+      todo: '📋',
+      planning: '📋',
+      in_progress: '🚧',
+      review: '👀',
+      testing: '🧪',
+      completed: '✅',
+      cancelled: '❌',
     };
-    return emojis[status] || "❓";
+    return emojis[status] || '❓';
   }
 
   /**
@@ -522,12 +593,12 @@ export class FileBasedTemplateManager {
    */
   async discoverTemplates(): Promise<TemplateDiscoveryResult[]> {
     const discovered: TemplateDiscoveryResult[] = [];
-    const discoveryPaths = this.config.discoveryPaths || ['.arbiter/templates/github'];
+    const discoveryPaths: string[] = this.config.discoveryPaths ?? ['.arbiter/templates/github'];
 
     for (const discoveryPath of discoveryPaths) {
       try {
         const resolvedPath = this.resolveDiscoveryPath(discoveryPath);
-        if (!await fs.pathExists(resolvedPath)) {
+        if (!(await fs.pathExists(resolvedPath))) {
           continue;
         }
 
@@ -544,13 +615,10 @@ export class FileBasedTemplateManager {
 
           discovered.push({
             templatePath,
-            metadata
+            metadata,
           });
         }
-      } catch (error) {
-        // Silently continue if discovery path is not accessible
-        continue;
-      }
+      } catch (error) {}
     }
 
     return discovered;
@@ -559,8 +627,8 @@ export class FileBasedTemplateManager {
   /**
    * Validate template configuration
    */
-  async validateTemplateConfig(): Promise<Array<{ field: string; message: string; }>> {
-    const errors: Array<{ field: string; message: string; }> = [];
+  async validateTemplateConfig(): Promise<Array<{ field: string; message: string }>> {
+    const errors: Array<{ field: string; message: string }> = [];
 
     // Validate template file references
     const templateRefs = [
@@ -568,34 +636,34 @@ export class FileBasedTemplateManager {
       { name: 'epic', ref: this.config.epic },
       { name: 'task', ref: this.config.task },
       { name: 'bugReport', ref: this.config.bugReport },
-      { name: 'featureRequest', ref: this.config.featureRequest }
+      { name: 'featureRequest', ref: this.config.featureRequest },
     ];
 
     for (const { name, ref } of templateRefs) {
       if (!ref) continue;
 
       try {
-        if ('file' in ref) {
+        if (this.isFileReference(ref)) {
           const filePath = await this.resolveTemplatePath(ref.file);
-          if (!await fs.pathExists(filePath)) {
+          if (!(await fs.pathExists(filePath))) {
             errors.push({
               field: `${name}.file`,
-              message: `Template file not found: ${filePath}`
+              message: `Template file not found: ${filePath}`,
             });
           }
-        } else if ('templateFile' in ref && ref.templateFile) {
+        } else if (this.isTemplateConfigCandidate(ref) && ref.templateFile) {
           const filePath = await this.resolveTemplatePath(ref.templateFile);
-          if (!await fs.pathExists(filePath)) {
+          if (!(await fs.pathExists(filePath))) {
             errors.push({
-              field: `${name}.templateFile`, 
-              message: `Template file not found: ${filePath}`
+              field: `${name}.templateFile`,
+              message: `Template file not found: ${filePath}`,
             });
           }
         }
       } catch (error) {
         errors.push({
           field: `${name}`,
-          message: `Error validating template: ${error instanceof Error ? error.message : String(error)}`
+          message: `Error validating template: ${error instanceof Error ? error.message : String(error)}`,
         });
       }
     }
@@ -606,7 +674,9 @@ export class FileBasedTemplateManager {
   /**
    * Create checklist items from context data
    */
-  private createChecklistFromContext(context: Record<string, any>): Array<{id: string, text: string, done?: boolean}> {
+  private createChecklistFromContext(
+    context: Record<string, any>
+  ): Array<{ id: string; text: string; done?: boolean }> {
     const checklist = [];
 
     // Add task-specific checklist items
@@ -615,7 +685,7 @@ export class FileBasedTemplateManager {
         checklist.push({
           id: `task-${index}`,
           text: task.name || task.description || `Task ${index + 1}`,
-          done: task.status === 'completed'
+          done: task.status === 'completed',
         });
       });
     }
@@ -626,7 +696,7 @@ export class FileBasedTemplateManager {
         checklist.push({
           id: `criteria-${index}`,
           text: criteria,
-          done: false
+          done: false,
         });
       });
     }
@@ -638,13 +708,13 @@ export class FileBasedTemplateManager {
           checklist.push({
             id: `custom-${index}`,
             text: item,
-            done: false
+            done: false,
           });
         } else if (item && typeof item === 'object') {
           checklist.push({
             id: item.id || `custom-${index}`,
             text: item.text || item.description || '',
-            done: !!item.done
+            done: !!item.done,
           });
         }
       });

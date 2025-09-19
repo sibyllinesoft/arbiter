@@ -14,10 +14,13 @@ interface FsmIRData {
   fsms: {
     id: string;
     initial: string;
-    states: Record<string, {
-      on?: Record<string, string>;
-      type?: 'final' | 'compound' | 'parallel';
-    }>;
+    states: Record<
+      string,
+      {
+        on?: Record<string, string>;
+        type?: 'final' | 'compound' | 'parallel';
+      }
+    >;
   }[];
 }
 
@@ -34,7 +37,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
       try {
         setLoading(true);
         setError(null);
-        
+
         const response: IRResponse = await apiService.getIR(projectId, 'fsm');
         setFsmData(response.data as FsmIRData);
       } catch (err) {
@@ -55,9 +58,9 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
 
     const states = Object.keys(fsm.states);
     const { width, height } = calculateDimensions(states.length);
-    
+
     let svg = `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="background: white; border: 1px solid #e5e7eb; border-radius: 8px;">`;
-    
+
     // Add definitions for arrowheads
     svg += `
       <defs>
@@ -76,7 +79,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
     const centerX = width / 2;
     const centerY = height / 2;
     const radius = Math.min(width, height) * 0.3;
-    
+
     const statePositions: Record<string, { x: number; y: number }> = {};
     states.forEach((state, index) => {
       const angle = (2 * Math.PI * index) / states.length - Math.PI / 2;
@@ -94,19 +97,19 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
           if (statePositions[targetState]) {
             const from = statePositions[state];
             const to = statePositions[targetState];
-            
+
             // Calculate edge points (not center-to-center)
             const dx = to.x - from.x;
             const dy = to.y - from.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const unitX = dx / distance;
             const unitY = dy / distance;
-            
+
             const startX = from.x + unitX * 40;
             const startY = from.y + unitY * 40;
             const endX = to.x - unitX * 40;
             const endY = to.y - unitY * 40;
-            
+
             // Draw curved line for self-loops
             if (state === targetState) {
               svg += `<path d="M ${from.x + 25} ${from.y - 25} Q ${from.x + 60} ${from.y - 60} ${from.x + 25} ${from.y + 25}" 
@@ -115,7 +118,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
             } else {
               svg += `<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" 
                       stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)" />`;
-              
+
               // Add event label at midpoint
               const midX = (startX + endX) / 2;
               const midY = (startY + endY) / 2;
@@ -142,11 +145,11 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
       const stateConfig = fsm.states[state];
       const isInitial = state === fsm.initial;
       const isFinal = stateConfig.type === 'final';
-      
+
       // Choose colors based on state type
       let fill = '#f9fafb';
       let stroke = '#d1d5db';
-      
+
       if (isInitial) {
         fill = '#ecfdf5';
         stroke = '#059669';
@@ -154,15 +157,15 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
         fill = '#fef2f2';
         stroke = '#dc2626';
       }
-      
+
       // Draw state circle
       svg += `<circle cx="${pos.x}" cy="${pos.y}" r="35" fill="${fill}" stroke="${stroke}" stroke-width="2" />`;
-      
+
       // Draw double circle for final states
       if (isFinal) {
         svg += `<circle cx="${pos.x}" cy="${pos.y}" r="28" fill="none" stroke="${stroke}" stroke-width="1" />`;
       }
-      
+
       // Add state label
       svg += `<text x="${pos.x}" y="${pos.y + 5}" fill="#374151" font-size="12" 
               font-family="Inter, sans-serif" text-anchor="middle" font-weight="500">${state}</text>`;
@@ -187,7 +190,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
     const minSize = 400;
     const maxSize = 800;
     const scale = Math.min(1 + stateCount * 0.1, 2);
-    
+
     return {
       width: Math.min(minSize * scale, maxSize),
       height: Math.min(minSize * scale, maxSize),
@@ -198,7 +201,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
     if (fsmData && containerRef.current && !loading && !error) {
       // Clear previous content
       containerRef.current.innerHTML = '';
-      
+
       if (fsmData.fsms.length === 0) {
         containerRef.current.innerHTML = createEmptyFsmSvg();
         return;
@@ -208,19 +211,19 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
       fsmData.fsms.forEach((fsm, index) => {
         const fsmContainer = document.createElement('div');
         fsmContainer.className = 'mb-6 last:mb-0';
-        
+
         // Add FSM title
         const title = document.createElement('h4');
         title.className = 'text-sm font-medium text-gray-700 mb-2';
         title.textContent = `FSM: ${fsm.id}`;
         fsmContainer.appendChild(title);
-        
+
         // Add FSM diagram
         const diagramContainer = document.createElement('div');
         diagramContainer.className = 'flex justify-center';
         diagramContainer.innerHTML = renderFsmAsSvg(fsm);
         fsmContainer.appendChild(diagramContainer);
-        
+
         containerRef.current?.appendChild(fsmContainer);
       });
     }
@@ -242,8 +245,18 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center">
           <div className="text-red-500 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <p className="text-red-700 font-medium">Error loading FSM diagram</p>

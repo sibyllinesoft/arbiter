@@ -5,10 +5,23 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { 
-  Settings, Database, Shield, Zap, Globe, Users, 
-  Code, GitBranch, Activity, Folder, FileText, Play,
-  CheckCircle, AlertTriangle, XCircle, Clock
+import {
+  Settings,
+  Database,
+  Shield,
+  Zap,
+  Globe,
+  Users,
+  Code,
+  GitBranch,
+  Activity,
+  Folder,
+  FileText,
+  Play,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import Card from './Card';
 import Button from './Button';
@@ -20,7 +33,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional card component with comprehensive variants, interactive states, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
+        component:
+          'Professional card component with comprehensive variants, interactive states, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
       },
     },
   },
@@ -81,7 +95,8 @@ export const Default: Story = {
     subtitle: 'Configure your project preferences and build settings',
     children: (
       <p className="text-graphite-600">
-        This is the main content area of the card. You can put any content here including text, forms, or other components.
+        This is the main content area of the card. You can put any content here including text,
+        forms, or other components.
       </p>
     ),
   },
@@ -91,42 +106,32 @@ export const Default: Story = {
 export const Variants: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Card 
-        variant="default"
-        title="Default Card" 
-        subtitle="Standard card with subtle styling"
-      >
+      <Card variant="default" title="Default Card" subtitle="Standard card with subtle styling">
         <p className="text-graphite-600 text-sm">Clean and minimal design for general content.</p>
       </Card>
-      
-      <Card 
+
+      <Card
         variant="interactive"
-        title="Interactive Card" 
+        title="Interactive Card"
         subtitle="Clickable card with hover effects"
         onClick={() => console.log('Card clicked')}
       >
         <p className="text-graphite-600 text-sm">Perfect for navigation or selectable items.</p>
       </Card>
-      
-      <Card 
-        variant="elevated"
-        title="Elevated Card" 
-        subtitle="Prominent card with enhanced shadow"
-      >
-        <p className="text-graphite-600 text-sm">Stands out from the background with elegant elevation.</p>
+
+      <Card variant="elevated" title="Elevated Card" subtitle="Prominent card with enhanced shadow">
+        <p className="text-graphite-600 text-sm">
+          Stands out from the background with elegant elevation.
+        </p>
       </Card>
-      
-      <Card 
-        variant="outlined"
-        title="Outlined Card" 
-        subtitle="Card with prominent border styling"
-      >
+
+      <Card variant="outlined" title="Outlined Card" subtitle="Card with prominent border styling">
         <p className="text-graphite-600 text-sm">Clear boundaries with transparent background.</p>
       </Card>
-      
-      <Card 
+
+      <Card
         variant="ghost"
-        title="Ghost Card" 
+        title="Ghost Card"
         subtitle="Minimal card without borders or shadows"
         hoverable
       >
@@ -137,7 +142,8 @@ export const Variants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Card variants for different use cases: Default for general content, Interactive for clickable items, Elevated for important content, Outlined for clear boundaries, and Ghost for subtle layouts.',
+        story:
+          'Card variants for different use cases: Default for general content, Interactive for clickable items, Elevated for important content, Outlined for clear boundaries, and Ghost for subtle layouts.',
       },
     },
   },
@@ -147,36 +153,27 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="space-y-6">
-      <Card 
-        size="sm" 
-        title="Small Card"
-        subtitle="Compact size for dense layouts"
-      >
+      <Card size="sm" title="Small Card" subtitle="Compact size for dense layouts">
         <p className="text-graphite-600">Perfect for dashboard widgets and summary cards.</p>
       </Card>
-      
-      <Card 
-        size="md" 
-        title="Medium Card"
-        subtitle="Default size for most use cases"
-      >
-        <p className="text-graphite-600">The standard size that works well in most contexts and layouts.</p>
+
+      <Card size="md" title="Medium Card" subtitle="Default size for most use cases">
+        <p className="text-graphite-600">
+          The standard size that works well in most contexts and layouts.
+        </p>
       </Card>
-      
-      <Card 
-        size="lg" 
-        title="Large Card"
-        subtitle="Spacious size for detailed content"
-      >
-        <p className="text-graphite-600">Ideal for forms, detailed information, or when you need more visual breathing room.</p>
+
+      <Card size="lg" title="Large Card" subtitle="Spacious size for detailed content">
+        <p className="text-graphite-600">
+          Ideal for forms, detailed information, or when you need more visual breathing room.
+        </p>
       </Card>
-      
-      <Card 
-        size="xl" 
-        title="Extra Large Card"
-        subtitle="Maximum size for hero content"
-      >
-        <p className="text-graphite-600">Perfect for landing pages, feature highlights, or any content that needs to make a strong visual impact.</p>
+
+      <Card size="xl" title="Extra Large Card" subtitle="Maximum size for hero content">
+        <p className="text-graphite-600">
+          Perfect for landing pages, feature highlights, or any content that needs to make a strong
+          visual impact.
+        </p>
       </Card>
     </div>
   ),
@@ -193,7 +190,7 @@ export const Sizes: Story = {
 export const InteractiveStates: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Card 
+      <Card
         variant="interactive"
         title="Default State"
         subtitle="Normal interactive card"
@@ -201,8 +198,8 @@ export const InteractiveStates: Story = {
       >
         <p className="text-graphite-600 text-sm">Click to interact</p>
       </Card>
-      
-      <Card 
+
+      <Card
         variant="interactive"
         title="Selected State"
         subtitle="Currently selected card"
@@ -211,8 +208,8 @@ export const InteractiveStates: Story = {
       >
         <p className="text-graphite-600 text-sm">This card is currently selected</p>
       </Card>
-      
-      <Card 
+
+      <Card
         variant="interactive"
         title="Disabled State"
         subtitle="Cannot be interacted with"
@@ -221,8 +218,8 @@ export const InteractiveStates: Story = {
       >
         <p className="text-graphite-600 text-sm">This card is disabled</p>
       </Card>
-      
-      <Card 
+
+      <Card
         variant="interactive"
         title="Loading State"
         subtitle="Processing request"
@@ -236,7 +233,8 @@ export const InteractiveStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive card states: default, selected, disabled, and loading with appropriate visual feedback.',
+        story:
+          'Interactive card states: default, selected, disabled, and loading with appropriate visual feedback.',
       },
     },
   },
@@ -246,7 +244,7 @@ export const InteractiveStates: Story = {
 export const HeadersAndFooters: Story = {
   render: () => (
     <div className="space-y-6 max-w-md">
-      <Card 
+      <Card
         header={
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -272,7 +270,7 @@ export const HeadersAndFooters: Story = {
           </div>
         </div>
       </Card>
-      
+
       <Card
         title="Deployment Pipeline"
         subtitle="Build and deploy your application"
@@ -282,9 +280,7 @@ export const HeadersAndFooters: Story = {
             <Button size="sm" variant="ghost">
               View Logs
             </Button>
-            <Button size="sm">
-              Deploy Now
-            </Button>
+            <Button size="sm">Deploy Now</Button>
           </div>
         }
       >
@@ -308,7 +304,8 @@ export const HeadersAndFooters: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Cards with custom headers and footers, including dividers for clear section separation.',
+        story:
+          'Cards with custom headers and footers, including dividers for clear section separation.',
       },
     },
   },
@@ -322,7 +319,7 @@ export const DeveloperToolExamples: Story = {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Project Overview</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card 
+          <Card
             variant="interactive"
             size="sm"
             onClick={() => console.log('Frontend project clicked')}
@@ -347,8 +344,8 @@ export const DeveloperToolExamples: Story = {
               </div>
             </div>
           </Card>
-          
-          <Card 
+
+          <Card
             variant="interactive"
             size="sm"
             onClick={() => console.log('API project clicked')}
@@ -373,8 +370,8 @@ export const DeveloperToolExamples: Story = {
               </div>
             </div>
           </Card>
-          
-          <Card 
+
+          <Card
             variant="interactive"
             size="sm"
             onClick={() => console.log('Database project clicked')}
@@ -401,7 +398,7 @@ export const DeveloperToolExamples: Story = {
           </Card>
         </div>
       </div>
-      
+
       {/* Repository Management */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Repository Management</h3>
@@ -417,8 +414,12 @@ export const DeveloperToolExamples: Story = {
                   <span className="text-sm font-medium text-graphite-900">spec-workbench</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">TypeScript</span>
-                  <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">Public</span>
+                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                    TypeScript
+                  </span>
+                  <span className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
+                    Public
+                  </span>
                 </div>
               </div>
             }
@@ -439,7 +440,8 @@ export const DeveloperToolExamples: Story = {
           >
             <div className="space-y-3">
               <p className="text-sm text-graphite-600">
-                A sophisticated specification workbench with CUE language editing, real-time collaboration, and technical workflows.
+                A sophisticated specification workbench with CUE language editing, real-time
+                collaboration, and technical workflows.
               </p>
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1">
@@ -457,7 +459,7 @@ export const DeveloperToolExamples: Story = {
               </div>
             </div>
           </Card>
-          
+
           <Card
             variant="default"
             title="api-gateway"
@@ -469,8 +471,12 @@ export const DeveloperToolExamples: Story = {
                   <span className="text-sm font-medium text-graphite-900">api-gateway</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">Go</span>
-                  <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">Private</span>
+                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                    Go
+                  </span>
+                  <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">
+                    Private
+                  </span>
                 </div>
               </div>
             }
@@ -491,7 +497,8 @@ export const DeveloperToolExamples: Story = {
           >
             <div className="space-y-3">
               <p className="text-sm text-graphite-600">
-                High-performance API gateway with JWT authentication, rate limiting, and service discovery.
+                High-performance API gateway with JWT authentication, rate limiting, and service
+                discovery.
               </p>
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-1">
@@ -511,7 +518,7 @@ export const DeveloperToolExamples: Story = {
           </Card>
         </div>
       </div>
-      
+
       {/* System Health Dashboard */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">System Health</h3>
@@ -534,7 +541,7 @@ export const DeveloperToolExamples: Story = {
               <p className="text-xs text-green-600">Normal usage</p>
             </div>
           </Card>
-          
+
           <Card
             variant="elevated"
             size="sm"
@@ -553,7 +560,7 @@ export const DeveloperToolExamples: Story = {
               <p className="text-xs text-blue-600">6.7GB / 10GB</p>
             </div>
           </Card>
-          
+
           <Card
             variant="elevated"
             size="sm"
@@ -566,13 +573,11 @@ export const DeveloperToolExamples: Story = {
           >
             <div className="space-y-2">
               <div className="text-2xl font-bold text-graphite-900">1.2GB</div>
-              <div className="text-xs text-graphite-600">
-                ↓ 892MB ↑ 341MB
-              </div>
+              <div className="text-xs text-graphite-600">↓ 892MB ↑ 341MB</div>
               <p className="text-xs text-purple-600">Active transfers</p>
             </div>
           </Card>
-          
+
           <Card
             variant="elevated"
             size="sm"
@@ -585,9 +590,7 @@ export const DeveloperToolExamples: Story = {
           >
             <div className="space-y-2">
               <div className="text-2xl font-bold text-graphite-900">1,247</div>
-              <div className="text-xs text-graphite-600">
-                +23 from yesterday
-              </div>
+              <div className="text-xs text-graphite-600">+23 from yesterday</div>
               <p className="text-xs text-amber-600">Active sessions</p>
             </div>
           </Card>
@@ -598,7 +601,8 @@ export const DeveloperToolExamples: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Real-world examples of cards in developer tools: project overviews, repository management, and system health dashboards.',
+        story:
+          'Real-world examples of cards in developer tools: project overviews, repository management, and system health dashboards.',
       },
     },
   },
@@ -617,12 +621,14 @@ export const Interactive: Story = {
     hoverable: false,
     headerDivider: false,
     footerDivider: false,
-    children: 'This is the card content. You can customize all aspects of this card using the controls below.',
+    children:
+      'This is the card content. You can customize all aspects of this card using the controls below.',
   },
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with all card props. Use the controls panel below to test different combinations.',
+        story:
+          'Interactive playground to experiment with all card props. Use the controls panel below to test different combinations.',
       },
     },
   },

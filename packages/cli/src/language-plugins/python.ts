@@ -4,13 +4,13 @@
  */
 
 import type {
-  LanguagePlugin,
-  ComponentConfig,
-  ServiceConfig,
-  ProjectConfig,
   BuildConfig,
-  GenerationResult,
+  ComponentConfig,
   GeneratedFile,
+  GenerationResult,
+  LanguagePlugin,
+  ProjectConfig,
+  ServiceConfig,
 } from './index.js';
 
 export class PythonPlugin implements LanguagePlugin {
@@ -29,6 +29,11 @@ export class PythonPlugin implements LanguagePlugin {
     'background-tasks',
     'websockets',
   ];
+  readonly capabilities = {
+    services: true,
+    api: true,
+    testing: true,
+  };
 
   // Python doesn't have UI components like frontend frameworks
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
@@ -223,19 +228,27 @@ export class PythonPlugin implements LanguagePlugin {
   }
 
   private generateAPIRouter(config: ServiceConfig): string {
-    const endpoints = config.endpoints || ['GET /', 'POST /', 'GET /{id}', 'PUT /{id}', 'DELETE /{id}'];
-    const routerMethods = endpoints.map(endpoint => {
-      const [method, path] = endpoint.split(' ');
-      const methodName = method.toLowerCase();
-      const safePath = path.replace('{', '{').replace('}', '}'); // Ensure proper formatting
-      
-      return `
+    const endpoints = config.endpoints || [
+      'GET /',
+      'POST /',
+      'GET /{id}',
+      'PUT /{id}',
+      'DELETE /{id}',
+    ];
+    const routerMethods = endpoints
+      .map(endpoint => {
+        const [method, path] = endpoint.split(' ');
+        const methodName = method.toLowerCase();
+        const safePath = path.replace('{', '{').replace('}', '}'); // Ensure proper formatting
+
+        return `
 @router.${methodName}("${safePath}")
 async def ${methodName}_${config.name}(${path.includes('{id}') ? 'id: int' : ''}):
     """${method} ${path} endpoint for ${config.name}"""
     # TODO: Implement endpoint logic
     return {"message": "${method} ${config.name} endpoint", ${path.includes('{id}') ? '"id": id' : ''}}`;
-    }).join('\n');
+      })
+      .join('\n');
 
     return `"""
 ${config.name} Router
@@ -243,7 +256,7 @@ FastAPI router for ${config.name} endpoints
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
-${config.database ? `from app.core.database import get_db_session` : ''}
+${config.database ? 'from app.core.database import get_db_session' : ''}
 ${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ''}
 
 router = APIRouter(
@@ -263,7 +276,7 @@ Business logic for ${config.name} operations
 """
 from typing import List, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-${config.database ? `from app.core.database import get_db_session` : ''}
+${config.database ? 'from app.core.database import get_db_session' : ''}
 ${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ''}
 import logging
 
@@ -346,7 +359,7 @@ HTTP request handlers for ${config.name}
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-${config.database ? `from app.core.database import get_db_session` : ''}
+${config.database ? 'from app.core.database import get_db_session' : ''}
 ${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ''}
 from app.services.${config.name}_service import ${config.name.toLowerCase()}_service
 import logging
@@ -462,15 +475,19 @@ class ${config.name}InDB(${config.name}Schema):
   }
 
   private generateMainApp(config: ProjectConfig): string {
-    const corsImport = config.features.includes('cors') ? 'from fastapi.middleware.cors import CORSMiddleware' : '';
-    const corsSetup = config.features.includes('cors') ? `
+    const corsImport = config.features.includes('cors')
+      ? 'from fastapi.middleware.cors import CORSMiddleware'
+      : '';
+    const corsSetup = config.features.includes('cors')
+      ? `
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)` : '';
+)`
+      : '';
 
     return `"""
 ${config.name} FastAPI Application
@@ -599,14 +616,22 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8000, description="Port to bind to")
     
     # Database settings
-    ${config.database ? `DATABASE_URL: str = Field(
+    ${
+      config.database
+        ? `DATABASE_URL: str = Field(
         default="postgresql+asyncpg://user:password@localhost:5432/${config.name.toLowerCase()}",
         description="Database connection URL"
-    )` : '# DATABASE_URL: str = Field(default="sqlite:///./app.db")'}
+    )`
+        : '# DATABASE_URL: str = Field(default="sqlite:///./app.db")'
+    }
     
     # Security settings
-    ${config.auth === 'jwt' ? `SECRET_KEY: str = Field(default="your-secret-key-change-in-production", description="JWT secret key")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="Access token expiration time")` : '# SECRET_KEY: str = Field(default="your-secret-key")'}
+    ${
+      config.auth === 'jwt'
+        ? `SECRET_KEY: str = Field(default="your-secret-key-change-in-production", description="JWT secret key")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="Access token expiration time")`
+        : '# SECRET_KEY: str = Field(default="your-secret-key")'
+    }
     
     # CORS settings
     CORS_ORIGINS: list[str] = Field(default=["http://localhost:3000"], description="CORS allowed origins")
@@ -626,7 +651,7 @@ settings = Settings()
 
   private generateDatabase(config: ProjectConfig): string {
     const dbType = config.database || 'postgres';
-    
+
     return `"""
 Database Configuration
 SQLAlchemy 2.0+ async database setup
@@ -697,7 +722,7 @@ async def close_db() -> None:
 
   private generateSecurity(config: ProjectConfig): string {
     if (config.auth !== 'jwt') return '';
-    
+
     return `"""
 Security Utilities
 JWT token handling and password hashing
@@ -757,7 +782,7 @@ def get_password_hash(password: str) -> str:
 
   private generateAuth(config: ProjectConfig): string {
     if (config.auth !== 'jwt') return '';
-    
+
     return `"""
 Authentication Dependencies
 FastAPI dependencies for authentication
@@ -826,7 +851,7 @@ async def get_current_active_user(
 
   private generateRequirements(config: ProjectConfig, baseDeps: string[]): string {
     const deps = [...baseDeps];
-    
+
     if (config.database) {
       deps.push('sqlalchemy>=2.0.0', 'asyncpg>=0.28.0');
     }
@@ -836,7 +861,7 @@ async def get_current_active_user(
     if (config.features.includes('cors')) {
       // CORS support is built into FastAPI
     }
-    
+
     return deps.sort().join('\n');
   }
 
@@ -850,11 +875,11 @@ async def get_current_active_user(
       'flake8>=6.0.0',
       'mypy>=1.0.0',
     ];
-    
+
     if (config.testing) {
       devDeps.push('pytest-cov>=4.0.0', 'factory-boy>=3.2.0');
     }
-    
+
     return devDeps.sort().join('\n');
   }
 
@@ -882,7 +907,9 @@ def event_loop():
     loop.close()
 
 
-${config.database ? `@pytest.fixture(scope="session")
+${
+  config.database
+    ? `@pytest.fixture(scope="session")
 async def test_db():
     """Create test database"""
     # Use in-memory SQLite for tests
@@ -913,7 +940,9 @@ def override_get_db(db_session):
     
     app.dependency_overrides[get_db_session] = _override_get_db
     yield
-    app.dependency_overrides.clear()` : ''}
+    app.dependency_overrides.clear()`
+    : ''
+}
 
 
 @pytest.fixture
@@ -1023,7 +1052,9 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
   }
 
   private generateDockerCompose(config: ProjectConfig): string {
-    const dbService = config.database === 'postgres' ? `
+    const dbService =
+      config.database === 'postgres'
+        ? `
   database:
     image: postgres:15-alpine
     environment:
@@ -1038,7 +1069,8 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
       test: ["CMD-SHELL", "pg_isready -U ${config.name.toLowerCase()}"]
       interval: 10s
       timeout: 5s
-      retries: 5` : '';
+      retries: 5`
+        : '';
 
     return `version: '3.8'
 
@@ -1050,16 +1082,24 @@ services:
     environment:
       - DEBUG=true
       ${config.database ? `- DATABASE_URL=postgresql+asyncpg://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ''}
-    ${config.database ? `depends_on:
+    ${
+      config.database
+        ? `depends_on:
       database:
-        condition: service_healthy` : ''}
+        condition: service_healthy`
+        : ''
+    }
     volumes:
       - .:/app
     restart: unless-stopped
 ${dbService}
 
-${config.database === 'postgres' ? `volumes:
-  postgres_data:` : ''}
+${
+  config.database === 'postgres'
+    ? `volumes:
+  postgres_data:`
+    : ''
+}
 `;
   }
 
@@ -1213,9 +1253,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: $` + `{{ runner.os }}` + `-pip-$` + `{{ hashFiles('**/requirements*.txt') }}` + `
+        key: \${{ runner.os }}-pip-\${{ hashFiles('**/requirements*.txt') }}
         restore-keys: |
-          $` + `{{ runner.os }}` + `-pip-
+          \${{ runner.os }}-pip-
     
     - name: Install dependencies
       run: |
@@ -1250,7 +1290,9 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  ${config.target === 'production' ? `deploy:
+  ${
+    config.target === 'production'
+      ? `deploy:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -1262,8 +1304,13 @@ jobs:
       env:
         DOCKER_REGISTRY: your-registry.com
       run: |
-        docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:$` + `{{ github.sha }}` + ` .
-        docker push $DOCKER_REGISTRY/your-app:$` + `{{ github.sha }}` : ''}
+        docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:$` +
+        '{{ github.sha }}' +
+        ` .
+        docker push $DOCKER_REGISTRY/your-app:$` +
+        '{{ github.sha }}'
+      : ''
+  }
 `;
   }
 }

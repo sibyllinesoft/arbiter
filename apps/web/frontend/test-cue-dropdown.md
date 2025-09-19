@@ -2,7 +2,8 @@
 
 ## ✅ Implementation Complete
 
-The CUE dropdown in the TopBar has been successfully upgraded from a static HTML select to a fully functional, state-managed component.
+The CUE dropdown in the TopBar has been successfully upgraded from a static HTML
+select to a fully functional, state-managed component.
 
 ### ✅ Changes Made:
 

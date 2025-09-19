@@ -1,11 +1,11 @@
-import { z } from "zod";
-import { ConstraintViolationError, globalConstraintEnforcer } from "./core.js";
+import { z } from 'zod';
+import { ConstraintViolationError, globalConstraintEnforcer } from './core.js';
 
 /**
  * Latest API version - must be updated when schema changes
  * This enforces the "Don't write older schemas" constraint
  */
-export const LATEST_API_VERSION = "2024-12-26";
+export const LATEST_API_VERSION = '2024-12-26';
 
 /**
  * Version compatibility matrix
@@ -17,15 +17,15 @@ export const VERSION_COMPATIBILITY = {
 
   // Supported versions for read operations
   supported: [
-    "2024-12-26",
-    "2024-12-25", // Previous version for migration support
+    '2024-12-26',
+    '2024-12-25', // Previous version for migration support
   ],
 
   // Deprecated versions (read-only, warn on usage)
-  deprecated: ["2024-12-24", "2024-12-23"],
+  deprecated: ['2024-12-24', '2024-12-23'],
 
   // Unsupported versions (reject all operations)
-  unsupported: ["2024-12-22", "2024-12-21"],
+  unsupported: ['2024-12-22', '2024-12-21'],
 };
 
 /**
@@ -35,12 +35,12 @@ export const envelopeBaseSchema = z.object({
   apiVersion: z
     .string()
     .refine(
-      (version) =>
+      version =>
         VERSION_COMPATIBILITY.supported.includes(version) ||
         VERSION_COMPATIBILITY.deprecated.includes(version),
       {
-        message: `API version must be one of: ${[...VERSION_COMPATIBILITY.supported, ...VERSION_COMPATIBILITY.deprecated].join(", ")}`,
-      },
+        message: `API version must be one of: ${[...VERSION_COMPATIBILITY.supported, ...VERSION_COMPATIBILITY.deprecated].join(', ')}`,
+      }
     ),
   kind: z.string(),
   metadata: z
@@ -48,6 +48,7 @@ export const envelopeBaseSchema = z.object({
       name: z.string().optional(),
       createdAt: z.string().datetime().optional(),
       version: z.string().optional(),
+      migrationNotes: z.string().optional(),
     })
     .optional(),
 });
@@ -56,7 +57,7 @@ export const envelopeBaseSchema = z.object({
  * Schema for validation results with version enforcement
  */
 export const validationResultSchema = envelopeBaseSchema.extend({
-  kind: z.literal("ValidationResult"),
+  kind: z.literal('ValidationResult'),
   spec: z.object({
     success: z.boolean(),
     errors: z
@@ -65,9 +66,9 @@ export const validationResultSchema = envelopeBaseSchema.extend({
           line: z.number(),
           column: z.number(),
           message: z.string(),
-          severity: z.enum(["error", "warning"]),
+          severity: z.enum(['error', 'warning']),
           category: z.string(),
-        }),
+        })
       )
       .optional(),
     warnings: z
@@ -77,7 +78,7 @@ export const validationResultSchema = envelopeBaseSchema.extend({
           column: z.number(),
           message: z.string(),
           category: z.string(),
-        }),
+        })
       )
       .optional(),
   }),
@@ -87,7 +88,7 @@ export const validationResultSchema = envelopeBaseSchema.extend({
  * Schema for export results with version enforcement
  */
 export const exportResultSchema = envelopeBaseSchema.extend({
-  kind: z.literal("ExportResult"),
+  kind: z.literal('ExportResult'),
   spec: z.object({
     format: z.string(),
     content: z.string(),
@@ -99,14 +100,14 @@ export const exportResultSchema = envelopeBaseSchema.extend({
  * Schema for analysis results with version enforcement
  */
 export const analysisResultSchema = envelopeBaseSchema.extend({
-  kind: z.literal("AnalysisResult"),
+  kind: z.literal('AnalysisResult'),
   spec: z.object({
     summary: z.string(),
     issues: z
       .array(
         z.object({
           type: z.string(),
-          severity: z.enum(["low", "medium", "high", "critical"]),
+          severity: z.enum(['low', 'medium', 'high', 'critical']),
           message: z.string(),
           location: z
             .object({
@@ -114,7 +115,7 @@ export const analysisResultSchema = envelopeBaseSchema.extend({
               column: z.number(),
             })
             .optional(),
-        }),
+        })
       )
       .optional(),
     metrics: z.record(z.number()).optional(),
@@ -124,7 +125,7 @@ export const analysisResultSchema = envelopeBaseSchema.extend({
 /**
  * Union type for all valid envelope schemas
  */
-export const envelopeSchema = z.discriminatedUnion("kind", [
+export const envelopeSchema = z.discriminatedUnion('kind', [
   validationResultSchema,
   exportResultSchema,
   analysisResultSchema,
@@ -147,18 +148,18 @@ export class SchemaVersionValidator {
     const parseResult = envelopeSchema.safeParse(data);
     if (!parseResult.success) {
       const violation = new ConstraintViolationError(
-        "schemaValidation",
-        "invalid envelope structure",
-        "valid envelope schema",
+        'schemaValidation',
+        'invalid envelope structure',
+        'valid envelope schema',
         {
           operationId,
           validationErrors: parseResult.error.errors,
-          providedData: typeof data === "object" ? Object.keys(data as object) : typeof data,
-        },
+          providedData: typeof data === 'object' ? Object.keys(data as object) : typeof data,
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "schemaValidation",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'schemaValidation',
         violation,
         data,
       });
@@ -174,7 +175,7 @@ export class SchemaVersionValidator {
     // Additional validation for specific envelope types
     this.validateEnvelopeContent(envelope, operationId);
 
-    globalConstraintEnforcer.emit("schema:validated", {
+    globalConstraintEnforcer.emit('schema:validated', {
       operationId,
       kind: envelope.kind,
       apiVersion: envelope.apiVersion,
@@ -190,18 +191,18 @@ export class SchemaVersionValidator {
     const parseResult = envelopeSchema.safeParse(data);
     if (!parseResult.success) {
       const violation = new ConstraintViolationError(
-        "schemaValidation",
-        "invalid envelope structure",
-        "valid envelope schema",
+        'schemaValidation',
+        'invalid envelope structure',
+        'valid envelope schema',
         {
           operationId,
           validationErrors: parseResult.error.errors,
-          providedData: typeof data === "object" ? Object.keys(data as object) : typeof data,
-        },
+          providedData: typeof data === 'object' ? Object.keys(data as object) : typeof data,
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "schemaValidation",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'schemaValidation',
         violation,
         data,
       });
@@ -212,13 +213,13 @@ export class SchemaVersionValidator {
     const envelope = parseResult.data;
 
     // Check version compatibility for read operations
-    this.validateVersionCompatibility(envelope.apiVersion, "read", operationId);
+    this.validateVersionCompatibility(envelope.apiVersion, 'read', operationId);
 
-    globalConstraintEnforcer.emit("schema:validated", {
+    globalConstraintEnforcer.emit('schema:validated', {
       operationId,
       kind: envelope.kind,
       apiVersion: envelope.apiVersion,
-      operation: "read",
+      operation: 'read',
     });
 
     return envelope;
@@ -228,9 +229,9 @@ export class SchemaVersionValidator {
    * Create a new envelope with the latest API version
    */
   createEnvelope<T extends EnvelopeData>(
-    kind: T["kind"],
-    spec: T["spec"],
-    metadata?: T["metadata"],
+    kind: T['kind'],
+    spec: T['spec'],
+    metadata?: T['metadata']
   ): T {
     const envelope = {
       apiVersion: LATEST_API_VERSION,
@@ -259,19 +260,19 @@ export class SchemaVersionValidator {
     // Check if migration is supported
     if (!this.isMigrationSupported(envelope.apiVersion)) {
       const violation = new ConstraintViolationError(
-        "versionMigration",
+        'versionMigration',
         envelope.apiVersion,
-        "supported version for migration",
+        'supported version for migration',
         {
           operationId,
           currentVersion: envelope.apiVersion,
           latestVersion: LATEST_API_VERSION,
           supportedVersions: VERSION_COMPATIBILITY.supported,
-        },
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "versionMigration",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'versionMigration',
         violation,
         envelope,
       });
@@ -293,7 +294,7 @@ export class SchemaVersionValidator {
     // Apply version-specific migrations
     const fullyMigrated = this.applyVersionMigrations(migrated, envelope.apiVersion);
 
-    globalConstraintEnforcer.emit("schema:migrated", {
+    globalConstraintEnforcer.emit('schema:migrated', {
       operationId,
       fromVersion: envelope.apiVersion,
       toVersion: LATEST_API_VERSION,
@@ -318,25 +319,25 @@ export class SchemaVersionValidator {
    */
   private validateVersionCompatibility(
     version: string,
-    operation: "read" | "write",
-    operationId?: string,
+    operation: 'read' | 'write',
+    operationId?: string
   ): void {
     if (VERSION_COMPATIBILITY.unsupported.includes(version)) {
       const violation = new ConstraintViolationError(
-        "versionCompatibility",
+        'versionCompatibility',
         version,
-        "supported API version",
+        'supported API version',
         {
           operationId,
           operation,
           version,
           supportedVersions: VERSION_COMPATIBILITY.supported,
-          reason: "Version is no longer supported",
-        },
+          reason: 'Version is no longer supported',
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "versionCompatibility",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'versionCompatibility',
         violation,
         version,
       });
@@ -344,9 +345,9 @@ export class SchemaVersionValidator {
       throw violation;
     }
 
-    if (operation === "write" && version !== LATEST_API_VERSION) {
+    if (operation === 'write' && version !== LATEST_API_VERSION) {
       const violation = new ConstraintViolationError(
-        "versionCompatibility",
+        'versionCompatibility',
         version,
         LATEST_API_VERSION,
         {
@@ -354,12 +355,12 @@ export class SchemaVersionValidator {
           operation,
           version,
           latestVersion: LATEST_API_VERSION,
-          reason: "Write operations must use latest API version",
-        },
+          reason: 'Write operations must use latest API version',
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "versionCompatibility",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'versionCompatibility',
         violation,
         version,
       });
@@ -369,7 +370,7 @@ export class SchemaVersionValidator {
 
     // Warn about deprecated versions
     if (VERSION_COMPATIBILITY.deprecated.includes(version)) {
-      globalConstraintEnforcer.emit("schema:deprecated_version", {
+      globalConstraintEnforcer.emit('schema:deprecated_version', {
         operationId,
         version,
         latestVersion: LATEST_API_VERSION,
@@ -383,13 +384,13 @@ export class SchemaVersionValidator {
    */
   private validateEnvelopeContent(envelope: EnvelopeData, operationId?: string): void {
     switch (envelope.kind) {
-      case "ValidationResult":
+      case 'ValidationResult':
         this.validateValidationResult(envelope, operationId);
         break;
-      case "ExportResult":
+      case 'ExportResult':
         this.validateExportResult(envelope, operationId);
         break;
-      case "AnalysisResult":
+      case 'AnalysisResult':
         this.validateAnalysisResult(envelope, operationId);
         break;
       default:
@@ -405,11 +406,11 @@ export class SchemaVersionValidator {
     let migrated = envelope;
 
     // Apply migrations in sequence based on version
-    if (fromVersion === "2024-12-25") {
+    if (fromVersion === '2024-12-25') {
       migrated = this.migrateFrom20241225(migrated);
     }
 
-    if (fromVersion === "2024-12-24") {
+    if (fromVersion === '2024-12-24') {
       migrated = this.migrateFrom20241224(migrated);
     }
 
@@ -426,7 +427,7 @@ export class SchemaVersionValidator {
       ...envelope,
       metadata: {
         ...envelope.metadata,
-        migrationNotes: "Migrated from 2024-12-25 - no structural changes required",
+        migrationNotes: 'Migrated from 2024-12-25 - no structural changes required',
       },
     };
   }
@@ -440,7 +441,7 @@ export class SchemaVersionValidator {
       ...envelope,
       metadata: {
         ...envelope.metadata,
-        migrationNotes: "Migrated from 2024-12-24 - deprecated fields removed",
+        migrationNotes: 'Migrated from 2024-12-24 - deprecated fields removed',
       },
     };
   }
@@ -448,9 +449,9 @@ export class SchemaVersionValidator {
   private validateValidationResult(envelope: ValidationResult, operationId?: string): void {
     // Additional validation for ValidationResult envelopes
     if (!envelope.spec.success && (!envelope.spec.errors || envelope.spec.errors.length === 0)) {
-      globalConstraintEnforcer.emit("schema:warning", {
+      globalConstraintEnforcer.emit('schema:warning', {
         operationId,
-        message: "ValidationResult marked as unsuccessful but no errors provided",
+        message: 'ValidationResult marked as unsuccessful but no errors provided',
         envelope: envelope.kind,
       });
     }
@@ -458,15 +459,15 @@ export class SchemaVersionValidator {
 
   private validateExportResult(envelope: ExportResult, operationId?: string): void {
     // Additional validation for ExportResult envelopes
-    if (!envelope.spec.content || envelope.spec.content.trim() === "") {
+    if (!envelope.spec.content || envelope.spec.content.trim() === '') {
       const violation = new ConstraintViolationError(
-        "schemaValidation",
-        "empty export content",
-        "non-empty export content",
+        'schemaValidation',
+        'empty export content',
+        'non-empty export content',
         {
           operationId,
           format: envelope.spec.format,
-        },
+        }
       );
 
       throw violation;
@@ -475,10 +476,10 @@ export class SchemaVersionValidator {
 
   private validateAnalysisResult(envelope: AnalysisResult, operationId?: string): void {
     // Additional validation for AnalysisResult envelopes
-    if (!envelope.spec.summary || envelope.spec.summary.trim() === "") {
-      globalConstraintEnforcer.emit("schema:warning", {
+    if (!envelope.spec.summary || envelope.spec.summary.trim() === '') {
+      globalConstraintEnforcer.emit('schema:warning', {
         operationId,
-        message: "AnalysisResult has empty summary",
+        message: 'AnalysisResult has empty summary',
         envelope: envelope.kind,
       });
     }
@@ -507,11 +508,11 @@ export function validateReadData(data: unknown, operationId?: string): EnvelopeD
 /**
  * Decorator to automatically enforce schema validation on API responses
  */
-export function withSchemaValidation(operation: "read" | "write") {
+export function withSchemaValidation(operation: 'read' | 'write') {
   return <T extends (...args: any[]) => Promise<any>>(
     _target: any,
     _propertyName: string,
-    descriptor: TypedPropertyDescriptor<T>,
+    descriptor: TypedPropertyDescriptor<T>
   ) => {
     const method = descriptor.value!;
 
@@ -519,11 +520,10 @@ export function withSchemaValidation(operation: "read" | "write") {
       const result = await method.apply(this, args);
 
       // Validate the result based on operation type
-      if (operation === "write") {
+      if (operation === 'write') {
         return globalSchemaValidator.validateWriteSchema(result);
-      } else {
-        return globalSchemaValidator.validateReadSchema(result);
       }
+      return globalSchemaValidator.validateReadSchema(result);
     } as T;
 
     return descriptor;

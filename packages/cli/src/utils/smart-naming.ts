@@ -7,18 +7,18 @@
  * instead of project-specific names.
  */
 
-import fs from "node:fs";
-import path from "node:path";
-import { glob } from "glob";
+import fs from 'node:fs';
+import path from 'node:path';
+import { glob } from 'glob';
 
 // Standard file extensions and their default naming patterns
 export const FILE_PATTERNS = {
-  assembly: { extension: ".assembly.cue", default: "arbiter.assembly.cue" },
-  surface: { extension: ".json", default: "surface.json" },
-  versionPlan: { extension: ".json", default: "version_plan.json" },
-  apiSurface: { extension: ".json", default: "api-surface.json" },
-  docs: { extension: ".md", default: "README.md" },
-  html: { extension: ".html", default: "arbiter.html" },
+  assembly: { extension: '.assembly.cue', default: 'arbiter.assembly.cue' },
+  surface: { extension: '.json', default: 'surface.json' },
+  versionPlan: { extension: '.json', default: 'version_plan.json' },
+  apiSurface: { extension: '.json', default: 'api-surface.json' },
+  docs: { extension: '.md', default: 'README.md' },
+  html: { extension: '.html', default: 'arbiter.html' },
 } as const;
 
 export type FileType = keyof typeof FILE_PATTERNS;
@@ -50,7 +50,7 @@ export interface ProjectContext {
  * Detects project context from the current directory and its metadata
  */
 export async function detectProjectContext(
-  workingDir: string = process.cwd(),
+  workingDir: string = process.cwd()
 ): Promise<ProjectContext> {
   const context: ProjectContext = {
     directory: workingDir,
@@ -58,11 +58,11 @@ export async function detectProjectContext(
   };
 
   // Check for package.json
-  const packageJsonPath = path.join(workingDir, "package.json");
+  const packageJsonPath = path.join(workingDir, 'package.json');
   if (fs.existsSync(packageJsonPath)) {
     context.packageJsonPath = packageJsonPath;
     try {
-      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       context.name = packageJson.name;
     } catch (error) {
       console.warn(`Warning: Could not parse package.json: ${error}`);
@@ -70,14 +70,14 @@ export async function detectProjectContext(
   }
 
   // Check for existing assembly files
-  const assemblyFiles = await glob("*.assembly.cue", { cwd: workingDir });
+  const assemblyFiles = await glob('*.assembly.cue', { cwd: workingDir });
   if (assemblyFiles.length > 0) {
     context.assemblyFile = path.join(workingDir, assemblyFiles[0]);
 
     // Try to extract project name from assembly file
     if (!context.name) {
       try {
-        const assemblyContent = fs.readFileSync(context.assemblyFile, "utf-8");
+        const assemblyContent = fs.readFileSync(context.assemblyFile, 'utf-8');
         const nameMatch = assemblyContent.match(/name:\s*"([^"]+)"/);
         if (nameMatch) {
           context.name = nameMatch[1];
@@ -90,14 +90,14 @@ export async function detectProjectContext(
 
   // Check for other config files that might contain project names
   const configPatterns = [
-    "pyproject.toml",
-    "Cargo.toml",
-    "go.mod",
-    "composer.json",
-    ".arbiter/config.json",
-    ".arbiter/config.yaml",
-    ".arbiter.json",
-    ".arbiter.yaml",
+    'pyproject.toml',
+    'Cargo.toml',
+    'go.mod',
+    'composer.json',
+    '.arbiter/config.json',
+    '.arbiter/config.yaml',
+    '.arbiter.json',
+    '.arbiter.yaml',
   ];
 
   for (const pattern of configPatterns) {
@@ -108,7 +108,7 @@ export async function detectProjectContext(
       // Try to extract name if not already found
       if (!context.name) {
         try {
-          const content = fs.readFileSync(configPath, "utf-8");
+          const content = fs.readFileSync(configPath, 'utf-8');
           context.name = extractProjectNameFromConfig(content, pattern);
         } catch (_error) {
           // Silently continue - not all config files are parseable
@@ -130,21 +130,21 @@ export async function detectProjectContext(
  */
 function extractProjectNameFromConfig(content: string, filename: string): string | undefined {
   switch (path.extname(filename)) {
-    case ".toml": {
+    case '.toml': {
       // Cargo.toml or pyproject.toml
       const tomlNameMatch = content.match(/name\s*=\s*["']([^"']+)["']/);
       return tomlNameMatch?.[1];
     }
 
-    case ".mod": {
+    case '.mod': {
       // go.mod
       const goModMatch = content.match(/module\s+([^\s]+)/);
-      return goModMatch?.[1]?.split("/").pop(); // Get last part of module path
+      return goModMatch?.[1]?.split('/').pop(); // Get last part of module path
     }
 
-    case ".json":
-    case ".yaml":
-    case ".yml":
+    case '.json':
+    case '.yaml':
+    case '.yml':
       try {
         const parsed = JSON.parse(content);
         return parsed.name;
@@ -165,7 +165,7 @@ function extractProjectNameFromConfig(content: string, filename: string): string
 export function generateSmartFilename(
   fileType: FileType,
   options: NamingOptions = {},
-  context?: ProjectContext,
+  context?: ProjectContext
 ): string {
   // Handle explicit output or generic names early
   if (options.output) {
@@ -209,7 +209,7 @@ function resolveBaseName(options: NamingOptions, context?: ProjectContext): stri
  */
 function deriveBaseNameFromFile(inputFile: string): string | undefined {
   const inputBaseName = path.basename(inputFile, path.extname(inputFile));
-  return inputBaseName === "requirements" ? undefined : inputBaseName;
+  return inputBaseName === 'requirements' ? undefined : inputBaseName;
 }
 
 /**
@@ -218,9 +218,9 @@ function deriveBaseNameFromFile(inputFile: string): string | undefined {
 function sanitizeBaseName(baseName: string): string {
   return baseName
     .toLowerCase()
-    .replace(/[^a-z0-9-_]/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "");
+    .replace(/[^a-z0-9-_]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 /**
@@ -251,7 +251,7 @@ function generateFilenameForType(fileType: FileType, sanitizedBaseName: string):
 export function generateOutputPath(
   fileType: FileType,
   options: NamingOptions = {},
-  context?: ProjectContext,
+  context?: ProjectContext
 ): string {
   const filename = generateSmartFilename(fileType, options, context);
   const outputDir = options.outputDir || context?.directory || process.cwd();
@@ -269,24 +269,24 @@ export async function detectNamingPreferences(workingDir: string = process.cwd()
   let usesProjectNames = false;
 
   // Check for existing files that match our patterns
-  const allFiles = await glob("*.{json,cue,html,md}", { cwd: workingDir });
+  const allFiles = await glob('*.{json,cue,html,md}', { cwd: workingDir });
 
   for (const file of allFiles) {
     const lowerFile = file.toLowerCase();
 
-    if (lowerFile.includes("assembly") && lowerFile.endsWith(".cue")) {
-      patterns.push({ type: "assembly", filename: file });
-      if (!lowerFile.startsWith("arbiter.")) {
+    if (lowerFile.includes('assembly') && lowerFile.endsWith('.cue')) {
+      patterns.push({ type: 'assembly', filename: file });
+      if (!lowerFile.startsWith('arbiter.')) {
         usesProjectNames = true;
       }
-    } else if (lowerFile.includes("surface") && lowerFile.endsWith(".json")) {
-      patterns.push({ type: "surface", filename: file });
-      if (lowerFile !== "surface.json") {
+    } else if (lowerFile.includes('surface') && lowerFile.endsWith('.json')) {
+      patterns.push({ type: 'surface', filename: file });
+      if (lowerFile !== 'surface.json') {
         usesProjectNames = true;
       }
-    } else if (lowerFile.includes("version") && lowerFile.includes("plan")) {
-      patterns.push({ type: "versionPlan", filename: file });
-      if (lowerFile !== "version_plan.json") {
+    } else if (lowerFile.includes('version') && lowerFile.includes('plan')) {
+      patterns.push({ type: 'versionPlan', filename: file });
+      if (lowerFile !== 'version_plan.json') {
         usesProjectNames = true;
       }
     }
@@ -300,7 +300,7 @@ export async function detectNamingPreferences(workingDir: string = process.cwd()
  */
 export async function resolveSmartNaming(
   fileType: FileType,
-  options: NamingOptions = {},
+  options: NamingOptions = {}
 ): Promise<{
   filename: string;
   fullPath: string;
@@ -334,7 +334,7 @@ export async function resolveSmartNaming(
  */
 export async function resolveBatchNaming(
   fileTypes: FileType[],
-  options: NamingOptions = {},
+  options: NamingOptions = {}
 ): Promise<Record<FileType, { filename: string; fullPath: string }>> {
   const context = await detectProjectContext(options.outputDir);
   const result = {} as Record<FileType, { filename: string; fullPath: string }>;
@@ -353,7 +353,7 @@ export async function resolveBatchNaming(
  */
 export async function validateNaming(
   fileType: FileType,
-  options: NamingOptions = {},
+  options: NamingOptions = {}
 ): Promise<{
   isValid: boolean;
   conflicts: string[];
@@ -381,7 +381,7 @@ export async function validateNaming(
     }
 
     // Suggest timestamped version
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
     suggestions.push(`${baseName}-${timestamp}${extension}`);
   }
 
@@ -397,7 +397,7 @@ export async function validateNaming(
  */
 export async function migrateExistingFiles(
   workingDir: string = process.cwd(),
-  dryRun: boolean = true,
+  dryRun = true
 ): Promise<Array<{ from: string; to: string; migrated: boolean }>> {
   const context = await detectProjectContext(workingDir);
   const migrations: Array<{ from: string; to: string; migrated: boolean }> = [];
@@ -409,7 +409,7 @@ export async function migrateExistingFiles(
       const smartName = generateSmartFilename(
         fileType as FileType,
         { useGenericNames: false },
-        context,
+        context
       );
       const targetPath = path.join(workingDir, smartName);
 

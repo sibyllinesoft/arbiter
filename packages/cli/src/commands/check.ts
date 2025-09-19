@@ -1,10 +1,10 @@
-import path from "node:path";
-import { translateCueErrors } from "@arbiter/shared";
-import chalk from "chalk";
-import fs from "fs-extra";
-import { glob } from "glob";
-import { ApiClient } from "../api-client.js";
-import type { CheckOptions, CLIConfig, ValidationResult } from "../types.js";
+import path from 'node:path';
+import { translateCueErrors } from '@arbiter/shared';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import { glob } from 'glob';
+import { ApiClient } from '../api-client.js';
+import type { CLIConfig, CheckOptions, ValidationResult } from '../types.js';
 import {
   formatErrorDetails,
   formatFileSize,
@@ -12,8 +12,8 @@ import {
   formatSummary,
   formatValidationTable,
   formatWarningDetails,
-} from "../utils/formatting.js";
-import { withProgress } from "../utils/progress.js";
+} from '../utils/formatting.js';
+import { withProgress } from '../utils/progress.js';
 
 /**
  * Check command implementation
@@ -22,12 +22,12 @@ import { withProgress } from "../utils/progress.js";
 export async function checkCommand(
   patterns: string[],
   options: CheckOptions,
-  config: CLIConfig,
+  config: CLIConfig
 ): Promise<number> {
   try {
     // Use default pattern if none provided
     if (patterns.length === 0) {
-      patterns = ["**/*.cue"];
+      patterns = ['**/*.cue'];
     }
 
     // Find all matching files
@@ -37,7 +37,7 @@ export async function checkCommand(
     });
 
     if (files.length === 0) {
-      console.log(chalk.yellow("No CUE files found"));
+      console.log(chalk.yellow('No CUE files found'));
       return 0;
     }
 
@@ -47,19 +47,19 @@ export async function checkCommand(
     const results = await validateFiles(files, config, options);
 
     // Format and display results
-    if (options.format === "json") {
+    if (options.format === 'json') {
       console.log(formatJson(results, config.color));
     } else {
       displayResults(results, options, config);
     }
 
     // Determine exit code
-    const hasErrors = results.some((r) => r.status === "invalid" || r.status === "error");
+    const hasErrors = results.some(r => r.status === 'invalid' || r.status === 'error');
     return hasErrors ? 1 : 0;
   } catch (error) {
     console.error(
-      chalk.red("Check command failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Check command failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 2;
   }
@@ -73,7 +73,7 @@ async function findCueFiles(
   options: {
     recursive: boolean;
     cwd: string;
-  },
+  }
 ): Promise<string[]> {
   const allFiles: string[] = [];
 
@@ -81,7 +81,7 @@ async function findCueFiles(
     const files = await glob(pattern, {
       cwd: options.cwd,
       absolute: true,
-      ignore: ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**"],
+      ignore: ['**/node_modules/**', '**/.git/**', '**/dist/**', '**/build/**'],
     });
 
     allFiles.push(...files);
@@ -97,10 +97,10 @@ async function findCueFiles(
 async function validateFiles(
   files: string[],
   config: CLIConfig,
-  options: CheckOptions,
+  options: CheckOptions
 ): Promise<ValidationResult[]> {
   const apiClient = await initializeApiClient(config);
-  
+
   return await executeValidationWithProgress(files, config, apiClient, options);
 }
 
@@ -109,12 +109,12 @@ async function validateFiles(
  */
 async function initializeApiClient(config: CLIConfig): Promise<ApiClient> {
   const apiClient = new ApiClient(config);
-  
+
   const healthCheck = await apiClient.health();
   if (!healthCheck.success) {
     throw new Error(`Cannot connect to Arbiter server: ${healthCheck.error}`);
   }
-  
+
   return apiClient;
 }
 
@@ -125,11 +125,11 @@ async function executeValidationWithProgress(
   files: string[],
   config: CLIConfig,
   apiClient: ApiClient,
-  options: CheckOptions,
+  options: CheckOptions
 ): Promise<ValidationResult[]> {
   const progressText = `Validating ${files.length} files...`;
-  
-  return withProgress({ text: progressText, color: "blue" }, async () => {
+
+  return withProgress({ text: progressText, color: 'blue' }, async () => {
     return await processFilesInChunks(files, config, apiClient, options);
   });
 }
@@ -141,7 +141,7 @@ async function processFilesInChunks(
   files: string[],
   config: CLIConfig,
   apiClient: ApiClient,
-  options: CheckOptions,
+  options: CheckOptions
 ): Promise<ValidationResult[]> {
   const results: ValidationResult[] = [];
   const concurrency = 5; // Limit concurrent requests
@@ -166,18 +166,18 @@ async function processFileChunk(
   chunk: string[],
   config: CLIConfig,
   apiClient: ApiClient,
-  options: CheckOptions,
+  options: CheckOptions
 ): Promise<ValidationResult[]> {
   return await Promise.all(
-    chunk.map(async (file) => {
+    chunk.map(async file => {
       const result = await validateFile(file, apiClient, options);
-      
+
       if (options.verbose) {
         logFileValidationResult(file, result, config);
       }
-      
+
       return result;
-    }),
+    })
   );
 }
 
@@ -194,12 +194,12 @@ function logFileValidationResult(file: string, result: ValidationResult, config:
  */
 function getStatusIcon(status: string): string {
   switch (status) {
-    case "valid":
-      return chalk.green("✓");
-    case "invalid":
-      return chalk.red("✗");
+    case 'valid':
+      return chalk.green('✓');
+    case 'invalid':
+      return chalk.red('✗');
     default:
-      return chalk.yellow("!");
+      return chalk.yellow('!');
   }
 }
 
@@ -207,7 +207,7 @@ function getStatusIcon(status: string): string {
  * Determine if processing should stop based on fail-fast option
  */
 function shouldStopProcessing(options: CheckOptions, chunkResults: ValidationResult[]): boolean {
-  return options.failFast && chunkResults.some((r) => r.status !== "valid");
+  return options.failFast && chunkResults.some(r => r.status !== 'valid');
 }
 
 /**
@@ -216,7 +216,7 @@ function shouldStopProcessing(options: CheckOptions, chunkResults: ValidationRes
 async function validateFile(
   filePath: string,
   apiClient: ApiClient,
-  _options: CheckOptions,
+  _options: CheckOptions
 ): Promise<ValidationResult> {
   const startTime = Date.now();
 
@@ -226,14 +226,14 @@ async function validateFile(
     if (!stats.isFile()) {
       return {
         file: path.basename(filePath),
-        status: "error",
+        status: 'error',
         errors: [
           {
             line: 0,
             column: 0,
-            message: "Not a file",
-            severity: "error" as const,
-            category: "system",
+            message: 'Not a file',
+            severity: 'error' as const,
+            category: 'system',
           },
         ],
         warnings: [],
@@ -246,14 +246,14 @@ async function validateFile(
     if (stats.size > maxSize) {
       return {
         file: path.basename(filePath),
-        status: "error",
+        status: 'error',
         errors: [
           {
             line: 0,
             column: 0,
             message: `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(maxSize)}`,
-            severity: "error" as const,
-            category: "system",
+            severity: 'error' as const,
+            category: 'system',
           },
         ],
         warnings: [],
@@ -262,7 +262,7 @@ async function validateFile(
     }
 
     // Read file content
-    const content = await fs.readFile(filePath, "utf-8");
+    const content = await fs.readFile(filePath, 'utf-8');
 
     // Validate using API
     const validationResult = await apiClient.validate(content);
@@ -270,14 +270,14 @@ async function validateFile(
     if (!validationResult.success || !validationResult.data) {
       return {
         file: path.basename(filePath),
-        status: "error",
+        status: 'error',
         errors: [
           {
             line: 0,
             column: 0,
-            message: validationResult.error || "Unknown validation error",
-            severity: "error" as const,
-            category: "api",
+            message: validationResult.error || 'Unknown validation error',
+            severity: 'error' as const,
+            category: 'api',
           },
         ],
         warnings: [],
@@ -289,27 +289,27 @@ async function validateFile(
 
     // Process errors with enhanced translation
     const errors =
-      data.errors?.map((error) => {
+      data.errors?.map(error => {
         const translated = translateCueErrors(error.message);
         return {
           line: error.line || 0,
           column: error.column || 0,
           message: translated[0]?.friendlyMessage || error.message,
-          severity: "error" as const,
-          category: translated[0]?.category || "validation",
+          severity: 'error' as const,
+          category: translated[0]?.category || 'validation',
         };
       }) || [];
 
     // Process warnings
     const warnings =
-      data.warnings?.map((warning) => ({
+      data.warnings?.map(warning => ({
         line: warning.line || 0,
         column: warning.column || 0,
         message: warning.message,
-        category: "validation",
+        category: 'validation',
       })) || [];
 
-    const status = data.success ? "valid" : "invalid";
+    const status = data.success ? 'valid' : 'invalid';
 
     return {
       file: path.basename(filePath),
@@ -321,14 +321,14 @@ async function validateFile(
   } catch (error) {
     return {
       file: path.basename(filePath),
-      status: "error",
+      status: 'error',
       errors: [
         {
           line: 0,
           column: 0,
           message: error instanceof Error ? error.message : String(error),
-          severity: "error" as const,
-          category: "system",
+          severity: 'error' as const,
+          category: 'system',
         },
       ],
       warnings: [],
@@ -343,13 +343,13 @@ async function validateFile(
 function displayResults(
   results: ValidationResult[],
   options: CheckOptions,
-  _config: CLIConfig,
+  _config: CLIConfig
 ): void {
   // Show table
   console.log(`\n${formatValidationTable(results)}`);
 
   // Show detailed errors if present
-  if (options.verbose || results.some((r) => r.errors.length > 0)) {
+  if (options.verbose || results.some(r => r.errors.length > 0)) {
     const errorDetails = formatErrorDetails(results);
     if (errorDetails) {
       console.log(errorDetails);
@@ -357,7 +357,7 @@ function displayResults(
   }
 
   // Show warnings if verbose or if there are warnings
-  if (options.verbose || results.some((r) => r.warnings.length > 0)) {
+  if (options.verbose || results.some(r => r.warnings.length > 0)) {
     const warningDetails = formatWarningDetails(results);
     if (warningDetails) {
       console.log(warningDetails);

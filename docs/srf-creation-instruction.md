@@ -4,96 +4,83 @@ Generated at: 2025-09-04T04:51:27.553Z
 
 ## Context
 
-You are an AI assistant helping convert raw requirements into a structured SRF (Specification Requirements Format) v1.1 document. This document will later be processed by Arbiter to generate formal CUE specifications and tests.
+You are an AI assistant helping convert raw requirements into a structured SRF
+(Specification Requirements Format) v1.1 document. This document will later be
+processed by Arbiter to generate formal CUE specifications and tests.
 
 ## Your Task
 
-Transform the requirements below into a complete SRF v1.1 document that follows the template structure exactly.
+Transform the requirements below into a complete SRF v1.1 document that follows
+the template structure exactly.
 
 ## Requirements to Convert:
 
-```markdown
-srf\_version: "1.1"
-title: "Lens Agent CLI Suite"
-artifacts:
+````markdown
+srf_version: "1.1" title: "Lens Agent CLI Suite" artifacts:
 
-* name: "lens-cli-sdk"
-  profile: library
-  languages: \[rust]
-* name: "sripgrep"
-  profile: cli
-  languages: \[rust]
-* name: "scontext"
-  profile: cli
-  languages: \[rust]
-* name: "spatch"
-  profile: cli
-  languages: \[rust]
-* name: "simpact"
-  profile: cli
-  languages: \[rust]
-* name: "sgraph"
-  profile: cli
-  languages: \[rust]
-* name: "sdiffx"
-  profile: cli
-  languages: \[rust]
-* name: "srefactor"
-  profile: cli
-  languages: \[rust]
-* name: "sdoc"
-  profile: cli
-  languages: \[rust]
-* name: "sqa"
-  profile: cli
-  languages: \[rust]
-* name: "shealth"
-  profile: cli
-  languages: \[rust]
-  owners: \["Nathan [nathan@example.com](mailto:nathan@example.com)"]
-  stakeholders: \["DevX [devx@example.com](mailto:devx@example.com)", "Search Infra [search@example.com](mailto:search@example.com)", "Release Eng [releng@example.com](mailto:releng@example.com)"]
-  status: proposed
-  semverPolicy: strict
-  budgets: { cpu\_ms: 200, mem\_mb: 256, wall\_ms: 1000 }
-  artifact\_metadata:
-  repository: "github.com/nathan/lens-agent-cli"
-  ci\_cd: "github-actions"
-  deployment: "kubernetes"
-  reporting:
-  sprint: "2025-09-01..2025-09-14"
-  artifact\_version: "0.1.0"
-  provenance:
-  sources: \["SRF-H\_v1.1.md", "Lens SPI plan", "Agent tool plans"]
-  generated\_by: "SRF-H v1.1 template"
+- name: "lens-cli-sdk" profile: library languages: \[rust]
+- name: "sripgrep" profile: cli languages: \[rust]
+- name: "scontext" profile: cli languages: \[rust]
+- name: "spatch" profile: cli languages: \[rust]
+- name: "simpact" profile: cli languages: \[rust]
+- name: "sgraph" profile: cli languages: \[rust]
+- name: "sdiffx" profile: cli languages: \[rust]
+- name: "srefactor" profile: cli languages: \[rust]
+- name: "sdoc" profile: cli languages: \[rust]
+- name: "sqa" profile: cli languages: \[rust]
+- name: "shealth" profile: cli languages: \[rust] owners: \["Nathan
+  [nathan@example.com](mailto:nathan@example.com)"] stakeholders: \["DevX
+  [devx@example.com](mailto:devx@example.com)", "Search Infra
+  [search@example.com](mailto:search@example.com)", "Release Eng
+  [releng@example.com](mailto:releng@example.com)"] status: proposed
+  semverPolicy: strict budgets: { cpu_ms: 200, mem_mb: 256, wall_ms: 1000 }
+  artifact_metadata: repository: "github.com/nathan/lens-agent-cli" ci_cd:
+  "github-actions" deployment: "kubernetes" reporting: sprint:
+  "2025-09-01..2025-09-14" artifact_version: "0.1.0" provenance: sources:
+  \["SRF-H_v1.1.md", "Lens SPI plan", "Agent tool plans"] generated_by: "SRF-H
+  v1.1 template"
 
 ---
 
 # Overview (narrative)
 
-A compact, unixy suite of “agent-grade” CLIs on top of Lens’s SPI. Tools default to JSONL, deterministic ordering, stable `ref`s, strict budgets, and `--strict` for write ops. The suite accelerates agent workflows: retrieve → build context → safe patch → analyze impact → verify.
+A compact, unixy suite of “agent-grade” CLIs on top of Lens’s SPI. Tools default
+to JSONL, deterministic ordering, stable `ref`s, strict budgets, and `--strict`
+for write ops. The suite accelerates agent workflows: retrieve → build context →
+safe patch → analyze impact → verify.
 
 ## Goals
 
-* Deliver a shared CLI contract (JSONL, exit codes, budgets, tracing) and `lens-cli-sdk` for SPI access.
-* Ship `sripgrep`, `scontext`, `spatch`, `simpact`, `sgraph`, `sdiffx`, `srefactor`, `sdoc`, `sqa`, `shealth` with measurable SLOs.
+- Deliver a shared CLI contract (JSONL, exit codes, budgets, tracing) and
+  `lens-cli-sdk` for SPI access.
+- Ship `sripgrep`, `scontext`, `spatch`, `simpact`, `sgraph`, `sdiffx`,
+  `srefactor`, `sdoc`, `sqa`, `shealth` with measurable SLOs.
 
 ## Non-goals
 
-* General-purpose generative code edits beyond constrained, verifiable codemods.
-* Remote/cloud indexing; Lens remains the indexing source of truth.
+- General-purpose generative code edits beyond constrained, verifiable codemods.
+- Remote/cloud indexing; Lens remains the indexing source of truth.
 
 ## Domain Notes (narrative)
 
-Relies on Lens `/v1/spi/{search,resolve,context,xref}`. Structural accuracy via tree-sitter; verification via formatters/build/test hooks. Streaming supported via SSE for low-latency pipelines. Determinism (ordering, seeds) is mandatory for agent reproducibility.
+Relies on Lens `/v1/spi/{search,resolve,context,xref}`. Structural accuracy via
+tree-sitter; verification via formatters/build/test hooks. Streaming supported
+via SSE for low-latency pipelines. Determinism (ordering, seeds) is mandatory
+for agent reproducibility.
 
 ---
 
 # Decisions (ADR summary)
 
-* **ADR-001**: Default output is JSONL with deterministic key order. *Status:* accepted. *Rationale:* machine-first, agent-replayable.
-* **ADR-002**: All write operations require `--strict` unless explicitly `--force`. *Status:* accepted. *Rationale:* safety.
-* **ADR-003**: `ref` is `lens://{repo_sha}/{path}@{source_hash}#B{start}:{end}|AST:{path}`. *Status:* accepted. *Rationale:* re-addressability across tools.
-* **ADR-004**: Use tree-sitter + fuzzy + semantic tri-anchoring for patch alignment. *Status:* accepted. *Rationale:* robust to drift.
+- **ADR-001**: Default output is JSONL with deterministic key order. _Status:_
+  accepted. _Rationale:_ machine-first, agent-replayable.
+- **ADR-002**: All write operations require `--strict` unless explicitly
+  `--force`. _Status:_ accepted. _Rationale:_ safety.
+- **ADR-003**: `ref` is
+  `lens://{repo_sha}/{path}@{source_hash}#B{start}:{end}|AST:{path}`. _Status:_
+  accepted. _Rationale:_ re-addressability across tools.
+- **ADR-004**: Use tree-sitter + fuzzy + semantic tri-anchoring for patch
+  alignment. _Status:_ accepted. _Rationale:_ robust to drift.
 
 ```srf.decisions
 adrs:
@@ -114,12 +101,16 @@ adrs:
     status: "accepted"
     rationale: "AST+fuzzy+semantic increases alignment success"
 ```
+````
 
 ---
 
 # Risks & Mitigations (narrative)
 
-AST brittleness; mitigate with language whitelist and fuzzy/semantic fallback. Index staleness; include `source_hash` checks and fail fast. Ambiguity; `--strict` default for writes and deterministic tie-breakers. Token blowups; greedy cover with hard caps.
+AST brittleness; mitigate with language whitelist and fuzzy/semantic fallback.
+Index staleness; include `source_hash` checks and fail fast. Ambiguity;
+`--strict` default for writes and deterministic tie-breakers. Token blowups;
+greedy cover with hard caps.
 
 ```srf.risks
 risks:
@@ -147,10 +138,10 @@ risks:
 
 # Glossary (narrative)
 
-* **ref**: Stable URI to a code slice.
-* **budget**: CPU/wall/token caps for a call.
-* **pack**: Token-bounded, deduped context bundle.
-* **invariants**: Post-conditions required after an edit.
+- **ref**: Stable URI to a code slice.
+- **budget**: CPU/wall/token caps for a call.
+- **pack**: Token-bounded, deduped context bundle.
+- **invariants**: Post-conditions required after an edit.
 
 ---
 
@@ -268,7 +259,8 @@ requirements:
 
 # Architecture (narrative)
 
-CLI suite + shared SDK talking to Lens SPI. Local LRU caches, batched requests, SSE consumption. Deterministic seeds; `--trace` yields replayable transcripts.
+CLI suite + shared SDK talking to Lens SPI. Local LRU caches, batched requests,
+SSE consumption. Deterministic seeds; `--trace` yields replayable transcripts.
 
 ```srf.architecture
 style: "modular-cli"
@@ -303,7 +295,9 @@ services:
 
 # Testing Strategy (narrative)
 
-Agent task bench (200 tasks) for retrieval, patching, refactors, and QA. Regression gates on recall\@10, patch success, verify pass-rate, and p95 latencies. Replay logs captured from `--trace`.
+Agent task bench (200 tasks) for retrieval, patching, refactors, and QA.
+Regression gates on recall\@10, patch success, verify pass-rate, and p95
+latencies. Replay logs captured from `--trace`.
 
 ```srf.testing
 coverage: { minimum: 85, target: 95 }
@@ -678,9 +672,9 @@ entries:
 
 # Change Log (narrative)
 
-* 2025-09-03 — Initial SRF for CLI suite; set P0/P1 scopes and SLOs.
+- 2025-09-03 — Initial SRF for CLI suite; set P0/P1 scopes and SLOs.
 
-```
+````
 
 ## SRF Template to Fill:
 
@@ -703,34 +697,37 @@ srf.metadata:
     team: "[TEAM_NAME]"
   tags: ["[TAG1]", "[TAG2]", "[TAG3]"]
   status: "draft|active|deprecated"
-```
+````
 
 ## Project Context
 
 ### Problem Statement
+
 [Describe the problem this project solves, target users, and business value]
 
 ### Success Criteria
+
 [Define measurable outcomes and key results]
 
 ### Constraints and Assumptions
+
 [List technical, business, and operational constraints]
 
 ## Technical Specifications
 
 ```yaml
 srf.technical:
-  artifact_profile: "library|cli|service|ui|job"
-  language_primary: "[PRIMARY_LANGUAGE]"
-  languages_secondary: ["[LANG1]", "[LANG2]"]
+  artifact_profile: 'library|cli|service|ui|job'
+  language_primary: '[PRIMARY_LANGUAGE]'
+  languages_secondary: ['[LANG1]', '[LANG2]']
   frameworks:
-    primary: "[PRIMARY_FRAMEWORK]"
-    secondary: ["[FRAMEWORK1]", "[FRAMEWORK2]"]
-  runtime_environment: "[RUNTIME_ENV]"
-  deployment_targets: ["[TARGET1]", "[TARGET2]"]
+    primary: '[PRIMARY_FRAMEWORK]'
+    secondary: ['[FRAMEWORK1]', '[FRAMEWORK2]']
+  runtime_environment: '[RUNTIME_ENV]'
+  deployment_targets: ['[TARGET1]', '[TARGET2]']
   compatibility:
-    platforms: ["[PLATFORM1]", "[PLATFORM2]"]
-    versions: "[VERSION_REQUIREMENTS]"
+    platforms: ['[PLATFORM1]', '[PLATFORM2]']
+    versions: '[VERSION_REQUIREMENTS]'
 ```
 
 ## Requirements Categories
@@ -739,17 +736,17 @@ srf.technical:
 
 ```yaml
 srf.requirements.functional:
-  - id: "FR-001"
-    title: "[REQUIREMENT_TITLE]"
-    description: "[DETAILED_DESCRIPTION]"
-    priority: "critical|high|medium|low"
-    category: "core|feature|integration|ui"
+  - id: 'FR-001'
+    title: '[REQUIREMENT_TITLE]'
+    description: '[DETAILED_DESCRIPTION]'
+    priority: 'critical|high|medium|low'
+    category: 'core|feature|integration|ui'
     acceptance_criteria:
-      - "Given [CONDITION], when [ACTION], then [OUTCOME]"
-      - "Given [CONDITION], when [ACTION], then [OUTCOME]"
-    dependencies: ["[DEP_ID1]", "[DEP_ID2]"]
-    effort_estimate: "[STORY_POINTS|HOURS]"
-    business_value: "[HIGH|MEDIUM|LOW]"
+      - 'Given [CONDITION], when [ACTION], then [OUTCOME]'
+      - 'Given [CONDITION], when [ACTION], then [OUTCOME]'
+    dependencies: ['[DEP_ID1]', '[DEP_ID2]']
+    effort_estimate: '[STORY_POINTS|HOURS]'
+    business_value: '[HIGH|MEDIUM|LOW]'
 ```
 
 ### Non-Functional Requirements
@@ -758,89 +755,89 @@ srf.requirements.functional:
 srf.requirements.non_functional:
   performance:
     response_time:
-      target: "[TARGET_MS]ms"
-      max_acceptable: "[MAX_MS]ms"
+      target: '[TARGET_MS]ms'
+      max_acceptable: '[MAX_MS]ms'
     throughput:
-      target: "[TARGET_RPS] requests/second"
-      peak_load: "[PEAK_RPS] requests/second"
+      target: '[TARGET_RPS] requests/second'
+      peak_load: '[PEAK_RPS] requests/second'
     resource_usage:
-      memory_limit: "[MEMORY_MB]MB"
-      cpu_limit: "[CPU_PERCENT]%"
+      memory_limit: '[MEMORY_MB]MB'
+      cpu_limit: '[CPU_PERCENT]%'
   scalability:
-    concurrent_users: "[MAX_USERS]"
-    data_volume: "[MAX_RECORDS]"
-    growth_projection: "[GROWTH_RATE]% per [PERIOD]"
+    concurrent_users: '[MAX_USERS]'
+    data_volume: '[MAX_RECORDS]'
+    growth_projection: '[GROWTH_RATE]% per [PERIOD]'
   reliability:
-    availability_slo: "[UPTIME_PERCENT]%"
-    error_budget: "[ERROR_RATE]%"
-    mttr_target: "[MINUTES] minutes"
-    backup_frequency: "[FREQUENCY]"
+    availability_slo: '[UPTIME_PERCENT]%'
+    error_budget: '[ERROR_RATE]%'
+    mttr_target: '[MINUTES] minutes'
+    backup_frequency: '[FREQUENCY]'
   security:
-    authentication: "required|optional|none"
-    authorization: "rbac|acl|none"
-    data_encryption: "at_rest|in_transit|both|none"
-    compliance: ["[STANDARD1]", "[STANDARD2]"]
-    vulnerability_scanning: "required|optional"
+    authentication: 'required|optional|none'
+    authorization: 'rbac|acl|none'
+    data_encryption: 'at_rest|in_transit|both|none'
+    compliance: ['[STANDARD1]', '[STANDARD2]']
+    vulnerability_scanning: 'required|optional'
   usability:
-    accessibility: "wcag_2_1_aa|wcag_2_1_a|none"
-    browser_support: ["[BROWSER1]", "[BROWSER2]"]
-    mobile_responsive: "required|optional|not_applicable"
-    i18n_support: "required|optional|none"
+    accessibility: 'wcag_2_1_aa|wcag_2_1_a|none'
+    browser_support: ['[BROWSER1]', '[BROWSER2]']
+    mobile_responsive: 'required|optional|not_applicable'
+    i18n_support: 'required|optional|none'
 ```
 
 ## Architecture & Design
 
 ```yaml
 srf.architecture:
-  pattern: "monolith|microservices|serverless|library|cli"
+  pattern: 'monolith|microservices|serverless|library|cli'
   components:
-    - name: "[COMPONENT_NAME]"
-      type: "[COMPONENT_TYPE]"
-      responsibility: "[COMPONENT_RESPONSIBILITY]"
-      interfaces: ["[INTERFACE1]", "[INTERFACE2]"]
+    - name: '[COMPONENT_NAME]'
+      type: '[COMPONENT_TYPE]'
+      responsibility: '[COMPONENT_RESPONSIBILITY]'
+      interfaces: ['[INTERFACE1]', '[INTERFACE2]']
   data_storage:
-    primary: "[DATABASE_TYPE]"
-    secondary: ["[CACHE_TYPE]", "[QUEUE_TYPE]"]
-    data_retention: "[RETENTION_POLICY]"
+    primary: '[DATABASE_TYPE]'
+    secondary: ['[CACHE_TYPE]', '[QUEUE_TYPE]']
+    data_retention: '[RETENTION_POLICY]'
   external_dependencies:
     apis:
-      - name: "[API_NAME]"
-        url: "[API_URL]"
-        authentication: "[AUTH_TYPE]"
-        rate_limits: "[LIMITS]"
-        fallback_strategy: "[FALLBACK]"
+      - name: '[API_NAME]'
+        url: '[API_URL]'
+        authentication: '[AUTH_TYPE]'
+        rate_limits: '[LIMITS]'
+        fallback_strategy: '[FALLBACK]'
     services:
-      - name: "[SERVICE_NAME]"
-        type: "[SERVICE_TYPE]"
-        criticality: "critical|important|optional"
+      - name: '[SERVICE_NAME]'
+        type: '[SERVICE_TYPE]'
+        criticality: 'critical|important|optional'
 ```
 
 ## API Specifications
 
 ```yaml
 srf.api:
-  style: "rest|graphql|grpc|webhook"
-  base_url: "[BASE_URL]"
-  version_strategy: "header|path|query"
+  style: 'rest|graphql|grpc|webhook'
+  base_url: '[BASE_URL]'
+  version_strategy: 'header|path|query'
   authentication:
-    method: "bearer|api_key|oauth2|none"
-    scopes: ["[SCOPE1]", "[SCOPE2]"]
+    method: 'bearer|api_key|oauth2|none'
+    scopes: ['[SCOPE1]', '[SCOPE2]']
   endpoints:
-    - path: "[ENDPOINT_PATH]"
-      method: "[HTTP_METHOD]"
-      description: "[ENDPOINT_DESCRIPTION]"
-      request_schema: "[SCHEMA_REF]"
-      response_schema: "[SCHEMA_REF]"
-      error_codes: ["[CODE1]", "[CODE2]"]
-      rate_limit: "[REQUESTS_PER_MINUTE]"
+    - path: '[ENDPOINT_PATH]'
+      method: '[HTTP_METHOD]'
+      description: '[ENDPOINT_DESCRIPTION]'
+      request_schema: '[SCHEMA_REF]'
+      response_schema: '[SCHEMA_REF]'
+      error_codes: ['[CODE1]', '[CODE2]']
+      rate_limit: '[REQUESTS_PER_MINUTE]'
   data_schemas:
-    - name: "[SCHEMA_NAME]"
-      type: "object|array|primitive"
+    - name: '[SCHEMA_NAME]'
+      type: 'object|array|primitive'
       properties:
         field1:
-          type: "[FIELD_TYPE]"
+          type: '[FIELD_TYPE]'
           required: true|false
-          description: "[FIELD_DESCRIPTION]"
+          description: '[FIELD_DESCRIPTION]'
 ```
 
 ## Quality Assurance
@@ -849,28 +846,28 @@ srf.api:
 srf.quality:
   testing_strategy:
     unit_tests:
-      coverage_target: "[PERCENTAGE]%"
-      framework: "[TEST_FRAMEWORK]"
+      coverage_target: '[PERCENTAGE]%'
+      framework: '[TEST_FRAMEWORK]'
     integration_tests:
-      coverage_target: "[PERCENTAGE]%"
-      test_data_strategy: "[STRATEGY]"
+      coverage_target: '[PERCENTAGE]%'
+      test_data_strategy: '[STRATEGY]'
     end_to_end_tests:
-      coverage_target: "[PERCENTAGE]%"
-      automation_level: "[PERCENTAGE]%"
+      coverage_target: '[PERCENTAGE]%'
+      automation_level: '[PERCENTAGE]%'
     performance_tests:
-      load_testing: "required|optional"
-      stress_testing: "required|optional"
-      tools: ["[TOOL1]", "[TOOL2]"]
+      load_testing: 'required|optional'
+      stress_testing: 'required|optional'
+      tools: ['[TOOL1]', '[TOOL2]']
   code_quality:
-    linting: "required|optional"
-    static_analysis: "required|optional"
+    linting: 'required|optional'
+    static_analysis: 'required|optional'
     complexity_limits:
-      cyclomatic: "[MAX_COMPLEXITY]"
-      nesting_depth: "[MAX_DEPTH]"
+      cyclomatic: '[MAX_COMPLEXITY]'
+      nesting_depth: '[MAX_DEPTH]'
     documentation:
-      api_docs: "required|optional"
-      inline_comments: "required|optional"
-      architecture_docs: "required|optional"
+      api_docs: 'required|optional'
+      inline_comments: 'required|optional'
+      architecture_docs: 'required|optional'
 ```
 
 ## Operations & Deployment
@@ -878,27 +875,27 @@ srf.quality:
 ```yaml
 srf.operations:
   deployment:
-    strategy: "blue_green|rolling|canary|direct"
-    environments: ["development", "staging", "production"]
-    automation_level: "[PERCENTAGE]%"
-    rollback_strategy: "[STRATEGY]"
+    strategy: 'blue_green|rolling|canary|direct'
+    environments: ['development', 'staging', 'production']
+    automation_level: '[PERCENTAGE]%'
+    rollback_strategy: '[STRATEGY]'
   monitoring:
     metrics:
-      - name: "[METRIC_NAME]"
-        type: "counter|gauge|histogram|summary"
-        description: "[METRIC_DESCRIPTION]"
-        labels: ["[LABEL1]", "[LABEL2]"]
+      - name: '[METRIC_NAME]'
+        type: 'counter|gauge|histogram|summary'
+        description: '[METRIC_DESCRIPTION]'
+        labels: ['[LABEL1]', '[LABEL2]']
     logging:
-      level: "debug|info|warn|error"
+      level: 'debug|info|warn|error'
       structured: true|false
-      retention: "[RETENTION_DAYS] days"
+      retention: '[RETENTION_DAYS] days'
     alerting:
-      channels: ["email", "slack", "pagerduty"]
-      escalation_policy: "[POLICY_NAME]"
+      channels: ['email', 'slack', 'pagerduty']
+      escalation_policy: '[POLICY_NAME]'
   maintenance:
-    backup_strategy: "[STRATEGY]"
-    update_frequency: "[FREQUENCY]"
-    maintenance_windows: "[SCHEDULE]"
+    backup_strategy: '[STRATEGY]'
+    update_frequency: '[FREQUENCY]'
+    maintenance_windows: '[SCHEDULE]'
 ```
 
 ## Project Constraints
@@ -906,42 +903,42 @@ srf.operations:
 ```yaml
 srf.constraints:
   timeline:
-    start_date: "[ISO_DATE]"
-    target_date: "[ISO_DATE]"
-    hard_deadline: "[ISO_DATE]"
+    start_date: '[ISO_DATE]'
+    target_date: '[ISO_DATE]'
+    hard_deadline: '[ISO_DATE]'
     milestones:
-      - name: "[MILESTONE_NAME]"
-        date: "[ISO_DATE]"
-        deliverables: ["[DELIVERABLE1]", "[DELIVERABLE2]"]
+      - name: '[MILESTONE_NAME]'
+        date: '[ISO_DATE]'
+        deliverables: ['[DELIVERABLE1]', '[DELIVERABLE2]']
   budget:
-    development_cost: "[CURRENCY_AMOUNT]"
-    operational_cost_monthly: "[CURRENCY_AMOUNT]"
-    infrastructure_cost: "[CURRENCY_AMOUNT]"
-    third_party_costs: "[CURRENCY_AMOUNT]"
+    development_cost: '[CURRENCY_AMOUNT]'
+    operational_cost_monthly: '[CURRENCY_AMOUNT]'
+    infrastructure_cost: '[CURRENCY_AMOUNT]'
+    third_party_costs: '[CURRENCY_AMOUNT]'
   resources:
-    team_size: "[NUMBER] developers"
-    skill_requirements: ["[SKILL1]", "[SKILL2]"]
-    external_dependencies: ["[VENDOR1]", "[VENDOR2]"]
+    team_size: '[NUMBER] developers'
+    skill_requirements: ['[SKILL1]', '[SKILL2]']
+    external_dependencies: ['[VENDOR1]', '[VENDOR2]']
   compliance:
-    regulations: ["[REGULATION1]", "[REGULATION2]"]
-    certifications: ["[CERT1]", "[CERT2]"]
-    audit_requirements: ["[REQ1]", "[REQ2]"]
+    regulations: ['[REGULATION1]', '[REGULATION2]']
+    certifications: ['[CERT1]', '[CERT2]']
+    audit_requirements: ['[REQ1]', '[REQ2]']
 ```
 
 ## Risk Assessment
 
 ```yaml
 srf.risks:
-  - id: "RISK-001"
-    description: "[RISK_DESCRIPTION]"
-    category: "technical|business|operational|external"
-    probability: "high|medium|low"
-    impact: "high|medium|low"
-    risk_score: "[CALCULATED_SCORE]"
-    mitigation_strategy: "[STRATEGY]"
-    contingency_plan: "[PLAN]"
-    owner: "[RESPONSIBLE_PERSON]"
-    review_date: "[ISO_DATE]"
+  - id: 'RISK-001'
+    description: '[RISK_DESCRIPTION]'
+    category: 'technical|business|operational|external'
+    probability: 'high|medium|low'
+    impact: 'high|medium|low'
+    risk_score: '[CALCULATED_SCORE]'
+    mitigation_strategy: '[STRATEGY]'
+    contingency_plan: '[PLAN]'
+    owner: '[RESPONSIBLE_PERSON]'
+    review_date: '[ISO_DATE]'
 ```
 
 ## Validation Criteria
@@ -949,40 +946,44 @@ srf.risks:
 ```yaml
 srf.validation:
   acceptance_tests:
-    - scenario: "[TEST_SCENARIO]"
-      given: "[PRECONDITIONS]"
-      when: "[ACTIONS]"
-      then: "[EXPECTED_OUTCOMES]"
-      verification_method: "automated|manual|both"
+    - scenario: '[TEST_SCENARIO]'
+      given: '[PRECONDITIONS]'
+      when: '[ACTIONS]'
+      then: '[EXPECTED_OUTCOMES]'
+      verification_method: 'automated|manual|both'
   performance_criteria:
-    - metric: "[METRIC_NAME]"
-      baseline: "[BASELINE_VALUE]"
-      target: "[TARGET_VALUE]"
-      measurement_method: "[METHOD]"
+    - metric: '[METRIC_NAME]'
+      baseline: '[BASELINE_VALUE]'
+      target: '[TARGET_VALUE]'
+      measurement_method: '[METHOD]'
   quality_gates:
-    - gate: "[GATE_NAME]"
-      criteria: "[CRITERIA]"
-      measurement: "[MEASUREMENT_METHOD]"
-      threshold: "[THRESHOLD_VALUE]"
+    - gate: '[GATE_NAME]'
+      criteria: '[CRITERIA]'
+      measurement: '[MEASUREMENT_METHOD]'
+      threshold: '[THRESHOLD_VALUE]'
 ```
 
 ## Appendices
 
 ### Glossary
+
 [Define domain-specific terms and acronyms]
 
 ### References
+
 [List relevant documentation, standards, and external resources]
 
 ### Change Log
+
 ```yaml
 srf.changelog:
-  - version: "1.1.0"
-    date: "[ISO_DATE]"
-    changes: ["[CHANGE1]", "[CHANGE2]"]
-    author: "[AUTHOR]"
+  - version: '1.1.0'
+    date: '[ISO_DATE]'
+    changes: ['[CHANGE1]', '[CHANGE2]']
+    author: '[AUTHOR]'
 ```
-```
+
+````
 
 ## Instructions:
 
@@ -1043,38 +1044,40 @@ You are creating a Structured Requirements Format (SRF) v1.1 document that will 
   acceptance_criteria:
     - "Given a valid API key, when making a request, then return 200 status"
     - "Given invalid credentials, when authenticating, then return 401 error"
-  ```
+````
+
 - **Dependencies:** Reference other requirement IDs
 - **Effort Estimation:** Use story points or hour estimates consistently
 
 ### Non-Functional Requirements
+
 - **Performance Targets:** Be realistic and measurable
   - Response time: `< 200ms` for web APIs
   - Throughput: `1000 requests/second` for high-load services
   - Memory: `< 512MB` for containerized services
-  
 - **Scalability Numbers:** Base on actual usage projections
   - Concurrent users: realistic peaks, not theoretical maximums
   - Data volume: consider growth over 2-3 years
-  
 - **SLOs and Error Budgets:** Industry-standard targets
   - Availability: `99.9%` for internal tools, `99.99%` for critical services
   - Error rate: `< 0.1%` for production systems
 
 ### API Specifications
+
 - **Complete Endpoint Documentation:**
   ```yaml
   endpoints:
-    - path: "/api/v1/users"
-      method: "GET"
-      description: "List users with pagination"
-      request_schema: "PaginationRequest"
-      response_schema: "UserListResponse"
-      error_codes: ["400", "401", "500"]
-      rate_limit: "100/minute"
+    - path: '/api/v1/users'
+      method: 'GET'
+      description: 'List users with pagination'
+      request_schema: 'PaginationRequest'
+      response_schema: 'UserListResponse'
+      error_codes: ['400', '401', '500']
+      rate_limit: '100/minute'
   ```
 
 ### Quality Assurance
+
 - **Test Coverage Targets:**
   - Unit tests: 80-90% for business logic
   - Integration tests: 70-80% for API endpoints
@@ -1082,29 +1085,33 @@ You are creating a Structured Requirements Format (SRF) v1.1 document that will 
 - **Code Quality Tools:** Specify actual tools (ESLint, Prettier, SonarQube)
 
 ### Operations & Deployment
+
 - **Monitoring Strategy:** Define actual metrics
   ```yaml
   metrics:
-    - name: "http_requests_total"
-      type: "counter"
-      description: "Total HTTP requests by method and status"
-      labels: ["method", "status_code", "endpoint"]
+    - name: 'http_requests_total'
+      type: 'counter'
+      description: 'Total HTTP requests by method and status'
+      labels: ['method', 'status_code', 'endpoint']
   ```
 
 ## Data Quality Standards
 
 ### Placeholder Management
+
 - Use `"TBD"` for unknown external APIs or third-party dependencies
 - Use `"[TO_BE_DETERMINED]"` for values requiring stakeholder input
 - Replace `"[PLACEHOLDER]"` with actual values before finalizing
 
 ### Realistic Values
+
 - Set conservative but achievable performance targets
 - Use industry-standard SLA percentages
 - Base resource estimates on similar projects
 - Include buffer time in timeline estimates
 
 ### Consistency Checks
+
 - Ensure artifact profile matches technical specifications
 - Verify dependency relationships are bidirectional
 - Check that non-functional requirements align with use cases
@@ -1113,47 +1120,52 @@ You are creating a Structured Requirements Format (SRF) v1.1 document that will 
 ## Common Patterns by Artifact Type
 
 ### Library/SDK
+
 ```yaml
 srf.technical:
-  artifact_profile: "library"
-  language_primary: "TypeScript"
-  deployment_targets: ["npm", "cdn"]
+  artifact_profile: 'library'
+  language_primary: 'TypeScript'
+  deployment_targets: ['npm', 'cdn']
 ```
 
 ### CLI Tool
+
 ```yaml
 srf.technical:
-  artifact_profile: "cli"
-  language_primary: "Go"
-  deployment_targets: ["binary", "homebrew", "apt"]
+  artifact_profile: 'cli'
+  language_primary: 'Go'
+  deployment_targets: ['binary', 'homebrew', 'apt']
 ```
 
 ### Web Service
+
 ```yaml
 srf.technical:
-  artifact_profile: "service"
-  language_primary: "Python"
+  artifact_profile: 'service'
+  language_primary: 'Python'
   frameworks:
-    primary: "FastAPI"
-  deployment_targets: ["docker", "kubernetes"]
+    primary: 'FastAPI'
+  deployment_targets: ['docker', 'kubernetes']
 ```
 
 ### Frontend Application
+
 ```yaml
 srf.technical:
-  artifact_profile: "ui"
-  language_primary: "TypeScript"
+  artifact_profile: 'ui'
+  language_primary: 'TypeScript'
   frameworks:
-    primary: "React"
-  deployment_targets: ["cdn", "nginx"]
+    primary: 'React'
+  deployment_targets: ['cdn', 'nginx']
 ```
 
 ### Background Job
+
 ```yaml
 srf.technical:
-  artifact_profile: "job"
-  language_primary: "Python"
-  deployment_targets: ["kubernetes-cronjob", "aws-lambda"]
+  artifact_profile: 'job'
+  language_primary: 'Python'
+  deployment_targets: ['kubernetes-cronjob', 'aws-lambda']
 ```
 
 ## Final Validation Checklist
@@ -1174,12 +1186,14 @@ Before submitting your SRF document:
 ## Output Format
 
 Generate a complete SRF v1.1 document that:
+
 1. Follows the exact template structure
 2. Contains valid YAML/JSON in all `srf.*` blocks
 3. Provides specific, actionable requirements
 4. Can be immediately processed by: `arbiter srf import your-srf.md`
 
-Begin your response with the complete SRF document. Do not include explanatory text before or after the document itself.
+Begin your response with the complete SRF document. Do not include explanatory
+text before or after the document itself.
 
 ## Important Notes:
 
@@ -1192,7 +1206,8 @@ Begin your response with the complete SRF document. Do not include explanatory t
 
 ## Output Format:
 
-Generate a complete SRF v1.1 document that Arbiter can process. The document should be immediately usable with:
+Generate a complete SRF v1.1 document that Arbiter can process. The document
+should be immediately usable with:
 
 ```bash
 arbiter srf import generated-srf.md --template <appropriate-template>

@@ -1,6 +1,8 @@
 # Arbiter Webhook Handlers
 
-This directory contains the webhook handler system for Arbiter, providing automated processing of events from various Git hosting platforms including GitHub, GitLab, and others.
+This directory contains the webhook handler system for Arbiter, providing
+automated processing of events from various Git hosting platforms including
+GitHub, GitLab, and others.
 
 ## 📁 Directory Structure
 
@@ -22,7 +24,8 @@ handlers/
 
 ### 1. Configuration
 
-The handler system is configured via `config/handlers.json`. Key settings include:
+The handler system is configured via `config/handlers.json`. Key settings
+include:
 
 ```json
 {
@@ -45,7 +48,9 @@ Each handler follows this pattern:
 ```typescript
 import type { WebhookEvent, HandlerResponse } from '../shared/utils.js';
 
-export async function handleEvent(event: WebhookEvent): Promise<HandlerResponse> {
+export async function handleEvent(
+  event: WebhookEvent
+): Promise<HandlerResponse> {
   // Validation logic
   // Business logic
   // Return standardized response
@@ -54,14 +59,17 @@ export async function handleEvent(event: WebhookEvent): Promise<HandlerResponse>
 
 ### 3. Handler Registration
 
-Handlers are automatically discovered and registered based on the configuration file structure.
+Handlers are automatically discovered and registered based on the configuration
+file structure.
 
 ## 🔧 Available Handlers
 
 ### GitHub Handlers
 
 #### Push Handler (`github/push-handler.ts`)
-- **Purpose**: Processes push events with branch protection and commit validation
+
+- **Purpose**: Processes push events with branch protection and commit
+  validation
 - **Features**:
   - Branch naming convention validation
   - Conventional commit message checking
@@ -69,12 +77,14 @@ Handlers are automatically discovered and registered based on the configuration 
   - Commit count limits for protected branches
 
 **Example Usage:**
+
 ```bash
 # Webhook endpoint: POST /webhooks/github
 # Event type: push
 ```
 
 #### Pull Request Handler (`github/pr-handler.ts`)
+
 - **Purpose**: Validates PR events and enforces workflow rules
 - **Features**:
   - Branch naming validation (feature/, hotfix/)
@@ -84,14 +94,16 @@ Handlers are automatically discovered and registered based on the configuration 
   - Workflow enforcement (feature → develop, hotfix → main)
 
 **Example Usage:**
+
 ```bash
-# Webhook endpoint: POST /webhooks/github  
+# Webhook endpoint: POST /webhooks/github
 # Event type: pull_request
 ```
 
 ### GitLab Handlers
 
 #### Merge Request Handler (`gitlab/merge-request.ts`)
+
 - **Purpose**: Handles GitLab MR events with comprehensive validation
 - **Features**:
   - Branch naming convention enforcement
@@ -101,6 +113,7 @@ Handlers are automatically discovered and registered based on the configuration 
   - Merge conflict detection
 
 **Example Usage:**
+
 ```bash
 # Webhook endpoint: POST /webhooks/gitlab
 # Event type: merge_request
@@ -110,16 +123,17 @@ Handlers are automatically discovered and registered based on the configuration 
 
 The handlers enforce these branch naming patterns:
 
-| Branch Type | Pattern | Example |
-|-------------|---------|---------|
-| Feature | `feature/[a-z0-9-]+` | `feature/user-auth` |
-| Hotfix | `hotfix/[a-z0-9-]+` | `hotfix/security-patch` |
-| Bugfix | `bugfix/[a-z0-9-]+` | `bugfix/login-error` |
-| Release | `release/v?\d+\.\d+(\.\d+)?` | `release/v1.2.0` |
+| Branch Type | Pattern                      | Example                 |
+| ----------- | ---------------------------- | ----------------------- |
+| Feature     | `feature/[a-z0-9-]+`         | `feature/user-auth`     |
+| Hotfix      | `hotfix/[a-z0-9-]+`          | `hotfix/security-patch` |
+| Bugfix      | `bugfix/[a-z0-9-]+`          | `bugfix/login-error`    |
+| Release     | `release/v?\d+\.\d+(\.\d+)?` | `release/v1.2.0`        |
 
 ## 🎯 Conventional Commits
 
-Handlers validate commit messages and PR/MR titles against conventional commit format:
+Handlers validate commit messages and PR/MR titles against conventional commit
+format:
 
 ```
 type(scope): description
@@ -131,6 +145,7 @@ Examples:
 ```
 
 **Supported Types:**
+
 - `feat` - New features
 - `fix` - Bug fixes
 - `docs` - Documentation changes
@@ -147,17 +162,23 @@ Examples:
 ### Creating a New Handler
 
 1. **Create the handler file:**
+
 ```typescript
 // handlers/provider/event-handler.ts
 import type { WebhookEvent, HandlerResponse } from '../shared/utils.js';
 import { logEvent, validatePayload, createResponse } from '../shared/utils.js';
 
-export async function handleMyEvent(event: WebhookEvent): Promise<HandlerResponse> {
+export async function handleMyEvent(
+  event: WebhookEvent
+): Promise<HandlerResponse> {
   try {
     // Validate payload
     const validation = validatePayload(event.payload, ['required_field']);
     if (!validation.isValid) {
-      return createResponse(false, `Validation failed: ${validation.errors.join(', ')}`);
+      return createResponse(
+        false,
+        `Validation failed: ${validation.errors.join(', ')}`
+      );
     }
 
     // Process event
@@ -168,7 +189,9 @@ export async function handleMyEvent(event: WebhookEvent): Promise<HandlerRespons
     });
 
     // Return success
-    return createResponse(true, 'Event processed successfully', { /* metadata */ });
+    return createResponse(true, 'Event processed successfully', {
+      /* metadata */
+    });
   } catch (error) {
     return createResponse(false, `Handler error: ${error.message}`);
   }
@@ -185,6 +208,7 @@ export const config = {
 ```
 
 2. **Update configuration:**
+
 ```json
 {
   "handlers": {
@@ -217,7 +241,9 @@ describe('My Handler', () => {
       timestamp: new Date().toISOString(),
       provider: 'my_provider',
       eventType: 'my_event',
-      payload: { /* test data */ },
+      payload: {
+        /* test data */
+      },
       headers: {},
     };
 
@@ -232,48 +258,53 @@ describe('My Handler', () => {
 ### Core Functions
 
 **`createResponse(success, message, metadata?)`**
+
 - Creates standardized handler responses
 
 **`validatePayload(payload, requiredFields)`**
+
 - Validates webhook payload structure
 
 **`logEvent(event)`**
+
 - Logs events for debugging and auditing
 
 **`validateBranchNaming(branchName)`**
+
 - Validates branch naming conventions
 
 **`validateConventionalCommit(message)`**
+
 - Validates conventional commit format
 
 ### Validation Helpers
 
 **`isProtectedBranch(branchName)`**
+
 - Checks if branch is protected (main/master/develop)
 
 **`extractRepositoryInfo(payload, provider)`**
+
 - Extracts repository information from different providers
 
 **`sanitizePayload(payload)`**
+
 - Removes sensitive data from payloads before logging
 
 ## 🔐 Security Features
 
 ### Signature Validation
+
 Handlers support webhook signature validation for security:
 
 ```typescript
 import { validateSignature } from '../shared/utils.js';
 
-const isValid = validateSignature(
-  payloadString,
-  signature, 
-  secret,
-  provider
-);
+const isValid = validateSignature(payloadString, signature, secret, provider);
 ```
 
 ### Rate Limiting
+
 Built-in rate limiting prevents abuse:
 
 ```json
@@ -290,7 +321,9 @@ Built-in rate limiting prevents abuse:
 ## 📝 Logging and Monitoring
 
 ### Event Logging
+
 All events are logged to daily files:
+
 ```
 logs/handlers/
 ├── 2024-01-01.log
@@ -299,6 +332,7 @@ logs/handlers/
 ```
 
 ### Log Format
+
 ```json
 {
   "type": "github.push",
@@ -311,7 +345,9 @@ logs/handlers/
 ```
 
 ### Health Monitoring
+
 Health check endpoint provides system status:
+
 ```bash
 GET /health
 {
@@ -326,6 +362,7 @@ GET /health
 ## 🚀 Integration Examples
 
 ### GitHub Webhook Setup
+
 1. Go to repository Settings → Webhooks
 2. Add webhook URL: `https://your-domain.com/webhooks/github`
 3. Select events: Push, Pull Request
@@ -333,6 +370,7 @@ GET /health
 5. Set content type to `application/json`
 
 ### GitLab Webhook Setup
+
 1. Go to project Settings → Webhooks
 2. Add webhook URL: `https://your-domain.com/webhooks/gitlab`
 3. Select triggers: Push, Merge Request
@@ -342,6 +380,7 @@ GET /health
 ## 📚 API Reference
 
 ### WebhookEvent Interface
+
 ```typescript
 interface WebhookEvent {
   id: string;
@@ -355,6 +394,7 @@ interface WebhookEvent {
 ```
 
 ### HandlerResponse Interface
+
 ```typescript
 interface HandlerResponse {
   success: boolean;
@@ -372,7 +412,7 @@ Handlers use standardized error responses:
 // Validation errors
 return createResponse(false, 'Invalid branch naming: feature/INVALID-NAME');
 
-// System errors  
+// System errors
 return createResponse(false, 'Handler error: Database connection failed');
 
 // Success with warnings
@@ -409,4 +449,5 @@ See `config/handlers.json` for full configuration options including:
 
 ---
 
-*For more information, see the main Arbiter documentation or contact the development team.*
+_For more information, see the main Arbiter documentation or contact the
+development team._

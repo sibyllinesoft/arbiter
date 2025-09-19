@@ -26,7 +26,7 @@ export class HandlersErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -38,10 +38,10 @@ export class HandlersErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log the error for debugging
     console.error('HandlersErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
   }
 
@@ -49,9 +49,9 @@ export class HandlersErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
-    
+
     if (this.props.onReset) {
       this.props.onReset();
     }
@@ -60,8 +60,8 @@ export class HandlersErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       const {
-        fallbackTitle = "Something went wrong with handlers",
-        fallbackMessage = "An error occurred while loading the webhook handlers interface. Please try refreshing or contact support if the issue persists."
+        fallbackTitle = 'Something went wrong with handlers',
+        fallbackMessage = 'An error occurred while loading the webhook handlers interface. Please try refreshing or contact support if the issue persists.',
       } = this.props;
 
       return (
@@ -71,26 +71,22 @@ export class HandlersErrorBoundary extends Component<Props, State> {
               <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
                 <AlertTriangle className="w-8 h-8 text-red-600" />
               </div>
-              
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                {fallbackTitle}
-              </h2>
-              
-              <p className="text-gray-600 text-sm mb-6">
-                {fallbackMessage}
-              </p>
+
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{fallbackTitle}</h2>
+
+              <p className="text-gray-600 text-sm mb-6">{fallbackMessage}</p>
             </div>
 
             <div className="space-y-3">
-              <Button 
+              <Button
                 onClick={this.handleReset}
                 className="w-full"
                 leftIcon={<RefreshCw className="w-4 h-4" />}
               >
                 Try Again
               </Button>
-              
-              <Button 
+
+              <Button
                 variant="secondary"
                 onClick={() => window.location.reload()}
                 className="w-full"
@@ -112,9 +108,7 @@ export class HandlersErrorBoundary extends Component<Props, State> {
                   </div>
                   <div className="mb-2">
                     <strong>Stack:</strong>
-                    <pre className="whitespace-pre-wrap text-xs">
-                      {this.state.error.stack}
-                    </pre>
+                    <pre className="whitespace-pre-wrap text-xs">{this.state.error.stack}</pre>
                   </div>
                   {this.state.errorInfo && (
                     <div>

@@ -1,39 +1,39 @@
-import chalk from "chalk";
-import Table from "cli-table3";
-import type { ValidationResult } from "../types.js";
+import chalk from 'chalk';
+import Table from 'cli-table3';
+import type { ValidationResult } from '../types.js';
 
 /**
  * Format validation results as a pretty table
  */
 export function formatValidationTable(results: ValidationResult[]): string {
   if (results.length === 0) {
-    return chalk.green("✓ No files to validate");
+    return chalk.green('✓ No files to validate');
   }
 
   const table = new Table({
     head: [
-      chalk.cyan("File"),
-      chalk.cyan("Status"),
-      chalk.cyan("Errors"),
-      chalk.cyan("Warnings"),
-      chalk.cyan("Time (ms)"),
+      chalk.cyan('File'),
+      chalk.cyan('Status'),
+      chalk.cyan('Errors'),
+      chalk.cyan('Warnings'),
+      chalk.cyan('Time (ms)'),
     ],
     style: {
       head: [],
-      border: ["dim"],
+      border: ['dim'],
     },
   });
 
-  results.forEach((result) => {
+  results.forEach(result => {
     const statusColor =
-      result.status === "valid" ? "green" : result.status === "invalid" ? "red" : "yellow";
-    const statusSymbol = result.status === "valid" ? "✓" : result.status === "invalid" ? "✗" : "!";
+      result.status === 'valid' ? 'green' : result.status === 'invalid' ? 'red' : 'yellow';
+    const statusSymbol = result.status === 'valid' ? '✓' : result.status === 'invalid' ? '✗' : '!';
 
     table.push([
       result.file,
       chalk[statusColor](`${statusSymbol} ${result.status}`),
-      result.errors.length > 0 ? chalk.red(result.errors.length.toString()) : chalk.dim("0"),
-      result.warnings.length > 0 ? chalk.yellow(result.warnings.length.toString()) : chalk.dim("0"),
+      result.errors.length > 0 ? chalk.red(result.errors.length.toString()) : chalk.dim('0'),
+      result.warnings.length > 0 ? chalk.yellow(result.warnings.length.toString()) : chalk.dim('0'),
       formatTime(result.processingTime),
     ]);
   });
@@ -45,21 +45,21 @@ export function formatValidationTable(results: ValidationResult[]): string {
  * Format detailed error information
  */
 export function formatErrorDetails(results: ValidationResult[]): string {
-  const errorResults = results.filter((r) => r.errors.length > 0);
+  const errorResults = results.filter(r => r.errors.length > 0);
 
   if (errorResults.length === 0) {
-    return "";
+    return '';
   }
 
-  let output = `\n${chalk.red.bold("Validation Errors:")}\n`;
+  let output = `\n${chalk.red.bold('Validation Errors:')}\n`;
 
-  errorResults.forEach((result) => {
+  errorResults.forEach(result => {
     output += `\n${chalk.underline(result.file)}:\n`;
 
-    result.errors.forEach((error) => {
+    result.errors.forEach(error => {
       const location = `${error.line}:${error.column}`;
       const category = chalk.dim(`[${error.category}]`);
-      output += `  ${chalk.red("error")} ${category} ${location} ${error.message}\n`;
+      output += `  ${chalk.red('error')} ${category} ${location} ${error.message}\n`;
     });
   });
 
@@ -70,21 +70,21 @@ export function formatErrorDetails(results: ValidationResult[]): string {
  * Format warning information
  */
 export function formatWarningDetails(results: ValidationResult[]): string {
-  const warningResults = results.filter((r) => r.warnings.length > 0);
+  const warningResults = results.filter(r => r.warnings.length > 0);
 
   if (warningResults.length === 0) {
-    return "";
+    return '';
   }
 
-  let output = `\n${chalk.yellow.bold("Validation Warnings:")}\n`;
+  let output = `\n${chalk.yellow.bold('Validation Warnings:')}\n`;
 
-  warningResults.forEach((result) => {
+  warningResults.forEach(result => {
     output += `\n${chalk.underline(result.file)}:\n`;
 
-    result.warnings.forEach((warning) => {
+    result.warnings.forEach(warning => {
       const location = `${warning.line}:${warning.column}`;
       const category = chalk.dim(`[${warning.category}]`);
-      output += `  ${chalk.yellow("warning")} ${category} ${location} ${warning.message}\n`;
+      output += `  ${chalk.yellow('warning')} ${category} ${location} ${warning.message}\n`;
     });
   });
 
@@ -96,30 +96,30 @@ export function formatWarningDetails(results: ValidationResult[]): string {
  */
 export function formatSummary(results: ValidationResult[]): string {
   if (results.length === 0) {
-    return chalk.dim("No files processed");
+    return chalk.dim('No files processed');
   }
 
-  const valid = results.filter((r) => r.status === "valid").length;
-  const invalid = results.filter((r) => r.status === "invalid").length;
-  const errors = results.filter((r) => r.status === "error").length;
+  const valid = results.filter(r => r.status === 'valid').length;
+  const invalid = results.filter(r => r.status === 'invalid').length;
+  const errors = results.filter(r => r.status === 'error').length;
 
   const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
   const totalWarnings = results.reduce((sum, r) => sum + r.warnings.length, 0);
   const totalTime = results.reduce((sum, r) => sum + r.processingTime, 0);
 
-  let summary = `\n${chalk.bold("Summary:")} `;
+  let summary = `\n${chalk.bold('Summary:')} `;
 
   if (valid > 0) {
     summary += chalk.green(`${valid} valid`);
   }
 
   if (invalid > 0) {
-    if (valid > 0) summary += ", ";
+    if (valid > 0) summary += ', ';
     summary += chalk.red(`${invalid} invalid`);
   }
 
   if (errors > 0) {
-    if (valid > 0 || invalid > 0) summary += ", ";
+    if (valid > 0 || invalid > 0) summary += ', ';
     summary += chalk.yellow(`${errors} errors`);
   }
 
@@ -130,7 +130,7 @@ export function formatSummary(results: ValidationResult[]): string {
   }
 
   if (totalWarnings > 0) {
-    summary += `${totalErrors > 0 ? ", " : "\n"}${chalk.yellow(`${totalWarnings} warnings`)}`;
+    summary += `${totalErrors > 0 ? ', ' : '\n'}${chalk.yellow(`${totalWarnings} warnings`)}`;
   }
 
   summary += `\nProcessed in ${formatTime(totalTime)}`;
@@ -144,19 +144,19 @@ export function formatSummary(results: ValidationResult[]): string {
 export function formatTime(ms: number): string {
   if (ms < 1000) {
     return chalk.dim(`${ms}ms`);
-  } else if (ms < 60000) {
-    return chalk.dim(`${(ms / 1000).toFixed(2)}s`);
-  } else {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = ((ms % 60000) / 1000).toFixed(0);
-    return chalk.dim(`${minutes}m ${seconds}s`);
   }
+  if (ms < 60000) {
+    return chalk.dim(`${(ms / 1000).toFixed(2)}s`);
+  }
+  const minutes = Math.floor(ms / 60000);
+  const seconds = ((ms % 60000) / 1000).toFixed(0);
+  return chalk.dim(`${minutes}m ${seconds}s`);
 }
 
 /**
  * Format JSON output with colors
  */
-export function formatJson(data: any, color: boolean = true): string {
+export function formatJson(data: any, color = true): string {
   const json = JSON.stringify(data, null, 2);
 
   if (!color) {
@@ -175,8 +175,8 @@ export function formatJson(data: any, color: boolean = true): string {
  * Format file size in human readable format
  */
 export function formatFileSize(bytes: number): string {
-  const sizes = ["B", "KB", "MB", "GB"];
-  if (bytes === 0) return "0 B";
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  if (bytes === 0) return '0 B';
 
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   const size = (bytes / 1024 ** i).toFixed(1);
@@ -185,14 +185,14 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
- * Create a progress bar representation
+ * Create a textual progress bar representation
  */
-export function createProgressBar(current: number, total: number, width: number = 40): string {
+export function createTextProgressBar(current: number, total: number, width = 40): string {
   const percentage = Math.round((current / total) * 100);
   const filled = Math.round((current / total) * width);
   const empty = width - filled;
 
-  const bar = "█".repeat(filled) + "░".repeat(empty);
+  const bar = '█'.repeat(filled) + '░'.repeat(empty);
 
   return `${chalk.cyan(bar)} ${chalk.bold(`${percentage}%`)} (${current}/${total})`;
 }
@@ -211,4 +211,27 @@ export function formatExitMessage(exitCode: number, operation: string): string {
     default:
       return chalk.red(`✗ ${operation} failed with unknown error (exit code: ${exitCode})`);
   }
+}
+
+/**
+ * Format data as a table with headers and rows
+ */
+export function formatTable(headers: string[], rows: string[][]): string {
+  if (rows.length === 0) {
+    return chalk.dim('No data to display');
+  }
+
+  const table = new Table({
+    head: headers.map(header => chalk.cyan(header)),
+    style: {
+      head: [],
+      border: ['dim'],
+    },
+  });
+
+  rows.forEach(row => {
+    table.push(row);
+  });
+
+  return table.toString();
 }

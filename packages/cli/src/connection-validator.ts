@@ -1,5 +1,5 @@
-import { COMMON_PORTS } from "./config.js";
-import type { CLIConfig } from "./types.js";
+import { COMMON_PORTS } from './config.js';
+import type { CLIConfig } from './types.js';
 
 /**
  * Connection validation and auto-discovery utility
@@ -20,11 +20,11 @@ export class ConnectionValidator {
     const baseUrl = new URL(this.config.apiUrl);
     const hostname = baseUrl.hostname;
     const protocol = baseUrl.protocol;
-    const configuredPort = parseInt(baseUrl.port, 10) || (protocol === "https:" ? 443 : 80);
+    const configuredPort = Number.parseInt(baseUrl.port, 10) || (protocol === 'https:' ? 443 : 80);
 
     // First try configured URL
     const configuredResult = await this.testConnection(
-      `${protocol}//${hostname}:${configuredPort}`,
+      `${protocol}//${hostname}:${configuredPort}`
     );
     if (configuredResult.success) {
       return {
@@ -57,9 +57,9 @@ export class ConnectionValidator {
       success: false,
       error: `No Arbiter server found at ${hostname}`,
       suggestions: [
-        `Tried ports: ${COMMON_PORTS.join(", ")}`,
-        "Make sure the server is running with: bun run dev",
-        "Or with Docker: docker-compose up",
+        `Tried ports: ${COMMON_PORTS.join(', ')}`,
+        'Make sure the server is running with: bun run dev',
+        'Or with Docker: docker-compose up',
         ...suggestions,
       ],
     };
@@ -79,7 +79,7 @@ export class ConnectionValidator {
 
       const response = await fetch(`${url}/health`, {
         signal: controller.signal,
-        method: "GET",
+        method: 'GET',
       });
 
       clearTimeout(timeoutId);
@@ -87,7 +87,7 @@ export class ConnectionValidator {
       if (response.ok) {
         const data = await response.json();
         // Verify it's actually an Arbiter server
-        if (data.status && typeof data.timestamp === "string") {
+        if (data.status && typeof data.timestamp === 'string') {
           return { success: true, partialSuccess: true };
         }
       }
@@ -99,19 +99,19 @@ export class ConnectionValidator {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "AbortError") {
+        if (error.name === 'AbortError') {
           return {
             success: false,
             partialSuccess: true,
-            error: "Connection timeout",
+            error: 'Connection timeout',
           };
         }
 
-        if (error.message.includes("ECONNREFUSED")) {
+        if (error.message.includes('ECONNREFUSED')) {
           return {
             success: false,
             partialSuccess: false,
-            error: "Connection refused",
+            error: 'Connection refused',
           };
         }
       }
@@ -119,7 +119,7 @@ export class ConnectionValidator {
       return {
         success: false,
         partialSuccess: false,
-        error: "Network error",
+        error: 'Network error',
       };
     }
   }
@@ -132,7 +132,7 @@ export class ConnectionValidator {
     commonPorts: readonly number[];
     networkTests: Array<{
       port: number;
-      status: "success" | "timeout" | "refused" | "error";
+      status: 'success' | 'timeout' | 'refused' | 'error';
       responseTime?: number;
       error?: string;
     }>;
@@ -142,7 +142,7 @@ export class ConnectionValidator {
     const protocol = baseUrl.protocol;
 
     const networkTests = await Promise.all(
-      COMMON_PORTS.map(async (port) => {
+      COMMON_PORTS.map(async port => {
         const startTime = Date.now();
         const testUrl = `${protocol}//${hostname}:${port}`;
 
@@ -159,7 +159,7 @@ export class ConnectionValidator {
 
           return {
             port,
-            status: response.ok ? ("success" as const) : ("error" as const),
+            status: response.ok ? ('success' as const) : ('error' as const),
             responseTime,
             error: response.ok ? undefined : `HTTP ${response.status}`,
           };
@@ -167,23 +167,23 @@ export class ConnectionValidator {
           const responseTime = Date.now() - startTime;
 
           if (error instanceof Error) {
-            if (error.name === "AbortError") {
-              return { port, status: "timeout" as const, responseTime };
+            if (error.name === 'AbortError') {
+              return { port, status: 'timeout' as const, responseTime };
             }
 
-            if (error.message.includes("ECONNREFUSED")) {
-              return { port, status: "refused" as const, responseTime };
+            if (error.message.includes('ECONNREFUSED')) {
+              return { port, status: 'refused' as const, responseTime };
             }
           }
 
           return {
             port,
-            status: "error" as const,
+            status: 'error' as const,
             responseTime,
-            error: error instanceof Error ? error.message : "Unknown error",
+            error: error instanceof Error ? error.message : 'Unknown error',
           };
         }
-      }),
+      })
     );
 
     return {

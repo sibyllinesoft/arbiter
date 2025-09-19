@@ -10,29 +10,37 @@ import { statusVariants, sizeVariants, cn } from '../variants';
 
 export interface StatusBadgeProps {
   /** Status variant determines the color scheme */
-  variant?: 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'pending' | 'active' | 'inactive';
-  
+  variant?:
+    | 'success'
+    | 'warning'
+    | 'error'
+    | 'info'
+    | 'neutral'
+    | 'pending'
+    | 'active'
+    | 'inactive';
+
   /** Badge style appearance */
   style?: 'solid' | 'outlined' | 'subtle';
-  
+
   /** Badge size */
   size?: 'xs' | 'sm' | 'md' | 'lg';
-  
+
   /** Whether to show a dot indicator */
   showDot?: boolean;
-  
+
   /** Whether the dot should pulse (for active states) */
   pulse?: boolean;
-  
+
   /** Icon to display (overrides dot) */
   icon?: ReactNode;
-  
+
   /** Whether the badge has a loading state */
   loading?: boolean;
-  
+
   /** Badge content */
   children: ReactNode;
-  
+
   /** Custom className for additional styling */
   className?: string;
 }
@@ -117,21 +125,21 @@ export function StatusBadge({
         return cn(status.bg, status.border, status.text);
     }
   };
-  
+
   const badgeClasses = cn(
     // Base styles
     'inline-flex items-center font-medium rounded-full border transition-all duration-150',
-    
+
     // Size styles
     sizeClass.badge,
     sizeClass.gap,
-    
+
     // Style variant classes
     getStyleClasses(),
-    
+
     // Loading state
     loading && 'opacity-75',
-    
+
     // Custom className
     className
   );
@@ -139,19 +147,17 @@ export function StatusBadge({
   const renderIndicator = () => {
     if (loading) {
       return (
-        <div className={cn(
-          'flex-shrink-0 border-2 border-current border-t-transparent rounded-full animate-spin',
-          sizeClass.dot
-        )} />
+        <div
+          className={cn(
+            'flex-shrink-0 border-2 border-current border-t-transparent rounded-full animate-spin',
+            sizeClass.dot
+          )}
+        />
       );
     }
 
     if (icon) {
-      return (
-        <span className={cn('flex-shrink-0', status.icon, sizeClass.icon)}>
-          {icon}
-        </span>
-      );
+      return <span className={cn('flex-shrink-0', status.icon, sizeClass.icon)}>{icon}</span>;
     }
 
     if (showDot) {

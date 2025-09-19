@@ -339,60 +339,100 @@ infrastructure:
 
 export const BuildPipelineFlow: Story = {
   args: {
-    title: "CI/CD Build Pipeline Flow",
-    description: "Interactive visualization of a complete build and deployment pipeline with quality gates and conditional steps.",
-    dataPanelTitle: "Pipeline Configuration (YAML)",
-    diagramPanelTitle: "Pipeline Flow Diagram",
-    dataPanel: (
-      <DataViewer
-        data={buildPipelineYaml}
-        language="yaml"
-        title="build-pipeline.yml"
-      />
-    ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={buildPipelineMermaid}
-        title="Automated Build Pipeline"
-      />
-    ),
+    title: 'CI/CD Build Pipeline Flow',
+    description:
+      'Interactive visualization of a complete build and deployment pipeline with quality gates and conditional steps.',
+    dataPanelTitle: 'Pipeline Configuration (YAML)',
+    diagramPanelTitle: 'Pipeline Flow Diagram',
+    dataPanel: <DataViewer data={buildPipelineYaml} language="yaml" title="build-pipeline.yml" />,
+    diagramPanel: <MermaidRenderer chart={buildPipelineMermaid} title="Automated Build Pipeline" />,
   },
 };
 
 export const UserAuthFlow: Story = {
   args: {
-    title: "User Authentication State Machine",
-    description: "Complete user authentication flow including MFA, error handling, and account lockout mechanisms.",
-    dataPanelTitle: "Authentication Specification (YAML)",
-    diagramPanelTitle: "State Machine Diagram",
-    dataPanel: (
-      <DataViewer
-        data={userAuthFlowYaml}
-        language="yaml"
-        title="auth-flow.yml"
-      />
-    ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={userAuthMermaid}
-        title="Authentication State Machine"
-      />
-    ),
+    title: 'User Authentication State Machine',
+    description:
+      'Complete user authentication flow including MFA, error handling, and account lockout mechanisms.',
+    dataPanelTitle: 'Authentication Specification (YAML)',
+    diagramPanelTitle: 'State Machine Diagram',
+    dataPanel: <DataViewer data={userAuthFlowYaml} language="yaml" title="auth-flow.yml" />,
+    diagramPanel: <MermaidRenderer chart={userAuthMermaid} title="Authentication State Machine" />,
   },
 };
 
 const microserviceNetworkNodes = [
   { id: 'gateway', label: 'API Gateway\n:8080', group: 'gateway', color: '#1e40af', shape: 'box' },
-  { id: 'auth', label: 'Auth Service\n:8081', group: 'service', color: '#7c3aed', shape: 'ellipse' },
-  { id: 'user', label: 'User Service\n:8082', group: 'service', color: '#059669', shape: 'ellipse' },
-  { id: 'product', label: 'Product Service\n:8083', group: 'service', color: '#dc2626', shape: 'ellipse' },
-  { id: 'order', label: 'Order Service\n:8084', group: 'service', color: '#ea580c', shape: 'ellipse' },
-  { id: 'auth_db', label: 'Auth DB\n(PostgreSQL)', group: 'database', color: '#374151', shape: 'database' },
-  { id: 'user_db', label: 'User DB\n(PostgreSQL)', group: 'database', color: '#374151', shape: 'database' },
-  { id: 'product_db', label: 'Product DB\n(PostgreSQL)', group: 'database', color: '#374151', shape: 'database' },
-  { id: 'order_db', label: 'Order DB\n(PostgreSQL)', group: 'database', color: '#374151', shape: 'database' },
-  { id: 'redis', label: 'Redis Cache\n(Cluster)', group: 'cache', color: '#dc2626', shape: 'diamond' },
-  { id: 'rabbitmq', label: 'RabbitMQ\n(Message Queue)', group: 'messaging', color: '#f59e0b', shape: 'triangle' },
+  {
+    id: 'auth',
+    label: 'Auth Service\n:8081',
+    group: 'service',
+    color: '#7c3aed',
+    shape: 'ellipse',
+  },
+  {
+    id: 'user',
+    label: 'User Service\n:8082',
+    group: 'service',
+    color: '#059669',
+    shape: 'ellipse',
+  },
+  {
+    id: 'product',
+    label: 'Product Service\n:8083',
+    group: 'service',
+    color: '#dc2626',
+    shape: 'ellipse',
+  },
+  {
+    id: 'order',
+    label: 'Order Service\n:8084',
+    group: 'service',
+    color: '#ea580c',
+    shape: 'ellipse',
+  },
+  {
+    id: 'auth_db',
+    label: 'Auth DB\n(PostgreSQL)',
+    group: 'database',
+    color: '#374151',
+    shape: 'database',
+  },
+  {
+    id: 'user_db',
+    label: 'User DB\n(PostgreSQL)',
+    group: 'database',
+    color: '#374151',
+    shape: 'database',
+  },
+  {
+    id: 'product_db',
+    label: 'Product DB\n(PostgreSQL)',
+    group: 'database',
+    color: '#374151',
+    shape: 'database',
+  },
+  {
+    id: 'order_db',
+    label: 'Order DB\n(PostgreSQL)',
+    group: 'database',
+    color: '#374151',
+    shape: 'database',
+  },
+  {
+    id: 'redis',
+    label: 'Redis Cache\n(Cluster)',
+    group: 'cache',
+    color: '#dc2626',
+    shape: 'diamond',
+  },
+  {
+    id: 'rabbitmq',
+    label: 'RabbitMQ\n(Message Queue)',
+    group: 'messaging',
+    color: '#f59e0b',
+    shape: 'triangle',
+  },
 ];
 
 const microserviceNetworkEdges = [
@@ -400,16 +440,16 @@ const microserviceNetworkEdges = [
   { from: 'gateway', to: 'user', label: '/api/users/*', color: '#6b7280' },
   { from: 'gateway', to: 'product', label: '/api/products/*', color: '#6b7280' },
   { from: 'gateway', to: 'order', label: '/api/orders/*', color: '#6b7280' },
-  
+
   { from: 'auth', to: 'auth_db', label: 'queries', color: '#4b5563', dashes: true },
   { from: 'auth', to: 'redis', label: 'sessions', color: '#dc2626', dashes: true },
-  
+
   { from: 'user', to: 'user_db', label: 'queries', color: '#4b5563', dashes: true },
   { from: 'user', to: 'auth', label: 'validate', color: '#7c3aed' },
-  
+
   { from: 'product', to: 'product_db', label: 'queries', color: '#4b5563', dashes: true },
   { from: 'product', to: 'redis', label: 'cache', color: '#dc2626', dashes: true },
-  
+
   { from: 'order', to: 'order_db', label: 'queries', color: '#4b5563', dashes: true },
   { from: 'order', to: 'user', label: 'user info', color: '#059669' },
   { from: 'order', to: 'product', label: 'inventory', color: '#dc2626' },
@@ -418,19 +458,14 @@ const microserviceNetworkEdges = [
 
 export const MicroserviceArchitecture: Story = {
   args: {
-    title: "Microservice Architecture Overview",
-    description: "Interactive network diagram showing service dependencies, databases, and communication patterns.",
-    dataPanelTitle: "Service Configuration (YAML)",
-    diagramPanelTitle: "Architecture Network Diagram",
-    dataPanel: (
-      <DataViewer
-        data={microserviceArchYaml}
-        language="yaml" 
-        title="microservices.yml"
-      />
-    ),
+    title: 'Microservice Architecture Overview',
+    description:
+      'Interactive network diagram showing service dependencies, databases, and communication patterns.',
+    dataPanelTitle: 'Service Configuration (YAML)',
+    diagramPanelTitle: 'Architecture Network Diagram',
+    dataPanel: <DataViewer data={microserviceArchYaml} language="yaml" title="microservices.yml" />,
     diagramPanel: (
-      <NetworkDiagram 
+      <NetworkDiagram
         nodes={microserviceNetworkNodes}
         edges={microserviceNetworkEdges}
         title="Service Architecture"
@@ -588,22 +623,16 @@ const dataProcessingMermaid = `graph TD
 
 export const DataProcessingPipeline: Story = {
   args: {
-    title: "Real-time Data Processing Pipeline",
-    description: "Complex data pipeline with multiple sources, processing stages, and output destinations for analytics.",
-    dataPanelTitle: "Pipeline Configuration (YAML)",
-    diagramPanelTitle: "Data Flow Architecture",
+    title: 'Real-time Data Processing Pipeline',
+    description:
+      'Complex data pipeline with multiple sources, processing stages, and output destinations for analytics.',
+    dataPanelTitle: 'Pipeline Configuration (YAML)',
+    diagramPanelTitle: 'Data Flow Architecture',
     dataPanel: (
-      <DataViewer
-        data={dataProcessingPipeline}
-        language="yaml"
-        title="data-pipeline.yml"
-      />
+      <DataViewer data={dataProcessingPipeline} language="yaml" title="data-pipeline.yml" />
     ),
     diagramPanel: (
-      <MermaidRenderer 
-        chart={dataProcessingMermaid}
-        title="Real-time Data Processing"
-      />
+      <MermaidRenderer chart={dataProcessingMermaid} title="Real-time Data Processing" />
     ),
   },
 };
@@ -774,22 +803,16 @@ const testingWorkflowMermaid = `graph TD
 
 export const TestingWorkflow: Story = {
   args: {
-    title: "Comprehensive Testing Pipeline",
-    description: "Multi-phase testing workflow with quality gates, parallel execution, and performance validation.",
-    dataPanelTitle: "Testing Configuration (YAML)",  
-    diagramPanelTitle: "Testing Flow Diagram",
+    title: 'Comprehensive Testing Pipeline',
+    description:
+      'Multi-phase testing workflow with quality gates, parallel execution, and performance validation.',
+    dataPanelTitle: 'Testing Configuration (YAML)',
+    diagramPanelTitle: 'Testing Flow Diagram',
     dataPanel: (
-      <DataViewer
-        data={testingWorkflowYaml}
-        language="yaml"
-        title="testing-workflow.yml"
-      />
+      <DataViewer data={testingWorkflowYaml} language="yaml" title="testing-workflow.yml" />
     ),
     diagramPanel: (
-      <MermaidRenderer 
-        chart={testingWorkflowMermaid}
-        title="Quality Assurance Pipeline"
-      />
+      <MermaidRenderer chart={testingWorkflowMermaid} title="Quality Assurance Pipeline" />
     ),
   },
 };

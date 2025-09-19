@@ -58,21 +58,15 @@ const CUE_LANGUAGE_CONFIG = {
 // Simplified CUE tokenizer to avoid regex parsing errors
 const CUE_TOKENIZER = {
   defaultToken: '',
-  
-  keywords: [
-    'package', 'import', 'if', 'for', 'in', 'let', 'true', 'false', 'null'
-  ],
-  
-  typeKeywords: [
-    'string', 'int', 'float', 'bool', 'bytes', 'number', 'top', 'bottom'
-  ],
-  
-  builtins: [
-    'len', 'close', 'and', 'or', 'div', 'mod', 'quo', 'rem', 'list', 'struct'
-  ],
-  
+
+  keywords: ['package', 'import', 'if', 'for', 'in', 'let', 'true', 'false', 'null'],
+
+  typeKeywords: ['string', 'int', 'float', 'bool', 'bytes', 'number', 'top', 'bottom'],
+
+  builtins: ['len', 'close', 'and', 'or', 'div', 'mod', 'quo', 'rem', 'list', 'struct'],
+
   escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
-  
+
   tokenizer: {
     root: [
       // Comments
@@ -82,33 +76,33 @@ const CUE_TOKENIZER = {
       // Keywords
       [/\b(?:if|for|in|let)\b/, 'keyword.control'],
       [/\b(?:package|import)\b/, 'keyword'],
-      
+
       // Types and constants
       [/\b(?:string|int|float|bool|bytes|null|number|top|bottom|_)\b/, 'type'],
       [/\b(?:true|false)\b/, 'constant.language.boolean'],
       [/\bnull\b/, 'constant.language.null'],
-      
+
       // Built-in functions
       [/\b(?:len|close|and|or|div|mod|quo|rem|list|struct)\b/, 'support.function'],
-      
+
       // Numbers
       [/\d*\.\d+(?:[eE][\-+]?\d+)?/, 'number.float'],
       [/0[xX][0-9a-fA-F]+/, 'number.hex'],
       [/0[oO][0-7]+/, 'number.octal'],
       [/0[bB][01]+/, 'number.binary'],
       [/\d+/, 'number'],
-      
+
       // Strings
       [/"/, 'string', '@string_double'],
       [/'/, 'string', '@string_single'],
       [/`/, 'string', '@string_backtick'],
-      
+
       // Operators
       [/(?:\?=|\?:|\*=|=~|!~|!=|<=|>=|==)/, 'keyword.operator.comparison'],
       [/(?:\.\.\.|\.\.<)/, 'keyword.operator.range'],
       [/[&|](?![&|])/, 'keyword.operator.unification'],
       [/!(?!=)/, 'keyword.operator.logical'],
-      
+
       // Identifiers
       [/@[a-zA-Z_]\w*/, 'decorator'],
       [/_[a-zA-Z_]\w*/, 'variable.other.constant'],
@@ -116,12 +110,12 @@ const CUE_TOKENIZER = {
       [/\$[a-zA-Z_]\w*/, 'variable.parameter'],
       [/\.[a-zA-Z_]\w*/, 'variable.other.property'],
       [/[a-zA-Z_$][\w$]*/, 'identifier'],
-      
+
       // Brackets and delimiters
       [/[{}()\[\]]/, '@brackets'],
       [/[<>]/, '@brackets'],
       [/[=+\-*/%<>!&|^~?:,;.]/, 'operator'],
-      
+
       // Whitespace
       [/[ \t\r\n]+/, ''],
     ],
@@ -152,7 +146,7 @@ const CUE_TOKENIZER = {
       [/\\./, 'string.escape.invalid'],
       [/`/, 'string', '@pop'],
     ],
-  }
+  },
 };
 
 export interface MonacoEditorProps extends EditorProps {
@@ -193,8 +187,8 @@ export function MonacoEditor({
     showFoldingControls: 'mouseover',
     matchBrackets: 'always',
     autoIndent: 'advanced',
-    formatOnPaste: false, // Disable to avoid worker issues
-    formatOnType: false,  // Disable to avoid worker issues
+    formatOnPaste: true,
+    formatOnType: true,
     tabSize: 2,
     insertSpaces: true,
     detectIndentation: true,
@@ -203,178 +197,164 @@ export function MonacoEditor({
       verticalScrollbarSize: 10,
       horizontalScrollbarSize: 10,
     },
-    // Disable features that require workers to avoid errors
-    quickSuggestions: false,
-    parameterHints: { enabled: false },
-    suggest: { showWords: false },
-    hover: { enabled: false },
-    semanticHighlighting: { enabled: false },
+    quickSuggestions: { other: true, comments: false, strings: false },
+    parameterHints: { enabled: true },
+    suggest: { showWords: true },
+    hover: { enabled: true },
+    semanticHighlighting: { enabled: true },
     ...options,
   };
 
   // Register CUE language before mount
   const handleEditorWillMount = useCallback((monaco: any) => {
-    // Disable all workers to prevent worker errors
-    self.MonacoEnvironment = {
-      getWorker: () => {
-        return new Worker('/dev/null', { type: 'module' });
-      }
-    };
-    
-    // Also set global worker override
-    (window as any).MonacoEnvironment = {
-      getWorker: () => {
-        return new Worker('data:text/javascript,', { type: 'module' });
-      }
-    };
     // Check if CUE language is already registered
     const languages = monaco.languages.getLanguages();
     const cueExists = languages.some((lang: any) => lang.id === 'cue');
-    
+
     if (!cueExists) {
       log.debug('Registering CUE language with Monaco Editor...');
-      
+
       // Register CUE language
       monaco.languages.register({ id: 'cue' });
-      
+
       // Set language configuration
       monaco.languages.setLanguageConfiguration('cue', CUE_LANGUAGE_CONFIG);
-      
+
       // Set tokenizer with proper structure
       monaco.languages.setMonarchTokensProvider('cue', CUE_TOKENIZER);
 
       // Define enhanced CUE themes
       monaco.editor.defineTheme('cue-light', {
-          base: 'vs',
-          inherit: true,
-          rules: [
-            // Comments
-            { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
-            
-            // Keywords and control flow
-            { token: 'keyword', foreground: '0000FF', fontStyle: 'bold' },
-            { token: 'keyword.control', foreground: 'C586C0', fontStyle: 'bold' },
-            { token: 'keyword.operator', foreground: '7C4DFF' },
-            { token: 'keyword.operator.logical', foreground: 'FF6B6B', fontStyle: 'bold' },
-            { token: 'keyword.operator.comparison', foreground: '4ECDC4' },
-            { token: 'keyword.operator.unification', foreground: 'FF9F43', fontStyle: 'bold' },
-            { token: 'keyword.operator.range', foreground: '45B7D1' },
-            { token: 'keyword.operator.optional', foreground: 'FFC107' },
-            { token: 'keyword.operator.required', foreground: 'F44336' },
-            
-            // Types and constants
-            { token: 'type', foreground: '1976D2', fontStyle: 'bold' },
-            { token: 'constant.language.boolean', foreground: '569CD6' },
-            { token: 'constant.language.null', foreground: '808080' },
-            { token: 'support.function', foreground: 'DCDCAA' },
-            
-            // Strings and literals
-            { token: 'string', foreground: 'CE9178' },
-            { token: 'string.escape', foreground: 'D7BA7D' },
-            { token: 'string.raw', foreground: 'D69E2E' },
-            { token: 'regexp', foreground: 'D16969' },
-            
-            // Numbers
-            { token: 'number', foreground: '098658' },
-            { token: 'number.float', foreground: '098658' },
-            { token: 'number.hex', foreground: '3DC9B3' },
-            { token: 'number.octal', foreground: '3DC9B3' },
-            { token: 'number.binary', foreground: '3DC9B3' },
-            
-            // Variables and identifiers
-            { token: 'variable.name', foreground: '9CDCFE', fontStyle: 'italic' },
-            { token: 'variable.parameter', foreground: '9C27B0' },
-            { token: 'variable.other.property', foreground: '4FC1FF' },
-            { token: 'variable.other.constant', foreground: '795548', fontStyle: 'italic' },
-            { token: 'decorator', foreground: 'C586C0' },
-            { token: 'namespace', foreground: '4EC9B0', fontStyle: 'bold' },
-            { token: 'identifier', foreground: '212121' },
-            
-            // Delimiters and operators
-            { token: 'delimiter', foreground: 'D4D4D4' },
-            { token: 'operator', foreground: 'D4D4D4' },
-          ],
-          colors: {
-            'editor.background': '#FAFAFA',
-            'editor.foreground': '#383A42',
-            'editor.lineHighlightBackground': '#F5F5F5',
-            'editorLineNumber.foreground': '#999999',
-            'editorLineNumber.activeForeground': '#0184BC',
-            'editorIndentGuide.background': '#E0E0E0',
-            'editorIndentGuide.activeBackground': '#C0C0C0',
-            'editor.selectionBackground': '#ADD6FF4D',
-            'editor.selectionHighlightBackground': '#ADD6FF26',
-            'editorBracketMatch.background': '#0064001A',
-            'editorBracketMatch.border': '#B9B9B9',
-          },
-        });
+        base: 'vs',
+        inherit: true,
+        rules: [
+          // Comments
+          { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
 
-        // Define dark CUE theme
-        monaco.editor.defineTheme('cue-dark', {
-          base: 'vs-dark',
-          inherit: true,
-          rules: [
-            // Comments
-            { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
-            
-            // Keywords and control flow
-            { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
-            { token: 'keyword.control', foreground: 'C586C0', fontStyle: 'bold' },
-            { token: 'keyword.operator', foreground: 'D7BA7D' },
-            { token: 'keyword.operator.logical', foreground: 'FF6B6B', fontStyle: 'bold' },
-            { token: 'keyword.operator.comparison', foreground: '4ECDC4' },
-            { token: 'keyword.operator.unification', foreground: 'FF9F43', fontStyle: 'bold' },
-            { token: 'keyword.operator.range', foreground: '45B7D1' },
-            { token: 'keyword.operator.optional', foreground: 'FFC107' },
-            { token: 'keyword.operator.required', foreground: 'F44336' },
-            
-            // Types and constants
-            { token: 'type', foreground: '4EC9B0', fontStyle: 'bold' },
-            { token: 'constant.language.boolean', foreground: '569CD6' },
-            { token: 'constant.language.null', foreground: '808080' },
-            { token: 'support.function', foreground: 'DCDCAA' },
-            
-            // Strings and literals
-            { token: 'string', foreground: 'CE9178' },
-            { token: 'string.escape', foreground: 'D7BA7D' },
-            { token: 'string.raw', foreground: 'D69E2E' },
-            { token: 'regexp', foreground: 'D16969' },
-            
-            // Numbers
-            { token: 'number', foreground: 'B5CEA8' },
-            { token: 'number.float', foreground: 'B5CEA8' },
-            { token: 'number.hex', foreground: '3DC9B3' },
-            { token: 'number.octal', foreground: '3DC9B3' },
-            { token: 'number.binary', foreground: '3DC9B3' },
-            
-            // Variables and identifiers
-            { token: 'variable.name', foreground: '9CDCFE', fontStyle: 'italic' },
-            { token: 'variable.parameter', foreground: 'D19A66' },
-            { token: 'variable.other.property', foreground: '4FC1FF' },
-            { token: 'variable.other.constant', foreground: '795548', fontStyle: 'italic' },
-            { token: 'decorator', foreground: 'C586C0' },
-            { token: 'namespace', foreground: '4EC9B0', fontStyle: 'bold' },
-            { token: 'identifier', foreground: 'D4D4D4' },
-            
-            // Delimiters and operators
-            { token: 'delimiter', foreground: 'D4D4D4' },
-            { token: 'operator', foreground: 'D4D4D4' },
-          ],
-          colors: {
-            'editor.background': '#1E1E1E',
-            'editor.foreground': '#D4D4D4',
-            'editor.lineHighlightBackground': '#2D2D30',
-            'editorLineNumber.foreground': '#858585',
-            'editorLineNumber.activeForeground': '#C6C6C6',
-            'editorIndentGuide.background': '#404040',
-            'editorIndentGuide.activeBackground': '#707070',
-            'editor.selectionBackground': '#264F78',
-            'editor.selectionHighlightBackground': '#264F7840',
-            'editorBracketMatch.background': '#0064001A',
-            'editorBracketMatch.border': '#888888',
-          },
-        });
-      
+          // Keywords and control flow
+          { token: 'keyword', foreground: '0000FF', fontStyle: 'bold' },
+          { token: 'keyword.control', foreground: 'C586C0', fontStyle: 'bold' },
+          { token: 'keyword.operator', foreground: '7C4DFF' },
+          { token: 'keyword.operator.logical', foreground: 'FF6B6B', fontStyle: 'bold' },
+          { token: 'keyword.operator.comparison', foreground: '4ECDC4' },
+          { token: 'keyword.operator.unification', foreground: 'FF9F43', fontStyle: 'bold' },
+          { token: 'keyword.operator.range', foreground: '45B7D1' },
+          { token: 'keyword.operator.optional', foreground: 'FFC107' },
+          { token: 'keyword.operator.required', foreground: 'F44336' },
+
+          // Types and constants
+          { token: 'type', foreground: '1976D2', fontStyle: 'bold' },
+          { token: 'constant.language.boolean', foreground: '569CD6' },
+          { token: 'constant.language.null', foreground: '808080' },
+          { token: 'support.function', foreground: 'DCDCAA' },
+
+          // Strings and literals
+          { token: 'string', foreground: 'CE9178' },
+          { token: 'string.escape', foreground: 'D7BA7D' },
+          { token: 'string.raw', foreground: 'D69E2E' },
+          { token: 'regexp', foreground: 'D16969' },
+
+          // Numbers
+          { token: 'number', foreground: '098658' },
+          { token: 'number.float', foreground: '098658' },
+          { token: 'number.hex', foreground: '3DC9B3' },
+          { token: 'number.octal', foreground: '3DC9B3' },
+          { token: 'number.binary', foreground: '3DC9B3' },
+
+          // Variables and identifiers
+          { token: 'variable.name', foreground: '9CDCFE', fontStyle: 'italic' },
+          { token: 'variable.parameter', foreground: '9C27B0' },
+          { token: 'variable.other.property', foreground: '4FC1FF' },
+          { token: 'variable.other.constant', foreground: '795548', fontStyle: 'italic' },
+          { token: 'decorator', foreground: 'C586C0' },
+          { token: 'namespace', foreground: '4EC9B0', fontStyle: 'bold' },
+          { token: 'identifier', foreground: '212121' },
+
+          // Delimiters and operators
+          { token: 'delimiter', foreground: 'D4D4D4' },
+          { token: 'operator', foreground: 'D4D4D4' },
+        ],
+        colors: {
+          'editor.background': '#FAFAFA',
+          'editor.foreground': '#383A42',
+          'editor.lineHighlightBackground': '#F5F5F5',
+          'editorLineNumber.foreground': '#999999',
+          'editorLineNumber.activeForeground': '#0184BC',
+          'editorIndentGuide.background': '#E0E0E0',
+          'editorIndentGuide.activeBackground': '#C0C0C0',
+          'editor.selectionBackground': '#ADD6FF4D',
+          'editor.selectionHighlightBackground': '#ADD6FF26',
+          'editorBracketMatch.background': '#0064001A',
+          'editorBracketMatch.border': '#B9B9B9',
+        },
+      });
+
+      // Define dark CUE theme
+      monaco.editor.defineTheme('cue-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          // Comments
+          { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+
+          // Keywords and control flow
+          { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
+          { token: 'keyword.control', foreground: 'C586C0', fontStyle: 'bold' },
+          { token: 'keyword.operator', foreground: 'D7BA7D' },
+          { token: 'keyword.operator.logical', foreground: 'FF6B6B', fontStyle: 'bold' },
+          { token: 'keyword.operator.comparison', foreground: '4ECDC4' },
+          { token: 'keyword.operator.unification', foreground: 'FF9F43', fontStyle: 'bold' },
+          { token: 'keyword.operator.range', foreground: '45B7D1' },
+          { token: 'keyword.operator.optional', foreground: 'FFC107' },
+          { token: 'keyword.operator.required', foreground: 'F44336' },
+
+          // Types and constants
+          { token: 'type', foreground: '4EC9B0', fontStyle: 'bold' },
+          { token: 'constant.language.boolean', foreground: '569CD6' },
+          { token: 'constant.language.null', foreground: '808080' },
+          { token: 'support.function', foreground: 'DCDCAA' },
+
+          // Strings and literals
+          { token: 'string', foreground: 'CE9178' },
+          { token: 'string.escape', foreground: 'D7BA7D' },
+          { token: 'string.raw', foreground: 'D69E2E' },
+          { token: 'regexp', foreground: 'D16969' },
+
+          // Numbers
+          { token: 'number', foreground: 'B5CEA8' },
+          { token: 'number.float', foreground: 'B5CEA8' },
+          { token: 'number.hex', foreground: '3DC9B3' },
+          { token: 'number.octal', foreground: '3DC9B3' },
+          { token: 'number.binary', foreground: '3DC9B3' },
+
+          // Variables and identifiers
+          { token: 'variable.name', foreground: '9CDCFE', fontStyle: 'italic' },
+          { token: 'variable.parameter', foreground: 'D19A66' },
+          { token: 'variable.other.property', foreground: '4FC1FF' },
+          { token: 'variable.other.constant', foreground: '795548', fontStyle: 'italic' },
+          { token: 'decorator', foreground: 'C586C0' },
+          { token: 'namespace', foreground: '4EC9B0', fontStyle: 'bold' },
+          { token: 'identifier', foreground: 'D4D4D4' },
+
+          // Delimiters and operators
+          { token: 'delimiter', foreground: 'D4D4D4' },
+          { token: 'operator', foreground: 'D4D4D4' },
+        ],
+        colors: {
+          'editor.background': '#1E1E1E',
+          'editor.foreground': '#D4D4D4',
+          'editor.lineHighlightBackground': '#2D2D30',
+          'editorLineNumber.foreground': '#858585',
+          'editorLineNumber.activeForeground': '#C6C6C6',
+          'editorIndentGuide.background': '#404040',
+          'editorIndentGuide.activeBackground': '#707070',
+          'editor.selectionBackground': '#264F78',
+          'editor.selectionHighlightBackground': '#264F7840',
+          'editorBracketMatch.background': '#0064001A',
+          'editorBracketMatch.border': '#888888',
+        },
+      });
+
       log.info('CUE language successfully registered with Monaco Editor');
     } else {
       log.debug('CUE language already registered');
@@ -382,49 +362,48 @@ export function MonacoEditor({
   }, []);
 
   // Handle editor mount
-  const handleEditorDidMount = useCallback((
-    editor: editor.IStandaloneCodeEditor,
-    monaco: typeof import('monaco-editor')
-  ) => {
-    editorRef.current = editor;
-    setIsEditorReady(true);
+  const handleEditorDidMount = useCallback(
+    (editor: editor.IStandaloneCodeEditor, monaco: typeof import('monaco-editor')) => {
+      editorRef.current = editor;
+      setIsEditorReady(true);
 
-    // Add save keyboard shortcut
-    if (onSave) {
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        onSave();
+      // Add save keyboard shortcut
+      if (onSave) {
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+          onSave();
+        });
+      }
+
+      // Enable format on save
+      editor.getModel()?.onDidChangeContent(() => {
+        // Debounced auto-format could go here
       });
-    }
 
-    // Enable format on save
-    editor.getModel()?.onDidChangeContent(() => {
-      // Debounced auto-format could go here
-    });
+      // Basic CUE language features (hover and completion disabled to avoid worker issues)
+      log.debug('CUE language features initialized (advanced features disabled for stability)');
 
-    // Basic CUE language features (hover and completion disabled to avoid worker issues)
-    log.debug('CUE language features initialized (advanced features disabled for stability)');
-
-    // Call external ready handler
-    onEditorReady?.(editor);
-  }, [onSave, onEditorReady]);
+      // Call external ready handler
+      onEditorReady?.(editor);
+    },
+    [onSave, onEditorReady]
+  );
 
   // Handle value change
-  const handleChange = useCallback((value: string | undefined) => {
-    if (value !== undefined) {
-      onChange(value);
-    }
-  }, [onChange]);
+  const handleChange = useCallback(
+    (value: string | undefined) => {
+      if (value !== undefined) {
+        onChange(value);
+      }
+    },
+    [onChange]
+  );
 
   return (
     <div className={clsx('h-full w-full', className)}>
       <Editor
         height="100%"
         language={language}
-        theme={
-          language === 'cue' 
-            ? theme === 'vs-dark' ? 'cue-dark' : 'cue-light'
-            : theme
-        }
+        theme={language === 'cue' ? (theme === 'vs-dark' ? 'cue-dark' : 'cue-light') : theme}
         value={value}
         options={defaultOptions}
         beforeMount={handleEditorWillMount}

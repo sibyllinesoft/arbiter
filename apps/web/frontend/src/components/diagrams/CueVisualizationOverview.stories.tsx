@@ -5,11 +5,11 @@ import { CueViewer } from './CueViewer';
 import { DataViewer } from './DataViewer';
 import { MonacoEditor } from '../Editor/MonacoEditor';
 import { Card } from '../../design-system/components/Card';
-import { 
+import {
   basicRequirementsCue,
   assemblySpecCue,
   validationErrorsCue,
-  sampleResolvedData 
+  sampleResolvedData,
 } from '../../test/cue-samples';
 
 const meta: Meta = {
@@ -107,7 +107,8 @@ const OverviewDemo = () => {
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">CUE Visualization System</h1>
         <p className="text-gray-600 text-lg">
-          Complete overview of CUE file visualization, editing, and management components in the Arbiter frontend.
+          Complete overview of CUE file visualization, editing, and management components in the
+          Arbiter frontend.
         </p>
       </div>
 
@@ -192,7 +193,9 @@ const OverviewDemo = () => {
 
       {/* Monaco Editor Integration */}
       <div className="mb-8">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Advanced Monaco Editor Integration</h3>
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+          Advanced Monaco Editor Integration
+        </h3>
         <Card>
           <div className="h-64">
             <MonacoEditor
@@ -243,14 +246,14 @@ config: {
             <DataViewer
               data={{
                 user: {
-                  name: "John Doe",
+                  name: 'John Doe',
                   age: 30,
-                  email: "john@example.com"
+                  email: 'john@example.com',
                 },
                 config: {
                   timeout: 30,
-                  retries: 3
-                }
+                  retries: 3,
+                },
               }}
               language="json"
               showCopyButton={false}
@@ -346,7 +349,7 @@ export const SyntaxHighlightingDemo: Story = {
   render: () => (
     <div className="space-y-6 p-6">
       <h1 className="text-2xl font-bold text-gray-900">CUE Syntax Highlighting Comparison</h1>
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <DataViewer
@@ -355,13 +358,9 @@ export const SyntaxHighlightingDemo: Story = {
             language="cue"
           />
         </Card>
-        
+
         <Card>
-          <DataViewer
-            title="Assembly Configuration"
-            data={assemblySpecCue}
-            language="cue"
-          />
+          <DataViewer title="Assembly Configuration" data={assemblySpecCue} language="cue" />
         </Card>
       </div>
     </div>
@@ -375,7 +374,7 @@ export const ValidationDemo: Story = {
   render: () => (
     <div className="space-y-6 p-6">
       <h1 className="text-2xl font-bold text-gray-900">CUE Validation Error Display</h1>
-      
+
       <Card>
         <CueViewer
           title="CUE File with Multiple Validation Errors"
@@ -426,7 +425,8 @@ export const ValidationDemo: Story = {
             {
               line: 62,
               column: 14,
-              message: '"unknown" is not in valid status values ["active", "inactive", "pending", "suspended"]',
+              message:
+                '"unknown" is not in valid status values ["active", "inactive", "pending", "suspended"]',
               severity: 'info',
             },
           ]}
@@ -444,7 +444,7 @@ export const SourceVsResolvedDemo: Story = {
   render: () => (
     <div className="space-y-6 p-6">
       <h1 className="text-2xl font-bold text-gray-900">CUE Source vs Resolved Data</h1>
-      
+
       <Card>
         <CueViewer
           title="CUE Assembly Specification - Split View"

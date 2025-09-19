@@ -1,9 +1,17 @@
 /**
  * SQLite database layer using Bun's native sqlite driver
  */
-import { Database } from "bun:sqlite";
-import { createHash, randomUUID } from "crypto";
-import type { Event, EventType, Fragment, FragmentRevision, Project, ServerConfig, Version } from "./types.ts";
+import { Database } from 'bun:sqlite';
+import { createHash, randomUUID } from 'node:crypto';
+import type {
+  Event,
+  EventType,
+  Fragment,
+  FragmentRevision,
+  Project,
+  ServerConfig,
+  Version,
+} from './types.ts';
 
 export class SpecWorkbenchDB {
   private db: Database;
@@ -18,10 +26,10 @@ export class SpecWorkbenchDB {
    */
   private configurePragmas(): void {
     // Enable WAL mode for better concurrent access
-    this.db.exec("PRAGMA journal_mode = WAL");
-    this.db.exec("PRAGMA synchronous = NORMAL");
-    this.db.exec("PRAGMA cache_size = 1000");
-    this.db.exec("PRAGMA temp_store = memory");
+    this.db.exec('PRAGMA journal_mode = WAL');
+    this.db.exec('PRAGMA synchronous = NORMAL');
+    this.db.exec('PRAGMA cache_size = 1000');
+    this.db.exec('PRAGMA temp_store = memory');
   }
 
   /**
@@ -30,7 +38,7 @@ export class SpecWorkbenchDB {
   private handleSchemaMigrations(): void {
     // Schema migration - add head_revision_id column if it doesn't exist
     try {
-      this.db.exec("ALTER TABLE fragments ADD COLUMN head_revision_id TEXT");
+      this.db.exec('ALTER TABLE fragments ADD COLUMN head_revision_id TEXT');
     } catch (error) {
       // Column already exists or table doesn't exist yet, ignore
     }
@@ -138,21 +146,27 @@ export class SpecWorkbenchDB {
    */
   private createIndices(): void {
     // Fragment indices
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragments_project_id ON fragments (project_id)");
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragments_path ON fragments (project_id, path)");
-    
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_fragments_project_id ON fragments (project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_fragments_path ON fragments (project_id, path)');
+
     // Fragment revision indices
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragment_revisions_fragment_id ON fragment_revisions (fragment_id)");
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragment_revisions_revision_number ON fragment_revisions (fragment_id, revision_number)");
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_fragment_revisions_content_hash ON fragment_revisions (content_hash)");
-    
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_fragment_revisions_fragment_id ON fragment_revisions (fragment_id)'
+    );
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_fragment_revisions_revision_number ON fragment_revisions (fragment_id, revision_number)'
+    );
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_fragment_revisions_content_hash ON fragment_revisions (content_hash)'
+    );
+
     // Version indices
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_versions_project_id ON versions (project_id)");
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_versions_hash ON versions (spec_hash)");
-    
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_versions_project_id ON versions (project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_versions_hash ON versions (spec_hash)');
+
     // Event indices
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_events_project_id ON events (project_id)");
-    this.db.exec("CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC)");
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_events_project_id ON events (project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC)');
   }
 
   /**
@@ -200,26 +214,26 @@ export class SpecWorkbenchDB {
 
     const result = stmt.get(id, name) as Project;
     if (!result) {
-      throw new Error("Failed to create project");
+      throw new Error('Failed to create project');
     }
     return result;
   }
 
   async getProject(id: string): Promise<Project | null> {
-    const stmt = this.db.prepare("SELECT * FROM projects WHERE id = ?");
+    const stmt = this.db.prepare('SELECT * FROM projects WHERE id = ?');
     return stmt.get(id) as Project | null;
   }
 
   async listProjects(): Promise<Project[]> {
-    const stmt = this.db.prepare("SELECT * FROM projects ORDER BY created_at DESC");
+    const stmt = this.db.prepare('SELECT * FROM projects ORDER BY created_at DESC');
     return stmt.all() as Project[];
   }
 
   async deleteProject(id: string): Promise<void> {
-    const stmt = this.db.prepare("DELETE FROM projects WHERE id = ?");
+    const stmt = this.db.prepare('DELETE FROM projects WHERE id = ?');
     const result = stmt.run(id);
     if (result.changes === 0) {
-      throw new Error("Project not found");
+      throw new Error('Project not found');
     }
   }
 
@@ -242,13 +256,13 @@ export class SpecWorkbenchDB {
 
       const fragment = stmt.get(id, projectId, path, content) as Fragment;
       if (!fragment) {
-        throw new Error("Failed to create fragment");
+        throw new Error('Failed to create fragment');
       }
 
       // Create initial revision
       const revisionId = this.generateId();
       const contentHash = createHash('sha256').update(content).digest('hex');
-      
+
       this.createFragmentRevision(
         revisionId,
         id,
@@ -256,7 +270,7 @@ export class SpecWorkbenchDB {
         content,
         contentHash,
         author,
-        message || "Initial fragment creation"
+        message || 'Initial fragment creation'
       );
 
       // Update fragment with head revision pointer
@@ -266,17 +280,23 @@ export class SpecWorkbenchDB {
       updateStmt.run(revisionId, id);
 
       // Return updated fragment
-      const getStmt = this.db.prepare("SELECT * FROM fragments WHERE id = ?");
+      const getStmt = this.db.prepare('SELECT * FROM fragments WHERE id = ?');
       return getStmt.get(id) as Fragment;
     });
   }
 
-  async updateFragment(projectId: string, path: string, content: string, author?: string, message?: string): Promise<Fragment> {
+  async updateFragment(
+    projectId: string,
+    path: string,
+    content: string,
+    author?: string,
+    message?: string
+  ): Promise<Fragment> {
     return this.transaction(() => {
       // Get existing fragment
       const existingFragment = this.getFragment(projectId, path);
       if (!existingFragment) {
-        throw new Error("Fragment not found");
+        throw new Error('Fragment not found');
       }
 
       // Create content hash for deduplication
@@ -312,32 +332,32 @@ export class SpecWorkbenchDB {
 
       const result = stmt.get(content, revisionId, projectId, path) as Fragment | undefined;
       if (!result) {
-        throw new Error("Failed to update fragment");
+        throw new Error('Failed to update fragment');
       }
       return result;
     });
   }
 
   getFragment(projectId: string, path: string): Fragment | null {
-    const stmt = this.db.prepare("SELECT * FROM fragments WHERE project_id = ? AND path = ?");
+    const stmt = this.db.prepare('SELECT * FROM fragments WHERE project_id = ? AND path = ?');
     return stmt.get(projectId, path) as Fragment | null;
   }
 
   async getFragmentById(id: string): Promise<Fragment | null> {
-    const stmt = this.db.prepare("SELECT * FROM fragments WHERE id = ?");
+    const stmt = this.db.prepare('SELECT * FROM fragments WHERE id = ?');
     return stmt.get(id) as Fragment | null;
   }
 
   async listFragments(projectId: string): Promise<Fragment[]> {
-    const stmt = this.db.prepare("SELECT * FROM fragments WHERE project_id = ? ORDER BY path");
+    const stmt = this.db.prepare('SELECT * FROM fragments WHERE project_id = ? ORDER BY path');
     return stmt.all(projectId) as Fragment[];
   }
 
   async deleteFragment(projectId: string, path: string): Promise<void> {
-    const stmt = this.db.prepare("DELETE FROM fragments WHERE project_id = ? AND path = ?");
+    const stmt = this.db.prepare('DELETE FROM fragments WHERE project_id = ? AND path = ?');
     const result = stmt.run(projectId, path);
     if (result.changes === 0) {
-      throw new Error("Fragment not found");
+      throw new Error('Fragment not found');
     }
   }
 
@@ -371,16 +391,27 @@ export class SpecWorkbenchDB {
       RETURNING id, fragment_id, revision_number, content, content_hash, author, message, created_at
     `);
 
-    const result = stmt.get(id, fragmentId, revisionNumber, content, contentHash, author, message) as FragmentRevision;
+    const result = stmt.get(
+      id,
+      fragmentId,
+      revisionNumber,
+      content,
+      contentHash,
+      author,
+      message
+    ) as FragmentRevision;
     if (!result) {
-      throw new Error("Failed to create fragment revision");
+      throw new Error('Failed to create fragment revision');
     }
     return result;
   }
 
-  async getFragmentRevision(fragmentId: string, revisionNumber: number): Promise<FragmentRevision | null> {
+  async getFragmentRevision(
+    fragmentId: string,
+    revisionNumber: number
+  ): Promise<FragmentRevision | null> {
     const stmt = this.db.prepare(
-      "SELECT * FROM fragment_revisions WHERE fragment_id = ? AND revision_number = ?"
+      'SELECT * FROM fragment_revisions WHERE fragment_id = ? AND revision_number = ?'
     );
     return stmt.get(fragmentId, revisionNumber) as FragmentRevision | null;
   }
@@ -409,7 +440,7 @@ export class SpecWorkbenchDB {
     id: string,
     projectId: string,
     specHash: string,
-    resolvedJson: string,
+    resolvedJson: string
   ): Promise<Version> {
     const stmt = this.db.prepare(`
       INSERT INTO versions (id, project_id, spec_hash, resolved_json)
@@ -419,13 +450,13 @@ export class SpecWorkbenchDB {
 
     const result = stmt.get(id, projectId, specHash, resolvedJson) as Version;
     if (!result) {
-      throw new Error("Failed to create version");
+      throw new Error('Failed to create version');
     }
     return result;
   }
 
   async getVersionByHash(projectId: string, specHash: string): Promise<Version | null> {
-    const stmt = this.db.prepare("SELECT * FROM versions WHERE project_id = ? AND spec_hash = ?");
+    const stmt = this.db.prepare('SELECT * FROM versions WHERE project_id = ? AND spec_hash = ?');
     return stmt.get(projectId, specHash) as Version | null;
   }
 
@@ -453,7 +484,7 @@ export class SpecWorkbenchDB {
     id: string,
     projectId: string,
     eventType: EventType,
-    data: Record<string, unknown>,
+    data: Record<string, unknown>
   ): Promise<Event> {
     const stmt = this.db.prepare(`
       INSERT INTO events (id, project_id, event_type, data)
@@ -466,7 +497,7 @@ export class SpecWorkbenchDB {
     };
 
     if (!result) {
-      throw new Error("Failed to create event");
+      throw new Error('Failed to create event');
     }
 
     return {
@@ -475,7 +506,7 @@ export class SpecWorkbenchDB {
     };
   }
 
-  async getEvents(projectId: string, limit: number = 100, since?: string): Promise<Event[]> {
+  async getEvents(projectId: string, limit = 100, since?: string): Promise<Event[]> {
     let query = `
       SELECT * FROM events 
       WHERE project_id = ?
@@ -483,19 +514,23 @@ export class SpecWorkbenchDB {
     const params: any[] = [projectId];
 
     if (since) {
-      query += " AND created_at > ?";
+      query += ' AND created_at > ?';
       // Convert ISO timestamp to SQLite datetime format
-      const sqliteTimestamp = new Date(since).toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
+      const sqliteTimestamp = new Date(since)
+        .toISOString()
+        .replace('T', ' ')
+        .replace('Z', '')
+        .split('.')[0];
       params.push(sqliteTimestamp);
     }
 
-    query += " ORDER BY created_at DESC LIMIT ?";
+    query += ' ORDER BY created_at DESC LIMIT ?';
     params.push(limit);
 
     const stmt = this.db.prepare(query);
     const results = stmt.all(...params) as (Event & { data: string })[];
 
-    return results.map((event) => ({
+    return results.map(event => ({
       ...event,
       data: JSON.parse(event.data),
     }));
@@ -508,7 +543,7 @@ export class SpecWorkbenchDB {
 
   // Cleanup and maintenance
   async vacuum(): Promise<void> {
-    this.db.exec("VACUUM");
+    this.db.exec('VACUUM');
   }
 
   close(): void {
@@ -518,7 +553,7 @@ export class SpecWorkbenchDB {
   // Health check
   async healthCheck(): Promise<boolean> {
     try {
-      const result = this.db.prepare("SELECT 1 as ok").get();
+      const result = this.db.prepare('SELECT 1 as ok').get();
       return (result as any)?.ok === 1;
     } catch {
       return false;

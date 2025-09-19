@@ -4,13 +4,13 @@
  */
 
 import type {
-  LanguagePlugin,
-  ComponentConfig,
-  ServiceConfig,
-  ProjectConfig,
   BuildConfig,
-  GenerationResult,
+  ComponentConfig,
   GeneratedFile,
+  GenerationResult,
+  LanguagePlugin,
+  ProjectConfig,
+  ServiceConfig,
 } from './index.js';
 
 export class GoPlugin implements LanguagePlugin {
@@ -29,6 +29,11 @@ export class GoPlugin implements LanguagePlugin {
     'microservices',
     'grpc',
   ];
+  readonly capabilities = {
+    services: true,
+    api: true,
+    testing: true,
+  };
 
   // Go doesn't have UI components like frontend frameworks
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
@@ -186,7 +191,8 @@ export class GoPlugin implements LanguagePlugin {
         dev: 'go run cmd/main.go',
         build: 'go build -o bin/app cmd/main.go',
         test: 'go test ./...',
-        'test:coverage': 'go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out',
+        'test:coverage':
+          'go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out',
         lint: 'golangci-lint run',
         format: 'gofmt -s -w .',
         'mod:tidy': 'go mod tidy',
@@ -223,7 +229,7 @@ export class GoPlugin implements LanguagePlugin {
   private generateAPIHandler(config: ServiceConfig): string {
     const packageName = config.name.toLowerCase();
     const structName = this.toPascalCase(config.name);
-    
+
     return `package handlers
 
 import (
@@ -371,7 +377,7 @@ func (h *${structName}Handler) Delete(c *gin.Context) {
   private generateRoutes(config: ServiceConfig): string {
     const packageName = config.name.toLowerCase();
     const structName = this.toPascalCase(config.name);
-    
+
     return `package routes
 
 import (
@@ -400,7 +406,7 @@ func Setup${structName}Routes(router *gin.RouterGroup, service *services.${struc
 
   private generateBusinessService(config: ServiceConfig): string {
     const structName = this.toPascalCase(config.name);
-    
+
     return `package services
 
 import (
@@ -527,7 +533,7 @@ func (s *${structName}Service) Delete(ctx context.Context, id uint) error {
 
   private generateModel(config: ServiceConfig): string {
     const structName = this.toPascalCase(config.name);
-    
+
     return `package models
 
 import (
@@ -591,7 +597,7 @@ func (item *${structName}) BeforeUpdate(tx *gorm.DB) (err error) {
 
   private generateMiddleware(config: ServiceConfig): string {
     const middlewareName = this.toPascalCase(config.name);
-    
+
     return `package middleware
 
 import (
@@ -662,7 +668,9 @@ func main() {
 		zapLogger.Fatal("Failed to load configuration", zap.Error(err))
 	}
 
-	${config.database ? `// Initialize database
+	${
+    config.database
+      ? `// Initialize database
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
 		zapLogger.Fatal("Failed to connect to database", zap.Error(err))
@@ -671,7 +679,9 @@ func main() {
 	// Auto-migrate database schemas
 	if err := database.Migrate(db); err != nil {
 		zapLogger.Fatal("Failed to migrate database", zap.Error(err))
-	}` : ''}
+	}`
+      : ''
+  }
 
 	// Initialize server
 	srv := server.New(cfg, ${config.database ? 'db, ' : ''}zapLogger)
@@ -1003,11 +1013,19 @@ ADDRESS=:8080
 ENVIRONMENT=development
 LOG_LEVEL=info
 
-${config.database ? `# Database Configuration
-DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable` : ''}
+${
+  config.database
+    ? `# Database Configuration
+DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable`
+    : ''
+}
 
-${config.auth ? `# Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-in-production` : ''}
+${
+  config.auth
+    ? `# Authentication
+JWT_SECRET=your-super-secret-jwt-key-change-in-production`
+    : ''
+}
 
 # Additional configuration as needed
 `;
@@ -1026,8 +1044,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap/zaptest"
-	${config.database ? `"gorm.io/driver/sqlite"
-	"gorm.io/gorm"` : ''}
+	${
+    config.database
+      ? `"gorm.io/driver/sqlite"
+	"gorm.io/gorm"`
+      : ''
+  }
 )
 
 // SetupTestRouter creates a test router
@@ -1041,7 +1063,9 @@ func SetupTestLogger(t *testing.T) *zap.Logger {
 	return zaptest.NewLogger(t)
 }
 
-${config.database ? `// SetupTestDB creates an in-memory SQLite database for testing
+${
+  config.database
+    ? `// SetupTestDB creates an in-memory SQLite database for testing
 func SetupTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	assert.NoError(t, err)
@@ -1051,7 +1075,9 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	// assert.NoError(t, err)
 
 	return db
-}` : ''}
+}`
+    : ''
+}
 
 // MakeRequest makes an HTTP request for testing
 func MakeRequest(router *gin.Engine, method, url string, body interface{}) *httptest.ResponseRecorder {
@@ -1141,16 +1167,22 @@ deps: ## Download dependencies
 	@echo "Downloading dependencies..."
 	@go mod download
 
-${config.docker ? `docker-build: ## Build Docker image
+${
+  config.docker
+    ? `docker-build: ## Build Docker image
 	@echo "Building Docker image..."
 	@docker build -t \${APP_NAME}:latest .
 
 docker-run: docker-build ## Build and run Docker container
 	@echo "Running Docker container..."
-	@docker run --rm -p 8080:8080 \${APP_NAME}:latest` : ''}
+	@docker run --rm -p 8080:8080 \${APP_NAME}:latest`
+    : ''
+}
 
 # Development database commands (if using Docker)
-${config.database ? `db-up: ## Start database container
+${
+  config.database
+    ? `db-up: ## Start database container
 	@echo "Starting database..."
 	@docker-compose up -d database
 
@@ -1160,7 +1192,9 @@ db-down: ## Stop database container
 
 db-migrate: ## Run database migrations
 	@echo "Running migrations..."
-	@go run cmd/migrate.go` : ''}
+	@go run cmd/migrate.go`
+    : ''
+}
 `;
   }
 
@@ -1221,7 +1255,9 @@ CMD ["./main"]
   }
 
   private generateDockerCompose(config: ProjectConfig): string {
-    const dbService = config.database === 'postgres' ? `
+    const dbService =
+      config.database === 'postgres'
+        ? `
   database:
     image: postgres:15-alpine
     environment:
@@ -1236,7 +1272,8 @@ CMD ["./main"]
       test: ["CMD-SHELL", "pg_isready -U ${config.name.toLowerCase()}"]
       interval: 10s
       timeout: 5s
-      retries: 5` : '';
+      retries: 5`
+        : '';
 
     return `version: '3.8'
 
@@ -1248,14 +1285,22 @@ services:
     environment:
       - ENVIRONMENT=development
       ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}?sslmode=disable` : ''}
-    ${config.database ? `depends_on:
+    ${
+      config.database
+        ? `depends_on:
       database:
-        condition: service_healthy` : ''}
+        condition: service_healthy`
+        : ''
+    }
     restart: unless-stopped
 ${dbService}
 
-${config.database === 'postgres' ? `volumes:
-  postgres_data:` : ''}
+${
+  config.database === 'postgres'
+    ? `volumes:
+  postgres_data:`
+    : ''
+}
 `;
   }
 
@@ -1337,9 +1382,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/go/pkg/mod
-        key: $` + `{{ runner.os }}` + `-go-$` + `{{ hashFiles('**/go.sum') }}` + `
+        key: \${{ runner.os }}-go-\${{ hashFiles('**/go.sum') }}
         restore-keys: |
-          $` + `{{ runner.os }}` + `-go-
+          \${{ runner.os }}-go-
     
     - name: Download dependencies
       run: go mod download
@@ -1375,7 +1420,9 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  ${config.target === 'production' ? `build:
+  ${
+    config.target === 'production'
+      ? `build:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
@@ -1396,14 +1443,25 @@ jobs:
     
     - name: Build Docker image
       run: |
-        docker build -f Dockerfile.prod -t your-registry/app:$` + `{{ github.sha }}` + ` .
-        docker tag your-registry/app:$` + `{{ github.sha }}` + ` your-registry/app:latest
+        docker build -f Dockerfile.prod -t your-registry/app:$` +
+        '{{ github.sha }}' +
+        ` .
+        docker tag your-registry/app:$` +
+        '{{ github.sha }}' +
+        ` your-registry/app:latest
     
     - name: Push Docker image
       run: |
-        echo "$` + `{{ secrets.DOCKER_PASSWORD }}` + `" | docker login -u "$` + `{{ secrets.DOCKER_USERNAME }}` + `" --password-stdin
-        docker push your-registry/app:$` + `{{ github.sha }}
-        docker push your-registry/app:latest` : ''}
+        echo "$` +
+        '{{ secrets.DOCKER_PASSWORD }}' +
+        `" | docker login -u "$` +
+        '{{ secrets.DOCKER_USERNAME }}' +
+        `" --password-stdin
+        docker push your-registry/app:$` +
+        `{{ github.sha }}
+        docker push your-registry/app:latest`
+      : ''
+  }
 `;
   }
 

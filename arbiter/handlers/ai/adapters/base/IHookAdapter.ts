@@ -9,22 +9,22 @@ export interface IHookAdapter {
    * The provider this adapter supports (github, gitlab, etc.)
    */
   readonly provider: string;
-  
+
   /**
    * The event type this adapter handles (push, pull_request, etc.)
    */
   readonly eventType: string;
-  
+
   /**
    * Extract structured event data from the webhook payload
    */
   extractEventData(event: WebhookEvent): Promise<WebhookEventData>;
-  
+
   /**
    * Validate that this adapter can handle the given event
    */
   canHandle(event: WebhookEvent): boolean;
-  
+
   /**
    * Get the adapter's configuration and metadata
    */
@@ -42,14 +42,14 @@ export interface IHookAdapter {
 export abstract class BaseHookAdapter implements IHookAdapter {
   abstract readonly provider: string;
   abstract readonly eventType: string;
-  
+
   /**
    * Default implementation that checks provider and event type
    */
   canHandle(event: WebhookEvent): boolean {
     return event.provider === this.provider && event.eventType === this.eventType;
   }
-  
+
   /**
    * Extract common repository information across providers
    */
@@ -71,7 +71,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
             };
           }
           break;
-          
+
         case 'gitlab':
           if (payload.project) {
             return {
@@ -82,7 +82,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
             };
           }
           break;
-          
+
         default:
           return null;
       }
@@ -90,14 +90,17 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       console.error(`Error extracting repository info for ${this.provider}:`, error);
       return null;
     }
-    
+
     return null;
   }
-  
+
   /**
    * Extract common user information across providers
    */
-  protected extractUserInfo(payload: any, context: 'author' | 'pusher' | 'sender' = 'sender'): {
+  protected extractUserInfo(
+    payload: any,
+    context: 'author' | 'pusher' | 'sender' = 'sender'
+  ): {
     login: string;
     name?: string;
     email?: string;
@@ -105,22 +108,22 @@ export abstract class BaseHookAdapter implements IHookAdapter {
   } | null {
     try {
       let userObj;
-      
+
       switch (this.provider) {
         case 'github':
           switch (context) {
             case 'author':
-              userObj = payload.pull_request?.user || payload.issue?.user || payload.head_commit?.author;
+              userObj =
+                payload.pull_request?.user || payload.issue?.user || payload.head_commit?.author;
               break;
             case 'pusher':
               userObj = payload.pusher || payload.sender;
               break;
-            case 'sender':
             default:
               userObj = payload.sender;
               break;
           }
-          
+
           if (userObj) {
             return {
               login: userObj.login || userObj.username,
@@ -130,19 +133,17 @@ export abstract class BaseHookAdapter implements IHookAdapter {
             };
           }
           break;
-          
+
         case 'gitlab':
           switch (context) {
             case 'author':
               userObj = payload.object_attributes?.author || payload.user;
               break;
-            case 'pusher':
-            case 'sender':
             default:
               userObj = payload.user;
               break;
           }
-          
+
           if (userObj) {
             return {
               login: userObj.username,
@@ -157,10 +158,10 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       console.error(`Error extracting user info for ${this.provider}:`, error);
       return null;
     }
-    
+
     return null;
   }
-  
+
   /**
    * Create a successful response with extracted data
    */
@@ -170,7 +171,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       data,
     };
   }
-  
+
   /**
    * Create an error response
    */
@@ -181,22 +182,22 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       data: {} as any,
     };
   }
-  
+
   /**
    * Validate required fields in payload
    */
   protected validatePayload(payload: any, requiredFields: string[]): string[] {
     const errors: string[] = [];
-    
+
     for (const field of requiredFields) {
       if (this.getNestedValue(payload, field) === undefined) {
         errors.push(`Missing required field: ${field}`);
       }
     }
-    
+
     return errors;
   }
-  
+
   /**
    * Get nested value from object using dot notation
    */
@@ -205,7 +206,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
   }
-  
+
   /**
    * Default metadata implementation
    */
@@ -222,7 +223,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       supportedEvents: [this.eventType],
     };
   }
-  
+
   /**
    * Abstract method to be implemented by concrete adapters
    */

@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  BarChart3, 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  BarChart3,
+  Clock,
+  CheckCircle,
+  XCircle,
   AlertTriangle,
   Activity,
   TrendingUp,
@@ -17,21 +17,12 @@ import {
   Calendar,
   Timer,
   X,
-  ArrowLeft
+  ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { apiService } from '../../services/api';
-import { 
-  Button, 
-  StatusBadge, 
-  Card,
-  cn
-} from '../../design-system';
-import type { 
-  WebhookHandler,
-  HandlerStats as StatsData,
-  HandlerExecution
-} from '../../types/api';
+import { Button, StatusBadge, Card, cn } from '../../design-system';
+import type { WebhookHandler, HandlerStats as StatsData, HandlerExecution } from '../../types/api';
 import { createLogger } from '../../utils/logger';
 
 const log = createLogger('HandlerStats');
@@ -55,7 +46,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
 
       const [statsData, executionsData] = await Promise.all([
         apiService.getHandlerStats(handler.id),
-        apiService.getHandlerExecutions(handler.id, 50) // Last 50 executions
+        apiService.getHandlerExecutions(handler.id, 50), // Last 50 executions
       ]);
 
       setStats(statsData);
@@ -90,7 +81,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     }).format(new Date(timestamp));
   };
 
@@ -186,9 +177,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
           <div className="flex items-center gap-3">
             <BarChart3 className="h-6 w-6 text-blue-600" />
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Handler Statistics
-              </h2>
+              <h2 className="text-xl font-semibold text-gray-900">Handler Statistics</h2>
               <p className="text-sm text-gray-600">
                 {handler.name} • {handler.provider} • {handler.event_type}
               </p>
@@ -197,13 +186,10 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <StatusBadge
-            variant={handler.enabled ? 'success' : 'error'}
-            size="sm"
-          >
+          <StatusBadge variant={handler.enabled ? 'success' : 'error'} size="sm">
             {handler.enabled ? 'Enabled' : 'Disabled'}
           </StatusBadge>
-          
+
           <Button
             onClick={loadData}
             variant="secondary"
@@ -240,9 +226,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {getSuccessRate()}%
-                  </div>
+                  <div className="text-2xl font-bold text-green-600">{getSuccessRate()}%</div>
                   <div className="text-sm text-gray-500">Success Rate</div>
                 </div>
               </div>
@@ -293,7 +277,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <XCircle className="h-4 w-4 text-red-600" />
@@ -310,16 +294,16 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                 {stats && stats.total_executions > 0 && (
                   <div className="mt-4">
                     <div className="flex rounded-full overflow-hidden h-2">
-                      <div 
+                      <div
                         className="bg-green-500"
-                        style={{ 
-                          width: `${(stats.successful_executions / stats.total_executions) * 100}%` 
+                        style={{
+                          width: `${(stats.successful_executions / stats.total_executions) * 100}%`,
                         }}
                       />
-                      <div 
+                      <div
                         className="bg-red-500"
-                        style={{ 
-                          width: `${(stats.failed_executions / stats.total_executions) * 100}%` 
+                        style={{
+                          width: `${(stats.failed_executions / stats.total_executions) * 100}%`,
                         }}
                       />
                     </div>
@@ -349,10 +333,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Status:</span>
-                  <StatusBadge
-                    variant={handler.enabled ? 'success' : 'error'}
-                    size="sm"
-                  >
+                  <StatusBadge variant={handler.enabled ? 'success' : 'error'} size="sm">
                     {handler.enabled ? 'Enabled' : 'Disabled'}
                   </StatusBadge>
                 </div>
@@ -388,7 +369,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                       <div className={cn('p-2 rounded-full', getStatusColor(execution.status))}>
                         {getStatusIcon(execution.status)}
                       </div>
-                      
+
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-gray-900">
@@ -398,11 +379,11 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                             {getRelativeTime(execution.started_at)}
                           </span>
                         </div>
-                        
+
                         <div className="text-xs text-gray-500 mt-1">
                           Duration: {formatDuration(execution.duration_ms)}
                         </div>
-                        
+
                         {execution.error_message && (
                           <div className="text-xs text-red-600 mt-1 max-w-md truncate">
                             Error: {execution.error_message}
@@ -410,7 +391,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="text-right">
                       <div className="text-xs text-gray-500">
                         {formatDate(execution.started_at)}

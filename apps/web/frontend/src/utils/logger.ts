@@ -1,19 +1,19 @@
 /**
  * Development logging utility with configurable levels and quiet mode
- * 
+ *
  * Usage:
  * 1. Import: import { createLogger } from './utils/logger';
  * 2. Create: const log = createLogger('ComponentName');
  * 3. Use: log.info('Message', data);
- * 
+ *
  * Log levels (set via VITE_LOG_LEVEL in .env.development):
  * - SILENT (0): No output
- * - ERROR (1): Only errors 
+ * - ERROR (1): Only errors
  * - WARN (2): Errors and warnings
  * - INFO (3): Errors, warnings, and info (default for quiet dev)
  * - DEBUG (4): Verbose debugging
  * - TRACE (5): Extremely verbose (render state, ping/pong, etc.)
- * 
+ *
  * Runtime control (in browser console):
  * - __arbiterLogger.setLevel('DEBUG') or __arbiterLogger.setLevel(4)
  * - __arbiterLogger.current() - shows current level
@@ -22,7 +22,7 @@
 export enum LogLevel {
   SILENT = 0,
   ERROR = 1,
-  WARN = 2, 
+  WARN = 2,
   INFO = 3,
   DEBUG = 4,
   TRACE = 5,
@@ -61,33 +61,38 @@ class Logger {
     this.config = { ...this.config, ...config };
   }
 
-  private formatMessage(level: string, category: string, message: string, ...args: any[]): [string, ...any[]] {
+  private formatMessage(
+    level: string,
+    category: string,
+    message: string,
+    ...args: any[]
+  ): [string, ...any[]] {
     const parts = [];
-    
+
     if (this.config.enableTimestamps) {
       parts.push(new Date().toISOString().substring(11, 23));
     }
-    
+
     if (this.config.enableColors) {
       const colors = {
-        ERROR: '\x1b[31m',   // red
-        WARN: '\x1b[33m',    // yellow
-        INFO: '\x1b[36m',    // cyan
-        DEBUG: '\x1b[32m',   // green
-        TRACE: '\x1b[35m',   // magenta
-        RESET: '\x1b[0m'
+        ERROR: '\x1b[31m', // red
+        WARN: '\x1b[33m', // yellow
+        INFO: '\x1b[36m', // cyan
+        DEBUG: '\x1b[32m', // green
+        TRACE: '\x1b[35m', // magenta
+        RESET: '\x1b[0m',
       };
       parts.push(`${colors[level as keyof typeof colors] || ''}[${level}]${colors.RESET}`);
     } else {
       parts.push(`[${level}]`);
     }
-    
+
     if (category) {
       parts.push(`[${category}]`);
     }
-    
+
     parts.push(message);
-    
+
     return [parts.join(' '), ...args];
   }
 
@@ -176,15 +181,14 @@ export type CategoryLogger = ReturnType<typeof createLogger>;
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as any).__arbiterLogger = {
     setLevel: (level: string | number) => {
-      const logLevel = typeof level === 'string' 
-        ? LogLevel[level.toUpperCase() as keyof typeof LogLevel]
-        : level;
+      const logLevel =
+        typeof level === 'string' ? LogLevel[level.toUpperCase() as keyof typeof LogLevel] : level;
       if (logLevel !== undefined) {
         logger.setLevel(logLevel);
         console.log(`Log level set to: ${LogLevel[logLevel]}`);
       }
     },
     levels: LogLevel,
-    current: () => LogLevel[logger['config'].level],
+    current: () => LogLevel[logger.config.level],
   };
 }

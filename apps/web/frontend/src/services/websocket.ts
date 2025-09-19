@@ -2,8 +2,8 @@
  * WebSocket service for real-time communication
  */
 
-import type { WebSocketMessage, WsEvent } from "../types/api";
-import { createLogger } from "../utils/logger";
+import type { WebSocketMessage, WsEvent } from '../types/api';
+import { createLogger } from '../utils/logger';
 
 const log = createLogger('WebSocket');
 
@@ -105,7 +105,7 @@ class WebSocketService {
     }
 
     this.isManuallyDisconnected = false;
-    const protocol = this.locationService.protocol === "https:" ? "wss:" : "ws:";
+    const protocol = this.locationService.protocol === 'https:' ? 'wss:' : 'ws:';
     // Use API server port (5050) instead of frontend port for WebSocket connection
     this.wsUrl = `${protocol}//localhost:5050/ws?project_id=${projectId}`;
 
@@ -113,7 +113,7 @@ class WebSocketService {
       this.ws = this.webSocketFactory.create(this.wsUrl);
       this.setupEventListeners();
     } catch (error) {
-      log.error("Failed to create WebSocket connection:", error);
+      log.error('Failed to create WebSocket connection:', error);
       this.scheduleReconnect();
     }
   }
@@ -123,7 +123,7 @@ class WebSocketService {
     this.clearTimers();
 
     if (this.ws) {
-      this.ws.close(1000, "Manual disconnect");
+      this.ws.close(1000, 'Manual disconnect');
       this.ws = null;
     }
 
@@ -136,7 +136,7 @@ class WebSocketService {
     } else {
       // Queue message for when connection is restored
       this.messageQueue.push(message);
-      log.debug("WebSocket not connected, queuing message:", message);
+      log.debug('WebSocket not connected, queuing message:', message);
     }
   }
 
@@ -160,14 +160,14 @@ class WebSocketService {
   private setupEventListeners(): void {
     if (!this.ws) return;
 
-    this.ws.addEventListener("open", this.handleOpen.bind(this));
-    this.ws.addEventListener("message", this.handleMessage.bind(this));
-    this.ws.addEventListener("close", this.handleClose.bind(this));
-    this.ws.addEventListener("error", this.handleError.bind(this));
+    this.ws.addEventListener('open', this.handleOpen.bind(this));
+    this.ws.addEventListener('message', this.handleMessage.bind(this));
+    this.ws.addEventListener('close', this.handleClose.bind(this));
+    this.ws.addEventListener('error', this.handleError.bind(this));
   }
 
   private handleOpen(): void {
-    log.info("WebSocket connected");
+    log.info('WebSocket connected');
     this.reconnectAttempts = 0;
     this.options.onConnect();
 
@@ -188,30 +188,30 @@ class WebSocketService {
       const message: WebSocketMessage = JSON.parse(event.data);
 
       switch (message.type) {
-        case "event":
+        case 'event':
           this.handleEventMessage(message);
           break;
 
-        case "error":
-          log.error("WebSocket server error:", message.data);
+        case 'error':
+          log.error('WebSocket server error:', message.data);
           break;
 
-        case "pong":
+        case 'pong':
           // Server responded to ping
-          log.trace("Received pong from server");
+          log.trace('Received pong from server');
           break;
 
-        case "ping":
+        case 'ping':
           // Server sent ping, respond with pong
-          log.trace("Received ping from server, responding with pong");
-          this.send({ type: "pong", data: {} });
+          log.trace('Received ping from server, responding with pong');
+          this.send({ type: 'pong', data: {} });
           break;
 
         default:
-          log.warn("Unknown WebSocket message type:", message);
+          log.warn('Unknown WebSocket message type:', message);
       }
     } catch (error) {
-      log.error("Failed to parse WebSocket message:", error);
+      log.error('Failed to parse WebSocket message:', error);
     }
   }
 
@@ -224,38 +224,41 @@ class WebSocketService {
         type: rawEvent.type || rawEvent.event_type,
         project_id: rawEvent.project_id,
         timestamp: rawEvent.timestamp,
-        data: rawEvent.data
+        data: rawEvent.data,
       };
 
       // Validate event structure - connection_established events don't need project_id
       if (!wsEvent.type || !wsEvent.timestamp) {
-        log.warn("Invalid WebSocket event structure:", rawEvent);
+        log.warn('Invalid WebSocket event structure:', rawEvent);
         return;
       }
 
       // Skip project-specific events if we don't have a project_id (except connection_established)
       if (!wsEvent.project_id && wsEvent.type !== 'connection_established') {
-        log.debug("Skipping non-project event:", wsEvent.type);
+        log.debug('Skipping non-project event:', wsEvent.type);
         return;
       }
-      
-      log.debug("Processing WebSocket event:", { type: wsEvent.type, project_id: wsEvent.project_id });
+
+      log.debug('Processing WebSocket event:', {
+        type: wsEvent.type,
+        project_id: wsEvent.project_id,
+      });
 
       // Notify all subscribers
-      this.eventHandlers.forEach((handler) => {
+      this.eventHandlers.forEach(handler => {
         try {
           handler(wsEvent);
         } catch (error) {
-          log.error("Error in WebSocket event handler:", error);
+          log.error('Error in WebSocket event handler:', error);
         }
       });
     } catch (error) {
-      log.error("Failed to handle WebSocket event:", error);
+      log.error('Failed to handle WebSocket event:', error);
     }
   }
 
   private handleClose(event: CloseEvent): void {
-    log.info("WebSocket disconnected:", { code: event.code, reason: event.reason });
+    log.info('WebSocket disconnected:', { code: event.code, reason: event.reason });
     this.clearTimers();
     this.options.onDisconnect();
 
@@ -265,7 +268,7 @@ class WebSocketService {
   }
 
   private handleError(event: Event): void {
-    log.error("WebSocket error:", event);
+    log.error('WebSocket error:', event);
     this.options.onError(event);
   }
 
@@ -274,7 +277,7 @@ class WebSocketService {
       this.isManuallyDisconnected ||
       this.reconnectAttempts >= this.options.maxReconnectAttempts
     ) {
-      log.warn("Max reconnect attempts reached or manually disconnected");
+      log.warn('Max reconnect attempts reached or manually disconnected');
       return;
     }
 
@@ -284,7 +287,7 @@ class WebSocketService {
 
     this.reconnectAttempts++;
     log.info(
-      `Scheduling WebSocket reconnect attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts} in ${this.options.reconnectInterval}ms`,
+      `Scheduling WebSocket reconnect attempt ${this.reconnectAttempts}/${this.options.maxReconnectAttempts} in ${this.options.reconnectInterval}ms`
     );
 
     this.reconnectTimer = this.timerService.setTimeout(() => {
@@ -300,15 +303,15 @@ class WebSocketService {
 
     // Use stored URL instead of relying on WebSocket instance
     if (!this.wsUrl) {
-      log.error("Cannot reconnect: no previous URL available");
+      log.error('Cannot reconnect: no previous URL available');
       return;
     }
 
-    const urlParams = new URLSearchParams(this.wsUrl.split("?")[1]);
-    const projectId = urlParams.get("project_id");
+    const urlParams = new URLSearchParams(this.wsUrl.split('?')[1]);
+    const projectId = urlParams.get('project_id');
 
     if (!projectId) {
-      log.error("Cannot reconnect: no project ID available");
+      log.error('Cannot reconnect: no project ID available');
       return;
     }
 
@@ -321,10 +324,10 @@ class WebSocketService {
     this.pingTimer = this.timerService.setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.send({
-          type: "ping",
+          type: 'ping',
           data: { timestamp: new Date().toISOString() },
         });
-        log.trace("Ping sent to server");
+        log.trace('Ping sent to server');
       }
     }, this.options.pingInterval);
   }

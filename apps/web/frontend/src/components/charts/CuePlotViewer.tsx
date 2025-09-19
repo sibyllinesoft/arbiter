@@ -26,7 +26,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
   plotData,
   projectId,
   className = '',
-  mode = 'plots'
+  mode = 'plots',
 }) => {
   const [selectedPlot, setSelectedPlot] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
     try {
       setError(null);
       const plots: ParsedPlot[] = [];
-      
+
       // Look for objects that have chart-like structure (type, data, etc.)
       Object.entries(plotData).forEach(([key, value]) => {
         if (typeof value === 'object' && value !== null && 'type' in value && 'data' in value) {
@@ -86,8 +86,8 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
             backgroundColor: dataset.backgroundColor || '#3b82f6',
             borderColor: dataset.borderColor || '#2563eb',
             fill: dataset.fill !== undefined ? dataset.fill : type === 'area',
-            borderWidth: dataset.borderWidth || 2
-          }))
+            borderWidth: dataset.borderWidth || 2,
+          })),
         },
         options: {
           responsive: true,
@@ -96,20 +96,20 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
             x: {
               title: {
                 display: true,
-                text: type === 'scatter' ? 'X Values' : 'Categories'
+                text: type === 'scatter' ? 'X Values' : 'Categories',
               },
-              ...plotJson.options?.scales?.x
+              ...plotJson.options?.scales?.x,
             },
             y: {
               title: {
                 display: true,
-                text: 'Values'
+                text: 'Values',
               },
-              ...plotJson.options?.scales?.y
+              ...plotJson.options?.scales?.y,
             },
-            ...plotJson.options?.scales
-          }
-        }
+            ...plotJson.options?.scales,
+          },
+        },
       };
 
       return {
@@ -117,7 +117,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
         title,
         type,
         chartData,
-        rawData: plotJson
+        rawData: plotJson,
       };
     } catch (err) {
       console.error(`Error creating plot ${plotName}:`, err);
@@ -127,12 +127,18 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
 
   const getPlotIcon = (type: string) => {
     switch (type) {
-      case 'line': return <LineChart className="w-4 h-4" />;
-      case 'bar': return <BarChart3 className="w-4 h-4" />;
-      case 'scatter': return <Zap className="w-4 h-4" />;
-      case 'pie': return <PieChart className="w-4 h-4" />;
-      case 'area': return <TrendingUp className="w-4 h-4" />;
-      default: return <LineChart className="w-4 h-4" />;
+      case 'line':
+        return <LineChart className="w-4 h-4" />;
+      case 'bar':
+        return <BarChart3 className="w-4 h-4" />;
+      case 'scatter':
+        return <Zap className="w-4 h-4" />;
+      case 'pie':
+        return <PieChart className="w-4 h-4" />;
+      case 'area':
+        return <TrendingUp className="w-4 h-4" />;
+      default:
+        return <LineChart className="w-4 h-4" />;
     }
   };
 
@@ -142,7 +148,11 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
         <div className="flex items-center space-x-2">
           <div className="text-red-600">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
             </svg>
           </div>
           <div>
@@ -162,12 +172,13 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Plots Found</h3>
         <p className="text-gray-600">
-          No plot definitions found in the CUE source. Add plot definitions with type, data, and options.
+          No plot definitions found in the CUE source. Add plot definitions with type, data, and
+          options.
         </p>
         <div className="mt-4 text-left bg-white border border-gray-200 rounded p-4">
           <h4 className="font-medium text-gray-900 mb-2">Example plot definition:</h4>
           <pre className="text-xs font-mono text-gray-600">
-{`myChart: {
+            {`myChart: {
   title: "Sample Chart"
   type: "line"
   data: {
@@ -203,11 +214,10 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            Plot Visualization
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900">Plot Visualization</h3>
           <p className="text-sm text-gray-600 mt-1">
-            {parsedPlots.length} plot{parsedPlots.length !== 1 ? 's' : ''} found in CUE specification
+            {parsedPlots.length} plot{parsedPlots.length !== 1 ? 's' : ''} found in CUE
+            specification
           </p>
         </div>
       </div>
@@ -215,7 +225,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
       {/* Plot selector */}
       {parsedPlots.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {parsedPlots.map((plot) => (
+          {parsedPlots.map(plot => (
             <button
               key={plot.name}
               onClick={() => setSelectedPlot(plot.name)}
@@ -241,11 +251,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
           {mode === 'split' ? (
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <Chart
-                  data={selectedPlotData.chartData}
-                  width={400}
-                  height={300}
-                />
+                <Chart data={selectedPlotData.chartData} width={400} height={300} />
               </div>
               <div>
                 <DataViewer
@@ -257,11 +263,7 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
               </div>
             </div>
           ) : (
-            <Chart
-              data={selectedPlotData.chartData}
-              width={800}
-              height={400}
-            />
+            <Chart data={selectedPlotData.chartData} width={800} height={400} />
           )}
         </div>
       )}

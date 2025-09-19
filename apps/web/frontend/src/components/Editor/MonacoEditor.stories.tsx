@@ -14,7 +14,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'A Monaco Editor wrapper component with CUE syntax highlighting, custom themes, and developer-friendly features. Includes auto-completion, hover documentation, and keyboard shortcuts.',
+        component:
+          'A Monaco Editor wrapper component with CUE syntax highlighting, custom themes, and developer-friendly features. Includes auto-completion, hover documentation, and keyboard shortcuts.',
       },
     },
   },
@@ -190,15 +191,10 @@ const sampleJsonCode = `{
 export const Default: Story = {
   render: () => {
     const [code, setCode] = useState(sampleCueCode);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
-        <MonacoEditor
-          value={code}
-          onChange={setCode}
-          language="cue"
-          theme="cue-light"
-        />
+        <MonacoEditor value={code} onChange={setCode} language="cue" theme="cue-light" />
       </div>
     );
   },
@@ -215,15 +211,10 @@ export const Default: Story = {
 export const DarkTheme: Story = {
   render: () => {
     const [code, setCode] = useState(sampleCueCode);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
-        <MonacoEditor
-          value={code}
-          onChange={setCode}
-          language="cue"
-          theme="vs-dark"
-        />
+        <MonacoEditor value={code} onChange={setCode} language="cue" theme="vs-dark" />
       </div>
     );
   },
@@ -240,7 +231,7 @@ export const DarkTheme: Story = {
 export const TypeScriptEditor: Story = {
   render: () => {
     const [code, setCode] = useState(sampleTypeScriptCode);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
         <MonacoEditor
@@ -265,7 +256,8 @@ export const TypeScriptEditor: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Monaco editor configured for TypeScript with IntelliSense support, type checking, and advanced code completion.',
+        story:
+          'Monaco editor configured for TypeScript with IntelliSense support, type checking, and advanced code completion.',
       },
     },
   },
@@ -275,7 +267,7 @@ export const TypeScriptEditor: Story = {
 export const JsonEditor: Story = {
   render: () => {
     const [code, setCode] = useState(sampleJsonCode);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
         <MonacoEditor
@@ -309,7 +301,7 @@ export const JsonEditor: Story = {
 export const CustomOptions: Story = {
   render: () => {
     const [code, setCode] = useState(sampleCueCode);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
         <MonacoEditor
@@ -338,7 +330,8 @@ export const CustomOptions: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Customized editor with larger font, no line numbers, disabled minimap, custom font family, whitespace rendering, and ruler guides.',
+        story:
+          'Customized editor with larger font, no line numbers, disabled minimap, custom font family, whitespace rendering, and ruler guides.',
       },
     },
   },
@@ -371,7 +364,8 @@ export const ReadOnly: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Read-only editor for displaying code that should not be modified. The cursor is thinner to indicate non-editable state.',
+        story:
+          'Read-only editor for displaying code that should not be modified. The cursor is thinner to indicate non-editable state.',
       },
     },
   },
@@ -382,12 +376,12 @@ export const WithSaveCallback: Story = {
   render: () => {
     const [code, setCode] = useState(sampleCueCode);
     const [lastSaved, setLastSaved] = useState<string | null>(null);
-    
+
     const handleSave = () => {
       setLastSaved(new Date().toLocaleTimeString());
       alert('File saved! Check the timestamp below the editor.');
     };
-    
+
     return (
       <div className="space-y-4">
         <div className="h-80 border border-gray-200 rounded-lg">
@@ -401,11 +395,7 @@ export const WithSaveCallback: Story = {
         </div>
         <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded border">
           <strong>Tip:</strong> Press Ctrl+S (or Cmd+S on Mac) to save the file.
-          {lastSaved && (
-            <div className="mt-1 text-green-600">
-              ✅ Last saved at: {lastSaved}
-            </div>
-          )}
+          {lastSaved && <div className="mt-1 text-green-600">✅ Last saved at: {lastSaved}</div>}
         </div>
       </div>
     );
@@ -413,7 +403,8 @@ export const WithSaveCallback: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Editor with save functionality. Press Ctrl+S or Cmd+S to trigger the save callback.',
+        story:
+          'Editor with save functionality. Press Ctrl+S or Cmd+S to trigger the save callback.',
       },
     },
   },
@@ -424,7 +415,7 @@ export const MultipleEditors: Story = {
   render: () => {
     const [leftCode, setLeftCode] = useState(sampleCueCode);
     const [rightCode, setRightCode] = useState(sampleTypeScriptCode);
-    
+
     return (
       <div className="h-96 flex gap-4">
         <div className="flex-1 border border-gray-200 rounded-lg">
@@ -469,7 +460,8 @@ export const MultipleEditors: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Side-by-side editors showing CUE and TypeScript files. Useful for diff views or multi-file editing.',
+        story:
+          'Side-by-side editors showing CUE and TypeScript files. Useful for diff views or multi-file editing.',
       },
     },
   },
@@ -483,7 +475,7 @@ app: {
 	name: "demo"
 	port: 3000
 }`);
-    
+
     return (
       <div className="max-w-md">
         <div className="h-32 border border-gray-200 rounded-lg">
@@ -505,21 +497,20 @@ app: {
               hideCursorInOverviewRuler: true,
               scrollbar: {
                 vertical: 'hidden',
-                horizontal: 'hidden'
+                horizontal: 'hidden',
               },
             }}
           />
         </div>
-        <div className="mt-2 text-xs text-gray-500">
-          Compact editor for quick edits
-        </div>
+        <div className="mt-2 text-xs text-gray-500">Compact editor for quick edits</div>
       </div>
     );
   },
   parameters: {
     docs: {
       description: {
-        story: 'Compact editor suitable for embedding in forms or small spaces. Simplified interface with minimal chrome.',
+        story:
+          'Compact editor suitable for embedding in forms or small spaces. Simplified interface with minimal chrome.',
       },
     },
   },
@@ -583,7 +574,7 @@ computed: {
 for user in users {
 	"user_\\(user.name)": #User & user
 }`);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
         <MonacoEditor
@@ -608,7 +599,8 @@ for user in users {
   parameters: {
     docs: {
       description: {
-        story: 'Comprehensive example showcasing CUE language features: types, constraints, defaults, conditionals, templates, and computed values with proper syntax highlighting.',
+        story:
+          'Comprehensive example showcasing CUE language features: types, constraints, defaults, conditionals, templates, and computed values with proper syntax highlighting.',
       },
     },
   },
@@ -616,16 +608,12 @@ for user in users {
 
 // Interactive playground
 export const Interactive: Story = {
-  render: (args) => {
+  render: args => {
     const [code, setCode] = useState(sampleCueCode);
-    
+
     return (
       <div className="h-96 border border-gray-200 rounded-lg">
-        <MonacoEditor
-          value={code}
-          onChange={setCode}
-          {...args}
-        />
+        <MonacoEditor value={code} onChange={setCode} {...args} />
       </div>
     );
   },
@@ -637,7 +625,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with MonacoEditor props. Use the controls panel to test different languages, themes, and configurations.',
+        story:
+          'Interactive playground to experiment with MonacoEditor props. Use the controls panel to test different languages, themes, and configurations.',
       },
     },
   },

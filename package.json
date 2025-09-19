@@ -16,8 +16,9 @@
     "dev": "NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev",
     "start": "bun run --cwd apps/api start",
     "build": "bun run build:all",
-    "build:all": "bun run build:shared && bun run build:cli && bun run build:api",
+    "build:all": "bun run build:shared && bun run build:api-types && bun run build:cli && bun run build:api",
     "build:shared": "bun run --cwd packages/shared build",
+    "build:api-types": "bun run --cwd packages/api-types build",
     "build:cli": "bun run --cwd packages/cli build",
     "build:api": "bun run --cwd apps/api build",
     "build:standalone": "bun build packages/cli/src/cli.ts --compile --outfile arbiter-cli --target=bun",
@@ -40,15 +41,18 @@
     "test:e2e:basic": "cd tests/e2e-docker-compose && bun test docker-compose-e2e.test.ts",
     "test:e2e:deps": "cd tests/e2e-docker-compose && node check-dependencies.js",
     "lint": "bunx @biomejs/biome lint .",
-    "format": "bunx @biomejs/biome format . --write",
-    "format:check": "bunx @biomejs/biome format .",
+    "format": "bunx @biomejs/biome format . --write && prettier --write .",
+    "format:check": "bunx @biomejs/biome format . && prettier --check .",
+    "format:prettier": "prettier --write .",
+    "format:prettier:check": "prettier --check .",
     "check": "bunx @biomejs/biome check . --write",
     "check:ci": "bunx @biomejs/biome check .",
     "quality": "bun run format:check && bun run lint && bun run typecheck",
     "quality:fix": "bun run format && bun run check && bun run typecheck",
     "validate": "bun run quality && bun run test",
     "version:sync": "bun scripts/sync-versions.ts sync",
-    "version:validate": "bun scripts/sync-versions.ts validate"
+    "version:validate": "bun scripts/sync-versions.ts validate",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -56,6 +60,9 @@
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
     "bun-types": "^1.2.21",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "prettier": "^3.6.2",
     "typescript": "^5.3.3"
   },
   "engines": {

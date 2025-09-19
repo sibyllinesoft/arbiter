@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import { Sidebar, sidebarIcons, type SidebarNavItem } from './Sidebar';
-import { 
-  Home, 
-  Folder, 
-  FolderOpen, 
-  File, 
-  Settings, 
-  Users, 
-  Search, 
-  Code, 
+import {
+  Home,
+  Folder,
+  FolderOpen,
+  File,
+  Settings,
+  Users,
+  Search,
+  Code,
   GitBranch,
   Database,
   Shield,
@@ -17,7 +17,7 @@ import {
   Bell,
   Activity,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
 
 const meta: Meta<typeof Sidebar> = {
@@ -27,7 +27,8 @@ const meta: Meta<typeof Sidebar> = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Professional sidebar navigation with collapsible sections, nested items, and elegant hierarchy. Perfect for developer tools and complex applications.',
+        component:
+          'Professional sidebar navigation with collapsible sections, nested items, and elegant hierarchy. Perfect for developer tools and complex applications.',
       },
     },
   },
@@ -206,7 +207,7 @@ export const Default: Story = {
     items: basicNavItems,
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -232,7 +233,7 @@ export const WithHeader: Story = {
     ),
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -259,7 +260,7 @@ export const WithFooter: Story = {
     ),
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -274,7 +275,7 @@ export const NestedNavigation: Story = {
     items: nestedNavItems,
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -297,7 +298,7 @@ export const ProjectExplorer: Story = {
     ),
   },
   decorators: [
-    (Story) => (
+    Story => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -310,36 +311,38 @@ export const ProjectExplorer: Story = {
 export const CollapsibleSidebar: Story = {
   render: () => {
     const [collapsed, setCollapsed] = useState(false);
-    
+
     return (
       <div className="h-screen bg-gray-50 p-4 flex">
         <div className="relative">
-          <Sidebar 
+          <Sidebar
             items={nestedNavItems}
             collapsed={collapsed}
-            header={!collapsed ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">A</span>
+            header={
+              !collapsed ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center">
+                      <span className="text-white font-bold text-xs">A</span>
+                    </div>
+                    <span className="text-sm font-semibold text-gray-900">Acme</span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">Acme</span>
+                  <button
+                    onClick={() => setCollapsed(true)}
+                    className="p-1 hover:bg-gray-100 rounded"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-gray-500" />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setCollapsed(true)}
-                  className="p-1 hover:bg-gray-100 rounded"
+              ) : (
+                <button
+                  onClick={() => setCollapsed(false)}
+                  className="w-full flex justify-center p-2 hover:bg-gray-100 rounded"
                 >
-                  <ChevronLeft className="h-4 w-4 text-gray-500" />
+                  <ChevronRight className="h-4 w-4 text-gray-500" />
                 </button>
-              </div>
-            ) : (
-              <button 
-                onClick={() => setCollapsed(false)}
-                className="w-full flex justify-center p-2 hover:bg-gray-100 rounded"
-              >
-                <ChevronRight className="h-4 w-4 text-gray-500" />
-              </button>
-            )}
+              )
+            }
           />
         </div>
         <div className="flex-1 p-6">
@@ -354,7 +357,8 @@ export const CollapsibleSidebar: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive example showing how to implement a collapsible sidebar with toggle functionality.',
+        story:
+          'Interactive example showing how to implement a collapsible sidebar with toggle functionality.',
       },
     },
   },
@@ -365,7 +369,7 @@ export const SizeVariants: Story = {
     <div className="h-screen bg-gray-50 p-4 flex gap-4">
       <div className="flex-1">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Small (sm)</h3>
-        <Sidebar 
+        <Sidebar
           items={basicNavItems}
           width="sm"
           header={<div className="text-sm font-semibold">Small</div>}
@@ -373,7 +377,7 @@ export const SizeVariants: Story = {
       </div>
       <div className="flex-1">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Medium (md) - Default</h3>
-        <Sidebar 
+        <Sidebar
           items={basicNavItems}
           width="md"
           header={<div className="text-sm font-semibold">Medium</div>}
@@ -381,7 +385,7 @@ export const SizeVariants: Story = {
       </div>
       <div className="flex-1">
         <h3 className="text-sm font-semibold text-gray-700 mb-2">Large (lg)</h3>
-        <Sidebar 
+        <Sidebar
           items={basicNavItems}
           width="lg"
           header={<div className="text-sm font-semibold">Large</div>}
@@ -401,7 +405,7 @@ export const SizeVariants: Story = {
 export const InteractiveExample: Story = {
   render: () => {
     const [activeItem, setActiveItem] = useState('dashboard');
-    
+
     const interactiveItems: SidebarNavItem[] = nestedNavItems.map(item => ({
       ...item,
       active: item.id === activeItem,
@@ -410,13 +414,13 @@ export const InteractiveExample: Story = {
         active: child.id === activeItem,
       })),
     }));
-    
+
     return (
       <div className="h-screen bg-gray-50 p-4 flex">
         <div className="max-w-sm">
-          <Sidebar 
+          <Sidebar
             items={interactiveItems}
-            onItemClick={(item) => setActiveItem(item.id)}
+            onItemClick={item => setActiveItem(item.id)}
             header={
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -444,13 +448,15 @@ export const InteractiveExample: Story = {
         </div>
         <div className="flex-1 p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            {interactiveItems.find(item => item.active)?.label || 
-             interactiveItems.find(item => item.children?.some(child => child.active))?.children?.find(child => child.active)?.label || 
-             'Select an item'}
+            {interactiveItems.find(item => item.active)?.label ||
+              interactiveItems
+                .find(item => item.children?.some(child => child.active))
+                ?.children?.find(child => child.active)?.label ||
+              'Select an item'}
           </h1>
           <p className="text-gray-600">
-            Click on different navigation items to see the active state change.
-            Current active item ID: <code className="bg-gray-100 px-2 py-1 rounded text-sm">{activeItem}</code>
+            Click on different navigation items to see the active state change. Current active item
+            ID: <code className="bg-gray-100 px-2 py-1 rounded text-sm">{activeItem}</code>
           </p>
         </div>
       </div>

@@ -13,7 +13,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'A resizable split pane component that allows dividing space between two child components. Supports both vertical and horizontal splitting with configurable constraints and smooth resizing.',
+        component:
+          'A resizable split pane component that allows dividing space between two child components. Supports both vertical and horizontal splitting with configurable constraints and smooth resizing.',
       },
     },
   },
@@ -26,7 +27,8 @@ const meta = {
     },
     defaultSize: {
       control: { type: 'text' },
-      description: 'Default size of the first pane as percentage or pixels (e.g., "50%" or "300px")',
+      description:
+        'Default size of the first pane as percentage or pixels (e.g., "50%" or "300px")',
     },
     minSize: {
       control: { type: 'text' },
@@ -51,11 +53,21 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // Sample content components for demonstrations
-const SampleContent = ({ title, color, content }: { title: string; color: string; content?: string }) => (
+const SampleContent = ({
+  title,
+  color,
+  content,
+}: {
+  title: string;
+  color: string;
+  content?: string;
+}) => (
   <div className={`h-full flex flex-col ${color} p-4`}>
     <h3 className="font-semibold text-lg mb-2">{title}</h3>
     <div className="flex-1 overflow-auto">
-      <p className="text-sm text-gray-700 mb-4">{content || "This is sample content to demonstrate the split pane layout."}</p>
+      <p className="text-sm text-gray-700 mb-4">
+        {content || 'This is sample content to demonstrate the split pane layout.'}
+      </p>
       <div className="space-y-2">
         {Array.from({ length: 10 }, (_, i) => (
           <div key={i} className="p-2 bg-white/50 rounded border text-sm">
@@ -68,7 +80,7 @@ const SampleContent = ({ title, color, content }: { title: string; color: string
 );
 
 const FileTree = () => (
-  <SampleContent 
+  <SampleContent
     title="File Explorer"
     color="bg-gray-50 border-r border-gray-200"
     content="A typical file tree navigation. Resize the pane to see how it adapts to different widths."
@@ -76,7 +88,7 @@ const FileTree = () => (
 );
 
 const CodeEditor = () => (
-  <SampleContent 
+  <SampleContent
     title="Code Editor"
     color="bg-white"
     content="Main editor area. This space expands and contracts as you resize the split pane divider."
@@ -84,7 +96,7 @@ const CodeEditor = () => (
 );
 
 const TopPanel = () => (
-  <SampleContent 
+  <SampleContent
     title="Top Panel"
     color="bg-blue-50 border-b border-blue-200"
     content="Header or toolbar area. Resize vertically to see how horizontal splits work."
@@ -92,7 +104,7 @@ const TopPanel = () => (
 );
 
 const BottomPanel = () => (
-  <SampleContent 
+  <SampleContent
     title="Bottom Panel"
     color="bg-gray-50"
     content="Console, terminal, or details area. This demonstrates a horizontal split layout."
@@ -123,7 +135,8 @@ export const Horizontal: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Horizontal split pane dividing top and bottom areas. Useful for editor/console layouts.',
+        story:
+          'Horizontal split pane dividing top and bottom areas. Useful for editor/console layouts.',
       },
     },
   },
@@ -170,7 +183,8 @@ export const WithConstraints: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Split pane with minimum (150px) and maximum (500px) size constraints. Try resizing beyond these limits.',
+        story:
+          'Split pane with minimum (150px) and maximum (500px) size constraints. Try resizing beyond these limits.',
       },
     },
   },
@@ -199,7 +213,7 @@ export const NestedSplitPanes: Story = {
       <FileTree key="left" />
       <SplitPane key="right" split="horizontal" defaultSize="60%" minSize="40%" maxSize="80%">
         <CodeEditor key="top" />
-        <SampleContent 
+        <SampleContent
           key="bottom"
           title="Terminal / Console"
           color="bg-gray-900 text-gray-100"
@@ -211,7 +225,8 @@ export const NestedSplitPanes: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Nested split panes creating a three-panel layout: file tree (left), editor (top-right), and terminal (bottom-right).',
+        story:
+          'Nested split panes creating a three-panel layout: file tree (left), editor (top-right), and terminal (bottom-right).',
       },
     },
   },
@@ -228,12 +243,24 @@ export const IDELayout: Story = {
           </div>
           <div className="flex-1 p-2 space-y-1">
             <div className="text-xs text-gray-600 font-medium mb-2">PROJECT FILES</div>
-            <div className="text-sm text-gray-700 pl-4 py-1 hover:bg-gray-100 rounded cursor-pointer">📁 src/</div>
-            <div className="text-sm text-gray-700 pl-8 py-1 hover:bg-gray-100 rounded cursor-pointer">📄 App.tsx</div>
-            <div className="text-sm text-gray-700 pl-8 py-1 hover:bg-gray-100 rounded cursor-pointer">📄 index.tsx</div>
-            <div className="text-sm text-gray-700 pl-4 py-1 hover:bg-gray-100 rounded cursor-pointer">📁 components/</div>
-            <div className="text-sm text-gray-700 pl-8 py-1 hover:bg-gray-100 rounded cursor-pointer">📄 Button.tsx</div>
-            <div className="text-sm text-blue-600 pl-8 py-1 bg-blue-50 rounded font-medium cursor-pointer">📄 SplitPane.tsx</div>
+            <div className="text-sm text-gray-700 pl-4 py-1 hover:bg-gray-100 rounded cursor-pointer">
+              📁 src/
+            </div>
+            <div className="text-sm text-gray-700 pl-8 py-1 hover:bg-gray-100 rounded cursor-pointer">
+              📄 App.tsx
+            </div>
+            <div className="text-sm text-gray-700 pl-8 py-1 hover:bg-gray-100 rounded cursor-pointer">
+              📄 index.tsx
+            </div>
+            <div className="text-sm text-gray-700 pl-4 py-1 hover:bg-gray-100 rounded cursor-pointer">
+              📁 components/
+            </div>
+            <div className="text-sm text-gray-700 pl-8 py-1 hover:bg-gray-100 rounded cursor-pointer">
+              📄 Button.tsx
+            </div>
+            <div className="text-sm text-blue-600 pl-8 py-1 bg-blue-50 rounded font-medium cursor-pointer">
+              📄 SplitPane.tsx
+            </div>
           </div>
         </div>
         <SplitPane key="right" split="horizontal" defaultSize="70%" minSize="50%" maxSize="85%">
@@ -268,7 +295,8 @@ export const IDELayout: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'A realistic IDE layout using nested split panes: file explorer on the left, code editor on the top-right, and terminal on the bottom-right.',
+        story:
+          'A realistic IDE layout using nested split panes: file explorer on the left, code editor on the top-right, and terminal on the bottom-right.',
       },
     },
   },
@@ -287,7 +315,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with all SplitPane props. Use the controls panel to adjust settings and see live changes.',
+        story:
+          'Interactive playground to experiment with all SplitPane props. Use the controls panel to adjust settings and see live changes.',
       },
     },
   },

@@ -16,7 +16,7 @@ interface SourceDiagramProps {
 export const SourceDiagram: React.FC<SourceDiagramProps> = ({
   projectId,
   className = '',
-  title = 'CUE Specification - Source View'
+  title = 'CUE Specification - Source View',
 }) => {
   const [resolvedData, setResolvedData] = useState<Record<string, unknown> | null>(null);
   const [sourceContent, setSourceContent] = useState<string>('');
@@ -30,15 +30,15 @@ export const SourceDiagram: React.FC<SourceDiagramProps> = ({
   const convertToCueSource = (data: Record<string, unknown>): string => {
     const formatValue = (value: unknown, indent: number = 0): string => {
       const indentStr = '  '.repeat(indent);
-      
+
       if (value === null || value === undefined) {
         return 'null';
       }
-      
+
       if (typeof value === 'boolean' || typeof value === 'number') {
         return String(value);
       }
-      
+
       if (typeof value === 'string') {
         // Handle multiline strings
         if (value.includes('\n')) {
@@ -48,31 +48,31 @@ ${indentStr}"""`;
         }
         return `"${value}"`;
       }
-      
+
       if (Array.isArray(value)) {
         if (value.length === 0) return '[]';
-        
+
         const items = value.map(item => `${indentStr}  ${formatValue(item, indent + 1)}`);
         return `[
 ${items.join(',\n')}
 ${indentStr}]`;
       }
-      
+
       if (typeof value === 'object' && value !== null) {
         const entries = Object.entries(value);
         if (entries.length === 0) return '{}';
-        
+
         const fields = entries.map(([key, val]) => {
           // Format key (quote if needed)
           const formattedKey = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `"${key}"`;
           return `${indentStr}  ${formattedKey}: ${formatValue(val, indent + 1)}`;
         });
-        
+
         return `{
 ${fields.join('\n')}
 ${indentStr}}`;
       }
-      
+
       return String(value);
     };
 
@@ -83,7 +83,7 @@ ${indentStr}}`;
 
     // Add resolved data as CUE definitions
     const entries = Object.entries(data);
-    
+
     for (const [key, value] of entries) {
       const formattedKey = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `"${key}"`;
       cueContent += `${formattedKey}: ${formatValue(value)}\n\n`;
@@ -101,15 +101,16 @@ ${indentStr}}`;
         setResolvedData(response.resolved);
         setSpecHash(response.spec_hash);
         setLastSync(new Date().toISOString());
-        
+
         // Convert resolved data to CUE source format
         const cueSource = convertToCueSource(response.resolved);
         setSourceContent(cueSource);
-        
       } catch (err) {
         console.error('Failed to fetch resolved spec:', err);
         setError(err instanceof Error ? err.message : 'Failed to load specification data');
-        setSourceContent('// Error loading specification data\n// Please check the console for details');
+        setSourceContent(
+          '// Error loading specification data\n// Please check the console for details'
+        );
       } finally {
         setLoading(false);
       }
@@ -151,7 +152,8 @@ ${indentStr}}`;
         // This will trigger the useEffect to re-fetch data
         const fetchData = async () => {
           try {
-            const response: ResolvedSpecResponse = await apiService.getResolvedSpec(currentProjectId);
+            const response: ResolvedSpecResponse =
+              await apiService.getResolvedSpec(currentProjectId);
             setResolvedData(response.resolved);
             setSpecHash(response.spec_hash);
             setLastSync(new Date().toISOString());
@@ -223,11 +225,11 @@ ${indentStr}}`;
             <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
               <span className="flex items-center space-x-1">
                 <FileText className="w-3 h-3" />
-                <span>{lineCount} lines, {charCount} chars</span>
+                <span>
+                  {lineCount} lines, {charCount} chars
+                </span>
               </span>
-              {lastSync && (
-                <span>synced {new Date(lastSync).toLocaleTimeString()}</span>
-              )}
+              {lastSync && <span>synced {new Date(lastSync).toLocaleTimeString()}</span>}
               {specHash && (
                 <span className="flex items-center space-x-1">
                   <Hash className="w-3 h-3" />
@@ -238,7 +240,7 @@ ${indentStr}}`;
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={handleRefresh}
@@ -249,8 +251,8 @@ ${indentStr}}`;
             <button
               onClick={handleCopy}
               className={`px-3 py-1 text-sm rounded transition-colors flex items-center space-x-1 ${
-                copySuccess 
-                  ? 'text-green-700 bg-green-100' 
+                copySuccess
+                  ? 'text-green-700 bg-green-100'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
             >

@@ -1,8 +1,9 @@
 /**
  * Utility functions for Spec Workbench backend
  */
-import { createHash } from "node:crypto";
-import type { ExternalToolResult, ProblemDetails, RateLimitBucket } from "./types.ts";
+import { createHash } from 'node:crypto';
+import { isAbsolute, normalize, resolve, sep } from 'node:path';
+import type { ExternalToolResult, ProblemDetails, RateLimitBucket } from './types.ts';
 
 /**
  * Generate a unique ID using crypto.randomUUID()
@@ -15,7 +16,7 @@ export function generateId(): string {
  * Compute SHA256 hash of a string
  */
 export function computeSpecHash(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
+  return createHash('sha256').update(content).digest('hex');
 }
 
 /**
@@ -28,7 +29,7 @@ export async function executeCommand(
     cwd?: string;
     timeout?: number;
     env?: Record<string, string>;
-  } = {},
+  } = {}
 ): Promise<ExternalToolResult> {
   const startTime = Date.now();
   const timeoutMs = options.timeout ?? 10000; // 10s default
@@ -37,8 +38,8 @@ export async function executeCommand(
     const proc = Bun.spawn([command, ...args], {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
-      stdout: "pipe",
-      stderr: "pipe",
+      stdout: 'pipe',
+      stderr: 'pipe',
     });
 
     // Set up timeout
@@ -68,8 +69,8 @@ export async function executeCommand(
     const duration = Date.now() - startTime;
     return {
       success: false,
-      stdout: "",
-      stderr: error instanceof Error ? error.message : "Unknown error",
+      stdout: '',
+      stderr: error instanceof Error ? error.message : 'Unknown error',
       exit_code: -1,
       duration_ms: duration,
     };
@@ -81,7 +82,7 @@ export async function executeCommand(
  */
 export async function formatCUE(
   content: string,
-  cueBinaryPath: string = "cue",
+  cueBinaryPath = 'cue'
 ): Promise<{ formatted: string; success: boolean; error?: string }> {
   // Write content to temporary file
   const tempFile = `/tmp/temp_${generateId()}.cue`;
@@ -89,30 +90,29 @@ export async function formatCUE(
   try {
     await Bun.write(tempFile, content);
 
-    const result = await executeCommand(cueBinaryPath, ["fmt", tempFile], {
+    const result = await executeCommand(cueBinaryPath, ['fmt', tempFile], {
       timeout: 5000,
     });
 
     if (result.success) {
       const formatted = await Bun.file(tempFile).text();
       return { formatted, success: true };
-    } else {
-      return {
-        formatted: content,
-        success: false,
-        error: result.stderr || "Failed to format CUE content",
-      };
     }
+    return {
+      formatted: content,
+      success: false,
+      error: result.stderr || 'Failed to format CUE content',
+    };
   } catch (error) {
     return {
       formatted: content,
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   } finally {
     // Clean up temp file
     try {
-      (await Bun.file(tempFile).exists()) && (await Bun.write(tempFile, ""));
+      (await Bun.file(tempFile).exists()) && (await Bun.write(tempFile, ''));
     } catch {
       // Ignore cleanup errors
     }
@@ -128,7 +128,7 @@ export function createProblemDetails(
   detail?: string,
   type?: string,
   instance?: string,
-  extensions?: Record<string, unknown>,
+  extensions?: Record<string, unknown>
 ): ProblemDetails {
   return {
     type: type ?? `https://httpstatuses.com/${status}`,
@@ -147,9 +147,9 @@ export class TokenBucket {
   private buckets = new Map<string, RateLimitBucket>();
 
   constructor(
-    private maxTokens: number = 10,
-    private refillRate: number = 1, // tokens per second
-    private windowMs: number = 10000, // 10 seconds
+    private maxTokens = 10,
+    private refillRate = 1, // tokens per second
+    private windowMs = 10000 // 10 seconds
   ) {}
 
   /**
@@ -225,7 +225,7 @@ export async function ensureDir(path: string): Promise<void> {
   try {
     const stat = await Bun.file(path).exists();
     if (!stat) {
-      await Bun.spawn(["mkdir", "-p", path]).exited;
+      await Bun.spawn(['mkdir', '-p', path]).exited;
     }
   } catch (error) {
     throw new Error(`Failed to create directory ${path}: ${error}`);
@@ -236,7 +236,7 @@ export async function ensureDir(path: string): Promise<void> {
  * Safe JSON parsing with error handling
  */
 export function safeJsonParse<T = any>(
-  json: string,
+  json: string
 ): { success: true; data: T } | { success: false; error: string } {
   try {
     const data = JSON.parse(json);
@@ -244,7 +244,7 @@ export function safeJsonParse<T = any>(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Invalid JSON",
+      error: error instanceof Error ? error.message : 'Invalid JSON',
     };
   }
 }
@@ -252,15 +252,38 @@ export function safeJsonParse<T = any>(
 /**
  * Validate that a string is a valid file path (security check)
  */
-export function validatePath(path: string): boolean {
-  // Prevent directory traversal attacks
-  if (path.includes("..") || path.includes("~") || path.startsWith("/")) {
+export function validatePath(targetPath: string, baseDir: string = process.cwd()): boolean {
+  if (!targetPath) {
     return false;
   }
 
-  // Only allow alphanumeric, dots, slashes, hyphens, underscores
-  const pathRegex = /^[a-zA-Z0-9._/-]+$/;
-  return pathRegex.test(path);
+  if (targetPath.includes('\0')) {
+    return false;
+  }
+
+  const sanitised = targetPath.replace(/\\+/g, '/');
+  const normalisedInput = normalize(sanitised).replace(/\\+/g, '/');
+
+  // Reject absolute paths or attempts to traverse up the directory tree
+  if (
+    isAbsolute(normalisedInput) ||
+    normalisedInput.startsWith('..') ||
+    normalisedInput.includes('/../')
+  ) {
+    return false;
+  }
+
+  // Only allow a conservative character set
+  const pathRegex = /^[a-zA-Z0-9._/\-]+$/;
+  if (!pathRegex.test(normalisedInput)) {
+    return false;
+  }
+
+  const resolvedBase = resolve(baseDir);
+  const resolvedTarget = resolve(resolvedBase, normalisedInput);
+  const baseWithSep = resolvedBase.endsWith(sep) ? resolvedBase : `${resolvedBase}${sep}`;
+
+  return resolvedTarget === resolvedBase || resolvedTarget.startsWith(baseWithSep);
 }
 
 /**
@@ -277,47 +300,47 @@ export const logger = {
   info: (message: string, meta?: Record<string, unknown>) => {
     console.log(
       JSON.stringify({
-        level: "info",
+        level: 'info',
         message,
         timestamp: getCurrentTimestamp(),
         ...meta,
-      }),
+      })
     );
   },
 
   warn: (message: string, meta?: Record<string, unknown>) => {
     console.warn(
       JSON.stringify({
-        level: "warn",
+        level: 'warn',
         message,
         timestamp: getCurrentTimestamp(),
         ...meta,
-      }),
+      })
     );
   },
 
   error: (message: string, error?: Error, meta?: Record<string, unknown>) => {
     console.error(
       JSON.stringify({
-        level: "error",
+        level: 'error',
         message,
         error: error?.message,
         stack: error?.stack,
         timestamp: getCurrentTimestamp(),
         ...meta,
-      }),
+      })
     );
   },
 
   debug: (message: string, meta?: Record<string, unknown>) => {
-    if (process.env.NODE_ENV === "development") {
+    if (process.env.NODE_ENV === 'development') {
       console.debug(
         JSON.stringify({
-          level: "debug",
+          level: 'debug',
           message,
           timestamp: getCurrentTimestamp(),
           ...meta,
-        }),
+        })
       );
     }
   },
@@ -327,7 +350,7 @@ export const logger = {
  * Parse bearer token from Authorization header
  */
 export function parseBearerToken(authHeader: string | undefined): string | null {
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
   return authHeader.slice(7).trim();

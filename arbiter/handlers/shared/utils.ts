@@ -1,6 +1,6 @@
-import { writeFile, appendFile, mkdir } from 'fs/promises';
-import { existsSync } from 'fs';
-import { join } from 'path';
+import { existsSync } from 'node:fs';
+import { appendFile, mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 /**
  * Generic webhook event structure
@@ -47,8 +47,8 @@ export interface LogEvent {
  * Creates a standardized handler response
  */
 export function createResponse(
-  success: boolean, 
-  message: string, 
+  success: boolean,
+  message: string,
   metadata?: Record<string, any>
 ): HandlerResponse {
   return {
@@ -62,10 +62,7 @@ export function createResponse(
 /**
  * Validates webhook payload has required fields
  */
-export function validatePayload(
-  payload: any, 
-  requiredFields: string[]
-): ValidationResult {
+export function validatePayload(payload: any, requiredFields: string[]): ValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
@@ -108,14 +105,14 @@ export function validatePayload(
 export async function logEvent(event: LogEvent): Promise<void> {
   try {
     const logsDir = join(process.cwd(), 'logs', 'handlers');
-    
+
     // Ensure logs directory exists
     if (!existsSync(logsDir)) {
       await mkdir(logsDir, { recursive: true });
     }
 
     const logFile = join(logsDir, `${new Date().toISOString().split('T')[0]}.log`);
-    const logEntry = JSON.stringify(event) + '\n';
+    const logEntry = `${JSON.stringify(event)}\n`;
 
     await appendFile(logFile, logEntry, 'utf8');
   } catch (error) {
@@ -135,7 +132,7 @@ export function validateSignature(
 ): boolean {
   // This is a placeholder implementation
   // In production, you would implement proper HMAC validation for each provider
-  
+
   if (!signature || !secret) {
     return false;
   }
@@ -143,7 +140,7 @@ export function validateSignature(
   // GitHub uses SHA256 with X-Hub-Signature-256
   // GitLab uses SHA256 with X-Gitlab-Token
   // Implementation would vary by provider
-  
+
   console.warn(`Signature validation not implemented for ${provider}`);
   return true; // Return true for demo purposes
 }
@@ -153,15 +150,21 @@ export function validateSignature(
  */
 export function sanitizePayload(payload: any): any {
   const sensitiveFields = [
-    'token', 'secret', 'password', 'key', 'auth',
-    'authorization', 'x-hub-signature', 'x-gitlab-token'
+    'token',
+    'secret',
+    'password',
+    'key',
+    'auth',
+    'authorization',
+    'x-hub-signature',
+    'x-gitlab-token',
   ];
 
   function sanitizeObject(obj: any): any {
     if (Array.isArray(obj)) {
       return obj.map(sanitizeObject);
     }
-    
+
     if (obj && typeof obj === 'object') {
       const sanitized: any = {};
       for (const [key, value] of Object.entries(obj)) {
@@ -174,7 +177,7 @@ export function sanitizePayload(payload: any): any {
       }
       return sanitized;
     }
-    
+
     return obj;
   }
 
@@ -184,7 +187,10 @@ export function sanitizePayload(payload: any): any {
 /**
  * Extracts common repository information from different providers
  */
-export function extractRepositoryInfo(payload: any, provider: string): {
+export function extractRepositoryInfo(
+  payload: any,
+  provider: string
+): {
   name: string;
   fullName: string;
   url: string;
@@ -200,7 +206,7 @@ export function extractRepositoryInfo(payload: any, provider: string): {
           };
         }
         break;
-      
+
       case 'gitlab':
         if (payload.project) {
           return {
@@ -210,7 +216,7 @@ export function extractRepositoryInfo(payload: any, provider: string): {
           };
         }
         break;
-      
+
       default:
         console.warn(`Repository extraction not implemented for ${provider}`);
         return null;
@@ -218,7 +224,7 @@ export function extractRepositoryInfo(payload: any, provider: string): {
   } catch (error) {
     console.error('Error extracting repository info:', error);
   }
-  
+
   return null;
 }
 
@@ -300,11 +306,14 @@ export function validateConventionalCommit(message: string): {
   errors: string[];
 } {
   const errors: string[] = [];
-  const conventionalPattern = /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?: .+/;
+  const conventionalPattern =
+    /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?: .+/;
   const match = message.match(conventionalPattern);
 
   if (!match) {
-    errors.push('Commit message should follow conventional commit format: type(scope): description');
+    errors.push(
+      'Commit message should follow conventional commit format: type(scope): description'
+    );
     return { isValid: false, type: 'unknown', errors };
   }
 

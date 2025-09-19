@@ -1,17 +1,17 @@
-import chalk from "chalk";
-import type { Command } from "commander";
-import type { CLIConfig } from "../types.js";
+import chalk from 'chalk';
+import type { Command } from 'commander';
+import type { CLIConfig } from '../types.js';
 import {
-  type Constraints,
   ConstraintViolationError,
+  type Constraints,
   getGlobalConstraintSystem,
   initializeGlobalConstraintSystem,
-} from "./index.js";
+} from './index.js';
 import {
+  type MonitoringConfig,
   createConstraintMonitor,
   globalConstraintMonitor,
-  type MonitoringConfig,
-} from "./monitoring.js";
+} from './monitoring.js';
 
 /**
  * CLI constraint integration options
@@ -36,7 +36,7 @@ export interface CLIConstraintOptions {
  */
 export function initializeCLIConstraints(
   config: CLIConfig,
-  options: CLIConstraintOptions = {},
+  options: CLIConstraintOptions = {}
 ): void {
   const {
     enableConstraints = true,
@@ -48,7 +48,7 @@ export function initializeCLIConstraints(
   } = options;
 
   if (!enableConstraints) {
-    console.log(chalk.dim("Constraint enforcement disabled"));
+    console.log(chalk.dim('Constraint enforcement disabled'));
     return;
   }
 
@@ -65,7 +65,7 @@ export function initializeCLIConstraints(
     complianceReport,
   });
 
-  console.log(chalk.dim("Constraint enforcement initialized"));
+  console.log(chalk.dim('Constraint enforcement initialized'));
 }
 
 /**
@@ -74,12 +74,12 @@ export function initializeCLIConstraints(
 export function addConstraintCommands(program: Command): void {
   // Constraint status command
   program
-    .command("constraints")
-    .description("Show constraint system status and compliance")
-    .option("-r, --report", "Generate full compliance report")
-    .option("-j, --json", "Output in JSON format")
-    .option("-m, --monitoring", "Show monitoring data")
-    .action(async (options) => {
+    .command('constraints')
+    .description('Show constraint system status and compliance')
+    .option('-r, --report', 'Generate full compliance report')
+    .option('-j, --json', 'Output in JSON format')
+    .option('-m, --monitoring', 'Show monitoring data')
+    .action(async options => {
       try {
         const constraintSystem = getGlobalConstraintSystem();
 
@@ -98,8 +98,8 @@ export function addConstraintCommands(program: Command): void {
           showQuickStatus(status);
         }
       } catch (error) {
-        if (error instanceof Error && error.message.includes("not initialized")) {
-          console.error(chalk.red("Constraint system not initialized. Run a command first."));
+        if (error instanceof Error && error.message.includes('not initialized')) {
+          console.error(chalk.red('Constraint system not initialized. Run a command first.'));
           process.exit(1);
         }
         throw error;
@@ -108,17 +108,17 @@ export function addConstraintCommands(program: Command): void {
 
   // Export monitoring data command
   program
-    .command("constraints:export")
-    .description("Export constraint monitoring data")
-    .requiredOption("-o, --output <file>", "Output file path")
-    .action(async (options) => {
+    .command('constraints:export')
+    .description('Export constraint monitoring data')
+    .requiredOption('-o, --output <file>', 'Output file path')
+    .action(async options => {
       try {
         await globalConstraintMonitor.exportData(options.output);
         console.log(chalk.green(`Monitoring data exported to ${options.output}`));
       } catch (error) {
         console.error(
-          chalk.red("Export failed:"),
-          error instanceof Error ? error.message : String(error),
+          chalk.red('Export failed:'),
+          error instanceof Error ? error.message : String(error)
         );
         process.exit(1);
       }
@@ -126,18 +126,18 @@ export function addConstraintCommands(program: Command): void {
 
   // Reset monitoring data command
   program
-    .command("constraints:reset")
-    .description("Reset constraint monitoring data")
-    .option("-f, --force", "Force reset without confirmation")
-    .action(async (options) => {
+    .command('constraints:reset')
+    .description('Reset constraint monitoring data')
+    .option('-f, --force', 'Force reset without confirmation')
+    .action(async options => {
       if (!options.force) {
-        console.log("This will reset all constraint monitoring data.");
-        console.log("Use --force to confirm.");
+        console.log('This will reset all constraint monitoring data.');
+        console.log('Use --force to confirm.');
         return;
       }
 
       globalConstraintMonitor.cleanup();
-      console.log(chalk.green("Monitoring data reset"));
+      console.log(chalk.green('Monitoring data reset'));
     });
 }
 
@@ -145,7 +145,7 @@ export function addConstraintCommands(program: Command): void {
  * Wrap command execution with constraint enforcement
  */
 export function withConstraintEnforcement<T extends any[]>(
-  commandFn: (...args: T) => Promise<number>,
+  commandFn: (...args: T) => Promise<number>
 ): (...args: T) => Promise<number> {
   return async (...args: T): Promise<number> => {
     try {
@@ -159,7 +159,7 @@ export function withConstraintEnforcement<T extends any[]>(
       const duration = Date.now() - startTime;
       const success = result === 0;
 
-      globalConstraintMonitor.recordOperation(commandFn.name || "command", duration, success, {
+      globalConstraintMonitor.recordOperation(commandFn.name || 'command', duration, success, {
         args: args.length,
       });
 
@@ -171,25 +171,25 @@ export function withConstraintEnforcement<T extends any[]>(
           constraint: error.constraint,
           violation: error,
           timestamp: Date.now(),
-          operation: commandFn.name || "command",
+          operation: commandFn.name || 'command',
           context: { args: args.length },
         });
 
         // Show violation details
-        console.error(chalk.red("Constraint Violation:"));
+        console.error(chalk.red('Constraint Violation:'));
         console.error(chalk.red(`  ${error.constraint}: ${error.message}`));
-        console.error(chalk.dim("  Expected:"), error.expected);
-        console.error(chalk.dim("  Actual:"), error.actual);
+        console.error(chalk.dim('  Expected:'), error.expected);
+        console.error(chalk.dim('  Actual:'), error.actual);
 
         if (error.details) {
-          console.error(chalk.dim("  Details:"), JSON.stringify(error.details, null, 2));
+          console.error(chalk.dim('  Details:'), JSON.stringify(error.details, null, 2));
         }
 
         return 2; // Constraint violation exit code
       }
 
       // Record generic failure
-      globalConstraintMonitor.recordOperation(commandFn.name || "command", Date.now(), false, {
+      globalConstraintMonitor.recordOperation(commandFn.name || 'command', Date.now(), false, {
         error: error instanceof Error ? error.message : String(error),
       });
 
@@ -208,10 +208,10 @@ function setupConstraintEventHandlers(
     showViolations: boolean;
     exitOnViolation: boolean;
     complianceReport: boolean;
-  },
+  }
 ): void {
   // Handle constraint violations
-  constraintSystem.on("violation", (event) => {
+  constraintSystem.on('violation', event => {
     monitor.recordViolation(event);
 
     if (options.showViolations) {
@@ -219,17 +219,17 @@ function setupConstraintEventHandlers(
     }
 
     if (options.exitOnViolation) {
-      console.error(chalk.red("Exiting due to constraint violation"));
+      console.error(chalk.red('Exiting due to constraint violation'));
       process.exit(2);
     }
   });
 
   // Handle monitoring alerts
-  monitor.on("alert", (alert) => {
+  monitor.on('alert', alert => {
     console.warn(chalk.yellow(`🚨 Alert: ${alert.message}`));
 
-    if (alert.type === "system_health" && alert.issues) {
-      console.warn(chalk.yellow("Issues:"));
+    if (alert.type === 'system_health' && alert.issues) {
+      console.warn(chalk.yellow('Issues:'));
       for (const issue of alert.issues) {
         console.warn(chalk.yellow(`  • ${issue}`));
       }
@@ -238,7 +238,7 @@ function setupConstraintEventHandlers(
 
   // Handle process exit for compliance report
   if (options.complianceReport) {
-    process.on("beforeExit", () => {
+    process.on('beforeExit', () => {
       try {
         const report = constraintSystem.generateComplianceReport();
         console.log(`\n${report}`);
@@ -246,21 +246,21 @@ function setupConstraintEventHandlers(
         const monitoringReport = monitor.generateReport();
         console.log(`\n${monitoringReport}`);
       } catch (error) {
-        console.error(chalk.red("Failed to generate compliance report:"), error);
+        console.error(chalk.red('Failed to generate compliance report:'), error);
       }
     });
   }
 
   // Handle graceful shutdown
-  process.on("SIGINT", async () => {
-    console.log(chalk.dim("\nShutting down constraint system..."));
+  process.on('SIGINT', async () => {
+    console.log(chalk.dim('\nShutting down constraint system...'));
 
     try {
       await constraintSystem.shutdown();
-      await monitor.exportData("./constraint-data-export.json");
-      console.log(chalk.dim("Constraint data exported to ./constraint-data-export.json"));
+      await monitor.exportData('./constraint-data-export.json');
+      console.log(chalk.dim('Constraint data exported to ./constraint-data-export.json'));
     } catch (error) {
-      console.error(chalk.red("Shutdown error:"), error);
+      console.error(chalk.red('Shutdown error:'), error);
     }
 
     process.exit(0);
@@ -270,16 +270,16 @@ function setupConstraintEventHandlers(
 /**
  * Show quick constraint status
  */
-function showQuickStatus(
-  status: ReturnType<typeof getGlobalConstraintSystem>["getSystemStatus"],
-): void {
-  console.log(chalk.bold("🛡️  Constraint System Status"));
-  console.log("");
+type ConstraintStatus = ReturnType<ReturnType<typeof getGlobalConstraintSystem>['getSystemStatus']>;
+
+function showQuickStatus(status: ConstraintStatus): void {
+  console.log(chalk.bold('🛡️  Constraint System Status'));
+  console.log('');
 
   // Health indicator
   const healthIndicator = status.isHealthy
-    ? chalk.green("✅ HEALTHY")
-    : chalk.red("❌ VIOLATIONS DETECTED");
+    ? chalk.green('✅ HEALTHY')
+    : chalk.red('❌ VIOLATIONS DETECTED');
   console.log(`Status: ${healthIndicator}`);
 
   // Compliance rate
@@ -290,64 +290,64 @@ function showQuickStatus(
         ? chalk.yellow
         : chalk.red;
   console.log(`Compliance: ${complianceColor(`${status.violations.complianceRate.toFixed(1)}%`)}`);
-  console.log("");
+  console.log('');
 
   // Quick stats
-  console.log(chalk.bold("Quick Stats:"));
+  console.log(chalk.bold('Quick Stats:'));
   console.log(`  Total Violations: ${status.violations.totalViolations}`);
   console.log(`  Active Operations: ${status.sandbox.activeOperations}`);
   console.log(`  Sandbox Compliance: ${status.sandbox.complianceRate.toFixed(1)}%`);
   console.log(`  Schema Version: ${status.schema.latestVersion}`);
-  console.log("");
+  console.log('');
 
   // Constraint limits
-  console.log(chalk.bold("Current Limits:"));
+  console.log(chalk.bold('Current Limits:'));
   console.log(`  Max Payload: ${formatBytes(status.constraints.maxPayloadSize)}`);
   console.log(`  Max Duration: ${status.constraints.maxOperationTime}ms`);
   console.log(
-    `  Rate Limit: ${status.constraints.rateLimit.requests}/${status.constraints.rateLimit.windowMs}ms`,
+    `  Rate Limit: ${status.constraints.rateLimit.requests}/${status.constraints.rateLimit.windowMs}ms`
   );
-  console.log("");
+  console.log('');
 
   // Critical violations
   if (status.violations.criticalViolations.length > 0) {
-    console.log(chalk.bold(chalk.red("Critical Issues:")));
+    console.log(chalk.bold(chalk.red('Critical Issues:')));
     for (const critical of status.violations.criticalViolations.slice(0, 3)) {
-      console.log(`  ${chalk.red("•")} ${critical}`);
+      console.log(`  ${chalk.red('•')} ${critical}`);
     }
 
     if (status.violations.criticalViolations.length > 3) {
       console.log(
-        `  ${chalk.dim("... and")} ${chalk.red(status.violations.criticalViolations.length - 3)} ${chalk.dim("more")}`,
+        `  ${chalk.dim('... and')} ${chalk.red(status.violations.criticalViolations.length - 3)} ${chalk.dim('more')}`
       );
     }
-    console.log("");
+    console.log('');
   }
 
   // Suggestions
   if (status.violations.suggestions.length > 0) {
-    console.log(chalk.bold("Top Suggestions:"));
+    console.log(chalk.bold('Top Suggestions:'));
     for (const suggestion of status.violations.suggestions.slice(0, 2)) {
-      console.log(`  ${chalk.yellow("💡")} ${suggestion}`);
+      console.log(`  ${chalk.yellow('💡')} ${suggestion}`);
     }
-    console.log("");
+    console.log('');
   }
 
-  console.log(chalk.dim("Use --report for detailed analysis"));
-  console.log(chalk.dim("Use --monitoring for performance data"));
+  console.log(chalk.dim('Use --report for detailed analysis'));
+  console.log(chalk.dim('Use --monitoring for performance data'));
 }
 
 /**
  * Format bytes in human-readable format
  */
 function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
+  if (bytes === 0) return '0 B';
 
   const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
+  const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
+  return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 }
 
 /**
@@ -355,7 +355,7 @@ function formatBytes(bytes: number): string {
  */
 export function addConstraintMiddleware(program: Command, config: CLIConfig): void {
   // Initialize constraints for all commands
-  program.hook("preAction", (_thisCommand) => {
+  program.hook('preAction', _thisCommand => {
     try {
       // Initialize constraint system if not already initialized
       initializeCLIConstraints(config, {
@@ -366,19 +366,18 @@ export function addConstraintMiddleware(program: Command, config: CLIConfig): vo
       });
     } catch (error) {
       // If already initialized, continue
-      if (!(error instanceof Error && error.message.includes("already initialized"))) {
+      if (!(error instanceof Error && error.message.includes('already initialized'))) {
         throw error;
       }
     }
   });
 
   // Add constraint validation to all commands
-  program.hook("postAction", async (thisCommand, actionResult) => {
+  program.hook('postAction', async thisCommand => {
     // Record command execution
-    const duration = Date.now() - (thisCommand as any)._startTime || 0;
-    const success = actionResult === 0;
+    const duration = Date.now() - ((thisCommand as any)._startTime || Date.now());
 
-    globalConstraintMonitor.recordOperation(thisCommand.name(), duration, success);
+    globalConstraintMonitor.recordOperation(thisCommand.name(), duration, true);
   });
 }
 

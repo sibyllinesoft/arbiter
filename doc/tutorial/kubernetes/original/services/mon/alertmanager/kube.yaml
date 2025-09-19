@@ -9,10 +9,10 @@ metadata:
     app: alertmanager
 spec:
   ports:
-  - name: main
-    port: 9093
-    protocol: TCP
-    targetPort: 9093
+    - name: main
+      port: 9093
+      protocol: TCP
+      targetPort: 9093
   selector:
     app: alertmanager
 ---
@@ -32,23 +32,23 @@ spec:
         app: alertmanager
     spec:
       containers:
-      - image: prom/alertmanager:v0.15.2
-        args:
-          - '--config.file=/etc/alertmanager/alerts.yaml'
-          - '--storage.path=/alertmanager'
-          - '--web.external-url=https://alertmanager.example.com'
-        ports:
-        - name: alertmanager
-          containerPort: 9093
-        name: alertmanager
-        volumeMounts:
-        - name: config-volume
-          mountPath: /etc/alertmanager
-        - name: alertmanager
-          mountPath: /alertmanager
-      volumes:
-      - name: config-volume
-        configMap:
+        - image: prom/alertmanager:v0.15.2
+          args:
+            - '--config.file=/etc/alertmanager/alerts.yaml'
+            - '--storage.path=/alertmanager'
+            - '--web.external-url=https://alertmanager.example.com'
+          ports:
+            - name: alertmanager
+              containerPort: 9093
           name: alertmanager
-      - name: alertmanager
-        emptyDir: {}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/alertmanager
+            - name: alertmanager
+              mountPath: /alertmanager
+      volumes:
+        - name: config-volume
+          configMap:
+            name: alertmanager
+        - name: alertmanager
+          emptyDir: {}

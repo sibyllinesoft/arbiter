@@ -1,14 +1,19 @@
 # 🔍 GitHub Repository Auto-Detection
 
-This document describes the intelligent Git repository auto-detection functionality for the GitHub sync feature in the Arbiter CLI.
+This document describes the intelligent Git repository auto-detection
+functionality for the GitHub sync feature in the Arbiter CLI.
 
 ## 🎯 Overview
 
-The GitHub sync functionality now automatically detects repository information from your Git remote configuration, eliminating the need for manual configuration in most cases. This makes the system "just work" for typical GitHub projects.
+The GitHub sync functionality now automatically detects repository information
+from your Git remote configuration, eliminating the need for manual
+configuration in most cases. This makes the system "just work" for typical
+GitHub projects.
 
 ## ✨ Key Features
 
 ### 1. **Automatic Repository Detection**
+
 - Reads Git remote origin URL automatically
 - Supports both HTTPS and SSH Git remote formats
 - Parses URLs like:
@@ -17,12 +22,14 @@ The GitHub sync functionality now automatically detects repository information f
 - Extracts owner and repo name from remote URL
 
 ### 2. **Smart Configuration Merging**
+
 - **No config**: Uses auto-detected values from Git remote
 - **Config matches Git**: Uses config values (validated)
 - **Config differs from Git**: Intelligent conflict resolution
 - **Fallback behavior**: Graceful handling when Git remote doesn't exist
 
 ### 3. **Conflict Resolution**
+
 - Automatic detection of conflicts between config and Git remote
 - Clear comparison display showing both options
 - Command-line flags for non-interactive resolution:
@@ -31,6 +38,7 @@ The GitHub sync functionality now automatically detects repository information f
 - Interactive prompts with helpful guidance
 
 ### 4. **Comprehensive Validation**
+
 - Repository configuration validation with error messages
 - Helpful suggestions for common configuration mistakes
 - Input sanitization and format validation
@@ -38,6 +46,7 @@ The GitHub sync functionality now automatically detects repository information f
 ## 🚀 Usage Examples
 
 ### Happy Path - Zero Configuration
+
 For a typical GitHub project with `GITHUB_TOKEN` set:
 
 ```bash
@@ -48,6 +57,7 @@ arbiter generate --sync-github
 ```
 
 ### Configuration Override
+
 Use explicit configuration when you want to override Git remote:
 
 ```json
@@ -67,13 +77,14 @@ arbiter generate --sync-github
 ```
 
 ### Conflict Resolution
+
 When config differs from Git remote:
 
 ```bash
 # Use Git remote (ignores config)
 arbiter generate --sync-github --use-git-remote
 
-# Use config (ignores Git remote) 
+# Use config (ignores Git remote)
 arbiter generate --sync-github --use-config
 
 # Interactive (shows both options and asks)
@@ -86,8 +97,8 @@ The repository configuration is now optional in the schema:
 
 ```typescript
 interface GitHubRepo {
-  owner?: string;  // Auto-detected if not specified
-  repo?: string;   // Auto-detected if not specified  
+  owner?: string; // Auto-detected if not specified
+  repo?: string; // Auto-detected if not specified
   baseUrl?: string;
   tokenEnv?: string;
 }
@@ -97,22 +108,26 @@ interface GitHubRepo {
 
 New options added to `arbiter generate`:
 
-- `--use-config`: Use configuration file repository info (for conflict resolution)
+- `--use-config`: Use configuration file repository info (for conflict
+  resolution)
 - `--use-git-remote`: Use Git remote repository info (for conflict resolution)
 
 Existing options remain unchanged:
+
 - `--sync-github`: Sync epics and tasks to GitHub after generation
 - `--github-dry-run`: Preview GitHub sync changes without applying them
 
 ## 🛡️ Error Handling
 
 ### Graceful Fallbacks
+
 1. **No Git remote**: Falls back to config or provides setup instructions
 2. **Non-GitHub remote**: Informs user and requests GitHub configuration
 3. **No token**: Clear instructions for setting up `GITHUB_TOKEN`
 4. **Invalid config**: Validation errors with helpful suggestions
 
 ### Informative Messages
+
 - Clear error messages explaining what went wrong
 - Actionable suggestions for fixing issues
 - Step-by-step setup instructions for new users
@@ -120,6 +135,7 @@ Existing options remain unchanged:
 ## 💡 Examples by Scenario
 
 ### Scenario 1: New GitHub Project
+
 ```bash
 # 1. Initialize Git and add GitHub remote
 git init
@@ -134,6 +150,7 @@ arbiter generate --sync-github
 ```
 
 ### Scenario 2: Existing Project with Config
+
 ```bash
 # Config already exists - uses config values
 arbiter generate --sync-github
@@ -141,10 +158,11 @@ arbiter generate --sync-github
 ```
 
 ### Scenario 3: Config Conflicts with Git
+
 ```bash
 # Config says owner: "old-org", Git says "new-org"
 arbiter generate --sync-github --verbose
-# Output: 
+# Output:
 # ⚠️  Repository Configuration Conflict
 # ┌─────────────────┬─────────────────────────────┐
 # │ Source          │ Repository                  │
@@ -155,6 +173,7 @@ arbiter generate --sync-github --verbose
 ```
 
 ### Scenario 4: Non-Interactive CI/CD
+
 ```bash
 # Use Git remote in automated environments
 arbiter generate --sync-github --use-git-remote
@@ -166,13 +185,16 @@ arbiter generate --sync-github --use-config
 ## 🔍 Implementation Details
 
 ### Git URL Parsing
+
 Supports both HTTPS and SSH formats:
+
 - `https://github.com/owner/repo.git` → `owner/repo`
 - `git@github.com:owner/repo.git` → `owner/repo`
 - `https://github.com/owner/repo` → `owner/repo`
 - `git@github.com:owner/repo` → `owner/repo`
 
 ### Smart Configuration Logic
+
 1. **Git Detection**: Try to read `git remote get-url origin`
 2. **Parse URL**: Extract owner/repo from GitHub URLs
 3. **Config Merge**: Compare with existing configuration
@@ -180,6 +202,7 @@ Supports both HTTPS and SSH formats:
 5. **Validation**: Ensure final configuration is valid
 
 ### Validation Rules
+
 - Owner and repo are required (from config or detection)
 - Repository names shouldn't contain forward slashes
 - Repository names shouldn't end with `.git`
@@ -189,12 +212,14 @@ Supports both HTTPS and SSH formats:
 ## 🧪 Testing
 
 The functionality includes comprehensive test coverage:
+
 - URL parsing for various GitHub URL formats
 - Conflict detection between config and Git remote
 - Validation logic with error suggestions
 - Smart configuration merging logic
 
 Run tests:
+
 ```bash
 cd packages/cli
 bun test src/utils/__tests__/git-detection.test.ts
@@ -211,6 +236,7 @@ bun test src/utils/__tests__/git-detection.test.ts
 ## 🔮 Future Enhancements
 
 Potential future improvements:
+
 - Support for GitLab and other Git hosting services
 - Multiple remote detection and selection
 - Automatic token discovery from git credential helpers
@@ -218,4 +244,6 @@ Potential future improvements:
 
 ---
 
-This implementation provides a robust, user-friendly solution that eliminates configuration friction while maintaining full flexibility for advanced use cases.
+This implementation provides a robust, user-friendly solution that eliminates
+configuration friction while maintaining full flexibility for advanced use
+cases.

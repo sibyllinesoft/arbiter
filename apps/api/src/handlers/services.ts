@@ -3,14 +3,14 @@
  */
 
 import type {
+  FileDiff,
+  GitService,
   HttpClient,
   HttpResponse,
-  RequestOptions,
+  Logger,
   NotificationService,
+  RequestOptions,
   SlackMessage,
-  GitService,
-  FileDiff,
-  Logger
 } from './types.js';
 
 /**
@@ -26,7 +26,7 @@ export class HandlerHttpClient implements HttpClient {
     'api.slack.com',
     'discord.com',
     'api.trello.com',
-    'api.atlassian.com'
+    'api.atlassian.com',
   ]);
 
   constructor(private logger: Logger) {}
@@ -55,7 +55,7 @@ export class HandlerHttpClient implements HttpClient {
   ): Promise<HttpResponse> {
     // Validate URL
     this.validateUrl(url);
-    
+
     // Rate limiting
     this.checkRateLimit();
 
@@ -72,9 +72,9 @@ export class HandlerHttpClient implements HttpClient {
           headers: {
             'Content-Type': 'application/json',
             'User-Agent': 'Arbiter-Webhook-Handler/1.0',
-            ...options.headers
+            ...options.headers,
           },
-          signal: controller.signal
+          signal: controller.signal,
         };
 
         if (data && (method === 'POST' || method === 'PUT')) {
@@ -88,7 +88,7 @@ export class HandlerHttpClient implements HttpClient {
 
         let responseData: unknown;
         const contentType = response.headers.get('content-type') || '';
-        
+
         if (contentType.includes('application/json')) {
           responseData = await response.json();
         } else {
@@ -99,7 +99,7 @@ export class HandlerHttpClient implements HttpClient {
           status: response.status,
           statusText: response.statusText,
           data: responseData,
-          headers: Object.fromEntries(response.headers.entries())
+          headers: Object.fromEntries(response.headers.entries()),
         };
 
         // Log result
@@ -107,25 +107,24 @@ export class HandlerHttpClient implements HttpClient {
           method,
           url: this.sanitizeUrl(url),
           status: response.status,
-          attempt
+          attempt,
         });
 
         return result;
-
       } catch (error) {
         lastError = error as Error;
-        
+
         if (attempt === retries) {
           this.logger.error('HTTP request failed', lastError, {
             method,
             url: this.sanitizeUrl(url),
-            attempt
+            attempt,
           });
           throw lastError;
         }
 
         // Exponential backoff for retries
-        const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+        const delay = Math.min(1000 * 2 ** attempt, 5000);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
@@ -136,24 +135,24 @@ export class HandlerHttpClient implements HttpClient {
   private validateUrl(url: string): void {
     try {
       const parsedUrl = new URL(url);
-      
+
       // Only allow HTTPS (except localhost for development)
       if (parsedUrl.protocol !== 'https:' && !parsedUrl.hostname.includes('localhost')) {
         throw new Error('Only HTTPS URLs are allowed');
       }
 
       // Check allowed domains
-      if (!this.allowedDomains.has(parsedUrl.hostname) && 
-          !parsedUrl.hostname.includes('localhost')) {
+      if (
+        !this.allowedDomains.has(parsedUrl.hostname) &&
+        !parsedUrl.hostname.includes('localhost')
+      ) {
         throw new Error(`Domain not allowed: ${parsedUrl.hostname}`);
       }
 
       // Prevent SSRF attacks
-      if (parsedUrl.hostname.includes('metadata') || 
-          parsedUrl.hostname.includes('169.254')) {
+      if (parsedUrl.hostname.includes('metadata') || parsedUrl.hostname.includes('169.254')) {
         throw new Error('Blocked URL pattern detected');
       }
-
     } catch (error) {
       throw new Error(`Invalid URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -162,19 +161,20 @@ export class HandlerHttpClient implements HttpClient {
   private checkRateLimit(): void {
     const now = Date.now();
     const minute = Math.floor(now / 60000);
-    
+
     const current = this.requestCounts.get(String(minute)) || { count: 0, resetTime: minute };
-    
+
     if (current.count >= this.maxRequestsPerMinute) {
       throw new Error('Rate limit exceeded: too many HTTP requests');
     }
-    
+
     current.count++;
     this.requestCounts.set(String(minute), current);
-    
+
     // Clean up old entries
     for (const [key, value] of this.requestCounts) {
-      if (value.resetTime < minute - 5) { // Keep last 5 minutes
+      if (value.resetTime < minute - 5) {
+        // Keep last 5 minutes
         this.requestCounts.delete(key);
       }
     }
@@ -206,7 +206,7 @@ export class HandlerNotificationService implements NotificationService {
       blocks: message.blocks,
       channel: message.channel,
       username: message.username || 'Arbiter Webhook',
-      icon_emoji: message.iconEmoji || ':robot_face:'
+      icon_emoji: message.iconEmoji || ':robot_face:',
     };
 
     try {
@@ -215,7 +215,7 @@ export class HandlerNotificationService implements NotificationService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -223,7 +223,6 @@ export class HandlerNotificationService implements NotificationService {
       }
 
       this.logger.info('Slack notification sent successfully');
-
     } catch (error) {
       this.logger.error('Failed to send Slack notification', error as Error);
       throw error;
@@ -235,9 +234,9 @@ export class HandlerNotificationService implements NotificationService {
     // For now, log the attempt
     this.logger.info('Email notification requested', {
       to: this.sanitizeEmail(to),
-      subject
+      subject,
     });
-    
+
     throw new Error('Email notifications not configured');
   }
 
@@ -247,9 +246,9 @@ export class HandlerNotificationService implements NotificationService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'User-Agent': 'Arbiter-Webhook-Handler/1.0'
+          'User-Agent': 'Arbiter-Webhook-Handler/1.0',
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -257,12 +256,11 @@ export class HandlerNotificationService implements NotificationService {
       }
 
       this.logger.info('Webhook notification sent successfully', {
-        url: this.sanitizeUrl(url)
+        url: this.sanitizeUrl(url),
       });
-
     } catch (error) {
       this.logger.error('Failed to send webhook notification', error as Error, {
-        url: this.sanitizeUrl(url)
+        url: this.sanitizeUrl(url),
       });
       throw error;
     }
@@ -295,16 +293,16 @@ export class HandlerGitService implements GitService {
     // For now, this is not implemented
     this.logger.warn('Repository cloning not implemented for security reasons', {
       url: this.sanitizeUrl(url),
-      path
+      path,
     });
-    
+
     throw new Error('Repository cloning not supported in handlers');
   }
 
   async getCommitDiff(sha: string): Promise<FileDiff[]> {
     // This would integrate with Git APIs to fetch commit diffs
     this.logger.info('Commit diff requested', { sha });
-    
+
     // Placeholder implementation
     return [];
   }
@@ -312,13 +310,13 @@ export class HandlerGitService implements GitService {
   async getFileContent(path: string, ref?: string): Promise<string> {
     // This would integrate with Git APIs to fetch file content
     this.logger.info('File content requested', { path, ref });
-    
+
     throw new Error('File content access not implemented');
   }
 
   async createBranch(name: string, from?: string): Promise<void> {
     this.logger.info('Branch creation requested', { name, from });
-    
+
     throw new Error('Branch creation not supported in handlers');
   }
 
@@ -329,7 +327,7 @@ export class HandlerGitService implements GitService {
     head: string
   ): Promise<unknown> {
     this.logger.info('Pull request creation requested', { title, base, head });
-    
+
     throw new Error('Pull request creation not supported in handlers');
   }
 
@@ -358,13 +356,13 @@ export class HandlerSecurityValidator {
     /fs\./,
     /child_process/,
     /spawn/,
-    /exec/
+    /exec/,
   ];
 
   static validateHandlerCode(code: string): { safe: boolean; violations: string[] } {
     const violations: string[] = [];
-    
-    for (const pattern of this.DANGEROUS_PATTERNS) {
+
+    for (const pattern of HandlerSecurityValidator.DANGEROUS_PATTERNS) {
       if (pattern.test(code)) {
         violations.push(`Dangerous pattern detected: ${pattern.source}`);
       }
@@ -372,39 +370,39 @@ export class HandlerSecurityValidator {
 
     return {
       safe: violations.length === 0,
-      violations
+      violations,
     };
   }
 
   static sanitizeEnvironment(env: Record<string, string>): Record<string, string> {
     const sanitized: Record<string, string> = {};
     const allowedKeys = ['NODE_ENV', 'LOG_LEVEL'];
-    
+
     for (const [key, value] of Object.entries(env)) {
       if (allowedKeys.includes(key) || key.startsWith('HANDLER_')) {
         sanitized[key] = value;
       }
     }
-    
+
     return sanitized;
   }
 
   static validateSecrets(secrets: Record<string, string>): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-    
+
     for (const [key, value] of Object.entries(secrets)) {
       if (!key.startsWith('HANDLER_')) {
         errors.push(`Secret key must start with 'HANDLER_': ${key}`);
       }
-      
+
       if (value.length < 10) {
         errors.push(`Secret value too short: ${key}`);
       }
     }
-    
+
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 }

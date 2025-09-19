@@ -1,8 +1,11 @@
 # End-to-End Docker Compose Tests
 
-**Comprehensive integration testing for Arbiter using Docker Compose and real services**
+**Comprehensive integration testing for Arbiter using Docker Compose and real
+services**
 
-This test suite validates Arbiter's complete workflow from CUE specification to running applications using Docker Compose orchestration. It ensures that generated configurations work correctly in containerized environments.
+This test suite validates Arbiter's complete workflow from CUE specification to
+running applications using Docker Compose orchestration. It ensures that
+generated configurations work correctly in containerized environments.
 
 ## What These Tests Cover
 
@@ -67,21 +70,25 @@ docker-compose down -v
 ## Test Scenarios
 
 ### 1. Basic Service Generation
+
 - Generate Docker Compose from CUE specification
 - Validate service definitions and networking
 - Test container startup and health checks
 
 ### 2. Multi-Service Integration
+
 - Complex applications with multiple interconnected services
 - Database, API, and frontend service coordination
 - Service discovery and communication validation
 
 ### 3. Configuration Management
+
 - Environment variable injection
 - Secret and configuration file mounting
 - Service-specific configuration validation
 
 ### 4. Dependency Orchestration
+
 - Service startup ordering (depends_on)
 - Health check dependencies
 - Graceful shutdown handling
@@ -103,13 +110,13 @@ services: {
         port: 3000
         dependencies: ["database"]
     }
-    
+
     database: {
         kind: "postgres"
         port: 5432
         environment: "test"
     }
-    
+
     frontend: {
         kind: "web"
         language: "typescript"
@@ -122,6 +129,7 @@ services: {
 ## Debugging Failed Tests
 
 ### Check Service Logs
+
 ```bash
 # View all service logs
 docker-compose logs
@@ -132,6 +140,7 @@ docker-compose logs database
 ```
 
 ### Health Check Debugging
+
 ```bash
 # Manual health check
 curl http://localhost:3000/health
@@ -144,6 +153,7 @@ docker-compose config
 ```
 
 ### Dependency Issues
+
 ```bash
 # Check dependency validation
 node scripts/check-dependencies.cjs
@@ -156,12 +166,14 @@ docker-compose up --no-deps service-name
 
 - **Startup Time**: Services should be ready within 30 seconds
 - **Health Checks**: All health endpoints respond within 5 seconds
-- **Service Discovery**: Inter-service communication established within 10 seconds
+- **Service Discovery**: Inter-service communication established within 10
+  seconds
 - **Graceful Shutdown**: Services stop cleanly within 15 seconds
 
 ## Test Data and Fixtures
 
 Test data is managed through:
+
 - **fixtures/**: Static test data and configuration files
 - **seeds/**: Database initialization scripts
 - **mocks/**: Mock service responses for testing
@@ -220,4 +232,5 @@ When adding new e2e tests:
 
 ---
 
-*These tests ensure Arbiter generates production-ready Docker Compose configurations that work reliably in real containerized environments.*
+_These tests ensure Arbiter generates production-ready Docker Compose
+configurations that work reliably in real containerized environments._

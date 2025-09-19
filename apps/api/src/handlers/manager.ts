@@ -4,22 +4,22 @@
  */
 
 import { join } from 'node:path';
-import type { 
-  HandlerServices, 
-  HandlerDiscoveryConfig,
-  RegisteredHandler,
-  HandlerExecution,
-  HandlerResult,
-  WebhookRequest,
-  Logger
-} from './types.js';
-import type { EventService } from '../events.js';
 import type { SpecWorkbenchDB } from '../db.js';
+import type { EventService } from '../events.js';
 import type { ServerConfig } from '../types.js';
+import { logger as defaultLogger } from '../utils.js';
 import { HandlerDiscovery } from './discovery.js';
 import { HandlerExecutor } from './executor.js';
-import { HandlerHttpClient, HandlerNotificationService, HandlerGitService } from './services.js';
-import { logger as defaultLogger } from '../utils.js';
+import { HandlerGitService, HandlerHttpClient, HandlerNotificationService } from './services.js';
+import type {
+  HandlerDiscoveryConfig,
+  HandlerExecution,
+  HandlerResult,
+  HandlerServices,
+  Logger,
+  RegisteredHandler,
+  WebhookRequest,
+} from './types.js';
 
 export class CustomHandlerManager {
   private discovery: HandlerDiscovery;
@@ -39,7 +39,7 @@ export class CustomHandlerManager {
       db: this.db,
       http: new HandlerHttpClient(this.logger),
       notifications: new HandlerNotificationService(this.logger),
-      git: new HandlerGitService(this.logger)
+      git: new HandlerGitService(this.logger),
     };
 
     // Configure discovery
@@ -51,9 +51,12 @@ export class CustomHandlerManager {
       defaultRetries: this.config.handlers?.defaultRetries ?? 2,
       sandboxEnabled: this.config.handlers?.sandboxEnabled ?? true,
       allowedModules: this.config.handlers?.allowedModules ?? [
-        'node:crypto', 'node:util', 'node:url', 'node:path'
+        'node:crypto',
+        'node:util',
+        'node:url',
+        'node:path',
       ],
-      enableMetrics: this.config.handlers?.enableMetrics ?? true
+      enableMetrics: this.config.handlers?.enableMetrics ?? true,
     };
 
     this.discovery = new HandlerDiscovery(discoveryConfig, this.logger);
@@ -71,14 +74,13 @@ export class CustomHandlerManager {
     try {
       // Discover and load all handlers
       const handlers = await this.discovery.discoverHandlers();
-      
+
       this.logger.info('Custom handler manager initialized', {
         handlersCount: handlers.length,
-        enabledHandlers: handlers.filter(h => h.enabled).length
+        enabledHandlers: handlers.filter(h => h.enabled).length,
       });
 
       this.initialized = true;
-
     } catch (error) {
       this.logger.error('Failed to initialize custom handler manager', error as Error);
       throw error;
@@ -102,7 +104,7 @@ export class CustomHandlerManager {
       this.logger.info('Processing webhook with custom handlers', {
         projectId,
         provider: request.provider,
-        event: request.event
+        event: request.event,
       });
 
       // Execute custom handlers
@@ -114,14 +116,14 @@ export class CustomHandlerManager {
           actions.push(...result.actions);
         } else if (!result.success) {
           actions.push(`Custom handler failed: ${result.message}`);
-          
+
           // Log handler errors
           if (result.errors) {
             for (const error of result.errors) {
               this.logger.error('Custom handler error', new Error(error.message), {
                 projectId,
                 errorCode: error.code,
-                errorDetails: error.details
+                errorDetails: error.details,
               });
             }
           }
@@ -139,18 +141,17 @@ export class CustomHandlerManager {
             customHandlersExecuted: handlerResults.length,
             successfulHandlers: handlerResults.filter(r => r.success).length,
             failedHandlers: handlerResults.filter(r => !r.success).length,
-            totalActions: actions.length
-          }
+            totalActions: actions.length,
+          },
         });
       }
-
     } catch (error) {
       this.logger.error('Custom handler processing failed', error as Error, {
         projectId,
         provider: request.provider,
-        event: request.event
+        event: request.event,
       });
-      
+
       actions.push('Custom handler processing failed');
     }
 
@@ -231,7 +232,7 @@ export class CustomHandlerManager {
       enabledHandlers: handlers.filter(h => h.enabled).length,
       activeExecutions: this.executor.getActiveExecutionCount(),
       totalExecutions: executions.length,
-      failedExecutions: executions.filter(e => !e.result.success).length
+      failedExecutions: executions.filter(e => !e.result.success).length,
     };
   }
 
@@ -253,25 +254,25 @@ export class CustomHandlerManager {
 
       // Create example configuration
       const configExample = {
-        "$schema": "./handler-config.schema.json",
-        "defaults": {
-          "timeout": 30000,
-          "retries": 2,
-          "enabled": true
+        $schema: './handler-config.schema.json',
+        defaults: {
+          timeout: 30000,
+          retries: 2,
+          enabled: true,
         },
-        "handlers": {
-          "github/push": {
-            "enabled": true,
-            "timeout": 15000,
-            "environment": {
-              "NODE_ENV": "production"
+        handlers: {
+          'github/push': {
+            enabled: true,
+            timeout: 15000,
+            environment: {
+              NODE_ENV: 'production',
             },
-            "secrets": {
-              "SLACK_WEBHOOK": "${HANDLER_SLACK_WEBHOOK}",
-              "JIRA_TOKEN": "${HANDLER_JIRA_TOKEN}"
-            }
-          }
-        }
+            secrets: {
+              SLACK_WEBHOOK: '${HANDLER_SLACK_WEBHOOK}',
+              JIRA_TOKEN: '${HANDLER_JIRA_TOKEN}',
+            },
+          },
+        },
       };
 
       await fs.writeFile(
@@ -314,13 +315,9 @@ export function shouldNotify(branch: string, defaultBranch: string): boolean {
 }
 `;
 
-      await fs.writeFile(
-        path.join(handlersDir, 'shared', 'utils.ts'),
-        utilsExample
-      );
+      await fs.writeFile(path.join(handlersDir, 'shared', 'utils.ts'), utilsExample);
 
       this.logger.info('Handler directory structure created', { path: handlersDir });
-
     } catch (error) {
       this.logger.error('Failed to create handler structure', error as Error);
       throw error;
@@ -338,7 +335,7 @@ export function shouldNotify(branch: string, defaultBranch: string): boolean {
     const result = {
       valid: true,
       errors: [] as string[],
-      warnings: [] as string[]
+      warnings: [] as string[],
     };
 
     try {
@@ -366,9 +363,10 @@ export function shouldNotify(branch: string, defaultBranch: string): boolean {
       if (!content.includes('context.logger') && !content.includes('logger')) {
         result.warnings.push('Handler should use context.logger for logging');
       }
-
     } catch (error) {
-      result.errors.push(`Failed to read handler file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      result.errors.push(
+        `Failed to read handler file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
       result.valid = false;
     }
 
@@ -380,10 +378,10 @@ export function shouldNotify(branch: string, defaultBranch: string): boolean {
    */
   async dispose(): Promise<void> {
     this.logger.info('Shutting down custom handler manager');
-    
+
     this.executor.dispose();
     this.discovery.dispose();
-    
+
     this.initialized = false;
   }
 }

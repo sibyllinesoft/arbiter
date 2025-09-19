@@ -3,14 +3,14 @@
  * Extracts architectural elements from CUE specifications for diagram generation
  */
 
-import { 
-  CueArchitectureData, 
-  DiagramComponent, 
-  DiagramConnection, 
+import {
+  type ConnectionType,
+  type CueArchitectureData,
+  type DiagramComponent,
+  type DiagramConnection,
   DiagramLayer,
   ElementType,
-  ConnectionType,
-  FlowStep
+  type FlowStep,
 } from '../types/architecture';
 
 export class CueArchitectureParser {
@@ -26,13 +26,13 @@ export class CueArchitectureParser {
 
     // Detect schema version
     const isV2 = cueData.ui || cueData.flows || cueData.capabilities;
-    
+
     if (isV2) {
       // Parse v2 (app-centric) schema
-      this.parseV2Schema(cueData, components, connections);
+      CueArchitectureParser.parseV2Schema(cueData, components, connections);
     } else {
-      // Parse v1 (infrastructure-focused) schema  
-      this.parseV1Schema(cueData, components, connections);
+      // Parse v1 (infrastructure-focused) schema
+      CueArchitectureParser.parseV1Schema(cueData, components, connections);
     }
 
     return { components, connections };
@@ -62,8 +62,8 @@ export class CueArchitectureParser {
           metadata: {
             requiresAuth: route.requiresAuth,
             component: route.component,
-            layout: route.layout
-          }
+            layout: route.layout,
+          },
         });
       });
     }
@@ -80,8 +80,8 @@ export class CueArchitectureParser {
           position: { x: 0, y: 0 },
           size: { width: 140, height: 70 },
           metadata: {
-            requirements: (capData as any).requirements || []
-          }
+            requirements: (capData as any).requirements || [],
+          },
         });
       });
     }
@@ -100,8 +100,8 @@ export class CueArchitectureParser {
           serviceType: (serviceData as any).serviceType,
           language: (serviceData as any).language,
           deploymentType: (serviceData as any).type,
-          ports: this.parseServicePorts(serviceData as any),
-          metadata: serviceData
+          ports: CueArchitectureParser.parseServicePorts(serviceData as any),
+          metadata: serviceData,
         });
       });
     }
@@ -109,10 +109,10 @@ export class CueArchitectureParser {
     // Parse API paths as service endpoints
     if (cueData.paths) {
       Object.entries(cueData.paths).forEach(([path, pathData]) => {
-        const methods = Object.keys(pathData as any).filter(key => 
+        const methods = Object.keys(pathData as any).filter(key =>
           ['get', 'post', 'put', 'patch', 'delete'].includes(key)
         );
-        
+
         methods.forEach(method => {
           components.push({
             id: `api_${method}_${path.replace(/[^a-zA-Z0-9]/g, '_')}`,
@@ -125,8 +125,8 @@ export class CueArchitectureParser {
             metadata: {
               method: method.toUpperCase(),
               path,
-              pathData: (pathData as any)[method]
-            }
+              pathData: (pathData as any)[method],
+            },
           });
         });
       });
@@ -146,8 +146,8 @@ export class CueArchitectureParser {
           states: (modelData as any).states || {},
           metadata: {
             initial: (modelData as any).initial,
-            states: (modelData as any).states
-          }
+            states: (modelData as any).states,
+          },
         });
       });
     }
@@ -155,15 +155,15 @@ export class CueArchitectureParser {
     // Parse flows to generate connections
     if (cueData.flows) {
       cueData.flows.forEach((flow, flowIndex) => {
-        this.parseFlowConnections(flow, flowIndex, components, connections);
+        CueArchitectureParser.parseFlowConnections(flow, flowIndex, components, connections);
       });
     }
 
     // Parse capability dependencies
-    this.parseCapabilityConnections(cueData, components, connections);
+    CueArchitectureParser.parseCapabilityConnections(cueData, components, connections);
 
     // Parse route-capability relationships
-    this.parseRouteCapabilityConnections(cueData, components, connections);
+    CueArchitectureParser.parseRouteCapabilityConnections(cueData, components, connections);
   }
 
   /**
@@ -189,8 +189,8 @@ export class CueArchitectureParser {
           language: (serviceData as any).language,
           deploymentType: (serviceData as any).type,
           replicas: (serviceData as any).replicas,
-          ports: this.parseServicePorts(serviceData as any),
-          metadata: serviceData
+          ports: CueArchitectureParser.parseServicePorts(serviceData as any),
+          metadata: serviceData,
         });
       });
     }
@@ -205,12 +205,12 @@ export class CueArchitectureParser {
         layer: 'external',
         position: { x: 0, y: 0 },
         size: { width: 160, height: 80 },
-        metadata: cueData.deployment
+        metadata: cueData.deployment,
       });
     }
 
     // Parse service dependencies from v1
-    this.parseV1ServiceConnections(cueData, components, connections);
+    CueArchitectureParser.parseV1ServiceConnections(cueData, components, connections);
   }
 
   /**
@@ -218,17 +218,17 @@ export class CueArchitectureParser {
    */
   private static parseServicePorts(serviceData: any): any[] {
     if (!serviceData.ports) return [];
-    
+
     return serviceData.ports.map((port: any, index: number) => ({
       id: `port_${port.name || index}`,
-      position: { x: 40 + (index * 30), y: 100 }, // Bottom edge
+      position: { x: 40 + index * 30, y: 100 }, // Bottom edge
       type: 'bidirectional',
       protocol: port.protocol || 'http',
       metadata: {
         port: port.port,
         targetPort: port.targetPort,
-        name: port.name
-      }
+        name: port.name,
+      },
     }));
   }
 
@@ -248,7 +248,7 @@ export class CueArchitectureParser {
       type: Object.keys(step)[0], // visit, click, fill, expect, expect_api
       target: step.visit || step.click?.locator || step.fill?.locator,
       value: step.fill?.value,
-      expectation: step.expect || step.expect_api
+      expectation: step.expect || step.expect_api,
     }));
 
     // Create connections between flow steps
@@ -257,22 +257,22 @@ export class CueArchitectureParser {
       const nextStep = flowSteps[i + 1];
 
       // Try to find corresponding components
-      const fromComponent = this.findComponentForFlowStep(currentStep, components);
-      const toComponent = this.findComponentForFlowStep(nextStep, components);
+      const fromComponent = CueArchitectureParser.findComponentForFlowStep(currentStep, components);
+      const toComponent = CueArchitectureParser.findComponentForFlowStep(nextStep, components);
 
       if (fromComponent && toComponent && fromComponent.id !== toComponent.id) {
         connections.push({
           id: `flow_${flow.id || flowIndex}_${i}_${i + 1}`,
           from: { componentId: fromComponent.id },
           to: { componentId: toComponent.id },
-          type: this.getConnectionTypeForStep(nextStep),
-          label: this.getConnectionLabelForStep(nextStep),
+          type: CueArchitectureParser.getConnectionTypeForStep(nextStep),
+          label: CueArchitectureParser.getConnectionLabelForStep(nextStep),
           metadata: {
             userAction: nextStep.type,
             expectation: nextStep.expectation,
             flowId: flow.id,
-            stepIndex: i + 1
-          }
+            stepIndex: i + 1,
+          },
         });
       }
     }
@@ -287,19 +287,16 @@ export class CueArchitectureParser {
   ): DiagramComponent | undefined {
     // For visit steps, find route components
     if (step.type === 'visit' && step.target) {
-      return components.find(c => 
-        c.type === 'route' && 
-        (c.routePath === step.target || c.id.includes(step.target))
+      return components.find(
+        c => c.type === 'route' && (c.routePath === step.target || c.id.includes(step.target))
       );
     }
 
     // For API expectations, find API endpoint components
     if (step.type === 'expect_api' && step.expectation) {
       const { method, path } = step.expectation;
-      return components.find(c => 
-        c.type === 'api_endpoint' && 
-        c.metadata?.method === method && 
-        c.metadata?.path === path
+      return components.find(
+        c => c.type === 'api_endpoint' && c.metadata?.method === method && c.metadata?.path === path
       );
     }
 
@@ -365,9 +362,9 @@ export class CueArchitectureParser {
 
       requirements.forEach((requirement: string) => {
         // Find components that provide this requirement
-        const toComponent = components.find(c => 
-          c.capabilities?.includes(requirement) || 
-          c.metadata?.requirements?.includes(requirement)
+        const toComponent = components.find(
+          c =>
+            c.capabilities?.includes(requirement) || c.metadata?.requirements?.includes(requirement)
         );
 
         if (toComponent) {
@@ -377,7 +374,7 @@ export class CueArchitectureParser {
             to: { componentId: toComponent.id },
             type: 'capability_usage',
             label: `Requires ${requirement}`,
-            metadata: { capability: requirement }
+            metadata: { capability: requirement },
           });
         }
       });
@@ -394,17 +391,13 @@ export class CueArchitectureParser {
   ): void {
     if (!cueData.ui?.routes) return;
 
-    cueData.ui.routes.forEach((route) => {
-      const routeComponent = components.find(c => 
-        c.type === 'route' && c.routePath === route.path
-      );
+    cueData.ui.routes.forEach(route => {
+      const routeComponent = components.find(c => c.type === 'route' && c.routePath === route.path);
 
       if (!routeComponent || !route.capabilities) return;
 
       route.capabilities.forEach((capName: string) => {
-        const capComponent = components.find(c => 
-          c.type === 'capability' && c.name === capName
-        );
+        const capComponent = components.find(c => c.type === 'capability' && c.name === capName);
 
         if (capComponent) {
           connections.push({
@@ -413,7 +406,7 @@ export class CueArchitectureParser {
             to: { componentId: capComponent.id },
             type: 'capability_usage',
             label: `Uses ${capName}`,
-            metadata: { capability: capName }
+            metadata: { capability: capName },
           });
         }
       });
@@ -440,8 +433,8 @@ export class CueArchitectureParser {
       Object.entries(env).forEach(([envKey, envValue]) => {
         if (typeof envValue === 'string' && envValue.includes('service')) {
           // Simple heuristic: if env value references another service
-          const referencedService = Object.keys(cueData.services!).find(s => 
-            envValue.includes(s) && s !== serviceId
+          const referencedService = Object.keys(cueData.services!).find(
+            s => envValue.includes(s) && s !== serviceId
           );
 
           if (referencedService) {
@@ -453,7 +446,7 @@ export class CueArchitectureParser {
                 to: { componentId: toComponent.id },
                 type: 'dependency',
                 label: `${envKey}`,
-                metadata: { envKey, envValue }
+                metadata: { envKey, envValue },
               });
             }
           }

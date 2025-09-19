@@ -14,15 +14,15 @@ spec:
         component: mon
     spec:
       volumes:
-      - name: grafana-volume
-        gcePersistentDisk:
-          # This disk must already exist.
-          pdName: grafana-volume
-          fsType: ext4
+        - name: grafana-volume
+          gcePersistentDisk:
+            # This disk must already exist.
+            pdName: grafana-volume
+            fsType: ext4
       containers:
         - image: grafana/grafana:4.5.2
           ports:
-          - containerPort: 8080
+            - containerPort: 8080
           resources:
             # keep request = limit to keep this container in guaranteed class
             limits:
@@ -38,15 +38,15 @@ spec:
             # removing these env variables, setup auth for grafana, and expose the grafana
             # service using a LoadBalancer or a public IP.
             - name: GF_AUTH_BASIC_ENABLED
-              value: "false"
+              value: 'false'
             - name: GF_AUTH_ANONYMOUS_ENABLED
-              value: "true"
+              value: 'true'
             - name: GF_AUTH_ANONYMOUS_ORG_ROLE
               value: admin
           name: grafana
           volumeMounts:
-          - name: grafana-volume
-            mountPath: /var/lib/grafana
+            - name: grafana-volume
+              mountPath: /var/lib/grafana
 ---
 apiVersion: v1
 kind: Service
@@ -57,10 +57,10 @@ metadata:
     component: mon
 spec:
   ports:
-  - name: grafana
-    port: 3000
-    protocol: TCP
-    targetPort: 3000
+    - name: grafana
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
   selector:
     app: grafana
     component: mon

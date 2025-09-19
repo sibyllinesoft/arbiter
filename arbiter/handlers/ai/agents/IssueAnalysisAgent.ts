@@ -1,15 +1,18 @@
-import type { WebhookEvent, HandlerResponse } from '../../shared/utils.js';
-import type { AIAgentConfig, AICommand } from '../base/types.js';
-import { AIAgentHandler } from '../base/AIAgentHandler.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
-import { GitHubIssueAdapter, GitHubIssueCommentAdapter } from '../adapters/github/GitHubIssueAdapter.js';
+import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
 import { createResponse } from '../../shared/utils.js';
+import {
+  GitHubIssueAdapter,
+  GitHubIssueCommentAdapter,
+} from '../adapters/github/GitHubIssueAdapter.js';
+import { AIAgentHandler } from '../base/AIAgentHandler.js';
+import type { AIAgentConfig, AICommand } from '../base/types.js';
+import { ClaudeProvider } from '../providers/ClaudeProvider.js';
+import { GeminiProvider } from '../providers/GeminiProvider.js';
+import { OpenAIProvider } from '../providers/OpenAIProvider.js';
 
 /**
  * AI-powered Issue Analysis Agent
- * 
+ *
  * This agent automatically analyzes and categorizes issues, providing:
  * - Issue classification and prioritization
  * - Complexity estimation
@@ -17,7 +20,7 @@ import { createResponse } from '../../shared/utils.js';
  * - Assignment suggestions
  * - Next steps guidance
  * - Automated issue management
- * 
+ *
  * Supported commands:
  * - /analyze-issue - Comprehensive issue analysis
  * - /categorize - Issue categorization and labeling
@@ -44,7 +47,7 @@ export class IssueAnalysisAgent extends AIAgentHandler {
     }
 
     super(config, provider);
-    
+
     // Register adapters for different platforms
     this.registerAdapter('github', 'issues', new GitHubIssueAdapter());
     this.registerAdapter('github', 'issue_comment', new GitHubIssueCommentAdapter());
@@ -57,13 +60,10 @@ export class IssueAnalysisAgent extends AIAgentHandler {
     // Comprehensive issue analysis
     this.registerCommand('analyze-issue', {
       name: 'analyze-issue',
-      description: 'Comprehensive analysis of issue including categorization, priority, and recommendations',
+      description:
+        'Comprehensive analysis of issue including categorization, priority, and recommendations',
       usage: '/analyze-issue [focus]',
-      examples: [
-        '/analyze-issue',
-        '/analyze-issue priority',
-        '/analyze-issue complexity',
-      ],
+      examples: ['/analyze-issue', '/analyze-issue priority', '/analyze-issue complexity'],
       requiresArgs: false,
       prompt: `Analyze this issue comprehensively. Provide:
 
@@ -105,11 +105,7 @@ Provide actionable insights that help with project planning and issue management
       name: 'categorize',
       description: 'Categorize and label issues for better organization',
       usage: '/categorize [system]',
-      examples: [
-        '/categorize',
-        '/categorize detailed',
-        '/categorize simple',
-      ],
+      examples: ['/categorize', '/categorize detailed', '/categorize simple'],
       requiresArgs: false,
       prompt: `Categorize this issue and recommend appropriate labels. Consider:
 
@@ -149,11 +145,7 @@ Recommend 3-7 relevant labels that would help with issue organization and filter
       name: 'estimate',
       description: 'Estimate complexity and effort required for the issue',
       usage: '/estimate [methodology]',
-      examples: [
-        '/estimate',
-        '/estimate story-points',
-        '/estimate time',
-      ],
+      examples: ['/estimate', '/estimate story-points', '/estimate time'],
       requiresArgs: false,
       prompt: `Estimate the complexity and effort required for this issue. Provide:
 
@@ -192,11 +184,7 @@ Provide realistic estimates with clear reasoning and assumptions.`,
       name: 'triage',
       description: 'Triage issue for priority and next actions',
       usage: '/triage [criteria]',
-      examples: [
-        '/triage',
-        '/triage business-impact',
-        '/triage technical-debt',
-      ],
+      examples: ['/triage', '/triage business-impact', '/triage technical-debt'],
       requiresArgs: false,
       prompt: `Triage this issue for priority and immediate actions. Assess:
 
@@ -237,11 +225,7 @@ Focus on actionable next steps to move the issue forward efficiently.`,
       name: 'suggest-assignee',
       description: 'Suggest appropriate team members for issue assignment',
       usage: '/suggest-assignee [criteria]',
-      examples: [
-        '/suggest-assignee',
-        '/suggest-assignee skills',
-        '/suggest-assignee workload',
-      ],
+      examples: ['/suggest-assignee', '/suggest-assignee skills', '/suggest-assignee workload'],
       requiresArgs: false,
       prompt: `Analyze this issue and suggest appropriate team members for assignment. Consider:
 
@@ -280,24 +264,25 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   /**
    * Process standard events (automatic issue analysis)
    */
-  protected async processEvent(eventData: any, originalEvent: WebhookEvent): Promise<HandlerResponse> {
+  protected async processEvent(
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<HandlerResponse> {
     // Check if automatic analysis is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, 'Automatic analysis disabled', { 
+      return createResponse(true, 'Automatic analysis disabled', {
         skipped: true,
-        reason: 'auto_response_disabled' 
+        reason: 'auto_response_disabled',
       });
     }
 
     // Only auto-analyze newly opened issues
-    const shouldAutoAnalyze = eventData.issue && 
-      eventData.action && 
-      eventData.action.isOpened;
+    const shouldAutoAnalyze = eventData.issue && eventData.action && eventData.action.isOpened;
 
     if (!shouldAutoAnalyze) {
-      return createResponse(true, 'Event does not require automatic analysis', { 
+      return createResponse(true, 'Event does not require automatic analysis', {
         skipped: true,
-        reason: 'not_new_issue' 
+        reason: 'not_new_issue',
       });
     }
 
@@ -313,7 +298,7 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
       };
 
       const aiResponse = await this.provider.processCommand(analyzeCommand, aiContext);
-      
+
       if (!aiResponse.success) {
         return createResponse(false, `Automatic analysis failed: ${aiResponse.error}`);
       }
@@ -328,7 +313,6 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
         analysis: aiResponse.data,
         actions: actionResults,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return createResponse(false, `Automatic analysis error: ${errorMessage}`);
@@ -338,20 +322,24 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   /**
    * Execute actions returned by the AI
    */
-  protected async executeAction(action: any, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  protected async executeAction(
+    action: any,
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     switch (action.type) {
       case 'comment':
         return await this.postComment(action.data, eventData, originalEvent);
-      
+
       case 'label':
         return await this.addLabels(action.data, eventData, originalEvent);
-      
+
       case 'assign':
         return await this.assignUsers(action.data, eventData, originalEvent);
-      
+
       case 'issue':
         return await this.createRelatedIssue(action.data, eventData, originalEvent);
-      
+
       default:
         throw new Error(`Unsupported action type: ${action.type}`);
     }
@@ -360,7 +348,11 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   /**
    * Post analysis comment on the issue
    */
-  private async postComment(data: { body: string }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async postComment(
+    data: { body: string },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     await this.logActivity({
       type: 'ai.agent.action.comment',
       timestamp: new Date().toISOString(),
@@ -381,7 +373,11 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   /**
    * Add recommended labels to the issue
    */
-  private async addLabels(data: { labels: string[] }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async addLabels(
+    data: { labels: string[] },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     await this.logActivity({
       type: 'ai.agent.action.label',
       timestamp: new Date().toISOString(),
@@ -402,7 +398,11 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   /**
    * Assign users to the issue
    */
-  private async assignUsers(data: { assignees: string[] }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async assignUsers(
+    data: { assignees: string[] },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     await this.logActivity({
       type: 'ai.agent.action.assign',
       timestamp: new Date().toISOString(),
@@ -423,7 +423,11 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   /**
    * Create related issue based on analysis
    */
-  private async createRelatedIssue(data: { title: string; body: string; labels?: string[] }, eventData: any, originalEvent: WebhookEvent): Promise<any> {
+  private async createRelatedIssue(
+    data: { title: string; body: string; labels?: string[] },
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<any> {
     await this.logActivity({
       type: 'ai.agent.action.issue',
       timestamp: new Date().toISOString(),

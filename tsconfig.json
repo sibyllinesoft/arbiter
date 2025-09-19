@@ -7,15 +7,21 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "composite": true,
+    "baseUrl": ".",
+    "paths": {
+      "@arbiter/shared": ["./packages/shared/src"],
+      "@arbiter/cli": ["./packages/cli/src"],
+      "@arbiter/api-types": ["./packages/api-types/src"]
+    }
   },
-  "include": [
-    "src/**/*"
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/api-types" },
+    { "path": "./apps/api" },
+    { "path": "./apps/web" }
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "tests"
-  ]
+  "exclude": ["node_modules", "dist", "**/dist/**", "**/node_modules/**"]
 }

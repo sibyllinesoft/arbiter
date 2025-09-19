@@ -1,17 +1,23 @@
 # Arbiter Web Frontend
 
-**Interactive web interface for visual specification editing and system architecture visualization**
+**Interactive web interface for visual specification editing and system
+architecture visualization**
 
-A sophisticated React + TypeScript frontend that provides a visual layer for Arbiter's specification-driven development workflow. Built with modern tools and featuring a comprehensive design system called "Graphite."
+A sophisticated React + TypeScript frontend that provides a visual layer for
+Arbiter's specification-driven development workflow. Built with modern tools and
+featuring a comprehensive design system called "Graphite."
 
 ## What This Frontend Provides
 
-🎨 **Visual Specification Editing**: Interactive editors for CUE specifications  
-📊 **Interactive Diagrams**: Transform specifications into beautiful, live diagrams  
+🎨 **Visual Specification Editing**: Interactive editors for CUE
+specifications  
+📊 **Interactive Diagrams**: Transform specifications into beautiful, live
+diagrams  
 🔍 **Real-time Validation**: Instant feedback as you edit specifications  
 📱 **Responsive Design**: Works seamlessly across desktop, tablet, and mobile  
-🎭 **Storybook Integration**: Comprehensive component documentation and testing  
-⚡ **Performance Optimized**: Fast loading and smooth interactions  
+🎭 **Storybook Integration**: Comprehensive component documentation and
+testing  
+⚡ **Performance Optimized**: Fast loading and smooth interactions
 
 ## Architecture Overview
 
@@ -28,18 +34,21 @@ A sophisticated React + TypeScript frontend that provides a visual layer for Arb
 ### Key Features
 
 #### 1. Split-View Architecture
+
 - **Left Panel**: Specification editor with syntax highlighting
 - **Right Panel**: Live-rendered interactive diagrams
 - **Synchronized Updates**: Changes reflect immediately across views
 - **Copy-to-Clipboard**: Easy specification sharing
 
 #### 2. Interactive Diagram Types
+
 - **Flow Diagrams**: CI/CD pipelines, authentication flows, microservices
 - **State Machines**: Order processing, user sessions, approval workflows
 - **Site Architecture**: System topology and component relationships
 - **CUE Visualization**: Native CUE language structure visualization
 
 #### 3. Graphite Design System
+
 - **Consistent Theming**: Professional dark/light mode support
 - **Component Library**: Reusable UI components with variants
 - **Design Tokens**: Centralized colors, typography, and spacing
@@ -62,7 +71,7 @@ bun install
 
 # Start development server
 npm run dev
-# or  
+# or
 bun run dev
 
 # Open http://localhost:5173
@@ -138,17 +147,20 @@ VITE_HOT_RELOAD=true
 ## Testing Strategy
 
 ### Unit Testing (Vitest)
+
 - Component logic testing
 - Hook behavior validation
 - Utility function verification
 
 ### E2E Testing (Playwright)
+
 - Full user workflow testing
 - Cross-browser compatibility
 - Visual regression testing
 - Storybook component testing
 
 ### Test Commands
+
 ```bash
 # Run all tests
 npm run test
@@ -173,6 +185,7 @@ npm run storybook
 ```
 
 **Available Stories:**
+
 - **Components**: All UI components with variants
 - **Diagrams**: Interactive diagram examples
 - **Layouts**: Page layout combinations
@@ -198,12 +211,14 @@ const timeout = import.meta.env.VITE_API_TIMEOUT || 30000;
 ## Performance Optimization
 
 ### Build Optimizations
+
 - **Code Splitting**: Automatic route-based splitting
 - **Tree Shaking**: Unused code elimination
 - **Asset Optimization**: Image and font optimization
 - **Minification**: Production bundle compression
 
 ### Runtime Performance
+
 - **Lazy Loading**: Components loaded on demand
 - **Memoization**: Expensive computations cached
 - **Debounced Updates**: Reduced API calls during editing
@@ -212,6 +227,7 @@ const timeout = import.meta.env.VITE_API_TIMEOUT || 30000;
 ## Deployment
 
 ### Production Build
+
 ```bash
 # Create optimized production build
 npm run build
@@ -220,13 +236,16 @@ npm run build
 ```
 
 ### Static Hosting
+
 The built frontend can be deployed to any static hosting service:
+
 - **Vercel**: `vercel deploy`
 - **Netlify**: Drag & drop `dist/` folder
 - **AWS S3**: Upload `dist/` contents
 - **GitHub Pages**: Use built-in GitHub Actions
 
 ### Environment Variables for Production
+
 ```bash
 VITE_API_URL=https://api.your-domain.com
 VITE_API_TIMEOUT=30000
@@ -236,12 +255,14 @@ VITE_ENABLE_ANALYTICS=true
 ## Contributing
 
 ### Code Style
+
 - **ESLint**: Enforced code quality rules
 - **Prettier**: Automatic code formatting
 - **TypeScript**: Strict type checking enabled
 - **Component Structure**: Consistent patterns across components
 
 ### Adding New Components
+
 1. Create component in appropriate `src/components/` subdirectory
 2. Add TypeScript types in `src/types/`
 3. Create Storybook story in `.stories.tsx` file
@@ -249,6 +270,7 @@ VITE_ENABLE_ANALYTICS=true
 5. Export from appropriate index file
 
 ### Testing New Features
+
 1. Write unit tests for logic
 2. Create Storybook stories for UI
 3. Add E2E tests for user workflows
@@ -285,9 +307,12 @@ VITE_ENABLE_ANALYTICS=true
 
 - **[Storybook Stories](./stories/)** - Interactive component documentation
 - **[Testing Guide](./TESTING_GUIDE.md)** - Comprehensive testing strategy
-- **[Diagram Showcase](./DIAGRAM_SHOWCASE_README.md)** - Visualization capabilities
+- **[Diagram Showcase](./DIAGRAM_SHOWCASE_README.md)** - Visualization
+  capabilities
 - **[Arbiter API Documentation](../../api/README.md)** - Backend API reference
 
 ---
 
-*The Arbiter web frontend transforms complex specifications into intuitive visual experiences, making system architecture accessible to both technical and non-technical stakeholders.*
+_The Arbiter web frontend transforms complex specifications into intuitive
+visual experiences, making system architecture accessible to both technical and
+non-technical stakeholders._

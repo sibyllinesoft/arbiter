@@ -4,7 +4,7 @@ import { BaseHookAdapter } from '../base/IHookAdapter.js';
 
 /**
  * GitLab Merge Request adapter for AI processing
- * 
+ *
  * Extracts structured data from GitLab MR webhooks including:
  * - MR details (title, description, state, branches)
  * - File changes and statistics
@@ -18,15 +18,15 @@ export class GitLabMRAdapter extends BaseHookAdapter {
   async extractEventData(event: WebhookEvent): Promise<WebhookEventData> {
     try {
       const payload = event.payload;
-      
+
       // Validate required fields
       const errors = this.validatePayload(payload, [
         'object_attributes',
         'object_attributes.iid',
         'object_attributes.title',
-        'project'
+        'project',
       ]);
-      
+
       if (errors.length > 0) {
         return this.createErrorResponse(`Validation failed: ${errors.join(', ')}`);
       }
@@ -53,14 +53,14 @@ export class GitLabMRAdapter extends BaseHookAdapter {
         additions: 0, // Would need separate API call
         deletions: 0, // Would need separate API call
         changedFiles: 0, // Would need separate API call
-        
+
         // GitLab-specific fields
         mergeRequestId: mr.id,
         authorId: mr.author_id,
         assigneeId: mr.assignee_id,
         mergeUserId: mr.merge_user_id,
         milestoneId: mr.milestone_id,
-        
+
         // State information
         mergeable: mr.merge_status === 'can_be_merged',
         mergeableState: mr.merge_status,
@@ -69,13 +69,13 @@ export class GitLabMRAdapter extends BaseHookAdapter {
         closedAt: mr.closed_at,
         createdAt: mr.created_at,
         updatedAt: mr.updated_at,
-        
+
         // Branch information
         headSha: mr.last_commit?.id,
         baseSha: null, // Not directly available
         headRepo: mr.source?.path_with_namespace,
         baseRepo: mr.target?.path_with_namespace,
-        
+
         // Additional metadata
         timeStats: {
           timeEstimate: mr.time_estimate,
@@ -83,10 +83,10 @@ export class GitLabMRAdapter extends BaseHookAdapter {
           humanTimeEstimate: mr.human_time_estimate,
           humanTotalTimeSpent: mr.human_total_time_spent,
         },
-        
+
         // Approval information (GitLab Premium feature)
         approvalsRequired: mr.approvals_before_merge || 0,
-        
+
         // Labels (if provided)
         labels: payload.labels ? payload.labels.map((label: any) => label.title) : [],
       };
@@ -100,19 +100,22 @@ export class GitLabMRAdapter extends BaseHookAdapter {
         isMerged: mr.action === 'merge',
         isReopened: mr.action === 'reopen',
         isUpdated: mr.action === 'update',
-        
+
         // GitLab-specific actions
         isApproved: mr.action === 'approved',
         isUnapproved: mr.action === 'unapproved',
       };
 
       // Extract assignee and reviewer information
-      const assigneeInfo = payload.assignees ? 
-        payload.assignees.map((assignee: any) => assignee.username) : 
-        (payload.assignee ? [payload.assignee.username] : []);
+      const assigneeInfo = payload.assignees
+        ? payload.assignees.map((assignee: any) => assignee.username)
+        : payload.assignee
+          ? [payload.assignee.username]
+          : [];
 
-      const reviewerInfo = payload.reviewers ? 
-        payload.reviewers.map((reviewer: any) => reviewer.username) : [];
+      const reviewerInfo = payload.reviewers
+        ? payload.reviewers.map((reviewer: any) => reviewer.username)
+        : [];
 
       return this.createSuccessResponse({
         repository,
@@ -123,18 +126,17 @@ export class GitLabMRAdapter extends BaseHookAdapter {
           requestedReviewers: reviewerInfo,
         },
         action: actionData,
-        
+
         // GitLab-specific context
         changes: payload.changes || {},
-        
+
         // Additional event context
         eventType: 'merge_request',
         timestamp: event.timestamp,
-        
+
         // Raw payload for advanced processing
         raw: payload,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return this.createErrorResponse(`Failed to extract GitLab MR data: ${errorMessage}`);
@@ -177,13 +179,9 @@ export class GitLabPushAdapter extends BaseHookAdapter {
   async extractEventData(event: WebhookEvent): Promise<WebhookEventData> {
     try {
       const payload = event.payload;
-      
-      const errors = this.validatePayload(payload, [
-        'ref',
-        'project',
-        'user_name'
-      ]);
-      
+
+      const errors = this.validatePayload(payload, ['ref', 'project', 'user_name']);
+
       if (errors.length > 0) {
         return this.createErrorResponse(`Validation failed: ${errors.join(', ')}`);
       }
@@ -197,7 +195,7 @@ export class GitLabPushAdapter extends BaseHookAdapter {
 
       // Extract branch name from ref
       const branch = payload.ref.replace('refs/heads/', '');
-      
+
       // Determine push type
       const isNewBranch = payload.before === '0000000000000000000000000000000000000000';
       const isBranchDeletion = payload.after === '0000000000000000000000000000000000000000';
@@ -210,7 +208,7 @@ export class GitLabPushAdapter extends BaseHookAdapter {
         email: commit.author?.email,
         url: commit.url,
         timestamp: commit.timestamp,
-        
+
         // GitLab commit details
         added: commit.added || [],
         removed: commit.removed || [],
@@ -222,24 +220,24 @@ export class GitLabPushAdapter extends BaseHookAdapter {
         commits,
         before: payload.before,
         after: payload.after,
-        
+
         // Push context
         isNewBranch,
         isBranchDeletion,
         isForcePush: false, // GitLab doesn't provide this directly
         isTag: payload.ref.startsWith('refs/tags/'),
-        
+
         // Branch analysis
         isProtectedBranch: ['main', 'master', 'develop', 'staging'].includes(branch.toLowerCase()),
         isFeatureBranch: branch.startsWith('feature/'),
         isHotfixBranch: branch.startsWith('hotfix/'),
         isBugfixBranch: branch.startsWith('bugfix/'),
         isReleaseBranch: branch.startsWith('release/'),
-        
+
         // Statistics
         commitCount: commits.length,
         totalCommitsCount: payload.total_commits_count || commits.length,
-        
+
         // GitLab-specific fields
         checkoutSha: payload.checkout_sha,
         projectId: payload.project_id,
@@ -250,12 +248,11 @@ export class GitLabPushAdapter extends BaseHookAdapter {
         repository,
         user,
         push: pushData,
-        
+
         eventType: 'push',
         timestamp: event.timestamp,
         raw: payload,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return this.createErrorResponse(`Failed to extract GitLab push data: ${errorMessage}`);

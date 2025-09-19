@@ -4,7 +4,13 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import React, { useEffect, useRef, type ReactNode, type MouseEvent, type KeyboardEvent } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  type ReactNode,
+  type MouseEvent,
+  type KeyboardEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import { X, AlertTriangle, CheckCircle, Info, XCircle, Loader2 } from 'lucide-react';
@@ -14,55 +20,55 @@ import Button from './Button';
 export interface ModalProps {
   /** Whether the modal is open */
   open: boolean;
-  
+
   /** Callback when the modal should be closed */
   onClose: () => void;
-  
+
   /** Modal title */
   title?: string;
-  
+
   /** Modal description */
   description?: string;
-  
+
   /** Modal size */
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | 'full';
-  
+
   /** Modal variant */
   variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
-  
+
   /** Whether the modal is in loading state */
   loading?: boolean;
-  
+
   /** Whether to show the close button */
   showCloseButton?: boolean;
-  
+
   /** Whether to close on backdrop click */
   closeOnBackdropClick?: boolean;
-  
+
   /** Whether to close on escape key */
   closeOnEscape?: boolean;
-  
+
   /** Custom className for the modal content */
   className?: string;
-  
+
   /** Custom className for the modal container */
   containerClassName?: string;
-  
+
   /** Modal content */
   children?: ReactNode;
-  
+
   /** Footer content */
   footer?: ReactNode;
-  
+
   /** Whether to show default footer with close button */
   showDefaultFooter?: boolean;
-  
+
   /** Initial focus element selector */
   initialFocus?: string;
-  
+
   /** Whether to center content vertically */
   centered?: boolean;
-  
+
   /** Custom z-index */
   zIndex?: number;
 }
@@ -130,7 +136,7 @@ export function Modal({
     if (open) {
       // Store previously focused element
       previousActiveElement.current = document.activeElement as HTMLElement;
-      
+
       // Focus initial element or modal itself
       setTimeout(() => {
         if (initialFocus) {
@@ -143,7 +149,7 @@ export function Modal({
         }
       }, 100);
     }
-    
+
     // Restore focus when closing
     return () => {
       if (previousActiveElement.current) {
@@ -155,13 +161,13 @@ export function Modal({
   // Handle escape key
   useEffect(() => {
     if (!open || !closeOnEscape) return;
-    
+
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onClose();
       }
     };
-    
+
     document.addEventListener('keydown', handleEscape as any);
     return () => document.removeEventListener('keydown', handleEscape as any);
   }, [open, closeOnEscape, onClose]);
@@ -223,13 +229,15 @@ export function Modal({
         onClick={handleBackdropClick}
         aria-hidden="true"
       />
-      
+
       {/* Modal container */}
-      <div className={cn(
-        'fixed inset-0 flex p-4',
-        centered ? 'items-center justify-center' : 'items-start justify-center pt-16',
-        containerClassName
-      )}>
+      <div
+        className={cn(
+          'fixed inset-0 flex p-4',
+          centered ? 'items-center justify-center' : 'items-start justify-center pt-16',
+          containerClassName
+        )}
+      >
         <div
           ref={modalRef}
           className={cn(
@@ -239,16 +247,16 @@ export function Modal({
             'animate-in fade-in zoom-in-95 duration-200',
             'w-full max-h-[90vh] overflow-y-auto',
             'focus:outline-none',
-            
+
             // Size classes
             sizeClasses[size],
-            
+
             // Variant classes
             variantClasses[variant],
-            
+
             // Loading state
             loading && 'pointer-events-none',
-            
+
             // Custom className
             className
           )}
@@ -268,7 +276,7 @@ export function Modal({
               </div>
             </div>
           )}
-          
+
           {/* Header */}
           {(title || showCloseButton) && (
             <div className="flex items-start gap-4 p-6 border-b border-graphite-200">
@@ -277,7 +285,7 @@ export function Modal({
                   <VariantIcon className="h-6 w-6" />
                 </div>
               )}
-              
+
               <div className="flex-1 min-w-0">
                 {title && (
                   <h2 id="modal-title" className="text-xl font-semibold text-graphite-900">
@@ -285,12 +293,15 @@ export function Modal({
                   </h2>
                 )}
                 {description && (
-                  <p id="modal-description" className="mt-2 text-sm text-graphite-600 leading-relaxed">
+                  <p
+                    id="modal-description"
+                    className="mt-2 text-sm text-graphite-600 leading-relaxed"
+                  >
                     {description}
                   </p>
                 )}
               </div>
-              
+
               {showCloseButton && (
                 <button
                   type="button"
@@ -307,16 +318,18 @@ export function Modal({
               )}
             </div>
           )}
-          
+
           {/* Content */}
-          <div className={cn(
-            'px-6',
-            (title || showCloseButton) ? 'py-4' : 'pt-6',
-            (footer || showDefaultFooter) ? 'pb-4' : 'pb-6'
-          )}>
+          <div
+            className={cn(
+              'px-6',
+              title || showCloseButton ? 'py-4' : 'pt-6',
+              footer || showDefaultFooter ? 'pb-4' : 'pb-6'
+            )}
+          >
             {children}
           </div>
-          
+
           {/* Footer */}
           {(footer || showDefaultFooter) && (
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-graphite-200 bg-graphite-50/50 rounded-b-xl">

@@ -67,7 +67,7 @@
               "trigger": "/review-code"
             },
             {
-              "name": "security-scan", 
+              "name": "security-scan",
               "description": "Security vulnerability scanning",
               "trigger": "/security-scan"
             },
@@ -104,7 +104,7 @@
               "trigger": "/categorize"
             },
             {
-              "name": "triage", 
+              "name": "triage",
               "description": "Triage issue priority and assignment",
               "trigger": "/triage"
             }
@@ -148,7 +148,7 @@
       },
       "security": {
         "enabled": false,
-        "handler": "./ai/agents/SecurityAgent.ts", 
+        "handler": "./ai/agents/SecurityAgent.ts",
         "category": "AI Agent",
         "description": "🛡️ Advanced security vulnerability scanning using AI. Detects injection attacks, auth issues, and dependency vulnerabilities.",
         "tags": ["ai", "security", "vulnerability", "scanning"],
@@ -278,7 +278,11 @@
         "claude-3-opus": {
           "maxTokens": 4000,
           "costPer1kTokens": 0.015,
-          "bestFor": ["complex reasoning", "security analysis", "architectural review"]
+          "bestFor": [
+            "complex reasoning",
+            "security analysis",
+            "architectural review"
+          ]
         },
         "claude-3-sonnet": {
           "maxTokens": 4000,
@@ -288,7 +292,11 @@
         "claude-3-haiku": {
           "maxTokens": 4000,
           "costPer1kTokens": 0.00025,
-          "bestFor": ["quick analysis", "simple tasks", "high-volume processing"]
+          "bestFor": [
+            "quick analysis",
+            "simple tasks",
+            "high-volume processing"
+          ]
         }
       },
       "rateLimit": {
@@ -305,17 +313,29 @@
         "gpt-4": {
           "maxTokens": 8192,
           "costPer1kTokens": 0.03,
-          "bestFor": ["code analysis", "issue triaging", "comprehensive reviews"]
+          "bestFor": [
+            "code analysis",
+            "issue triaging",
+            "comprehensive reviews"
+          ]
         },
         "gpt-4-turbo": {
           "maxTokens": 128000,
           "costPer1kTokens": 0.01,
-          "bestFor": ["large codebase analysis", "complex documentation", "architectural analysis"]
+          "bestFor": [
+            "large codebase analysis",
+            "complex documentation",
+            "architectural analysis"
+          ]
         },
         "gpt-3.5-turbo": {
           "maxTokens": 16384,
           "costPer1kTokens": 0.0015,
-          "bestFor": ["quick analysis", "simple code reviews", "basic documentation"]
+          "bestFor": [
+            "quick analysis",
+            "simple code reviews",
+            "basic documentation"
+          ]
         }
       },
       "rateLimit": {
@@ -332,12 +352,20 @@
         "gemini-pro": {
           "maxTokens": 32768,
           "costPer1kTokens": 0.0005,
-          "bestFor": ["documentation generation", "code explanation", "multimodal analysis"]
+          "bestFor": [
+            "documentation generation",
+            "code explanation",
+            "multimodal analysis"
+          ]
         },
         "gemini-pro-vision": {
           "maxTokens": 16384,
           "costPer1kTokens": 0.0025,
-          "bestFor": ["UI analysis", "diagram interpretation", "visual documentation"]
+          "bestFor": [
+            "UI analysis",
+            "diagram interpretation",
+            "visual documentation"
+          ]
         }
       },
       "rateLimit": {

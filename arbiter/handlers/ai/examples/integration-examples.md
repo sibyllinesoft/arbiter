@@ -1,6 +1,7 @@
 # AI Agent Integration Examples
 
-This document provides comprehensive examples of integrating AI agents with various platforms, tools, and workflows.
+This document provides comprehensive examples of integrating AI agents with
+various platforms, tools, and workflows.
 
 ## 🔗 GitHub Actions Integration
 
@@ -26,7 +27,7 @@ jobs:
 
 Please analyze this PR for:
 - Security vulnerabilities
-- Code quality issues  
+- Code quality issues
 - Performance concerns
 - Best practices compliance`;
 
@@ -69,14 +70,14 @@ jobs:
           script: |
             const issueNumber = context.payload.issue.number;
             const labels = context.payload.issue.labels.map(l => l.name);
-            
+
             // Only analyze issues without labels (newly created)
             if (labels.length === 0) {
               const comment = `/analyze-issue
 
 Auto-analysis requested for new issue. This will help with:
 - Issue categorization and labeling
-- Priority assessment  
+- Priority assessment
 - Complexity estimation
 - Assignment recommendations`;
 
@@ -102,68 +103,68 @@ const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
 export async function sendSecurityAlert(finding) {
   const blocks = [
     {
-      type: "header",
+      type: 'header',
       text: {
-        type: "plain_text",
-        text: "🚨 Security Vulnerability Found"
-      }
+        type: 'plain_text',
+        text: '🚨 Security Vulnerability Found',
+      },
     },
     {
-      type: "section",
+      type: 'section',
       fields: [
         {
-          type: "mrkdwn",
-          text: `*Repository:*\n${finding.repository}`
+          type: 'mrkdwn',
+          text: `*Repository:*\n${finding.repository}`,
         },
         {
-          type: "mrkdwn", 
-          text: `*Severity:*\n${finding.severity.toUpperCase()}`
+          type: 'mrkdwn',
+          text: `*Severity:*\n${finding.severity.toUpperCase()}`,
         },
         {
-          type: "mrkdwn",
-          text: `*Type:*\n${finding.vulnerabilityType}`
+          type: 'mrkdwn',
+          text: `*Type:*\n${finding.vulnerabilityType}`,
         },
         {
-          type: "mrkdwn",
-          text: `*PR:*\n<${finding.prUrl}|#${finding.prNumber}>`
-        }
-      ]
+          type: 'mrkdwn',
+          text: `*PR:*\n<${finding.prUrl}|#${finding.prNumber}>`,
+        },
+      ],
     },
     {
-      type: "section",
+      type: 'section',
       text: {
-        type: "mrkdwn",
-        text: `*Finding:*\n${finding.description}`
-      }
+        type: 'mrkdwn',
+        text: `*Finding:*\n${finding.description}`,
+      },
     },
     {
-      type: "actions",
+      type: 'actions',
       elements: [
         {
-          type: "button",
+          type: 'button',
           text: {
-            type: "plain_text",
-            text: "View PR"
+            type: 'plain_text',
+            text: 'View PR',
           },
           url: finding.prUrl,
-          style: "primary"
+          style: 'primary',
         },
         {
-          type: "button",
+          type: 'button',
           text: {
-            type: "plain_text", 
-            text: "Security Dashboard"
+            type: 'plain_text',
+            text: 'Security Dashboard',
           },
-          url: "https://security.company.com/dashboard"
-        }
-      ]
-    }
+          url: 'https://security.company.com/dashboard',
+        },
+      ],
+    },
   ];
 
   await slack.chat.postMessage({
     channel: '#security-alerts',
     blocks: blocks,
-    text: `Security vulnerability found in ${finding.repository}`
+    text: `Security vulnerability found in ${finding.repository}`,
   });
 }
 
@@ -176,7 +177,7 @@ export async function executeSecurityWebhook(data, eventData, originalEvent) {
       vulnerabilityType: data.type || 'Unknown',
       prNumber: eventData.pullRequest.number,
       prUrl: eventData.pullRequest.url,
-      description: data.summary || 'Security vulnerability detected'
+      description: data.summary || 'Security vulnerability detected',
     });
   }
 }
@@ -188,41 +189,41 @@ export async function executeSecurityWebhook(data, eventData, originalEvent) {
 // Send daily code review summary to Slack
 export async function sendDailyReviewSummary() {
   const summary = await generateDailyReviewSummary();
-  
+
   const blocks = [
     {
-      type: "header", 
+      type: 'header',
       text: {
-        type: "plain_text",
-        text: "📊 Daily AI Code Review Summary"
-      }
+        type: 'plain_text',
+        text: '📊 Daily AI Code Review Summary',
+      },
     },
     {
-      type: "section",
+      type: 'section',
       fields: [
         {
-          type: "mrkdwn",
-          text: `*PRs Reviewed:*\n${summary.totalPRs}`
+          type: 'mrkdwn',
+          text: `*PRs Reviewed:*\n${summary.totalPRs}`,
         },
         {
-          type: "mrkdwn",
-          text: `*Issues Found:*\n${summary.totalIssues}`
+          type: 'mrkdwn',
+          text: `*Issues Found:*\n${summary.totalIssues}`,
         },
         {
-          type: "mrkdwn", 
-          text: `*Security Findings:*\n${summary.securityFindings}`
+          type: 'mrkdwn',
+          text: `*Security Findings:*\n${summary.securityFindings}`,
         },
         {
-          type: "mrkdwn",
-          text: `*Performance Issues:*\n${summary.performanceIssues}`
-        }
-      ]
-    }
+          type: 'mrkdwn',
+          text: `*Performance Issues:*\n${summary.performanceIssues}`,
+        },
+      ],
+    },
   ];
 
   await slack.chat.postMessage({
     channel: '#dev-team',
-    blocks: blocks
+    blocks: blocks,
   });
 }
 ```
@@ -257,8 +258,11 @@ export async function createSecurityTicket(finding) {
           {
             type: 'paragraph',
             content: [
-              { type: 'text', text: 'Security vulnerability detected by AI analysis:' }
-            ]
+              {
+                type: 'text',
+                text: 'Security vulnerability detected by AI analysis:',
+              },
+            ],
           },
           {
             type: 'panel',
@@ -267,61 +271,74 @@ export async function createSecurityTicket(finding) {
               {
                 type: 'paragraph',
                 content: [
-                  { type: 'text', text: `Severity: ${finding.severity.toUpperCase()}` },
+                  {
+                    type: 'text',
+                    text: `Severity: ${finding.severity.toUpperCase()}`,
+                  },
                   { type: 'hardBreak' },
                   { type: 'text', text: `Type: ${finding.type}` },
                   { type: 'hardBreak' },
                   { type: 'text', text: `Repository: ${finding.repository}` },
                   { type: 'hardBreak' },
                   { type: 'text', text: `PR: `, marks: [{ type: 'strong' }] },
-                  { 
-                    type: 'text', 
+                  {
+                    type: 'text',
                     text: `#${finding.prNumber}`,
-                    marks: [{ type: 'link', attrs: { href: finding.prUrl } }]
-                  }
-                ]
-              }
-            ]
+                    marks: [{ type: 'link', attrs: { href: finding.prUrl } }],
+                  },
+                ],
+              },
+            ],
           },
           {
             type: 'heading',
             attrs: { level: 3 },
-            content: [{ type: 'text', text: 'Description' }]
+            content: [{ type: 'text', text: 'Description' }],
           },
           {
             type: 'paragraph',
-            content: [{ type: 'text', text: finding.description }]
+            content: [{ type: 'text', text: finding.description }],
           },
           {
             type: 'heading',
             attrs: { level: 3 },
-            content: [{ type: 'text', text: 'Remediation' }]
+            content: [{ type: 'text', text: 'Remediation' }],
           },
           {
-            type: 'paragraph', 
-            content: [{ type: 'text', text: finding.remediation || 'See AI analysis for details' }]
-          }
-        ]
+            type: 'paragraph',
+            content: [
+              {
+                type: 'text',
+                text: finding.remediation || 'See AI analysis for details',
+              },
+            ],
+          },
+        ],
       },
       issuetype: { name: 'Security Finding' },
       priority: {
-        name: finding.severity === 'critical' ? 'Highest' : 
-              finding.severity === 'high' ? 'High' :
-              finding.severity === 'medium' ? 'Medium' : 'Low'
+        name:
+          finding.severity === 'critical'
+            ? 'Highest'
+            : finding.severity === 'high'
+              ? 'High'
+              : finding.severity === 'medium'
+                ? 'Medium'
+                : 'Low',
       },
       labels: ['ai-detected', 'security', finding.type?.toLowerCase()],
-      components: [{ name: 'Security' }]
-    }
+      components: [{ name: 'Security' }],
+    },
   };
 
   const createdIssue = await jira.issues.createIssue(issue);
-  
+
   // Link to original PR if possible
   if (finding.prUrl) {
     await jira.issueLinks.createIssueLink({
       type: { name: 'Relates' },
       inwardIssue: { key: createdIssue.key },
-      outwardIssue: { url: finding.prUrl }
+      outwardIssue: { url: finding.prUrl },
     });
   }
 
@@ -343,8 +360,8 @@ const transporter = nodemailer.createTransporter({
   secure: false,
   auth: {
     user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
-  }
+    pass: process.env.SMTP_PASS,
+  },
 });
 
 export async function sendSecurityAlertEmail(finding) {
@@ -392,7 +409,7 @@ export async function sendSecurityAlertEmail(finding) {
     from: process.env.ALERT_EMAIL_FROM,
     to: process.env.SECURITY_TEAM_EMAIL,
     subject: `🚨 ${finding.severity.toUpperCase()} Security Issue: ${finding.type}`,
-    html: html
+    html: html,
   });
 }
 ```
@@ -410,59 +427,63 @@ export const aiAgentMetrics = {
   requestsTotal: new client.Counter({
     name: 'ai_agent_requests_total',
     help: 'Total number of AI agent requests',
-    labelNames: ['agent', 'command', 'provider', 'status']
+    labelNames: ['agent', 'command', 'provider', 'status'],
   }),
 
   responseTime: new client.Histogram({
-    name: 'ai_agent_response_time_seconds', 
+    name: 'ai_agent_response_time_seconds',
     help: 'AI agent response time in seconds',
     labelNames: ['agent', 'provider'],
-    buckets: [0.5, 1, 2, 5, 10, 30, 60]
+    buckets: [0.5, 1, 2, 5, 10, 30, 60],
   }),
 
   tokenUsage: new client.Counter({
     name: 'ai_agent_tokens_used_total',
     help: 'Total tokens used by AI agents',
-    labelNames: ['agent', 'provider', 'type']
+    labelNames: ['agent', 'provider', 'type'],
   }),
 
   securityFindings: new client.Counter({
     name: 'ai_security_findings_total',
     help: 'Total security findings by severity',
-    labelNames: ['severity', 'type', 'repository']
+    labelNames: ['severity', 'type', 'repository'],
   }),
 
   errorRate: new client.Counter({
     name: 'ai_agent_errors_total',
     help: 'Total errors from AI agents',
-    labelNames: ['agent', 'error_type']
-  })
+    labelNames: ['agent', 'error_type'],
+  }),
 };
 
 // Usage in agents
-export function recordAgentMetrics(agentId, command, provider, startTime, success, tokenUsage) {
+export function recordAgentMetrics(
+  agentId,
+  command,
+  provider,
+  startTime,
+  success,
+  tokenUsage
+) {
   const status = success ? 'success' : 'error';
   const duration = (Date.now() - startTime) / 1000;
 
-  aiAgentMetrics.requestsTotal.inc({ 
-    agent: agentId, 
-    command, 
-    provider, 
-    status 
+  aiAgentMetrics.requestsTotal.inc({
+    agent: agentId,
+    command,
+    provider,
+    status,
   });
 
-  aiAgentMetrics.responseTime.observe(
-    { agent: agentId, provider }, 
-    duration
-  );
+  aiAgentMetrics.responseTime.observe({ agent: agentId, provider }, duration);
 
   if (tokenUsage) {
     aiAgentMetrics.tokenUsage.inc(
-      { agent: agentId, provider, type: 'input' }, 
+      { agent: agentId, provider, type: 'input' },
       tokenUsage.inputTokens
     );
     aiAgentMetrics.tokenUsage.inc(
-      { agent: agentId, provider, type: 'output' }, 
+      { agent: agentId, provider, type: 'output' },
       tokenUsage.outputTokens
     );
   }
@@ -482,19 +503,28 @@ import { StatsD } from 'node-statsd';
 const statsd = new StatsD({
   host: process.env.DATADOG_HOST || 'localhost',
   port: 8125,
-  prefix: 'arbiter.ai.'
+  prefix: 'arbiter.ai.',
 });
 
-export function recordDataDogMetrics(agentId, command, startTime, success, tokenUsage) {
+export function recordDataDogMetrics(
+  agentId,
+  command,
+  startTime,
+  success,
+  tokenUsage
+) {
   const duration = Date.now() - startTime;
   const tags = [`agent:${agentId}`, `command:${command}`];
 
   // Record response time
   statsd.timing('response_time', duration, tags);
-  
+
   // Record request count
-  statsd.increment('requests', 1, [...tags, `status:${success ? 'success' : 'error'}`]);
-  
+  statsd.increment('requests', 1, [
+    ...tags,
+    `status:${success ? 'success' : 'error'}`,
+  ]);
+
   // Record token usage
   if (tokenUsage) {
     statsd.gauge('tokens.input', tokenUsage.inputTokens, tags);
@@ -544,7 +574,7 @@ services:
     depends_on:
       - redis
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health/ai"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health/ai']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -553,11 +583,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    
+
   prometheus:
     image: prom/prometheus:latest
     ports:
-      - "9090:9090"
+      - '9090:9090'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
@@ -587,11 +617,15 @@ export class AIResponseCache {
 
   // Cache AI analysis results
   async cacheResponse(key, response, ttl = this.defaultTTL) {
-    await redis.setex(key, ttl, JSON.stringify({
-      response,
-      cachedAt: new Date().toISOString(),
-      provider: response.provider
-    }));
+    await redis.setex(
+      key,
+      ttl,
+      JSON.stringify({
+        response,
+        cachedAt: new Date().toISOString(),
+        provider: response.provider,
+      })
+    );
   }
 
   // Retrieve cached response
@@ -602,7 +636,7 @@ export class AIResponseCache {
       return {
         ...parsed.response,
         fromCache: true,
-        cachedAt: parsed.cachedAt
+        cachedAt: parsed.cachedAt,
       };
     }
     return null;
@@ -627,21 +661,24 @@ export class AIResponseCache {
 // Usage in AI agents
 export async function getCachedOrAnalyze(command, codeContent, provider) {
   const cache = new AIResponseCache();
-  const codeHash = createHash('sha256').update(codeContent).digest('hex').substring(0, 16);
+  const codeHash = createHash('sha256')
+    .update(codeContent)
+    .digest('hex')
+    .substring(0, 16);
   const cacheKey = cache.generateCacheKey(command, codeHash, provider);
-  
+
   // Try cache first
   let response = await cache.getCachedResponse(cacheKey);
   if (response) {
     return response;
   }
-  
+
   // Generate new analysis
   response = await performAIAnalysis(command, codeContent, provider);
-  
+
   // Cache the result
   await cache.cacheResponse(cacheKey, response);
-  
+
   return response;
 }
 ```
@@ -695,7 +732,7 @@ ai-code-review:
 // Jenkinsfile
 pipeline {
     agent any
-    
+
     stages {
         stage('AI Code Analysis') {
             when {
@@ -707,7 +744,7 @@ pipeline {
                         script {
                             def prNumber = env.CHANGE_ID
                             def repoUrl = "https://api.github.com/repos/${env.CHANGE_URL.split('/')[3]}/${env.CHANGE_URL.split('/')[4]}"
-                            
+
                             httpRequest(
                                 httpMode: 'POST',
                                 url: "${repoUrl}/issues/${prNumber}/comments",
@@ -717,16 +754,16 @@ pipeline {
                         }
                     }
                 }
-                
+
                 stage('Code Review') {
                     steps {
                         script {
                             def prNumber = env.CHANGE_ID
                             def repoUrl = "https://api.github.com/repos/${env.CHANGE_URL.split('/')[3]}/${env.CHANGE_URL.split('/')[4]}"
-                            
+
                             httpRequest(
                                 httpMode: 'POST',
-                                url: "${repoUrl}/issues/${prNumber}/comments", 
+                                url: "${repoUrl}/issues/${prNumber}/comments",
                                 requestBody: '{"body": "/review-code\\n\\nJenkins Pipeline Code Review"}',
                                 customHeaders: [[name: 'Authorization', value: "token ${env.GITHUB_TOKEN}"]]
                             )
@@ -761,24 +798,24 @@ export class WebhookRelay {
     return {
       processed: applicableAgents.length,
       successful: results.filter(r => r.status === 'fulfilled').length,
-      results: results
+      results: results,
     };
   }
 
   // Find agents based on event content and configuration
   findApplicableAgents(event) {
     const agents = [];
-    
+
     // Security-related events always go to security agent
     if (this.isSecurityRelated(event)) {
       agents.push(this.agents.get('security-agent'));
     }
-    
+
     // Large PRs get code review
     if (event.pullRequest && event.pullRequest.changedFiles > 10) {
       agents.push(this.agents.get('code-review-agent'));
     }
-    
+
     // New issues get analysis
     if (event.eventType === 'issues' && event.payload.action === 'opened') {
       agents.push(this.agents.get('issue-analysis-agent'));
@@ -800,35 +837,37 @@ export const repositoryConfigs = {
     autoResponse: true,
     notifications: ['slack', 'pagerduty'],
     customPrompts: {
-      'security-scan': 'Focus on PCI compliance and payment data security'
-    }
+      'security-scan': 'Focus on PCI compliance and payment data security',
+    },
   },
-  
+
   'company/public-website': {
     agents: ['code-review-agent', 'documentation-agent'],
-    securityLevel: 'medium', 
+    securityLevel: 'medium',
     autoResponse: false,
     notifications: ['slack'],
     customPrompts: {
-      'review-code': 'Focus on performance and accessibility'
-    }
+      'review-code': 'Focus on performance and accessibility',
+    },
   },
 
   'company/internal-tools': {
     agents: ['issue-analysis-agent'],
     securityLevel: 'low',
     autoResponse: true,
-    notifications: []
-  }
+    notifications: [],
+  },
 };
 
 export function getRepositoryConfig(repoName) {
-  return repositoryConfigs[repoName] || {
-    agents: ['code-review-agent'],
-    securityLevel: 'medium',
-    autoResponse: false,
-    notifications: ['slack']
-  };
+  return (
+    repositoryConfigs[repoName] || {
+      agents: ['code-review-agent'],
+      securityLevel: 'medium',
+      autoResponse: false,
+      notifications: ['slack'],
+    }
+  );
 }
 ```
 
@@ -840,10 +879,16 @@ import crypto from 'crypto';
 
 export function validateGitHubSignature(payload, signature, secret) {
   const hmac = crypto.createHmac('sha256', secret);
-  const digest = Buffer.from('sha256=' + hmac.update(payload).digest('hex'), 'utf8');
+  const digest = Buffer.from(
+    'sha256=' + hmac.update(payload).digest('hex'),
+    'utf8'
+  );
   const checksum = Buffer.from(signature, 'utf8');
-  
-  if (checksum.length !== digest.length || !crypto.timingSafeEqual(digest, checksum)) {
+
+  if (
+    checksum.length !== digest.length ||
+    !crypto.timingSafeEqual(digest, checksum)
+  ) {
     throw new Error('Invalid GitHub webhook signature');
   }
 }
@@ -851,7 +896,7 @@ export function validateGitHubSignature(payload, signature, secret) {
 export function validateGitLabSignature(payload, signature, secret) {
   const hmac = crypto.createHmac('sha256', secret);
   const digest = hmac.update(payload).digest('hex');
-  
+
   if (digest !== signature) {
     throw new Error('Invalid GitLab webhook signature');
   }
@@ -859,16 +904,25 @@ export function validateGitLabSignature(payload, signature, secret) {
 
 // Middleware for webhook validation
 export function webhookSecurityMiddleware(req, res, next) {
-  const signature = req.headers['x-hub-signature-256'] || req.headers['x-gitlab-token'];
+  const signature =
+    req.headers['x-hub-signature-256'] || req.headers['x-gitlab-token'];
   const payload = JSON.stringify(req.body);
-  
+
   try {
     if (req.headers['x-github-event']) {
-      validateGitHubSignature(payload, signature, process.env.GITHUB_WEBHOOK_SECRET);
+      validateGitHubSignature(
+        payload,
+        signature,
+        process.env.GITHUB_WEBHOOK_SECRET
+      );
     } else if (req.headers['x-gitlab-event']) {
-      validateGitLabSignature(payload, signature, process.env.GITLAB_WEBHOOK_SECRET);
+      validateGitLabSignature(
+        payload,
+        signature,
+        process.env.GITLAB_WEBHOOK_SECRET
+      );
     }
-    
+
     next();
   } catch (error) {
     res.status(401).json({ error: 'Unauthorized webhook' });
@@ -878,6 +932,10 @@ export function webhookSecurityMiddleware(req, res, next) {
 
 ---
 
-These integration examples provide a comprehensive foundation for connecting AI agents with various platforms and services. Each example includes production-ready code with proper error handling, security considerations, and monitoring integration.
+These integration examples provide a comprehensive foundation for connecting AI
+agents with various platforms and services. Each example includes
+production-ready code with proper error handling, security considerations, and
+monitoring integration.
 
-For more specific integration needs, refer to the individual platform documentation and adapt these examples accordingly.
+For more specific integration needs, refer to the individual platform
+documentation and adapt these examples accordingly.

@@ -1,6 +1,6 @@
-import type { IRResponse, ValidationRequest, ValidationResponse } from "@arbiter/shared";
-import { COMMON_PORTS } from "./config.js";
-import type { CLIConfig, CommandResult } from "./types.js";
+import type { IRResponse, ValidationRequest, ValidationResponse } from '@arbiter/shared';
+import { COMMON_PORTS } from './config.js';
+import type { CLIConfig, CommandResult } from './types.js';
 
 /**
  * Rate-limited HTTP API client for Arbiter server
@@ -10,14 +10,14 @@ import type { CLIConfig, CommandResult } from "./types.js";
 export class ApiClient {
   private baseUrl: string;
   private timeout: number;
-  private lastRequestTime: number = 0;
+  private lastRequestTime = 0;
   private discoveredUrl: string | null = null;
   private readonly MAX_PAYLOAD_SIZE = 64 * 1024; // 64KB
   private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second (1 RPS)
   private readonly MAX_TIMEOUT = 750; // 750ms per spec
 
   constructor(config: CLIConfig) {
-    this.baseUrl = config.apiUrl.replace(/\/$/, ""); // Remove trailing slash
+    this.baseUrl = config.apiUrl.replace(/\/$/, ''); // Remove trailing slash
     // Ensure timeout compliance with spec (≤750ms)
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
   }
@@ -38,7 +38,7 @@ export class ApiClient {
 
         const response = await fetch(`${testUrl}/health`, {
           signal: controller.signal,
-          method: "GET",
+          method: 'GET',
         });
 
         clearTimeout(timeoutId);
@@ -52,7 +52,7 @@ export class ApiClient {
 
     return {
       success: false,
-      error: `No Arbiter server found on common ports [${COMMON_PORTS.join(", ")}]. Please ensure the server is running.`,
+      error: `No Arbiter server found on common ports [${COMMON_PORTS.join(', ')}]. Please ensure the server is running.`,
     };
   }
 
@@ -72,7 +72,7 @@ export class ApiClient {
 
     if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
       const waitTime = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
 
     this.lastRequestTime = Date.now();
@@ -85,7 +85,7 @@ export class ApiClient {
     const size = new TextEncoder().encode(payload).length;
     if (size > this.MAX_PAYLOAD_SIZE) {
       throw new Error(
-        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`,
+        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`
       );
     }
   }
@@ -98,7 +98,7 @@ export class ApiClient {
     _options: {
       schema?: string;
       strict?: boolean;
-    } = {},
+    } = {}
   ): Promise<CommandResult<ValidationResponse>> {
     try {
       await this.enforceRateLimit();
@@ -106,17 +106,18 @@ export class ApiClient {
 
       const request: ValidationRequest = {
         text: content,
-        projectId: "cli-project", // Use a default project ID for CLI
+        files: [], // Empty files array for text-based validation
+        projectId: 'cli-project', // Use a default project ID for CLI
       };
 
       const requestPayload = JSON.stringify(request);
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/validate", {
-        method: "POST",
+      const response = await this.fetch('/api/validate', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -156,11 +157,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ text: content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/ir", {
-        method: "POST",
+      const response = await this.fetch('/api/ir', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -190,13 +191,23 @@ export class ApiClient {
   }
 
   /**
+   * Lightweight helper for ad-hoc API requests
+   */
+  async request(path: string, init: RequestInit = {}): Promise<Response> {
+    await this.enforceRateLimit();
+    return this.fetch(path, init);
+  }
+
+  /**
    * List fragments for a project
    */
-  async listFragments(projectId: string = "default"): Promise<CommandResult<any[]>> {
+  async listFragments(projectId = 'default'): Promise<CommandResult<any[]>> {
     try {
       await this.enforceRateLimit();
 
-      const response = await this.fetch(`/api/fragments?projectId=${encodeURIComponent(projectId)}`);
+      const response = await this.fetch(
+        `/api/fragments?projectId=${encodeURIComponent(projectId)}`
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -245,11 +256,11 @@ export class ApiClient {
       });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/fragments", {
-        method: "POST",
+      const response = await this.fetch('/api/fragments', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -288,11 +299,11 @@ export class ApiClient {
     shard?: string;
   }): Promise<CommandResult<{ success: boolean; id: string; shard?: string }>> {
     await this.enforceRateLimit();
-    
+
     try {
-      const response = await this.fetch("/api/specifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await this.fetch('/api/specifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...spec,
           sharded: true, // Indicate this should use sharded storage
@@ -305,16 +316,18 @@ export class ApiClient {
           success: false,
           data: null,
           error: `Failed to store specification: ${error}`,
+          exitCode: 1,
         };
       }
 
       const data = await response.json();
-      return { success: true, data, error: null };
+      return { success: true, data, error: null, exitCode: 0 };
     } catch (error) {
       return {
         success: false,
         data: null,
         error: `Network error storing specification: ${error}`,
+        exitCode: 2,
       };
     }
   }
@@ -324,7 +337,7 @@ export class ApiClient {
    */
   async getSpecification(type: string, path: string): Promise<CommandResult<{ content: string }>> {
     await this.enforceRateLimit();
-    
+
     try {
       const params = new URLSearchParams({ type, path });
       const response = await this.fetch(`/api/specifications?${params}`);
@@ -334,7 +347,8 @@ export class ApiClient {
           return {
             success: false,
             data: null,
-            error: "Specification not found",
+            error: 'Specification not found',
+            exitCode: 1,
           };
         }
         const error = await response.text();
@@ -342,16 +356,18 @@ export class ApiClient {
           success: false,
           data: null,
           error: `Failed to get specification: ${error}`,
+          exitCode: 1,
         };
       }
 
       const data = await response.json();
-      return { success: true, data, error: null };
+      return { success: true, data, error: null, exitCode: 0 };
     } catch (error) {
       return {
         success: false,
         data: null,
         error: `Network error getting specification: ${error}`,
+        exitCode: 2,
       };
     }
   }
@@ -365,19 +381,19 @@ export class ApiClient {
       await this.enforceRateLimit();
 
       // First try the configured URL
-      let response = await this.fetch("/health");
+      let response = await this.fetch('/health');
 
       // If it fails, try auto-discovery
       if (!response.ok || response.status === 404) {
         console.warn(
-          `Initial connection to ${this.baseUrl} failed. Attempting server discovery...`,
+          `Initial connection to ${this.baseUrl} failed. Attempting server discovery...`
         );
         const discovery = await this.discoverServer();
 
         if (discovery.success && discovery.url) {
           console.log(`✓ Found server at ${discovery.url}`);
           // Retry with discovered URL
-          response = await this.fetch("/health");
+          response = await this.fetch('/health');
         } else {
           return {
             success: false,
@@ -429,26 +445,26 @@ export class ApiClient {
     options: {
       strict?: boolean;
       includeExamples?: boolean;
-      outputMode?: "single" | "multiple";
-    } = {},
+      outputMode?: 'single' | 'multiple';
+    } = {}
   ): Promise<CommandResult<any>> {
     try {
-      const response = await this.fetch("/export", {
-        method: "POST",
+      const response = await this.fetch('/export', {
+        method: 'POST',
         body: JSON.stringify({
           text: content,
           format,
           strict: options.strict || false,
           includeExamples: options.includeExamples || false,
-          outputMode: options.outputMode || "single",
+          outputMode: options.outputMode || 'single',
         }),
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         return {
           success: false,
           error: errorData.error || `Export failed: ${response.status}`,
@@ -461,7 +477,7 @@ export class ApiClient {
       if (!data.success) {
         return {
           success: false,
-          error: data.error || "Export failed",
+          error: data.error || 'Export failed',
           exitCode: 1,
         };
       }
@@ -485,7 +501,7 @@ export class ApiClient {
    */
   async getSupportedFormats(): Promise<CommandResult<any>> {
     try {
-      const response = await this.fetch("/export/formats");
+      const response = await this.fetch('/export/formats');
 
       if (!response.ok) {
         return {
@@ -532,14 +548,14 @@ export class ApiClient {
     } catch (error) {
       clearTimeout(timeoutId);
 
-      if (error instanceof Error && error.name === "AbortError") {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new Error(`Request timeout after ${this.timeout}ms connecting to ${baseUrl}`);
       }
 
       // Enhance error message with connection details
       if (
         error instanceof Error &&
-        (error.message.includes("ECONNREFUSED") || error.message.includes("fetch failed"))
+        (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed'))
       ) {
         throw new Error(`Connection failed to ${baseUrl}. Is the Arbiter server running?`);
       }

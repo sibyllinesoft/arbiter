@@ -16,8 +16,8 @@ export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
   description,
   dataPanel,
   diagramPanel,
-  dataPanelTitle = "Specification Data",
-  diagramPanelTitle = "Generated Diagram",
+  dataPanelTitle = 'Specification Data',
+  diagramPanelTitle = 'Generated Diagram',
   className = '',
 }) => {
   return (
@@ -25,9 +25,7 @@ export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
       {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">{title}</h2>
-        {description && (
-          <p className="text-gray-600">{description}</p>
-        )}
+        {description && <p className="text-gray-600">{description}</p>}
       </div>
 
       {/* Split View */}
@@ -40,9 +38,7 @@ export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
               {dataPanelTitle}
             </h3>
           </div>
-          <div className="flex-1 overflow-auto p-4">
-            {dataPanel}
-          </div>
+          <div className="flex-1 overflow-auto p-4">{dataPanel}</div>
         </Card>
 
         {/* Diagram Panel */}
@@ -53,9 +49,7 @@ export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
               {diagramPanelTitle}
             </h3>
           </div>
-          <div className="flex-1 overflow-auto p-4 bg-gray-50">
-            {diagramPanel}
-          </div>
+          <div className="flex-1 overflow-auto p-4 bg-gray-50">{diagramPanel}</div>
         </Card>
       </div>
     </div>

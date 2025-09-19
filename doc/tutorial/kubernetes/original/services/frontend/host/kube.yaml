@@ -8,10 +8,10 @@ metadata:
     component: frontend
 spec:
   ports:
-  - port: 7080
-    protocol: TCP
-    targetPort: 7080
-    name: client
+    - port: 7080
+      protocol: TCP
+      targetPort: 7080
+      name: client
   selector:
     app: host
     domain: prod
@@ -26,16 +26,15 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io.scrape: "true"
+        prometheus.io.scrape: 'true'
       labels:
         app: host
         domain: prod
         component: frontend
     spec:
       containers:
-      - image: gcr.io/myproj/host:v0.1.10
-        ports:
-        - containerPort: 7080
-        name: host
-        args: [
-        ]
+        - image: gcr.io/myproj/host:v0.1.10
+          ports:
+            - containerPort: 7080
+          name: host
+          args: []

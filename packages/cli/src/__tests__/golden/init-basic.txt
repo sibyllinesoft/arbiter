@@ -1,8 +1,9 @@
-✓ Created project "test-project" in /project/root/packages/cli/src/__tests__/temp/test-basic
+
+✓ Created project "test-project" in /project/root/src/__tests__/temp/test-basic
 📋 IMPORTANT: Basic project structure created
 ⚠️  NO CUE files have been generated yet - this is intentional!
 Next steps:
-  cd /project/root/packages/cli/src/__tests__/temp/test-basic
+  cd /project/root/src/__tests__/temp/test-basic
   1. Add components to build your specification:
      arbiter add <component-type> <name>  # Add models, endpoints, configs, etc.
   2. Generate CUE files from your specification:

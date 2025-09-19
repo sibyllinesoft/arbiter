@@ -1,5 +1,5 @@
-import { performance } from "node:perf_hooks";
-import chalk from "chalk";
+import { performance } from 'node:perf_hooks';
+import chalk from 'chalk';
 
 /**
  * Performance measurement utility for CLI operations
@@ -42,6 +42,13 @@ export class PerformanceTracker {
   }
 
   /**
+   * Manually record a measurement duration
+   */
+  record(name: string, duration: number): void {
+    this.measurements.set(name, duration);
+  }
+
+  /**
    * Clear all measurements
    */
   clear(): void {
@@ -52,13 +59,13 @@ export class PerformanceTracker {
   /**
    * Print performance report
    */
-  printReport(title: string = "Performance Report"): void {
+  printReport(title = 'Performance Report'): void {
     console.log(chalk.cyan(`\n${title}:`));
 
     const sorted = Array.from(this.measurements.entries()).sort(([, a], [, b]) => b - a);
 
     for (const [name, duration] of sorted) {
-      const color = duration < 100 ? "green" : duration < 500 ? "yellow" : "red";
+      const color = duration < 100 ? 'green' : duration < 500 ? 'yellow' : 'red';
       console.log(`  ${chalk[color](formatDuration(duration).padStart(8))} ${name}`);
     }
 
@@ -73,11 +80,11 @@ export class PerformanceTracker {
 export function formatDuration(ms: number): string {
   if (ms < 1) {
     return `${(ms * 1000).toFixed(0)}μs`;
-  } else if (ms < 1000) {
-    return `${ms.toFixed(1)}ms`;
-  } else {
-    return `${(ms / 1000).toFixed(2)}s`;
   }
+  if (ms < 1000) {
+    return `${ms.toFixed(1)}ms`;
+  }
+  return `${(ms / 1000).toFixed(2)}s`;
 }
 
 /**
@@ -86,7 +93,7 @@ export function formatDuration(ms: number): string {
 export async function measureAsync<T>(
   name: string,
   fn: () => Promise<T>,
-  tracker?: PerformanceTracker,
+  tracker?: PerformanceTracker
 ): Promise<{ result: T; duration: number }> {
   const start = performance.now();
   try {
@@ -94,7 +101,7 @@ export async function measureAsync<T>(
     const duration = performance.now() - start;
 
     if (tracker) {
-      tracker.measurements.set(name, duration);
+      tracker.record(name, duration);
     }
 
     return { result, duration };
@@ -102,7 +109,7 @@ export async function measureAsync<T>(
     const duration = performance.now() - start;
 
     if (tracker) {
-      tracker.measurements.set(`${name} (failed)`, duration);
+      tracker.record(`${name} (failed)`, duration);
     }
 
     throw error;
@@ -115,7 +122,7 @@ export async function measureAsync<T>(
 export function measureSync<T>(
   name: string,
   fn: () => T,
-  tracker?: PerformanceTracker,
+  tracker?: PerformanceTracker
 ): { result: T; duration: number } {
   const start = performance.now();
   try {
@@ -123,7 +130,7 @@ export function measureSync<T>(
     const duration = performance.now() - start;
 
     if (tracker) {
-      tracker.measurements.set(name, duration);
+      tracker.record(name, duration);
     }
 
     return { result, duration };
@@ -131,7 +138,7 @@ export function measureSync<T>(
     const duration = performance.now() - start;
 
     if (tracker) {
-      tracker.measurements.set(`${name} (failed)`, duration);
+      tracker.record(`${name} (failed)`, duration);
     }
 
     throw error;
@@ -163,7 +170,7 @@ export const PERFORMANCE_TARGETS = {
  */
 export function checkPerformanceTargets(
   measurements: Record<string, number>,
-  targets: Record<string, number> = PERFORMANCE_TARGETS,
+  targets: Record<string, number> = PERFORMANCE_TARGETS
 ): {
   passed: boolean;
   violations: Array<{ name: string; actual: number; target: number }>;
@@ -200,7 +207,7 @@ export function measured(name?: string) {
       const { result, duration } = await measureAsync(
         measurementName,
         () => method.apply(this, args),
-        globalTracker,
+        globalTracker
       );
       return result;
     };
@@ -236,14 +243,14 @@ export class CLIBenchmark {
     p95Duration: number;
     successRate: number;
   } | null {
-    const commandResults = this.results.filter((r) => r.command === command);
+    const commandResults = this.results.filter(r => r.command === command);
 
     if (commandResults.length === 0) {
       return null;
     }
 
-    const durations = commandResults.map((r) => r.duration).sort((a, b) => a - b);
-    const successCount = commandResults.filter((r) => r.exitCode === 0).length;
+    const durations = commandResults.map(r => r.duration).sort((a, b) => a - b);
+    const successCount = commandResults.filter(r => r.exitCode === 0).length;
 
     return {
       count: commandResults.length,
@@ -259,10 +266,10 @@ export class CLIBenchmark {
    * Print benchmark report
    */
   printReport(): void {
-    const commands = [...new Set(this.results.map((r) => r.command))];
+    const commands = [...new Set(this.results.map(r => r.command))];
 
-    console.log(chalk.cyan("\nCLI Performance Benchmark:"));
-    console.log("".padEnd(60, "-"));
+    console.log(chalk.cyan('\nCLI Performance Benchmark:'));
+    console.log(''.padEnd(60, '-'));
 
     for (const command of commands) {
       const stats = this.getStats(command);
@@ -278,10 +285,10 @@ export class CLIBenchmark {
 
       // Check against targets
       const target = PERFORMANCE_TARGETS.CHECK_10KB_P95;
-      if (command === "check" && stats.p95Duration > target) {
-        console.log(`  ${chalk.red("⚠ P95 exceeds target")} (${formatDuration(target)})`);
-      } else if (command === "check") {
-        console.log(`  ${chalk.green("✓ P95 meets target")} (${formatDuration(target)})`);
+      if (command === 'check' && stats.p95Duration > target) {
+        console.log(`  ${chalk.red('⚠ P95 exceeds target')} (${formatDuration(target)})`);
+      } else if (command === 'check') {
+        console.log(`  ${chalk.green('✓ P95 meets target')} (${formatDuration(target)})`);
       }
 
       console.log();

@@ -4,7 +4,7 @@ import { BaseHookAdapter } from '../base/IHookAdapter.js';
 
 /**
  * GitHub Push adapter for AI processing
- * 
+ *
  * Extracts structured data from GitHub Push webhooks including:
  * - Branch and commit information
  * - Changed files and statistics
@@ -18,14 +18,10 @@ export class GitHubPushAdapter extends BaseHookAdapter {
   async extractEventData(event: WebhookEvent): Promise<WebhookEventData> {
     try {
       const payload = event.payload;
-      
+
       // Validate required fields
-      const errors = this.validatePayload(payload, [
-        'ref',
-        'repository',
-        'pusher'
-      ]);
-      
+      const errors = this.validatePayload(payload, ['ref', 'repository', 'pusher']);
+
       if (errors.length > 0) {
         return this.createErrorResponse(`Validation failed: ${errors.join(', ')}`);
       }
@@ -39,7 +35,7 @@ export class GitHubPushAdapter extends BaseHookAdapter {
 
       // Extract branch name from ref
       const branch = payload.ref.replace('refs/heads/', '');
-      
+
       // Determine push type
       const isNewBranch = payload.before === '0000000000000000000000000000000000000000';
       const isBranchDeletion = payload.after === '0000000000000000000000000000000000000000';
@@ -53,12 +49,12 @@ export class GitHubPushAdapter extends BaseHookAdapter {
         email: commit.author?.email,
         url: commit.url,
         timestamp: commit.timestamp,
-        
+
         // Commit statistics
         added: commit.added || [],
         removed: commit.removed || [],
         modified: commit.modified || [],
-        
+
         // Distinct commits (for merge commits)
         distinct: commit.distinct,
       }));
@@ -68,53 +64,58 @@ export class GitHubPushAdapter extends BaseHookAdapter {
         commits,
         before: payload.before,
         after: payload.after,
-        
+
         // Push context
         isNewBranch,
         isBranchDeletion,
         isForcePush,
         isTag: payload.ref.startsWith('refs/tags/'),
-        
+
         // Branch analysis
         isProtectedBranch: ['main', 'master', 'develop', 'staging'].includes(branch.toLowerCase()),
         isFeatureBranch: branch.startsWith('feature/'),
         isHotfixBranch: branch.startsWith('hotfix/'),
         isBugfixBranch: branch.startsWith('bugfix/'),
         isReleaseBranch: branch.startsWith('release/'),
-        
+
         // Statistics
         commitCount: commits.length,
         distinctCommitCount: commits.filter(c => c.distinct).length,
-        
+
         // Head commit details
-        headCommit: payload.head_commit ? {
-          id: payload.head_commit.id,
-          message: payload.head_commit.message,
-          author: payload.head_commit.author,
-          committer: payload.head_commit.committer,
-          timestamp: payload.head_commit.timestamp,
-          url: payload.head_commit.url,
-          added: payload.head_commit.added || [],
-          removed: payload.head_commit.removed || [],
-          modified: payload.head_commit.modified || [],
-        } : null,
-        
+        headCommit: payload.head_commit
+          ? {
+              id: payload.head_commit.id,
+              message: payload.head_commit.message,
+              author: payload.head_commit.author,
+              committer: payload.head_commit.committer,
+              timestamp: payload.head_commit.timestamp,
+              url: payload.head_commit.url,
+              added: payload.head_commit.added || [],
+              removed: payload.head_commit.removed || [],
+              modified: payload.head_commit.modified || [],
+            }
+          : null,
+
         // Compare URL for viewing changes
         compareUrl: payload.compare,
       };
 
       // Analyze commit messages for patterns
-      const conventionalCommits = commits.filter(commit => 
-        /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?: .+/.test(commit.message)
+      const conventionalCommits = commits.filter(commit =>
+        /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?: .+/.test(
+          commit.message
+        )
       );
-      
+
       const analysisData = {
         hasConventionalCommits: conventionalCommits.length > 0,
-        conventionalCommitRatio: commits.length > 0 ? conventionalCommits.length / commits.length : 0,
-        
+        conventionalCommitRatio:
+          commits.length > 0 ? conventionalCommits.length / commits.length : 0,
+
         // Commit message analysis
         commitTypes: this.analyzeCommitTypes(commits),
-        
+
         // File change analysis
         fileChanges: this.analyzeFileChanges(commits),
       };
@@ -124,15 +125,14 @@ export class GitHubPushAdapter extends BaseHookAdapter {
         user,
         push: pushData,
         analysis: analysisData,
-        
+
         // Additional event context
         eventType: 'push',
         timestamp: event.timestamp,
-        
+
         // Raw payload for advanced processing
         raw: payload,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return this.createErrorResponse(`Failed to extract GitHub push data: ${errorMessage}`);
@@ -154,19 +154,21 @@ export class GitHubPushAdapter extends BaseHookAdapter {
     for (const commit of commits) {
       const message = commit.message;
       totalLength += message.length;
-      
+
       // Check for breaking changes
       if (message.includes('BREAKING CHANGE') || message.includes('!:')) {
         hasBreakingChanges = true;
       }
-      
+
       // Extract conventional commit type
-      const match = message.match(/^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?:/);
+      const match = message.match(
+        /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?:/
+      );
       if (match) {
         const type = match[1];
         types[type] = (types[type] || 0) + 1;
       } else {
-        types['other'] = (types['other'] || 0) + 1;
+        types.other = (types.other || 0) + 1;
       }
     }
 
@@ -202,20 +204,20 @@ export class GitHubPushAdapter extends BaseHookAdapter {
 
       for (const file of files) {
         allFiles.add(file);
-        
+
         // Get file extension
         const ext = file.split('.').pop()?.toLowerCase() || 'no-ext';
         fileTypes[ext] = (fileTypes[ext] || 0) + 1;
-        
+
         // Detect special file types
         if (file.match(/\.(json|yaml|yml|toml|ini|config)$/i) || file.includes('config')) {
           hasConfigChanges = true;
         }
-        
+
         if (file.match(/\.(test|spec)\./i) || file.includes('test') || file.includes('spec')) {
           hasTestChanges = true;
         }
-        
+
         if (file.match(/\.(md|txt|rst)$/i) || file.includes('README') || file.includes('docs')) {
           hasDocumentationChanges = true;
         }

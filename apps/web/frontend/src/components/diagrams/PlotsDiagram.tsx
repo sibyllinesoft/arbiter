@@ -24,17 +24,19 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
         const samplePlots = {
           plots: {
             lineChart: {
-              title: "Server Response Time",
-              type: "line",
+              title: 'Server Response Time',
+              type: 'line',
               data: {
-                labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00"],
-                datasets: [{
-                  label: "Response Time (ms)",
-                  data: [120, 150, 180, 160, 140, 130, 125],
-                  backgroundColor: "#dbeafe",
-                  borderColor: "#3b82f6",
-                  fill: false
-                }]
+                labels: ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'],
+                datasets: [
+                  {
+                    label: 'Response Time (ms)',
+                    data: [120, 150, 180, 160, 140, 130, 125],
+                    backgroundColor: '#dbeafe',
+                    borderColor: '#3b82f6',
+                    fill: false,
+                  },
+                ],
               },
               options: {
                 responsive: true,
@@ -43,30 +45,32 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
                     beginAtZero: true,
                     title: {
                       display: true,
-                      text: "Response Time (ms)"
-                    }
+                      text: 'Response Time (ms)',
+                    },
                   },
                   x: {
                     title: {
                       display: true,
-                      text: "Time"
-                    }
-                  }
-                }
-              }
+                      text: 'Time',
+                    },
+                  },
+                },
+              },
             },
             barChart: {
-              title: "Service Usage by Hour",
-              type: "bar",
+              title: 'Service Usage by Hour',
+              type: 'bar',
               data: {
-                labels: ["API", "Database", "Cache", "Queue", "Storage"],
-                datasets: [{
-                  label: "Requests per Second",
-                  data: [65, 59, 80, 81, 56],
-                  backgroundColor: ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"],
-                  borderColor: ["#dc2626", "#d97706", "#059669", "#2563eb", "#7c3aed"],
-                  borderWidth: 1
-                }]
+                labels: ['API', 'Database', 'Cache', 'Queue', 'Storage'],
+                datasets: [
+                  {
+                    label: 'Requests per Second',
+                    data: [65, 59, 80, 81, 56],
+                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'],
+                    borderColor: ['#dc2626', '#d97706', '#059669', '#2563eb', '#7c3aed'],
+                    borderWidth: 1,
+                  },
+                ],
               },
               options: {
                 responsive: true,
@@ -75,76 +79,79 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
                     beginAtZero: true,
                     title: {
                       display: true,
-                      text: "Requests/sec"
-                    }
-                  }
-                }
-              }
+                      text: 'Requests/sec',
+                    },
+                  },
+                },
+              },
             },
             timeSeriesChart: {
-              title: "System Metrics Over Time",
-              type: "line",
+              title: 'System Metrics Over Time',
+              type: 'line',
               data: {
                 labels: [
-                  "2024-01-01T00:00:00Z",
-                  "2024-01-01T01:00:00Z",
-                  "2024-01-01T02:00:00Z",
-                  "2024-01-01T03:00:00Z",
-                  "2024-01-01T04:00:00Z",
-                  "2024-01-01T05:00:00Z"
+                  '2024-01-01T00:00:00Z',
+                  '2024-01-01T01:00:00Z',
+                  '2024-01-01T02:00:00Z',
+                  '2024-01-01T03:00:00Z',
+                  '2024-01-01T04:00:00Z',
+                  '2024-01-01T05:00:00Z',
                 ],
-                datasets: [{
-                  label: "CPU Usage (%)",
-                  data: [45, 52, 48, 61, 55, 47],
-                  borderColor: "#3b82f6",
-                  backgroundColor: "#dbeafe",
-                  fill: false
-                }, {
-                  label: "Memory Usage (%)",
-                  data: [62, 68, 71, 75, 73, 69],
-                  borderColor: "#10b981",
-                  backgroundColor: "#d1fae5",
-                  fill: false
-                }]
+                datasets: [
+                  {
+                    label: 'CPU Usage (%)',
+                    data: [45, 52, 48, 61, 55, 47],
+                    borderColor: '#3b82f6',
+                    backgroundColor: '#dbeafe',
+                    fill: false,
+                  },
+                  {
+                    label: 'Memory Usage (%)',
+                    data: [62, 68, 71, 75, 73, 69],
+                    borderColor: '#10b981',
+                    backgroundColor: '#d1fae5',
+                    fill: false,
+                  },
+                ],
               },
               options: {
                 responsive: true,
                 interaction: {
-                  mode: "index",
-                  intersect: false
+                  mode: 'index',
+                  intersect: false,
                 },
                 scales: {
                   x: {
                     display: true,
                     title: {
                       display: true,
-                      text: "Time"
-                    }
+                      text: 'Time',
+                    },
                   },
                   y: {
                     display: true,
                     title: {
                       display: true,
-                      text: "Usage (%)"
+                      text: 'Usage (%)',
                     },
                     min: 0,
-                    max: 100
-                  }
+                    max: 100,
+                  },
                 },
                 plugins: {
                   legend: {
-                    position: "top"
+                    position: 'top',
                   },
                   title: {
                     display: true,
-                    text: "System Resource Usage"
-                  }
-                }
-              }
-            }
-          }
+                    text: 'System Resource Usage',
+                  },
+                },
+              },
+            },
+          },
         };
-        
+
         setPlotData(samplePlots);
 
         // TODO: Uncomment when API integration is working
@@ -192,9 +199,7 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
         <div className="diagram-error">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
             <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-red-800 mb-2">
-              Failed to Load Plot Data
-            </h3>
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Failed to Load Plot Data</h3>
             <p className="text-red-600 mb-4">{error}</p>
             <button
               onClick={() => window.location.reload()}
@@ -213,9 +218,7 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
       <div className="diagram-container">
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
           <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">
-            No Plot Data Available
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Plot Data Available</h3>
           <p className="text-gray-600 mb-4">
             No visualization data found in the CUE specification.
           </p>
@@ -224,7 +227,7 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
               To add plots, define them in your CUE files then export as JSON:
             </h4>
             <pre className="text-xs font-mono text-gray-600 whitespace-pre-wrap">
-{`// In your CUE file:
+              {`// In your CUE file:
 myChart: {
   title: "Sample Chart"
   type: "line"
@@ -249,12 +252,7 @@ myChart: {
   return (
     <div className="diagram-container h-full overflow-auto">
       <div className="p-6">
-        <CuePlotViewer
-          plotData={plotData}
-          projectId={projectId}
-          mode="plots"
-          className="h-full"
-        />
+        <CuePlotViewer plotData={plotData} projectId={projectId} mode="plots" className="h-full" />
       </div>
     </div>
   );

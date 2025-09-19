@@ -1,5 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Check, AlertTriangle, CheckCircle, XCircle, Info, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Info,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import { MonacoEditor } from '../Editor/MonacoEditor';
 
 interface CueViewerProps {
@@ -69,12 +78,18 @@ export const CueViewer: React.FC<CueViewerProps> = ({
     const packageMatch = lines.find(line => line.startsWith('package '));
     const importLines = lines.filter(line => line.trim().startsWith('import '));
     const commentLines = lines.filter(line => line.trim().startsWith('//'));
-    
+
     // Count top-level definitions
     const definitions = lines.filter(line => {
       const trimmed = line.trim();
-      return trimmed && !trimmed.startsWith('//') && !trimmed.startsWith('import ') 
-             && !trimmed.startsWith('package ') && trimmed.includes(':') && !trimmed.includes(':{');
+      return (
+        trimmed &&
+        !trimmed.startsWith('//') &&
+        !trimmed.startsWith('import ') &&
+        !trimmed.startsWith('package ') &&
+        trimmed.includes(':') &&
+        !trimmed.includes(':{')
+      );
     }).length;
 
     return {
@@ -90,7 +105,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
     const errors = validationErrors.filter(e => e.severity === 'error').length;
     const warnings = validationErrors.filter(e => e.severity === 'warning').length;
     const info = validationErrors.filter(e => e.severity === 'info').length;
-    
+
     return { errors, warnings, info, total: validationErrors.length };
   }, [validationErrors]);
 
@@ -117,7 +132,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
           )}
           Validation Issues ({validationSummary.total})
         </button>
-        
+
         <div className="flex items-center space-x-4 text-xs">
           {validationSummary.errors > 0 && (
             <div className="flex items-center text-red-600">
@@ -146,7 +161,9 @@ export const CueViewer: React.FC<CueViewerProps> = ({
                 <div key={index} className="flex items-start space-x-2 text-xs">
                   <div className="flex-shrink-0 mt-0.5">
                     {error.severity === 'error' && <XCircle className="w-3 h-3 text-red-500" />}
-                    {error.severity === 'warning' && <AlertTriangle className="w-3 h-3 text-yellow-500" />}
+                    {error.severity === 'warning' && (
+                      <AlertTriangle className="w-3 h-3 text-yellow-500" />
+                    )}
                     {error.severity === 'info' && <Info className="w-3 h-3 text-blue-500" />}
                   </div>
                   <div className="flex-1">
@@ -167,7 +184,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
   const MetadataPanel = () => (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
       <h4 className="text-sm font-semibold text-gray-700">CUE Metadata</h4>
-      
+
       <div className="grid grid-cols-2 gap-4 text-xs">
         <div>
           <div className="text-gray-500">Package</div>
@@ -255,11 +272,16 @@ export const CueViewer: React.FC<CueViewerProps> = ({
           <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
             <span>CUE Specification</span>
             {cueMetadata.package && (
-              <span>Package: <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">{cueMetadata.package}</code></span>
+              <span>
+                Package:{' '}
+                <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
+                  {cueMetadata.package}
+                </code>
+              </span>
             )}
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           {showCopyButton && (
             <button

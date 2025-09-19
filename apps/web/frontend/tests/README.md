@@ -1,6 +1,8 @@
 # Playwright Test Suite for Arbiter Frontend
 
-This directory contains a comprehensive Playwright test suite for the Arbiter frontend application, designed to test critical user journeys and ensure the application works correctly across different browsers and viewports.
+This directory contains a comprehensive Playwright test suite for the Arbiter
+frontend application, designed to test critical user journeys and ensure the
+application works correctly across different browsers and viewports.
 
 ## Test Structure
 
@@ -50,7 +52,8 @@ This directory contains a comprehensive Playwright test suite for the Arbiter fr
 
 ## Configuration
 
-The tests are configured to run against Storybook (port 6007) as defined in `playwright.config.ts`:
+The tests are configured to run against Storybook (port 6007) as defined in
+`playwright.config.ts`:
 
 ```typescript
 use: {
@@ -62,6 +65,7 @@ use: {
 ### Browser Support
 
 Tests run on:
+
 - Chromium (Desktop Chrome)
 - Firefox (Desktop Firefox)
 - WebKit (Desktop Safari)
@@ -71,6 +75,7 @@ Tests run on:
 ### Viewport Testing
 
 Multiple viewports are tested:
+
 - Desktop Large: 1920x1080
 - Desktop Standard: 1280x720
 - Laptop: 1366x768
@@ -85,6 +90,7 @@ Multiple viewports are tested:
 ### Prerequisites
 
 1. Ensure Storybook is running:
+
    ```bash
    npm run storybook
    ```
@@ -172,6 +178,7 @@ await basePage.checkAccessibility();
 ### Visual Testing
 
 Screenshots are automatically captured for:
+
 - Different viewport sizes
 - Component states
 - Error conditions
@@ -182,6 +189,7 @@ Screenshots are saved to `test-results/screenshots/`
 ### Network Monitoring
 
 Tests monitor network requests and responses:
+
 - Failed requests are logged
 - HTTP errors (4xx, 5xx) are tracked
 - Console errors are captured
@@ -204,7 +212,7 @@ export const TEST_DATA = {
     app: {
       name: 123  // Should be string
     }
-  `
+  `,
 };
 ```
 
@@ -213,6 +221,7 @@ export const TEST_DATA = {
 ### Error Handling Tests
 
 Tests verify graceful error handling:
+
 - Network failures
 - API errors
 - JavaScript exceptions
@@ -221,6 +230,7 @@ Tests verify graceful error handling:
 ### Performance Tests
 
 Tests include performance validations:
+
 - Large content handling in Monaco editor
 - Diagram rendering performance
 - Page load times
@@ -229,6 +239,7 @@ Tests include performance validations:
 ### Cross-Browser Testing
 
 All tests run across multiple browsers to ensure compatibility:
+
 - Chrome/Chromium
 - Firefox
 - Safari/WebKit
@@ -255,6 +266,7 @@ npm run test:e2e:ui
 ### Screenshot Debugging
 
 All test failures automatically capture:
+
 - Screenshots of the failed state
 - Videos of the test execution
 - Network logs
@@ -344,4 +356,5 @@ When adding new tests:
 - `axe-core`: Accessibility testing (loaded via CDN)
 - Test utilities defined in `test-utils.ts`
 
-The test suite integrates with the existing Storybook setup and requires no additional dependencies beyond what's already configured in the project.
+The test suite integrates with the existing Storybook setup and requires no
+additional dependencies beyond what's already configured in the project.

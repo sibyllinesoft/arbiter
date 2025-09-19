@@ -21,8 +21,8 @@ import type {
   ValidationRequest,
   ValidationResponse,
   WebhookHandler,
-} from "../types/api";
-import { createLogger } from "../utils/logger";
+} from '../types/api';
+import { createLogger } from '../utils/logger';
 
 const log = createLogger('API');
 
@@ -30,22 +30,22 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public details?: ProblemDetails,
+    public details?: ProblemDetails
   ) {
     super(message);
-    this.name = "ApiError";
+    this.name = 'ApiError';
   }
 }
 
 class ApiService {
-  private baseUrl = "http://localhost:5050";
+  private baseUrl = 'http://localhost:5050';
   private defaultHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
+    'Content-Type': 'application/json',
   };
 
   private buildRequestConfig(
     endpoint: string,
-    options: RequestInit = {},
+    options: RequestInit = {}
   ): { url: string; config: RequestInit } {
     const url = `${this.baseUrl}${endpoint}`;
     const config: RequestInit = {
@@ -71,12 +71,12 @@ class ApiService {
     return new ApiError(
       errorDetails?.detail || `HTTP ${response.status}: ${response.statusText}`,
       response.status,
-      errorDetails,
+      errorDetails
     );
   }
 
   private shouldReturnEmptyResponse(response: Response): boolean {
-    return response.status === 204 || response.headers.get("content-length") === "0";
+    return response.status === 204 || response.headers.get('content-length') === '0';
   }
 
   private async handleErrorResponse(response: Response): Promise<never> {
@@ -96,8 +96,8 @@ class ApiService {
       throw error;
     }
     throw new ApiError(
-      `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      0,
+      `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      0
     );
   }
 
@@ -119,7 +119,7 @@ class ApiService {
 
   // Project endpoints
   async getProjects(): Promise<Project[]> {
-    return this.request<Project[]>("/api/projects");
+    return this.request<Project[]>('/api/projects');
   }
 
   async getProject(projectId: string): Promise<Project> {
@@ -127,15 +127,15 @@ class ApiService {
   }
 
   async createProject(name: string): Promise<Project> {
-    return this.request<Project>("/api/projects", {
-      method: "POST",
+    return this.request<Project>('/api/projects', {
+      method: 'POST',
       body: JSON.stringify({ name }),
     });
   }
 
   async deleteProject(projectId: string): Promise<void> {
     await this.request<void>(`/api/projects/${projectId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   }
 
@@ -150,34 +150,34 @@ class ApiService {
 
   async createFragment(
     projectId: string,
-    request: CreateFragmentRequest,
+    request: CreateFragmentRequest
   ): Promise<CreateFragmentResponse> {
     return this.request<CreateFragmentResponse>(`/api/fragments?projectId=${projectId}`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify(request),
     });
   }
 
   async updateFragment(projectId: string, fragmentId: string, content: string): Promise<Fragment> {
     return this.request<Fragment>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: "PUT",
+      method: 'PUT',
       body: JSON.stringify({ content }),
     });
   }
 
   async deleteFragment(projectId: string, fragmentId: string): Promise<void> {
     await this.request<void>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   }
 
   // Validation endpoints
   async validateProject(
     projectId: string,
-    request: ValidationRequest = {},
+    request: ValidationRequest = {}
   ): Promise<ValidationResponse> {
-    return this.request<ValidationResponse>("/api/validate", {
-      method: "POST",
+    return this.request<ValidationResponse>('/api/validate', {
+      method: 'POST',
       body: JSON.stringify({ projectId, ...request }),
     });
   }
@@ -190,12 +190,12 @@ class ApiService {
       updatedAt: string;
       json: Record<string, unknown>;
     }>(`/api/resolved?projectId=${projectId}`);
-    
+
     // Transform response to match expected interface
     return {
       spec_hash: response.specHash,
       resolved: response.json,
-      last_updated: response.updatedAt
+      last_updated: response.updatedAt,
     };
   }
 
@@ -210,9 +210,9 @@ class ApiService {
   }
 
   async getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
-    const kinds: IRKind[] = ["flow", "fsm", "view", "site"];
+    const kinds: IRKind[] = ['flow', 'fsm', 'view', 'site'];
     const irs: Record<string, IRResponse> = {};
-    
+
     // Sequential requests with small delays to avoid rate limiting
     for (let i = 0; i < kinds.length; i++) {
       const kind = kinds[i];
@@ -222,7 +222,7 @@ class ApiService {
       } catch (error) {
         log.warn(`Failed to load IR for ${kind}:`, error);
       }
-      
+
       // Add small delay between requests to avoid overwhelming rate limiter
       if (i < kinds.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -234,15 +234,15 @@ class ApiService {
 
   // Version freezing endpoints
   async freezeVersion(projectId: string, request: FreezeRequest): Promise<FreezeResponse> {
-    return this.request<FreezeResponse>(`/api/freeze`, {
-      method: "POST",
+    return this.request<FreezeResponse>('/api/freeze', {
+      method: 'POST',
       body: JSON.stringify({ projectId, ...request }),
     });
   }
 
   // Webhook Handler endpoints
   async getHandlers(): Promise<WebhookHandler[]> {
-    return this.request<WebhookHandler[]>("/api/handlers");
+    return this.request<WebhookHandler[]>('/api/handlers');
   }
 
   async getHandler(handlerId: string): Promise<WebhookHandler> {
@@ -250,28 +250,28 @@ class ApiService {
   }
 
   async createHandler(request: CreateHandlerRequest): Promise<WebhookHandler> {
-    return this.request<WebhookHandler>("/api/handlers", {
-      method: "POST",
+    return this.request<WebhookHandler>('/api/handlers', {
+      method: 'POST',
       body: JSON.stringify(request),
     });
   }
 
   async updateHandler(handlerId: string, request: UpdateHandlerRequest): Promise<WebhookHandler> {
     return this.request<WebhookHandler>(`/api/handlers/${handlerId}`, {
-      method: "PUT",
+      method: 'PUT',
       body: JSON.stringify(request),
     });
   }
 
   async deleteHandler(handlerId: string): Promise<void> {
     await this.request<void>(`/api/handlers/${handlerId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
   }
 
   async toggleHandler(handlerId: string, enabled: boolean): Promise<WebhookHandler> {
     return this.request<WebhookHandler>(`/api/handlers/${handlerId}/toggle`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({ enabled }),
     });
   }
@@ -285,21 +285,24 @@ class ApiService {
     return this.request<HandlerExecution[]>(`/api/handlers/${handlerId}/executions${params}`);
   }
 
-  async testHandler(handlerId: string, payload: Record<string, unknown>): Promise<{
-    status: "success" | "error";
+  async testHandler(
+    handlerId: string,
+    payload: Record<string, unknown>
+  ): Promise<{
+    status: 'success' | 'error';
     result?: Record<string, unknown>;
     error?: string;
     duration_ms: number;
   }> {
     return this.request(`/api/handlers/${handlerId}/test`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({ payload }),
     });
   }
 
   // Health check
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    return this.request<{ status: string; timestamp: string }>("/health");
+    return this.request<{ status: string; timestamp: string }>('/health');
   }
 
   // Set authentication token
@@ -309,7 +312,7 @@ class ApiService {
 
   // Remove authentication token
   clearAuthToken() {
-    delete this.defaultHeaders.Authorization;
+    this.defaultHeaders.Authorization = undefined;
   }
 }
 

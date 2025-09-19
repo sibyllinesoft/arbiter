@@ -12,7 +12,13 @@ import type { Project } from './ProjectBrowser';
 // Mock design system components
 vi.mock('../../design-system', () => ({
   Button: ({ children, onClick, disabled, leftIcon, variant, size, ...props }: any) => (
-    <button onClick={onClick} disabled={disabled} data-variant={variant} data-size={size} {...props}>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      data-variant={variant}
+      data-size={size}
+      {...props}
+    >
       {leftIcon}
       {children}
     </button>
@@ -23,10 +29,10 @@ vi.mock('../../design-system', () => ({
     </div>
   ),
   Input: ({ placeholder, value, onChange, className, ...props }: any) => (
-    <input 
-      placeholder={placeholder} 
-      value={value} 
-      onChange={onChange} 
+    <input
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
       className={className}
       data-testid="search-input"
       {...props}
@@ -159,12 +165,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('renders all project cards', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       expect(screen.getAllByTestId('project-card')).toHaveLength(4);
       expect(screen.getByText('E-commerce API')).toBeInTheDocument();
@@ -174,24 +175,14 @@ describe('ProjectBrowser', () => {
     });
 
     it('renders search input', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       expect(screen.getByTestId('search-input')).toBeInTheDocument();
       expect(screen.getByTestId('search-icon')).toBeInTheDocument();
     });
 
     it('renders status filter dropdown', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const filterSelect = screen.getByDisplayValue('All Status');
       expect(filterSelect).toBeInTheDocument();
@@ -200,13 +191,7 @@ describe('ProjectBrowser', () => {
 
   describe('Loading State', () => {
     it('shows loading state when loading prop is true', () => {
-      render(
-        <ProjectBrowser
-          projects={[]}
-          loading={true}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={[]} loading={true} onSelectProject={mockOnSelectProject} />);
 
       expect(screen.getByText('Loading projects...')).toBeInTheDocument();
       expect(screen.getByTestId('activity-icon')).toBeInTheDocument();
@@ -225,16 +210,13 @@ describe('ProjectBrowser', () => {
 
       expect(screen.getByText('Welcome to Spec Workbench')).toBeInTheDocument();
       expect(screen.getByText(/Create your first specification project/)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Create Your First Project/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Create Your First Project/i })
+      ).toBeInTheDocument();
     });
 
     it('shows no results state when search returns no matches', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       await user.type(searchInput, 'nonexistent project');
@@ -245,12 +227,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('clears filters when clear button is clicked', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       await user.type(searchInput, 'nonexistent');
@@ -265,12 +242,7 @@ describe('ProjectBrowser', () => {
 
   describe('Project Card Content', () => {
     it('displays project information correctly', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       // Check first project
       expect(screen.getByText('E-commerce API')).toBeInTheDocument();
@@ -280,24 +252,14 @@ describe('ProjectBrowser', () => {
     });
 
     it('shows correct status badges', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const statusBadges = screen.getAllByTestId('status-badge');
       expect(statusBadges).toHaveLength(8); // 4 status + 4 validation icons
     });
 
     it('displays validation status icons', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       expect(screen.getAllByTestId('check-circle-icon')).toHaveLength(2); // valid projects
       expect(screen.getAllByTestId('alert-circle-icon')).toHaveLength(2); // warnings and errors
@@ -317,12 +279,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('displays project tags', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       expect(screen.getByText('api')).toBeInTheDocument();
       expect(screen.getByText('ecommerce')).toBeInTheDocument();
@@ -336,10 +293,7 @@ describe('ProjectBrowser', () => {
       };
 
       render(
-        <ProjectBrowser
-          projects={[projectWithManyTags]}
-          onSelectProject={mockOnSelectProject}
-        />
+        <ProjectBrowser projects={[projectWithManyTags]} onSelectProject={mockOnSelectProject} />
       );
 
       expect(screen.getByText('tag1')).toBeInTheDocument();
@@ -352,12 +306,7 @@ describe('ProjectBrowser', () => {
       // Mock current time to ensure predictable date formatting
       vi.setSystemTime(new Date('2024-01-16T12:00:00Z'));
 
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       // Should show relative times based on the mock system time
       expect(screen.getByText(/ago|Just now/)).toBeInTheDocument();
@@ -366,12 +315,7 @@ describe('ProjectBrowser', () => {
 
   describe('Search Functionality', () => {
     it('filters projects by name', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       await user.type(searchInput, 'E-commerce');
@@ -381,12 +325,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('filters projects by description', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       await user.type(searchInput, 'authentication');
@@ -396,12 +335,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('filters projects by tags', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       await user.type(searchInput, 'etl');
@@ -411,12 +345,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('performs case-insensitive search', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       await user.type(searchInput, 'E-COMMERCE');
@@ -428,12 +357,7 @@ describe('ProjectBrowser', () => {
 
   describe('Status Filtering', () => {
     it('filters by active status', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const statusFilter = screen.getByDisplayValue('All Status');
       await user.selectOptions(statusFilter, 'active');
@@ -443,12 +367,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('filters by draft status', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const statusFilter = screen.getByDisplayValue('All Status');
       await user.selectOptions(statusFilter, 'draft');
@@ -458,12 +377,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('filters by error status', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const statusFilter = screen.getByDisplayValue('All Status');
       await user.selectOptions(statusFilter, 'error');
@@ -473,12 +387,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('filters by archived status', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const statusFilter = screen.getByDisplayValue('All Status');
       await user.selectOptions(statusFilter, 'archived');
@@ -490,12 +399,7 @@ describe('ProjectBrowser', () => {
 
   describe('Combined Filtering', () => {
     it('combines search and status filters', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       const statusFilter = screen.getByDisplayValue('All Status');
@@ -508,12 +412,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('shows no results when filters exclude all projects', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
       const statusFilter = screen.getByDisplayValue('All Status');
@@ -527,12 +426,7 @@ describe('ProjectBrowser', () => {
 
   describe('Project Interactions', () => {
     it('calls onSelectProject when project card is clicked', async () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const projectCards = screen.getAllByTestId('project-card');
       await user.click(projectCards[0]);
@@ -614,12 +508,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('does not highlight when no project selected', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const projectCards = screen.getAllByTestId('project-card');
       projectCards.forEach(card => {
@@ -660,12 +549,7 @@ describe('ProjectBrowser', () => {
     });
 
     it('provides semantic structure', () => {
-      render(
-        <ProjectBrowser
-          projects={mockProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       expect(screen.getByRole('button', { name: /New Project/i })).toBeInTheDocument();
       expect(screen.getByRole('combobox')).toBeInTheDocument(); // status filter
@@ -682,12 +566,7 @@ describe('ProjectBrowser', () => {
       }));
 
       const startTime = performance.now();
-      render(
-        <ProjectBrowser
-          projects={manyProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={manyProjects} onSelectProject={mockOnSelectProject} />);
       const endTime = performance.now();
 
       expect(endTime - startTime).toBeLessThan(100); // Should render within 100ms
@@ -701,15 +580,10 @@ describe('ProjectBrowser', () => {
         name: `Project ${i}`,
       }));
 
-      render(
-        <ProjectBrowser
-          projects={manyProjects}
-          onSelectProject={mockOnSelectProject}
-        />
-      );
+      render(<ProjectBrowser projects={manyProjects} onSelectProject={mockOnSelectProject} />);
 
       const searchInput = screen.getByTestId('search-input');
-      
+
       const startTime = performance.now();
       await user.type(searchInput, '999');
       const endTime = performance.now();

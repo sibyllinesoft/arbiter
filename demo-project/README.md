@@ -2,14 +2,19 @@
 
 **A complete example of an Arbiter-generated application**
 
-This project demonstrates how Arbiter transforms a single CUE specification into a fully functional web application. It serves as both a learning example and a reference implementation for new users.
+This project demonstrates how Arbiter transforms a single CUE specification into
+a fully functional web application. It serves as both a learning example and a
+reference implementation for new users.
 
 ## What This Demo Shows
 
-- **Specification-Driven Development**: Everything starts from the `arbiter.assembly.cue` file
-- **Generated Application Structure**: TypeScript/Vite frontend with proper tooling
+- **Specification-Driven Development**: Everything starts from the
+  `arbiter.assembly.cue` file
+- **Generated Application Structure**: TypeScript/Vite frontend with proper
+  tooling
 - **UI Route Management**: How Arbiter handles routing and page components
-- **Component Generation**: Automated React component creation from specifications
+- **Component Generation**: Automated React component creation from
+  specifications
 - **Testing Setup**: Built-in testing infrastructure with Vitest
 - **Build Configuration**: Production-ready build pipeline
 
@@ -76,6 +81,7 @@ arbiter generate
 ```
 
 The specification defines:
+
 - A route at `/plotService` with viewing capabilities
 - A `PlotservicePage` component to handle the route
 - TypeScript as the target language
@@ -112,7 +118,8 @@ ui: {
 }
 ```
 
-Then regenerate with `arbiter generate` to see the new route and component created.
+Then regenerate with `arbiter generate` to see the new route and component
+created.
 
 ## Next Steps
 
@@ -124,9 +131,12 @@ Then regenerate with `arbiter generate` to see the new route and component creat
 ## Learn More
 
 - **[Arbiter Documentation](../docs/)** - Complete guides and references
-- **[CUE Language](https://cuelang.org/)** - Understanding the specification language
-- **[Core Concepts](../docs/core-concepts.md)** - Arbiter's architecture principles
+- **[CUE Language](https://cuelang.org/)** - Understanding the specification
+  language
+- **[Core Concepts](../docs/core-concepts.md)** - Arbiter's architecture
+  principles
 
 ---
 
-*This demo project is automatically maintained and regenerated as part of Arbiter's development process.*
+_This demo project is automatically maintained and regenerated as part of
+Arbiter's development process._

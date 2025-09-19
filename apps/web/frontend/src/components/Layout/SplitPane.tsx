@@ -19,7 +19,7 @@ export function SplitPane({
     typeof defaultSize === 'string' ? defaultSize : `${defaultSize}px`
   );
   const [isDragging, setIsDragging] = useState(false);
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const resizerRef = useRef<HTMLDivElement>(null);
 
@@ -32,12 +32,15 @@ export function SplitPane({
   }, []);
 
   // Handle mouse down on resizer
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!allowResize) return;
-    
-    e.preventDefault();
-    setIsDragging(true);
-  }, [allowResize]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!allowResize) return;
+
+      e.preventDefault();
+      setIsDragging(true);
+    },
+    [allowResize]
+  );
 
   // Handle mouse move during drag
   useEffect(() => {
@@ -48,16 +51,21 @@ export function SplitPane({
 
       const containerRect = containerRef.current.getBoundingClientRect();
       const containerSize = split === 'vertical' ? containerRect.width : containerRect.height;
-      const offset = split === 'vertical' 
-        ? e.clientX - containerRect.left
-        : e.clientY - containerRect.top;
+      const offset =
+        split === 'vertical' ? e.clientX - containerRect.left : e.clientY - containerRect.top;
 
       // Calculate percentage
       const percentage = (offset / containerSize) * 100;
-      
+
       // Apply constraints
-      const minPixels = getPixelSize(typeof minSize === 'string' ? minSize : `${minSize}px`, containerSize);
-      const maxPixels = getPixelSize(typeof maxSize === 'string' ? maxSize : `${maxSize}px`, containerSize);
+      const minPixels = getPixelSize(
+        typeof minSize === 'string' ? minSize : `${minSize}px`,
+        containerSize
+      );
+      const maxPixels = getPixelSize(
+        typeof maxSize === 'string' ? maxSize : `${maxSize}px`,
+        containerSize
+      );
       const minPercentage = (minPixels / containerSize) * 100;
       const maxPercentage = (maxPixels / containerSize) * 100;
 
@@ -111,9 +119,7 @@ export function SplitPane({
           ref={resizerRef}
           className={clsx(
             'bg-gray-300 hover:bg-gray-400 transition-colors duration-150 flex-shrink-0',
-            isVertical 
-              ? 'w-1 cursor-col-resize hover:w-2' 
-              : 'h-1 cursor-row-resize hover:h-2',
+            isVertical ? 'w-1 cursor-col-resize hover:w-2' : 'h-1 cursor-row-resize hover:h-2',
             isDragging && (isVertical ? 'w-2 bg-blue-500' : 'h-2 bg-blue-500')
           )}
           onMouseDown={handleMouseDown}

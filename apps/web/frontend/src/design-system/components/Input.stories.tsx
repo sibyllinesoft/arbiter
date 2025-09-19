@@ -5,10 +5,29 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { 
-  Search, Mail, Lock, Eye, EyeOff, User, AlertCircle, CheckCircle, AlertTriangle, 
-  Calendar, DollarSign, Phone, Code, GitBranch, Database, Globe, FileText,
-  Settings, Terminal, Folder, Clock, Shield
+import {
+  Search,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  User,
+  AlertCircle,
+  CheckCircle,
+  AlertTriangle,
+  Calendar,
+  DollarSign,
+  Phone,
+  Code,
+  GitBranch,
+  Database,
+  Globe,
+  FileText,
+  Settings,
+  Terminal,
+  Folder,
+  Clock,
+  Shield,
 } from 'lucide-react';
 import Input from './Input';
 import { storybookData } from '../../test/storybook-data';
@@ -20,7 +39,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional input component with comprehensive variants, states, validation, floating labels, and accessibility features. Designed for developer tools with sophisticated graphite theme and modern UX patterns.',
+        component:
+          'Professional input component with comprehensive variants, states, validation, floating labels, and accessibility features. Designed for developer tools with sophisticated graphite theme and modern UX patterns.',
       },
     },
   },
@@ -115,7 +135,8 @@ export const Variants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Input variants with enhanced validation states: Default, Success, Warning (new), and Error with automatic validation icons.',
+        story:
+          'Input variants with enhanced validation states: Default, Success, Warning (new), and Error with automatic validation icons.',
       },
     },
   },
@@ -143,26 +164,26 @@ export const Sizes: Story = {
 export const ValidationStates: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Input 
-        label="Valid Email" 
+      <Input
+        label="Valid Email"
         placeholder="user@example.com"
         success="Email is available and valid"
         showValidationIcon
       />
-      <Input 
-        label="Email with Warning" 
+      <Input
+        label="Email with Warning"
         placeholder="user@example.com"
         warning="This email is already registered but you can still use it"
         showValidationIcon
       />
-      <Input 
-        label="Invalid Email" 
+      <Input
+        label="Invalid Email"
         placeholder="user@example.com"
         error="Please enter a valid email address"
         showValidationIcon
       />
-      <Input 
-        label="Custom Validation" 
+      <Input
+        label="Custom Validation"
         placeholder="Enter value"
         rightIcon={<CheckCircle className="text-emerald-500" />}
         helperText="Custom validation with manual icon"
@@ -173,7 +194,8 @@ export const ValidationStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Enhanced validation states with automatic validation icons and comprehensive feedback messages.',
+        story:
+          'Enhanced validation states with automatic validation icons and comprehensive feedback messages.',
       },
     },
   },
@@ -183,31 +205,27 @@ export const ValidationStates: Story = {
 export const LoadingStates: Story = {
   render: () => (
     <div className="w-80 space-y-4">
-      <Input 
-        label="Validating Email" 
+      <Input
+        label="Validating Email"
         placeholder="user@example.com"
         loading
         helperText="Checking availability..."
       />
-      <Input 
-        label="Processing" 
+      <Input
+        label="Processing"
         value="user@example.com"
         loading
         leftIcon={<Mail />}
         helperText="Saving changes..."
       />
-      <Input 
-        size="lg"
-        label="Large Loading Input" 
-        placeholder="Large input with loading"
-        loading
-      />
+      <Input size="lg" label="Large Loading Input" placeholder="Large input with loading" loading />
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Loading states with animated spinner, showing the input is processing or validating data.',
+        story:
+          'Loading states with animated spinner, showing the input is processing or validating data.',
       },
     },
   },
@@ -219,28 +237,24 @@ export const FloatingLabels: Story = {
     <div className="w-96 space-y-6">
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-graphite-700">Floating Label Inputs</h3>
-        <Input 
+        <Input floatingLabel label="Full Name" placeholder="Enter your full name" />
+        <Input
           floatingLabel
-          label="Full Name" 
-          placeholder="Enter your full name"
-        />
-        <Input 
-          floatingLabel
-          label="Email Address" 
+          label="Email Address"
           placeholder="Enter your email"
           leftIcon={<Mail />}
           description="We'll use this to contact you"
         />
-        <Input 
+        <Input
           floatingLabel
-          label="Phone Number" 
+          label="Phone Number"
           placeholder="+1 (555) 123-4567"
           leftIcon={<Phone />}
           required
         />
-        <Input 
+        <Input
           floatingLabel
-          label="Project Name" 
+          label="Project Name"
           placeholder="my-awesome-project"
           success="Name is available"
           showValidationIcon
@@ -251,7 +265,8 @@ export const FloatingLabels: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Modern floating label pattern that provides a clean, space-efficient design while maintaining accessibility.',
+        story:
+          'Modern floating label pattern that provides a clean, space-efficient design while maintaining accessibility.',
       },
     },
   },
@@ -262,31 +277,33 @@ export const WithIcons: Story = {
   render: () => (
     <div className="w-80 space-y-4">
       <Input label="Search" placeholder="Search projects..." leftIcon={<Search />} />
-      <Input label="Email" placeholder="Enter your email" leftIcon={<Mail />} rightIcon={<CheckCircle className="text-green-500" />} />
-      <Input 
-        type="password" 
-        label="Password" 
-        placeholder="Enter your password" 
-        leftIcon={<Lock />} 
-        rightIcon={<Eye />} 
+      <Input
+        label="Email"
+        placeholder="Enter your email"
+        leftIcon={<Mail />}
+        rightIcon={<CheckCircle className="text-green-500" />}
       />
-      <Input 
-        label="Amount" 
-        placeholder="0.00" 
+      <Input
+        type="password"
+        label="Password"
+        placeholder="Enter your password"
+        leftIcon={<Lock />}
+        rightIcon={<Eye />}
+      />
+      <Input
+        label="Amount"
+        placeholder="0.00"
         leftIcon={<DollarSign />}
         helperText="Enter amount in USD"
       />
-      <Input 
-        label="Date" 
-        type="date" 
-        leftIcon={<Calendar />}
-      />
+      <Input label="Date" type="date" leftIcon={<Calendar />} />
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Inputs with various icon combinations, properly sized and positioned for each input size.',
+        story:
+          'Inputs with various icon combinations, properly sized and positioned for each input size.',
       },
     },
   },
@@ -300,82 +317,68 @@ export const DeveloperToolExamples: Story = {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Project Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input 
-            label="Project Name" 
-            placeholder="my-awesome-project" 
+          <Input
+            label="Project Name"
+            placeholder="my-awesome-project"
             required
             helperText="Must be a valid identifier"
           />
-          <Input 
-            label="Version" 
-            placeholder="1.0.0" 
-            required
-            helperText="Semantic version"
-          />
-          <Input 
-            label="Repository URL" 
-            placeholder="https://github.com/user/repo" 
+          <Input label="Version" placeholder="1.0.0" required helperText="Semantic version" />
+          <Input
+            label="Repository URL"
+            placeholder="https://github.com/user/repo"
             description="Git repository URL"
           />
-          <Input 
-            label="Build Command" 
-            placeholder="npm run build" 
+          <Input
+            label="Build Command"
+            placeholder="npm run build"
             description="Command to build the project"
           />
         </div>
       </div>
-      
+
       {/* Search and filter with floating labels */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Search & Filter</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input 
+          <Input
             floatingLabel
             label="Search fragments"
-            placeholder="Search..." 
+            placeholder="Search..."
             leftIcon={<Search />}
           />
-          <Input 
-            floatingLabel
-            label="Filter by path" 
-            placeholder="api/routes.cue"
-          />
-          <Input 
-            floatingLabel
-            label="Created after" 
-            type="date"
-            leftIcon={<Calendar />}
-          />
+          <Input floatingLabel label="Filter by path" placeholder="api/routes.cue" />
+          <Input floatingLabel label="Created after" type="date" leftIcon={<Calendar />} />
         </div>
       </div>
-      
+
       {/* Validation results with enhanced states */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Validation Results</h3>
         <div className="space-y-3">
-          <Input 
-            label="Schema Path" 
-            value="schemas/user.cue" 
+          <Input
+            label="Schema Path"
+            value="schemas/user.cue"
             success="Schema is valid and properly formatted"
             showValidationIcon
             readOnly
           />
-          <Input 
-            label="Fragment Path" 
-            value="api/deprecated.cue" 
+          <Input
+            label="Fragment Path"
+            value="api/deprecated.cue"
             warning="This file uses deprecated syntax but will still work"
             showValidationIcon
             readOnly
           />
-          <Input 
-            label="Invalid Fragment" 
-            value="api/invalid.cue" 
+          <Input
+            label="Invalid Fragment"
+            value="api/invalid.cue"
             error="Syntax error on line 15: missing closing brace"
             showValidationIcon
             readOnly
           />
-          <Input 
-            label="Processing Fragment" 
+          <Input
+            label="Processing Fragment"
             value="api/processing.cue"
             loading
             helperText="Validating fragment..."
@@ -383,21 +386,21 @@ export const DeveloperToolExamples: Story = {
           />
         </div>
       </div>
-      
+
       {/* Form with mixed states */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">API Configuration</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input 
+          <Input
             floatingLabel
-            label="API Base URL" 
+            label="API Base URL"
             placeholder="https://api.example.com"
             success="URL is reachable"
             showValidationIcon
           />
-          <Input 
+          <Input
             floatingLabel
-            label="API Key" 
+            label="API Key"
             type="password"
             placeholder="sk_live_..."
             leftIcon={<Lock />}
@@ -411,7 +414,8 @@ export const DeveloperToolExamples: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Real-world examples of inputs in developer tools: configuration forms, search interfaces, validation feedback, and API settings.',
+        story:
+          'Real-world examples of inputs in developer tools: configuration forms, search interfaces, validation feedback, and API settings.',
       },
     },
   },
@@ -422,38 +426,29 @@ export const DisabledStates: Story = {
   render: () => (
     <div className="w-96 space-y-4">
       <Input label="Disabled Default" placeholder="This input is disabled" disabled />
-      <Input 
-        label="Disabled with Value" 
-        value="Read-only content" 
-        disabled 
-        leftIcon={<User />}
-      />
-      <Input 
-        label="Disabled Success" 
-        value="Previously validated" 
-        disabled 
+      <Input label="Disabled with Value" value="Read-only content" disabled leftIcon={<User />} />
+      <Input
+        label="Disabled Success"
+        value="Previously validated"
+        disabled
         success="This was validated"
         showValidationIcon
       />
-      <Input 
-        label="Disabled Error" 
-        placeholder="Disabled input" 
-        disabled 
+      <Input
+        label="Disabled Error"
+        placeholder="Disabled input"
+        disabled
         error="This field has an error but is disabled"
         showValidationIcon
       />
-      <Input 
-        floatingLabel
-        label="Disabled Floating" 
-        value="Floating label disabled"
-        disabled 
-      />
+      <Input floatingLabel label="Disabled Floating" value="Floating label disabled" disabled />
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Comprehensive disabled states showing how all variants and features behave when disabled.',
+        story:
+          'Comprehensive disabled states showing how all variants and features behave when disabled.',
       },
     },
   },
@@ -469,7 +464,7 @@ export const DeveloperToolPatterns: Story = {
           <Input
             label="Project Name"
             placeholder="e.g., ecommerce-api"
-            value={storybookData.projects[0]?.name || "E-commerce API Platform"}
+            value={storybookData.projects[0]?.name || 'E-commerce API Platform'}
             leftIcon={<Code />}
             description="This name will be used in URLs and git repositories"
           />
@@ -559,12 +554,7 @@ export const DeveloperToolPatterns: Story = {
             description="Search across all project specifications and requirements"
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Created After"
-              type="date"
-              leftIcon={<Calendar />}
-              size="sm"
-            />
+            <Input label="Created After" type="date" leftIcon={<Calendar />} size="sm" />
             <Input
               label="Modified Within"
               placeholder="7 days"
@@ -649,7 +639,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with all enhanced input props. Use the controls panel below to test different combinations including the new features.',
+        story:
+          'Interactive playground to experiment with all enhanced input props. Use the controls panel below to test different combinations including the new features.',
       },
     },
   },

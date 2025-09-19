@@ -5,10 +5,23 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { 
-  CheckCircle, AlertTriangle, XCircle, Info, Clock, 
-  Play, Pause, Square, Zap, Shield, Database, 
-  GitBranch, Activity, Globe, Users, Settings
+import {
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Info,
+  Clock,
+  Play,
+  Pause,
+  Square,
+  Zap,
+  Shield,
+  Database,
+  GitBranch,
+  Activity,
+  Globe,
+  Users,
+  Settings,
 } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 
@@ -19,7 +32,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional status badge component with comprehensive variants, styles, and states. Designed for developer tools with sophisticated graphite theme.',
+        component:
+          'Professional status badge component with comprehensive variants, styles, and states. Designed for developer tools with sophisticated graphite theme.',
       },
     },
   },
@@ -100,7 +114,8 @@ export const Variants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'All semantic variants of the status badge: success, warning, error, info, neutral, pending, active, and inactive.',
+        story:
+          'All semantic variants of the status badge: success, warning, error, info, neutral, pending, active, and inactive.',
       },
     },
   },
@@ -113,33 +128,63 @@ export const Styles: Story = {
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-graphite-700">Solid Style</h4>
         <div className="flex flex-wrap gap-3">
-          <StatusBadge variant="success" style="solid" showDot>Success</StatusBadge>
-          <StatusBadge variant="warning" style="solid" showDot>Warning</StatusBadge>
-          <StatusBadge variant="error" style="solid" showDot>Error</StatusBadge>
-          <StatusBadge variant="info" style="solid" showDot>Info</StatusBadge>
-          <StatusBadge variant="active" style="solid" showDot pulse>Active</StatusBadge>
+          <StatusBadge variant="success" style="solid" showDot>
+            Success
+          </StatusBadge>
+          <StatusBadge variant="warning" style="solid" showDot>
+            Warning
+          </StatusBadge>
+          <StatusBadge variant="error" style="solid" showDot>
+            Error
+          </StatusBadge>
+          <StatusBadge variant="info" style="solid" showDot>
+            Info
+          </StatusBadge>
+          <StatusBadge variant="active" style="solid" showDot pulse>
+            Active
+          </StatusBadge>
         </div>
       </div>
-      
+
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-graphite-700">Outlined Style</h4>
         <div className="flex flex-wrap gap-3">
-          <StatusBadge variant="success" style="outlined" showDot>Success</StatusBadge>
-          <StatusBadge variant="warning" style="outlined" showDot>Warning</StatusBadge>
-          <StatusBadge variant="error" style="outlined" showDot>Error</StatusBadge>
-          <StatusBadge variant="info" style="outlined" showDot>Info</StatusBadge>
-          <StatusBadge variant="active" style="outlined" showDot pulse>Active</StatusBadge>
+          <StatusBadge variant="success" style="outlined" showDot>
+            Success
+          </StatusBadge>
+          <StatusBadge variant="warning" style="outlined" showDot>
+            Warning
+          </StatusBadge>
+          <StatusBadge variant="error" style="outlined" showDot>
+            Error
+          </StatusBadge>
+          <StatusBadge variant="info" style="outlined" showDot>
+            Info
+          </StatusBadge>
+          <StatusBadge variant="active" style="outlined" showDot pulse>
+            Active
+          </StatusBadge>
         </div>
       </div>
-      
+
       <div className="space-y-2">
         <h4 className="text-sm font-medium text-graphite-700">Subtle Style</h4>
         <div className="flex flex-wrap gap-3">
-          <StatusBadge variant="success" style="subtle" showDot>Success</StatusBadge>
-          <StatusBadge variant="warning" style="subtle" showDot>Warning</StatusBadge>
-          <StatusBadge variant="error" style="subtle" showDot>Error</StatusBadge>
-          <StatusBadge variant="info" style="subtle" showDot>Info</StatusBadge>
-          <StatusBadge variant="active" style="subtle" showDot pulse>Active</StatusBadge>
+          <StatusBadge variant="success" style="subtle" showDot>
+            Success
+          </StatusBadge>
+          <StatusBadge variant="warning" style="subtle" showDot>
+            Warning
+          </StatusBadge>
+          <StatusBadge variant="error" style="subtle" showDot>
+            Error
+          </StatusBadge>
+          <StatusBadge variant="info" style="subtle" showDot>
+            Info
+          </StatusBadge>
+          <StatusBadge variant="active" style="subtle" showDot pulse>
+            Active
+          </StatusBadge>
         </div>
       </div>
     </div>
@@ -147,7 +192,8 @@ export const Styles: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different visual styles: solid (default), outlined (transparent background), and subtle (no border).',
+        story:
+          'Different visual styles: solid (default), outlined (transparent background), and subtle (no border).',
       },
     },
   },
@@ -262,7 +308,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-graphite-50 rounded-lg">
             <div className="flex items-center gap-3">
               <Database className="h-4 w-4 text-graphite-500" />
@@ -277,7 +323,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between p-4 bg-graphite-50 rounded-lg">
             <div className="flex items-center gap-3">
               <Shield className="h-4 w-4 text-graphite-500" />
@@ -294,7 +340,7 @@ export const DeveloperToolExamples: Story = {
           </div>
         </div>
       </div>
-      
+
       {/* Service Health Monitoring */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Service Health</h3>
@@ -317,7 +363,7 @@ export const DeveloperToolExamples: Story = {
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 bg-white border border-graphite-200 rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-graphite-900">Database</h4>
@@ -336,7 +382,7 @@ export const DeveloperToolExamples: Story = {
               </div>
             </div>
           </div>
-          
+
           <div className="p-4 bg-white border border-graphite-200 rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-graphite-900">Cache Service</h4>
@@ -357,7 +403,7 @@ export const DeveloperToolExamples: Story = {
           </div>
         </div>
       </div>
-      
+
       {/* Team Activity & Permissions */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Team Activity</h3>
@@ -381,7 +427,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between p-3 bg-white border border-graphite-200 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
@@ -401,7 +447,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between p-3 bg-white border border-graphite-200 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
@@ -423,7 +469,7 @@ export const DeveloperToolExamples: Story = {
           </div>
         </div>
       </div>
-      
+
       {/* Feature Flags & Experiments */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Feature Flags</h3>
@@ -445,7 +491,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="p-4 bg-white border border-graphite-200 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-graphite-900">Advanced Analytics</h4>
@@ -453,9 +499,7 @@ export const DeveloperToolExamples: Story = {
                 Testing
               </StatusBadge>
             </div>
-            <p className="text-sm text-graphite-600">
-              Enhanced reporting and metrics dashboard
-            </p>
+            <p className="text-sm text-graphite-600">Enhanced reporting and metrics dashboard</p>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-graphite-600">Coverage: 5% of users</span>
               <StatusBadge variant="warning" style="subtle" size="xs">
@@ -463,7 +507,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="p-4 bg-white border border-graphite-200 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-graphite-900">Real-time Collaboration</h4>
@@ -471,9 +515,7 @@ export const DeveloperToolExamples: Story = {
                 Disabled
               </StatusBadge>
             </div>
-            <p className="text-sm text-graphite-600">
-              Live editing and collaboration features
-            </p>
+            <p className="text-sm text-graphite-600">Live editing and collaboration features</p>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-graphite-600">Coverage: 0% of users</span>
               <StatusBadge variant="error" style="subtle" size="xs">
@@ -481,7 +523,7 @@ export const DeveloperToolExamples: Story = {
               </StatusBadge>
             </div>
           </div>
-          
+
           <div className="p-4 bg-white border border-graphite-200 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-graphite-900">Mobile Responsive</h4>
@@ -489,9 +531,7 @@ export const DeveloperToolExamples: Story = {
                 Live
               </StatusBadge>
             </div>
-            <p className="text-sm text-graphite-600">
-              Optimized mobile and tablet experience
-            </p>
+            <p className="text-sm text-graphite-600">Optimized mobile and tablet experience</p>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-graphite-600">Coverage: 100% of users</span>
               <StatusBadge variant="success" style="subtle" size="xs">
@@ -506,7 +546,8 @@ export const DeveloperToolExamples: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Real-world examples of status badges in developer tools: build status, service health, team activity, and feature flags.',
+        story:
+          'Real-world examples of status badges in developer tools: build status, service health, team activity, and feature flags.',
       },
     },
   },
@@ -526,7 +567,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with all status badge props. Use the controls panel below to test different combinations.',
+        story:
+          'Interactive playground to experiment with all status badge props. Use the controls panel below to test different combinations.',
       },
     },
   },

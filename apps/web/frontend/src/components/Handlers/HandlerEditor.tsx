@@ -4,33 +4,26 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  Save, 
-  X, 
-  Play, 
-  Code, 
-  AlertTriangle, 
+import {
+  Save,
+  X,
+  Play,
+  Code,
+  AlertTriangle,
   CheckCircle,
   Loader2,
   FileText,
-  Settings
+  Settings,
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { apiService } from '../../services/api';
-import { 
-  Button, 
-  Input, 
-  Select, 
-  Card,
-  StatusBadge,
-  cn
-} from '../../design-system';
+import { Button, Input, Select, Card, StatusBadge, cn } from '../../design-system';
 import MonacoEditor from '../Editor/MonacoEditor';
-import type { 
-  WebhookHandler, 
+import type {
+  WebhookHandler,
   WebhookProvider,
   CreateHandlerRequest,
-  UpdateHandlerRequest
+  UpdateHandlerRequest,
 } from '../../types/api';
 import { createLogger } from '../../utils/logger';
 
@@ -83,23 +76,31 @@ module.exports = handler;`;
 // Provider-specific event types
 const PROVIDER_EVENT_TYPES: Record<WebhookProvider, string[]> = {
   github: [
-    'push', 'pull_request', 'issues', 'issue_comment', 'release', 
-    'create', 'delete', 'fork', 'watch', 'star'
+    'push',
+    'pull_request',
+    'issues',
+    'issue_comment',
+    'release',
+    'create',
+    'delete',
+    'fork',
+    'watch',
+    'star',
   ],
   gitlab: [
-    'push', 'merge_request', 'issues', 'note', 'pipeline', 
-    'build', 'wiki_page', 'deployment'
+    'push',
+    'merge_request',
+    'issues',
+    'note',
+    'pipeline',
+    'build',
+    'wiki_page',
+    'deployment',
   ],
-  bitbucket: [
-    'push', 'pullrequest', 'issue', 'repo_fork', 'repo_commit_comment'
-  ],
-  slack: [
-    'message', 'app_mention', 'reaction_added', 'member_joined_channel'
-  ],
-  discord: [
-    'message', 'guild_member_add', 'reaction_add', 'voice_state_update'
-  ],
-  custom: ['webhook', 'http_request', 'api_call', 'event']
+  bitbucket: ['push', 'pullrequest', 'issue', 'repo_fork', 'repo_commit_comment'],
+  slack: ['message', 'app_mention', 'reaction_added', 'member_joined_channel'],
+  discord: ['message', 'guild_member_add', 'reaction_add', 'voice_state_update'],
+  custom: ['webhook', 'http_request', 'api_call', 'event'],
 };
 
 interface HandlerEditorProps {
@@ -114,9 +115,9 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
     provider: 'custom' as WebhookProvider,
     event_type: '',
     code: DEFAULT_HANDLER_CODE,
-    enabled: true
+    enabled: true,
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -126,7 +127,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
     message: string;
     duration?: number;
   } | null>(null);
-  
+
   const isEditing = Boolean(handler);
 
   // Load handler data when editing
@@ -137,7 +138,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
         provider: handler.provider,
         event_type: handler.event_type,
         code: handler.code,
-        enabled: handler.enabled
+        enabled: handler.enabled,
       });
       setHasUnsavedChanges(false);
     } else {
@@ -147,7 +148,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
         provider: 'custom',
         event_type: '',
         code: DEFAULT_HANDLER_CODE,
-        enabled: true
+        enabled: true,
       });
       setHasUnsavedChanges(false);
     }
@@ -161,54 +162,63 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
   }, []);
 
   // Handle form field changes
-  const handleFieldChange = useCallback((field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    markUnsaved();
-  }, [markUnsaved]);
+  const handleFieldChange = useCallback(
+    (field: string, value: any) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+      markUnsaved();
+    },
+    [markUnsaved]
+  );
 
   // Handle code changes
-  const handleCodeChange = useCallback((code: string) => {
-    setFormData(prev => ({ ...prev, code }));
-    markUnsaved();
-    
-    // Clear previous test results when code changes
-    setTestResult(null);
-    
-    // Basic syntax validation
-    validateCode(code);
-  }, [markUnsaved]);
+  const handleCodeChange = useCallback(
+    (code: string) => {
+      setFormData(prev => ({ ...prev, code }));
+      markUnsaved();
+
+      // Clear previous test results when code changes
+      setTestResult(null);
+
+      // Basic syntax validation
+      validateCode(code);
+    },
+    [markUnsaved]
+  );
 
   // Basic code validation
   const validateCode = useCallback((code: string) => {
     const errors: string[] = [];
-    
+
     // Check for required handler function
     if (!code.includes('function handler') && !code.includes('handler =')) {
       errors.push('Handler must define a "handler" function');
     }
-    
+
     // Check for module.exports
     if (!code.includes('module.exports')) {
       errors.push('Handler must export the handler function using module.exports');
     }
-    
+
     // Check for async function (recommended)
     if (!code.includes('async function') && !code.includes('async ')) {
       console.warn('Handler function should be async for better compatibility');
     }
-    
+
     setCodeErrors(errors);
   }, []);
 
   // Handle provider change (update available event types)
-  const handleProviderChange = useCallback((provider: WebhookProvider) => {
-    setFormData(prev => ({
-      ...prev,
-      provider,
-      event_type: PROVIDER_EVENT_TYPES[provider][0] || ''
-    }));
-    markUnsaved();
-  }, [markUnsaved]);
+  const handleProviderChange = useCallback(
+    (provider: WebhookProvider) => {
+      setFormData(prev => ({
+        ...prev,
+        provider,
+        event_type: PROVIDER_EVENT_TYPES[provider][0] || '',
+      }));
+      markUnsaved();
+    },
+    [markUnsaved]
+  );
 
   // Test handler with sample payload
   const handleTestHandler = useCallback(async () => {
@@ -225,7 +235,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
       let samplePayload = {
         test: true,
         timestamp: new Date().toISOString(),
-        source: 'editor-test'
+        source: 'editor-test',
       };
 
       if (formData.provider === 'github') {
@@ -234,15 +244,15 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
           action: 'push',
           repository: {
             full_name: 'test/repo',
-            default_branch: 'main'
+            default_branch: 'main',
           },
           commits: [
             {
               id: 'abc123',
               message: 'Test commit',
-              author: { name: 'Test User', email: 'test@example.com' }
-            }
-          ]
+              author: { name: 'Test User', email: 'test@example.com' },
+            },
+          ],
         };
       }
 
@@ -252,27 +262,28 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
         const result = await apiService.testHandler(handler.id, samplePayload);
         setTestResult({
           status: result.status,
-          message: result.status === 'success' 
-            ? 'Handler executed successfully'
-            : result.error || 'Test failed',
-          duration: result.duration_ms
+          message:
+            result.status === 'success'
+              ? 'Handler executed successfully'
+              : result.error || 'Test failed',
+          duration: result.duration_ms,
         });
       } else {
         // For new handlers, simulate a test by checking code syntax
         // In a real implementation, you'd send the code to the backend for testing
         await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-        
+
         setTestResult({
           status: 'success',
           message: 'Code syntax validated successfully',
-          duration: 45
+          duration: 45,
         });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Test failed';
       setTestResult({
         status: 'error',
-        message
+        message,
       });
       log.error('Handler test failed:', err);
     } finally {
@@ -315,7 +326,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
           provider: formData.provider,
           event_type: formData.event_type.trim(),
           code: formData.code,
-          enabled: formData.enabled
+          enabled: formData.enabled,
         };
         savedHandler = await apiService.updateHandler(handler.id, updateRequest);
         toast.success('Handler updated successfully');
@@ -326,7 +337,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
           provider: formData.provider,
           event_type: formData.event_type.trim(),
           code: formData.code,
-          enabled: formData.enabled
+          enabled: formData.enabled,
         };
         savedHandler = await apiService.createHandler(createRequest);
         toast.success('Handler created successfully');
@@ -376,25 +387,33 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
               Unsaved Changes
             </StatusBadge>
           )}
-          
+
           <Button
             onClick={handleTestHandler}
             disabled={isTesting || codeErrors.length > 0}
             variant="secondary"
             size="sm"
-            leftIcon={isTesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            leftIcon={
+              isTesting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )
+            }
           >
             Test
           </Button>
-          
+
           <Button
             onClick={handleSave}
             disabled={isSaving || codeErrors.length > 0}
-            leftIcon={isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            leftIcon={
+              isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
+            }
           >
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
-          
+
           <Button onClick={handleCancel} variant="secondary">
             <X className="h-4 w-4" />
           </Button>
@@ -411,7 +430,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                 <Settings className="h-4 w-4" />
                 Configuration
               </h3>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -419,18 +438,16 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                   </label>
                   <Input
                     value={formData.name}
-                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    onChange={e => handleFieldChange('name', e.target.value)}
                     placeholder="Enter handler name..."
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Provider
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Provider</label>
                   <Select
                     value={formData.provider}
-                    onChange={(value) => handleProviderChange(value as WebhookProvider)}
+                    onChange={value => handleProviderChange(value as WebhookProvider)}
                     options={[
                       { value: 'github', label: '🐙 GitHub' },
                       { value: 'gitlab', label: '🦊 GitLab' },
@@ -443,15 +460,13 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Event Type
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
                   <Select
                     value={formData.event_type}
-                    onChange={(value) => handleFieldChange('event_type', value)}
+                    onChange={value => handleFieldChange('event_type', value)}
                     options={PROVIDER_EVENT_TYPES[formData.provider].map(eventType => ({
                       value: eventType,
-                      label: eventType
+                      label: eventType,
                     }))}
                   />
                 </div>
@@ -461,7 +476,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                     type="checkbox"
                     id="enabled"
                     checked={formData.enabled}
-                    onChange={(e) => handleFieldChange('enabled', e.target.checked)}
+                    onChange={e => handleFieldChange('enabled', e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <label htmlFor="enabled" className="text-sm text-gray-700">
@@ -490,29 +505,35 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
 
             {/* Test Result */}
             {testResult && (
-              <div className={cn(
-                'border rounded-lg p-4',
-                testResult.status === 'success' 
-                  ? 'border-green-200 bg-green-50' 
-                  : 'border-red-200 bg-red-50'
-              )}>
+              <div
+                className={cn(
+                  'border rounded-lg p-4',
+                  testResult.status === 'success'
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-red-200 bg-red-50'
+                )}
+              >
                 <div className="flex items-center gap-2 mb-2">
                   {testResult.status === 'success' ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   )}
-                  <h4 className={cn(
-                    'text-sm font-medium',
-                    testResult.status === 'success' ? 'text-green-800' : 'text-red-800'
-                  )}>
+                  <h4
+                    className={cn(
+                      'text-sm font-medium',
+                      testResult.status === 'success' ? 'text-green-800' : 'text-red-800'
+                    )}
+                  >
                     Test {testResult.status === 'success' ? 'Passed' : 'Failed'}
                   </h4>
                 </div>
-                <p className={cn(
-                  'text-sm',
-                  testResult.status === 'success' ? 'text-green-700' : 'text-red-700'
-                )}>
+                <p
+                  className={cn(
+                    'text-sm',
+                    testResult.status === 'success' ? 'text-green-700' : 'text-red-700'
+                  )}
+                >
                   {testResult.message}
                 </p>
                 {testResult.duration && (
@@ -530,18 +551,28 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                 <h4 className="text-sm font-medium text-blue-800">Handler API</h4>
               </div>
               <div className="text-xs text-blue-700 space-y-2">
-                <p><strong>Function signature:</strong></p>
+                <p>
+                  <strong>Function signature:</strong>
+                </p>
                 <code className="block bg-white p-2 rounded text-xs font-mono">
                   async function handler(payload, context)
                 </code>
-                
-                <p><strong>Parameters:</strong></p>
+
+                <p>
+                  <strong>Parameters:</strong>
+                </p>
                 <ul className="ml-4 space-y-1">
-                  <li>• <code>payload</code> - Webhook data</li>
-                  <li>• <code>context</code> - Execution context</li>
+                  <li>
+                    • <code>payload</code> - Webhook data
+                  </li>
+                  <li>
+                    • <code>context</code> - Execution context
+                  </li>
                 </ul>
-                
-                <p><strong>Return:</strong> Optional result object</p>
+
+                <p>
+                  <strong>Return:</strong> Optional result object
+                </p>
               </div>
             </div>
           </div>
@@ -564,7 +595,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                 quickSuggestions: true,
                 parameterHints: { enabled: true },
                 suggest: { showWords: true },
-                hover: { enabled: true }
+                hover: { enabled: true },
               }}
             />
           </div>

@@ -1,15 +1,15 @@
-import type { 
-  AIProvider, 
-  AICommand, 
-  AIContext, 
-  AIResponse, 
+import type {
+  AICommand,
+  AIContext,
+  AIProvider,
   AIProviderStatus,
-  OpenAIConfig 
+  AIResponse,
+  OpenAIConfig,
 } from '../base/types.js';
 
 /**
  * OpenAI Provider for webhook processing
- * 
+ *
  * Integrates with OpenAI's GPT models to provide AI-powered analysis
  * of GitHub/GitLab events with optimized prompts for code understanding.
  */
@@ -45,26 +45,25 @@ export class OpenAIProvider implements AIProvider {
    */
   async processCommand(command: AICommand, context: AIContext): Promise<AIResponse> {
     const startTime = Date.now();
-    
+
     try {
       // Build the prompt with context
       const messages = this.buildMessages(command, context);
-      
+
       // Call OpenAI API
       const response = await this.callOpenAIAPI(messages, command);
-      
+
       // Parse response and generate actions
       const parsedResponse = this.parseResponse(response, command, context);
-      
+
       // Update metrics
       this.updateMetrics(startTime, response.usage || {});
-      
-      return parsedResponse;
 
+      return parsedResponse;
     } catch (error) {
       this.metrics.errorCount++;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       return {
         success: false,
         error: `OpenAI API error: ${errorMessage}`,
@@ -82,13 +81,13 @@ export class OpenAIProvider implements AIProvider {
     // System message with role definition
     messages.push({
       role: 'system',
-      content: this.buildSystemPrompt(command)
+      content: this.buildSystemPrompt(command),
     });
 
     // User message with event context and instructions
     messages.push({
       role: 'user',
-      content: this.buildUserPrompt(command, context)
+      content: this.buildUserPrompt(command, context),
     });
 
     return messages;
@@ -99,18 +98,23 @@ export class OpenAIProvider implements AIProvider {
    */
   private buildSystemPrompt(command: AICommand): string {
     const rolePrompts = {
-      'review-code': `You are a senior software engineer and code reviewer with expertise in multiple programming languages, security best practices, and software architecture. You excel at identifying bugs, security vulnerabilities, performance issues, and opportunities for improvement.`,
-      
+      'review-code':
+        'You are a senior software engineer and code reviewer with expertise in multiple programming languages, security best practices, and software architecture. You excel at identifying bugs, security vulnerabilities, performance issues, and opportunities for improvement.',
+
       'analyze-issue': `You are a technical product manager and issue triager with deep experience in software development. You're skilled at understanding requirements, categorizing issues, estimating complexity, and providing actionable next steps.`,
-      
-      'generate-docs': `You are a technical writer and documentation specialist with expertise in creating clear, comprehensive, and user-friendly documentation. You understand developer workflows and can create docs that truly help users.`,
-      
-      'security-scan': `You are a cybersecurity expert specializing in application security, vulnerability assessment, and secure coding practices. You have deep knowledge of OWASP guidelines, common attack vectors, and security best practices.`,
-      
-      'commit-analysis': `You are a Git expert and development workflow specialist. You understand branching strategies, commit message conventions, and can analyze development patterns to provide insights and recommendations.`,
+
+      'generate-docs':
+        'You are a technical writer and documentation specialist with expertise in creating clear, comprehensive, and user-friendly documentation. You understand developer workflows and can create docs that truly help users.',
+
+      'security-scan':
+        'You are a cybersecurity expert specializing in application security, vulnerability assessment, and secure coding practices. You have deep knowledge of OWASP guidelines, common attack vectors, and security best practices.',
+
+      'commit-analysis':
+        'You are a Git expert and development workflow specialist. You understand branching strategies, commit message conventions, and can analyze development patterns to provide insights and recommendations.',
     };
 
-    const baseRole = rolePrompts[command.name as keyof typeof rolePrompts] || 
+    const baseRole =
+      rolePrompts[command.name as keyof typeof rolePrompts] ||
       'You are an AI assistant specialized in analyzing software development activities and providing actionable insights.';
 
     return `${baseRole}
@@ -129,13 +133,13 @@ Always structure your responses clearly with appropriate headings and provide sp
       `Task: ${command.name}`,
       `Description: ${command.description}`,
       '',
-      
+
       // Event context
       this.buildEventContext(context),
-      
+
       // Command-specific prompt
       command.prompt,
-      
+
       // Output format requirements
       this.buildOutputFormat(command),
     ];
@@ -148,8 +152,8 @@ Always structure your responses clearly with appropriate headings and provide sp
    */
   private buildEventContext(context: AIContext): string {
     const { eventData, originalEvent } = context;
-    
-    let contextStr = `## Event Information\n`;
+
+    let contextStr = '## Event Information\n';
     contextStr += `- Event Type: ${originalEvent.eventType}\n`;
     contextStr += `- Provider: ${originalEvent.provider}\n`;
     contextStr += `- Repository: ${eventData.repository?.fullName}\n`;
@@ -159,13 +163,13 @@ Always structure your responses clearly with appropriate headings and provide sp
     // Add specific event data
     if (eventData.pullRequest) {
       const pr = eventData.pullRequest;
-      contextStr += `### Pull Request Context\n`;
+      contextStr += '### Pull Request Context\n';
       contextStr += `- PR #${pr.number}: ${pr.title}\n`;
       contextStr += `- State: ${pr.state} ${pr.draft ? '(Draft)' : ''}\n`;
       contextStr += `- Branch: ${pr.sourceBranch} → ${pr.targetBranch}\n`;
       contextStr += `- Changes: ${pr.changedFiles} files, +${pr.additions}/-${pr.deletions}\n`;
-      
-      if (pr.body && pr.body.trim()) {
+
+      if (pr.body?.trim()) {
         contextStr += `- Description: ${pr.body.substring(0, 500)}${pr.body.length > 500 ? '...' : ''}\n`;
       }
       contextStr += '\n';
@@ -173,13 +177,13 @@ Always structure your responses clearly with appropriate headings and provide sp
 
     if (eventData.issue) {
       const issue = eventData.issue;
-      contextStr += `### Issue Context\n`;
+      contextStr += '### Issue Context\n';
       contextStr += `- Issue #${issue.number}: ${issue.title}\n`;
       contextStr += `- State: ${issue.state}\n`;
       contextStr += `- Labels: ${issue.labels.length ? issue.labels.join(', ') : 'None'}\n`;
       contextStr += `- Assignees: ${issue.assignees.length ? issue.assignees.join(', ') : 'None'}\n`;
-      
-      if (issue.body && issue.body.trim()) {
+
+      if (issue.body?.trim()) {
         contextStr += `- Description: ${issue.body.substring(0, 500)}${issue.body.length > 500 ? '...' : ''}\n`;
       }
       contextStr += '\n';
@@ -187,13 +191,13 @@ Always structure your responses clearly with appropriate headings and provide sp
 
     if (eventData.push) {
       const push = eventData.push;
-      contextStr += `### Push Context\n`;
+      contextStr += '### Push Context\n';
       contextStr += `- Branch: ${push.branch}\n`;
       contextStr += `- Commits: ${push.commitCount}\n`;
       contextStr += `- Type: ${push.isProtectedBranch ? 'Protected branch' : 'Regular branch'}\n`;
-      
+
       if (push.commits && push.commits.length > 0) {
-        contextStr += `- Recent commits:\n`;
+        contextStr += '- Recent commits:\n';
         push.commits.slice(0, 3).forEach((commit: any, i: number) => {
           contextStr += `  ${i + 1}. ${commit.id.substring(0, 7)}: ${commit.message.split('\n')[0]}\n`;
         });
@@ -279,8 +283,10 @@ Any related documentation improvements.
 Any automated actions to take.`,
     };
 
-    return formats[command.name as keyof typeof formats] || 
-      `## Response Format\n\nPlease provide a structured analysis with clear sections and actionable recommendations. If you suggest any automated actions, include them in a clear "Actions" section.`;
+    return (
+      formats[command.name as keyof typeof formats] ||
+      `## Response Format\n\nPlease provide a structured analysis with clear sections and actionable recommendations. If you suggest any automated actions, include them in a clear "Actions" section.`
+    );
   }
 
   /**
@@ -297,22 +303,27 @@ Any automated actions to take.`,
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.config.apiKey}`,
+      Authorization: `Bearer ${this.config.apiKey}`,
     };
 
     if (this.config.organizationId) {
       headers['OpenAI-Organization'] = this.config.organizationId;
     }
 
-    const response = await fetch(`${this.config.baseUrl || 'https://api.openai.com'}/v1/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody),
-    });
+    const response = await fetch(
+      `${this.config.baseUrl || 'https://api.openai.com'}/v1/chat/completions`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(`OpenAI API request failed: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+      throw new Error(
+        `OpenAI API request failed: ${response.status} - ${errorData.error?.message || 'Unknown error'}`
+      );
     }
 
     return await response.json();
@@ -323,12 +334,12 @@ Any automated actions to take.`,
    */
   private parseResponse(response: any, command: AICommand, context: AIContext): AIResponse {
     const content = response.choices?.[0]?.message?.content || '';
-    
+
     // Extract actions if present
     const actions = this.extractActions(content, command, context);
-    
+
     // Parse different response types
-    let data: any = { analysis: content };
+    const data: any = { analysis: content };
 
     if (command.name === 'review-code') {
       data.codeReview = this.parseCodeReview(content);
@@ -356,16 +367,20 @@ Any automated actions to take.`,
    */
   private extractActions(content: string, command: AICommand, context: AIContext): any[] {
     const actions = [];
-    
+
     // Look for action sections
-    const actionMatch = content.match(/## Actions?\s*\n(.*?)(?=\n##|\n$|$)/is) ||
-                       content.match(/### Actions?\s*\n(.*?)(?=\n##|\n###|\n$|$)/is);
-    
+    const actionMatch =
+      content.match(/## Actions?\s*\n(.*?)(?=\n##|\n$|$)/is) ||
+      content.match(/### Actions?\s*\n(.*?)(?=\n##|\n###|\n$|$)/is);
+
     if (actionMatch) {
       const actionText = actionMatch[1];
-      
+
       // Parse different action types
-      if (actionText.toLowerCase().includes('comment') || actionText.toLowerCase().includes('add comment')) {
+      if (
+        actionText.toLowerCase().includes('comment') ||
+        actionText.toLowerCase().includes('add comment')
+      ) {
         actions.push({
           type: 'comment',
           data: {
@@ -373,7 +388,7 @@ Any automated actions to take.`,
           },
         });
       }
-      
+
       if (actionText.toLowerCase().includes('label')) {
         const labels = this.extractLabels(actionText);
         if (labels.length > 0) {
@@ -383,7 +398,7 @@ Any automated actions to take.`,
           });
         }
       }
-      
+
       if (actionText.toLowerCase().includes('assign')) {
         const assignees = this.extractAssignees(actionText);
         if (assignees.length > 0) {
@@ -404,7 +419,9 @@ Any automated actions to take.`,
   private parseCodeReview(content: string): any {
     return {
       overallRating: this.extractRating(content),
-      summary: this.extractSection(content, 'Overall Assessment|Key Findings') || content.substring(0, 200),
+      summary:
+        this.extractSection(content, 'Overall Assessment|Key Findings') ||
+        content.substring(0, 200),
       security: {
         riskLevel: this.extractSecurityRisk(content),
         issues: this.extractBulletPoints(content, 'Security'),
@@ -454,7 +471,7 @@ Any automated actions to take.`,
   private extractBulletPoints(content: string, section: string): string[] {
     const sectionContent = this.extractSection(content, section);
     if (!sectionContent) return [];
-    
+
     return sectionContent
       .split('\n')
       .map(line => line.replace(/^[-*•]\s*/, '').trim())
@@ -503,11 +520,13 @@ Any automated actions to take.`,
    */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      const messages = [{
-        role: 'user' as const,
-        content: 'Please respond with "Connection successful"'
-      }];
-      
+      const messages = [
+        {
+          role: 'user' as const,
+          content: 'Please respond with "Connection successful"',
+        },
+      ];
+
       await this.callOpenAIAPI(messages, {
         name: 'test',
         description: 'Connection test',
@@ -516,7 +535,7 @@ Any automated actions to take.`,
         requiresArgs: false,
         prompt: 'Test connection',
       });
-      
+
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -528,24 +547,24 @@ Any automated actions to take.`,
    * Get provider status and metrics
    */
   async getStatus(): Promise<AIProviderStatus> {
-    const avgResponseTime = this.metrics.requestCount > 0 
-      ? this.metrics.responseTimeSum / this.metrics.requestCount 
-      : 0;
+    const avgResponseTime =
+      this.metrics.requestCount > 0 ? this.metrics.responseTimeSum / this.metrics.requestCount : 0;
 
-    const successRate = this.metrics.requestCount > 0
-      ? (this.metrics.requestCount - this.metrics.errorCount) / this.metrics.requestCount
-      : 1;
+    const successRate =
+      this.metrics.requestCount > 0
+        ? (this.metrics.requestCount - this.metrics.errorCount) / this.metrics.requestCount
+        : 1;
 
     return {
       name: 'OpenAI',
       connected: true,
       model: this.config.model || 'gpt-4-0125-preview',
-      
+
       usage: {
         requestsToday: this.metrics.requestCount,
         tokensToday: this.metrics.tokenUsage,
       },
-      
+
       performance: {
         averageResponseTime: avgResponseTime,
         successRate: successRate,

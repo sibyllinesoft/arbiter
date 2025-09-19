@@ -12,28 +12,29 @@ const handleSpecValidation: WebhookHandler = async (payload, context) => {
   logger.info('Processing spec validation handler', {
     event: parsed.eventType,
     repository: parsed.repository.fullName,
-    commitCount: parsed.commits?.length || 0
+    commitCount: parsed.commits?.length || 0,
   });
 
   try {
     // Check if any CUE files were modified
-    const specFiles = parsed.commits?.flatMap(commit => [
-      ...commit.added.filter(file => file.endsWith('.cue')),
-      ...commit.modified.filter(file => file.endsWith('.cue'))
-    ]) || [];
+    const specFiles =
+      parsed.commits?.flatMap(commit => [
+        ...commit.added.filter(file => file.endsWith('.cue')),
+        ...commit.modified.filter(file => file.endsWith('.cue')),
+      ]) || [];
 
     if (specFiles.length === 0) {
       logger.debug('No CUE files changed, skipping validation');
       return {
         success: true,
         message: 'No CUE files changed',
-        actions: []
+        actions: [],
       };
     }
 
     logger.info('CUE files detected for validation', {
       files: specFiles,
-      count: specFiles.length
+      count: specFiles.length,
     });
 
     const actions: string[] = [];
@@ -47,44 +48,45 @@ const handleSpecValidation: WebhookHandler = async (payload, context) => {
         repository: parsed.repository.fullName,
         ref: payload.ref,
         specFiles,
-        commits: parsed.commits?.map(c => ({
-          sha: c.sha,
-          message: c.message,
-          author: c.author
-        })) || []
-      }
+        commits:
+          parsed.commits?.map(c => ({
+            sha: c.sha,
+            message: c.message,
+            author: c.author,
+          })) || [],
+      },
     });
 
     actions.push(`Triggered validation for ${specFiles.length} CUE files`);
 
     // For each spec file, log what changed
     for (const file of specFiles) {
-      const commit = parsed.commits?.find(c => 
-        c.added.includes(file) || c.modified.includes(file)
-      );
-      
+      const commit = parsed.commits?.find(c => c.added.includes(file) || c.modified.includes(file));
+
       if (commit) {
         const action = commit.added.includes(file) ? 'added' : 'modified';
         logger.info(`Spec file ${action}`, {
           file,
           commit: commit.sha,
-          message: commit.message
+          message: commit.message,
         });
-        
+
         actions.push(`Detected ${action} spec file: ${file}`);
       }
     }
 
     // Check for breaking changes based on commit messages
-    const breakingChanges = parsed.commits?.filter(commit =>
-      commit.message.toLowerCase().includes('breaking') ||
-      commit.message.toLowerCase().includes('breaking change') ||
-      commit.message.includes('BREAKING CHANGE:')
-    ) || [];
+    const breakingChanges =
+      parsed.commits?.filter(
+        commit =>
+          commit.message.toLowerCase().includes('breaking') ||
+          commit.message.toLowerCase().includes('breaking change') ||
+          commit.message.includes('BREAKING CHANGE:')
+      ) || [];
 
     if (breakingChanges.length > 0) {
       logger.warn('Breaking changes detected in spec files', {
-        commits: breakingChanges.map(c => ({ sha: c.sha, message: c.message }))
+        commits: breakingChanges.map(c => ({ sha: c.sha, message: c.message })),
       });
 
       // Broadcast breaking change warning
@@ -97,23 +99,23 @@ const handleSpecValidation: WebhookHandler = async (payload, context) => {
           breakingChanges: breakingChanges.map(c => ({
             sha: c.sha,
             message: c.message,
-            author: c.author
+            author: c.author,
           })),
-          warning: 'Breaking changes detected in specification files'
-        }
+          warning: 'Breaking changes detected in specification files',
+        },
       });
 
       actions.push(`⚠️ Detected ${breakingChanges.length} commits with breaking changes`);
     }
 
     // Check for assembly files specifically
-    const assemblyFiles = specFiles.filter(file => 
-      file.includes('assembly') || file.includes('.assembly.cue')
+    const assemblyFiles = specFiles.filter(
+      file => file.includes('assembly') || file.includes('.assembly.cue')
     );
 
     if (assemblyFiles.length > 0) {
       logger.info('Assembly files detected, triggering comprehensive validation', {
-        assemblyFiles
+        assemblyFiles,
       });
 
       await services.events.broadcastToProject(projectId, {
@@ -123,17 +125,20 @@ const handleSpecValidation: WebhookHandler = async (payload, context) => {
           trigger: 'assembly_validation',
           repository: parsed.repository.fullName,
           assemblyFiles,
-          validationType: 'comprehensive'
-        }
+          validationType: 'comprehensive',
+        },
       });
 
-      actions.push(`🏗️ Triggered comprehensive validation for ${assemblyFiles.length} assembly files`);
+      actions.push(
+        `🏗️ Triggered comprehensive validation for ${assemblyFiles.length} assembly files`
+      );
     }
 
     // Estimate validation complexity
-    const totalLines = parsed.commits?.reduce((sum, commit) => {
-      return sum + (commit.added.length + commit.modified.length);
-    }, 0) || 0;
+    const totalLines =
+      parsed.commits?.reduce((sum, commit) => {
+        return sum + (commit.added.length + commit.modified.length);
+      }, 0) || 0;
 
     let complexity = 'low';
     if (totalLines > 50 || breakingChanges.length > 0) {
@@ -147,7 +152,7 @@ const handleSpecValidation: WebhookHandler = async (payload, context) => {
       totalLines,
       specFiles: specFiles.length,
       assemblyFiles: assemblyFiles.length,
-      breakingChanges: breakingChanges.length
+      breakingChanges: breakingChanges.length,
     });
 
     return {
@@ -160,21 +165,22 @@ const handleSpecValidation: WebhookHandler = async (payload, context) => {
         breakingChangesDetected: breakingChanges.length,
         validationComplexity: complexity,
         repository: parsed.repository.fullName,
-        ref: payload.ref
-      }
+        ref: payload.ref,
+      },
     };
-
   } catch (error) {
     logger.error('Spec validation handler failed', error as Error);
-    
+
     return {
       success: false,
       message: 'Spec validation handler execution failed',
-      errors: [{
-        code: 'VALIDATION_HANDLER_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
-      }]
+      errors: [
+        {
+          code: 'VALIDATION_HANDLER_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+      ],
     };
   }
 };
@@ -186,9 +192,9 @@ const handlerModule: HandlerModule = {
     timeout: 20000,
     retries: 1,
     environment: {
-      VALIDATION_MODE: 'strict'
+      VALIDATION_MODE: 'strict',
     },
-    secrets: {}
+    secrets: {},
   },
   metadata: {
     name: 'Spec Validation Handler',
@@ -196,8 +202,8 @@ const handlerModule: HandlerModule = {
     version: '1.0.0',
     author: 'Arbiter Team',
     supportedEvents: ['push', 'Push Hook'],
-    requiredPermissions: ['events:publish', 'validation:trigger']
-  }
+    requiredPermissions: ['events:publish', 'validation:trigger'],
+  },
 };
 
 export default handlerModule;

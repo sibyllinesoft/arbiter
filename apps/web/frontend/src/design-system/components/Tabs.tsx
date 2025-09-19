@@ -24,37 +24,37 @@ export interface TabItem {
 export interface TabsProps {
   /** Array of tab items */
   items: TabItem[];
-  
+
   /** Currently active tab ID */
   activeTab?: string;
-  
+
   /** Callback when tab changes */
   onChange?: (tabId: string) => void;
-  
+
   /** Callback when tab is closed */
   onTabClose?: (tabId: string) => void;
-  
+
   /** Tab variant */
   variant?: 'underline' | 'pills' | 'bordered' | 'buttons';
-  
+
   /** Tab size */
   size?: 'sm' | 'md' | 'lg';
-  
+
   /** Whether tabs should take full width */
   fullWidth?: boolean;
-  
+
   /** Whether tabs should be scrollable when overflowing */
   scrollable?: boolean;
-  
+
   /** Whether to show scroll buttons */
   showScrollButtons?: boolean;
-  
+
   /** Custom className for the tab container */
   className?: string;
-  
+
   /** Custom className for the content area */
   contentClassName?: string;
-  
+
   /** Custom className for individual tabs */
   tabClassName?: string;
 }
@@ -64,25 +64,29 @@ const variantClasses = {
     container: 'border-b border-graphite-200',
     tab: 'border-b-2 border-transparent hover:border-graphite-300 hover:text-graphite-700',
     activeTab: 'border-blue-500 text-blue-600',
-    disabledTab: 'text-graphite-400 cursor-not-allowed hover:border-transparent hover:text-graphite-400',
+    disabledTab:
+      'text-graphite-400 cursor-not-allowed hover:border-transparent hover:text-graphite-400',
   },
   pills: {
     container: '',
     tab: 'rounded-lg hover:bg-graphite-100 hover:text-graphite-700',
     activeTab: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
-    disabledTab: 'text-graphite-400 cursor-not-allowed hover:bg-transparent hover:text-graphite-400',
+    disabledTab:
+      'text-graphite-400 cursor-not-allowed hover:bg-transparent hover:text-graphite-400',
   },
   bordered: {
     container: 'border-b border-graphite-200',
     tab: 'border border-transparent rounded-t-lg hover:border-graphite-300 hover:text-graphite-700 hover:bg-graphite-50',
     activeTab: 'border-graphite-300 border-b-white bg-white text-graphite-900 shadow-sm -mb-px',
-    disabledTab: 'text-graphite-400 cursor-not-allowed hover:border-transparent hover:text-graphite-400',
+    disabledTab:
+      'text-graphite-400 cursor-not-allowed hover:border-transparent hover:text-graphite-400',
   },
   buttons: {
     container: 'bg-graphite-100 rounded-lg p-1',
     tab: 'rounded-md hover:bg-graphite-200 hover:text-graphite-700',
     activeTab: 'bg-white text-graphite-900 shadow-sm',
-    disabledTab: 'text-graphite-400 cursor-not-allowed hover:bg-transparent hover:text-graphite-400',
+    disabledTab:
+      'text-graphite-400 cursor-not-allowed hover:bg-transparent hover:text-graphite-400',
   },
 } as const;
 
@@ -126,7 +130,7 @@ export function Tabs({
   const tabListRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
-  
+
   const currentActiveTab = activeTab || internalActiveTab;
   const activeContent = items.find(item => item.id === currentActiveTab)?.content;
   const classes = variantClasses[variant];
@@ -135,7 +139,7 @@ export function Tabs({
   // Update scroll button states
   const updateScrollButtons = () => {
     if (!tabListRef.current || !scrollable) return;
-    
+
     const { scrollLeft, scrollWidth, clientWidth } = tabListRef.current;
     setCanScrollLeft(scrollLeft > 0);
     setCanScrollRight(scrollLeft < scrollWidth - clientWidth);
@@ -159,7 +163,7 @@ export function Tabs({
 
   const handleTabClick = (tabId: string, disabled?: boolean, loading?: boolean) => {
     if (disabled || loading) return;
-    
+
     if (onChange) {
       onChange(tabId);
     } else {
@@ -175,7 +179,7 @@ export function Tabs({
   const handleKeyDown = (event: React.KeyboardEvent, tabId: string, index: number) => {
     const availableItems = items.filter(item => !item.disabled && !item.loading);
     const currentIndex = availableItems.findIndex(item => item.id === tabId);
-    
+
     switch (event.key) {
       case 'ArrowLeft': {
         event.preventDefault();
@@ -208,15 +212,14 @@ export function Tabs({
 
   const scroll = (direction: 'left' | 'right') => {
     if (!tabListRef.current) return;
-    
+
     const scrollAmount = tabListRef.current.clientWidth * 0.5;
-    const newScrollLeft = direction === 'left' 
-      ? scrollLeft - scrollAmount 
-      : scrollLeft + scrollAmount;
-    
+    const newScrollLeft =
+      direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount;
+
     tabListRef.current.scrollTo({
       left: newScrollLeft,
-      behavior: 'smooth'
+      behavior: 'smooth',
     });
     setScrollLeft(newScrollLeft);
   };
@@ -238,7 +241,7 @@ export function Tabs({
         )}
 
         {/* Tab List */}
-        <nav 
+        <nav
           ref={tabListRef}
           className={cn(
             'flex',
@@ -247,7 +250,7 @@ export function Tabs({
             scrollable && 'overflow-x-auto scrollbar-hide',
             scrollable && showScrollButtons && canScrollLeft && 'ml-8',
             scrollable && showScrollButtons && canScrollRight && 'mr-8'
-          )} 
+          )}
           role="tablist"
           style={scrollable ? { scrollbarWidth: 'none', msOverflowStyle: 'none' } : undefined}
         >
@@ -255,7 +258,7 @@ export function Tabs({
             const isActive = item.id === currentActiveTab;
             const isDisabled = item.disabled;
             const isLoading = item.loading;
-            
+
             return (
               <button
                 key={item.id}
@@ -271,48 +274,48 @@ export function Tabs({
                   'relative inline-flex items-center gap-2',
                   'font-medium transition-all duration-150 whitespace-nowrap',
                   'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-                  
+
                   // Size styles
                   sizes.tab,
-                  
+
                   // Full width
                   fullWidth && !scrollable && 'flex-1 justify-center',
-                  
+
                   // Variant styles
                   classes.tab,
                   isActive && classes.activeTab,
                   (isDisabled || isLoading) && classes.disabledTab,
-                  
+
                   // Custom className
                   tabClassName
                 )}
                 onClick={() => handleTabClick(item.id, isDisabled, isLoading)}
-                onKeyDown={(e) => handleKeyDown(e, item.id, index)}
+                onKeyDown={e => handleKeyDown(e, item.id, index)}
               >
                 {/* Loading state */}
                 {isLoading && (
                   <Loader2 className={cn('animate-spin', sizes.icon, 'text-blue-500')} />
                 )}
-                
+
                 {/* Icon */}
                 {!isLoading && item.icon && (
-                  <span className={cn('flex-shrink-0', sizes.icon)}>
-                    {item.icon}
-                  </span>
+                  <span className={cn('flex-shrink-0', sizes.icon)}>{item.icon}</span>
                 )}
-                
+
                 <span className="truncate">{item.label}</span>
-                
+
                 {/* Badge */}
                 {item.badge && (
-                  <span className={cn(
-                    'inline-flex items-center justify-center font-medium bg-graphite-200 text-graphite-700 rounded-full',
-                    sizes.badge
-                  )}>
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center font-medium bg-graphite-200 text-graphite-700 rounded-full',
+                      sizes.badge
+                    )}
+                  >
                     {item.badge}
                   </span>
                 )}
-                
+
                 {/* Close button */}
                 {item.closable && !isLoading && (
                   <button
@@ -321,7 +324,7 @@ export function Tabs({
                       'flex-shrink-0 rounded-sm p-0.5 hover:bg-graphite-300/50 transition-colors',
                       'focus:outline-none focus:ring-1 focus:ring-blue-500'
                     )}
-                    onClick={(e) => handleTabClose(item.id, e)}
+                    onClick={e => handleTabClose(item.id, e)}
                     aria-label={`Close ${item.label} tab`}
                   >
                     <X className={cn(sizes.close, 'text-graphite-500 hover:text-graphite-700')} />
@@ -344,18 +347,16 @@ export function Tabs({
           </button>
         )}
       </div>
-      
+
       {/* Tab Content */}
       <div className={cn('mt-4', contentClassName)}>
-        {items.map((item) => (
+        {items.map(item => (
           <div
             key={item.id}
             id={`tabpanel-${item.id}`}
             role="tabpanel"
             aria-labelledby={`tab-${item.id}`}
-            className={cn(
-              item.id === currentActiveTab ? 'block' : 'hidden'
-            )}
+            className={cn(item.id === currentActiveTab ? 'block' : 'hidden')}
           >
             {item.content}
           </div>

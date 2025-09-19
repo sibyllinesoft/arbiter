@@ -3,36 +3,36 @@
  * Automatic positioning of components for different diagram types
  */
 
-import { 
-  DiagramComponent, 
-  DiagramConnection, 
-  DiagramLayout, 
-  DiagramLayer,
-  LayoutAlgorithm 
+import {
+  type DiagramComponent,
+  type DiagramConnection,
+  type DiagramLayer,
+  DiagramLayout,
+  type LayoutAlgorithm,
 } from '../types/architecture';
 
 export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
   name = 'layered';
 
   calculate(
-    components: DiagramComponent[], 
+    components: DiagramComponent[],
     connections: DiagramConnection[]
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     // Define layer ordering
     const layerOrder: DiagramLayer[] = [
       'presentation',
-      'application', 
+      'application',
       'service',
       'data',
-      'external'
+      'external',
     ];
 
     // Group components by layer
     const layerGroups = this.groupByLayer(components, layerOrder);
-    
+
     // Calculate positions
     const positioned = this.positionComponentsByLayer(layerGroups, layerOrder);
-    
+
     // Calculate viewport size
     const viewport = this.calculateViewport(positioned);
 
@@ -40,21 +40,21 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
   }
 
   private groupByLayer(
-    components: DiagramComponent[], 
+    components: DiagramComponent[],
     layerOrder: DiagramLayer[]
   ): Map<DiagramLayer, DiagramComponent[]> {
     const groups = new Map<DiagramLayer, DiagramComponent[]>();
-    
+
     // Initialize groups
     layerOrder.forEach(layer => groups.set(layer, []));
-    
+
     // Group components
     components.forEach(component => {
       const layer = component.layer || 'service';
       if (!groups.has(layer)) {
         groups.set(layer, []);
       }
-      groups.get(layer)!.push(component);
+      groups.get(layer)?.push(component);
     });
 
     return groups;
@@ -77,14 +77,14 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
       const totalWidth = components.reduce((sum, comp) => sum + comp.size.width, 0);
       const totalSpacing = (components.length - 1) * componentSpacing;
       const layerWidth = totalWidth + totalSpacing;
-      
+
       // Center the layer horizontally
       let currentX = Math.max(50, (800 - layerWidth) / 2);
 
       components.forEach(component => {
         positioned.push({
           ...component,
-          position: { x: currentX, y: currentY }
+          position: { x: currentX, y: currentY },
         });
         currentX += component.size.width + componentSpacing;
       });
@@ -106,7 +106,7 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
 
     return {
       width: Math.max(800, maxX + padding),
-      height: Math.max(600, maxY + padding)
+      height: Math.max(600, maxY + padding),
     };
   }
 }
@@ -115,7 +115,7 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
   name = 'force_directed';
 
   calculate(
-    components: DiagramComponent[], 
+    components: DiagramComponent[],
     connections: DiagramConnection[]
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     // Simple force-directed layout using basic physics simulation
@@ -130,7 +130,7 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
       if (component.position.x === 0 && component.position.y === 0) {
         component.position = {
           x: Math.random() * 600 + 100,
-          y: Math.random() * 400 + 100
+          y: Math.random() * 400 + 100,
         };
       }
     });
@@ -224,7 +224,7 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
 
     return {
       width: Math.max(800, maxX + padding),
-      height: Math.max(600, maxY + padding)
+      height: Math.max(600, maxY + padding),
     };
   }
 }
@@ -233,12 +233,12 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
   name = 'flow';
 
   calculate(
-    components: DiagramComponent[], 
+    components: DiagramComponent[],
     connections: DiagramConnection[]
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     // Organize components based on flow connections
     const positioned = [...components];
-    
+
     // Find starting components (no incoming flow connections)
     const hasIncoming = new Set<string>();
     connections
@@ -250,13 +250,13 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
 
     // Layout in flow order
     let currentX = 50;
-    let currentY = 100;
+    const currentY = 100;
     const stepWidth = 200;
     const stepHeight = 150;
 
     // Position start components
     startComponents.forEach((comp, index) => {
-      comp.position = { x: currentX, y: currentY + (index * stepHeight) };
+      comp.position = { x: currentX, y: currentY + index * stepHeight };
     });
 
     // Position remaining components based on flow order
@@ -270,12 +270,12 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
       // Find components that can be positioned in this step
       const canPosition = remainingComponents.filter(comp => {
         if (positioned_ids.has(comp.id)) return false;
-        
+
         // Check if all predecessors are positioned
         const predecessors = connections
           .filter(conn => conn.to.componentId === comp.id)
           .map(conn => conn.from.componentId);
-        
+
         return predecessors.length === 0 || predecessors.every(id => positioned_ids.has(id));
       });
 
@@ -292,9 +292,9 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
     remainingComponents
       .filter(comp => !positioned_ids.has(comp.id))
       .forEach((comp, index) => {
-        comp.position = { 
-          x: currentX + stepWidth, 
-          y: currentY + (index * stepHeight) 
+        comp.position = {
+          x: currentX + stepWidth,
+          y: currentY + index * stepHeight,
         };
       });
 
@@ -313,7 +313,7 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
 
     return {
       width: Math.max(1000, maxX + padding),
-      height: Math.max(600, maxY + padding)
+      height: Math.max(600, maxY + padding),
     };
   }
 }
@@ -333,13 +333,13 @@ export class DiagramLayoutEngine {
   applyLayout(
     components: DiagramComponent[],
     connections: DiagramConnection[],
-    layoutType: string = 'layered'
+    layoutType = 'layered'
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     const algorithm = this.algorithms.get(layoutType);
-    
+
     if (!algorithm) {
       console.warn(`Unknown layout algorithm: ${layoutType}, falling back to layered`);
-      return this.algorithms.get('layered')!.calculate(components, connections);
+      return this.algorithms.get('layered')?.calculate(components, connections);
     }
 
     return algorithm.calculate(components, connections);
@@ -350,7 +350,7 @@ export class DiagramLayoutEngine {
    */
   suggestLayout(components: DiagramComponent[], connections: DiagramConnection[]): string {
     // Check for flow-based connections
-    const hasFlowConnections = connections.some(conn => 
+    const hasFlowConnections = connections.some(conn =>
       ['user_navigation', 'user_interaction'].includes(conn.type)
     );
 

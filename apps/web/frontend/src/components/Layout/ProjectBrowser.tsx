@@ -4,7 +4,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { clsx } from 'clsx';
-import { 
+import {
   FolderOpen,
   Plus,
   Settings,
@@ -25,7 +25,7 @@ import {
   Eye,
   AlertCircle,
   CheckCircle2,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { Button, Card, Input, StatusBadge, cn } from '../../design-system';
 
@@ -54,7 +54,7 @@ export interface ProjectBrowserProps {
   loading?: boolean;
 }
 
-export function ProjectBrowser({ 
+export function ProjectBrowser({
   className,
   projects = [],
   selectedProject,
@@ -63,7 +63,7 @@ export function ProjectBrowser({
   onEditProject,
   onDeleteProject,
   onToggleStar,
-  loading = false
+  loading = false,
 }: ProjectBrowserProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -71,37 +71,51 @@ export function ProjectBrowser({
 
   // Filter projects based on search and status
   const filteredProjects = projects.filter(project => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch =
+      !searchQuery ||
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     const matchesStatus = filterStatus === 'all' || project.status === filterStatus;
-    
+
     return matchesSearch && matchesStatus;
   });
 
-  const handleProjectClick = useCallback((project: Project) => {
-    onSelectProject?.(project);
-  }, [onSelectProject]);
+  const handleProjectClick = useCallback(
+    (project: Project) => {
+      onSelectProject?.(project);
+    },
+    [onSelectProject]
+  );
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'active': return 'active';
-      case 'draft': return 'warning';
-      case 'archived': return 'inactive';
-      case 'error': return 'error';
-      default: return 'neutral';
+      case 'active':
+        return 'active';
+      case 'draft':
+        return 'warning';
+      case 'archived':
+        return 'inactive';
+      case 'error':
+        return 'error';
+      default:
+        return 'neutral';
     }
   };
 
   const getValidationIcon = (status: string) => {
     switch (status) {
-      case 'valid': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
-      case 'warnings': return <AlertCircle className="w-4 h-4 text-amber-500" />;
-      case 'errors': return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'pending': return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
-      default: return null;
+      case 'valid':
+        return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+      case 'warnings':
+        return <AlertCircle className="w-4 h-4 text-amber-500" />;
+      case 'errors':
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'pending':
+        return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
+      default:
+        return null;
     }
   };
 
@@ -109,7 +123,7 @@ export function ProjectBrowser({
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
@@ -157,15 +171,15 @@ export function ProjectBrowser({
             <Input
               placeholder="Search projects, descriptions, or tags..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
-          
+
           <div className="flex items-center gap-2">
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              onChange={e => setFilterStatus(e.target.value)}
               className="px-3 py-2 bg-white border border-graphite-300 rounded-lg text-sm text-graphite-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Status</option>
@@ -174,7 +188,7 @@ export function ProjectBrowser({
               <option value="archived">Archived</option>
               <option value="error">Error</option>
             </select>
-            
+
             <Button
               variant="ghost"
               size="sm"
@@ -215,9 +229,11 @@ export function ProjectBrowser({
                 <div className="w-20 h-20 mx-auto mb-8 rounded-3xl bg-gradient-to-br from-purple-100 via-blue-100 to-indigo-100 flex items-center justify-center shadow-sm">
                   <FolderOpen className="w-10 h-10 text-purple-600" />
                 </div>
-                <h3 className="text-xl font-semibold text-graphite-800 mb-4">Welcome to Spec Workbench</h3>
+                <h3 className="text-xl font-semibold text-graphite-800 mb-4">
+                  Welcome to Spec Workbench
+                </h3>
                 <p className="text-graphite-600 leading-relaxed mb-8">
-                  Create your first specification project to get started with CUE language editing, 
+                  Create your first specification project to get started with CUE language editing,
                   validation, and collaborative development workflows.
                 </p>
                 <Button
@@ -236,7 +252,7 @@ export function ProjectBrowser({
           // Projects grid
           <div className="h-full overflow-auto p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProjects.map((project) => (
+              {filteredProjects.map(project => (
                 <Card
                   key={project.id}
                   className={cn(
@@ -258,10 +274,10 @@ export function ProjectBrowser({
                           {getValidationIcon(project.validationStatus)}
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             onToggleStar?.(project);
                           }}
@@ -273,9 +289,9 @@ export function ProjectBrowser({
                             <StarOff className="w-4 h-4 text-graphite-400 group-hover:text-graphite-600" />
                           )}
                         </button>
-                        
+
                         <button
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation();
                             // Show context menu
                           }}
@@ -285,11 +301,11 @@ export function ProjectBrowser({
                         </button>
                       </div>
                     </div>
-                    
+
                     <h3 className="font-semibold text-graphite-900 group-hover:text-blue-700 transition-colors truncate">
                       {project.name}
                     </h3>
-                    
+
                     {project.description && (
                       <p className="text-sm text-graphite-600 mt-1 line-clamp-2 leading-relaxed">
                         {project.description}
@@ -301,14 +317,14 @@ export function ProjectBrowser({
                   <div className="p-4 pt-3 space-y-3">
                     {/* Status and stats */}
                     <div className="flex items-center justify-between">
-                      <StatusBadge 
+                      <StatusBadge
                         variant={getStatusVariant(project.status)}
                         size="sm"
                         className="font-medium"
                       >
                         {project.status}
                       </StatusBadge>
-                      
+
                       <div className="flex items-center gap-3 text-xs text-graphite-500">
                         <span className="flex items-center gap-1">
                           <FileText className="w-3 h-3" />
@@ -348,7 +364,7 @@ export function ProjectBrowser({
                         <Clock className="w-3 h-3" />
                         <span>{formatDate(project.lastModified)}</span>
                       </div>
-                      
+
                       <ChevronRight className="w-4 h-4 text-graphite-400 group-hover:text-graphite-600 transition-colors" />
                     </div>
                   </div>

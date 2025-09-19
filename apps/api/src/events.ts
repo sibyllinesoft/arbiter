@@ -1,10 +1,10 @@
 /**
  * Real-time events and WebSocket management
  */
-import type { ServerWebSocket } from "bun";
-import { NatsService } from "./nats.ts";
-import type { AuthContext, Event, ServerConfig, WebSocketMessage } from "./types.ts";
-import { generateId, getCurrentTimestamp, logger } from "./utils.ts";
+import type { ServerWebSocket } from 'bun';
+import { NatsService } from './nats.ts';
+import type { AuthContext, Event, ServerConfig, WebSocketMessage } from './types.ts';
+import { generateId, getCurrentTimestamp, logger } from './utils.ts';
 
 interface WebSocketConnection {
   id: string;
@@ -39,7 +39,7 @@ export class EventService {
    */
   handleConnection(
     ws: ServerWebSocket<{ connectionId: string; authContext: AuthContext }>,
-    authContext: AuthContext,
+    authContext: AuthContext
   ): string {
     const connectionId = generateId();
 
@@ -65,9 +65,9 @@ export class EventService {
 
     // Send welcome message
     this.sendToConnection(connectionId, {
-      type: "event",
+      type: 'event',
       data: {
-        event_type: "connection_established",
+        event_type: 'connection_established',
         connection_id: connectionId,
         timestamp: getCurrentTimestamp(),
       },
@@ -106,36 +106,36 @@ export class EventService {
     const connection = this.connections.get(connectionId);
 
     if (!connection) {
-      logger.warn("Message from unknown connection", { connectionId });
+      logger.warn('Message from unknown connection', { connectionId });
       return;
     }
 
     try {
       switch (message.type) {
-        case "ping":
+        case 'ping':
           this.handlePing(connectionId);
           break;
 
-        case "event":
+        case 'event':
           await this.handleEventMessage(connectionId, message);
           break;
 
         default:
-          logger.warn("Unknown message type", {
+          logger.warn('Unknown message type', {
             connectionId,
             messageType: message.type,
           });
       }
     } catch (error) {
-      logger.error("Error handling WebSocket message", error instanceof Error ? error : undefined, {
+      logger.error('Error handling WebSocket message', error instanceof Error ? error : undefined, {
         connectionId,
         messageType: message.type,
       });
 
       this.sendToConnection(connectionId, {
-        type: "error",
+        type: 'error',
         data: {
-          error: "Failed to process message",
+          error: 'Failed to process message',
           originalMessage: message,
         },
       });
@@ -152,7 +152,7 @@ export class EventService {
       connection.lastPing = Date.now();
 
       this.sendToConnection(connectionId, {
-        type: "pong",
+        type: 'pong',
         data: { timestamp: getCurrentTimestamp() },
       });
     }
@@ -170,20 +170,20 @@ export class EventService {
     const projectId = data.project_id as string;
 
     switch (action) {
-      case "subscribe":
+      case 'subscribe':
         if (projectId) {
           await this.subscribeToProject(connectionId, projectId);
         }
         break;
 
-      case "unsubscribe":
+      case 'unsubscribe':
         if (projectId) {
           this.unsubscribeFromProject(connectionId, projectId);
         }
         break;
 
       default:
-        logger.warn("Unknown event action", { connectionId, action });
+        logger.warn('Unknown event action', { connectionId, action });
     }
   }
 
@@ -199,13 +199,13 @@ export class EventService {
 
     // Check if user has access to project
     if (
-      !connection.authContext.project_access.includes("*") &&
+      !connection.authContext.project_access.includes('*') &&
       !connection.authContext.project_access.includes(projectId)
     ) {
       this.sendToConnection(connectionId, {
-        type: "error",
+        type: 'error',
         data: {
-          error: "Access denied",
+          error: 'Access denied',
           project_id: projectId,
         },
       });
@@ -220,7 +220,7 @@ export class EventService {
     }
     this.projectSubscriptions.get(projectId)?.add(connectionId);
 
-    logger.info("Subscribed to project", {
+    logger.info('Subscribed to project', {
       connectionId,
       projectId,
       userId: connection.authContext.user_id,
@@ -228,10 +228,10 @@ export class EventService {
 
     // Acknowledge subscription
     this.sendToConnection(connectionId, {
-      type: "event",
+      type: 'event',
       project_id: projectId,
       data: {
-        event_type: "subscription_confirmed",
+        event_type: 'subscription_confirmed',
         project_id: projectId,
         timestamp: getCurrentTimestamp(),
       },
@@ -258,7 +258,7 @@ export class EventService {
       }
     }
 
-    logger.debug("Unsubscribed from project", { connectionId, projectId });
+    logger.debug('Unsubscribed from project', { connectionId, projectId });
   }
 
   /**
@@ -269,10 +269,10 @@ export class EventService {
    */
   private createWebSocketMessage(
     projectId: string,
-    event: Omit<Event, "id" | "created_at">
+    event: Omit<Event, 'id' | 'created_at'>
   ): WebSocketMessage {
     return {
-      type: "event",
+      type: 'event',
       project_id: projectId,
       data: {
         ...event,
@@ -287,12 +287,12 @@ export class EventService {
    */
   private async publishToNats(
     projectId: string,
-    event: Omit<Event, "id" | "created_at">,
+    event: Omit<Event, 'id' | 'created_at'>,
     specHash?: string
   ): Promise<void> {
-    this.nats.publishEvent(projectId, event, specHash).catch((_error) => {
+    this.nats.publishEvent(projectId, event, specHash).catch(_error => {
       // Already logged in NatsService, but ensure it doesn't affect WebSocket flow
-      logger.debug("NATS publish completed with potential error", {
+      logger.debug('NATS publish completed with potential error', {
         projectId,
         eventType: event.event_type,
       });
@@ -327,12 +327,12 @@ export class EventService {
       return { success: true };
     } catch (error) {
       logger.error(
-        "Failed to send message to connection",
+        'Failed to send message to connection',
         error instanceof Error ? error : undefined,
         {
           connectionId,
           projectId,
-        },
+        }
       );
       return { success: false };
     }
@@ -346,12 +346,12 @@ export class EventService {
     message: WebSocketMessage,
     projectId: string
   ): Promise<{ successCount: number; errorCount: number }> {
-    const promises = Array.from(subscribers).map((connectionId) =>
+    const promises = Array.from(subscribers).map(connectionId =>
       this.sendToConnectionSafe(connectionId, message, projectId)
     );
 
     const results = await Promise.all(promises);
-    const successCount = results.filter((r) => r.success).length;
+    const successCount = results.filter(r => r.success).length;
     const errorCount = results.length - successCount;
 
     return { successCount, errorCount };
@@ -362,13 +362,13 @@ export class EventService {
    */
   private logBroadcastResults(
     projectId: string,
-    event: Omit<Event, "id" | "created_at">,
+    event: Omit<Event, 'id' | 'created_at'>,
     subscriberCount: number,
     successCount: number,
     errorCount: number,
     duration: number
   ): void {
-    logger.info("Broadcasted event to project", {
+    logger.info('Broadcasted event to project', {
       projectId,
       eventType: event.event_type,
       subscriberCount,
@@ -381,13 +381,9 @@ export class EventService {
   /**
    * Check and warn about broadcast performance
    */
-  private checkBroadcastPerformance(
-    projectId: string,
-    duration: number,
-    targetMs: number = 100
-  ): void {
+  private checkBroadcastPerformance(projectId: string, duration: number, targetMs = 100): void {
     if (duration > targetMs) {
-      logger.warn("Broadcast exceeded target time", {
+      logger.warn('Broadcast exceeded target time', {
         projectId,
         duration,
         target: targetMs,
@@ -397,11 +393,11 @@ export class EventService {
 
   async broadcastToProject(
     projectId: string,
-    event: Omit<Event, "id" | "created_at">,
-    specHash?: string,
+    event: Omit<Event, 'id' | 'created_at'>,
+    specHash?: string
   ): Promise<void> {
     const startTime = Date.now();
-    
+
     // Create WebSocket message
     const message = this.createWebSocketMessage(projectId, event);
 
@@ -410,12 +406,12 @@ export class EventService {
 
     // Check for WebSocket subscribers
     if (!this.hasProjectSubscribers(projectId)) {
-      logger.debug("No WebSocket subscribers for project", { projectId });
+      logger.debug('No WebSocket subscribers for project', { projectId });
       return;
     }
 
     const subscribers = this.getProjectSubscribers(projectId)!;
-    
+
     // Broadcast to all WebSocket subscribers
     const { successCount, errorCount } = await this.broadcastToSubscribers(
       subscribers,
@@ -425,7 +421,14 @@ export class EventService {
 
     // Log results and check performance
     const duration = Date.now() - startTime;
-    this.logBroadcastResults(projectId, event, subscribers.size, successCount, errorCount, duration);
+    this.logBroadcastResults(
+      projectId,
+      event,
+      subscribers.size,
+      successCount,
+      errorCount,
+      duration
+    );
     this.checkBroadcastPerformance(projectId, duration);
   }
 
@@ -462,7 +465,7 @@ export class EventService {
         staleConnections.push(connectionId);
       } else {
         this.sendToConnection(connectionId, {
-          type: "ping",
+          type: 'ping',
           data: { timestamp: getCurrentTimestamp() },
         }).catch(() => {
           // Connection error, mark for removal
@@ -472,8 +475,8 @@ export class EventService {
     }
 
     // Clean up stale connections
-    staleConnections.forEach((connectionId) => {
-      logger.info("Removing stale connection", { connectionId });
+    staleConnections.forEach(connectionId => {
+      logger.info('Removing stale connection', { connectionId });
       this.handleDisconnection(connectionId);
     });
   }
@@ -528,6 +531,6 @@ export class EventService {
     // Cleanup NATS connection
     await this.nats.cleanup();
 
-    logger.info("EventService cleanup completed");
+    logger.info('EventService cleanup completed');
   }
 }

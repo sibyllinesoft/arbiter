@@ -1,19 +1,19 @@
 /**
  * GitHub Templates and Field Management
- * 
+ *
  * Provides structured templates for GitHub issues and proper field organization
  * instead of just putting everything in the body text.
- * 
+ *
  * @deprecated Use ConfigurableTemplateManager from github-template-config.ts instead
  */
 
-import type { Epic, Task } from "./sharded-storage.js";
-import { 
-  ConfigurableTemplateManager, 
+import {
+  ConfigurableTemplateManager,
+  DEFAULT_TEMPLATES_CONFIG,
   type GeneratedTemplate,
   type TemplateFiles,
-  DEFAULT_TEMPLATES_CONFIG
-} from "./github-template-config.js";
+} from './github-template-config.js';
+import type { Epic, Task } from './sharded-storage.js';
 
 export interface GitHubEpicTemplate {
   title: string;
@@ -61,64 +61,66 @@ export interface TemplateValidationConfig {
 export const DEFAULT_VALIDATION_CONFIG: TemplateValidationConfig = {
   epic: [
     {
-      field: "name",
+      field: 'name',
       required: true,
       validator: (value: string) => value.length >= 5 && value.length <= 80,
-      errorMessage: "Epic name must be 5-80 characters"
+      errorMessage: 'Epic name must be 5-80 characters',
     },
     {
-      field: "description",
+      field: 'description',
       required: true,
       validator: (value: string) => value.length >= 20,
-      errorMessage: "Epic description must be at least 20 characters"
+      errorMessage: 'Epic description must be at least 20 characters',
     },
     {
-      field: "priority",
+      field: 'priority',
       required: true,
-      validator: (value: string) => ["critical", "high", "medium", "low"].includes(value),
-      errorMessage: "Priority must be one of: critical, high, medium, low"
+      validator: (value: string) => ['critical', 'high', 'medium', 'low'].includes(value),
+      errorMessage: 'Priority must be one of: critical, high, medium, low',
     },
     {
-      field: "owner",
+      field: 'owner',
       required: true,
       validator: (value: string) => value.length > 0,
-      errorMessage: "Epic must have an assigned owner"
-    }
+      errorMessage: 'Epic must have an assigned owner',
+    },
   ],
   task: [
     {
-      field: "name",
+      field: 'name',
       required: true,
       validator: (value: string) => value.length >= 5 && value.length <= 80,
-      errorMessage: "Task name must be 5-80 characters"
+      errorMessage: 'Task name must be 5-80 characters',
     },
     {
-      field: "description",
+      field: 'description',
       required: true,
       validator: (value: string) => value.length >= 10,
-      errorMessage: "Task description must be at least 10 characters"
+      errorMessage: 'Task description must be at least 10 characters',
     },
     {
-      field: "type",
+      field: 'type',
       required: true,
-      validator: (value: string) => ["feature", "bug", "refactor", "test", "docs", "devops", "research"].includes(value),
-      errorMessage: "Task type must be one of: feature, bug, refactor, test, docs, devops, research"
+      validator: (value: string) =>
+        ['feature', 'bug', 'refactor', 'test', 'docs', 'devops', 'research'].includes(value),
+      errorMessage:
+        'Task type must be one of: feature, bug, refactor, test, docs, devops, research',
     },
     {
-      field: "acceptanceCriteria",
+      field: 'acceptanceCriteria',
       required: true,
       validator: (value: string[]) => Array.isArray(value) && value.length > 0,
-      errorMessage: "Task must have at least one acceptance criterion"
-    }
+      errorMessage: 'Task must have at least one acceptance criterion',
+    },
   ],
   milestone: [
     {
-      field: "name",
+      field: 'name',
       required: true,
       validator: (value: string) => value.length >= 5 && value.length <= 80,
-      errorMessage: "Milestone name must be 5-80 characters"
-    }
-  ]
+      errorMessage: 'Milestone name must be 5-80 characters',
+    },
+  ],
 };
 
 export class GitHubTemplateManager {
@@ -151,7 +153,11 @@ export class GitHubTemplateManager {
   /**
    * Generate task template with proper structured fields
    */
-  generateTaskTemplate(task: Task, epic: Epic, options: GitHubTemplateOptions = {}): GitHubTaskTemplate {
+  generateTaskTemplate(
+    task: Task,
+    epic: Epic,
+    options: GitHubTemplateOptions = {}
+  ): GitHubTaskTemplate {
     // Validate task before generating template
     this.validateTask(task);
 
@@ -173,10 +179,10 @@ export class GitHubTemplateManager {
    */
   validateEpic(epic: Epic): void {
     const errors: string[] = [];
-    
+
     for (const rule of this.validationConfig.epic) {
       const value = (epic as any)[rule.field];
-      
+
       if (rule.required && (!value || (Array.isArray(value) && value.length === 0))) {
         errors.push(rule.errorMessage || `${rule.field} is required`);
         continue;
@@ -197,10 +203,10 @@ export class GitHubTemplateManager {
    */
   validateTask(task: Task): void {
     const errors: string[] = [];
-    
+
     for (const rule of this.validationConfig.task) {
       const value = (task as any)[rule.field];
-      
+
       if (rule.required && (!value || (Array.isArray(value) && value.length === 0))) {
         errors.push(rule.errorMessage || `${rule.field} is required`);
         continue;
@@ -220,8 +226,8 @@ export class GitHubTemplateManager {
    * Generate properly structured epic title
    */
   private generateEpicTitle(epic: Epic): string {
-    const prefix = "[EPIC]";
-    const priority = epic.priority?.toUpperCase() || "MEDIUM";
+    const prefix = '[EPIC]';
+    const priority = epic.priority?.toUpperCase() || 'MEDIUM';
     return `${prefix} ${priority}: ${epic.name}`;
   }
 
@@ -229,8 +235,8 @@ export class GitHubTemplateManager {
    * Generate properly structured task title
    */
   private generateTaskTitle(task: Task, epic: Epic): string {
-    const prefix = `[${task.type?.toUpperCase() || "TASK"}]`;
-    const priority = task.priority?.toUpperCase() || "MEDIUM";
+    const prefix = `[${task.type?.toUpperCase() || 'TASK'}]`;
+    const priority = task.priority?.toUpperCase() || 'MEDIUM';
     return `${prefix} ${priority}: ${task.name}`;
   }
 
@@ -238,7 +244,7 @@ export class GitHubTemplateManager {
    * Generate structured epic body using GitHub's field formatting
    */
   private generateEpicBody(epic: Epic, options: GitHubTemplateOptions): string {
-    let body = "";
+    let body = '';
 
     // Add hidden Arbiter ID for tracking
     if (options.includeArbiterIds !== false) {
@@ -246,16 +252,16 @@ export class GitHubTemplateManager {
     }
 
     // Description section
-    body += `## 📋 Description\n\n${epic.description || "No description provided"}\n\n`;
+    body += `## 📋 Description\n\n${epic.description || 'No description provided'}\n\n`;
 
     // Epic Details section
-    body += `## 📊 Epic Details\n\n`;
-    body += `| Field | Value |\n`;
-    body += `|-------|-------|\n`;
+    body += '## 📊 Epic Details\n\n';
+    body += '| Field | Value |\n';
+    body += '|-------|-------|\n';
     body += `| **Priority** | \`${epic.priority}\` |\n`;
     body += `| **Status** | \`${epic.status}\` |\n`;
-    body += `| **Owner** | ${epic.owner ? `@${epic.owner}` : "Unassigned"} |\n`;
-    body += `| **Assignee** | ${epic.assignee ? `@${epic.assignee}` : "Unassigned"} |\n`;
+    body += `| **Owner** | ${epic.owner ? `@${epic.owner}` : 'Unassigned'} |\n`;
+    body += `| **Assignee** | ${epic.assignee ? `@${epic.assignee}` : 'Unassigned'} |\n`;
 
     if (options.includeEstimations !== false) {
       if (epic.estimatedHours) {
@@ -273,51 +279,58 @@ export class GitHubTemplateManager {
       body += `| **Due Date** | ${epic.dueDate} |\n`;
     }
 
-    body += `\n`;
+    body += '\n';
 
     // Tasks Overview section
     if (epic.tasks.length > 0) {
-      body += `## ✅ Tasks Overview\n\n`;
+      body += '## ✅ Tasks Overview\n\n';
       body += `**Total Tasks:** ${epic.tasks.length}\n\n`;
-      
-      const tasksByStatus = epic.tasks.reduce((acc, task) => {
-        acc[task.status] = (acc[task.status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
 
-      body += `**Status Breakdown:**\n`;
+      const tasksByStatus = epic.tasks.reduce(
+        (acc, task) => {
+          acc[task.status] = (acc[task.status] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
+
+      body += '**Status Breakdown:**\n';
       Object.entries(tasksByStatus).forEach(([status, count]) => {
         const emoji = this.getStatusEmoji(status);
         body += `- ${emoji} ${status}: ${count} tasks\n`;
       });
-      body += `\n`;
+      body += '\n';
     }
 
     // Dependencies section
-    if (options.includeDependencies !== false && epic.dependencies && epic.dependencies.length > 0) {
-      body += `## 🔗 Dependencies\n\n`;
+    if (
+      options.includeDependencies !== false &&
+      epic.dependencies &&
+      epic.dependencies.length > 0
+    ) {
+      body += '## 🔗 Dependencies\n\n';
       epic.dependencies.forEach(dep => {
         body += `- [ ] ${dep}\n`;
       });
-      body += `\n`;
+      body += '\n';
     }
 
     // Labels and Tags section
     if (epic.labels && epic.labels.length > 0) {
-      body += `## 🏷️ Labels\n\n`;
+      body += '## 🏷️ Labels\n\n';
       epic.labels.forEach(label => {
         body += `\`${label}\` `;
       });
-      body += `\n\n`;
+      body += '\n\n';
     }
 
     // Custom fields
     if (options.customFields && Object.keys(options.customFields).length > 0) {
-      body += `## 🔧 Additional Information\n\n`;
+      body += '## 🔧 Additional Information\n\n';
       Object.entries(options.customFields).forEach(([key, value]) => {
         body += `**${key}:** ${value}\n`;
       });
-      body += `\n`;
+      body += '\n';
     }
 
     return body.trim();
@@ -327,7 +340,7 @@ export class GitHubTemplateManager {
    * Generate structured task body using GitHub's field formatting
    */
   private generateTaskBody(task: Task, epic: Epic, options: GitHubTemplateOptions): string {
-    let body = "";
+    let body = '';
 
     // Add hidden Arbiter ID for tracking
     if (options.includeArbiterIds !== false) {
@@ -336,18 +349,18 @@ export class GitHubTemplateManager {
     }
 
     // Description section
-    body += `## 📋 Description\n\n${task.description || "No description provided"}\n\n`;
+    body += `## 📋 Description\n\n${task.description || 'No description provided'}\n\n`;
 
     // Task Details section
-    body += `## 📊 Task Details\n\n`;
-    body += `| Field | Value |\n`;
-    body += `|-------|-------|\n`;
+    body += '## 📊 Task Details\n\n';
+    body += '| Field | Value |\n';
+    body += '|-------|-------|\n';
     body += `| **Epic** | [${epic.name}](../issues) |\n`;
     body += `| **Type** | \`${task.type}\` |\n`;
     body += `| **Priority** | \`${task.priority}\` |\n`;
     body += `| **Status** | \`${task.status}\` |\n`;
-    body += `| **Assignee** | ${task.assignee ? `@${task.assignee}` : "Unassigned"} |\n`;
-    body += `| **Reviewer** | ${task.reviewer ? `@${task.reviewer}` : "TBD"} |\n`;
+    body += `| **Assignee** | ${task.assignee ? `@${task.assignee}` : 'Unassigned'} |\n`;
+    body += `| **Reviewer** | ${task.reviewer ? `@${task.reviewer}` : 'TBD'} |\n`;
 
     if (options.includeEstimations !== false) {
       if (task.estimatedHours) {
@@ -358,52 +371,56 @@ export class GitHubTemplateManager {
       }
     }
 
-    body += `\n`;
+    body += '\n';
 
     // Acceptance Criteria section
-    if (options.includeAcceptanceCriteria !== false && task.acceptanceCriteria && task.acceptanceCriteria.length > 0) {
-      body += `## ✅ Acceptance Criteria\n\n`;
+    if (
+      options.includeAcceptanceCriteria !== false &&
+      task.acceptanceCriteria &&
+      task.acceptanceCriteria.length > 0
+    ) {
+      body += '## ✅ Acceptance Criteria\n\n';
       task.acceptanceCriteria.forEach((criteria, index) => {
         body += `${index + 1}. [ ] ${criteria}\n`;
       });
-      body += `\n`;
+      body += '\n';
     }
 
     // Dependencies section
     if (options.includeDependencies !== false && task.dependsOn && task.dependsOn.length > 0) {
-      body += `## 🔗 Dependencies\n\n`;
-      body += `This task depends on the following:\n\n`;
+      body += '## 🔗 Dependencies\n\n';
+      body += 'This task depends on the following:\n\n';
       task.dependsOn.forEach(dep => {
         body += `- [ ] ${dep}\n`;
       });
-      body += `\n`;
+      body += '\n';
     }
 
     // Configuration section
     if (task.config) {
-      body += `## ⚙️ Configuration\n\n`;
+      body += '## ⚙️ Configuration\n\n';
       if (task.config.canRunInParallel) {
-        body += `- ✅ Can run in parallel with other tasks\n`;
+        body += '- ✅ Can run in parallel with other tasks\n';
       }
       if (task.config.requiresReview) {
-        body += `- 👀 Requires code review before completion\n`;
+        body += '- 👀 Requires code review before completion\n';
       }
       if (task.config.requiresTesting) {
-        body += `- 🧪 Requires testing before completion\n`;
+        body += '- 🧪 Requires testing before completion\n';
       }
       if (task.config.blocksOtherTasks) {
-        body += `- 🚧 Blocks other tasks until completed\n`;
+        body += '- 🚧 Blocks other tasks until completed\n';
       }
-      body += `\n`;
+      body += '\n';
     }
 
     // Custom fields
     if (options.customFields && Object.keys(options.customFields).length > 0) {
-      body += `## 🔧 Additional Information\n\n`;
+      body += '## 🔧 Additional Information\n\n';
       Object.entries(options.customFields).forEach(([key, value]) => {
         body += `**${key}:** ${value}\n`;
       });
-      body += `\n`;
+      body += '\n';
     }
 
     return body.trim();
@@ -416,7 +433,7 @@ export class GitHubTemplateManager {
     const labels: string[] = [];
 
     // Type label
-    labels.push("epic");
+    labels.push('epic');
 
     // Priority label
     labels.push(`priority:${epic.priority}`);
@@ -452,13 +469,13 @@ export class GitHubTemplateManager {
 
     // Configuration-based labels
     if (task.config?.requiresReview) {
-      labels.push("needs-review");
+      labels.push('needs-review');
     }
     if (task.config?.requiresTesting) {
-      labels.push("needs-testing");
+      labels.push('needs-testing');
     }
     if (task.config?.canRunInParallel) {
-      labels.push("parallel-safe");
+      labels.push('parallel-safe');
     }
 
     return [...new Set(labels)]; // Remove duplicates
@@ -498,15 +515,15 @@ export class GitHubTemplateManager {
    */
   private getStatusEmoji(status: string): string {
     const emojis: Record<string, string> = {
-      todo: "📋",
-      planning: "📋",
-      in_progress: "🚧",
-      review: "👀",
-      testing: "🧪",
-      completed: "✅",
-      cancelled: "❌",
+      todo: '📋',
+      planning: '📋',
+      in_progress: '🚧',
+      review: '👀',
+      testing: '🧪',
+      completed: '✅',
+      cancelled: '❌',
     };
-    return emojis[status] || "❓";
+    return emojis[status] || '❓';
   }
 }
 
@@ -526,7 +543,7 @@ export function generateGitHubIssueTemplates(): Record<string, string> {
 export function generateGitHubConfiguration(): Record<string, string> {
   const manager = new ConfigurableTemplateManager();
   const allFiles = manager.generateRepositoryTemplates();
-  
+
   // Return only configuration files (not template files)
   const configFiles: Record<string, string> = {};
   Object.entries(allFiles).forEach(([path, content]) => {
@@ -534,6 +551,6 @@ export function generateGitHubConfiguration(): Record<string, string> {
       configFiles[path] = content;
     }
   });
-  
+
   return configFiles;
 }

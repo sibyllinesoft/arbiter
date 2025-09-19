@@ -8,10 +8,10 @@ metadata:
     component: frontend
 spec:
   ports:
-  - port: 8080
-    targetPort: 8080
-    protocol: TCP
-    name: http
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
   selector:
     app: valeter
     domain: prod
@@ -25,7 +25,7 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io.scrape: "true"
+        prometheus.io.scrape: 'true'
       labels:
         # Important: these labels need to match the selector above
         # The api server enforces this constraint.
@@ -34,11 +34,8 @@ spec:
         component: frontend
     spec:
       containers:
-      - image: gcr.io/myproj/valeter:v0.0.4
-        ports:
-        - containerPort: 8080
-        name: valeter
-        args: [
-          "-http=:8080",
-          "-etcd=etcd:2379",
-        ]
+        - image: gcr.io/myproj/valeter:v0.0.4
+          ports:
+            - containerPort: 8080
+          name: valeter
+          args: ['-http=:8080', '-etcd=etcd:2379']

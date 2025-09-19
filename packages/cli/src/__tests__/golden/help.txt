@@ -1,7 +1,5 @@
 Usage: arbiter [options] [command]
-
 Arbiter CLI for CUE validation and management
-
 Options:
   -v, --version                         display version number
   -c, --config <path>                   path to configuration file
@@ -9,15 +7,13 @@ Options:
   --api-url <url>                       API server URL
   --timeout <ms>                        request timeout in milliseconds
   -h, --help                            display help for command
-
 Commands:
-  init [options] [project-name]         initialize a new CUE project with
-                                        templates
+  init [options] [display-name]         initialize a new CUE project with
+                                        templates in current directory
   onboard [options] [project-path]      intelligently onboard existing projects
                                         to Arbiter
-  add                                   incrementally build
-                                        arbiter.assembly.cue through
-                                        compositional additions
+  add                                   incrementally build specifications
+                                        using compositional commands
   watch [options] [path]                cross-platform file watcher with live
                                         validation and planning
   surface [options] <language>          extract API surface from source code
@@ -43,8 +39,6 @@ Commands:
                                         files
   diff [options] <old-file> <new-file>  compare two CUE schema versions and
                                         analyze changes
-  migrate [options] [patterns...]       automatically migrate CUE schemas to
-                                        latest format
   execute [options] <epic>              execute Epic v2 for deterministic,
                                         agent-first code generation
   tests                                 test management, scaffolding, and
@@ -58,21 +52,51 @@ Commands:
                                         with Arbiter
   integrate [options]                   generate CI/CD workflows with contract
                                         coverage and quality gates
+  github-templates [options]            manage GitHub issue templates
+                                        configuration
   docs                                  generate documentation from CUE schemas
                                         and API surfaces
   examples [options] <type>             generate example projects by profile or
                                         language type
-  generate [options] [spec-name]        generate project files from existing
-                                        arbiter.assembly.cue specification
+  generate [options] [spec-name]        generate project files from stored
+                                        specifications
   preview [options]                     show what would be generated without
                                         creating files (deterministic output)
   explain [options]                     generate plain-English summary of
-                                        current arbiter.assembly.cue
+                                        project specifications
   rename [options]                      migrate existing files to
                                         project-specific naming
   spec                                  manage spec fragments and revisions
                                         with git-style operations
+  webhook                               manage repository webhooks for
+                                        GitHub/GitLab integration
   config                                manage CLI configuration
   health [options]                      comprehensive Arbiter server health
                                         check
   help [command]                        display help for command
+Arbiter CLI - Agent-Friendly Specification Management
+Core Workflows:
+  1. SPEC FRAGMENT MANAGEMENT (Git-Style):
+    arbiter init my-app --schema=app     # Initialize with app-centric schema
+    arbiter add service billing          # Add service specification
+    arbiter add api/order                # Add API endpoint specification
+    arbiter add flow checkout            # Add user flow specification
+    arbiter generate                     # Generate code from specifications
+  2. VALIDATION & FEEDBACK:
+    arbiter check                        # Validate all specifications
+    arbiter watch                        # Watch mode with live validation
+  3. RELEASE MANAGEMENT:
+    arbiter version                      # Plan version changes
+    arbiter integrate                    # Generate CI/CD workflows
+Schema Formats:
+  app: Complete application modeling
+Agent-Friendly Features:
+  • Non-interactive commands (no prompts)
+  • Structured JSON output (--format=json)
+  • Exit codes: 0=success, 1=error, 2=config
+  • NDJSON streaming (--ndjson-output)
+Examples:
+  arbiter check **/*.cue --format=json  # Validate with JSON output
+  arbiter surface app.py --output=cue   # Extract API surface from code
+  arbiter health                        # Check server connectivity
+For detailed help: arbiter <command> --help

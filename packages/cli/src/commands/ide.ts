@@ -1,7 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import chalk from "chalk";
-import type { CLIConfig, IDEOptions } from "../types.js";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import chalk from 'chalk';
+import type { CLIConfig, IDEOptions } from '../types.js';
 
 interface ProjectLanguage {
   name: string;
@@ -16,40 +16,40 @@ interface ProjectLanguage {
 async function detectProjectLanguages(projectPath: string): Promise<ProjectLanguage[]> {
   const languages: ProjectLanguage[] = [
     {
-      name: "cue",
+      name: 'cue',
       detected: false,
       files: [],
-      extensions: ["bradleyjkemp.vscode-cue"],
+      extensions: ['bradleyjkemp.vscode-cue'],
     },
     {
-      name: "typescript",
+      name: 'typescript',
       detected: false,
       files: [],
-      extensions: ["ms-vscode.vscode-typescript-next", "bradlc.vscode-tailwindcss"],
+      extensions: ['ms-vscode.vscode-typescript-next', 'bradlc.vscode-tailwindcss'],
     },
     {
-      name: "python",
+      name: 'python',
       detected: false,
       files: [],
-      extensions: ["ms-python.python", "ms-python.black-formatter"],
+      extensions: ['ms-python.python', 'ms-python.black-formatter'],
     },
     {
-      name: "rust",
+      name: 'rust',
       detected: false,
       files: [],
-      extensions: ["rust-lang.rust-analyzer", "serayuzgur.crates"],
+      extensions: ['rust-lang.rust-analyzer', 'serayuzgur.crates'],
     },
     {
-      name: "go",
+      name: 'go',
       detected: false,
       files: [],
-      extensions: ["golang.go"],
+      extensions: ['golang.go'],
     },
     {
-      name: "bash",
+      name: 'bash',
       detected: false,
       files: [],
-      extensions: ["timonwong.shellcheck", "foxundermoon.shell-format"],
+      extensions: ['timonwong.shellcheck', 'foxundermoon.shell-format'],
     },
   ];
 
@@ -64,8 +64,8 @@ async function detectProjectLanguages(projectPath: string): Promise<ProjectLangu
         if (entry.isDirectory()) {
           // Skip common ignore directories
           if (
-            ["node_modules", ".git", "dist", "build", "target", ".next", "__pycache__"].includes(
-              entry.name,
+            ['node_modules', '.git', 'dist', 'build', 'target', '.next', '__pycache__'].includes(
+              entry.name
             )
           ) {
             continue;
@@ -77,35 +77,35 @@ async function detectProjectLanguages(projectPath: string): Promise<ProjectLangu
           const basename = entry.name.toLowerCase();
 
           // CUE files
-          if (ext === ".cue") {
+          if (ext === '.cue') {
             languages[0].detected = true;
             languages[0].files.push(relativePath);
           }
           // TypeScript/JavaScript
           else if (
-            [".ts", ".tsx", ".js", ".jsx"].includes(ext) ||
-            ["package.json", "tsconfig.json"].includes(basename)
+            ['.ts', '.tsx', '.js', '.jsx'].includes(ext) ||
+            ['package.json', 'tsconfig.json'].includes(basename)
           ) {
             languages[1].detected = true;
             languages[1].files.push(relativePath);
           }
           // Python
-          else if (ext === ".py" || ["pyproject.toml", "requirements.txt"].includes(basename)) {
+          else if (ext === '.py' || ['pyproject.toml', 'requirements.txt'].includes(basename)) {
             languages[2].detected = true;
             languages[2].files.push(relativePath);
           }
           // Rust
-          else if (ext === ".rs" || ["cargo.toml", "cargo.lock"].includes(basename)) {
+          else if (ext === '.rs' || ['cargo.toml', 'cargo.lock'].includes(basename)) {
             languages[3].detected = true;
             languages[3].files.push(relativePath);
           }
           // Go
-          else if (ext === ".go" || ["go.mod", "go.sum"].includes(basename)) {
+          else if (ext === '.go' || ['go.mod', 'go.sum'].includes(basename)) {
             languages[4].detected = true;
             languages[4].files.push(relativePath);
           }
           // Bash
-          else if (ext === ".sh" || basename === "makefile") {
+          else if (ext === '.sh' || basename === 'makefile') {
             languages[5].detected = true;
             languages[5].files.push(relativePath);
           }
@@ -118,7 +118,7 @@ async function detectProjectLanguages(projectPath: string): Promise<ProjectLangu
   }
 
   await scanDirectory(projectPath);
-  return languages.filter((lang) => lang.detected);
+  return languages.filter(lang => lang.detected);
 }
 
 /**
@@ -128,16 +128,14 @@ async function generateVSCodeConfig(
   languages: ProjectLanguage[],
   projectPath: string,
   force: boolean,
-  outputDir?: string,
+  outputDir?: string
 ): Promise<void> {
-  const vscodeDir = path.join(outputDir || projectPath, ".vscode");
+  const vscodeDir = path.join(outputDir || projectPath, '.vscode');
   await fs.mkdir(vscodeDir, { recursive: true });
 
   // Generate all VS Code configuration files
   await generateExtensionsConfig(languages, vscodeDir, force);
-  await generateTasksConfig(languages, vscodeDir, force);  
-  await generateSettingsConfig(vscodeDir, force);
-
+  await generateTasksConfig(languages, vscodeDir, force);
 }
 
 /**
@@ -153,7 +151,7 @@ async function generateExtensionsConfig(
     recommendations: Array.from(allExtensions).sort(),
   };
 
-  const extensionsPath = path.join(vscodeDir, "extensions.json");
+  const extensionsPath = path.join(vscodeDir, 'extensions.json');
   await writeConfigFile(extensionsPath, extensionsConfig, force);
 }
 
@@ -171,9 +169,9 @@ function collectRequiredExtensions(languages: ProjectLanguage[]): Set<string> {
   }
 
   // Add Arbiter-specific extensions
-  allExtensions.add("bradleyjkemp.vscode-cue"); // CUE language support
-  allExtensions.add("ms-vscode.vscode-json"); // JSON support
-  allExtensions.add("redhat.vscode-yaml"); // YAML support
+  allExtensions.add('bradleyjkemp.vscode-cue'); // CUE language support
+  allExtensions.add('ms-vscode.vscode-json'); // JSON support
+  allExtensions.add('redhat.vscode-yaml'); // YAML support
 
   return allExtensions;
 }
@@ -186,7 +184,7 @@ async function writeConfigFile(filePath: string, config: any, force: boolean): P
 
   if (!force) {
     try {
-      const existingContent = JSON.parse(await fs.readFile(filePath, "utf8"));
+      const existingContent = JSON.parse(await fs.readFile(filePath, 'utf8'));
       // Merge with existing config
       Object.assign(existingContent, config);
       await fs.writeFile(filePath, JSON.stringify(existingContent, null, 2));
@@ -209,53 +207,53 @@ async function writeConfigFile(filePath: string, config: any, force: boolean): P
 function createArbiterTasks(): any[] {
   return [
     {
-      label: "Arbiter: Check",
-      type: "shell",
-      command: "arbiter",
-      args: ["check", "--format", "json"],
-      group: "build",
+      label: 'Arbiter: Check',
+      type: 'shell',
+      command: 'arbiter',
+      args: ['check', '--format', 'json'],
+      group: 'build',
       presentation: {
         echo: true,
-        reveal: "always",
+        reveal: 'always',
         focus: false,
-        panel: "shared",
+        panel: 'shared',
         clear: true,
       },
       problemMatcher: {
-        owner: "arbiter-check",
-        fileLocation: ["relative", "${workspaceFolder}"],
+        owner: 'arbiter-check',
+        fileLocation: ['relative', '${workspaceFolder}'],
         pattern: [
           {
-            regexp: "^ERROR\\s+(.*):(\\d+):(\\d+)\\s+(.*)$",
+            regexp: '^ERROR\\s+(.*):(\\d+):(\\d+)\\s+(.*)$',
             file: 1,
             line: 2,
             column: 3,
             message: 4,
-            severity: "error",
+            severity: 'error',
           },
         ],
       },
     },
     {
-      label: "Arbiter: Watch",
-      type: "shell",
-      command: "arbiter",
-      args: ["watch"],
-      group: "build",
+      label: 'Arbiter: Watch',
+      type: 'shell',
+      command: 'arbiter',
+      args: ['watch'],
+      group: 'build',
       isBackground: true,
       presentation: {
         echo: true,
-        reveal: "always",
+        reveal: 'always',
         focus: false,
-        panel: "shared",
+        panel: 'shared',
       },
       problemMatcher: {
-        owner: "arbiter-watch",
-        fileLocation: ["relative", "${workspaceFolder}"],
+        owner: 'arbiter-watch',
+        fileLocation: ['relative', '${workspaceFolder}'],
         background: {
           activeOnStart: true,
-          beginsPattern: "^🔍 Watching for changes",
-          endsPattern: "^✅ All files validated",
+          beginsPattern: '^🔍 Watching for changes',
+          endsPattern: '^✅ All files validated',
         },
       },
     },
@@ -267,28 +265,28 @@ function createArbiterTasks(): any[] {
  */
 function createLanguageSpecificTasks(languages: ProjectLanguage[]): any[] {
   const tasks = [];
-  
+
   for (const lang of languages) {
-    if (lang.name === "typescript") {
+    if (lang.name === 'typescript') {
       tasks.push({
         label: `${lang.name}: Build`,
-        type: "shell",
-        command: "npm",
-        args: ["run", "build"],
-        group: "build",
+        type: 'shell',
+        command: 'npm',
+        args: ['run', 'build'],
+        group: 'build',
       });
-    } else if (lang.name === "python") {
+    } else if (lang.name === 'python') {
       tasks.push({
         label: `${lang.name}: Test`,
-        type: "shell",
-        command: "python",
-        args: ["-m", "pytest"],
-        group: "test",
+        type: 'shell',
+        command: 'python',
+        args: ['-m', 'pytest'],
+        group: 'test',
       });
     }
     // Add more language-specific tasks as needed
   }
-  
+
   return tasks;
 }
 
@@ -302,44 +300,44 @@ async function generateTasksConfig(
 ): Promise<void> {
   const baseTasks = createArbiterTasks();
   const languageTasks = createLanguageSpecificTasks(languages);
-  
-  const tasksConfig = {
+
+  const tasksConfig: any = {
     tasks: [
       {
-        label: "Arbiter: Check",
-        type: "shell",
-        command: "arbiter",
-        args: ["check", "--format", "json"],
-        group: "build",
+        label: 'Arbiter: Check',
+        type: 'shell',
+        command: 'arbiter',
+        args: ['check', '--format', 'json'],
+        group: 'build',
         presentation: {
           echo: true,
-          reveal: "always",
+          reveal: 'always',
           focus: false,
-          panel: "shared",
+          panel: 'shared',
           clear: true,
         },
         problemMatcher: {
-          owner: "arbiter-check",
-          fileLocation: ["relative", "${workspaceFolder}"],
+          owner: 'arbiter-check',
+          fileLocation: ['relative', '${workspaceFolder}'],
           pattern: [
             {
-              regexp: "^ERROR\\s+(.*):(\\d+):(\\d+)\\s+(.*)$",
+              regexp: '^ERROR\\s+(.*):(\\d+):(\\d+)\\s+(.*)$',
               file: 1,
               line: 2,
               column: 3,
               message: 4,
-              severity: "error",
+              severity: 'error',
             },
             {
-              regexp: "^WARNING\\s+(.*):(\\d+):(\\d+)\\s+(.*)$",
+              regexp: '^WARNING\\s+(.*):(\\d+):(\\d+)\\s+(.*)$',
               file: 1,
               line: 2,
               column: 3,
               message: 4,
-              severity: "warning",
+              severity: 'warning',
             },
             {
-              regexp: "^(.*):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$",
+              regexp: '^(.*):(\\d+):(\\d+):\\s+(error|warning):\\s+(.*)$',
               file: 1,
               line: 2,
               column: 3,
@@ -350,50 +348,50 @@ async function generateTasksConfig(
         },
       },
       {
-        label: "CUE: Format",
-        type: "shell",
-        command: "cue",
-        args: ["fmt", "${file}"],
-        group: "build",
+        label: 'CUE: Format',
+        type: 'shell',
+        command: 'cue',
+        args: ['fmt', '${file}'],
+        group: 'build',
         presentation: {
           echo: false,
-          reveal: "never",
+          reveal: 'never',
           focus: false,
-          panel: "shared",
+          panel: 'shared',
         },
         problemMatcher: [],
       },
       {
-        label: "CUE: Format All",
-        type: "shell",
-        command: "cue",
-        args: ["fmt", "./..."],
-        group: "build",
+        label: 'CUE: Format All',
+        type: 'shell',
+        command: 'cue',
+        args: ['fmt', './...'],
+        group: 'build',
         presentation: {
           echo: true,
-          reveal: "silent",
+          reveal: 'silent',
           focus: false,
-          panel: "shared",
+          panel: 'shared',
         },
         problemMatcher: [],
       },
       {
-        label: "Arbiter: Watch",
-        type: "shell",
-        command: "arbiter",
-        args: ["watch", "--agent-mode"],
-        group: "build",
+        label: 'Arbiter: Watch',
+        type: 'shell',
+        command: 'arbiter',
+        args: ['watch', '--agent-mode'],
+        group: 'build',
         isBackground: true,
         presentation: {
           echo: true,
-          reveal: "always",
+          reveal: 'always',
           focus: false,
-          panel: "dedicated",
+          panel: 'dedicated',
           clear: true,
         },
         problemMatcher: {
-          owner: "arbiter-watch",
-          fileLocation: ["relative", "${workspaceFolder}"],
+          owner: 'arbiter-watch',
+          fileLocation: ['relative', '${workspaceFolder}'],
           pattern: [
             {
               regexp:
@@ -413,22 +411,22 @@ async function generateTasksConfig(
         },
       },
       {
-        label: "Arbiter: Generate Surface",
-        type: "shell",
-        command: "arbiter",
-        args: ["surface", "typescript", "--output", "surface.json", "--verbose"],
-        group: "build",
+        label: 'Arbiter: Generate Surface',
+        type: 'shell',
+        command: 'arbiter',
+        args: ['surface', 'typescript', '--output', 'surface.json', '--verbose'],
+        group: 'build',
         presentation: {
           echo: true,
-          reveal: "always",
+          reveal: 'always',
           focus: false,
-          panel: "shared",
+          panel: 'shared',
         },
         problemMatcher: {
-          owner: "arbiter-surface",
-          fileLocation: ["relative", "${workspaceFolder}"],
+          owner: 'arbiter-surface',
+          fileLocation: ['relative', '${workspaceFolder}'],
           pattern: {
-            regexp: "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+            regexp: '^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$',
             file: 1,
             line: 2,
             column: 3,
@@ -438,52 +436,52 @@ async function generateTasksConfig(
         },
       },
       {
-        label: "Arbiter: Sync Manifests",
-        type: "shell",
-        command: "arbiter",
-        args: ["sync", "--all"],
-        group: "build",
+        label: 'Arbiter: Sync Manifests',
+        type: 'shell',
+        command: 'arbiter',
+        args: ['sync', '--all'],
+        group: 'build',
         presentation: {
           echo: true,
-          reveal: "always",
+          reveal: 'always',
           focus: false,
-          panel: "shared",
+          panel: 'shared',
         },
       },
       {
-        label: "Arbiter: Generate CI",
-        type: "shell",
-        command: "arbiter",
-        args: ["integrate", "--force"],
-        group: "build",
+        label: 'Arbiter: Generate CI',
+        type: 'shell',
+        command: 'arbiter',
+        args: ['integrate', '--force'],
+        group: 'build',
         presentation: {
           echo: true,
-          reveal: "always",
+          reveal: 'always',
           focus: false,
-          panel: "shared",
+          panel: 'shared',
         },
       },
     ],
   };
 
   // Add language-specific tasks
-  if (languages.some((l) => l.name === "typescript")) {
-    tasks.tasks.push({
-      label: "TypeScript: Build",
-      type: "typescript",
-      tsconfig: "tsconfig.json",
-      group: "build",
+  if (languages.some(l => l.name === 'typescript')) {
+    tasksConfig.tasks.push({
+      label: 'TypeScript: Build',
+      type: 'typescript',
+      tsconfig: 'tsconfig.json',
+      group: 'build',
       presentation: {
         echo: true,
-        reveal: "silent",
+        reveal: 'silent',
         focus: false,
-        panel: "shared",
+        panel: 'shared',
       },
-      problemMatcher: "$tsc",
+      problemMatcher: '$tsc',
     });
   }
 
-  const tasksPath = path.join(vscodeDir, "tasks.json");
+  const tasksPath = path.join(vscodeDir, 'tasks.json');
   let shouldWriteTasks = force;
 
   if (!force) {
@@ -496,54 +494,54 @@ async function generateTasksConfig(
   }
 
   if (shouldWriteTasks) {
-    await fs.writeFile(tasksPath, JSON.stringify(tasks, null, 2));
+    await fs.writeFile(tasksPath, JSON.stringify(tasksConfig, null, 2));
     console.log(chalk.green(`✅ Generated ${tasksPath}`));
   }
 
   // Generate settings.json with enhanced CUE support and save-time formatting
-  const settings = {
-    "[cue]": {
-      "editor.insertSpaces": true,
-      "editor.tabSize": 2,
-      "editor.detectIndentation": false,
-      "editor.formatOnSave": true,
-      "editor.formatOnType": true,
-      "editor.formatOnPaste": true,
-      "editor.defaultFormatter": "bradleyjkemp.vscode-cue",
+  const settings: any = {
+    '[cue]': {
+      'editor.insertSpaces': true,
+      'editor.tabSize': 2,
+      'editor.detectIndentation': false,
+      'editor.formatOnSave': true,
+      'editor.formatOnType': true,
+      'editor.formatOnPaste': true,
+      'editor.defaultFormatter': 'bradleyjkemp.vscode-cue',
     },
-    "files.associations": {
-      "*.cue": "cue",
-      "arbiter.assembly.cue": "cue",
-      "*.assembly.cue": "cue",
+    'files.associations': {
+      '*.cue': 'cue',
+      'arbiter.assembly.cue': 'cue',
+      '*.assembly.cue': 'cue',
     },
-    "cue.useLanguageServer": true,
-    "cue.formatting.enabled": true,
-    "editor.rulers": [80, 120],
-    "editor.quickSuggestions": {
+    'cue.useLanguageServer': true,
+    'cue.formatting.enabled': true,
+    'editor.rulers': [80, 120],
+    'editor.quickSuggestions': {
       other: true,
       comments: false,
       strings: true,
     },
-    "editor.suggestSelection": "first",
-    "editor.wordBasedSuggestions": false,
+    'editor.suggestSelection': 'first',
+    'editor.wordBasedSuggestions': false,
     // Save actions for CUE files
-    "editor.codeActionsOnSave": {
-      "source.organizeImports": true,
-      "source.fixAll": true,
+    'editor.codeActionsOnSave': {
+      'source.organizeImports': true,
+      'source.fixAll': true,
     },
     // Arbiter-specific file associations
-    "files.exclude": {
-      "**/*.log": true,
-      "**/node_modules": true,
-      "**/dist": true,
-      "**/build": true,
-      "**/.git": true,
+    'files.exclude': {
+      '**/*.log': true,
+      '**/node_modules': true,
+      '**/dist': true,
+      '**/build': true,
+      '**/.git': true,
     },
     // Problem matcher integration
-    "problemMatcher.pattern": [
+    'problemMatcher.pattern': [
       {
-        name: "arbiter-cue",
-        regexp: "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+        name: 'arbiter-cue',
+        regexp: '^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$',
         file: 1,
         line: 2,
         column: 3,
@@ -552,17 +550,17 @@ async function generateTasksConfig(
       },
     ],
     // Workspace-specific Arbiter settings
-    "arbiter.autoFormat": true,
-    "arbiter.validateOnSave": true,
-    "arbiter.showInlineErrors": true,
+    'arbiter.autoFormat': true,
+    'arbiter.validateOnSave': true,
+    'arbiter.showInlineErrors': true,
   };
 
-  const settingsPath = path.join(vscodeDir, "settings.json");
+  const settingsPath = path.join(vscodeDir, 'settings.json');
   let shouldWriteSettings = force;
 
   if (!force) {
     try {
-      const existingSettings = JSON.parse(await fs.readFile(settingsPath, "utf8"));
+      const existingSettings = JSON.parse(await fs.readFile(settingsPath, 'utf8'));
       // Merge with existing settings
       Object.assign(existingSettings, settings);
       await fs.writeFile(settingsPath, JSON.stringify(existingSettings, null, 2));
@@ -585,9 +583,9 @@ async function generateIDEAConfig(
   _languages: ProjectLanguage[],
   projectPath: string,
   force: boolean,
-  outputDir?: string,
+  outputDir?: string
 ): Promise<void> {
-  const ideaDir = path.join(outputDir || projectPath, ".idea");
+  const ideaDir = path.join(outputDir || projectPath, '.idea');
 
   try {
     await fs.mkdir(ideaDir, { recursive: true });
@@ -619,12 +617,12 @@ async function generateIDEAConfig(
   </component>
 </project>`;
 
-    const watchersPath = path.join(ideaDir, "watchers.xml");
+    const watchersPath = path.join(ideaDir, 'watchers.xml');
     if (
       force ||
       !(await fs.access(watchersPath).then(
         () => true,
-        () => false,
+        () => false
       ))
     ) {
       await fs.writeFile(watchersPath, watchersConfig);
@@ -633,7 +631,7 @@ async function generateIDEAConfig(
       console.log(chalk.yellow(`⚠️  ${watchersPath} already exists. Use --force to overwrite.`));
     }
   } catch (_error) {
-    console.log(chalk.yellow("⚠️  Could not generate IntelliJ IDEA configuration"));
+    console.log(chalk.yellow('⚠️  Could not generate IntelliJ IDEA configuration'));
   }
 }
 
@@ -644,9 +642,9 @@ async function generateVimConfig(
   _languages: ProjectLanguage[],
   projectPath: string,
   force: boolean,
-  outputDir?: string,
+  outputDir?: string
 ): Promise<void> {
-  const vimrcPath = path.join(outputDir || projectPath, ".vimrc.local");
+  const vimrcPath = path.join(outputDir || projectPath, '.vimrc.local');
 
   const vimConfig = `" Arbiter CUE configuration for Vim
 " Install cue.vim plugin: https://github.com/jjo/vim-cue
@@ -668,13 +666,13 @@ nnoremap <leader>aw :ArbiterWatch<CR>
     force ||
     !(await fs.access(vimrcPath).then(
       () => true,
-      () => false,
+      () => false
     ))
   ) {
     await fs.writeFile(vimrcPath, vimConfig);
     console.log(chalk.green(`✅ Generated ${vimrcPath}`));
     console.log(
-      chalk.dim('   Add "source .vimrc.local" to your ~/.vimrc to use this configuration'),
+      chalk.dim('   Add "source .vimrc.local" to your ~/.vimrc to use this configuration')
     );
   } else {
     console.log(chalk.yellow(`⚠️  ${vimrcPath} already exists. Use --force to overwrite.`));
@@ -687,16 +685,16 @@ nnoremap <leader>aw :ArbiterWatch<CR>
 export async function ideCommand(options: IDEOptions, _config: CLIConfig): Promise<number> {
   try {
     const projectPath = process.cwd();
-    console.log(chalk.blue("🔧 Arbiter IDE recommendation system"));
+    console.log(chalk.blue('🔧 Arbiter IDE recommendation system'));
     console.log(chalk.dim(`Project: ${projectPath}`));
 
     // Detect project languages
-    console.log(chalk.blue("🔍 Detecting project languages..."));
+    console.log(chalk.blue('🔍 Detecting project languages...'));
     const languages = await detectProjectLanguages(projectPath);
 
     if (languages.length === 0) {
-      console.log(chalk.yellow("⚠️  No supported languages detected in project"));
-      console.log(chalk.dim("Supported: CUE, TypeScript, Python, Rust, Go, Bash"));
+      console.log(chalk.yellow('⚠️  No supported languages detected in project'));
+      console.log(chalk.dim('Supported: CUE, TypeScript, Python, Rust, Go, Bash'));
       return 1;
     }
 
@@ -707,17 +705,17 @@ export async function ideCommand(options: IDEOptions, _config: CLIConfig): Promi
 
     // If only detecting, return early
     if (options.detect) {
-      console.log(chalk.cyan("\n📋 Language Detection Summary:"));
+      console.log(chalk.cyan('\n📋 Language Detection Summary:'));
       for (const lang of languages) {
         console.log(
-          `${chalk.bold(lang.name)}: ${chalk.green("✓")} (${lang.files.slice(0, 3).join(", ")}${lang.files.length > 3 ? "..." : ""})`,
+          `${chalk.bold(lang.name)}: ${chalk.green('✓')} (${lang.files.slice(0, 3).join(', ')}${lang.files.length > 3 ? '...' : ''})`
         );
       }
       return 0;
     }
 
     // Generate IDE configurations
-    const editor = options.editor || "vscode";
+    const editor = options.editor || 'vscode';
     const force = options.force || false;
     const outputDir = options.outputDir || options.output;
 
@@ -728,16 +726,16 @@ export async function ideCommand(options: IDEOptions, _config: CLIConfig): Promi
     }
 
     switch (editor) {
-      case "vscode":
+      case 'vscode':
         await generateVSCodeConfig(languages, projectPath, force, outputDir);
         break;
-      case "idea":
+      case 'idea':
         await generateIDEAConfig(languages, projectPath, force, outputDir);
         break;
-      case "vim":
+      case 'vim':
         await generateVimConfig(languages, projectPath, force, outputDir);
         break;
-      case "all":
+      case 'all':
         await generateVSCodeConfig(languages, projectPath, force, outputDir);
         await generateIDEAConfig(languages, projectPath, force, outputDir);
         await generateVimConfig(languages, projectPath, force, outputDir);
@@ -747,30 +745,30 @@ export async function ideCommand(options: IDEOptions, _config: CLIConfig): Promi
         return 1;
     }
 
-    console.log(chalk.green("\n🎉 IDE configuration generated successfully!"));
-    console.log(chalk.cyan("Next steps:"));
+    console.log(chalk.green('\n🎉 IDE configuration generated successfully!'));
+    console.log(chalk.cyan('Next steps:'));
 
-    if (editor === "vscode" || editor === "all") {
-      console.log(chalk.dim("  1. Restart VS Code to load new configuration"));
-      console.log(chalk.dim("  2. Install recommended extensions when prompted"));
+    if (editor === 'vscode' || editor === 'all') {
+      console.log(chalk.dim('  1. Restart VS Code to load new configuration'));
+      console.log(chalk.dim('  2. Install recommended extensions when prompted'));
       console.log(chalk.dim('  3. Use Ctrl+Shift+P → "Tasks: Run Task" → "Arbiter: Check"'));
     }
 
-    if (editor === "idea" || editor === "all") {
-      console.log(chalk.dim("  1. Restart IntelliJ IDEA"));
-      console.log(chalk.dim("  2. Enable file watchers in Settings → Tools → File Watchers"));
+    if (editor === 'idea' || editor === 'all') {
+      console.log(chalk.dim('  1. Restart IntelliJ IDEA'));
+      console.log(chalk.dim('  2. Enable file watchers in Settings → Tools → File Watchers'));
     }
 
-    if (editor === "vim" || editor === "all") {
-      console.log(chalk.dim("  1. Install cue.vim plugin for CUE syntax highlighting"));
+    if (editor === 'vim' || editor === 'all') {
+      console.log(chalk.dim('  1. Install cue.vim plugin for CUE syntax highlighting'));
       console.log(chalk.dim('  2. Add "source .vimrc.local" to your ~/.vimrc'));
     }
 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("❌ IDE configuration failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('❌ IDE configuration failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }

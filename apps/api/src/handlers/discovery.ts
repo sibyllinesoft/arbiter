@@ -3,21 +3,16 @@
  * Dynamically discovers and loads custom webhook handlers
  */
 
-import { readdir, stat, access } from 'node:fs/promises';
-import { join, extname, basename } from 'node:path';
+import { access, readdir, stat } from 'node:fs/promises';
+import { basename, extname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { 
-  HandlerModule, 
-  RegisteredHandler, 
-  HandlerDiscoveryConfig,
-  Logger 
-} from './types.js';
 import { logger as defaultLogger, generateId } from '../utils.js';
+import type { HandlerDiscoveryConfig, HandlerModule, Logger, RegisteredHandler } from './types.js';
 
 export class HandlerDiscovery {
   private handlers = new Map<string, RegisteredHandler>();
   private watchers = new Map<string, AbortController>();
-  
+
   constructor(
     private config: HandlerDiscoveryConfig,
     private logger: Logger = defaultLogger
@@ -28,7 +23,7 @@ export class HandlerDiscovery {
    */
   async discoverHandlers(): Promise<RegisteredHandler[]> {
     const handlersDir = this.config.handlersDirectory;
-    
+
     try {
       await access(handlersDir);
     } catch {
@@ -37,39 +32,39 @@ export class HandlerDiscovery {
     }
 
     this.logger.info('Starting handler discovery', { directory: handlersDir });
-    
+
     const handlers: RegisteredHandler[] = [];
-    
+
     // Discover GitHub handlers
     const githubHandlers = await this.discoverProviderHandlers(
       join(handlersDir, 'github'),
       'github'
     );
     handlers.push(...githubHandlers);
-    
+
     // Discover GitLab handlers
     const gitlabHandlers = await this.discoverProviderHandlers(
       join(handlersDir, 'gitlab'),
       'gitlab'
     );
     handlers.push(...gitlabHandlers);
-    
+
     // Cache discovered handlers
     for (const handler of handlers) {
       this.handlers.set(handler.id, handler);
     }
-    
+
     // Set up file watchers if enabled
     if (this.config.enableAutoReload) {
       await this.setupFileWatchers(handlersDir);
     }
-    
-    this.logger.info('Handler discovery completed', { 
+
+    this.logger.info('Handler discovery completed', {
       totalHandlers: handlers.length,
       githubHandlers: githubHandlers.length,
-      gitlabHandlers: gitlabHandlers.length
+      gitlabHandlers: gitlabHandlers.length,
     });
-    
+
     return handlers;
   }
 
@@ -89,16 +84,16 @@ export class HandlerDiscovery {
 
     const handlers: RegisteredHandler[] = [];
     const entries = await readdir(providerDir, { withFileTypes: true });
-    
+
     for (const entry of entries) {
       if (!entry.isFile()) continue;
-      
+
       const ext = extname(entry.name);
       if (!['.ts', '.js', '.mts', '.mjs'].includes(ext)) continue;
-      
+
       const handlerPath = join(providerDir, entry.name);
       const eventName = basename(entry.name, ext);
-      
+
       try {
         const handler = await this.loadHandler(handlerPath, provider, eventName);
         if (handler) {
@@ -108,11 +103,11 @@ export class HandlerDiscovery {
         this.logger.error('Failed to load handler', error as Error, {
           path: handlerPath,
           provider,
-          event: eventName
+          event: eventName,
         });
       }
     }
-    
+
     return handlers;
   }
 
@@ -126,26 +121,26 @@ export class HandlerDiscovery {
   ): Promise<RegisteredHandler | null> {
     try {
       this.logger.debug('Loading handler', { path: handlerPath, provider, event: eventName });
-      
+
       // Security check: validate file path is within handlers directory
       if (!handlerPath.startsWith(this.config.handlersDirectory)) {
         throw new Error('Handler path outside allowed directory');
       }
-      
+
       // Dynamic import with file URL for compatibility
       const fileUrl = pathToFileURL(handlerPath).href;
       const module = await import(fileUrl);
-      
+
       // Extract handler module (support both default export and named export)
       const handlerModule: HandlerModule = module.default || module.handler || module;
-      
+
       if (!handlerModule.handler || typeof handlerModule.handler !== 'function') {
         throw new Error('Handler module must export a handler function');
       }
-      
+
       // Validate handler metadata
       this.validateHandlerModule(handlerModule, eventName);
-      
+
       const registeredHandler: RegisteredHandler = {
         id: generateId(),
         provider,
@@ -158,7 +153,7 @@ export class HandlerDiscovery {
           retries: this.config.defaultRetries,
           environment: {},
           secrets: {},
-          ...handlerModule.config
+          ...handlerModule.config,
         },
         executionCount: 0,
         errorCount: 0,
@@ -167,24 +162,23 @@ export class HandlerDiscovery {
           description: `Handler for ${provider} ${eventName} events`,
           version: '1.0.0',
           supportedEvents: [eventName],
-          requiredPermissions: []
-        }
+          requiredPermissions: [],
+        },
       };
-      
+
       this.logger.info('Handler loaded successfully', {
         id: registeredHandler.id,
         provider,
         event: eventName,
-        name: registeredHandler.metadata?.name
+        name: registeredHandler.metadata?.name,
       });
-      
+
       return registeredHandler;
-      
     } catch (error) {
-      this.logger.error('Handler loading failed', error as Error, { 
-        path: handlerPath, 
-        provider, 
-        event: eventName 
+      this.logger.error('Handler loading failed', error as Error, {
+        path: handlerPath,
+        provider,
+        event: eventName,
       });
       return null;
     }
@@ -197,22 +191,22 @@ export class HandlerDiscovery {
     if (!module.handler) {
       throw new Error('Handler module must export a handler function');
     }
-    
+
     if (typeof module.handler !== 'function') {
       throw new Error('Handler must be a function');
     }
-    
+
     // Validate supported events if specified
     if (module.metadata?.supportedEvents) {
       const supportedEvents = module.metadata.supportedEvents;
       if (!supportedEvents.includes(eventName)) {
         this.logger.warn('Handler event name not in supported events list', {
           eventName,
-          supportedEvents
+          supportedEvents,
         });
       }
     }
-    
+
     // Validate required permissions format
     if (module.metadata?.requiredPermissions) {
       for (const permission of module.metadata.requiredPermissions) {
@@ -230,7 +224,7 @@ export class HandlerDiscovery {
     try {
       // Note: In a real implementation, you'd use fs.watch or a library like chokidar
       this.logger.info('File watching not implemented in this example');
-      
+
       // Example implementation outline:
       // const watcher = fs.watch(handlersDir, { recursive: true });
       // watcher.on('change', (eventType, filename) => {
@@ -254,10 +248,8 @@ export class HandlerDiscovery {
    * Get handlers for a specific provider and event
    */
   getHandlersForEvent(provider: 'github' | 'gitlab', event: string): RegisteredHandler[] {
-    return this.getHandlers().filter(h => 
-      h.provider === provider && 
-      h.event === event && 
-      h.enabled
+    return this.getHandlers().filter(
+      h => h.provider === provider && h.event === event && h.enabled
     );
   }
 
@@ -274,11 +266,11 @@ export class HandlerDiscovery {
   updateHandlerConfig(id: string, updates: Partial<RegisteredHandler>): boolean {
     const handler = this.handlers.get(id);
     if (!handler) return false;
-    
+
     // Merge updates
     Object.assign(handler, updates);
     this.handlers.set(id, handler);
-    
+
     this.logger.info('Handler configuration updated', { id, updates: Object.keys(updates) });
     return true;
   }
@@ -289,11 +281,11 @@ export class HandlerDiscovery {
   setHandlerEnabled(id: string, enabled: boolean): boolean {
     const handler = this.handlers.get(id);
     if (!handler) return false;
-    
+
     handler.enabled = enabled;
     handler.config.enabled = enabled;
     this.handlers.set(id, handler);
-    
+
     this.logger.info('Handler state changed', { id, enabled });
     return true;
   }
@@ -315,25 +307,25 @@ export class HandlerDiscovery {
   async reloadHandler(id: string): Promise<boolean> {
     const existingHandler = this.handlers.get(id);
     if (!existingHandler) return false;
-    
+
     try {
       // Clear module cache (Node.js specific)
       delete require.cache[require.resolve(existingHandler.handlerPath)];
-      
+
       // Reload handler
       const reloadedHandler = await this.loadHandler(
         existingHandler.handlerPath,
         existingHandler.provider,
         existingHandler.event
       );
-      
+
       if (reloadedHandler) {
         // Preserve runtime state
         reloadedHandler.id = existingHandler.id;
         reloadedHandler.executionCount = existingHandler.executionCount;
         reloadedHandler.errorCount = existingHandler.errorCount;
         reloadedHandler.lastExecuted = existingHandler.lastExecuted;
-        
+
         this.handlers.set(id, reloadedHandler);
         this.logger.info('Handler reloaded', { id });
         return true;
@@ -341,7 +333,7 @@ export class HandlerDiscovery {
     } catch (error) {
       this.logger.error('Handler reload failed', error as Error, { id });
     }
-    
+
     return false;
   }
 
@@ -355,10 +347,10 @@ export class HandlerDiscovery {
       this.logger.debug('Stopped file watcher', { path });
     }
     this.watchers.clear();
-    
+
     // Clear handler cache
     this.handlers.clear();
-    
+
     this.logger.info('Handler discovery disposed');
   }
 }

@@ -5,13 +5,13 @@ import { StatusBadge } from '../../design-system/components/StatusBadge';
 import { CueViewer } from './CueViewer';
 import ResolvedViewer from './ResolvedViewer';
 import { DataViewer } from './DataViewer';
-import { 
-  basicRequirementsCue, 
-  assemblySpecCue, 
+import {
+  basicRequirementsCue,
+  assemblySpecCue,
   validationErrorsCue,
   complexTypescriptProjectCue,
   rustMicroserviceCue,
-  sampleResolvedData 
+  sampleResolvedData,
 } from '../../test/cue-samples';
 
 interface CueShowcaseProps {
@@ -45,7 +45,7 @@ const CUE_EXAMPLES: CueExample[] = [
       performance_requirements: 1,
       compliance_requirements: 1,
       total_requirements: 4,
-      implementation_status: 'partial'
+      implementation_status: 'partial',
     },
     type: 'requirements',
     status: 'implemented',
@@ -98,7 +98,8 @@ const CUE_EXAMPLES: CueExample[] = [
       {
         line: 34,
         column: 10,
-        message: 'String "invalid-email" does not match pattern "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"',
+        message:
+          'String "invalid-email" does not match pattern "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"',
         severity: 'error',
       },
       {
@@ -134,11 +135,11 @@ const CUE_EXAMPLES: CueExample[] = [
       performance_targets: {
         api_latency_p99: '<=100ms',
         throughput_orders: '>=10000/sec',
-        memory_limit: '<=2GB'
+        memory_limit: '<=2GB',
       },
       architecture_layers: 4,
       test_coverage_target: 90,
-      deployment_replicas: 20
+      deployment_replicas: 20,
     },
     type: 'project',
     status: 'implemented',
@@ -154,14 +155,14 @@ const CUE_EXAMPLES: CueExample[] = [
       performance_targets: {
         order_processing: '<=100μs',
         market_data_ingestion: '<=50μs',
-        throughput: '>=1,000,000 orders/sec'
+        throughput: '>=1,000,000 orders/sec',
       },
       memory_management: {
         zero_copy: true,
         heap_allocations_per_order: '<=5',
-        gc_pauses: 0
+        gc_pauses: 0,
       },
-      safety_guarantees: ['memory_safety', 'thread_safety']
+      safety_guarantees: ['memory_safety', 'thread_safety'],
     },
     type: 'service',
     status: 'implemented',
@@ -170,26 +171,39 @@ const CUE_EXAMPLES: CueExample[] = [
 
 export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
   const [selectedExample, setSelectedExample] = useState<CueExample>(CUE_EXAMPLES[0]);
-  const [viewMode, setViewMode] = useState<'overview' | 'source' | 'resolved' | 'split'>('overview');
+  const [viewMode, setViewMode] = useState<'overview' | 'source' | 'resolved' | 'split'>(
+    'overview'
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'implemented': return 'success';
-      case 'draft': return 'warning';
-      case 'planned': return 'info';
-      case 'error': return 'error';
-      default: return 'info';
+      case 'implemented':
+        return 'success';
+      case 'draft':
+        return 'warning';
+      case 'planned':
+        return 'info';
+      case 'error':
+        return 'error';
+      default:
+        return 'info';
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'requirements': return '📋';
-      case 'assembly': return '🏗️';
-      case 'validation': return '⚠️';
-      case 'project': return '📦';
-      case 'service': return '⚡';
-      default: return '📄';
+      case 'requirements':
+        return '📋';
+      case 'assembly':
+        return '🏗️';
+      case 'validation':
+        return '⚠️';
+      case 'project':
+        return '📦';
+      case 'service':
+        return '⚡';
+      default:
+        return '📄';
     }
   };
 
@@ -199,7 +213,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
       <div className="lg:col-span-1">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">CUE Examples</h3>
         <div className="space-y-3">
-          {CUE_EXAMPLES.map((example) => (
+          {CUE_EXAMPLES.map(example => (
             <button
               key={example.id}
               onClick={() => setSelectedExample(example)}
@@ -214,10 +228,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
                   <span className="text-lg">{getTypeIcon(example.type)}</span>
                   <span className="font-medium text-sm text-gray-900">{example.title}</span>
                 </div>
-                <StatusBadge 
-                  status={getStatusColor(example.status) as any} 
-                  size="sm"
-                >
+                <StatusBadge status={getStatusColor(example.status) as any} size="sm">
                   {example.status}
                 </StatusBadge>
               </div>
@@ -232,7 +243,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
         <div className="mb-4">
           <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedExample.title}</h3>
           <p className="text-sm text-gray-600 mb-4">{selectedExample.description}</p>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <StatusBadge status={getStatusColor(selectedExample.status) as any}>
@@ -242,7 +253,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
                 {selectedExample.type.replace('_', ' ')}
               </span>
             </div>
-            
+
             <div className="flex space-x-2">
               <button
                 onClick={() => setViewMode('source')}
@@ -333,14 +344,15 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
       <div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">CUE Visualization Showcase</h2>
         <p className="text-gray-600">
-          Interactive examples demonstrating CUE file visualization, validation, and resolved data display.
+          Interactive examples demonstrating CUE file visualization, validation, and resolved data
+          display.
         </p>
       </div>
 
       <Tabs
         items={tabItems}
         activeTab={viewMode}
-        onTabChange={(tab) => setViewMode(tab as any)}
+        onTabChange={tab => setViewMode(tab as any)}
         className="h-full"
       />
     </div>

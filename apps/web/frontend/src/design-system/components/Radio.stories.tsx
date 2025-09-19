@@ -5,95 +5,95 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { 
-  Cloud, 
-  Server, 
-  Globe, 
-  Database, 
-  Code, 
+import {
+  Cloud,
+  Server,
+  Globe,
+  Database,
+  Code,
   Terminal,
   Settings,
   Users,
   Shield,
   Zap,
   Package,
-  GitBranch
+  GitBranch,
 } from 'lucide-react';
 import Radio, { RadioGroup, type RadioOption } from './Radio';
 
 // Sample data for stories
 const deploymentOptions: RadioOption[] = [
-  { 
-    value: 'cloud', 
-    label: 'Cloud Deployment', 
+  {
+    value: 'cloud',
+    label: 'Cloud Deployment',
     description: 'Deploy to managed cloud infrastructure',
-    icon: <Cloud className="h-4 w-4 text-blue-500" />
+    icon: <Cloud className="h-4 w-4 text-blue-500" />,
   },
-  { 
-    value: 'dedicated', 
-    label: 'Dedicated Server', 
+  {
+    value: 'dedicated',
+    label: 'Dedicated Server',
     description: 'Deploy to dedicated hardware',
-    icon: <Server className="h-4 w-4 text-green-500" />
+    icon: <Server className="h-4 w-4 text-green-500" />,
   },
-  { 
-    value: 'hybrid', 
-    label: 'Hybrid Setup', 
+  {
+    value: 'hybrid',
+    label: 'Hybrid Setup',
     description: 'Combination of cloud and on-premise',
-    icon: <Globe className="h-4 w-4 text-purple-500" />
+    icon: <Globe className="h-4 w-4 text-purple-500" />,
   },
 ];
 
 const databaseOptions: RadioOption[] = [
-  { 
-    value: 'postgresql', 
-    label: 'PostgreSQL', 
+  {
+    value: 'postgresql',
+    label: 'PostgreSQL',
     description: 'Robust relational database with advanced features',
-    icon: <Database className="h-4 w-4 text-blue-600" />
+    icon: <Database className="h-4 w-4 text-blue-600" />,
   },
-  { 
-    value: 'mysql', 
-    label: 'MySQL', 
+  {
+    value: 'mysql',
+    label: 'MySQL',
     description: 'Popular open-source relational database',
-    icon: <Database className="h-4 w-4 text-orange-500" />
+    icon: <Database className="h-4 w-4 text-orange-500" />,
   },
-  { 
-    value: 'mongodb', 
-    label: 'MongoDB', 
+  {
+    value: 'mongodb',
+    label: 'MongoDB',
     description: 'Document-oriented NoSQL database',
-    icon: <Database className="h-4 w-4 text-green-600" />
+    icon: <Database className="h-4 w-4 text-green-600" />,
   },
-  { 
-    value: 'redis', 
-    label: 'Redis', 
+  {
+    value: 'redis',
+    label: 'Redis',
     description: 'In-memory data structure store',
-    icon: <Database className="h-4 w-4 text-red-500" />
+    icon: <Database className="h-4 w-4 text-red-500" />,
   },
 ];
 
 const frameworkOptions: RadioOption[] = [
-  { 
-    value: 'react', 
-    label: 'React', 
+  {
+    value: 'react',
+    label: 'React',
     description: 'A JavaScript library for building user interfaces',
-    icon: <Code className="h-4 w-4 text-blue-500" />
+    icon: <Code className="h-4 w-4 text-blue-500" />,
   },
-  { 
-    value: 'vue', 
-    label: 'Vue.js', 
+  {
+    value: 'vue',
+    label: 'Vue.js',
     description: 'The Progressive JavaScript Framework',
-    icon: <Code className="h-4 w-4 text-green-500" />
+    icon: <Code className="h-4 w-4 text-green-500" />,
   },
-  { 
-    value: 'angular', 
-    label: 'Angular', 
+  {
+    value: 'angular',
+    label: 'Angular',
     description: 'Platform for building mobile and desktop web apps',
-    icon: <Code className="h-4 w-4 text-red-500" />
+    icon: <Code className="h-4 w-4 text-red-500" />,
   },
-  { 
-    value: 'svelte', 
-    label: 'Svelte', 
+  {
+    value: 'svelte',
+    label: 'Svelte',
     description: 'Cybernetically enhanced web apps',
-    icon: <Code className="h-4 w-4 text-orange-500" />
+    icon: <Code className="h-4 w-4 text-orange-500" />,
   },
 ];
 
@@ -101,7 +101,12 @@ const environmentOptions: RadioOption[] = [
   { value: 'development', label: 'Development', description: 'Local development environment' },
   { value: 'staging', label: 'Staging', description: 'Pre-production testing environment' },
   { value: 'production', label: 'Production', description: 'Live production environment' },
-  { value: 'testing', label: 'Testing', description: 'Automated testing environment', disabled: true },
+  {
+    value: 'testing',
+    label: 'Testing',
+    description: 'Automated testing environment',
+    disabled: true,
+  },
 ];
 
 const meta = {
@@ -111,7 +116,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional radio button and radio group components with comprehensive states, validation, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
+        component:
+          'Professional radio button and radio group components with comprehensive states, validation, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
       },
     },
   },
@@ -187,31 +193,31 @@ export const Default: Story = {
 export const Variants: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Radio 
+      <Radio
         name="variants"
         value="default"
-        label="Default Radio" 
+        label="Default Radio"
         helperText="Standard radio button style"
       />
-      <Radio 
+      <Radio
         name="variants"
         value="success"
-        label="Success Radio" 
+        label="Success Radio"
         success="Configuration saved successfully"
         showValidationIcon
         checked
       />
-      <Radio 
+      <Radio
         name="variants"
         value="warning"
-        label="Warning Radio" 
+        label="Warning Radio"
         warning="This setting may affect performance"
         showValidationIcon
       />
-      <Radio 
+      <Radio
         name="variants"
         value="error"
-        label="Error Radio" 
+        label="Error Radio"
         error="This option is not available"
         showValidationIcon
       />
@@ -220,7 +226,8 @@ export const Variants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Radio variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.',
+        story:
+          'Radio variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.',
       },
     },
   },
@@ -230,26 +237,26 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Radio 
+      <Radio
         name="sizes"
         value="small"
-        size="sm" 
-        label="Small Radio" 
+        size="sm"
+        label="Small Radio"
         description="Compact size for dense layouts"
       />
-      <Radio 
+      <Radio
         name="sizes"
         value="medium"
-        size="md" 
-        label="Medium Radio" 
+        size="md"
+        label="Medium Radio"
         description="Default size for most use cases"
         checked
       />
-      <Radio 
+      <Radio
         name="sizes"
         value="large"
-        size="lg" 
-        label="Large Radio" 
+        size="lg"
+        label="Large Radio"
         description="Larger size for prominence"
       />
     </div>
@@ -267,19 +274,19 @@ export const Sizes: Story = {
 export const LoadingStates: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Radio 
+      <Radio
         name="loading"
         value="option1"
         loading
-        label="Validating Option" 
+        label="Validating Option"
         helperText="Please wait while we validate this selection..."
       />
-      <Radio 
+      <Radio
         name="loading"
         value="option2"
         loading
         size="lg"
-        label="Processing Selection" 
+        label="Processing Selection"
         description="Checking system compatibility"
         helperText="This may take a few moments"
         checked
@@ -327,7 +334,7 @@ export const RadioGroupVariants: Story = {
         options={environmentOptions}
         helperText="Choose your target environment"
       />
-      
+
       <RadioGroup
         name="success-group"
         label="Success Group"
@@ -335,7 +342,7 @@ export const RadioGroupVariants: Story = {
         defaultValue="production"
         success="Environment configured successfully"
       />
-      
+
       <RadioGroup
         name="warning-group"
         label="Warning Group"
@@ -343,7 +350,7 @@ export const RadioGroupVariants: Story = {
         defaultValue="staging"
         warning="Staging environment has limited resources"
       />
-      
+
       <RadioGroup
         name="error-group"
         label="Error Group"
@@ -374,7 +381,7 @@ export const HorizontalRadioGroup: Story = {
         direction="horizontal"
         defaultValue="react"
       />
-      
+
       <RadioGroup
         name="environment-horizontal"
         label="Target Environment"
@@ -407,34 +414,34 @@ export const DeveloperToolExamples: Story = {
             label="Project Type"
             description="Choose the type of project you're creating"
             options={[
-              { 
-                value: 'web-app', 
-                label: 'Web Application', 
+              {
+                value: 'web-app',
+                label: 'Web Application',
                 description: 'Full-stack web application with frontend and backend',
-                icon: <Globe className="h-4 w-4 text-blue-500" />
+                icon: <Globe className="h-4 w-4 text-blue-500" />,
               },
-              { 
-                value: 'api', 
-                label: 'REST API', 
+              {
+                value: 'api',
+                label: 'REST API',
                 description: 'Backend API service only',
-                icon: <Server className="h-4 w-4 text-green-500" />
+                icon: <Server className="h-4 w-4 text-green-500" />,
               },
-              { 
-                value: 'spa', 
-                label: 'Single Page Application', 
+              {
+                value: 'spa',
+                label: 'Single Page Application',
                 description: 'Frontend-only application',
-                icon: <Code className="h-4 w-4 text-purple-500" />
+                icon: <Code className="h-4 w-4 text-purple-500" />,
               },
-              { 
-                value: 'cli', 
-                label: 'Command Line Tool', 
+              {
+                value: 'cli',
+                label: 'Command Line Tool',
                 description: 'Terminal-based application',
-                icon: <Terminal className="h-4 w-4 text-gray-600" />
+                icon: <Terminal className="h-4 w-4 text-gray-600" />,
               },
             ]}
             defaultValue="web-app"
           />
-          
+
           <RadioGroup
             name="framework"
             label="Frontend Framework"
@@ -454,28 +461,28 @@ export const DeveloperToolExamples: Story = {
             label="Build Tool"
             description="Choose your build and bundling tool"
             options={[
-              { 
-                value: 'vite', 
-                label: 'Vite', 
+              {
+                value: 'vite',
+                label: 'Vite',
                 description: 'Fast build tool with HMR',
-                icon: <Zap className="h-4 w-4 text-yellow-500" />
+                icon: <Zap className="h-4 w-4 text-yellow-500" />,
               },
-              { 
-                value: 'webpack', 
-                label: 'Webpack', 
+              {
+                value: 'webpack',
+                label: 'Webpack',
                 description: 'Mature and configurable bundler',
-                icon: <Package className="h-4 w-4 text-blue-600" />
+                icon: <Package className="h-4 w-4 text-blue-600" />,
               },
-              { 
-                value: 'parcel', 
-                label: 'Parcel', 
+              {
+                value: 'parcel',
+                label: 'Parcel',
                 description: 'Zero-configuration build tool',
-                icon: <Package className="h-4 w-4 text-red-500" />
+                icon: <Package className="h-4 w-4 text-red-500" />,
               },
             ]}
             defaultValue="vite"
           />
-          
+
           <RadioGroup
             name="package-manager"
             label="Package Manager"
@@ -483,7 +490,11 @@ export const DeveloperToolExamples: Story = {
               { value: 'npm', label: 'npm', description: 'Default Node.js package manager' },
               { value: 'yarn', label: 'Yarn', description: 'Fast and reliable package manager' },
               { value: 'pnpm', label: 'pnpm', description: 'Efficient disk space usage' },
-              { value: 'bun', label: 'Bun', description: 'Ultra-fast JavaScript runtime and package manager' },
+              {
+                value: 'bun',
+                label: 'Bun',
+                description: 'Ultra-fast JavaScript runtime and package manager',
+              },
             ]}
             size="sm"
             direction="horizontal"
@@ -516,34 +527,34 @@ export const DeveloperToolExamples: Story = {
             defaultValue="cloud"
             success="Deployment method configured"
           />
-          
+
           <RadioGroup
             name="ci-cd"
             label="CI/CD Pipeline"
             description="Choose your continuous integration platform"
             options={[
-              { 
-                value: 'github-actions', 
-                label: 'GitHub Actions', 
+              {
+                value: 'github-actions',
+                label: 'GitHub Actions',
                 description: 'Integrated with GitHub repositories',
-                icon: <GitBranch className="h-4 w-4 text-gray-800" />
+                icon: <GitBranch className="h-4 w-4 text-gray-800" />,
               },
-              { 
-                value: 'gitlab-ci', 
-                label: 'GitLab CI', 
+              {
+                value: 'gitlab-ci',
+                label: 'GitLab CI',
                 description: 'Built-in GitLab automation',
-                icon: <GitBranch className="h-4 w-4 text-orange-500" />
+                icon: <GitBranch className="h-4 w-4 text-orange-500" />,
               },
-              { 
-                value: 'jenkins', 
-                label: 'Jenkins', 
+              {
+                value: 'jenkins',
+                label: 'Jenkins',
                 description: 'Self-hosted automation server',
-                icon: <Settings className="h-4 w-4 text-blue-600" />
+                icon: <Settings className="h-4 w-4 text-blue-600" />,
               },
-              { 
-                value: 'none', 
-                label: 'Manual Deployment', 
-                description: 'Deploy manually without automation' 
+              {
+                value: 'none',
+                label: 'Manual Deployment',
+                description: 'Deploy manually without automation',
               },
             ]}
             warning="Manual deployment not recommended for production"
@@ -560,49 +571,49 @@ export const DeveloperToolExamples: Story = {
             name="authentication"
             label="Authentication Method"
             options={[
-              { 
-                value: 'jwt', 
-                label: 'JWT Tokens', 
+              {
+                value: 'jwt',
+                label: 'JWT Tokens',
                 description: 'JSON Web Tokens for stateless auth',
-                icon: <Shield className="h-4 w-4 text-green-500" />
+                icon: <Shield className="h-4 w-4 text-green-500" />,
               },
-              { 
-                value: 'session', 
-                label: 'Session-based', 
+              {
+                value: 'session',
+                label: 'Session-based',
                 description: 'Traditional server-side sessions',
-                icon: <Shield className="h-4 w-4 text-blue-500" />
+                icon: <Shield className="h-4 w-4 text-blue-500" />,
               },
-              { 
-                value: 'oauth', 
-                label: 'OAuth 2.0', 
+              {
+                value: 'oauth',
+                label: 'OAuth 2.0',
                 description: 'Third-party authentication',
-                icon: <Shield className="h-4 w-4 text-purple-500" />
+                icon: <Shield className="h-4 w-4 text-purple-500" />,
               },
             ]}
             defaultValue="jwt"
           />
-          
+
           <RadioGroup
             name="access-level"
             label="Default Access Level"
             options={[
-              { 
-                value: 'public', 
-                label: 'Public Access', 
+              {
+                value: 'public',
+                label: 'Public Access',
                 description: 'Open to all users',
-                icon: <Users className="h-4 w-4 text-green-500" />
+                icon: <Users className="h-4 w-4 text-green-500" />,
               },
-              { 
-                value: 'authenticated', 
-                label: 'Authenticated Users', 
+              {
+                value: 'authenticated',
+                label: 'Authenticated Users',
                 description: 'Requires login',
-                icon: <Users className="h-4 w-4 text-blue-500" />
+                icon: <Users className="h-4 w-4 text-blue-500" />,
               },
-              { 
-                value: 'admin', 
-                label: 'Admin Only', 
+              {
+                value: 'admin',
+                label: 'Admin Only',
                 description: 'Restricted to administrators',
-                icon: <Shield className="h-4 w-4 text-red-500" />
+                icon: <Shield className="h-4 w-4 text-red-500" />,
               },
             ]}
             error="Access level must be selected"
@@ -615,7 +626,8 @@ export const DeveloperToolExamples: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Real-world examples of radio groups in developer tools: project setup, build configuration, database selection, deployment settings, and security options.',
+        story:
+          'Real-world examples of radio groups in developer tools: project setup, build configuration, database selection, deployment settings, and security options.',
       },
     },
   },
@@ -627,32 +639,32 @@ export const DisabledStates: Story = {
     <div className="space-y-8">
       <div className="w-96 space-y-4">
         <h4 className="text-sm font-medium text-graphite-700">Individual Radio Disabled States</h4>
-        <Radio 
+        <Radio
           name="disabled-individual"
           value="option1"
           disabled
-          label="Disabled Unchecked" 
+          label="Disabled Unchecked"
           description="This option is not available"
         />
-        <Radio 
+        <Radio
           name="disabled-individual"
           value="option2"
           disabled
           checked
-          label="Disabled Checked" 
+          label="Disabled Checked"
           description="This option is enabled but cannot be changed"
         />
-        <Radio 
+        <Radio
           name="disabled-individual"
           value="option3"
           disabled
           variant="success"
           success="Feature is locked"
           showValidationIcon
-          label="Disabled with Success" 
+          label="Disabled with Success"
         />
       </div>
-      
+
       <div>
         <h4 className="text-sm font-medium text-graphite-700 mb-4">Disabled Radio Group</h4>
         <RadioGroup
@@ -670,7 +682,8 @@ export const DisabledStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Comprehensive disabled states for both individual radio buttons and entire radio groups.',
+        story:
+          'Comprehensive disabled states for both individual radio buttons and entire radio groups.',
       },
     },
   },
@@ -694,7 +707,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with individual radio props. Use the controls panel below to test different combinations.',
+        story:
+          'Interactive playground to experiment with individual radio props. Use the controls panel below to test different combinations.',
       },
     },
   },

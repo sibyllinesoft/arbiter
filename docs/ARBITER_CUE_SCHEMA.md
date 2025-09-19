@@ -1,27 +1,40 @@
 # Arbiter Schema v2 — Agent Guide & Change Log
 
-**TL;DR:** Treat the CUE spec as a *single source of truth* across four layers—**Domain → Contracts → Capabilities → Execution**—compiled into a deterministic IR. Keep frameworks as *adapters*, lock generation with `codegen.profile`+`templateHash`, and enforce compatibility gates. The result: reproducible scaffolds, migrations, APIs, infra, tests, and ops from one spec.
+**TL;DR:** Treat the CUE spec as a _single source of truth_ across four
+layers—**Domain → Contracts → Capabilities → Execution**—compiled into a
+deterministic IR. Keep frameworks as _adapters_, lock generation with
+`codegen.profile`+`templateHash`, and enforce compatibility gates. The result:
+reproducible scaffolds, migrations, APIs, infra, tests, and ops from one spec.
 
 ---
 
 ## 0) Scope & Goals
 
-**Goal:** Enable AI agents to regenerate functionally identical software (within defined compatibility rules) from the spec.
+**Goal:** Enable AI agents to regenerate functionally identical software (within
+defined compatibility rules) from the spec.
 
 **Design levers:**
 
-* Model *what* the system means (Domain), *how it communicates* (Contracts), *what a service does* (Capabilities), and *how it runs* (Execution).
-* Deterministic codegen via profiles, template hashing, stable component IDs, and artifact digests.
-* Validation/compat passes that detect breaking changes and require semver bumps or explicit migrations.
+- Model _what_ the system means (Domain), _how it communicates_ (Contracts),
+  _what a service does_ (Capabilities), and _how it runs_ (Execution).
+- Deterministic codegen via profiles, template hashing, stable component IDs,
+  and artifact digests.
+- Validation/compat passes that detect breaking changes and require semver bumps
+  or explicit migrations.
 
 ---
 
 ## 1) Schema Overview (Conceptual)
 
-* **Domain:** Business types, invariants, state machines. Source of truth for data, not the database.
-* **Contracts:** Synchronous (HTTP/RPC) and asynchronous (events) interfaces with explicit versions and compatibility policy.
-* **Capabilities:** Per–service declarations of roles (HTTP server, queue consumer, cron job, worker, CLI) bound to Contracts and Domain ownership.
-* **Execution:** Build/runtime/infra/deploy/observability/security/overlays—where it actually runs.
+- **Domain:** Business types, invariants, state machines. Source of truth for
+  data, not the database.
+- **Contracts:** Synchronous (HTTP/RPC) and asynchronous (events) interfaces
+  with explicit versions and compatibility policy.
+- **Capabilities:** Per–service declarations of roles (HTTP server, queue
+  consumer, cron job, worker, CLI) bound to Contracts and Domain ownership.
+- **Execution:**
+  Build/runtime/infra/deploy/observability/security/overlays—where it actually
+  runs.
 
 ---
 
@@ -467,27 +480,43 @@ arbiterSpec: {
 
 ## 4) Validation Rules (Agent MUST enforce)
 
-1. **Binding completeness:** Every `capability.contractRef` must resolve to an existing contract; every `implements.apis` must point to a `contracts.http|rpc` key; every `publishes/subscribes` topic must exist in `contracts.events`.
-2. **Domain referential integrity:** Schema refs used in contracts (`string` names) must resolve to `domain.entities|valueObjects` or `contracts.schemas`.
-3. **Ownership clarity:** Entities listed in `implements.models` may appear in only one service (primary owner) unless `shared:true` is explicitly marked (optional extension).
-4. **Compat gates:** Changes flagged by `codegen.compat.breakingRules` require `meta.version` bump or a `migrations` block with `allowBreak:true`.
-5. **Determinism:** `codegen.profile + generator + templateHash` must be present for full codegen; agent must produce digests and write them back into `artifactDigests`.
-6. **Typed config:** `config.environment` values with `required:true` must be satisfied per environment overlay or generation fails.
-7. **State machine soundness:** All transitions reference valid states; `initial` is a member of `states`; optional guards/actions must be declared in a stubs manifest.
+1. **Binding completeness:** Every `capability.contractRef` must resolve to an
+   existing contract; every `implements.apis` must point to a
+   `contracts.http|rpc` key; every `publishes/subscribes` topic must exist in
+   `contracts.events`.
+2. **Domain referential integrity:** Schema refs used in contracts (`string`
+   names) must resolve to `domain.entities|valueObjects` or `contracts.schemas`.
+3. **Ownership clarity:** Entities listed in `implements.models` may appear in
+   only one service (primary owner) unless `shared:true` is explicitly marked
+   (optional extension).
+4. **Compat gates:** Changes flagged by `codegen.compat.breakingRules` require
+   `meta.version` bump or a `migrations` block with `allowBreak:true`.
+5. **Determinism:** `codegen.profile + generator + templateHash` must be present
+   for full codegen; agent must produce digests and write them back into
+   `artifactDigests`.
+6. **Typed config:** `config.environment` values with `required:true` must be
+   satisfied per environment overlay or generation fails.
+7. **State machine soundness:** All transitions reference valid states;
+   `initial` is a member of `states`; optional guards/actions must be declared
+   in a stubs manifest.
 
 ---
 
 ## 5) IR & Pipeline (for the Agent)
 
-**IR graph nodes:** `Service, Capability, Contract(HTTP/RPC/Event), Model(Entity/VO), InfraResource, Ingress`.
+**IR graph nodes:**
+`Service, Capability, Contract(HTTP/RPC/Event), Model(Entity/VO), InfraResource, Ingress`.
 
 **Pass order (must be stable):**
 
-1. **Normalize:** Fill defaults (runtime/development), expand adapters by profile.
+1. **Normalize:** Fill defaults (runtime/development), expand adapters by
+   profile.
 2. **Resolve:** Bind contract/model refs; compute ownership map.
 3. **Validate:** Apply rules above + schema well-formedness.
-4. **Plan:** Select generators per capability: HTTP server, clients, RPC stubs, event producers/consumers, migrations, config, tests, CI, k8s.
-5. **Materialize:** Emit files with deterministic paths using stable `componentId` + template rules.
+4. **Plan:** Select generators per capability: HTTP server, clients, RPC stubs,
+   event producers/consumers, migrations, config, tests, CI, k8s.
+5. **Materialize:** Emit files with deterministic paths using stable
+   `componentId` + template rules.
 6. **Fingerprint:** Compute digests; update `codegen.artifactDigests`.
 
 **Deterministic path scheme (example):**
@@ -503,21 +532,32 @@ k8s/<env>/<svc>/*.yaml
 
 ## 6) Changes from Original Schema (Mapping)
 
-* **Added:** `domain`, `contracts`, `capabilities`, `infrastructure`, `runtime`, `codegen`, `deployment.observability`, `deployment.security`, `deployment.strategies`.
-* **Replaced/clarified:**
+- **Added:** `domain`, `contracts`, `capabilities`, `infrastructure`, `runtime`,
+  `codegen`, `deployment.observability`, `deployment.security`,
+  `deployment.strategies`.
+- **Replaced/clarified:**
+  - _Old_ `language` → _New_ `runtime.language` with version, package manager,
+    formatter/linter.
+  - _Old_ `services.*.language` → `services.*.runtime` (optional override).
+  - _Old_ `services.*` ports/health/resources/config/volumes **unchanged**, but
+    `config.environment` now supports typed `#ConfigValue`.
+  - _Old_ implicit HTTP services → _New_ explicit `capabilities` with
+    `contractRef` binding.
+  - _Old_ database volumes in `services` → _New_ managed infra in
+    `infrastructure.databases` (services depend by name).
 
-  * *Old* `language` → *New* `runtime.language` with version, package manager, formatter/linter.
-  * *Old* `services.*.language` → `services.*.runtime` (optional override).
-  * *Old* `services.*` ports/health/resources/config/volumes **unchanged**, but `config.environment` now supports typed `#ConfigValue`.
-  * *Old* implicit HTTP services → *New* explicit `capabilities` with `contractRef` binding.
-  * *Old* database volumes in `services` → *New* managed infra in `infrastructure.databases` (services depend by name).
-* **New determinism controls:** `codegen.profile`, `generator`, `templateHash`, `artifactDigests`, and compat policy.
+- **New determinism controls:** `codegen.profile`, `generator`, `templateHash`,
+  `artifactDigests`, and compat policy.
 
 **Upgrade guide (mechanical):**
 
-1. Move top-level `language` to `runtime.language` and add `version`/`packageManager`.
-2. For each HTTP-like service, add `capabilities: [{kind: "httpServer", contractRef: "contracts.http.<YourAPI>@v1"}]` and define `contracts.http` accordingly.
-3. Move DB containers to `infrastructure.databases` where possible; keep `prebuilt` services only for things you truly manage as containers.
+1. Move top-level `language` to `runtime.language` and add
+   `version`/`packageManager`.
+2. For each HTTP-like service, add
+   `capabilities: [{kind: "httpServer", contractRef: "contracts.http.<YourAPI>@v1"}]`
+   and define `contracts.http` accordingly.
+3. Move DB containers to `infrastructure.databases` where possible; keep
+   `prebuilt` services only for things you truly manage as containers.
 4. Introduce `codegen` block with profile+generator+templateHash.
 
 ---
@@ -526,37 +566,46 @@ k8s/<env>/<svc>/*.yaml
 
 **From Domain:**
 
-* Types/DTOs in each language; validators; state-machine stubs; invariant checks.
-* DB migrations (Domain→Store projection) with rollback notes.
+- Types/DTOs in each language; validators; state-machine stubs; invariant
+  checks.
+- DB migrations (Domain→Store projection) with rollback notes.
 
 **From Contracts:**
 
-* OpenAPI/Proto bundles; servers (routing + input/output models) and typed clients.
-* Event schemas; producer/consumer scaffolds; idempotency keys.
+- OpenAPI/Proto bundles; servers (routing + input/output models) and typed
+  clients.
+- Event schemas; producer/consumer scaffolds; idempotency keys.
 
 **From Capabilities:**
 
-* Adapter-wired bootstraps (Fastify/FastAPI/Axum/etc.), middlewares (auth, CORS, rate limit), CLI/cron runners.
+- Adapter-wired bootstraps (Fastify/FastAPI/Axum/etc.), middlewares (auth, CORS,
+  rate limit), CLI/cron runners.
 
 **From Execution:**
 
-* K8s manifests (deploy/service/ingress/hpa), Compose for local, CI/CD pipelines.
-* Observability (exporters, dashboards), SLO alerts, security policies.
+- K8s manifests (deploy/service/ingress/hpa), Compose for local, CI/CD
+  pipelines.
+- Observability (exporters, dashboards), SLO alerts, security policies.
 
 **From Codegen:**
 
-* Stable file layout; SBOM if enabled; artifact digests updated back into spec.
+- Stable file layout; SBOM if enabled; artifact digests updated back into spec.
 
 ---
 
 ## 8) Authoring Tips & Guardrails (for Agents)
 
-* Treat frameworks/ORM/testing tools as **adapters**—respect hints but keep generators swappable.
-* Fail fast on missing bindings (`contractRef`, schema refs, required config).
-* Never invent business logic: generate stubs with explicit `// TODO(agent):` markers tied to `componentId`.
-* Prefer *declarative policy* (auth scopes, rate limits, SLOs) over embedded imperative code.
-* Keep migrations additive when possible; when destructive, require `meta.version` bump + `allowBreak:true`.
-* Emit golden snapshots and compare digests on regeneration; if mismatch, show diff summary.
+- Treat frameworks/ORM/testing tools as **adapters**—respect hints but keep
+  generators swappable.
+- Fail fast on missing bindings (`contractRef`, schema refs, required config).
+- Never invent business logic: generate stubs with explicit `// TODO(agent):`
+  markers tied to `componentId`.
+- Prefer _declarative policy_ (auth scopes, rate limits, SLOs) over embedded
+  imperative code.
+- Keep migrations additive when possible; when destructive, require
+  `meta.version` bump + `allowBreak:true`.
+- Emit golden snapshots and compare digests on regeneration; if mismatch, show
+  diff summary.
 
 ---
 
@@ -614,12 +663,17 @@ arbiterSpec: {
 
 ## 10) Open Questions / Extensions (Optional)
 
-* Shared model ownership (`shared:true`) and data contracts between bounded contexts.
-* Policy DSL for authorization (ABAC/RBAC) and data retention.
-* Environment overlays with explicit merge strategies (`merge:"deep"|"replace"`).
+- Shared model ownership (`shared:true`) and data contracts between bounded
+  contexts.
+- Policy DSL for authorization (ABAC/RBAC) and data retention.
+- Environment overlays with explicit merge strategies
+  (`merge:"deep"|"replace"`).
 
 ---
 
 ## 11) Summary
 
-This v2 schema elevates Arbiter from deployment config to an application model. With bindings, adapters, and deterministic codegen controls, agents can regenerate consistent scaffolds and ops artifacts while guarding against accidental drift.
+This v2 schema elevates Arbiter from deployment config to an application model.
+With bindings, adapters, and deterministic codegen controls, agents can
+regenerate consistent scaffolds and ops artifacts while guarding against
+accidental drift.

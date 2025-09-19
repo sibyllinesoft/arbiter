@@ -1,6 +1,6 @@
-import fs from "fs-extra";
-import path from "node:path";
-import type { RecoveryOptions, ComposedSpecification, ProjectCompositionConfig } from "../types.js";
+import path from 'node:path';
+import fs from 'fs-extra';
+import type { ComposedSpecification, ProjectCompositionConfig, RecoveryOptions } from '../types.js';
 
 /**
  * Handles project recovery from composed specifications
@@ -33,23 +33,23 @@ export class RecoveryManager {
       // Load the composed specification
       const composedSpec = await this.loadComposedSpec();
       if (!composedSpec) {
-        result.error = "No composed specification found for recovery";
+        result.error = 'No composed specification found for recovery';
         return result;
       }
 
       // Validate recovery capability
       if (!composedSpec.recovery.regenerationCapable) {
-        result.error = "Project is not marked as recovery-capable due to validation errors";
+        result.error = 'Project is not marked as recovery-capable due to validation errors';
         return result;
       }
 
       // Perform recovery based on mode
-      switch (options.mode || "full") {
-        case "full":
+      switch (options.mode || 'full') {
+        case 'full':
           return await this.performFullRecovery(composedSpec, targetDir, options);
-        case "spec_only":
+        case 'spec_only':
           return await this.performSpecOnlyRecovery(composedSpec, targetDir, options);
-        case "structure_only":
+        case 'structure_only':
           return await this.performStructureOnlyRecovery(composedSpec, targetDir, options);
         default:
           result.error = `Unknown recovery mode: ${options.mode}`;
@@ -67,7 +67,7 @@ export class RecoveryManager {
   async recoverFromHistoryPoint(
     recoveryPoint: string,
     targetDir: string,
-    options: RecoveryOptions = {},
+    options: RecoveryOptions = {}
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -84,7 +84,7 @@ export class RecoveryManager {
       const config = await this.loadProjectConfig();
 
       // Find the recovery point in integration history
-      const historyEntry = config.integrationHistory.find((entry) => entry.id === recoveryPoint);
+      const historyEntry = config.integrationHistory.find(entry => entry.id === recoveryPoint);
 
       if (!historyEntry) {
         result.error = `Recovery point ${recoveryPoint} not found in integration history`;
@@ -94,7 +94,7 @@ export class RecoveryManager {
       // Restore files from the recovery point
       if (historyEntry.recoveryData.backups) {
         for (const [originalPath, backupPath] of Object.entries(
-          historyEntry.recoveryData.backups,
+          historyEntry.recoveryData.backups
         )) {
           const targetPath = path.join(targetDir, path.relative(this.projectRoot, originalPath));
           await fs.ensureDir(path.dirname(targetPath));
@@ -104,9 +104,9 @@ export class RecoveryManager {
       }
 
       // Restore the specification to the state at this point
-      const specPath = path.join(targetDir, ".arbiter", "composed", "master.cue");
+      const specPath = path.join(targetDir, '.arbiter', 'composed', 'master.cue');
       await fs.ensureDir(path.dirname(specPath));
-      await fs.writeFile(specPath, historyEntry.specAfter, "utf-8");
+      await fs.writeFile(specPath, historyEntry.specAfter, 'utf-8');
       result.recoveredFiles.push(specPath);
 
       result.success = true;
@@ -128,14 +128,14 @@ export class RecoveryManager {
   }> {
     const result = {
       success: false,
-      snapshotId: "",
-      snapshotPath: "",
+      snapshotId: '',
+      snapshotPath: '',
       error: undefined as string | undefined,
     };
 
     try {
       const snapshotId = `snapshot-${Date.now()}`;
-      const snapshotDir = path.join(this.projectRoot, ".arbiter", "snapshots", snapshotId);
+      const snapshotDir = path.join(this.projectRoot, '.arbiter', 'snapshots', snapshotId);
       await fs.ensureDir(snapshotDir);
 
       // Copy current project state
@@ -153,12 +153,12 @@ export class RecoveryManager {
       const snapshotMetadata = {
         id: snapshotId,
         created_at: new Date().toISOString(),
-        description: description || "Manual snapshot",
+        description: description || 'Manual snapshot',
         files_count: filesToSnapshot.length,
         composed_spec_version: await this.getCurrentSpecVersion(),
       };
 
-      const metadataPath = path.join(snapshotDir, "snapshot.json");
+      const metadataPath = path.join(snapshotDir, 'snapshot.json');
       await fs.writeJson(metadataPath, snapshotMetadata, { spaces: 2 });
 
       result.success = true;
@@ -197,7 +197,7 @@ export class RecoveryManager {
     try {
       // Load integration history from project config
       const config = await this.loadProjectConfig();
-      result.integrationHistory = config.integrationHistory.map((entry) => ({
+      result.integrationHistory = config.integrationHistory.map(entry => ({
         id: entry.id,
         timestamp: entry.timestamp,
         operation: entry.operation,
@@ -206,12 +206,12 @@ export class RecoveryManager {
       }));
 
       // Load snapshots from filesystem
-      const snapshotsDir = path.join(this.projectRoot, ".arbiter", "snapshots");
+      const snapshotsDir = path.join(this.projectRoot, '.arbiter', 'snapshots');
       if (await fs.pathExists(snapshotsDir)) {
         const snapshotDirs = await fs.readdir(snapshotsDir);
 
         for (const snapshotDir of snapshotDirs) {
-          const metadataPath = path.join(snapshotsDir, snapshotDir, "snapshot.json");
+          const metadataPath = path.join(snapshotsDir, snapshotDir, 'snapshot.json');
           if (await fs.pathExists(metadataPath)) {
             const metadata = await fs.readJson(metadataPath);
             result.snapshots.push(metadata);
@@ -244,9 +244,9 @@ export class RecoveryManager {
       const composedSpec = await this.loadComposedSpec();
       if (!composedSpec) {
         result.canRecover = false;
-        result.issues.push("No composed specification found");
+        result.issues.push('No composed specification found');
         result.recommendations.push(
-          "Run 'arbiter composition generate' to create composed specification",
+          "Run 'arbiter composition generate' to create composed specification"
         );
         return result;
       }
@@ -254,23 +254,23 @@ export class RecoveryManager {
       // Check specification validity
       if (!composedSpec.validation.valid) {
         result.canRecover = false;
-        result.issues.push("Composed specification has validation errors");
-        result.recommendations.push("Resolve validation errors before attempting recovery");
+        result.issues.push('Composed specification has validation errors');
+        result.recommendations.push('Resolve validation errors before attempting recovery');
       }
 
       // Check recovery metadata completeness
       if (!composedSpec.recovery.regenerationCapable) {
         result.canRecover = false;
-        result.issues.push("Project is not marked as regeneration capable");
+        result.issues.push('Project is not marked as regeneration capable');
       }
 
       // Check external dependencies
       const missingDeps = await this.checkExternalDependencies(
-        composedSpec.recovery.externalDependencies,
+        composedSpec.recovery.externalDependencies
       );
       if (missingDeps.length > 0) {
-        result.issues.push(`Missing external dependencies: ${missingDeps.join(", ")}`);
-        result.recommendations.push("Install missing dependencies before recovery");
+        result.issues.push(`Missing external dependencies: ${missingDeps.join(', ')}`);
+        result.recommendations.push('Install missing dependencies before recovery');
       }
 
       // Check file structure template
@@ -278,15 +278,15 @@ export class RecoveryManager {
         !composedSpec.recovery.fileStructure ||
         Object.keys(composedSpec.recovery.fileStructure).length === 0
       ) {
-        result.issues.push("File structure template is empty");
+        result.issues.push('File structure template is empty');
         result.recommendations.push(
-          "Regenerate composed specification with updated file structure",
+          'Regenerate composed specification with updated file structure'
         );
       }
     } catch (error) {
       result.canRecover = false;
       result.issues.push(
-        `Recovery validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Recovery validation failed: ${error instanceof Error ? error.message : String(error)}`
       );
     }
 
@@ -299,7 +299,7 @@ export class RecoveryManager {
   private async performFullRecovery(
     composedSpec: ComposedSpecification,
     targetDir: string,
-    options: RecoveryOptions,
+    options: RecoveryOptions
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -315,7 +315,7 @@ export class RecoveryManager {
       // 1. Recreate directory structure
       const structureResult = await this.recreateFileStructure(
         composedSpec.recovery.fileStructure,
-        targetDir,
+        targetDir
       );
       result.recoveredFiles.push(...structureResult.createdFiles);
 
@@ -335,7 +335,7 @@ export class RecoveryManager {
       if (options.includeExternalDeps) {
         const depsResult = await this.installExternalDependencies(
           composedSpec.recovery.externalDependencies,
-          targetDir,
+          targetDir
         );
         // Dependencies don't create files, so we just note success
       }
@@ -354,7 +354,7 @@ export class RecoveryManager {
   private async performSpecOnlyRecovery(
     composedSpec: ComposedSpecification,
     targetDir: string,
-    options: RecoveryOptions,
+    options: RecoveryOptions
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -383,7 +383,7 @@ export class RecoveryManager {
   private async performStructureOnlyRecovery(
     composedSpec: ComposedSpecification,
     targetDir: string,
-    options: RecoveryOptions,
+    options: RecoveryOptions
   ): Promise<{
     success: boolean;
     recoveredFiles: string[];
@@ -398,7 +398,7 @@ export class RecoveryManager {
     try {
       const structureResult = await this.recreateFileStructure(
         composedSpec.recovery.fileStructure,
-        targetDir,
+        targetDir
       );
       result.recoveredFiles.push(...structureResult.createdFiles);
       result.success = true;
@@ -412,7 +412,7 @@ export class RecoveryManager {
   // Helper methods
 
   private async loadComposedSpec(): Promise<ComposedSpecification | null> {
-    const specPath = path.join(this.projectRoot, ".arbiter", "composed", "composed-spec.json");
+    const specPath = path.join(this.projectRoot, '.arbiter', 'composed', 'composed-spec.json');
 
     try {
       return await fs.readJson(specPath);
@@ -422,7 +422,7 @@ export class RecoveryManager {
   }
 
   private async loadProjectConfig(): Promise<ProjectCompositionConfig> {
-    const configPath = path.join(this.projectRoot, ".arbiter", "project.json");
+    const configPath = path.join(this.projectRoot, '.arbiter', 'project.json');
     return await fs.readJson(configPath);
   }
 
@@ -444,13 +444,13 @@ export class RecoveryManager {
   private async checkDependencyExists(dependency: string): Promise<boolean> {
     // Simplified dependency check - in production, this would check package managers, system packages, etc.
     try {
-      const { spawn } = await import("node:child_process");
-      return new Promise((resolve) => {
-        const process = spawn("which", [dependency]);
-        process.on("close", (code) => {
+      const { spawn } = await import('node:child_process');
+      return new Promise(resolve => {
+        const process = spawn('which', [dependency]);
+        process.on('close', code => {
           resolve(code === 0);
         });
-        process.on("error", () => {
+        process.on('error', () => {
           resolve(false);
         });
       });
@@ -461,7 +461,7 @@ export class RecoveryManager {
 
   private async recreateFileStructure(
     fileStructure: Record<string, string>,
-    targetDir: string,
+    targetDir: string
   ): Promise<{
     createdFiles: string[];
     error?: string;
@@ -478,7 +478,7 @@ export class RecoveryManager {
 
         // Generate content from template
         const content = await this.generateFileContentFromTemplate(template);
-        await fs.writeFile(fullPath, content, "utf-8");
+        await fs.writeFile(fullPath, content, 'utf-8');
 
         result.createdFiles.push(fullPath);
       }
@@ -491,7 +491,7 @@ export class RecoveryManager {
 
   private async restoreSpecification(
     composedSpec: ComposedSpecification,
-    targetDir: string,
+    targetDir: string
   ): Promise<{
     createdFiles: string[];
     error?: string;
@@ -502,15 +502,15 @@ export class RecoveryManager {
     };
 
     try {
-      const specDir = path.join(targetDir, ".arbiter", "composed");
+      const specDir = path.join(targetDir, '.arbiter', 'composed');
       await fs.ensureDir(specDir);
 
-      const specPath = path.join(specDir, "master.cue");
-      await fs.writeFile(specPath, composedSpec.spec, "utf-8");
+      const specPath = path.join(specDir, 'master.cue');
+      await fs.writeFile(specPath, composedSpec.spec, 'utf-8');
       result.createdFiles.push(specPath);
 
       // Also save the full composed specification
-      const composedSpecPath = path.join(specDir, "composed-spec.json");
+      const composedSpecPath = path.join(specDir, 'composed-spec.json');
       await fs.writeJson(composedSpecPath, composedSpec, { spaces: 2 });
       result.createdFiles.push(composedSpecPath);
     } catch (error) {
@@ -531,15 +531,15 @@ export class RecoveryManager {
 
     try {
       // Copy fragments from current project to target
-      const fragmentsDir = path.join(this.projectRoot, ".arbiter", "fragments");
-      const targetFragmentsDir = path.join(targetDir, ".arbiter", "fragments");
+      const fragmentsDir = path.join(this.projectRoot, '.arbiter', 'fragments');
+      const targetFragmentsDir = path.join(targetDir, '.arbiter', 'fragments');
 
       if (await fs.pathExists(fragmentsDir)) {
         await fs.ensureDir(targetFragmentsDir);
         await fs.copy(fragmentsDir, targetFragmentsDir);
 
         const fragmentFiles = await fs.readdir(targetFragmentsDir);
-        result.createdFiles.push(...fragmentFiles.map((f) => path.join(targetFragmentsDir, f)));
+        result.createdFiles.push(...fragmentFiles.map(f => path.join(targetFragmentsDir, f)));
       }
     } catch (error) {
       result.error = error instanceof Error ? error.message : String(error);
@@ -559,8 +559,8 @@ export class RecoveryManager {
 
     try {
       // Copy project configuration
-      const configPath = path.join(this.projectRoot, ".arbiter", "project.json");
-      const targetConfigPath = path.join(targetDir, ".arbiter", "project.json");
+      const configPath = path.join(this.projectRoot, '.arbiter', 'project.json');
+      const targetConfigPath = path.join(targetDir, '.arbiter', 'project.json');
 
       if (await fs.pathExists(configPath)) {
         await fs.ensureDir(path.dirname(targetConfigPath));
@@ -576,7 +576,7 @@ export class RecoveryManager {
 
   private async installExternalDependencies(
     dependencies: string[],
-    targetDir: string,
+    targetDir: string
   ): Promise<{
     success: boolean;
     error?: string;
@@ -589,10 +589,10 @@ export class RecoveryManager {
   private async generateFileContentFromTemplate(template: string): Promise<string> {
     // Basic template processing - could be enhanced with actual templating
     switch (template) {
-      case "module template":
+      case 'module template':
         return `module: "example.com/recovered"
 language: version: "v0.6.0"`;
-      case "schema template":
+      case 'schema template':
         return `package main
 
 // Recovered schema
@@ -600,7 +600,7 @@ language: version: "v0.6.0"`;
 \tname: string
 \tversion: string
 }`;
-      case "values template":
+      case 'values template':
         return `package main
 
 // Recovered values
@@ -608,8 +608,8 @@ config: #Config & {
 \tname: "recovered-project"
 \tversion: "1.0.0"
 }`;
-      case "composition config":
-        return "{}"; // Will be overwritten by actual config
+      case 'composition config':
+        return '{}'; // Will be overwritten by actual config
       default:
         return `// Generated from template: ${template}`;
     }
@@ -619,13 +619,16 @@ config: #Config & {
     const files: string[] = [];
 
     // CUE files
-    const cueFiles = await this.findFilesWithExtension(".cue");
+    const cueFiles = await this.findFilesWithExtension('.cue');
     files.push(...cueFiles);
 
     // Configuration files
-    const configFiles = [".arbiter/project.json", ".arbiter/config.json", ".arbiter.json", "cue.mod/module.cue"].map((f) =>
-      path.join(this.projectRoot, f),
-    );
+    const configFiles = [
+      '.arbiter/project.json',
+      '.arbiter/config.json',
+      '.arbiter.json',
+      'cue.mod/module.cue',
+    ].map(f => path.join(this.projectRoot, f));
 
     for (const configFile of configFiles) {
       if (await fs.pathExists(configFile)) {
@@ -646,7 +649,7 @@ config: #Config & {
         for (const entry of entries) {
           const fullPath = path.join(dir, entry.name);
 
-          if (entry.isDirectory() && !entry.name.startsWith(".")) {
+          if (entry.isDirectory() && !entry.name.startsWith('.')) {
             await findFiles(fullPath);
           } else if (entry.isFile() && entry.name.endsWith(extension)) {
             files.push(fullPath);
@@ -663,6 +666,6 @@ config: #Config & {
 
   private async getCurrentSpecVersion(): Promise<string> {
     const composedSpec = await this.loadComposedSpec();
-    return composedSpec?.metadata.version || "unknown";
+    return composedSpec?.metadata.version || 'unknown';
   }
 }

@@ -32,7 +32,7 @@ const DiagramTypesOverview: React.FC = () => {
           Transform YAML/JSON specifications into beautiful, interactive diagrams
         </p>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Flow Diagrams */}
         <div className="border border-gray-200 rounded-lg p-4">
@@ -373,29 +373,25 @@ const combinedVisualization = `graph TB
 
 export const DiagramShowcaseOverview: Story = {
   args: {
-    title: "Complete Diagram Visualization Platform",
-    description: "Comprehensive overview of all available diagram types and technical capabilities for developer tools.",
-    dataPanelTitle: "Integration Guide (YAML)",
-    diagramPanelTitle: "Available Diagram Types",
+    title: 'Complete Diagram Visualization Platform',
+    description:
+      'Comprehensive overview of all available diagram types and technical capabilities for developer tools.',
+    dataPanelTitle: 'Integration Guide (YAML)',
+    diagramPanelTitle: 'Available Diagram Types',
     dataPanel: (
-      <DataViewer
-        data={quickStartGuideYaml}
-        language="yaml"
-        title="diagram-platform-guide.yml"
-      />
+      <DataViewer data={quickStartGuideYaml} language="yaml" title="diagram-platform-guide.yml" />
     ),
-    diagramPanel: (
-      <DiagramTypesOverview />
-    ),
+    diagramPanel: <DiagramTypesOverview />,
   },
 };
 
 export const TechnicalArchitectureOverview: Story = {
   args: {
-    title: "Diagram Rendering Architecture",
-    description: "Technical architecture showing how YAML/JSON specifications are transformed into interactive diagrams.",
-    dataPanelTitle: "Architecture Overview (YAML)",
-    diagramPanelTitle: "Rendering Pipeline Flow",
+    title: 'Diagram Rendering Architecture',
+    description:
+      'Technical architecture showing how YAML/JSON specifications are transformed into interactive diagrams.',
+    dataPanelTitle: 'Architecture Overview (YAML)',
+    diagramPanelTitle: 'Rendering Pipeline Flow',
     dataPanel: (
       <DataViewer
         data={`# Diagram Rendering Architecture
@@ -444,10 +440,7 @@ scalability:
       />
     ),
     diagramPanel: (
-      <MermaidRenderer 
-        chart={combinedVisualization}
-        title="Diagram Rendering Pipeline"
-      />
+      <MermaidRenderer chart={combinedVisualization} title="Diagram Rendering Pipeline" />
     ),
   },
 };

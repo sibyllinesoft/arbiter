@@ -1,15 +1,15 @@
-import path from "node:path";
-import chalk from "chalk";
-import fs from "fs-extra";
-import inquirer from "inquirer";
+import path from 'node:path';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import inquirer from 'inquirer';
+import { ProjectCompositionManager } from '../composition/index.js';
 import type {
   CompositionOptions,
   ImportSrfOptions,
-  ValidateCompositionOptions,
   RecoveryOptions,
-} from "../types.js";
-import { ProjectCompositionManager } from "../composition/index.js";
-import { withProgress } from "../utils/progress.js";
+  ValidateCompositionOptions,
+} from '../types.js';
+import { withProgress } from '../utils/progress.js';
 
 /**
  * Initialize project composition system in current directory
@@ -20,11 +20,11 @@ export async function compositionInitCommand(options: CompositionOptions = {}): 
     const manager = new ProjectCompositionManager(cwd);
 
     // Check if already initialized
-    const arbiterDir = path.join(cwd, ".arbiter");
-    const configPath = path.join(arbiterDir, "project.json");
+    const arbiterDir = path.join(cwd, '.arbiter');
+    const configPath = path.join(arbiterDir, 'project.json');
 
     if (await fs.pathExists(configPath)) {
-      console.log(chalk.yellow("Project composition system already initialized"));
+      console.log(chalk.yellow('Project composition system already initialized'));
       return 0;
     }
 
@@ -32,23 +32,23 @@ export async function compositionInitCommand(options: CompositionOptions = {}): 
     const projectDetails = await getProjectDetails(options);
 
     return await withProgress(
-      { text: "Initializing project composition system...", color: "blue" },
+      { text: 'Initializing project composition system...', color: 'blue' },
       async () => {
         await manager.initialize(projectDetails);
 
-        console.log(chalk.green("✓ Project composition system initialized"));
-        console.log(chalk.dim("\nNext steps:"));
-        console.log(chalk.dim("  arbiter composition validate    # Validate setup"));
-        console.log(chalk.dim("  arbiter composition import <srf> # Import fragments"));
-        console.log(chalk.dim("  arbiter composition generate    # Generate composed spec"));
+        console.log(chalk.green('✓ Project composition system initialized'));
+        console.log(chalk.dim('\nNext steps:'));
+        console.log(chalk.dim('  arbiter composition validate    # Validate setup'));
+        console.log(chalk.dim('  arbiter composition import <srf> # Import fragments'));
+        console.log(chalk.dim('  arbiter composition generate    # Generate composed spec'));
 
         return 0;
-      },
+      }
     );
   } catch (error) {
     console.error(
-      chalk.red("Composition initialization failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Composition initialization failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -59,12 +59,12 @@ export async function compositionInitCommand(options: CompositionOptions = {}): 
  */
 export async function compositionImportCommand(
   fragmentPath: string | undefined,
-  options: ImportSrfOptions,
+  options: ImportSrfOptions
 ): Promise<number> {
   try {
     if (!fragmentPath) {
-      console.error(chalk.red("Fragment path is required"));
-      console.log(chalk.dim("Usage: arbiter composition import <fragment-path>"));
+      console.error(chalk.red('Fragment path is required'));
+      console.log(chalk.dim('Usage: arbiter composition import <fragment-path>'));
       return 1;
     }
 
@@ -101,9 +101,9 @@ export async function compositionImportCommand(
         }
       }
 
-      console.log(chalk.dim("\nNext steps:"));
-      console.log(chalk.dim("  arbiter composition validate    # Validate composition"));
-      console.log(chalk.dim("  arbiter composition generate    # Update composed spec"));
+      console.log(chalk.dim('\nNext steps:'));
+      console.log(chalk.dim('  arbiter composition validate    # Validate composition'));
+      console.log(chalk.dim('  arbiter composition generate    # Update composed spec'));
     } else {
       console.error(chalk.red(`✗ Failed to import fragment: ${result.error}`));
 
@@ -116,11 +116,11 @@ export async function compositionImportCommand(
           console.log(chalk.dim(`    Severity: ${conflict.severity}`));
         }
 
-        console.log(chalk.dim("\nTo resolve conflicts:"));
+        console.log(chalk.dim('\nTo resolve conflicts:'));
         console.log(
-          chalk.dim("  arbiter composition resolve     # Interactive conflict resolution"),
+          chalk.dim('  arbiter composition resolve     # Interactive conflict resolution')
         );
-        console.log(chalk.dim("  arbiter composition import --force <fragment>  # Force import"));
+        console.log(chalk.dim('  arbiter composition import --force <fragment>  # Force import'));
       }
 
       return 1;
@@ -129,8 +129,8 @@ export async function compositionImportCommand(
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("Fragment import failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Fragment import failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -140,7 +140,7 @@ export async function compositionImportCommand(
  * Validate current project composition
  */
 export async function compositionValidateCommand(
-  options: ValidateCompositionOptions = {},
+  options: ValidateCompositionOptions = {}
 ): Promise<number> {
   try {
     const cwd = process.cwd();
@@ -149,32 +149,32 @@ export async function compositionValidateCommand(
     const result = await manager.validateComposition(options);
 
     // Display results in table format
-    if (options.format === "json") {
+    if (options.format === 'json') {
       console.log(JSON.stringify(result, null, 2));
-    } else if (options.format === "yaml") {
+    } else if (options.format === 'yaml') {
       // Would implement YAML output here
-      console.log("YAML output not yet implemented");
+      console.log('YAML output not yet implemented');
     } else {
       // Table format (default)
-      console.log(chalk.cyan("Project Composition Validation Results"));
-      console.log("═".repeat(50));
+      console.log(chalk.cyan('Project Composition Validation Results'));
+      console.log('═'.repeat(50));
 
       if (result.success) {
-        console.log(chalk.green("✓ Overall Status: VALID"));
+        console.log(chalk.green('✓ Overall Status: VALID'));
       } else {
-        console.log(chalk.red("✗ Overall Status: INVALID"));
+        console.log(chalk.red('✗ Overall Status: INVALID'));
       }
 
       // Fragment status
-      console.log(chalk.cyan("\nFragment Status:"));
+      console.log(chalk.cyan('\nFragment Status:'));
       const fragmentEntries = Object.entries(result.fragmentsStatus);
 
       if (fragmentEntries.length === 0) {
-        console.log(chalk.dim("  No fragments imported"));
+        console.log(chalk.dim('  No fragments imported'));
       } else {
         for (const [fragmentId, status] of fragmentEntries) {
           const statusColor =
-            status === "valid" ? chalk.green : status === "invalid" ? chalk.red : chalk.yellow;
+            status === 'valid' ? chalk.green : status === 'invalid' ? chalk.red : chalk.yellow;
           console.log(`  ${statusColor(status.padEnd(8))} ${fragmentId}`);
         }
       }
@@ -187,7 +187,7 @@ export async function compositionValidateCommand(
           console.log(chalk.dim(`    Path: ${conflict.cuePath} | Severity: ${conflict.severity}`));
         }
       } else {
-        console.log(chalk.green("\nNo conflicts detected"));
+        console.log(chalk.green('\nNo conflicts detected'));
       }
 
       // Errors
@@ -216,8 +216,8 @@ export async function compositionValidateCommand(
     return result.success ? 0 : 1;
   } catch (error) {
     console.error(
-      chalk.red("Composition validation failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Composition validation failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -227,24 +227,24 @@ export async function compositionValidateCommand(
  * Generate composed specification
  */
 export async function compositionGenerateCommand(
-  options: CompositionOptions = {},
+  options: CompositionOptions = {}
 ): Promise<number> {
   try {
     const cwd = process.cwd();
     const manager = new ProjectCompositionManager(cwd);
 
     return await withProgress(
-      { text: "Generating composed specification...", color: "blue" },
+      { text: 'Generating composed specification...', color: 'blue' },
       async () => {
         const composedSpec = await manager.generateComposedSpec();
 
-        console.log(chalk.green("✓ Composed specification generated"));
+        console.log(chalk.green('✓ Composed specification generated'));
         console.log(chalk.dim(`  Version: ${composedSpec.metadata.version}`));
         console.log(
-          chalk.dim(`  Source fragments: ${composedSpec.metadata.sourceFragments.length}`),
+          chalk.dim(`  Source fragments: ${composedSpec.metadata.sourceFragments.length}`)
         );
         console.log(
-          chalk.dim(`  Validation status: ${composedSpec.validation.valid ? "VALID" : "INVALID"}`),
+          chalk.dim(`  Validation status: ${composedSpec.validation.valid ? 'VALID' : 'INVALID'}`)
         );
 
         if (!composedSpec.validation.valid) {
@@ -253,17 +253,17 @@ export async function compositionGenerateCommand(
         }
 
         if (options.verbose) {
-          const specPath = path.join(cwd, ".arbiter", "composed", "composed-spec.json");
+          const specPath = path.join(cwd, '.arbiter', 'composed', 'composed-spec.json');
           console.log(chalk.dim(`  Saved to: ${specPath}`));
         }
 
         return 0;
-      },
+      }
     );
   } catch (error) {
     console.error(
-      chalk.red("Composed specification generation failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Composed specification generation failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -274,7 +274,7 @@ export async function compositionGenerateCommand(
  */
 export async function compositionRecoverCommand(
   targetDir: string | undefined,
-  options: RecoveryOptions,
+  options: RecoveryOptions
 ): Promise<number> {
   try {
     const cwd = process.cwd();
@@ -293,42 +293,42 @@ export async function compositionRecoverCommand(
       });
       if (!validation.success) {
         console.error(chalk.red(`Recovery validation failed: ${validation.error}`));
-        console.log(chalk.dim("\nUse --force to attempt recovery anyway"));
+        console.log(chalk.dim('\nUse --force to attempt recovery anyway'));
         return 1;
       }
     }
 
     return await withProgress(
-      { text: `Recovering project to ${targetDir || "current directory"}...`, color: "blue" },
+      { text: `Recovering project to ${targetDir || 'current directory'}...`, color: 'blue' },
       async () => {
         const result = await manager.recoverFromComposedSpec(recoveryOptions);
 
         if (result.success) {
-          console.log(chalk.green("✓ Project recovery completed"));
+          console.log(chalk.green('✓ Project recovery completed'));
           console.log(chalk.dim(`  Files recovered: ${result.recoveredFiles.length}`));
 
           if (options.verbose) {
-            console.log(chalk.dim("\nRecovered files:"));
+            console.log(chalk.dim('\nRecovered files:'));
             for (const file of result.recoveredFiles) {
               console.log(chalk.dim(`  - ${file}`));
             }
           }
 
-          console.log(chalk.dim("\nNext steps:"));
-          console.log(chalk.dim("  cd " + (targetDir || ".")));
-          console.log(chalk.dim("  arbiter check"));
+          console.log(chalk.dim('\nNext steps:'));
+          console.log(chalk.dim(`  cd ${targetDir || '.'}`));
+          console.log(chalk.dim('  arbiter check'));
         } else {
           console.error(chalk.red(`✗ Recovery failed: ${result.error}`));
           return 1;
         }
 
         return 0;
-      },
+      }
     );
   } catch (error) {
     console.error(
-      chalk.red("Project recovery failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Project recovery failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -344,26 +344,26 @@ export async function compositionListCommand(options: CompositionOptions = {}): 
 
     const config = await manager.loadConfig();
 
-    if (options.format === "json") {
+    if (options.format === 'json') {
       console.log(JSON.stringify(config.fragments, null, 2));
     } else {
-      console.log(chalk.cyan("Project Fragments"));
-      console.log("═".repeat(50));
+      console.log(chalk.cyan('Project Fragments'));
+      console.log('═'.repeat(50));
 
       if (config.fragments.length === 0) {
-        console.log(chalk.dim("No fragments imported"));
-        console.log(chalk.dim("\nTo import fragments:"));
-        console.log(chalk.dim("  arbiter composition import <srf-file>"));
+        console.log(chalk.dim('No fragments imported'));
+        console.log(chalk.dim('\nTo import fragments:'));
+        console.log(chalk.dim('  arbiter composition import <srf-file>'));
         return 0;
       }
 
       for (const fragment of config.fragments) {
         const statusColor =
-          fragment.status === "integrated"
+          fragment.status === 'integrated'
             ? chalk.green
-            : fragment.status === "conflict"
+            : fragment.status === 'conflict'
               ? chalk.red
-              : fragment.status === "pending"
+              : fragment.status === 'pending'
                 ? chalk.yellow
                 : chalk.gray;
 
@@ -377,7 +377,7 @@ export async function compositionListCommand(options: CompositionOptions = {}): 
         }
 
         if (fragment.dependencies.length > 0) {
-          console.log(chalk.dim(`  Dependencies: ${fragment.dependencies.join(", ")}`));
+          console.log(chalk.dim(`  Dependencies: ${fragment.dependencies.join(', ')}`));
         }
 
         console.log();
@@ -389,17 +389,17 @@ export async function compositionListCommand(options: CompositionOptions = {}): 
           counts[fragment.status] = (counts[fragment.status] || 0) + 1;
           return counts;
         },
-        {} as Record<string, number>,
+        {} as Record<string, number>
       );
 
-      console.log(chalk.cyan("Summary:"));
+      console.log(chalk.cyan('Summary:'));
       for (const [status, count] of Object.entries(statusCounts)) {
         const statusColor =
-          status === "integrated"
+          status === 'integrated'
             ? chalk.green
-            : status === "conflict"
+            : status === 'conflict'
               ? chalk.red
-              : status === "pending"
+              : status === 'pending'
                 ? chalk.yellow
                 : chalk.gray;
         console.log(`  ${statusColor(status)}: ${count}`);
@@ -409,8 +409,8 @@ export async function compositionListCommand(options: CompositionOptions = {}): 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("Failed to list fragments:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Failed to list fragments:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -427,18 +427,18 @@ export async function compositionStatusCommand(options: CompositionOptions = {})
     const config = await manager.loadConfig();
     const validation = await manager.validateComposition({ fragments: undefined });
 
-    console.log(chalk.cyan("Project Composition Status"));
-    console.log("═".repeat(50));
+    console.log(chalk.cyan('Project Composition Status'));
+    console.log('═'.repeat(50));
 
     // Project metadata
-    console.log(chalk.blue("Project:"));
+    console.log(chalk.blue('Project:'));
     console.log(`  Name: ${config.metadata.name}`);
     console.log(`  Version: ${config.metadata.version}`);
     console.log(`  Created: ${config.metadata.created_at}`);
     console.log(`  Modified: ${config.metadata.last_modified}`);
 
     // Configuration
-    console.log(chalk.blue("\nConfiguration:"));
+    console.log(chalk.blue('\nConfiguration:'));
     console.log(`  Validation level: ${config.composition.validationLevel}`);
     console.log(`  Auto-resolve conflicts: ${config.composition.autoResolveConflicts}`);
     console.log(`  Master spec: ${config.composition.masterSpecFile}`);
@@ -450,27 +450,27 @@ export async function compositionStatusCommand(options: CompositionOptions = {})
         counts[fragment.status] = (counts[fragment.status] || 0) + 1;
         return counts;
       },
-      {} as Record<string, number>,
+      {} as Record<string, number>
     );
 
     for (const [status, count] of Object.entries(statusCounts)) {
       const statusColor =
-        status === "integrated"
+        status === 'integrated'
           ? chalk.green
-          : status === "conflict"
+          : status === 'conflict'
             ? chalk.red
-            : status === "pending"
+            : status === 'pending'
               ? chalk.yellow
               : chalk.gray;
       console.log(`  ${statusColor(status)}: ${count}`);
     }
 
     // Validation status
-    console.log(chalk.blue("\nValidation:"));
+    console.log(chalk.blue('\nValidation:'));
     if (validation.success) {
-      console.log(chalk.green("  Status: VALID"));
+      console.log(chalk.green('  Status: VALID'));
     } else {
-      console.log(chalk.red("  Status: INVALID"));
+      console.log(chalk.red('  Status: INVALID'));
       console.log(chalk.red(`  Errors: ${validation.errors.length}`));
       console.log(chalk.yellow(`  Warnings: ${validation.warnings.length}`));
     }
@@ -482,7 +482,7 @@ export async function compositionStatusCommand(options: CompositionOptions = {})
       for (const entry of recentEntries) {
         const statusColor = entry.success ? chalk.green : chalk.red;
         console.log(
-          `  ${statusColor(entry.operation)} - ${entry.timestamp.split("T")[0]} (${entry.fragments.length} fragments)`,
+          `  ${statusColor(entry.operation)} - ${entry.timestamp.split('T')[0]} (${entry.fragments.length} fragments)`
         );
       }
 
@@ -490,14 +490,14 @@ export async function compositionStatusCommand(options: CompositionOptions = {})
         console.log(chalk.dim(`  ... and ${config.integrationHistory.length - 3} more entries`));
       }
     } else {
-      console.log(chalk.dim("  No integration history"));
+      console.log(chalk.dim('  No integration history'));
     }
 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red("Failed to get composition status:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Failed to get composition status:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 1;
   }
@@ -508,17 +508,17 @@ export async function compositionStatusCommand(options: CompositionOptions = {})
 async function getProjectDetails(options: CompositionOptions): Promise<{
   name: string;
   description: string;
-  compositionTemplate: "basic" | "advanced" | "enterprise";
+  compositionTemplate: 'basic' | 'advanced' | 'enterprise';
   enableFragments: boolean;
 }> {
   const questions: any[] = [];
 
   // Try to infer from existing files
-  const packageJsonPath = path.join(process.cwd(), "package.json");
-  const cueModPath = path.join(process.cwd(), "cue.mod", "module.cue");
+  const packageJsonPath = path.join(process.cwd(), 'package.json');
+  const cueModPath = path.join(process.cwd(), 'cue.mod', 'module.cue');
 
   let defaultName = path.basename(process.cwd());
-  let defaultDescription = "CUE project with composition system";
+  let defaultDescription = 'CUE project with composition system';
 
   if (await fs.pathExists(packageJsonPath)) {
     try {
@@ -531,33 +531,33 @@ async function getProjectDetails(options: CompositionOptions): Promise<{
   }
 
   questions.push({
-    type: "input",
-    name: "name",
-    message: "Project name:",
+    type: 'input',
+    name: 'name',
+    message: 'Project name:',
     default: defaultName,
     validate: (input: string) => {
-      if (!input.trim()) return "Project name is required";
+      if (!input.trim()) return 'Project name is required';
       return true;
     },
   });
 
   questions.push({
-    type: "input",
-    name: "description",
-    message: "Project description:",
+    type: 'input',
+    name: 'description',
+    message: 'Project description:',
     default: defaultDescription,
   });
 
   questions.push({
-    type: "list",
-    name: "compositionTemplate",
-    message: "Choose composition template:",
+    type: 'list',
+    name: 'compositionTemplate',
+    message: 'Choose composition template:',
     choices: [
-      { name: "Basic - Simple fragment management with auto-conflict resolution", value: "basic" },
-      { name: "Advanced - Manual conflict resolution with detailed validation", value: "advanced" },
-      { name: "Enterprise - Strict validation with comprehensive recovery", value: "enterprise" },
+      { name: 'Basic - Simple fragment management with auto-conflict resolution', value: 'basic' },
+      { name: 'Advanced - Manual conflict resolution with detailed validation', value: 'advanced' },
+      { name: 'Enterprise - Strict validation with comprehensive recovery', value: 'enterprise' },
     ],
-    default: "basic",
+    default: 'basic',
   });
 
   const answers = await inquirer.prompt(questions);

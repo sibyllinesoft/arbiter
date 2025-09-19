@@ -15,7 +15,7 @@ export interface CompatibilityResult {
     component: string;
     currentVersion: string;
     requiredVersion: string;
-    severity: "error" | "warning" | "info";
+    severity: 'error' | 'warning' | 'info';
     message: string;
   }>;
   recommendations?: string[];
@@ -35,14 +35,14 @@ export interface CompatibilityResult {
 }
 
 export const CURRENT_VERSIONS: VersionSet = {
-  arbiter: "1.0.0",
-  cue: "0.6.0",
-  node: "20.0.0",
+  arbiter: '1.0.0',
+  cue: '0.6.0',
+  node: '20.0.0',
 };
 
 export async function checkCompatibility(
-  _versions: VersionSet,
-  _targetVersion?: string,
+  _versions: Partial<VersionSet>,
+  _allowCompat?: boolean
 ): Promise<CompatibilityResult> {
   // Stub implementation
   return {
@@ -54,16 +54,56 @@ export async function checkCompatibility(
   };
 }
 
-export async function executeMigration(_fromVersion: string, _toVersion: string): Promise<boolean> {
+export async function executeMigration(
+  _component: string,
+  _fromVersion: string,
+  _toVersion: string
+): Promise<{
+  success: boolean;
+  operations_performed: string[];
+  warnings: string[];
+  timestamp: string;
+}> {
   // Stub implementation
-  return true;
+  return {
+    success: true,
+    operations_performed: [`Migration from ${_fromVersion} to ${_toVersion} for ${_component}`],
+    warnings: [],
+    timestamp: new Date().toISOString(),
+  };
 }
 
-export function getRuntimeVersionInfo(): VersionSet {
+export function getRuntimeVersionInfo(): {
+  versions: VersionSet;
+  build_info: {
+    timestamp: string;
+    commit_hash?: string;
+    deterministic: boolean;
+    reproducible: boolean;
+  };
+  compatibility: {
+    strict_mode: boolean;
+    allow_compat_flag: boolean;
+    migration_support: boolean;
+  };
+} {
   return {
-    arbiter: CURRENT_VERSIONS.arbiter,
-    cue: CURRENT_VERSIONS.cue,
-    node: process.version,
+    versions: {
+      arbiter: CURRENT_VERSIONS.arbiter,
+      cue: CURRENT_VERSIONS.cue,
+      node: process.version,
+    },
+    build_info: {
+      timestamp: new Date().toISOString(),
+      commit_hash: undefined,
+      deterministic: false,
+      reproducible: false,
+    },
+    compatibility: {
+      strict_mode: false,
+      allow_compat_flag: true,
+      migration_support: true,
+    },
   };
 }
 

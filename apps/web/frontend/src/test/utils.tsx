@@ -1,22 +1,19 @@
-import React, { ReactElement } from 'react'
-import { render, RenderOptions } from '@testing-library/react'
+import React, { ReactElement } from 'react';
+import { render, RenderOptions } from '@testing-library/react';
 
 // Mock contexts that might be needed for component testing
 const MockAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return <>{children}</>
-}
+  return <>{children}</>;
+};
 
-const customRender = (
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
-) =>
+const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
   render(ui, {
     wrapper: MockAppProvider,
     ...options,
-  })
+  });
 
-export * from '@testing-library/react'
-export { customRender as render }
+export * from '@testing-library/react';
+export { customRender as render };
 
 // Common test utilities
 export const mockWebSocket = () => {
@@ -26,11 +23,11 @@ export const mockWebSocket = () => {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
     readyState: WebSocket.OPEN,
-  }
-  
-  global.WebSocket = vi.fn().mockImplementation(() => mockWs)
-  return mockWs
-}
+  };
+
+  global.WebSocket = vi.fn().mockImplementation(() => mockWs);
+  return mockWs;
+};
 
 export const mockMonacoEditor = () => {
   return {
@@ -41,8 +38,8 @@ export const mockMonacoEditor = () => {
     dispose: vi.fn(),
     onDidChangeModelContent: vi.fn(),
     focus: vi.fn(),
-  }
-}
+  };
+};
 
 // Mock for react-toastify
 export const mockToast = {
@@ -51,4 +48,4 @@ export const mockToast = {
   info: vi.fn(),
   warning: vi.fn(),
   dismiss: vi.fn(),
-}
+};

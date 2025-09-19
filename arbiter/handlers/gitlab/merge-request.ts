@@ -1,5 +1,5 @@
-import type { WebhookEvent, HandlerResponse } from '../shared/utils.js';
-import { logEvent, validatePayload, createResponse } from '../shared/utils.js';
+import type { HandlerResponse, WebhookEvent } from '../shared/utils.js';
+import { createResponse, logEvent, validatePayload } from '../shared/utils.js';
 
 export interface GitLabMRPayload {
   object_kind: 'merge_request';
@@ -17,7 +17,16 @@ export interface GitLabMRPayload {
     title: string;
     description: string;
     state: 'opened' | 'closed' | 'merged';
-    action: 'open' | 'close' | 'reopen' | 'update' | 'approved' | 'unapproved' | 'approval' | 'unapproval' | 'merge';
+    action:
+      | 'open'
+      | 'close'
+      | 'reopen'
+      | 'update'
+      | 'approved'
+      | 'unapproved'
+      | 'approval'
+      | 'unapproval'
+      | 'merge';
     source_branch: string;
     target_branch: string;
     source_project_id: number;
@@ -40,14 +49,19 @@ export interface GitLabMRPayload {
 
 /**
  * GitLab Merge Request Event Handler
- * 
+ *
  * Handles GitLab MR events including validation of branch naming,
  * MR titles, and enforces development workflow rules.
  */
 export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerResponse> {
   try {
     // Validate the payload structure
-    const validationResult = validatePayload(event.payload, ['object_kind', 'object_attributes', 'project', 'user']);
+    const validationResult = validatePayload(event.payload, [
+      'object_kind',
+      'object_attributes',
+      'project',
+      'user',
+    ]);
     if (!validationResult.isValid) {
       return createResponse(false, `Invalid payload: ${validationResult.errors.join(', ')}`);
     }
@@ -78,12 +92,15 @@ export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerRespon
     if (mr.action === 'open' || mr.action === 'update') {
       const sourceBranch = mr.source_branch;
       const targetBranch = mr.target_branch;
-      
+
       // Check feature branch naming
       if (sourceBranch.startsWith('feature/')) {
         const featureBranchPattern = /^feature\/[a-z0-9-]+$/;
         if (!featureBranchPattern.test(sourceBranch)) {
-          return createResponse(false, `Invalid feature branch naming: ${sourceBranch}. Use format: feature/your-feature-name`);
+          return createResponse(
+            false,
+            `Invalid feature branch naming: ${sourceBranch}. Use format: feature/your-feature-name`
+          );
         }
       }
 
@@ -91,35 +108,57 @@ export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerRespon
       if (sourceBranch.startsWith('hotfix/')) {
         const hotfixBranchPattern = /^hotfix\/[a-z0-9-]+$/;
         if (!hotfixBranchPattern.test(sourceBranch)) {
-          return createResponse(false, `Invalid hotfix branch naming: ${sourceBranch}. Use format: hotfix/your-fix-name`);
+          return createResponse(
+            false,
+            `Invalid hotfix branch naming: ${sourceBranch}. Use format: hotfix/your-fix-name`
+          );
         }
       }
 
       // Validate MR title follows conventional commit format
       const conventionalTitlePattern = /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+/;
       if (!conventionalTitlePattern.test(mr.title)) {
-        return createResponse(false, `MR title should follow conventional commit format. Current: "${mr.title}"`);
+        return createResponse(
+          false,
+          `MR title should follow conventional commit format. Current: "${mr.title}"`
+        );
       }
 
       // Check if MR description is provided for non-draft MRs
-      if (!mr.draft && !mr.work_in_progress && (!mr.description || mr.description.trim().length < 10)) {
-        return createResponse(false, 'MR description is required and should be at least 10 characters long');
+      if (
+        !mr.draft &&
+        !mr.work_in_progress &&
+        (!mr.description || mr.description.trim().length < 10)
+      ) {
+        return createResponse(
+          false,
+          'MR description is required and should be at least 10 characters long'
+        );
       }
 
       // Validate target branch
       const allowedTargetBranches = ['main', 'master', 'develop', 'staging'];
       if (!allowedTargetBranches.includes(targetBranch)) {
-        return createResponse(false, `Invalid target branch: ${targetBranch}. Allowed: ${allowedTargetBranches.join(', ')}`);
+        return createResponse(
+          false,
+          `Invalid target branch: ${targetBranch}. Allowed: ${allowedTargetBranches.join(', ')}`
+        );
       }
 
       // Check for direct merges to main/master (should use develop)
       if (['main', 'master'].includes(targetBranch) && !sourceBranch.startsWith('hotfix/')) {
-        return createResponse(false, 'Feature branches should target "develop" branch, not main/master directly (except for hotfixes)');
+        return createResponse(
+          false,
+          'Feature branches should target "develop" branch, not main/master directly (except for hotfixes)'
+        );
       }
 
       // Check merge status for merge-ready MRs
       if (!mr.work_in_progress && !mr.draft && mr.merge_status === 'cannot_be_merged') {
-        return createResponse(false, 'Merge conflicts detected. Please resolve conflicts before proceeding.');
+        return createResponse(
+          false,
+          'Merge conflicts detected. Please resolve conflicts before proceeding.'
+        );
       }
     }
 
@@ -142,11 +181,11 @@ export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerRespon
         message = `New MR opened: "${mr.title}" (!${mr.iid})`;
         metadata.isDraft = mr.draft || mr.work_in_progress;
         break;
-      
+
       case 'merge':
         message = `MR merged: "${mr.title}" (!${mr.iid})`;
         metadata.merged = true;
-        
+
         // Log successful merge
         await logEvent({
           type: 'gitlab.mr.merged',
@@ -158,20 +197,20 @@ export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerRespon
           targetBranch: mr.target_branch,
         });
         break;
-      
+
       case 'close':
         message = `MR closed: "${mr.title}" (!${mr.iid})`;
         metadata.merged = mr.state === 'merged';
         break;
-      
+
       case 'update':
         message = `MR updated: "${mr.title}" (!${mr.iid})`;
         break;
-      
+
       case 'reopen':
         message = `MR reopened: "${mr.title}" (!${mr.iid})`;
         break;
-      
+
       case 'approved':
       case 'unapproved':
       case 'approval':
@@ -182,7 +221,6 @@ export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerRespon
     }
 
     return createResponse(true, message, metadata);
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     await logEvent({
@@ -190,7 +228,7 @@ export async function handleGitLabMR(event: WebhookEvent): Promise<HandlerRespon
       timestamp: new Date().toISOString(),
       error: errorMessage,
     });
-    
+
     return createResponse(false, `Handler error: ${errorMessage}`);
   }
 }

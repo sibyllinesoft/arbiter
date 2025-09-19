@@ -1,14 +1,14 @@
-import type { WebhookEvent, HandlerResponse } from '../../shared/utils.js';
+import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
 import { createResponse, logEvent, sanitizePayload } from '../../shared/utils.js';
-import type { AIProvider, AICommand, AIProviderConfig, AIAgentConfig } from './types.js';
 import type { IHookAdapter } from '../adapters/base/IHookAdapter.js';
+import type { AIAgentConfig, AICommand, AIProvider, AIProviderConfig } from './types.js';
 
 /**
  * Base class for AI-powered webhook handlers
- * 
+ *
  * This class provides a foundation for creating AI agents that can process
  * webhook events with natural language understanding and automated actions.
- * 
+ *
  * Features:
  * - Configurable AI provider integration (Claude, OpenAI, Gemini)
  * - Command-line style interface (/analyze, /review, etc.)
@@ -48,9 +48,9 @@ export abstract class AIAgentHandler {
 
       // Check if agent is enabled
       if (!this.config.enabled) {
-        return createResponse(true, 'AI Agent is disabled', { 
+        return createResponse(true, 'AI Agent is disabled', {
           skipped: true,
-          reason: 'disabled' 
+          reason: 'disabled',
         });
       }
 
@@ -68,10 +68,10 @@ export abstract class AIAgentHandler {
 
       // Check for AI commands in the event
       const aiCommands = this.extractAICommands(eventData.data);
-      
+
       // Process the event
       let result: HandlerResponse;
-      
+
       if (aiCommands.length > 0) {
         // Handle AI commands
         result = await this.processAICommands(aiCommands, eventData.data, event);
@@ -91,11 +91,10 @@ export abstract class AIAgentHandler {
       });
 
       return result;
-
     } catch (error) {
       const processingTime = Date.now() - startTime;
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       await this.logActivity({
         type: 'ai.agent.event.error',
         timestamp: new Date().toISOString(),
@@ -111,7 +110,10 @@ export abstract class AIAgentHandler {
   /**
    * Process standard webhook events (without AI commands)
    */
-  protected abstract processEvent(eventData: any, originalEvent: WebhookEvent): Promise<HandlerResponse>;
+  protected abstract processEvent(
+    eventData: any,
+    originalEvent: WebhookEvent
+  ): Promise<HandlerResponse>;
 
   /**
    * Initialize available AI commands
@@ -144,7 +146,9 @@ export abstract class AIAgentHandler {
   /**
    * Extract AI commands from event data (looks for /command patterns)
    */
-  protected extractAICommands(eventData: any): Array<{ command: string; args: string[]; context: any }> {
+  protected extractAICommands(
+    eventData: any
+  ): Array<{ command: string; args: string[]; context: any }> {
     const commands: Array<{ command: string; args: string[]; context: any }> = [];
     const commandPattern = /\/([a-zA-Z-]+)(\s+(.+))?/g;
 
@@ -161,7 +165,7 @@ export abstract class AIAgentHandler {
       while ((match = commandPattern.exec(text)) !== null) {
         const [, command, , argsString] = match;
         const args = argsString ? argsString.split(/\s+/).filter(arg => arg.length > 0) : [];
-        
+
         if (this.commands.has(command.toLowerCase())) {
           commands.push({
             command: command.toLowerCase(),
@@ -190,13 +194,19 @@ export abstract class AIAgentHandler {
       if (!aiCommand) continue;
 
       try {
-        const result = await this.executeAICommand(aiCommand, args, context, eventData, originalEvent);
+        const result = await this.executeAICommand(
+          aiCommand,
+          args,
+          context,
+          eventData,
+          originalEvent
+        );
         results.push({ command, result });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        results.push({ 
-          command, 
-          result: { success: false, message: `Command failed: ${errorMessage}` } 
+        results.push({
+          command,
+          result: { success: false, message: `Command failed: ${errorMessage}` },
         });
       }
     }
@@ -241,7 +251,7 @@ export abstract class AIAgentHandler {
 
       // Call AI provider
       const aiResponse = await this.provider.processCommand(command, aiContext);
-      
+
       if (!aiResponse.success) {
         return createResponse(false, `AI processing failed: ${aiResponse.error}`);
       }
@@ -256,7 +266,6 @@ export abstract class AIAgentHandler {
         aiResponse: aiResponse.data,
         actions: actionResults,
       });
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return createResponse(false, `AI command execution failed: ${errorMessage}`);
@@ -279,10 +288,10 @@ export abstract class AIAgentHandler {
         results.push({ action: action.type, success: true, result });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        results.push({ 
-          action: action.type, 
-          success: false, 
-          error: errorMessage 
+        results.push({
+          action: action.type,
+          success: false,
+          error: errorMessage,
         });
       }
     }

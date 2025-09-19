@@ -17,7 +17,7 @@ interface FriendlyDiagramProps {
 export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
   projectId,
   className = '',
-  title = 'CUE Specification - Friendly View'
+  title = 'CUE Specification - Friendly View',
 }) => {
   const [resolvedData, setResolvedData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,13 +67,17 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
     if (value === null) {
       return <span className="text-gray-400 italic">null</span>;
     }
-    
+
     if (value === undefined) {
       return <span className="text-gray-400 italic">undefined</span>;
     }
 
     if (typeof value === 'boolean') {
-      return <span className={`font-mono ${value ? 'text-green-600' : 'text-red-600'}`}>{String(value)}</span>;
+      return (
+        <span className={`font-mono ${value ? 'text-green-600' : 'text-red-600'}`}>
+          {String(value)}
+        </span>
+      );
     }
 
     if (typeof value === 'number') {
@@ -88,7 +92,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
       if (value.length === 0) {
         return <span className="text-gray-400 italic">[]</span>;
       }
-      
+
       return (
         <div className="space-y-2">
           <span className="text-gray-600 text-sm font-medium">Array ({value.length} items)</span>
@@ -111,11 +115,18 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
 
       return (
         <div className="space-y-2">
-          <span className="text-gray-600 text-sm font-medium">Object ({entries.length} properties)</span>
+          <span className="text-gray-600 text-sm font-medium">
+            Object ({entries.length} properties)
+          </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {entries.map(([key, val]) => {
               // For simple values, render as label/value pairs
-              if (typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean' || val === null) {
+              if (
+                typeof val === 'string' ||
+                typeof val === 'number' ||
+                typeof val === 'boolean' ||
+                val === null
+              ) {
                 return (
                   <div key={key} className="flex flex-col space-y-1 p-2 bg-gray-50 rounded border">
                     <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
@@ -127,17 +138,21 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                   </div>
                 );
               }
-              
+
               // For complex values (objects, arrays), render as full-width nested cards
               return (
                 <div key={key} className="col-span-full">
-                  <div className={`border rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors ${
-                    level === 0 ? 'border-gray-200' : 'border-gray-300'
-                  }`}>
+                  <div
+                    className={`border rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors ${
+                      level === 0 ? 'border-gray-200' : 'border-gray-300'
+                    }`}
+                  >
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className={`font-semibold text-gray-800 ${
-                        level === 0 ? 'text-base' : level === 1 ? 'text-sm' : 'text-xs'
-                      }`}>
+                      <h4
+                        className={`font-semibold text-gray-800 ${
+                          level === 0 ? 'text-base' : level === 1 ? 'text-sm' : 'text-xs'
+                        }`}
+                      >
                         {key}
                       </h4>
                       <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
@@ -180,46 +195,50 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
             ) : (
               <div className="w-5 h-5" />
             )}
-            <h3 className="text-lg font-semibold text-gray-900 text-left">
-              Main
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 text-left">Main</h3>
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">{entries.length} properties</span>
             {hasContent ? (
               <CheckCircle className="w-4 h-4 text-green-500" />
             ) : (
-              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
-                empty
-              </span>
+              <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">empty</span>
             )}
           </div>
         </button>
-        
+
         {isMainExpanded && hasContent && (
           <div className="border-t border-gray-200 p-4 bg-gray-50/50">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {entries.map(([key, value]) => {
                 // For simple values, render as label/value pairs
-                if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+                if (
+                  typeof value === 'string' ||
+                  typeof value === 'number' ||
+                  typeof value === 'boolean' ||
+                  value === null
+                ) {
                   return (
-                    <div key={key} className="flex flex-col space-y-1 p-2 bg-gray-50 rounded border">
+                    <div
+                      key={key}
+                      className="flex flex-col space-y-1 p-2 bg-gray-50 rounded border"
+                    >
                       <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
                         {key}
                       </span>
-                      <div className="text-sm">
-                        {renderValue(value, 1, key)}
-                      </div>
+                      <div className="text-sm">{renderValue(value, 1, key)}</div>
                     </div>
                   );
                 }
-                
+
                 // For complex values (objects, arrays), render as full-width nested cards
                 const isCardExpanded = expandedCards.has(key);
-                const hasContent = value !== null && value !== undefined &&
+                const hasContent =
+                  value !== null &&
+                  value !== undefined &&
                   (typeof value !== 'object' ||
-                   (Array.isArray(value) && value.length > 0) ||
-                   (!Array.isArray(value) && Object.keys(value as object).length > 0));
+                    (Array.isArray(value) && value.length > 0) ||
+                    (!Array.isArray(value) && Object.keys(value as object).length > 0));
 
                 return (
                   <div key={key} className="col-span-full">
@@ -239,13 +258,13 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                           ) : (
                             <div className="w-4 h-4" />
                           )}
-                          <h4 className="text-base font-semibold text-gray-800">
-                            {key}
-                          </h4>
+                          <h4 className="text-base font-semibold text-gray-800">{key}</h4>
                         </div>
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded">
-                            {Array.isArray(value) ? `array (${value.length})` : `object (${Object.keys(value as object).length})`}
+                            {Array.isArray(value)
+                              ? `array (${value.length})`
+                              : `object (${Object.keys(value as object).length})`}
                           </span>
                           {hasContent ? (
                             <CheckCircle className="w-3 h-3 text-green-500" />
@@ -256,12 +275,10 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                           )}
                         </div>
                       </button>
-                      
+
                       {isCardExpanded && hasContent && (
                         <div className="border-t border-gray-200 p-3 bg-gray-50/50">
-                          <div className="ml-2">
-                            {renderValue(value, 1, key)}
-                          </div>
+                          <div className="ml-2">{renderValue(value, 1, key)}</div>
                         </div>
                       )}
                     </div>
@@ -353,7 +370,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={() => {
@@ -382,9 +399,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
 
       {/* Scrollable Content */}
       <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-transparent">
-        <div className="space-y-3">
-          {renderMainCard(resolvedData)}
-        </div>
+        <div className="space-y-3">{renderMainCard(resolvedData)}</div>
       </div>
     </div>
   );

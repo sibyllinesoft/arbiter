@@ -13,46 +13,52 @@ import { statusVariants, cn } from '../variants';
 export interface ToastProps {
   /** Unique identifier for the toast */
   id?: string;
-  
+
   /** Toast variant determines the visual style and icon */
   variant?: 'success' | 'warning' | 'error' | 'info' | 'loading' | 'neutral';
-  
+
   /** Toast title */
   title: string;
-  
+
   /** Toast description */
   description?: string;
-  
+
   /** Whether the toast is visible */
   visible?: boolean;
-  
+
   /** Duration in milliseconds before auto-dismiss (0 for no auto-dismiss) */
   duration?: number;
-  
+
   /** Position of the toast */
-  position?: 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center';
-  
+  position?:
+    | 'top-right'
+    | 'top-left'
+    | 'bottom-right'
+    | 'bottom-left'
+    | 'top-center'
+    | 'bottom-center';
+
   /** Whether to show close button */
   closable?: boolean;
-  
+
   /** Whether to show progress bar */
   showProgress?: boolean;
-  
+
   /** Whether the toast can be dismissed by clicking */
   dismissible?: boolean;
-  
+
   /** Callback when toast is closed */
   onClose?: () => void;
-  
+
   /** Callback when toast is clicked */
   onClick?: () => void;
-  
+
   /** Custom icon to override default */
   icon?: ReactNode;
-  
+
   /** Custom className for additional styling */
   className?: string;
-  
+
   /** Action buttons or content */
   action?: ReactNode;
 }
@@ -97,13 +103,13 @@ function createProgressUpdater(
 ) {
   return () => {
     if (!startTimeRef.current) return;
-    
+
     const elapsed = Date.now() - startTimeRef.current;
     const remaining = Math.max(0, duration - elapsed);
     const progressValue = (remaining / duration) * 100;
-    
+
     setProgress(progressValue);
-    
+
     if (remaining > 0) {
       requestAnimationFrame(createProgressUpdater(startTimeRef, duration, setProgress));
     }
@@ -126,27 +132,23 @@ function setupAutoDismiss(
   }
 
   const startTimeRef = { current: Date.now() };
-  
+
   // Setup progress updates if requested
   if (showProgress) {
     const updateProgress = createProgressUpdater(startTimeRef, duration, setProgress);
     updateProgress();
   }
-  
+
   // Setup auto-dismiss timer
   const timeoutId = setTimeout(handleClose, duration);
-  
+
   return () => clearTimeout(timeoutId);
 }
 
 /**
  * Create toast event handlers
  */
-function createToastHandlers(
-  dismissible: boolean,
-  onClose?: () => void,
-  onClick?: () => void
-) {
+function createToastHandlers(dismissible: boolean, onClose?: () => void, onClick?: () => void) {
   const handleClose = () => {
     onClose?.();
   };
@@ -171,16 +173,15 @@ function createToastHandlers(
  */
 function renderToastIcon(variant: ToastProps['variant'], icon?: ReactNode, statusClasses?: string) {
   const IconComponent = icons[variant];
-  
+
   return (
     <div className={cn('flex-shrink-0 mt-0.5', statusClasses)}>
-      {icon || (
-        variant === 'loading' ? (
+      {icon ||
+        (variant === 'loading' ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
           <IconComponent className="h-5 w-5" />
-        )
-      )}
+        ))}
     </div>
   );
 }
@@ -191,18 +192,14 @@ function renderToastIcon(variant: ToastProps['variant'], icon?: ReactNode, statu
 function renderToastContent(title: string, description?: string, action?: ReactNode) {
   return (
     <div className="flex-1 min-w-0">
-      <h3 className={cn('font-semibold text-sm text-graphite-900')}>
-        {title}
-      </h3>
-      
+      <h3 className={cn('font-semibold text-sm text-graphite-900')}>{title}</h3>
+
       {description && (
-        <p className={cn('mt-1 text-sm text-graphite-600 leading-relaxed')}>
-          {description}
-        </p>
+        <p className={cn('mt-1 text-sm text-graphite-600 leading-relaxed')}>{description}</p>
       )}
-      
+
       {action && (
-        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-3" onClick={e => e.stopPropagation()}>
           {action}
         </div>
       )}
@@ -215,7 +212,7 @@ function renderToastContent(title: string, description?: string, action?: ReactN
  */
 function renderCloseButton(closable: boolean, handleCloseClick: (e: React.MouseEvent) => void) {
   if (!closable) return null;
-  
+
   return (
     <button
       type="button"
@@ -245,10 +242,10 @@ function renderProgressBar(
   if (!showProgress || duration <= 0 || variant === 'loading') {
     return null;
   }
-  
+
   return (
     <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden">
-      <div 
+      <div
         className={cn(
           'h-full transition-all duration-100 ease-linear',
           statusDot.replace('bg-', 'bg-')
@@ -291,14 +288,7 @@ export function Toast({
 
   // Auto-dismiss effect with progress
   useEffect(() => {
-    return setupAutoDismiss(
-      duration,
-      isVisible,
-      variant,
-      showProgress,
-      setProgress,
-      handleClose
-    );
+    return setupAutoDismiss(duration, isVisible, variant, showProgress, setProgress, handleClose);
   }, [duration, isVisible, variant, showProgress, handleClose]);
 
   // Update visibility when prop changes
@@ -321,10 +311,10 @@ export function Toast({
         'max-w-sm w-full',
         'transform transition-all duration-300 ease-out',
         'animate-in slide-in-from-top-2 fade-in',
-        
+
         // Position
         positionClasses[position],
-        
+
         // Custom className
         className
       )}
@@ -338,12 +328,12 @@ export function Toast({
           'relative flex items-start gap-3 p-4 rounded-lg shadow-lg border',
           'backdrop-blur-sm bg-white/95',
           'transform transition-transform hover:scale-[1.02]',
-          
+
           // Variant styles
           status.border,
-          
+
           // Clickable styles
-          (dismissible || onClick) && 'cursor-pointer hover:shadow-xl',
+          (dismissible || onClick) && 'cursor-pointer hover:shadow-xl'
         )}
         onClick={handleClick}
       >
@@ -362,26 +352,26 @@ export function Toast({
 export interface ToastContainerProps {
   /** Maximum number of toasts to show */
   limit?: number;
-  
+
   /** Position of toasts */
   position?: ToastProps['position'];
-  
+
   /** Gap between toasts */
   gap?: 'sm' | 'md' | 'lg';
-  
+
   /** Custom className for the container */
   className?: string;
-  
+
   /** Array of toasts to display */
   toasts?: Omit<ToastProps, 'position'>[];
-  
+
   /** Callback when a toast is closed */
   onToastClose?: (id: string) => void;
 }
 
 const gapClasses = {
   sm: 'space-y-1',
-  md: 'space-y-2',  
+  md: 'space-y-2',
   lg: 'space-y-4',
 } as const;
 
@@ -407,7 +397,7 @@ export function ToastContainer({
       aria-live="polite"
       aria-label="Notifications"
     >
-      {visibleToasts.map((toast) => (
+      {visibleToasts.map(toast => (
         <Toast
           key={toast.id}
           {...toast}
@@ -463,7 +453,7 @@ export class ToastManager {
         options.onClose?.();
       },
     };
-    
+
     this.toasts.set(id, toast);
     this.notify();
     return id;

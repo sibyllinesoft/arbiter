@@ -1,8 +1,8 @@
 /**
  * Intermediate Representation (IR) generator for diagrams and visualizations
  */
-import type { IRKind, IRResponse } from "./types.ts";
-import { getCurrentTimestamp, logger } from "./utils.ts";
+import type { IRKind, IRResponse } from './types.ts';
+import { getCurrentTimestamp, logger } from './utils.ts';
 
 export class IRGenerator {
   /**
@@ -15,17 +15,29 @@ export class IRGenerator {
       let data: Record<string, unknown>;
 
       switch (kind) {
-        case "flow":
+        case 'flow':
           data = this.generateFlowIR(resolved);
           break;
-        case "fsm":
+        case 'fsm':
           data = this.generateFsmIR(resolved);
           break;
-        case "view":
+        case 'view':
           data = this.generateViewIR(resolved);
           break;
-        case "site":
+        case 'site':
           data = this.generateSiteIR(resolved);
+          break;
+        case 'capabilities':
+          data = this.generateCapabilitiesIR(resolved);
+          break;
+        case 'flows':
+          data = this.generateFlowsIR(resolved);
+          break;
+        case 'dependencies':
+          data = this.generateDependenciesIR(resolved);
+          break;
+        case 'coverage':
+          data = this.generateCoverageIR(resolved);
           break;
         default:
           throw new Error(`Unknown IR kind: ${kind}`);
@@ -46,10 +58,10 @@ export class IRGenerator {
         generated_at: getCurrentTimestamp(),
       };
     } catch (error) {
-      logger.error("IR generation failed", error instanceof Error ? error : undefined, { kind });
+      logger.error('IR generation failed', error instanceof Error ? error : undefined, { kind });
 
       throw new Error(
-        `Failed to generate ${kind} IR: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to generate ${kind} IR: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }
@@ -83,7 +95,7 @@ export class IRGenerator {
               edges.push({
                 from: depId,
                 to: nodeId,
-                label: step.transition || "",
+                label: step.transition || '',
               });
             });
           }
@@ -108,17 +120,20 @@ export class IRGenerator {
    */
   private generateFsmIR(resolved: Record<string, unknown>): Record<string, unknown> {
     // Handle both CUE format (states) and legacy format (stateModels)
-    const stateModels = (resolved.states as Record<string, any>) || (resolved.stateModels as Record<string, any>) || {};
+    const stateModels =
+      (resolved.states as Record<string, any>) ||
+      (resolved.stateModels as Record<string, any>) ||
+      {};
     const fsms: any[] = [];
 
     Object.entries(stateModels).forEach(([fsmId, model]) => {
       const states: Record<string, any> = {};
 
-      if (model.states && typeof model.states === "object") {
+      if (model.states && typeof model.states === 'object') {
         Object.entries(model.states).forEach(([stateId, state]: [string, any]) => {
           states[stateId] = {
             actions: state.actions || [],
-            transitions: state.transitions || state.on || {}
+            transitions: state.transitions || state.on || {},
           };
         });
       }
@@ -126,7 +141,7 @@ export class IRGenerator {
       fsms.push({
         id: fsmId,
         name: model.name || fsmId,
-        initial: model.initialState || model.initial || "idle",
+        initial: model.initialState || model.initial || 'idle',
         states,
       });
     });
@@ -152,21 +167,21 @@ export class IRGenerator {
       // Extract widgets from route components and map with locators
       if (route.components && Array.isArray(route.components)) {
         route.components.forEach((component: any) => {
-          if (component.type === "button" && component.token) {
+          if (component.type === 'button' && component.token) {
             widgets.push({
-              type: "button",
+              type: 'button',
               token: component.token,
               text: component.text || component.token,
             });
-          } else if (component.type === "input" && component.token) {
+          } else if (component.type === 'input' && component.token) {
             widgets.push({
-              type: "input",
+              type: 'input',
               token: component.token,
               label: component.label || component.token,
             });
-          } else if (component.type === "table" && component.token) {
+          } else if (component.type === 'table' && component.token) {
             widgets.push({
-              type: "table",
+              type: 'table',
               token: component.token,
               columns: component.columns || [],
             });
@@ -176,17 +191,17 @@ export class IRGenerator {
 
       // Also extract widgets from referenced locators
       Object.entries(locators).forEach(([token, _selector]) => {
-        if (token.startsWith("btn:")) {
+        if (token.startsWith('btn:')) {
           widgets.push({
-            type: "button",
+            type: 'button',
             token,
-            text: token.replace("btn:", ""),
+            text: token.replace('btn:', ''),
           });
-        } else if (token.startsWith("input:")) {
+        } else if (token.startsWith('input:')) {
           widgets.push({
-            type: "input",
+            type: 'input',
             token,
-            label: token.replace("input:", ""),
+            label: token.replace('input:', ''),
           });
         }
       });
@@ -234,7 +249,7 @@ export class IRGenerator {
       routes.forEach((otherRoute: any, otherIndex: number) => {
         if (index !== otherIndex && route.capabilities && otherRoute.capabilities) {
           const sharedCaps = route.capabilities.filter((cap: string) =>
-            otherRoute.capabilities.includes(cap),
+            otherRoute.capabilities.includes(cap)
           );
 
           if (sharedCaps.length > 0) {
@@ -242,8 +257,8 @@ export class IRGenerator {
             edges.push({
               from: routeId,
               to: otherRouteId,
-              label: sharedCaps.join(", "),
-              type: "capability",
+              label: sharedCaps.join(', '),
+              type: 'capability',
             });
           }
         }
@@ -272,20 +287,20 @@ export class IRGenerator {
   private getFlowStepKind(step: any): string {
     // Handle CUE specification format
     if (step.type) return step.type;
-    
+
     // Fallback to legacy test format
-    if (step.visit) return "visit";
-    if (step.click) return "click";
-    if (step.fill) return "fill";
-    if (step.expect) return "expect";
-    if (step.expect_api) return "expect_api";
-    return "process";
+    if (step.visit) return 'visit';
+    if (step.click) return 'click';
+    if (step.fill) return 'fill';
+    if (step.expect) return 'expect';
+    if (step.expect_api) return 'expect_api';
+    return 'process';
   }
 
   private getFlowStepLabel(step: any, index: number): string {
     // Handle CUE specification format
     if (step.name) return step.name;
-    
+
     // Fallback to legacy test format
     if (step.visit) return `Visit: ${step.visit}`;
     if (step.click) return `Click: ${step.click}`;
@@ -298,5 +313,178 @@ export class IRGenerator {
   private computeSpecHash(resolved: Record<string, unknown>): string {
     // Simple hash computation - in production you'd want a proper hash like SHA-256
     return `sha256-${JSON.stringify(resolved).length.toString(16)}`;
+  }
+
+  /**
+   * Generate capabilities IR for dependency graph visualization
+   */
+  private generateCapabilitiesIR(resolved: Record<string, unknown>): Record<string, unknown> {
+    const capabilities = (resolved.capabilities as Record<string, any>) || {};
+    const nodes: any[] = [];
+    const edges: any[] = [];
+    const groups: any[] = [];
+    const domains = new Set<string>();
+
+    // Process capabilities into nodes
+    Object.entries(capabilities).forEach(([capId, capability]) => {
+      const domain = capId.split('.')[0];
+      domains.add(domain);
+
+      nodes.push({
+        id: capId,
+        label: capability.name || capId,
+        type: 'capability',
+        domain: domain,
+        properties: {
+          complexity: capability.complexity || 'medium',
+          priority: capability.priority || 'medium',
+          owner: capability.owner || 'unknown',
+        },
+      });
+
+      // Create dependency edges
+      if (capability.depends_on && Array.isArray(capability.depends_on)) {
+        capability.depends_on.forEach((depId: string) => {
+          edges.push({
+            source: depId,
+            target: capId,
+            type: 'dependency',
+          });
+        });
+      }
+    });
+
+    // Create domain groups
+    domains.forEach(domain => {
+      const domainNodes = nodes.filter(n => n.domain === domain);
+      groups.push({
+        id: domain,
+        label: domain.charAt(0).toUpperCase() + domain.slice(1),
+        nodeIds: domainNodes.map(n => n.id),
+      });
+    });
+
+    return {
+      type: 'directed_graph',
+      nodes,
+      edges,
+      groups,
+      metadata: {
+        totalCapabilities: nodes.length,
+        dependencies: edges.length,
+        domains: domains.size,
+      },
+    };
+  }
+
+  /**
+   * Generate flows IR for flowchart visualization (alias for flow)
+   */
+  private generateFlowsIR(resolved: Record<string, unknown>): Record<string, unknown> {
+    const flows = (resolved.flows as Record<string, any>) || {};
+    const flowList: any[] = [];
+
+    Object.entries(flows).forEach(([flowId, flow]) => {
+      flowList.push({
+        id: flowId,
+        name: flow.name || flowId,
+        steps: flow.steps || [],
+      });
+    });
+
+    return {
+      type: 'flowchart',
+      flows: flowList,
+    };
+  }
+
+  /**
+   * Generate dependencies IR for layered graph visualization
+   */
+  private generateDependenciesIR(resolved: Record<string, unknown>): Record<string, unknown> {
+    const capabilities = (resolved.capabilities as Record<string, any>) || {};
+    const layers: any[] = [];
+    const processed = new Set<string>();
+    let layerIndex = 0;
+
+    // Build dependency layers (topological sort)
+    while (processed.size < Object.keys(capabilities).length && layerIndex < 10) {
+      const currentLayer: any[] = [];
+
+      Object.entries(capabilities).forEach(([capId, capability]) => {
+        if (processed.has(capId)) return;
+
+        const dependencies = capability.depends_on || [];
+        const allDepsProcessed = dependencies.every((dep: string) => processed.has(dep));
+
+        if (allDepsProcessed) {
+          currentLayer.push({
+            id: capId,
+            label: capability.name || capId,
+            dependencies: dependencies,
+          });
+          processed.add(capId);
+        }
+      });
+
+      if (currentLayer.length > 0) {
+        layers.push({
+          level: layerIndex,
+          nodes: currentLayer,
+        });
+      }
+
+      layerIndex++;
+    }
+
+    return {
+      type: 'layered_graph',
+      layers,
+    };
+  }
+
+  /**
+   * Generate coverage IR for test coverage visualization
+   */
+  private generateCoverageIR(resolved: Record<string, unknown>): Record<string, unknown> {
+    const capabilities = (resolved.capabilities as Record<string, any>) || {};
+    const tests = (resolved.tests as Record<string, any>) || {};
+
+    const totalCapabilities = Object.keys(capabilities).length;
+    let coveredCapabilities = 0;
+    const coverage: Record<string, any> = {};
+
+    // Calculate coverage for each capability
+    Object.entries(capabilities).forEach(([capId, capability]) => {
+      const coveringTests = Object.entries(tests).filter(([_, test]) => {
+        const covers = test.covers || [];
+        return covers.includes(capId);
+      });
+
+      const isCovered = coveringTests.length > 0;
+      if (isCovered) coveredCapabilities++;
+
+      coverage[capId] = {
+        covered: isCovered,
+        testCount: coveringTests.length,
+        tests: coveringTests.map(([testId, _]) => testId),
+      };
+    });
+
+    const overallCoverage =
+      totalCapabilities > 0 ? (coveredCapabilities / totalCapabilities) * 100 : 0;
+
+    return {
+      type: 'coverage_graph',
+      coverage: {
+        overall: Math.round(overallCoverage),
+        capabilities: coverage,
+        summary: {
+          total: totalCapabilities,
+          covered: coveredCapabilities,
+          uncovered: totalCapabilities - coveredCapabilities,
+        },
+      },
+    };
   }
 }

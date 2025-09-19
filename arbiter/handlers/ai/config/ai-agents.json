@@ -71,7 +71,7 @@
       "description": "Automated code review with quality, security, and performance analysis",
       "version": "1.0.0",
       "handler": "./ai/agents/CodeReviewAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -82,7 +82,13 @@
       },
 
       "commands": {
-        "enabled": ["review-code", "security-scan", "performance-check", "style-check", "architecture-review"],
+        "enabled": [
+          "review-code",
+          "security-scan",
+          "performance-check",
+          "style-check",
+          "architecture-review"
+        ],
         "disabled": [],
         "customPrompts": {}
       },
@@ -120,7 +126,7 @@
       "description": "Automated issue categorization, prioritization, and triaging",
       "version": "1.0.0",
       "handler": "./ai/agents/IssueAnalysisAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -131,15 +137,18 @@
       },
 
       "commands": {
-        "enabled": ["analyze-issue", "categorize", "estimate", "triage", "suggest-assignee"],
+        "enabled": [
+          "analyze-issue",
+          "categorize",
+          "estimate",
+          "triage",
+          "suggest-assignee"
+        ],
         "disabled": [],
         "customPrompts": {}
       },
 
-      "eventFilters": [
-        "github.issues",
-        "github.issue_comment"
-      ],
+      "eventFilters": ["github.issues", "github.issue_comment"],
 
       "rateLimits": {
         "enabled": true,
@@ -162,7 +171,7 @@
       "description": "Automated documentation generation and maintenance",
       "version": "1.0.0",
       "handler": "./ai/agents/DocumentationAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -173,7 +182,14 @@
       },
 
       "commands": {
-        "enabled": ["generate-docs", "api-docs", "readme", "changelog", "migration-guide", "code-comments"],
+        "enabled": [
+          "generate-docs",
+          "api-docs",
+          "readme",
+          "changelog",
+          "migration-guide",
+          "code-comments"
+        ],
         "disabled": [],
         "customPrompts": {
           "generate-docs": "Focus on creating practical, example-driven documentation that helps developers understand and use the code effectively."
@@ -200,7 +216,7 @@
       "description": "Automated security vulnerability detection and analysis",
       "version": "1.0.0",
       "handler": "./ai/agents/SecurityAgent.js",
-      
+
       "provider": {
         "type": "claude",
         "config": {
@@ -211,7 +227,14 @@
       },
 
       "commands": {
-        "enabled": ["security-scan", "vulnerability-check", "dependency-audit", "auth-review", "data-privacy", "config-security"],
+        "enabled": [
+          "security-scan",
+          "vulnerability-check",
+          "dependency-audit",
+          "auth-review",
+          "data-privacy",
+          "config-security"
+        ],
         "disabled": [],
         "customPrompts": {
           "security-scan": "Prioritize critical and high-severity vulnerabilities. Focus on exploitable issues with clear remediation steps."
@@ -314,12 +337,7 @@
     "healthCheck": {
       "enabled": true,
       "endpoint": "/health/ai",
-      "checks": [
-        "agents",
-        "providers",
-        "logging",
-        "rate-limits"
-      ]
+      "checks": ["agents", "providers", "logging", "rate-limits"]
     },
     "alerting": {
       "enabled": false,

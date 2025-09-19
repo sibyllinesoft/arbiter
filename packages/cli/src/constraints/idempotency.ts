@@ -1,18 +1,18 @@
-import { createHash } from "node:crypto";
-import { ConstraintViolationError, globalConstraintEnforcer } from "./core.js";
+import { createHash } from 'node:crypto';
+import { ConstraintViolationError, globalConstraintEnforcer } from './core.js';
 
 /**
  * Operation types that must be idempotent
  */
 export type IdempotentOperation =
-  | "validate"
-  | "export"
-  | "transform"
-  | "analyze"
-  | "generate"
-  | "bundle"
-  | "diff"
-  | "migrate";
+  | 'validate'
+  | 'export'
+  | 'transform'
+  | 'analyze'
+  | 'generate'
+  | 'bundle'
+  | 'diff'
+  | 'migrate';
 
 /**
  * Idempotency cache entry
@@ -57,14 +57,21 @@ export class IdempotencyValidator {
     inputs: TInput,
     executor: (inputs: TInput) => Promise<TOutput>,
     options: IdempotencyOptions = {},
-    operationId?: string,
+    operationId?: string
   ): Promise<TOutput> {
     const opts = { ...this.defaultOptions, ...options };
     const cacheKey = this.generateCacheKey(operation, inputs);
     const cached = this.cache.get(cacheKey);
 
     if (cached && this.isCacheValid(cached, opts.maxCacheAge)) {
-      return await this.validateCachedResult(cached, executor, inputs, operation, operationId, cacheKey);
+      return await this.validateCachedResult(
+        cached,
+        executor,
+        inputs,
+        operation,
+        operationId,
+        cacheKey
+      );
     }
 
     return await this.executeAndCacheOperation(
@@ -86,25 +93,20 @@ export class IdempotencyValidator {
     inputs: TInput,
     operation: IdempotentOperation,
     operationId?: string,
-    cacheKey?: string,
+    cacheKey?: string
   ): Promise<TOutput> {
     const newResult = await executor(inputs);
     const newOutputHash = this.hashValue(newResult);
 
     if (cached.outputHash !== newOutputHash) {
-      this.throwIdempotencyViolation(
-        "different output",
-        newOutputHash,
-        cached.outputHash,
-        {
-          operationId,
-          operation,
-          cacheKey,
-          cachedTimestamp: cached.timestamp,
-          currentTimestamp: Date.now(),
-          inputHash: cached.inputHash,
-        }
-      );
+      this.throwIdempotencyViolation('different output', newOutputHash, cached.outputHash, {
+        operationId,
+        operation,
+        cacheKey,
+        cachedTimestamp: cached.timestamp,
+        currentTimestamp: Date.now(),
+        inputHash: cached.inputHash,
+      });
     }
 
     this.emitIdempotencyVerified(operationId, operation, cacheKey);
@@ -120,15 +122,15 @@ export class IdempotencyValidator {
     executor: (inputs: TInput) => Promise<TOutput>,
     operationId?: string,
     cacheKey?: string,
-    cached?: IdempotencyRecord,
+    cached?: IdempotencyRecord
   ): Promise<TOutput> {
     const result = await executor(inputs);
     const record = this.createCacheRecord(operation, inputs, result, operationId);
-    
+
     this.cache.set(cacheKey!, record);
     this.handleExpiredCacheValidation(cached, record, operation, operationId, cacheKey);
     this.emitCacheEvent(operationId, operation, cacheKey, record);
-    
+
     return result;
   }
 
@@ -139,7 +141,7 @@ export class IdempotencyValidator {
     operation: IdempotentOperation,
     inputs: TInput,
     result: TOutput,
-    operationId?: string,
+    operationId?: string
   ): IdempotencyRecord {
     return {
       operation,
@@ -162,12 +164,12 @@ export class IdempotencyValidator {
     currentRecord: IdempotencyRecord,
     operation: IdempotentOperation,
     operationId?: string,
-    cacheKey?: string,
+    cacheKey?: string
   ): void {
     if (cached && cached.outputHash !== currentRecord.outputHash) {
       this.emitConstraintViolation(
-        "cache expired but results differ",
-        "consistent results across time",
+        'cache expired but results differ',
+        'consistent results across time',
         {
           operationId,
           operation,
@@ -189,14 +191,14 @@ export class IdempotencyValidator {
     metadata: Record<string, unknown>
   ): never {
     const violation = new ConstraintViolationError(
-      "idempotency",
+      'idempotency',
       `${message}: ${actual}`,
       `consistent output: ${expected}`,
-      metadata,
+      metadata
     );
 
-    globalConstraintEnforcer.emit("constraint:violation", {
-      constraint: "idempotency",
+    globalConstraintEnforcer.emit('constraint:violation', {
+      constraint: 'idempotency',
       violation,
       operation: metadata.operation,
     });
@@ -212,10 +214,10 @@ export class IdempotencyValidator {
     expected: string,
     metadata: Record<string, unknown>
   ): void {
-    const violation = new ConstraintViolationError("idempotency", message, expected, metadata);
+    const violation = new ConstraintViolationError('idempotency', message, expected, metadata);
 
-    globalConstraintEnforcer.emit("constraint:violation", {
-      constraint: "idempotency",
+    globalConstraintEnforcer.emit('constraint:violation', {
+      constraint: 'idempotency',
       violation,
       operation: metadata.operation,
     });
@@ -227,9 +229,9 @@ export class IdempotencyValidator {
   private emitIdempotencyVerified(
     operationId?: string,
     operation?: IdempotentOperation,
-    cacheKey?: string,
+    cacheKey?: string
   ): void {
-    globalConstraintEnforcer.emit("idempotency:verified", {
+    globalConstraintEnforcer.emit('idempotency:verified', {
       operationId,
       operation,
       cacheKey,
@@ -244,9 +246,9 @@ export class IdempotencyValidator {
     operationId?: string,
     operation?: IdempotentOperation,
     cacheKey?: string,
-    record?: IdempotencyRecord,
+    record?: IdempotencyRecord
   ): void {
-    globalConstraintEnforcer.emit("idempotency:cached", {
+    globalConstraintEnforcer.emit('idempotency:cached', {
       operationId,
       operation,
       cacheKey,
@@ -262,8 +264,8 @@ export class IdempotencyValidator {
     operation: IdempotentOperation,
     inputs: TInput,
     executor: (inputs: TInput) => Promise<TOutput>,
-    repetitions: number = 2,
-    operationId?: string,
+    repetitions = 2,
+    operationId?: string
   ): Promise<TOutput> {
     const validatedRepetitions = this.validateAndGetRepetitions(repetitions);
     const executionResults = await this.performRepeatedExecution(
@@ -273,7 +275,7 @@ export class IdempotencyValidator {
       validatedRepetitions,
       operationId
     );
-    
+
     return this.processExecutionResults(
       executionResults,
       operation,
@@ -298,7 +300,7 @@ export class IdempotencyValidator {
     inputs: TInput,
     executor: (inputs: TInput) => Promise<TOutput>,
     repetitions: number,
-    operationId?: string,
+    operationId?: string
   ): Promise<{ results: TOutput[]; hashes: string[] }> {
     return await this.executeRepeatedOperations(
       operation,
@@ -316,22 +318,12 @@ export class IdempotencyValidator {
     executionResults: { results: TOutput[]; hashes: string[] },
     operation: IdempotentOperation,
     repetitions: number,
-    operationId?: string,
+    operationId?: string
   ): TOutput {
-    this.validateResultConsistency(
-      executionResults.hashes,
-      operation,
-      repetitions,
-      operationId
-    );
-    
-    this.emitValidationSuccess(
-      operation,
-      repetitions,
-      operationId,
-      executionResults.hashes[0]
-    );
-    
+    this.validateResultConsistency(executionResults.hashes, operation, repetitions, operationId);
+
+    this.emitValidationSuccess(operation, repetitions, operationId, executionResults.hashes[0]);
+
     return executionResults.results[0];
   }
 
@@ -340,7 +332,7 @@ export class IdempotencyValidator {
    */
   private validateRepetitionCount(repetitions: number): void {
     if (repetitions < 2) {
-      throw new Error("Repetitions must be at least 2 for idempotency validation");
+      throw new Error('Repetitions must be at least 2 for idempotency validation');
     }
   }
 
@@ -352,7 +344,7 @@ export class IdempotencyValidator {
     inputs: TInput,
     executor: (inputs: TInput) => Promise<TOutput>,
     repetitions: number,
-    operationId?: string,
+    operationId?: string
   ): Promise<{ results: TOutput[]; hashes: string[] }> {
     const results: TOutput[] = [];
     const hashes: string[] = [];
@@ -366,7 +358,7 @@ export class IdempotencyValidator {
         repetitions,
         operationId
       );
-      
+
       const resultHash = this.hashValue(result);
       results.push(result);
       hashes.push(resultHash);
@@ -384,7 +376,7 @@ export class IdempotencyValidator {
     executor: (inputs: TInput) => Promise<TOutput>,
     iteration: number,
     totalRepetitions: number,
-    operationId?: string,
+    operationId?: string
   ): Promise<TOutput> {
     const iterationId = globalConstraintEnforcer.startOperation(
       `${operation}:repeat:${iteration}`,
@@ -412,20 +404,13 @@ export class IdempotencyValidator {
     hashes: string[],
     operation: IdempotentOperation,
     repetitions: number,
-    operationId?: string,
+    operationId?: string
   ): void {
     const firstHash = hashes[0];
-    
+
     for (let i = 1; i < hashes.length; i++) {
       if (hashes[i] !== firstHash) {
-        this.handleInconsistentResult(
-          i,
-          hashes,
-          firstHash,
-          operation,
-          repetitions,
-          operationId
-        );
+        this.handleInconsistentResult(i, hashes, firstHash, operation, repetitions, operationId);
       }
     }
   }
@@ -439,10 +424,10 @@ export class IdempotencyValidator {
     expectedHash: string,
     operation: IdempotentOperation,
     repetitions: number,
-    operationId?: string,
+    operationId?: string
   ): never {
     const violation = new ConstraintViolationError(
-      "idempotency",
+      'idempotency',
       `iteration ${divergentIteration} hash: ${allHashes[divergentIteration]}`,
       `consistent hash: ${expectedHash}`,
       {
@@ -451,11 +436,11 @@ export class IdempotencyValidator {
         repetitions,
         allHashes,
         divergentIteration,
-      },
+      }
     );
 
-    globalConstraintEnforcer.emit("constraint:violation", {
-      constraint: "idempotency",
+    globalConstraintEnforcer.emit('constraint:violation', {
+      constraint: 'idempotency',
       violation,
       operation,
     });
@@ -470,9 +455,9 @@ export class IdempotencyValidator {
     operation: IdempotentOperation,
     repetitions: number,
     operationId: string | undefined,
-    resultHash: string,
+    resultHash: string
   ): void {
-    globalConstraintEnforcer.emit("idempotency:repeated_validated", {
+    globalConstraintEnforcer.emit('idempotency:repeated_validated', {
       operationId,
       operation,
       repetitions,
@@ -489,7 +474,7 @@ export class IdempotencyValidator {
     baseContent: TInput,
     editFunction: (content: TInput) => Promise<TEdit>,
     applyEdit: (content: TInput, edit: TEdit) => Promise<TInput>,
-    operationId?: string,
+    operationId?: string
   ): Promise<{ finalContent: TInput; edit: TEdit }> {
     // Generate edit
     const edit = await editFunction(baseContent);
@@ -507,20 +492,20 @@ export class IdempotencyValidator {
 
     if (editHash1 !== editHash2) {
       const violation = new ConstraintViolationError(
-        "idempotency",
-        `non-deterministic edit generation`,
-        `consistent edit operations`,
+        'idempotency',
+        'non-deterministic edit generation',
+        'consistent edit operations',
         {
           operationId,
           operation,
           firstEditHash: editHash1,
           secondEditHash: editHash2,
           baseContentHash: this.hashValue(baseContent),
-        },
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "idempotency",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'idempotency',
         violation,
         operation,
       });
@@ -534,20 +519,20 @@ export class IdempotencyValidator {
 
     if (resultHash1 !== resultHash2) {
       const violation = new ConstraintViolationError(
-        "idempotency",
-        `non-deterministic edit application`,
-        `consistent edit results`,
+        'idempotency',
+        'non-deterministic edit application',
+        'consistent edit results',
         {
           operationId,
           operation,
           firstResultHash: resultHash1,
           secondResultHash: resultHash2,
           editHash: editHash1,
-        },
+        }
       );
 
-      globalConstraintEnforcer.emit("constraint:violation", {
-        constraint: "idempotency",
+      globalConstraintEnforcer.emit('constraint:violation', {
+        constraint: 'idempotency',
         violation,
         operation,
       });
@@ -555,7 +540,7 @@ export class IdempotencyValidator {
       throw violation;
     }
 
-    globalConstraintEnforcer.emit("idempotency:edit_validated", {
+    globalConstraintEnforcer.emit('idempotency:edit_validated', {
       operationId,
       operation,
       editHash: editHash1,
@@ -580,7 +565,7 @@ export class IdempotencyValidator {
       }
     }
 
-    globalConstraintEnforcer.emit("idempotency:cache_cleared", {
+    globalConstraintEnforcer.emit('idempotency:cache_cleared', {
       entriesCleared: cleared,
       remainingEntries: this.cache.size,
     });
@@ -619,16 +604,16 @@ export class IdempotencyValidator {
   private hashValue(value: unknown): string {
     let serialized: string;
 
-    if (typeof value === "string") {
+    if (typeof value === 'string') {
       serialized = value;
     } else if (Buffer.isBuffer(value)) {
-      serialized = value.toString("base64");
+      serialized = value.toString('base64');
     } else {
       // Normalize object for consistent hashing
       serialized = JSON.stringify(this.normalizeForHashing(value));
     }
 
-    return createHash("sha256").update(serialized, "utf8").digest("hex");
+    return createHash('sha256').update(serialized, 'utf8').digest('hex');
   }
 
   /**
@@ -639,17 +624,17 @@ export class IdempotencyValidator {
       return value;
     }
 
-    if (typeof value !== "object") {
+    if (typeof value !== 'object') {
       return value;
     }
 
     if (Array.isArray(value)) {
-      return value.map((item) => this.normalizeForHashing(item));
+      return value.map(item => this.normalizeForHashing(item));
     }
 
     if (value instanceof Date) {
       // Optionally ignore timestamps for idempotency
-      return this.defaultOptions.ignoreTimestamps ? "[TIMESTAMP]" : value.toISOString();
+      return this.defaultOptions.ignoreTimestamps ? '[TIMESTAMP]' : value.toISOString();
     }
 
     const obj = value as Record<string, unknown>;
@@ -661,7 +646,7 @@ export class IdempotencyValidator {
     for (const key of sortedKeys) {
       // Skip timestamp fields if configured to ignore them
       if (this.defaultOptions.ignoreTimestamps && this.isTimestampField(key)) {
-        normalized[key] = "[TIMESTAMP]";
+        normalized[key] = '[TIMESTAMP]';
       } else {
         normalized[key] = this.normalizeForHashing(obj[key]);
       }
@@ -675,16 +660,16 @@ export class IdempotencyValidator {
    */
   private isTimestampField(fieldName: string): boolean {
     const timestampFields = [
-      "timestamp",
-      "createdAt",
-      "updatedAt",
-      "modifiedAt",
-      "date",
-      "time",
-      "created_at",
-      "updated_at",
-      "modified_at",
-      "processed_at",
+      'timestamp',
+      'createdAt',
+      'updatedAt',
+      'modifiedAt',
+      'date',
+      'time',
+      'created_at',
+      'updated_at',
+      'modified_at',
+      'processed_at',
     ];
 
     return timestampFields.includes(fieldName.toLowerCase());
@@ -717,7 +702,7 @@ export function idempotent(operation: IdempotentOperation, options: IdempotencyO
   return <T extends (...args: any[]) => Promise<any>>(
     _target: any,
     propertyName: string,
-    descriptor: TypedPropertyDescriptor<T>,
+    descriptor: TypedPropertyDescriptor<T>
   ) => {
     const method = descriptor.value!;
 
@@ -733,7 +718,7 @@ export function idempotent(operation: IdempotentOperation, options: IdempotencyO
           args, // Use args as inputs
           async () => method.apply(this, args),
           options,
-          operationId,
+          operationId
         );
 
         globalConstraintEnforcer.endOperation(operationId);
@@ -755,7 +740,7 @@ export async function withIdempotencyValidation<TInput, TOutput>(
   operation: IdempotentOperation,
   inputs: TInput,
   executor: (inputs: TInput) => Promise<TOutput>,
-  options: IdempotencyOptions = {},
+  options: IdempotencyOptions = {}
 ): Promise<TOutput> {
   return globalIdempotencyValidator.validateIdempotency(operation, inputs, executor, options);
 }
@@ -767,12 +752,12 @@ export async function validateIdempotentEdits<TContent, TEdit>(
   operation: IdempotentOperation,
   baseContent: TContent,
   editFunction: (content: TContent) => Promise<TEdit>,
-  applyEdit: (content: TContent, edit: TEdit) => Promise<TContent>,
+  applyEdit: (content: TContent, edit: TEdit) => Promise<TContent>
 ): Promise<{ finalContent: TContent; edit: TEdit }> {
   return globalIdempotencyValidator.validateEditIdempotency(
     operation,
     baseContent,
     editFunction,
-    applyEdit,
+    applyEdit
   );
 }

@@ -1,15 +1,21 @@
 # Custom Webhook Handlers System
 
-A comprehensive system for creating, managing, and executing custom webhook handlers in Arbiter. This system allows you to extend webhook processing with custom JavaScript/TypeScript code that runs securely in a sandboxed environment.
+A comprehensive system for creating, managing, and executing custom webhook
+handlers in Arbiter. This system allows you to extend webhook processing with
+custom JavaScript/TypeScript code that runs securely in a sandboxed environment.
 
 ## Architecture Overview
 
 The custom handlers system consists of several key components:
 
-- **Handler Discovery**: Automatically discovers and loads handler files from the filesystem
-- **Handler Execution**: Executes handlers with timeout, retry logic, and error handling
-- **Handler Management**: Provides APIs for managing handler lifecycle and configuration
-- **Security Layer**: Sandboxes handler execution with rate limiting and domain restrictions
+- **Handler Discovery**: Automatically discovers and loads handler files from
+  the filesystem
+- **Handler Execution**: Executes handlers with timeout, retry logic, and error
+  handling
+- **Handler Management**: Provides APIs for managing handler lifecycle and
+  configuration
+- **Security Layer**: Sandboxes handler execution with rate limiting and domain
+  restrictions
 - **Web UI Integration**: RESTful APIs for frontend management interfaces
 
 ## Directory Structure
@@ -50,32 +56,33 @@ const handleEvent: WebhookHandler = async (payload, context) => {
 
   try {
     // Your handler logic here
-    logger.info('Processing event', { 
+    logger.info('Processing event', {
       event: parsed.eventType,
-      repository: parsed.repository.fullName 
+      repository: parsed.repository.fullName,
     });
 
     // Use services for external integrations
     await services.notifications.sendSlack(config.secrets['SLACK_WEBHOOK'], {
-      text: `Event received: ${parsed.eventType}`
+      text: `Event received: ${parsed.eventType}`,
     });
 
     return {
       success: true,
       message: 'Event processed successfully',
       actions: ['Sent notification'],
-      data: { processedAt: new Date().toISOString() }
+      data: { processedAt: new Date().toISOString() },
     };
-
   } catch (error) {
     logger.error('Handler failed', error as Error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Unknown error',
-      errors: [{
-        code: 'HANDLER_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      }]
+      errors: [
+        {
+          code: 'HANDLER_ERROR',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+      ],
     };
   }
 };
@@ -87,15 +94,15 @@ const handlerModule: HandlerModule = {
     timeout: 30000,
     retries: 2,
     environment: {},
-    secrets: {}
+    secrets: {},
   },
   metadata: {
     name: 'My Custom Handler',
     description: 'Handles webhook events with custom logic',
     version: '1.0.0',
     supportedEvents: ['push', 'pull_request'],
-    requiredPermissions: ['notifications:send']
-  }
+    requiredPermissions: ['notifications:send'],
+  },
 };
 
 export default handlerModule;
@@ -107,17 +114,18 @@ The handler receives a context object with the following services:
 
 ```typescript
 interface HandlerContext {
-  projectId: string;              // Current project ID
-  config: HandlerConfig;          // Handler configuration
-  logger: Logger;                 // Scoped logger
-  services: HandlerServices;      // Available services
-  metadata: HandlerMetadata;      // Execution metadata
+  projectId: string; // Current project ID
+  config: HandlerConfig; // Handler configuration
+  logger: Logger; // Scoped logger
+  services: HandlerServices; // Available services
+  metadata: HandlerMetadata; // Execution metadata
 }
 ```
 
 ### Available Services
 
 #### HTTP Client
+
 ```typescript
 // Secure HTTP client with domain restrictions and rate limiting
 await services.http.get('https://api.github.com/user');
@@ -125,6 +133,7 @@ await services.http.post('https://api.example.com/webhook', { data: 'value' });
 ```
 
 #### Notifications
+
 ```typescript
 // Send Slack notifications
 await services.notifications.sendSlack(webhookUrl, {
@@ -137,16 +146,18 @@ await services.notifications.sendWebhook(url, payload);
 ```
 
 #### Events
+
 ```typescript
 // Broadcast events to project subscribers
 await services.events.broadcastToProject(projectId, {
   project_id: projectId,
   event_type: 'custom_event',
-  data: { message: 'Custom event data' }
+  data: { message: 'Custom event data' },
 });
 ```
 
 #### Database
+
 ```typescript
 // Access project database
 const projects = await services.db.listProjects();
@@ -160,8 +171,10 @@ Handlers receive an enhanced payload with parsed event data:
 ```typescript
 interface EnhancedWebhookPayload {
   // Original webhook payload
-  repository: { full_name: string; /* ... */ };
-  commits?: Array<{ /* ... */ }>;
+  repository: { full_name: string /* ... */ };
+  commits?: Array<{
+    /* ... */
+  }>;
   // ... other original fields
 
   // Parsed and normalized data
@@ -191,8 +204,12 @@ interface EnhancedWebhookPayload {
       modified: string[];
       removed: string[];
     }>;
-    pullRequest?: { /* ... */ };
-    issue?: { /* ... */ };
+    pullRequest?: {
+      /* ... */
+    };
+    issue?: {
+      /* ... */
+    };
   };
 }
 ```
@@ -218,11 +235,13 @@ interface EnhancedWebhookPayload {
 ### Query Parameters
 
 #### List Handlers (`GET /api/handlers`)
+
 - `provider` - Filter by provider (github/gitlab)
 - `event` - Filter by event type
 - `enabled` - Filter by enabled status
 
 #### Execution History (`GET /api/handlers/executions`)
+
 - `handlerId` - Filter by handler ID
 - `projectId` - Filter by project ID
 - `provider` - Filter by provider
@@ -281,18 +300,22 @@ Add to your server configuration:
 ## Security Features
 
 ### Sandboxing
+
 - Code validation prevents dangerous patterns (`eval`, `require`, etc.)
-- Environment variable sanitization (only `HANDLER_*` prefixed variables allowed)
+- Environment variable sanitization (only `HANDLER_*` prefixed variables
+  allowed)
 - Module import restrictions
 - File system access prevention
 
 ### Network Security
+
 - HTTP client domain whitelist
 - HTTPS enforcement (except localhost)
 - Rate limiting (60 requests per minute per handler)
 - SSRF protection
 
 ### Resource Limits
+
 - Execution timeout enforcement
 - Concurrent execution limits
 - Memory usage monitoring
@@ -310,10 +333,12 @@ Add to your server configuration:
 
 ### Configuration Management
 
-1. **Secrets**: Store sensitive data in handler secrets, not environment variables
+1. **Secrets**: Store sensitive data in handler secrets, not environment
+   variables
 2. **Timeouts**: Set appropriate timeouts based on handler complexity
 3. **Retries**: Configure retries for network-dependent operations
-4. **Environment**: Use environment variables for configuration, secrets for credentials
+4. **Environment**: Use environment variables for configuration, secrets for
+   credentials
 
 ### Performance Optimization
 
@@ -325,18 +350,21 @@ Add to your server configuration:
 ## Monitoring and Debugging
 
 ### Metrics
+
 - Handler execution count and success rate
 - Average execution time and error rate
 - Active execution monitoring
 - Resource usage tracking
 
 ### Logging
+
 - Structured JSON logging with correlation IDs
 - Handler-specific log namespacing
 - Execution lifecycle logging
 - Error stack traces and context
 
 ### Debugging
+
 - Handler validation before execution
 - Execution history with full context
 - Error reporting with detailed stack traces
@@ -345,6 +373,7 @@ Add to your server configuration:
 ## Examples
 
 See the `examples/` directory for complete handler implementations:
+
 - [`push-handler.ts`](examples/push-handler.ts) - Basic push event handling
 - [`slack-notification.ts`](examples/slack-notification.ts) - Slack integration
 - [`spec-validator.ts`](examples/spec-validator.ts) - CUE spec validation
@@ -354,6 +383,7 @@ See the `examples/` directory for complete handler implementations:
 The system provides a complete REST API for building management interfaces:
 
 ### Handler List View
+
 ```typescript
 // Fetch all handlers
 const response = await fetch('/api/handlers');
@@ -361,6 +391,7 @@ const { handlers } = await response.json();
 ```
 
 ### Handler Editor
+
 ```typescript
 // Get handler details
 const handler = await fetch(`/api/handlers/${id}`).then(r => r.json());
@@ -368,24 +399,26 @@ const handler = await fetch(`/api/handlers/${id}`).then(r => r.json());
 // Update handler configuration
 await fetch(`/api/handlers/${id}`, {
   method: 'PUT',
-  body: JSON.stringify({ config: updatedConfig })
+  body: JSON.stringify({ config: updatedConfig }),
 });
 ```
 
 ### Execution Monitoring
+
 ```typescript
 // Get execution history
-const executions = await fetch('/api/handlers/executions?limit=50')
-  .then(r => r.json());
+const executions = await fetch('/api/handlers/executions?limit=50').then(r =>
+  r.json()
+);
 
 // Get real-time statistics
-const stats = await fetch('/api/handlers/stats')
-  .then(r => r.json());
+const stats = await fetch('/api/handlers/stats').then(r => r.json());
 ```
 
 ## Migration and Deployment
 
 ### Initial Setup
+
 1. Initialize handler directory structure: `POST /api/handlers/init`
 2. Create your first handler files in the appropriate directories
 3. Configure secrets and environment variables
@@ -393,10 +426,12 @@ const stats = await fetch('/api/handlers/stats')
 5. Enable handlers through the API
 
 ### Production Deployment
+
 1. Disable auto-reload in production
 2. Set appropriate resource limits
 3. Configure monitoring and alerting
 4. Implement handler backup and recovery
 5. Set up log aggregation and analysis
 
-This system provides a powerful, secure, and extensible way to customize webhook processing in Arbiter while maintaining safety and observability.
+This system provides a powerful, secure, and extensible way to customize webhook
+processing in Arbiter while maintaining safety and observability.

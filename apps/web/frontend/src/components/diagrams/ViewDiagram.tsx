@@ -39,7 +39,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       try {
         setLoading(true);
         setError(null);
-        
+
         const response: IRResponse = await apiService.getIR(projectId, 'view');
         setViewData(response.data as ViewIRData);
       } catch (err) {
@@ -83,17 +83,26 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       seed: Math.floor(Math.random() * 1000000),
       versionNonce: Math.floor(Math.random() * 1000000),
       isDeleted: false,
-      boundElements: [{
-        type: 'text',
-        id: generateElementId(),
-      }],
+      boundElements: [
+        {
+          type: 'text',
+          id: generateElementId(),
+        },
+      ],
       updated: 1,
       link: null,
       locked: false,
     };
   };
 
-  const createTextElement = (text: string, x: number, y: number, width: number, height: number, color = '#ffffff'): ExcalidrawElement => {
+  const createTextElement = (
+    text: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    color = '#ffffff'
+  ): ExcalidrawElement => {
     return {
       id: generateElementId(),
       type: 'text',
@@ -276,7 +285,10 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
         updated: 1,
         link: null,
         locked: false,
-        points: [[0, 0], [0, tableHeight - 4]],
+        points: [
+          [0, 0],
+          [0, tableHeight - 4],
+        ],
         lastCommittedPoint: [0, tableHeight - 4],
         startBinding: null,
         endBinding: null,
@@ -312,7 +324,10 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       updated: 1,
       link: null,
       locked: false,
-      points: [[0, 0], [tableWidth - 4, 0]],
+      points: [
+        [0, 0],
+        [tableWidth - 4, 0],
+      ],
       lastCommittedPoint: [tableWidth - 4, 0],
       startBinding: null,
       endBinding: null,
@@ -332,14 +347,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
 
     views.forEach((view, viewIndex) => {
       // Add view title
-      const viewTitle = createTextElement(
-        `View: ${view.id}`,
-        50,
-        currentY,
-        200,
-        30,
-        '#111827'
-      );
+      const viewTitle = createTextElement(`View: ${view.id}`, 50, currentY, 200, 30, '#111827');
       elements.push(viewTitle);
       currentY += 50;
 
@@ -413,8 +421,18 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center">
           <div className="text-red-500 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <p className="text-red-700 font-medium">Error loading view diagram</p>

@@ -5,7 +5,12 @@
 import React, { useCallback, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { Code2, FileText, Save, Circle, CheckCircle2 } from 'lucide-react';
-import { useApp, useCurrentProject, useActiveFragment, useEditorContent } from '../../contexts/AppContext';
+import {
+  useApp,
+  useCurrentProject,
+  useActiveFragment,
+  useEditorContent,
+} from '../../contexts/AppContext';
 import { apiService } from '../../services/api';
 import FileTree from './FileTree';
 import MonacoEditor from './MonacoEditor';
@@ -16,15 +21,8 @@ export interface EditorPaneProps {
 }
 
 export function EditorPane({ className }: EditorPaneProps) {
-  const { 
-    state, 
-    updateEditorContent, 
-    markUnsaved, 
-    markSaved, 
-    setError,
-    dispatch
-  } = useApp();
-  
+  const { state, updateEditorContent, markUnsaved, markSaved, setError, dispatch } = useApp();
+
   const currentProject = useCurrentProject();
   const activeFragment = useActiveFragment();
   const editorContent = useEditorContent(activeFragment?.id || '');
@@ -40,18 +38,21 @@ export function EditorPane({ className }: EditorPaneProps) {
   }, [activeFragment, editorContent, updateEditorContent]);
 
   // Handle editor content change
-  const handleEditorChange = useCallback((value: string) => {
-    if (!activeFragment) return;
+  const handleEditorChange = useCallback(
+    (value: string) => {
+      if (!activeFragment) return;
 
-    updateEditorContent(activeFragment.id, value);
-    
-    // Mark as unsaved if content differs from original
-    if (value !== activeFragment.content) {
-      markUnsaved(activeFragment.id);
-    } else {
-      markSaved(activeFragment.id);
-    }
-  }, [activeFragment, updateEditorContent, markUnsaved, markSaved]);
+      updateEditorContent(activeFragment.id, value);
+
+      // Mark as unsaved if content differs from original
+      if (value !== activeFragment.content) {
+        markUnsaved(activeFragment.id);
+      } else {
+        markSaved(activeFragment.id);
+      }
+    },
+    [activeFragment, updateEditorContent, markUnsaved, markSaved]
+  );
 
   // Handle save (Ctrl+S or manual save)
   const handleSave = useCallback(async () => {
@@ -73,7 +74,7 @@ export function EditorPane({ className }: EditorPaneProps) {
 
       // Update fragment in state
       dispatch({ type: 'UPDATE_FRAGMENT', payload: updatedFragment });
-      
+
       // Mark as saved
       markSaved(activeFragment.id);
     } catch (error) {
@@ -83,27 +84,32 @@ export function EditorPane({ className }: EditorPaneProps) {
   }, [currentProject, activeFragment, state.editorContent, dispatch, markSaved, setError]);
 
   // Handle editor ready
-  const handleEditorReady = useCallback((editor: any) => {
-    // Configure editor for auto-save on blur
-    editor.onDidBlurEditorText(() => {
-      if (activeFragment && state.unsavedChanges.has(activeFragment.id)) {
-        // Auto-save after short delay when editor loses focus
-        setTimeout(() => {
-          if (state.unsavedChanges.has(activeFragment.id)) {
-            handleSave();
-          }
-        }, 250);
-      }
-    });
-  }, [activeFragment, state.unsavedChanges, handleSave]);
+  const handleEditorReady = useCallback(
+    (editor: any) => {
+      // Configure editor for auto-save on blur
+      editor.onDidBlurEditorText(() => {
+        if (activeFragment && state.unsavedChanges.has(activeFragment.id)) {
+          // Auto-save after short delay when editor loses focus
+          setTimeout(() => {
+            if (state.unsavedChanges.has(activeFragment.id)) {
+              handleSave();
+            }
+          }, 250);
+        }
+      });
+    },
+    [activeFragment, state.unsavedChanges, handleSave]
+  );
 
   if (!currentProject) {
     return (
-      <div className={clsx(
-        'h-full flex items-center justify-center',
-        'bg-gradient-to-br from-graphite-50 via-white to-graphite-50',
-        className
-      )}>
+      <div
+        className={clsx(
+          'h-full flex items-center justify-center',
+          'bg-gradient-to-br from-graphite-50 via-white to-graphite-50',
+          className
+        )}
+      >
         <div className="text-center p-8 max-w-md">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-graphite-100 flex items-center justify-center">
             <Code2 className="w-8 h-8 text-graphite-400" />
@@ -125,7 +131,8 @@ export function EditorPane({ className }: EditorPaneProps) {
         minSize="200px"
         maxSize="70%"
         resizerStyle={{
-          background: 'linear-gradient(90deg, transparent 0%, rgba(71, 85, 105, 0.1) 50%, transparent 100%)',
+          background:
+            'linear-gradient(90deg, transparent 0%, rgba(71, 85, 105, 0.1) 50%, transparent 100%)',
           borderTop: '1px solid rgba(71, 85, 105, 0.1)',
           borderBottom: '1px solid rgba(71, 85, 105, 0.1)',
           height: '1px',
@@ -160,7 +167,7 @@ export function EditorPane({ className }: EditorPaneProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <button 
+                  <button
                     onClick={handleSave}
                     className={clsx(
                       'p-1.5 rounded-lg transition-all duration-200',

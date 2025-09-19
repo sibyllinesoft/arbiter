@@ -15,7 +15,8 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Professional checkbox component with comprehensive states, validation, indeterminate support, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
+        component:
+          'Professional checkbox component with comprehensive states, validation, indeterminate support, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
       },
     },
   },
@@ -93,32 +94,26 @@ export const Default: Story = {
 export const Variants: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Checkbox 
-        label="Default Checkbox" 
-        helperText="Standard checkbox style"
-      />
-      <Checkbox 
-        label="Success Checkbox" 
+      <Checkbox label="Default Checkbox" helperText="Standard checkbox style" />
+      <Checkbox
+        label="Success Checkbox"
         success="Configuration saved successfully"
         showValidationIcon
         checked
       />
-      <Checkbox 
-        label="Warning Checkbox" 
+      <Checkbox
+        label="Warning Checkbox"
         warning="This setting may affect performance"
         showValidationIcon
       />
-      <Checkbox 
-        label="Error Checkbox" 
-        error="This field is required"
-        showValidationIcon
-      />
+      <Checkbox label="Error Checkbox" error="This field is required" showValidationIcon />
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Checkbox variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.',
+        story:
+          'Checkbox variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.',
       },
     },
   },
@@ -128,21 +123,9 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Checkbox 
-        size="sm" 
-        label="Small Checkbox" 
-        description="Compact size for dense layouts"
-      />
-      <Checkbox 
-        size="md" 
-        label="Medium Checkbox" 
-        description="Default size for most use cases"
-      />
-      <Checkbox 
-        size="lg" 
-        label="Large Checkbox" 
-        description="Larger size for prominence"
-      />
+      <Checkbox size="sm" label="Small Checkbox" description="Compact size for dense layouts" />
+      <Checkbox size="md" label="Medium Checkbox" description="Default size for most use cases" />
+      <Checkbox size="lg" label="Large Checkbox" description="Larger size for prominence" />
     </div>
   ),
   parameters: {
@@ -159,36 +142,22 @@ export const IndeterminateState: Story = {
   render: () => (
     <div className="w-96 space-y-4">
       <div className="space-y-3">
-        <Checkbox 
-          label="Select All Features" 
+        <Checkbox
+          label="Select All Features"
           indeterminate
           description="Some features are selected"
         />
         <div className="ml-6 space-y-2">
-          <Checkbox 
-            size="sm"
-            label="Feature A" 
-            checked
-          />
-          <Checkbox 
-            size="sm"
-            label="Feature B" 
-            checked
-          />
-          <Checkbox 
-            size="sm"
-            label="Feature C" 
-          />
-          <Checkbox 
-            size="sm"
-            label="Feature D" 
-          />
+          <Checkbox size="sm" label="Feature A" checked />
+          <Checkbox size="sm" label="Feature B" checked />
+          <Checkbox size="sm" label="Feature C" />
+          <Checkbox size="sm" label="Feature D" />
         </div>
       </div>
-      
-      <Checkbox 
+
+      <Checkbox
         variant="warning"
-        label="Partial Configuration" 
+        label="Partial Configuration"
         indeterminate
         warning="Some options are configured"
         showValidationIcon
@@ -198,7 +167,8 @@ export const IndeterminateState: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Indeterminate state for parent checkboxes that have some but not all child options selected.',
+        story:
+          'Indeterminate state for parent checkboxes that have some but not all child options selected.',
       },
     },
   },
@@ -208,22 +178,22 @@ export const IndeterminateState: Story = {
 export const LoadingStates: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Checkbox 
+      <Checkbox
         loading
-        label="Saving Preferences" 
+        label="Saving Preferences"
         helperText="Please wait while we save your settings..."
       />
-      <Checkbox 
+      <Checkbox
         loading
         size="lg"
-        label="Validating Configuration" 
+        label="Validating Configuration"
         description="Checking system compatibility"
         helperText="This may take a few moments"
       />
-      <Checkbox 
+      <Checkbox
         loading
         variant="success"
-        label="Processing Payment" 
+        label="Processing Payment"
         checked
         helperText="Finalizing transaction..."
       />
@@ -232,7 +202,8 @@ export const LoadingStates: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Loading states with animated spinner, showing the checkbox is processing an action.',
+        story:
+          'Loading states with animated spinner, showing the checkbox is processing an action.',
       },
     },
   },
@@ -248,21 +219,15 @@ export const CustomContent: Story = {
           <span>Enable Advanced Settings</span>
         </div>
       </Checkbox>
-      
-      <Checkbox 
-        description="Access to database configuration and management tools"
-      >
+
+      <Checkbox description="Access to database configuration and management tools">
         <div className="flex items-center gap-2">
           <Database className="h-4 w-4 text-green-500" />
           <span>Database Access</span>
         </div>
       </Checkbox>
-      
-      <Checkbox 
-        variant="warning"
-        warning="This grants elevated privileges"
-        showValidationIcon
-      >
+
+      <Checkbox variant="warning" warning="This grants elevated privileges" showValidationIcon>
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-amber-500" />
           <span>Admin Privileges</span>
@@ -273,7 +238,8 @@ export const CustomContent: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Checkboxes with custom content using icons and complex layouts through the children prop.',
+        story:
+          'Checkboxes with custom content using icons and complex layouts through the children prop.',
       },
     },
   },
@@ -287,30 +253,23 @@ export const DeveloperToolExamples: Story = {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Build Configuration</h3>
         <div className="space-y-3">
-          <Checkbox 
-            label="Enable Source Maps" 
+          <Checkbox
+            label="Enable Source Maps"
             description="Generate source maps for debugging in production"
             checked
           />
-          <Checkbox 
-            label="Minify Output" 
-            description="Compress JavaScript and CSS files"
-            checked
-          />
-          <Checkbox 
-            label="Tree Shaking" 
+          <Checkbox label="Minify Output" description="Compress JavaScript and CSS files" checked />
+          <Checkbox
+            label="Tree Shaking"
             description="Remove unused code from bundle"
             success="Optimization enabled"
             showValidationIcon
             checked
           />
-          <Checkbox 
-            label="Bundle Analyzer" 
-            description="Generate bundle size analysis report"
-          />
+          <Checkbox label="Bundle Analyzer" description="Generate bundle size analysis report" />
         </div>
       </div>
-      
+
       {/* Deployment Settings */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Deployment Settings</h3>
@@ -322,42 +281,36 @@ export const DeveloperToolExamples: Story = {
                 <span>Auto-deploy on Push</span>
               </div>
             </Checkbox>
-            <Checkbox 
-              description="Automatically run tests before deployment"
-              checked
-            >
+            <Checkbox description="Automatically run tests before deployment" checked>
               <div className="flex items-center gap-2">
                 <Settings className="h-4 w-4 text-blue-500" />
                 <span>Pre-deployment Tests</span>
               </div>
             </Checkbox>
-            <Checkbox 
-              warning="May increase build time"
-              showValidationIcon
-            >
+            <Checkbox warning="May increase build time" showValidationIcon>
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-green-500" />
                 <span>CDN Distribution</span>
               </div>
             </Checkbox>
           </div>
-          
+
           <div className="space-y-3">
-            <Checkbox 
-              label="Environment Variables" 
+            <Checkbox
+              label="Environment Variables"
               description="Load environment-specific configuration"
               checked
             />
-            <Checkbox 
-              label="SSL Certificate" 
+            <Checkbox
+              label="SSL Certificate"
               description="Enable HTTPS for secure connections"
               variant="success"
               success="SSL configured"
               showValidationIcon
               checked
             />
-            <Checkbox 
-              label="Custom Domain" 
+            <Checkbox
+              label="Custom Domain"
               description="Use custom domain for deployment"
               loading
               helperText="Validating domain configuration..."
@@ -365,47 +318,32 @@ export const DeveloperToolExamples: Story = {
           </div>
         </div>
       </div>
-      
+
       {/* Team Permissions */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Team Permissions</h3>
         <div className="space-y-3">
-          <Checkbox 
-            label="All Team Members" 
-            indeterminate
-            description="Some members have access"
-          />
+          <Checkbox label="All Team Members" indeterminate description="Some members have access" />
           <div className="ml-6 space-y-2">
-            <Checkbox 
-              size="sm"
-              checked
-            >
+            <Checkbox size="sm" checked>
               <div className="flex items-center gap-2">
                 <Users className="h-3 w-3 text-blue-500" />
                 <span>Frontend Team (12 members)</span>
               </div>
             </Checkbox>
-            <Checkbox 
-              size="sm"
-              checked
-            >
+            <Checkbox size="sm" checked>
               <div className="flex items-center gap-2">
                 <Users className="h-3 w-3 text-green-500" />
                 <span>Backend Team (8 members)</span>
               </div>
             </Checkbox>
-            <Checkbox 
-              size="sm"
-            >
+            <Checkbox size="sm">
               <div className="flex items-center gap-2">
                 <Users className="h-3 w-3 text-purple-500" />
                 <span>DevOps Team (4 members)</span>
               </div>
             </Checkbox>
-            <Checkbox 
-              size="sm"
-              disabled
-            >
+            <Checkbox size="sm" disabled>
               <div className="flex items-center gap-2">
                 <Users className="h-3 w-3 text-pink-500" />
                 <span>Design Team (6 members)</span>
@@ -414,49 +352,49 @@ export const DeveloperToolExamples: Story = {
           </div>
         </div>
       </div>
-      
+
       {/* Feature Flags */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-graphite-800">Feature Flags</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-graphite-600">Experimental Features</h4>
-            <Checkbox 
-              label="New Dashboard UI" 
+            <Checkbox
+              label="New Dashboard UI"
               description="Beta version of redesigned dashboard"
               warning="May have bugs in production"
               showValidationIcon
             />
-            <Checkbox 
-              label="Advanced Analytics" 
+            <Checkbox
+              label="Advanced Analytics"
               description="Enhanced reporting and metrics"
               checked
             />
-            <Checkbox 
-              label="Real-time Collaboration" 
+            <Checkbox
+              label="Real-time Collaboration"
               description="Live editing with team members"
               loading
               helperText="Configuring WebSocket connections..."
             />
           </div>
-          
+
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-graphite-600">Security Features</h4>
-            <Checkbox 
-              label="Two-Factor Authentication" 
+            <Checkbox
+              label="Two-Factor Authentication"
               description="Enhanced account security"
               variant="success"
               success="2FA enabled for all users"
               showValidationIcon
               checked
             />
-            <Checkbox 
-              label="Session Timeout" 
+            <Checkbox
+              label="Session Timeout"
               description="Automatically log out inactive users"
               checked
             />
-            <Checkbox 
-              label="IP Whitelist" 
+            <Checkbox
+              label="IP Whitelist"
               description="Restrict access to specific IP addresses"
               error="Configuration required"
               showValidationIcon
@@ -469,7 +407,8 @@ export const DeveloperToolExamples: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Real-world examples of checkboxes in developer tools: build configuration, deployment settings, team permissions, and feature flags.',
+        story:
+          'Real-world examples of checkboxes in developer tools: build configuration, deployment settings, team permissions, and feature flags.',
       },
     },
   },
@@ -479,37 +418,34 @@ export const DeveloperToolExamples: Story = {
 export const DisabledStates: Story = {
   render: () => (
     <div className="w-96 space-y-4">
-      <Checkbox 
-        disabled
-        label="Disabled Unchecked" 
-        description="This option is not available"
-      />
-      <Checkbox 
+      <Checkbox disabled label="Disabled Unchecked" description="This option is not available" />
+      <Checkbox
         disabled
         checked
-        label="Disabled Checked" 
+        label="Disabled Checked"
         description="This option is enabled but cannot be changed"
       />
-      <Checkbox 
+      <Checkbox
         disabled
         indeterminate
-        label="Disabled Indeterminate" 
+        label="Disabled Indeterminate"
         description="Partial selection that cannot be modified"
       />
-      <Checkbox 
+      <Checkbox
         disabled
         variant="success"
         success="Feature is locked"
         showValidationIcon
         checked
-        label="Disabled with Success" 
+        label="Disabled with Success"
       />
     </div>
   ),
   parameters: {
     docs: {
       description: {
-        story: 'Comprehensive disabled states showing how all variants and features behave when disabled.',
+        story:
+          'Comprehensive disabled states showing how all variants and features behave when disabled.',
       },
     },
   },
@@ -532,7 +468,8 @@ export const Interactive: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive playground to experiment with all checkbox props. Use the controls panel below to test different combinations.',
+        story:
+          'Interactive playground to experiment with all checkbox props. Use the controls panel below to test different combinations.',
       },
     },
   },

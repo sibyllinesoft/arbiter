@@ -9,10 +9,10 @@ metadata:
     component: frontend
 spec:
   ports:
-  - port: 7080
-    targetPort: 7080
-    protocol: TCP
-    name: http
+    - port: 7080
+      targetPort: 7080
+      protocol: TCP
+      name: http
   selector:
     app: waterdispatcher
     domain: prod
@@ -27,8 +27,8 @@ spec:
   template:
     metadata:
       annotations:
-        prometheus.io.scrape: "true"
-        prometheus.io.port: "7080"
+        prometheus.io.scrape: 'true'
+        prometheus.io.port: '7080'
       labels:
         # Important: these labels need to match the selector above
         # The api server enforces this constraint.
@@ -37,12 +37,8 @@ spec:
         component: frontend
     spec:
       containers:
-      - image: gcr.io/myproj/waterdispatcher:v0.0.48
-        ports:
-        - containerPort: 7080
-        name: waterdispatcher
-        args: [
-          "-http=:8080",
-          "-etcd=etcd:2379",
-        ]
-
+        - image: gcr.io/myproj/waterdispatcher:v0.0.48
+          ports:
+            - containerPort: 7080
+          name: waterdispatcher
+          args: ['-http=:8080', '-etcd=etcd:2379']

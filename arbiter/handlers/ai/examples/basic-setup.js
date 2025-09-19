@@ -2,13 +2,13 @@
 
 /**
  * Basic AI Agent Setup Example
- * 
+ *
  * This script demonstrates how to set up and use AI agents for webhook processing.
  * It includes configuration, initialization, and basic usage examples.
  */
 
+import { join } from 'node:path';
 import { AgentManager } from '../AgentManager.js';
-import { join } from 'path';
 
 // Mock webhook events for testing
 const mockPullRequestEvent = {
@@ -33,22 +33,22 @@ const mockPullRequestEvent = {
       changed_files: 8,
       user: {
         login: 'developer1',
-        name: 'Alice Developer'
-      }
+        name: 'Alice Developer',
+      },
     },
     repository: {
       name: 'example-app',
       full_name: 'example/example-app',
       html_url: 'https://github.com/example/example-app',
-      default_branch: 'main'
+      default_branch: 'main',
     },
     sender: {
-      login: 'developer1'
-    }
+      login: 'developer1',
+    },
   },
   headers: {
-    'x-github-event': 'pull_request'
-  }
+    'x-github-event': 'pull_request',
+  },
 };
 
 const mockIssueEvent = {
@@ -67,18 +67,18 @@ const mockIssueEvent = {
       assignees: [],
       user: {
         login: 'user123',
-        name: 'Bob User'
-      }
+        name: 'Bob User',
+      },
     },
     repository: {
       name: 'example-app',
       full_name: 'example/example-app',
-      html_url: 'https://github.com/example/example-app'
-    }
+      html_url: 'https://github.com/example/example-app',
+    },
   },
   headers: {
-    'x-github-event': 'issues'
-  }
+    'x-github-event': 'issues',
+  },
 };
 
 async function demonstrateBasicSetup() {
@@ -89,7 +89,7 @@ async function demonstrateBasicSetup() {
     console.log('1. Initializing AgentManager...');
     const configPath = join(process.cwd(), 'arbiter/handlers/ai/config/ai-agents.json');
     const agentManager = new AgentManager(configPath);
-    
+
     // Note: In a real setup, you'd have a proper configuration file
     console.log('   📄 Loading configuration from:', configPath);
     console.log('   ⚠️  Make sure to configure your API keys in the config file!\n');
@@ -103,11 +103,13 @@ async function demonstrateBasicSetup() {
     console.log('   📊 Status:', {
       initialized: status.initialized,
       agentCount: status.agentCount,
-      enabledAgents: status.enabledAgents
+      enabledAgents: status.enabledAgents,
     });
 
     if (status.agentCount === 0) {
-      console.log('   ⚠️  No agents enabled. Enable agents in the configuration file to see them in action.\n');
+      console.log(
+        '   ⚠️  No agents enabled. Enable agents in the configuration file to see them in action.\n'
+      );
       return;
     }
 
@@ -118,12 +120,12 @@ async function demonstrateBasicSetup() {
     console.log('3. Processing Pull Request event...');
     console.log('   📝 PR Title:', mockPullRequestEvent.payload.pull_request.title);
     console.log('   🔍 Looking for AI commands in PR description...');
-    
+
     const prResult = await agentManager.processEvent(mockPullRequestEvent);
     console.log('   📤 Result:', {
       success: prResult.success,
       message: prResult.message,
-      agentsProcessed: prResult.metadata?.agentsProcessed || 0
+      agentsProcessed: prResult.metadata?.agentsProcessed || 0,
     });
     console.log('');
 
@@ -138,18 +140,18 @@ async function demonstrateBasicSetup() {
     console.log('   🎯 Command Result:', {
       success: commandResult.success,
       message: commandResult.message,
-      agentId: commandResult.metadata?.agentId
+      agentId: commandResult.metadata?.agentId,
     });
     console.log('');
 
     // Process an issue event
     console.log('5. Processing Issue event...');
     console.log('   🐛 Issue Title:', mockIssueEvent.payload.issue.title);
-    
+
     const issueResult = await agentManager.processEvent(mockIssueEvent);
     console.log('   📤 Result:', {
       success: issueResult.success,
-      message: issueResult.message
+      message: issueResult.message,
     });
     console.log('');
 
@@ -169,14 +171,15 @@ async function demonstrateBasicSetup() {
 
     // Usage examples
     printUsageExamples();
-
   } catch (error) {
     console.error('❌ Error during demonstration:', error.message);
-    
+
     if (error.message.includes('Configuration file not found')) {
       console.log('\n💡 To fix this:');
       console.log('1. Copy the example configuration:');
-      console.log('   cp arbiter/handlers/ai/config/ai-agents.json.example arbiter/handlers/ai/config/ai-agents.json');
+      console.log(
+        '   cp arbiter/handlers/ai/config/ai-agents.json.example arbiter/handlers/ai/config/ai-agents.json'
+      );
       console.log('2. Configure your AI provider API keys');
       console.log('3. Enable desired agents by setting "enabled": true');
     }

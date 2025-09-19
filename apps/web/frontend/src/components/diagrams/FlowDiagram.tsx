@@ -53,7 +53,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
       try {
         setLoading(true);
         setError(null);
-        
+
         const response: IRResponse = await apiService.getIR(projectId, 'flow');
         setFlowData(response.data as FlowIRData);
       } catch (err) {
@@ -75,17 +75,17 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
     }
 
     let mermaidCode = 'graph TD\n';
-    
+
     // Process each flow
     flows.forEach((flow, flowIndex) => {
       // Add flow title as a comment
       mermaidCode += `    %% Flow: ${flow.id}\n`;
-      
+
       // Add nodes with appropriate styling based on their kind
       flow.nodes.forEach(node => {
         const nodeId = `${flowIndex}_${node.id}`;
         const label = node.label || node.id;
-        
+
         switch (node.kind) {
           case 'visit':
             mermaidCode += `    ${nodeId}[${label}]\n`;
@@ -111,7 +111,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
             mermaidCode += `    ${nodeId}[${label}]\n`;
         }
       });
-      
+
       // Add edges
       flow.edges.forEach(edge => {
         const fromId = `${flowIndex}_${edge.from}`;
@@ -119,7 +119,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
         const label = edge.label ? `|${edge.label}|` : '';
         mermaidCode += `    ${fromId} -->${label} ${toId}\n`;
       });
-      
+
       // Add spacing between flows
       if (flowIndex < flows.length - 1) {
         mermaidCode += '\n';
@@ -135,16 +135,16 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
     try {
       // Clear previous content
       containerRef.current.innerHTML = '';
-      
+
       // Generate unique ID for this diagram
       const diagramId = `mermaid-${Date.now()}`;
-      
+
       // Render the diagram
       const { svg } = await mermaid.render(diagramId, mermaidCode);
-      
+
       // Insert the SVG into the container
       containerRef.current.innerHTML = svg;
-      
+
       // Make sure the SVG is responsive
       const svgElement = containerRef.current.querySelector('svg');
       if (svgElement) {
@@ -180,8 +180,18 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
       <div className={`flex items-center justify-center h-full ${className}`}>
         <div className="text-center">
           <div className="text-red-500 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
           </div>
           <p className="text-red-700 font-medium">Error loading flow diagram</p>
@@ -208,8 +218,8 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
             </p>
           </div>
         )}
-        <div 
-          ref={containerRef} 
+        <div
+          ref={containerRef}
           className="mermaid-container bg-white border border-gray-200 rounded-lg p-4 min-h-[400px] flex items-center justify-center"
         />
       </div>

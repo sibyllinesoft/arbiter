@@ -1,17 +1,21 @@
 # Webhook Handlers UI
 
-A comprehensive web interface for managing webhook handlers with code editing, execution monitoring, and performance analytics.
+A comprehensive web interface for managing webhook handlers with code editing,
+execution monitoring, and performance analytics.
 
 ## Features
 
 ### 🎯 Core Functionality
+
 - **Handler Management**: Full CRUD operations for webhook handlers
 - **Code Editor**: Monaco Editor with TypeScript/JavaScript syntax highlighting
 - **Execution Stats**: Real-time metrics and execution history
-- **Provider Support**: GitHub, GitLab, Bitbucket, Slack, Discord, and custom webhooks
+- **Provider Support**: GitHub, GitLab, Bitbucket, Slack, Discord, and custom
+  webhooks
 - **Live Testing**: Test handlers with sample payloads before deployment
 
 ### 🛡️ Quality & Reliability
+
 - **Error Boundaries**: Graceful error handling with recovery options
 - **Loading States**: Comprehensive loading indicators and skeleton screens
 - **Form Validation**: Real-time code validation and syntax checking
@@ -19,6 +23,7 @@ A comprehensive web interface for managing webhook handlers with code editing, e
 - **Accessibility**: WCAG 2.1 AA compliant with keyboard navigation
 
 ### ⚡ Performance
+
 - **Data Caching**: Efficient data management with the useHandlers hook
 - **Monaco Integration**: Optimized code editor with syntax highlighting
 - **Lazy Loading**: Components load on demand for better performance
@@ -40,6 +45,7 @@ components/Handlers/
 ## API Integration
 
 ### Endpoints
+
 - `GET /api/handlers` - List all handlers
 - `POST /api/handlers` - Create new handler
 - `PUT /api/handlers/:id` - Update handler
@@ -67,7 +73,13 @@ interface WebhookHandler {
   error_count: number;
 }
 
-type WebhookProvider = "github" | "gitlab" | "bitbucket" | "slack" | "discord" | "custom";
+type WebhookProvider =
+  | 'github'
+  | 'gitlab'
+  | 'bitbucket'
+  | 'slack'
+  | 'discord'
+  | 'custom';
 ```
 
 ## Usage Example
@@ -92,22 +104,22 @@ The editor provides a default handler template:
 async function handler(payload, context) {
   // Access webhook data
   console.log('Received payload:', payload);
-  
+
   // Access context information
   console.log('Handler context:', {
     handlerId: context.handlerId,
     provider: context.provider,
     eventType: context.eventType,
-    timestamp: context.timestamp
+    timestamp: context.timestamp,
   });
-  
+
   // TODO: Implement your handler logic here
-  
+
   // Return result (optional)
   return {
     success: true,
     message: 'Handler executed successfully',
-    processedAt: new Date().toISOString()
+    processedAt: new Date().toISOString(),
   };
 }
 
@@ -117,6 +129,7 @@ module.exports = handler;
 ## Features in Detail
 
 ### HandlersList Component
+
 - **Grid/Table View**: Display handlers in cards or table format
 - **Real-time Filtering**: Search by name, provider, or event type
 - **Bulk Operations**: Enable/disable multiple handlers
@@ -124,6 +137,7 @@ module.exports = handler;
 - **Quick Actions**: Test, edit, delete, and view stats
 
 ### HandlerEditor Component
+
 - **Monaco Editor**: Full-featured code editor with:
   - Syntax highlighting for TypeScript/JavaScript
   - Auto-completion and IntelliSense
@@ -134,6 +148,7 @@ module.exports = handler;
 - **Template System**: Provider-specific code templates
 
 ### HandlerStats Component
+
 - **Execution Metrics**: Success rate, average duration, error counts
 - **History Timeline**: Detailed execution history with status
 - **Performance Charts**: Visual representation of handler performance
@@ -142,6 +157,7 @@ module.exports = handler;
 ## Customization
 
 ### Styling
+
 The components use the Graphite Design System with Tailwind CSS:
 
 ```tsx
@@ -157,6 +173,7 @@ const customTheme = {
 ```
 
 ### Provider Configuration
+
 Add new webhook providers:
 
 ```typescript
@@ -174,13 +191,16 @@ const PROVIDER_ICONS: Record<WebhookProvider, string> = {
 ## Error Handling
 
 ### Error Boundary
+
 All handler components are wrapped in an error boundary that:
+
 - Catches component errors gracefully
 - Provides recovery options (retry, reload)
 - Shows detailed error information in development
 - Logs errors for debugging
 
 ### API Error Handling
+
 - Network errors are caught and displayed to users
 - Retry mechanisms for failed requests
 - Toast notifications for all operations
@@ -189,12 +209,14 @@ All handler components are wrapped in an error boundary that:
 ## Performance Considerations
 
 ### Code Editor
+
 - Monaco Editor is loaded asynchronously
 - Syntax highlighting is optimized for performance
 - Code validation runs with debouncing
 - Large files are handled efficiently
 
 ### Data Management
+
 - Handlers are cached locally after fetching
 - Real-time updates via WebSocket (if available)
 - Pagination for large handler lists
@@ -210,6 +232,7 @@ All handler components are wrapped in an error boundary that:
 ## Dependencies
 
 Core dependencies:
+
 - `@monaco-editor/react` - Code editor
 - `lucide-react` - Icons
 - `react-toastify` - Notifications

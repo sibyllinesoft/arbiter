@@ -8,9 +8,23 @@
     "dev": "bun --hot src/server.ts",
     "start": "bun src/server.ts",
     "build": "bun build src/server.ts --outdir=dist --target=bun",
+    "build:worker": "wrangler deploy --dry-run",
     "typecheck": "tsc --noEmit",
     "migrate": "bun src/migrations/run.ts",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bunx drizzle-kit migrate",
+    "db:push": "bunx drizzle-kit push",
+    "db:studio": "bunx drizzle-kit studio",
     "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "test:stress": "echo 'Stress tests are currently skipped. To run them, temporarily unskip tests marked with [STRESS TEST] in src/tests/concurrency/raceConditions.test.ts'",
+    "test:local": "miniflare --modules --script=src/worker.ts --d1=DB=local-db.sqlite3",
+    "test:miniflare": "bun test src/__tests__/miniflare.test.ts",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy",
+    "cf:d1:create": "wrangler d1 create arbiter-db",
+    "cf:d1:migrate": "wrangler d1 migrations apply arbiter-db",
+    "cf:d1:local": "wrangler d1 execute arbiter-db --local --file=./migrations/schema.sql",
     "lint": "bunx @biomejs/biome lint src/",
     "format": "bunx @biomejs/biome format src/ --write",
     "format:check": "bunx @biomejs/biome format src/",
@@ -18,14 +32,26 @@
   },
   "dependencies": {
     "@arbiter/shared": "workspace:*",
+    "@arbiter/api-types": "workspace:*",
+    "better-sqlite3": "^12.2.0",
+    "drizzle-kit": "^0.31.4",
+    "drizzle-orm": "^0.44.5",
+    "hono": "^4.9.8",
+    "jose": "^5.9.6",
     "nats": "^2.28.2",
-    "ws": "^8.16.0"
+    "oauth4webapi": "^2.16.0",
+    "ws": "^8.16.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
     "bun-types": "^1.2.21",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wrangler": "^3.78.12",
+    "miniflare": "^3.20241022.0",
+    "@cloudflare/workers-types": "^4.20241022.0"
   },
   "engines": {
     "bun": ">=1.0.0"

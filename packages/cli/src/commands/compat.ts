@@ -4,18 +4,18 @@
  */
 
 import {
-  type CompatibilityResult,
   CURRENT_VERSIONS,
+  type CompatibilityResult,
+  type VersionSet,
   checkCompatibility,
   estimateMigrationDuration,
   executeMigration,
   getAvailableMigrationPaths,
   getRuntimeVersionInfo,
   hasMigrationPath,
-  type VersionSet,
   validateVersionSet,
-} from "@arbiter/shared";
-import { z } from "zod";
+} from '@arbiter/shared';
+import { z } from 'zod';
 
 // =============================================================================
 // COMMAND SCHEMAS
@@ -26,11 +26,11 @@ import { z } from "zod";
  */
 export const CompatCheckOptionsSchema = z
   .object({
-    input: z.string().optional().describe("Path to version file or JSON"),
-    format: z.enum(["json", "text", "table"]).default("text").describe("Output format"),
-    allowCompat: z.boolean().default(false).describe("Allow compatibility warnings"),
-    showMigrations: z.boolean().default(true).describe("Show available migration paths"),
-    verbose: z.boolean().default(false).describe("Verbose output"),
+    input: z.string().optional().describe('Path to version file or JSON'),
+    format: z.enum(['json', 'text', 'table']).default('text').describe('Output format'),
+    allowCompat: z.boolean().default(false).describe('Allow compatibility warnings'),
+    showMigrations: z.boolean().default(true).describe('Show available migration paths'),
+    verbose: z.boolean().default(false).describe('Verbose output'),
   })
   .strict();
 
@@ -41,14 +41,14 @@ export type CompatCheckOptions = z.infer<typeof CompatCheckOptionsSchema>;
  */
 export const MigrationOptionsSchema = z
   .object({
-    from: z.string().describe("Source version"),
-    to: z.string().describe("Target version"),
+    from: z.string().describe('Source version'),
+    to: z.string().describe('Target version'),
     component: z
-      .enum(["api_version", "schema_version", "contract_version", "ticket_format"])
-      .describe("Component to migrate"),
-    dryRun: z.boolean().default(false).describe("Show migration plan without executing"),
-    force: z.boolean().default(false).describe("Force migration even if risky"),
-    backup: z.boolean().default(true).describe("Create backup before migration"),
+      .enum(['api_version', 'schema_version', 'contract_version', 'ticket_format'])
+      .describe('Component to migrate'),
+    dryRun: z.boolean().default(false).describe('Show migration plan without executing'),
+    force: z.boolean().default(false).describe('Force migration even if risky'),
+    backup: z.boolean().default(true).describe('Create backup before migration'),
   })
   .strict();
 
@@ -63,13 +63,13 @@ export type MigrationOptions = z.infer<typeof MigrationOptionsSchema>;
  */
 export async function runCompatCheck(options: CompatCheckOptions): Promise<void> {
   try {
-    console.log("🔍 Arbiter Compatibility Check v1.0 RC\n");
+    console.log('🔍 Arbiter Compatibility Check v1.0 RC\n');
 
     // Get runtime version information
     const runtimeInfo = getRuntimeVersionInfo();
 
     if (options.verbose) {
-      console.log("📋 Current Runtime Versions:");
+      console.log('📋 Current Runtime Versions:');
       console.table(runtimeInfo.versions);
       console.log();
     }
@@ -78,7 +78,7 @@ export async function runCompatCheck(options: CompatCheckOptions): Promise<void>
     const versionsToCheck = await loadVersionsToCheck(options.input);
 
     if (options.verbose) {
-      console.log("📥 Versions to Check:");
+      console.log('📥 Versions to Check:');
       console.table(versionsToCheck);
       console.log();
     }
@@ -97,7 +97,7 @@ export async function runCompatCheck(options: CompatCheckOptions): Promise<void>
     // Exit with appropriate code
     process.exit(result.compatible ? 0 : 1);
   } catch (error) {
-    console.error("❌ Compatibility check failed:", error instanceof Error ? error.message : error);
+    console.error('❌ Compatibility check failed:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }
@@ -113,18 +113,17 @@ async function loadVersionsToCheck(input?: string): Promise<Partial<VersionSet>>
 
   try {
     // Try to read as file
-    const fs = await import("node:fs/promises");
-    const content = await fs.readFile(input, "utf-8");
+    const fs = await import('node:fs/promises');
+    const content = await fs.readFile(input, 'utf-8');
     const data = JSON.parse(content);
 
     // Validate structure
     if (data.versions) {
       validateVersionSet(data.versions);
       return data.versions;
-    } else {
-      validateVersionSet(data);
-      return data;
     }
+    validateVersionSet(data);
+    return data;
   } catch (_error) {
     // Try to parse as direct JSON
     try {
@@ -142,14 +141,14 @@ async function loadVersionsToCheck(input?: string): Promise<Partial<VersionSet>>
  */
 async function outputCompatibilityResult(
   result: CompatibilityResult,
-  options: CompatCheckOptions,
+  options: CompatCheckOptions
 ): Promise<void> {
   switch (options.format) {
-    case "json":
+    case 'json':
       console.log(JSON.stringify(result, null, 2));
       break;
 
-    case "table":
+    case 'table':
       outputCompatibilityTable(result);
       break;
     default:
@@ -163,24 +162,24 @@ async function outputCompatibilityResult(
  */
 function outputCompatibilityText(result: CompatibilityResult, verbose: boolean): void {
   if (result.compatible) {
-    console.log("✅ All versions are compatible!\n");
+    console.log('✅ All versions are compatible!\n');
   } else {
-    console.log("❌ Version compatibility issues detected:\n");
+    console.log('❌ Version compatibility issues detected:\n');
   }
 
   if (result.version_mismatches.length > 0) {
-    console.log("🔍 Version Mismatches:");
+    console.log('🔍 Version Mismatches:');
     for (const mismatch of result.version_mismatches) {
-      const icon = mismatch.severity === "error" ? "❌" : "⚠️";
+      const icon = mismatch.severity === 'error' ? '❌' : '⚠️';
       console.log(
-        `  ${icon} ${mismatch.component}: expected ${mismatch.expected}, got ${mismatch.actual}`,
+        `  ${icon} ${mismatch.component}: expected ${mismatch.expected}, got ${mismatch.actual}`
       );
     }
     console.log();
   }
 
   if (result.migration_required && result.migration_path) {
-    console.log("🔄 Migration Available:");
+    console.log('🔄 Migration Available:');
     console.log(`  Command: ${result.migration_path}`);
     console.log();
   }
@@ -195,18 +194,18 @@ function outputCompatibilityText(result: CompatibilityResult, verbose: boolean):
  */
 function outputCompatibilityTable(result: CompatibilityResult): void {
   if (result.version_mismatches.length === 0) {
-    console.log("✅ All versions compatible - no issues to display");
+    console.log('✅ All versions compatible - no issues to display');
     return;
   }
 
   console.table(
-    result.version_mismatches.map((mismatch) => ({
+    result.version_mismatches.map(mismatch => ({
       Component: mismatch.component,
       Expected: mismatch.expected,
       Actual: mismatch.actual,
       Severity: mismatch.severity,
-      Status: mismatch.severity === "error" ? "❌ Error" : "⚠️ Warning",
-    })),
+      Status: mismatch.severity === 'error' ? '❌ Error' : '⚠️ Warning',
+    }))
   );
 }
 
@@ -215,32 +214,33 @@ function outputCompatibilityTable(result: CompatibilityResult): void {
  */
 async function showMigrationPaths(
   versionsToCheck: Partial<VersionSet>,
-  _options: CompatCheckOptions,
+  _options: CompatCheckOptions
 ): Promise<void> {
-  console.log("🚀 Available Migration Paths:\n");
+  console.log('🚀 Available Migration Paths:\n');
 
   for (const [component, sourceVersion] of Object.entries(versionsToCheck)) {
     const key = component as keyof VersionSet;
+    const componentName = String(key);
     const targetVersion = CURRENT_VERSIONS[key];
 
     if (sourceVersion && sourceVersion !== targetVersion) {
-      const paths = getAvailableMigrationPaths(key);
-      const directPath = hasMigrationPath(key, sourceVersion, targetVersion);
-      const duration = estimateMigrationDuration(key, sourceVersion, targetVersion);
+      const paths = getAvailableMigrationPaths(componentName);
+      const directPath = hasMigrationPath(componentName, sourceVersion, targetVersion);
+      const duration = estimateMigrationDuration(componentName, sourceVersion, targetVersion);
 
       console.log(`📦 ${component}:`);
       console.log(`  Current: ${sourceVersion} → Target: ${targetVersion}`);
 
       if (directPath) {
-        console.log(`  ✅ Direct migration available`);
+        console.log('  ✅ Direct migration available');
         console.log(`  ⏱️  Estimated duration: ${duration}ms`);
         console.log(
-          `  🔧 Command: arbiter migrate --component ${component} --from ${sourceVersion} --to ${targetVersion}`,
+          `  🔧 Command: arbiter migrate --component ${componentName} --from ${sourceVersion} --to ${targetVersion}`
         );
       } else {
-        console.log(`  ❌ No direct migration path available`);
+        console.log('  ❌ No direct migration path available');
         if (paths.length > 0) {
-          console.log(`  🛤️  Available paths: ${paths.join(", ")}`);
+          console.log(`  🛤️  Available paths: ${paths.join(', ')}`);
         }
       }
       console.log();
@@ -265,9 +265,11 @@ export async function runMigration(options: MigrationOptions): Promise<void> {
  */
 class MigrationRunner {
   private readonly component: keyof VersionSet;
+  private readonly componentName: string;
 
   constructor(private readonly options: MigrationOptions) {
     this.component = options.component as keyof VersionSet;
+    this.componentName = String(this.component);
   }
 
   async execute(): Promise<void> {
@@ -275,7 +277,7 @@ class MigrationRunner {
       this.displayHeader();
       await this.validateMigrationPath();
       this.displayEstimatedDuration();
-      
+
       if (this.options.dryRun) {
         this.executeDryRun();
         return;
@@ -289,15 +291,15 @@ class MigrationRunner {
   }
 
   private displayHeader(): void {
-    console.log("🔄 Arbiter Migration Tool v1.0 RC\n");
-    console.log(`📦 Component: ${this.component}`);
+    console.log('🔄 Arbiter Migration Tool v1.0 RC\n');
+    console.log(`📦 Component: ${this.componentName}`);
     console.log(`📥 From: ${this.options.from}`);
     console.log(`📤 To: ${this.options.to}`);
     console.log();
   }
 
   private async validateMigrationPath(): Promise<void> {
-    if (!hasMigrationPath(this.component, this.options.from, this.options.to)) {
+    if (!hasMigrationPath(this.componentName, this.options.from, this.options.to)) {
       this.displayMigrationPathError();
       process.exit(1);
     }
@@ -305,54 +307,54 @@ class MigrationRunner {
 
   private displayMigrationPathError(): void {
     console.error(
-      `❌ No migration path available: ${this.component} ${this.options.from} -> ${this.options.to}`,
+      `❌ No migration path available: ${this.componentName} ${this.options.from} -> ${this.options.to}`
     );
 
-    const availablePaths = getAvailableMigrationPaths(this.component);
+    const availablePaths = getAvailableMigrationPaths(this.componentName);
     if (availablePaths.length > 0) {
-      console.log("\n🛤️  Available migration paths:");
-      availablePaths.forEach((path) => console.log(`  • ${path}`));
+      console.log('\n🛤️  Available migration paths:');
+      availablePaths.forEach(path => console.log(`  • ${path}`));
     }
   }
 
   private displayEstimatedDuration(): void {
     const estimatedDuration = estimateMigrationDuration(
-      this.component,
+      this.componentName,
       this.options.from,
-      this.options.to,
+      this.options.to
     );
     console.log(`⏱️  Estimated duration: ${estimatedDuration}ms`);
   }
 
   private executeDryRun(): void {
-    console.log("\n🧪 DRY RUN MODE - No changes will be made\n");
+    console.log('\n🧪 DRY RUN MODE - No changes will be made\n');
     this.displayMigrationPlan();
-    console.log("\n✅ Dry run completed - use --dry-run=false to execute");
+    console.log('\n✅ Dry run completed - use --dry-run=false to execute');
     process.exit(0);
   }
 
   private displayMigrationPlan(): void {
-    console.log("Migration plan:");
-    console.log(`  1. Validate preconditions for ${this.component} migration`);
-    console.log(`  2. ${this.options.backup ? "Create backup" : "Skip backup (disabled)"}`);
-    console.log(`  3. Execute migration transformations`);
-    console.log(`  4. Validate post-migration state`);
-    console.log(`  5. Update version metadata`);
+    console.log('Migration plan:');
+    console.log(`  1. Validate preconditions for ${this.componentName} migration`);
+    console.log(`  2. ${this.options.backup ? 'Create backup' : 'Skip backup (disabled)'}`);
+    console.log('  3. Execute migration transformations');
+    console.log('  4. Validate post-migration state');
+    console.log('  5. Update version metadata');
   }
 
   private requestConfirmationIfNeeded(): void {
     if (!this.options.force) {
-      console.log("⚠️  This will modify your system. Continue? (y/N)");
+      console.log('⚠️  This will modify your system. Continue? (y/N)');
       // In a real CLI, we'd wait for user input here
       // For now, assume confirmation
     }
   }
 
   private async performMigration(): Promise<void> {
-    console.log("\n🚀 Starting migration...\n");
-    
-    const result = await executeMigration(this.component, this.options.from, this.options.to);
-    
+    console.log('\n🚀 Starting migration...\n');
+
+    const result = await executeMigration(this.componentName, this.options.from, this.options.to);
+
     if (result.success) {
       this.displaySuccessResult(result);
     } else {
@@ -362,39 +364,39 @@ class MigrationRunner {
   }
 
   private displaySuccessResult(result: MigrationResult): void {
-    console.log("✅ Migration completed successfully!\n");
-    
-    this.displayOperations("📋 Operations performed:", result.operations_performed);
+    console.log('✅ Migration completed successfully!\n');
+
+    this.displayOperations('📋 Operations performed:', result.operations_performed);
     this.displayWarningsIfAny(result.warnings);
-    
+
     console.log(`\n⏰ Completed at: ${result.timestamp}`);
   }
 
   private displayFailureResult(result: MigrationResult): void {
-    console.error("❌ Migration failed!\n");
-    
-    this.displayOperations("📋 Operations attempted:", result.operations_performed);
-    
+    console.error('❌ Migration failed!\n');
+
+    this.displayOperations('📋 Operations attempted:', result.operations_performed);
+
     if (result.warnings.length > 0) {
-      console.log("\n⚠️  Issues encountered:");
-      result.warnings.forEach((warning) => console.log(`  • ${warning}`));
+      console.log('\n⚠️  Issues encountered:');
+      result.warnings.forEach(warning => console.log(`  • ${warning}`));
     }
   }
 
   private displayOperations(header: string, operations: string[]): void {
     console.log(header);
-    operations.forEach((op) => console.log(`  • ${op}`));
+    operations.forEach(op => console.log(`  • ${op}`));
   }
 
   private displayWarningsIfAny(warnings: string[]): void {
     if (warnings.length > 0) {
-      console.log("\n⚠️  Warnings:");
-      warnings.forEach((warning) => console.log(`  • ${warning}`));
+      console.log('\n⚠️  Warnings:');
+      warnings.forEach(warning => console.log(`  • ${warning}`));
     }
   }
 
   private handleFatalError(error: unknown): never {
-    console.error("❌ Migration failed:", error instanceof Error ? error.message : error);
+    console.error('❌ Migration failed:', error instanceof Error ? error.message : error);
     process.exit(1);
   }
 }
@@ -419,19 +421,19 @@ interface MigrationResult {
 export async function showVersionInfo(): Promise<void> {
   const runtimeInfo = getRuntimeVersionInfo();
 
-  console.log("📋 Arbiter Version Information v1.0 RC\n");
+  console.log('📋 Arbiter Version Information v1.0 RC\n');
 
-  console.log("🔢 Current Versions:");
+  console.log('🔢 Current Versions:');
   console.table(runtimeInfo.versions);
 
-  console.log("\n🏗️  Build Information:");
+  console.log('\n🏗️  Build Information:');
   console.log(`  Timestamp: ${runtimeInfo.build_info.timestamp}`);
-  console.log(`  Commit: ${runtimeInfo.build_info.commit_hash || "unknown"}`);
-  console.log(`  Deterministic: ${runtimeInfo.build_info.deterministic ? "✅" : "❌"}`);
-  console.log(`  Reproducible: ${runtimeInfo.build_info.reproducible ? "✅" : "❌"}`);
+  console.log(`  Commit: ${runtimeInfo.build_info.commit_hash || 'unknown'}`);
+  console.log(`  Deterministic: ${runtimeInfo.build_info.deterministic ? '✅' : '❌'}`);
+  console.log(`  Reproducible: ${runtimeInfo.build_info.reproducible ? '✅' : '❌'}`);
 
-  console.log("\n⚙️  Compatibility Settings:");
-  console.log(`  Strict Mode: ${runtimeInfo.compatibility.strict_mode ? "✅" : "❌"}`);
-  console.log(`  Allow Compat Flag: ${runtimeInfo.compatibility.allow_compat_flag ? "✅" : "❌"}`);
-  console.log(`  Migration Support: ${runtimeInfo.compatibility.migration_support ? "✅" : "❌"}`);
+  console.log('\n⚙️  Compatibility Settings:');
+  console.log(`  Strict Mode: ${runtimeInfo.compatibility.strict_mode ? '✅' : '❌'}`);
+  console.log(`  Allow Compat Flag: ${runtimeInfo.compatibility.allow_compat_flag ? '✅' : '❌'}`);
+  console.log(`  Migration Support: ${runtimeInfo.compatibility.migration_support ? '✅' : '❌'}`);
 }

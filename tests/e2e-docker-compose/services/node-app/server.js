@@ -7,12 +7,13 @@ const port = process.env.PORT || 3000;
 
 // Redis client setup
 const redisClient = redis.createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379'
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
 });
 
 // PostgreSQL client setup
 const pgClient = new Client({
-  connectionString: process.env.DATABASE_URL || 'postgresql://testuser:testpass@localhost:5432/testdb'
+  connectionString:
+    process.env.DATABASE_URL || 'postgresql://testuser:testpass@localhost:5432/testdb',
 });
 
 // Middleware
@@ -27,24 +28,24 @@ app.get('/health', async (req, res) => {
   try {
     // Check Redis connection
     await redisClient.ping();
-    
+
     // Check PostgreSQL connection
     await pgClient.query('SELECT 1');
-    
+
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
       services: {
         redis: 'connected',
-        postgres: 'connected'
-      }
+        postgres: 'connected',
+      },
     });
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(503).json({
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -52,23 +53,23 @@ app.get('/health', async (req, res) => {
 // Test endpoint for Redis
 app.get('/redis/test', async (req, res) => {
   try {
-    const testKey = 'test:' + Date.now();
+    const testKey = `test:${Date.now()}`;
     const testValue = 'Hello Redis!';
-    
+
     await redisClient.set(testKey, testValue, { EX: 60 });
     const retrievedValue = await redisClient.get(testKey);
-    
+
     res.json({
       success: true,
       key: testKey,
       value: retrievedValue,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error('Redis test failed:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -83,17 +84,17 @@ app.get('/postgres/test', async (req, res) => {
         version() as version,
         now() as timestamp
     `);
-    
+
     res.json({
       success: true,
       data: result.rows[0],
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error('PostgreSQL test failed:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -104,11 +105,7 @@ app.get('/', (req, res) => {
     message: 'E2E Test Application',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
-    endpoints: [
-      '/health',
-      '/redis/test',
-      '/postgres/test'
-    ]
+    endpoints: ['/health', '/redis/test', '/postgres/test'],
   });
 });
 
@@ -118,11 +115,11 @@ async function startServer() {
     // Connect to Redis
     await redisClient.connect();
     console.log('Connected to Redis');
-    
+
     // Connect to PostgreSQL
     await pgClient.connect();
     console.log('Connected to PostgreSQL');
-    
+
     // Test database setup
     await pgClient.query(`
       CREATE TABLE IF NOT EXISTS health_checks (
@@ -131,7 +128,7 @@ async function startServer() {
         status TEXT
       )
     `);
-    
+
     // Start the server
     app.listen(port, '0.0.0.0', () => {
       console.log(`Server running on port ${port}`);
@@ -140,7 +137,6 @@ async function startServer() {
       console.log('  GET /redis/test - Redis connectivity test');
       console.log('  GET /postgres/test - PostgreSQL connectivity test');
     });
-    
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

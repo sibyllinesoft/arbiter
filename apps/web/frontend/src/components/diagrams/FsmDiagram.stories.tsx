@@ -595,71 +595,49 @@ const workflowApprovalMermaid = `stateDiagram-v2
     end note`;
 
 // ============================================================================
-// STORY DEFINITIONS  
+// STORY DEFINITIONS
 // ============================================================================
 
 export const OrderProcessingStateMachine: Story = {
   args: {
-    title: "E-commerce Order State Machine",
-    description: "Complete order lifecycle from cart to delivery with payment processing, fulfillment, and cancellation flows.",
-    dataPanelTitle: "State Machine Configuration (YAML)",
-    diagramPanelTitle: "Order State Diagram",
+    title: 'E-commerce Order State Machine',
+    description:
+      'Complete order lifecycle from cart to delivery with payment processing, fulfillment, and cancellation flows.',
+    dataPanelTitle: 'State Machine Configuration (YAML)',
+    diagramPanelTitle: 'Order State Diagram',
     dataPanel: (
-      <DataViewer
-        data={orderStateMachineYaml}
-        language="yaml"
-        title="order-state-machine.yml"
-      />
+      <DataViewer data={orderStateMachineYaml} language="yaml" title="order-state-machine.yml" />
     ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={orderStateMermaid}
-        title="Order Processing States"
-      />
-    ),
+    diagramPanel: <MermaidRenderer chart={orderStateMermaid} title="Order Processing States" />,
   },
 };
 
 export const UserSessionStateMachine: Story = {
   args: {
-    title: "User Session Management",
-    description: "User authentication and session lifecycle including MFA, timeouts, and security lockouts.",
-    dataPanelTitle: "Session Configuration (YAML)",
-    diagramPanelTitle: "Session State Diagram", 
+    title: 'User Session Management',
+    description:
+      'User authentication and session lifecycle including MFA, timeouts, and security lockouts.',
+    dataPanelTitle: 'Session Configuration (YAML)',
+    diagramPanelTitle: 'Session State Diagram',
     dataPanel: (
-      <DataViewer
-        data={userSessionMachineYaml}
-        language="yaml"
-        title="user-session.yml"
-      />
+      <DataViewer data={userSessionMachineYaml} language="yaml" title="user-session.yml" />
     ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={userSessionMermaid}
-        title="User Session States"
-      />
-    ),
+    diagramPanel: <MermaidRenderer chart={userSessionMermaid} title="User Session States" />,
   },
 };
 
 export const WorkflowApprovalStateMachine: Story = {
   args: {
-    title: "Document Approval Workflow",
-    description: "Multi-stage document approval process with role-based permissions and escalation rules.",
-    dataPanelTitle: "Workflow Configuration (YAML)",
-    diagramPanelTitle: "Approval State Diagram",
+    title: 'Document Approval Workflow',
+    description:
+      'Multi-stage document approval process with role-based permissions and escalation rules.',
+    dataPanelTitle: 'Workflow Configuration (YAML)',
+    diagramPanelTitle: 'Approval State Diagram',
     dataPanel: (
-      <DataViewer
-        data={workflowApprovalYaml}
-        language="yaml"
-        title="approval-workflow.yml"
-      />
+      <DataViewer data={workflowApprovalYaml} language="yaml" title="approval-workflow.yml" />
     ),
     diagramPanel: (
-      <MermaidRenderer 
-        chart={workflowApprovalMermaid}
-        title="Document Approval Workflow"
-      />
+      <MermaidRenderer chart={workflowApprovalMermaid} title="Document Approval Workflow" />
     ),
   },
 };
@@ -842,22 +820,11 @@ const gameStateMermaid = `stateDiagram-v2
 
 export const GameSessionStateMachine: Story = {
   args: {
-    title: "Multiplayer Game Session",
-    description: "Game session lifecycle with lobby, gameplay, pausing, and connection management.",
-    dataPanelTitle: "Game Configuration (YAML)",
-    diagramPanelTitle: "Game State Diagram",
-    dataPanel: (
-      <DataViewer
-        data={gameStateMachineYaml}
-        language="yaml"
-        title="game-session.yml"
-      />
-    ),
-    diagramPanel: (
-      <MermaidRenderer 
-        chart={gameStateMermaid}
-        title="Game Session States"
-      />
-    ),
+    title: 'Multiplayer Game Session',
+    description: 'Game session lifecycle with lobby, gameplay, pausing, and connection management.',
+    dataPanelTitle: 'Game Configuration (YAML)',
+    diagramPanelTitle: 'Game State Diagram',
+    dataPanel: <DataViewer data={gameStateMachineYaml} language="yaml" title="game-session.yml" />,
+    diagramPanel: <MermaidRenderer chart={gameStateMermaid} title="Game Session States" />,
   },
 };
