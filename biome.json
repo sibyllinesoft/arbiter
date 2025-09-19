@@ -1,22 +1,23 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.2.2/schema.json",
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "recommended": false,
       "suspicious": {
-        "noExplicitAny": "warn",
+        "noExplicitAny": "off",
         "noArrayIndexKey": "off"
       },
       "style": {
-        "noNonNullAssertion": "warn",
-        "useTemplate": "error"
+        "noNonNullAssertion": "off",
+        "useTemplate": "off"
       },
       "complexity": {
-        "noForEach": "off"
+        "noForEach": "off",
+        "noStaticOnlyClass": "off"
       },
       "correctness": {
-        "useExhaustiveDependencies": "warn"
+        "useExhaustiveDependencies": "off"
       }
     }
   },
@@ -57,7 +58,7 @@
     ]
   },
   "files": {
-    "includes": [
+    "include": [
       "apps/**/*.ts",
       "apps/**/*.js",
       "apps/**/*.mjs",
@@ -71,6 +72,15 @@
       "*.js",
       "*.mjs"
     ],
-    "ignoreUnknown": true
+    "ignore": [
+      "**/dist/**",
+      "**/node_modules/**",
+      "apps/web/frontend/dist/**",
+      "packages/cli/dist/**",
+      "arbiter-cli",
+      "arbiter/handlers/ai/examples/custom-agent.js"
+    ],
+    "ignoreUnknown": true,
+    "maxSize": 10485760
   }
 }

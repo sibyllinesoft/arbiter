@@ -1,9 +1,4 @@
 {
-  "*.{ts,tsx,js,jsx}": [
-    "bunx prettier --write",
-    "bunx @biomejs/biome check --write"
-  ],
-  "*.{json,md,yml,yaml}": ["bunx prettier --write"],
-  "*.{css,scss}": ["bunx prettier --write"],
-  "package.json": ["bunx prettier --write"]
+  "*.{ts,tsx,js,jsx,json,md,yml,yaml,css,scss}": "bunx prettier --write",
+  "*.{ts,tsx,js,jsx}": "bunx @biomejs/biome@1.9.4 check --write"
 }
