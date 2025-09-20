@@ -134,6 +134,55 @@ export class SpecWorkbenchServer {
       hostname: this.config.host,
 
       async fetch(request, server) {
+        console.log('[FETCH] Request received:', request.method, request.url);
+
+        // Check for WebSocket upgrade requests explicitly
+        const url = new URL(request.url);
+        if (
+          url.pathname === '/events' &&
+          request.headers.get('upgrade')?.toLowerCase() === 'websocket'
+        ) {
+          logger.info('[SERVER] WebSocket upgrade request detected', {
+            pathname: url.pathname,
+            headers: {
+              upgrade: request.headers.get('upgrade'),
+              connection: request.headers.get('connection'),
+              origin: request.headers.get('origin'),
+            },
+          });
+
+          // Handle authentication here before upgrade
+          const authContext = await self.auth.authenticateRequest(request.headers);
+
+          logger.info('[SERVER] WebSocket auth result', {
+            hasAuth: !!authContext,
+            authContext: authContext || 'NO_AUTH',
+          });
+
+          if (!authContext) {
+            logger.warn('[SERVER] WebSocket auth failed - rejecting upgrade');
+            return new Response('Unauthorized', { status: 401 });
+          }
+
+          // Perform the upgrade with auth context
+          const upgraded = server.upgrade(request, {
+            data: {
+              connectionId: '',
+              authContext,
+            },
+          });
+
+          logger.info('[SERVER] WebSocket upgrade result', {
+            upgraded: upgraded ? 'SUCCESS' : 'FAILED',
+          });
+
+          if (!upgraded) {
+            return new Response('WebSocket upgrade failed', { status: 400 });
+          }
+
+          return undefined; // Successful upgrade, no response needed
+        }
+
         return await self.handleRequest(request, server);
       },
 
@@ -220,24 +269,47 @@ export class SpecWorkbenchServer {
     const pathname = url.pathname;
 
     try {
+      logger.info('[SERVER] Request received', {
+        method,
+        pathname,
+        url: url.toString(),
+        requestHeaders: {
+          upgrade: request.headers.get('upgrade'),
+          connection: request.headers.get('connection'),
+          origin: request.headers.get('origin'),
+          userAgent: request.headers.get('user-agent'),
+        },
+      });
+
       const corsHeaders = this.getCorsHeaders();
 
       if (method === 'OPTIONS') {
+        logger.info('[SERVER] Handling OPTIONS preflight');
         return this.handlePreflightRequest(corsHeaders);
       }
 
+      logger.info('[SERVER] Checking if WebSocket upgrade...');
       if (this.wsHandler.isWebSocketUpgrade(pathname, request)) {
+        logger.info('[SERVER] WebSocket upgrade detected - calling handleUpgrade');
         const upgradeResult = await this.wsHandler.handleUpgrade(request, server);
+        logger.info('[SERVER] Upgrade result', {
+          hasResponse: !!upgradeResult.response,
+          result: upgradeResult.response ? 'Response returned' : 'Success',
+        });
         return upgradeResult.response || new Response('WebSocket upgrade successful');
       }
 
+      logger.info('[SERVER] Not a WebSocket upgrade - checking rate limit');
       const rateLimitResponse = this.checkRateLimit(request, corsHeaders);
       if (rateLimitResponse) {
+        logger.warn('[SERVER] Rate limit exceeded');
         return rateLimitResponse;
       }
 
+      logger.info('[SERVER] Passing to httpApp.fetch');
       return await this.httpApp.fetch(request);
     } catch (error) {
+      console.log('[SERVER] Error in handleRequest:', error);
       return this.handleRequestError(error, method, pathname);
     }
   }

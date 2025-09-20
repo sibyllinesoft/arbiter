@@ -1,14 +1,14 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
-    monacoEditorPlugin({
-      languageWorkers: ['editorWorkerService', 'json', 'css', 'html', 'typescript'],
-    }),
+    // Monaco editor plugin temporarily disabled for landing page development
+    // monacoEditorPlugin.default({
+    //   languageWorkers: ['editorWorkerService', 'json', 'css', 'html', 'typescript'],
+    // }),
   ],
   server: {
     port: 3000,
@@ -24,16 +24,6 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'monaco-editor': ['monaco-editor'],
-        },
-      },
-    },
-  },
-  optimizeDeps: {
-    include: ['monaco-editor/esm/vs/editor/editor.api'],
   },
   define: {
     global: 'globalThis',

@@ -391,5 +391,143 @@ export function createApiRouter(_: Dependencies) {
     }
   });
 
+  // Projects endpoint - mock data for frontend
+  app.get('/api/projects', c => {
+    return c.json({
+      projects: [
+        {
+          id: 'project-1',
+          name: 'Sample Project',
+          status: 'active',
+          services: 3,
+          databases: 1,
+          lastActivity: '2025-09-20T10:30:00Z',
+        },
+        {
+          id: 'project-2',
+          name: 'Demo Project',
+          status: 'active',
+          services: 2,
+          databases: 1,
+          lastActivity: '2025-09-20T09:15:00Z',
+        },
+      ],
+    });
+  });
+
+  // Action log endpoint for service activities
+  app.get('/api/activities', c => {
+    return c.json({
+      activities: [
+        {
+          id: 'act-1',
+          type: 'service',
+          message: 'Service added: user-auth-service',
+          timestamp: '2025-09-20T10:30:00Z',
+          projectId: 'project-1',
+        },
+        {
+          id: 'act-2',
+          type: 'database',
+          message: 'Database configured: postgres-main',
+          timestamp: '2025-09-20T10:15:00Z',
+          projectId: 'project-1',
+        },
+        {
+          id: 'act-3',
+          type: 'deployment',
+          message: 'Deployed to staging environment',
+          timestamp: '2025-09-20T09:45:00Z',
+          projectId: 'project-2',
+        },
+      ],
+    });
+  });
+
+  // Handler endpoints that integrate with the existing HandlerAPIController
+  // Order matters! More specific routes must come before parameterized routes
+
+  // Handler management endpoints (non-parameterized routes first)
+  app.get('/api/handlers/executions', async c => {
+    const query = c.req.query();
+    const request = {
+      handlerId: query.handlerId,
+      projectId: query.projectId,
+      provider: query.provider as 'github' | 'gitlab' | undefined,
+      event: query.event,
+      limit: query.limit ? parseInt(query.limit) : undefined,
+      offset: query.offset ? parseInt(query.offset) : undefined,
+    };
+    const response = await _.handlersApi.getExecutionHistory(request);
+    return c.json(response);
+  });
+
+  app.get('/api/handlers/stats', async c => {
+    const response = await _.handlersApi.getHandlerStats();
+    return c.json(response);
+  });
+
+  app.post('/api/handlers/validate', async c => {
+    const { filePath } = await c.req.json();
+    const response = await _.handlersApi.validateHandler({ filePath });
+    return c.json(response);
+  });
+
+  app.post('/api/handlers/init', async c => {
+    const response = await _.handlersApi.initializeHandlerStructure();
+    return c.json(response);
+  });
+
+  // Generic handlers list and CRUD operations
+  app.get('/api/handlers', async c => {
+    const query = c.req.query();
+    const request = {
+      provider: query.provider as 'github' | 'gitlab' | undefined,
+      event: query.event,
+      enabled: query.enabled ? query.enabled === 'true' : undefined,
+    };
+    const response = await _.handlersApi.listHandlers(request);
+    return c.json(response);
+  });
+
+  app.post('/api/handlers', async c => {
+    const request = await c.req.json();
+    const response = await _.handlersApi.createHandler(request);
+    return c.json(response);
+  });
+
+  // Parameterized routes (must come after non-parameterized routes)
+  app.get('/api/handlers/:id', async c => {
+    const id = c.req.param('id');
+    const response = await _.handlersApi.getHandler({ id });
+    return c.json(response);
+  });
+
+  app.put('/api/handlers/:id', async c => {
+    const id = c.req.param('id');
+    const updates = await c.req.json();
+    const response = await _.handlersApi.updateHandler({ id, updates });
+    return c.json(response);
+  });
+
+  app.delete('/api/handlers/:id', async c => {
+    const id = c.req.param('id');
+    const response = await _.handlersApi.removeHandler({ id });
+    return c.json(response);
+  });
+
+  app.post('/api/handlers/:id/toggle', async c => {
+    const id = c.req.param('id');
+    const { enabled } = await c.req.json();
+    const response = await _.handlersApi.toggleHandler({ id, enabled });
+    return c.json(response);
+  });
+
+  app.post('/api/handlers/:id/reload', async c => {
+    const id = c.req.param('id');
+    const response = await _.handlersApi.reloadHandler({ id });
+    return c.json(response);
+  });
+
   return app;
 }
