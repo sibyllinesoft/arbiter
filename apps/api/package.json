@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@arbiter/shared": "workspace:*",
+    "@arbiter/cue-runner": "workspace:*",
     "@arbiter/api-types": "workspace:*",
     "better-sqlite3": "^12.2.0",
     "drizzle-kit": "^0.31.4",
@@ -39,6 +40,7 @@
     "hono": "^4.9.8",
     "jose": "^5.9.6",
     "nats": "^2.28.2",
+    "nodemailer": "^6.9.9",
     "oauth4webapi": "^2.16.0",
     "ws": "^8.16.0",
     "zod": "^3.22.4"

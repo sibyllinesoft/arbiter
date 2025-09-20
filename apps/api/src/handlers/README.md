@@ -21,7 +21,7 @@ The custom handlers system consists of several key components:
 ## Directory Structure
 
 ```
-./arbiter/handlers/
+./packages/arbiter-core/src/handlers/
 ├── github/                      # GitHub event handlers
 │   ├── push.ts                  # Handle push events
 │   ├── pull_request.ts          # Handle PR events
@@ -143,7 +143,28 @@ await services.notifications.sendSlack(webhookUrl, {
 
 // Send generic webhooks
 await services.notifications.sendWebhook(url, payload);
+
+// Send email notifications (requires HANDLER_EMAIL_* configuration)
+await services.notifications.sendEmail('owner@example.com', 'Handler alert', 'Details');
 ```
+
+Email delivery is disabled by default. Enable or change behaviour via environment variables:
+
+```
+HANDLER_EMAIL_MODE=log            # log-only mode for development (no external calls)
+HANDLER_EMAIL_MODE=smtp           # enable SMTP delivery (requires the vars below)
+HANDLER_EMAIL_FROM=arbiter@example.com
+HANDLER_EMAIL_SMTP_HOST=smtp.example.com
+HANDLER_EMAIL_SMTP_PORT=587       # optional, defaults to 587
+HANDLER_EMAIL_SMTP_SECURE=false   # optional, set true for SMTPS/465
+HANDLER_EMAIL_SMTP_USER=apikey
+HANDLER_EMAIL_SMTP_PASS=secret
+```
+
+When `HANDLER_EMAIL_MODE=log`, the API records the attempted email without contacting an SMTP
+server—useful for tests and sandboxes. When set to `smtp`, the notification service will send
+messages using the configured credentials and propagate any delivery failures back to the
+handler.
 
 #### Events
 

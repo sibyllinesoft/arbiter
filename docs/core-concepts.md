@@ -428,7 +428,7 @@ codegen: {
 ## Next Steps
 
 - **[CLI Reference](./cli-reference.md)** - Learn all Arbiter commands
-- **[Kubernetes Tutorial](../doc/tutorial/kubernetes/README.md)** - Deploy to
+- **[Kubernetes Tutorial](./tutorial/kubernetes/README.md)** - Deploy to
   Kubernetes
 - **[Examples](../examples/)** - Explore real-world specifications
 - **[API Documentation](./api.md)** - Understand the generated APIs

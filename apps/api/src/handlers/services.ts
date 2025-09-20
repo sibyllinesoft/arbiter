@@ -2,6 +2,12 @@
  * Handler Services - Provide secure, sandboxed services for custom handlers
  */
 
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
+import { logger as defaultLogger } from '../utils.js';
+import { HandlerSandbox } from './sandbox.js';
 import type {
   FileDiff,
   GitService,
@@ -12,6 +18,20 @@ import type {
   RequestOptions,
   SlackMessage,
 } from './types.js';
+
+type EmailMode = 'disabled' | 'log' | 'smtp';
+
+export interface HandlerEmailConfig {
+  mode?: EmailMode;
+  from?: string;
+  smtp?: {
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    user?: string;
+    pass?: string;
+  };
+}
 
 /**
  * HTTP Client for handlers with built-in security and rate limiting
@@ -194,7 +214,18 @@ export class HandlerHttpClient implements HttpClient {
  * Notification service for handlers
  */
 export class HandlerNotificationService implements NotificationService {
-  constructor(private logger: Logger) {}
+  private emailMode: EmailMode;
+  private emailFrom?: string;
+  private transporter?: Transporter;
+
+  constructor(private logger: Logger, private emailConfig: HandlerEmailConfig = {}) {
+    this.emailMode = this.resolveEmailMode(emailConfig.mode);
+    this.emailFrom = emailConfig.from ?? process.env.HANDLER_EMAIL_FROM;
+
+    if (this.emailMode === 'smtp') {
+      this.configureSmtpTransport(emailConfig.smtp);
+    }
+  }
 
   async sendSlack(webhookUrl: string, message: SlackMessage): Promise<void> {
     if (!webhookUrl.includes('hooks.slack.com')) {
@@ -230,14 +261,45 @@ export class HandlerNotificationService implements NotificationService {
   }
 
   async sendEmail(to: string, subject: string, body: string): Promise<void> {
-    // Email functionality would require additional configuration
-    // For now, log the attempt
-    this.logger.info('Email notification requested', {
-      to: this.sanitizeEmail(to),
-      subject,
-    });
+    const sanitizedTo = this.sanitizeEmail(to);
 
-    throw new Error('Email notifications not configured');
+    if (this.emailMode === 'disabled') {
+      const message =
+        'Email notifications are disabled. Set HANDLER_EMAIL_MODE=log or smtp to enable.';
+      this.logger.warn(message, { to: sanitizedTo });
+      throw new Error(message);
+    }
+
+    if (this.emailMode === 'log') {
+      this.logger.info('Email notification logged (log mode)', {
+        to: sanitizedTo,
+        subject,
+      });
+      return;
+    }
+
+    if (!this.transporter || !this.emailFrom) {
+      const message = 'Email transporter not configured. Check SMTP credentials and from address.';
+      this.logger.error(message, undefined, { to: sanitizedTo });
+      throw new Error(message);
+    }
+
+    try {
+      await this.transporter.sendMail({
+        from: this.emailFrom,
+        to,
+        subject,
+        text: body,
+        html: this.renderEmailHtml(subject, body),
+      });
+
+      this.logger.info('Email notification sent successfully', { to: sanitizedTo, subject });
+    } catch (error) {
+      this.logger.error('Failed to send email notification', error as Error, {
+        to: sanitizedTo,
+      });
+      throw error;
+    }
   }
 
   async sendWebhook(url: string, payload: unknown): Promise<void> {
@@ -266,6 +328,57 @@ export class HandlerNotificationService implements NotificationService {
     }
   }
 
+  private resolveEmailMode(override?: EmailMode): EmailMode {
+    if (override) return override;
+
+    const fromEnv = (process.env.HANDLER_EMAIL_MODE || '').toLowerCase();
+    if (fromEnv === 'smtp' || fromEnv === 'log') {
+      return fromEnv;
+    }
+    return 'disabled';
+  }
+
+  private configureSmtpTransport(smtpConfig?: HandlerEmailConfig['smtp']): void {
+    const host = smtpConfig?.host ?? process.env.HANDLER_EMAIL_SMTP_HOST;
+    const port = smtpConfig?.port ?? Number(process.env.HANDLER_EMAIL_SMTP_PORT || 587);
+    const secure = smtpConfig?.secure ?? process.env.HANDLER_EMAIL_SMTP_SECURE === 'true';
+    const user = smtpConfig?.user ?? process.env.HANDLER_EMAIL_SMTP_USER;
+    const pass = smtpConfig?.pass ?? process.env.HANDLER_EMAIL_SMTP_PASS;
+
+    if (!host || !user || !pass) {
+      this.logger.error('SMTP email mode enabled but configuration is incomplete', undefined, {
+        missing: {
+          host: !host,
+          user: !user,
+          pass: !pass,
+        },
+      });
+      this.emailMode = 'disabled';
+      return;
+    }
+
+    if (!this.emailFrom) {
+      this.logger.warn('SMTP email mode enabled but HANDLER_EMAIL_FROM is not set. Using user.');
+      this.emailFrom = user;
+    }
+
+    this.transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: secure ?? port === 465,
+      auth: {
+        user,
+        pass,
+      },
+    });
+  }
+
+  private renderEmailHtml(subject: string, body: string): string {
+    const safeSubject = this.escapeHtml(subject);
+    const safeBody = this.escapeHtml(body);
+    return `<!doctype html><html><head><meta charset="utf-8"><title>${safeSubject}</title></head><body><pre style="font-family: monospace; white-space: pre-wrap;">${safeBody}</pre></body></html>`;
+  }
+
   private sanitizeEmail(email: string): string {
     const parts = email.split('@');
     if (parts.length !== 2) return '[invalid-email]';
@@ -280,55 +393,131 @@ export class HandlerNotificationService implements NotificationService {
       return '[invalid-url]';
     }
   }
+
+  private escapeHtml(value: string): string {
+    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
 }
 
 /**
  * Git service for handlers (limited read-only operations)
  */
 export class HandlerGitService implements GitService {
-  constructor(private logger: Logger) {}
+  private readonly baseDir: string;
 
-  async cloneRepository(url: string, path: string): Promise<void> {
-    // Repository cloning requires careful security considerations
-    // For now, this is not implemented
-    this.logger.warn('Repository cloning not implemented for security reasons', {
-      url: this.sanitizeUrl(url),
-      path,
+  constructor(private logger: Logger) {
+    this.baseDir = process.env.HANDLER_GIT_ROOT ?? '/tmp/arbiter-handler-git';
+  }
+
+  async cloneRepository(url: string, target: string): Promise<void> {
+    const validatedUrl = this.validateRepoUrl(url);
+    const targetPath = await this.resolveTargetPath(target);
+
+    await this.runGit(['clone', '--depth', '1', validatedUrl, targetPath], process.cwd());
+    this.logger.info('Repository cloned for handler', {
+      url: this.sanitizeUrl(validatedUrl),
+      target: targetPath,
     });
-
-    throw new Error('Repository cloning not supported in handlers');
   }
 
   async getCommitDiff(sha: string): Promise<FileDiff[]> {
-    // This would integrate with Git APIs to fetch commit diffs
-    this.logger.info('Commit diff requested', { sha });
+    const repoPath = this.resolveRepoPath();
+    const output = await this.runGitOutput(
+      ['diff', `${sha}^`, sha, '--name-status', '--stat'],
+      repoPath
+    );
 
-    // Placeholder implementation
-    return [];
+    return this.parseDiff(output.stdout);
   }
 
-  async getFileContent(path: string, ref?: string): Promise<string> {
-    // This would integrate with Git APIs to fetch file content
-    this.logger.info('File content requested', { path, ref });
-
-    throw new Error('File content access not implemented');
+  async getFileContent(path: string, ref = 'HEAD'): Promise<string> {
+    const repoPath = this.resolveRepoPath();
+    const result = await this.runGitOutput(['show', `${ref}:${path}`], repoPath);
+    return result.stdout;
   }
 
-  async createBranch(name: string, from?: string): Promise<void> {
-    this.logger.info('Branch creation requested', { name, from });
-
-    throw new Error('Branch creation not supported in handlers');
+  async createBranch(name: string, from = 'HEAD'): Promise<void> {
+    const repoPath = this.resolveRepoPath();
+    await this.runGit(['branch', name, from], repoPath);
+    this.logger.info('Created branch for handler', { name, from });
   }
 
-  async createPullRequest(
-    title: string,
-    body: string,
-    base: string,
-    head: string
-  ): Promise<unknown> {
-    this.logger.info('Pull request creation requested', { title, base, head });
+  async createPullRequest(): Promise<unknown> {
+    throw new Error('Pull request creation requires provider integration');
+  }
 
-    throw new Error('Pull request creation not supported in handlers');
+  private resolveRepoPath(): string {
+    return process.env.HANDLER_GIT_REPO_PATH ?? process.cwd();
+  }
+
+  private async resolveTargetPath(target: string): Promise<string> {
+    const absolute = path.isAbsolute(target) ? target : path.join(this.baseDir, target);
+    if (!absolute.startsWith(this.baseDir)) {
+      throw new Error('Target path outside allowed git directory');
+    }
+    await mkdir(path.dirname(absolute), { recursive: true });
+    return absolute;
+  }
+
+  private validateRepoUrl(url: string): string {
+    try {
+      const parsed = new URL(url);
+      if (!['https:', 'git:'].includes(parsed.protocol)) {
+        throw new Error('Only HTTPS/GIT URLs are allowed');
+      }
+      return parsed.toString();
+    } catch (error) {
+      throw new Error(`Invalid repository URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async runGit(args: string[], cwd: string): Promise<void> {
+    const result = Bun.spawnSync(['git', ...args], { cwd, stderr: 'pipe', stdout: 'pipe' });
+    if (result.exitCode !== 0) {
+      const error = new TextDecoder().decode(result.stderr);
+      throw new Error(error || `git ${args.join(' ')} failed`);
+    }
+  }
+
+  private async runGitOutput(args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
+    const result = Bun.spawnSync(['git', ...args], { cwd, stderr: 'pipe', stdout: 'pipe' });
+    const stdout = new TextDecoder().decode(result.stdout).trim();
+    const stderr = new TextDecoder().decode(result.stderr).trim();
+    if (result.exitCode !== 0) {
+      throw new Error(stderr || `git ${args.join(' ')} failed`);
+    }
+    return { stdout, stderr };
+  }
+
+  private parseDiff(output: string): FileDiff[] {
+    const diffs: FileDiff[] = [];
+    const lines = output.split('\n');
+
+    for (const line of lines) {
+      if (!line || !/^[AMDCRTU]/.test(line)) continue;
+      const [status, filePath] = line.split(/\s+/);
+      diffs.push({
+        path: filePath,
+        status: this.mapStatus(status),
+        additions: 0,
+        deletions: 0,
+      });
+    }
+
+    return diffs;
+  }
+
+  private mapStatus(status: string): FileDiff['status'] {
+    switch (status[0]) {
+      case 'A':
+        return 'added';
+      case 'D':
+        return 'deleted';
+      case 'R':
+        return 'renamed';
+      default:
+        return 'modified';
+    }
   }
 
   private sanitizeUrl(url: string): string {
@@ -345,33 +534,12 @@ export class HandlerGitService implements GitService {
  * Security validator for handler services
  */
 export class HandlerSecurityValidator {
-  private static readonly DANGEROUS_PATTERNS = [
-    /eval\s*\(/,
-    /Function\s*\(/,
-    /require\s*\(/,
-    /import\s*\(/,
-    /process\./,
-    /__dirname/,
-    /__filename/,
-    /fs\./,
-    /child_process/,
-    /spawn/,
-    /exec/,
-  ];
-
-  static validateHandlerCode(code: string): { safe: boolean; violations: string[] } {
-    const violations: string[] = [];
-
-    for (const pattern of HandlerSecurityValidator.DANGEROUS_PATTERNS) {
-      if (pattern.test(code)) {
-        violations.push(`Dangerous pattern detected: ${pattern.source}`);
-      }
-    }
-
-    return {
-      safe: violations.length === 0,
-      violations,
-    };
+  static validateHandlerCode(code: string, logger: Logger = defaultLogger): {
+    safe: boolean;
+    violations: string[];
+  } {
+    const sandbox = new HandlerSandbox(logger);
+    return sandbox.validate(code);
   }
 
   static sanitizeEnvironment(env: Record<string, string>): Record<string, string> {

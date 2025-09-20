@@ -8,6 +8,7 @@ import type { Event, NatsConfig } from '../../types.ts';
 describe('NATS Integration', () => {
   let natsService: NatsService;
   let testConnection: NatsConnection | null = null;
+  let natsAvailable = false;
   const TEST_NATS_URL = 'nats://localhost:4222';
 
   beforeAll(async () => {
@@ -17,6 +18,7 @@ describe('NATS Integration', () => {
         servers: [TEST_NATS_URL],
         timeout: 2000,
       });
+      natsAvailable = true;
     } catch (_error) {
       console.warn('NATS server not available, skipping NATS tests');
       return;
@@ -42,10 +44,7 @@ describe('NATS Integration', () => {
     });
 
     it('should enable NATS when URL is provided', () => {
-      if (!testConnection) {
-        pending('NATS server not available');
-        return;
-      }
+      if (!natsAvailable) return;
 
       const config: NatsConfig = {
         url: TEST_NATS_URL,
@@ -63,10 +62,7 @@ describe('NATS Integration', () => {
     });
 
     it('should publish events to NATS topics', async () => {
-      if (!testConnection) {
-        pending('NATS server not available');
-        return;
-      }
+      if (!natsAvailable || !testConnection) return;
 
       const config: NatsConfig = {
         url: TEST_NATS_URL,
@@ -149,10 +145,7 @@ describe('NATS Integration', () => {
 
   describe('Event Topic Mapping', () => {
     it('should map fragment events correctly', () => {
-      if (!testConnection) {
-        pending('NATS server not available');
-        return;
-      }
+      if (!natsAvailable) return;
 
       const config: NatsConfig = {
         url: TEST_NATS_URL,

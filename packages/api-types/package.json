@@ -33,6 +33,7 @@
   "author": "Nathan Rice",
   "license": "MIT",
   "dependencies": {
-    "hono": "^4.9.8"
+    "hono": "^4.9.8",
+    "@arbiter/shared-types": "workspace:*"
   }
 }

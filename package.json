@@ -16,14 +16,15 @@
     "dev": "NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev",
     "start": "bun run --cwd apps/api start",
     "build": "bun run build:all",
-    "build:all": "bun run build:shared && bun run build:api-types && bun run build:cli && bun run build:api",
+    "build:all": "bun run build:shared-types && bun run build:shared && bun run build:cue-runner && bun run build:api-types && bun run build:core && bun run build:cli && bun run build:api",
     "build:shared": "bun run --cwd packages/shared build",
+    "build:cue-runner": "bun run --cwd packages/cue-runner build",
     "build:api-types": "bun run --cwd packages/api-types build",
     "build:cli": "bun run --cwd packages/cli build",
     "build:api": "bun run --cwd apps/api build",
     "build:standalone": "bun build packages/cli/src/cli.ts --compile --outfile arbiter-cli --target=bun",
     "clean": "bun run clean:all",
-    "clean:all": "bun run --cwd packages/shared clean && bun run --cwd packages/cli clean && bun run --cwd apps/api clean",
+    "clean:all": "bun run --cwd packages/shared-types clean && bun run --cwd packages/shared clean && bun run --cwd packages/cue-runner clean && bun run --cwd packages/api-types clean && bun run --cwd packages/arbiter-core clean && bun run --cwd packages/cli clean && bun run --cwd apps/api clean",
     "cli": "./arbiter-cli",
     "cli:install": "./install-cli.sh",
     "cli:test": "./arbiter-cli --self-test",
@@ -52,7 +53,9 @@
     "validate": "bun run quality && bun run test",
     "version:sync": "bun scripts/sync-versions.ts sync",
     "version:validate": "bun scripts/sync-versions.ts validate",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:core": "bun run --cwd packages/arbiter-core build",
+    "build:shared-types": "bun run --cwd packages/shared-types build"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

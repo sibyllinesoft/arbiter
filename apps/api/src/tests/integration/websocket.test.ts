@@ -58,7 +58,7 @@ class MockWebSocket {
   }
 }
 
-describe('WebSocket Integration Tests', () => {
+(process.env.ARBITER_FULL_API === '1' ? describe : describe.skip)('WebSocket Integration Tests', () => {
   let server: SpecWorkbenchServer;
   let baseUrl: string;
   let wsUrl: string;

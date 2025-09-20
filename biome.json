@@ -78,7 +78,7 @@
       "apps/web/frontend/dist/**",
       "packages/cli/dist/**",
       "arbiter-cli",
-      "arbiter/handlers/ai/examples/custom-agent.js"
+      "packages/arbiter-core/src/handlers/ai/examples/custom-agent.js"
     ],
     "ignoreUnknown": true,
     "maxSize": 10485760

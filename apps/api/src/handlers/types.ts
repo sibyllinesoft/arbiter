@@ -201,6 +201,19 @@ export interface RegisteredHandler {
   metadata: HandlerModule['metadata'];
 }
 
+export interface HandlerCreationOptions {
+  provider: 'github' | 'gitlab';
+  event: string;
+  code: string;
+  config?: Partial<HandlerConfig>;
+  metadata?: {
+    name: string;
+    description: string;
+    version?: string;
+    author?: string;
+  };
+}
+
 export interface HandlerExecution {
   id: string;
   handlerId: string;

@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@arbiter/shared": "workspace:*",
+    "@arbiter/cue-runner": "workspace:*",
     "commander": "^12.0.0",
     "chalk": "^5.3.0",
     "cli-table3": "^0.6.3",
@@ -29,7 +30,10 @@
     "glob": "^10.3.10",
     "chokidar": "^3.6.0",
     "diff": "^5.1.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "inquirer": "^9.3.6",
+    "js-yaml": "^4.1.0",
+    "nanoid": "^5.0.7"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",

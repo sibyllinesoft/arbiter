@@ -3,6 +3,7 @@
  * This is the main integration point that extends the WebhookService
  */
 
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { SpecWorkbenchDB } from '../db.js';
 import type { EventService } from '../events.js';
@@ -10,7 +11,12 @@ import type { ServerConfig } from '../types.js';
 import { logger as defaultLogger } from '../utils.js';
 import { HandlerDiscovery } from './discovery.js';
 import { HandlerExecutor } from './executor.js';
-import { HandlerGitService, HandlerHttpClient, HandlerNotificationService } from './services.js';
+import {
+  HandlerGitService,
+  HandlerHttpClient,
+  HandlerNotificationService,
+  type HandlerEmailConfig,
+} from './services.js';
 import type {
   HandlerDiscoveryConfig,
   HandlerExecution,
@@ -19,6 +25,7 @@ import type {
   Logger,
   RegisteredHandler,
   WebhookRequest,
+  HandlerCreationOptions,
 } from './types.js';
 
 export class CustomHandlerManager {
@@ -34,11 +41,15 @@ export class CustomHandlerManager {
     private logger: Logger = defaultLogger
   ) {
     // Initialize handler services
+    const emailConfig = this.config.handlers?.notifications?.email as
+      | HandlerEmailConfig
+      | undefined;
+
     this.services = {
       events: this.events,
       db: this.db,
       http: new HandlerHttpClient(this.logger),
-      notifications: new HandlerNotificationService(this.logger),
+      notifications: new HandlerNotificationService(this.logger, emailConfig),
       git: new HandlerGitService(this.logger),
     };
 
@@ -159,6 +170,55 @@ export class CustomHandlerManager {
   }
 
   /**
+   * Create and register a new handler on disk
+   */
+  async createHandler(options: HandlerCreationOptions): Promise<RegisteredHandler> {
+    if (!options.code || options.code.trim().length === 0) {
+      throw new Error('Handler code must not be empty');
+    }
+
+    if (options.provider !== 'github' && options.provider !== 'gitlab') {
+      throw new Error(`Unsupported provider: ${options.provider}`);
+    }
+
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const normalizedEvent = this.normalizeEventName(options.event);
+    const handlersRoot = join(process.cwd(), 'arbiter', 'handlers', options.provider);
+    await mkdir(handlersRoot, { recursive: true });
+
+    const extension = this.detectFileExtension(options.code);
+    let fileName = `${normalizedEvent}${extension}`;
+    let handlerPath = join(handlersRoot, fileName);
+    let counter = 1;
+
+    while (await this.pathExists(handlerPath)) {
+      fileName = `${normalizedEvent}-${counter++}${extension}`;
+      handlerPath = join(handlersRoot, fileName);
+    }
+
+    const source = this.buildHandlerModuleSource(options, normalizedEvent);
+    await writeFile(handlerPath, source, 'utf-8');
+
+    const handler = await this.discovery.registerHandlerFromFile(
+      handlerPath,
+      options.provider,
+      normalizedEvent
+    );
+
+    this.logger.info('Custom handler created', {
+      id: handler.id,
+      provider: handler.provider,
+      event: handler.event,
+      path: handler.handlerPath,
+    });
+
+    return handler;
+  }
+
+  /**
    * Get all registered handlers
    */
   getHandlers(): RegisteredHandler[] {
@@ -234,6 +294,120 @@ export class CustomHandlerManager {
       totalExecutions: executions.length,
       failedExecutions: executions.filter(e => !e.result.success).length,
     };
+  }
+
+
+
+  private normalizeEventName(event: string): string {
+    const trimmed = event.trim().toLowerCase();
+    if (trimmed.length === 0) {
+      throw new Error('Event name is required');
+    }
+
+    if (trimmed.includes('/') || trimmed.includes('\\')) {
+      throw new Error('Event name cannot contain path separators');
+    }
+
+    return trimmed.replace(/[^a-z0-9._-]/g, '-');
+  }
+
+  private detectFileExtension(code: string): '.ts' | '.js' {
+    const trimmed = code.trim();
+    if (trimmed.includes('module.exports') || trimmed.includes('require(')) {
+      return '.js';
+    }
+
+    if (trimmed.includes('export ') || trimmed.includes('import ')) {
+      return '.ts';
+    }
+
+    return '.ts';
+  }
+
+  private async pathExists(target: string): Promise<boolean> {
+    try {
+      await access(target);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private buildHandlerModuleSource(
+    options: HandlerCreationOptions,
+    normalizedEvent: string
+  ): string {
+    const trimmed = options.code.trim();
+
+    if (trimmed.includes('export default')) {
+      const transformed = trimmed.replace(/export\s+default/, 'module.exports =');
+      return transformed.endsWith('\n') ? transformed : `${transformed}\n`;
+    }
+
+    if (trimmed.includes('module.exports') || trimmed.includes('exports.')) {
+      return trimmed.endsWith('\n') ? trimmed : `${trimmed}\n`;
+    }
+
+    const defaultTimeout = this.config.handlers?.defaultTimeout ?? 30000;
+    const defaultRetries = this.config.handlers?.defaultRetries ?? 2;
+
+    const config = {
+      enabled: options.config?.enabled ?? true,
+      timeout: options.config?.timeout ?? defaultTimeout,
+      retries: options.config?.retries ?? defaultRetries,
+      environment: options.config?.environment ?? {},
+      secrets: options.config?.secrets ?? {},
+    };
+
+    const metadata = {
+      name: options.metadata?.name ?? `${options.provider} ${normalizedEvent} handler`,
+      description:
+        options.metadata?.description ?? 'Custom webhook handler generated by Arbiter',
+      version: options.metadata?.version ?? '1.0.0',
+      author: options.metadata?.author ?? 'Arbiter',
+      supportedEvents: [normalizedEvent],
+      requiredPermissions: [],
+    };
+
+    const defaultBody = [
+      'return {',
+      "  success: true,",
+      "  message: 'Handler executed successfully',",
+      '  actions: [],',
+      '};',
+    ].join("\n");
+
+    const body = trimmed.length > 0 ? this.indentSnippet(trimmed) : this.indentSnippet(defaultBody);
+
+    return `module.exports = {
+  config: ${this.formatObjectLiteral(config, 4)},
+  metadata: ${this.formatObjectLiteral(metadata, 4)},
+  handler: async (payload, context) => {
+${body}
+  },
+};
+`;
+  }
+
+  private formatObjectLiteral(value: unknown, indent: number): string {
+    const json = JSON.stringify(value, null, 2);
+    const lines = json.split("\n");
+    return lines
+      .map((line, index) => {
+        if (index === 0 || index === lines.length - 1) {
+          return line;
+        }
+        return `${' '.repeat(indent)}${line.trimStart()}`;
+      })
+      .join('\n');
+  }
+
+  private indentSnippet(snippet: string, indentSize = 4): string {
+    const indent = ' '.repeat(indentSize);
+    return snippet
+      .split('\n')
+      .map(line => `${indent}${line.trimEnd()}`)
+      .join('\n');
   }
 
   /**

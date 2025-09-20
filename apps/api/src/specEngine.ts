@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import type {
   CoverageGap,
   Duplicate,
+  ExternalToolResult,
   Fragment,
   GapSet,
   ServerConfig,
@@ -12,15 +13,8 @@ import type {
   ValidationError,
   ValidationWarning,
 } from './types.ts';
-import {
-  computeSpecHash,
-  ensureDir,
-  executeCommand,
-  formatCUE,
-  generateId,
-  logger,
-  safeJsonParse,
-} from './utils.ts';
+import { CueRunner, type CueDiagnostic } from '@arbiter/cue-runner';
+import { computeSpecHash, ensureDir, executeCommand, formatCUE, generateId, logger } from './utils.ts';
 
 /**
  * Interface for assertion configurations
@@ -432,6 +426,46 @@ export class SpecEngine {
     return join(this.getProjectDir(projectId), 'fragments');
   }
 
+  private createCueRunner(projectId: string): CueRunner {
+    return new CueRunner({
+      cueBinaryPath: this.config.cue_binary_path,
+      cwd: this.getFragmentsDir(projectId),
+      timeoutMs: this.config.external_tool_timeout_ms,
+    });
+  }
+
+  private cueDiagnosticsToValidationErrors(diagnostics: CueDiagnostic[]): ValidationError[] {
+    return diagnostics.map(diag => {
+      const detailEntries: Record<string, unknown> = {
+        raw: diag.raw,
+      };
+
+      if (diag.file) {
+        detailEntries.file = diag.file;
+      }
+      if (typeof diag.line === 'number') {
+        detailEntries.line = diag.line;
+      }
+      if (typeof diag.column === 'number') {
+        detailEntries.column = diag.column;
+      }
+      if (diag.summary) {
+        detailEntries.summary = diag.summary;
+      }
+
+      const location = diag.file
+        ? `${diag.file}:${diag.line ?? 0}:${diag.column ?? 0}`
+        : undefined;
+
+      return {
+        type: 'schema' as const,
+        message: diag.message,
+        ...(location ? { location } : {}),
+        details: detailEntries,
+      };
+    });
+  }
+
   /**
    * Write fragments to filesystem for CUE processing
    */
@@ -471,85 +505,44 @@ export class SpecEngine {
    * Run CUE validation (cue vet)
    */
   private async runCueValidation(projectId: string): Promise<ValidationError[]> {
-    const fragmentsDir = this.getFragmentsDir(projectId);
-
     try {
-      const result = await this.executeCueValidationCommand(fragmentsDir);
-      const errors = this.parseCueValidationResult(result);
+      const runner = this.createCueRunner(projectId);
+      const vetResult = await runner.vet();
 
-      this.logCueValidationResult(projectId, result, errors);
-      return errors;
+      this.logCueValidationResult(projectId, vetResult.raw, vetResult.diagnostics);
+
+      if (vetResult.success) {
+        return [];
+      }
+
+      const diagnostics = this.cueDiagnosticsToValidationErrors(vetResult.diagnostics);
+      if (diagnostics.length > 0) {
+        return diagnostics;
+      }
+
+      return [
+        {
+          type: 'schema',
+          message: vetResult.raw.stderr || 'CUE validation failed',
+        },
+      ];
     } catch (error) {
       return this.handleCueValidationError(projectId, error);
     }
   }
 
   /**
-   * Execute the CUE validation command
-   */
-  private async executeCueValidationCommand(fragmentsDir: string): Promise<any> {
-    return executeCommand(this.config.cue_binary_path, ['vet', '.'], {
-      cwd: fragmentsDir,
-      timeout: this.config.external_tool_timeout_ms,
-    });
-  }
-
-  /**
-   * Parse CUE validation command results into validation errors
-   */
-  private parseCueValidationResult(result: any): ValidationError[] {
-    const errors: ValidationError[] = [];
-
-    if (!result.success && result.stderr) {
-      const lines = result.stderr.split('\n').filter(line => line.trim());
-
-      for (const line of lines) {
-        const error = this.parseCueErrorLine(line);
-        if (error) {
-          errors.push(error);
-        }
-      }
-    }
-
-    return errors;
-  }
-
-  /**
-   * Parse a single CUE error line into ValidationError
-   */
-  private parseCueErrorLine(line: string): ValidationError | null {
-    // CUE error format: filename:line:column: message
-    const match = line.match(/^([^:]+):(\d+):(\d+):\s*(.+)$/);
-
-    if (match) {
-      const [, file, lineNum, col, message] = match;
-      return {
-        type: 'schema',
-        message: message?.trim() || 'Unknown error',
-        location: `${file}:${lineNum}:${col}`,
-        details: {
-          file,
-          line: Number.parseInt(lineNum || '0', 10),
-          column: Number.parseInt(col || '0', 10),
-        },
-      };
-    }
-
-    // Generic error format
-    return {
-      type: 'schema',
-      message: line.trim(),
-    };
-  }
-
-  /**
    * Log CUE validation completion
    */
-  private logCueValidationResult(projectId: string, result: any, errors: ValidationError[]): void {
+  private logCueValidationResult(
+    projectId: string,
+    result: ExternalToolResult,
+    diagnostics: CueDiagnostic[],
+  ): void {
     logger.debug('CUE validation completed', {
       projectId,
       success: result.success,
-      errorCount: errors.length,
+      errorCount: diagnostics.length,
       duration: result.duration_ms,
     });
   }
@@ -577,38 +570,25 @@ export class SpecEngine {
     success: boolean;
     resolved?: Record<string, unknown>;
     error?: string;
+    diagnostics?: CueDiagnostic[];
   }> {
-    const fragmentsDir = this.getFragmentsDir(projectId);
-
     try {
-      const result = await executeCommand(
-        this.config.cue_binary_path,
-        ['export', '--out', 'json'],
-        {
-          cwd: fragmentsDir,
-          timeout: this.config.external_tool_timeout_ms,
-        }
-      );
+      const runner = this.createCueRunner(projectId);
+      const exportResult = await runner.exportJson();
 
-      if (result.success && result.stdout) {
-        const parseResult = safeJsonParse(result.stdout);
+      if (exportResult.success && exportResult.value) {
+        logger.debug('CUE export completed', {
+          projectId,
+          duration: exportResult.raw.duration_ms,
+        });
 
-        if (parseResult.success) {
-          logger.debug('CUE export completed', {
-            projectId,
-            duration: result.duration_ms,
-          });
-
-          return { success: true, resolved: parseResult.data };
-        }
-        return {
-          success: false,
-          error: `Invalid JSON from CUE export: ${parseResult.error}`,
-        };
+        return { success: true, resolved: exportResult.value };
       }
+
       return {
         success: false,
-        error: result.stderr || 'CUE export failed with no output',
+        error: exportResult.error,
+        diagnostics: exportResult.diagnostics,
       };
     } catch (error) {
       logger.error('CUE export error', error instanceof Error ? error : undefined, { projectId });
@@ -758,13 +738,19 @@ export class SpecEngine {
     await this.writeFragmentsToFS(projectId, fragments);
 
     // Step 2: Run CUE validation
-    const schemaErrors = await this.runCueValidation(projectId);
+    let schemaErrors = await this.runCueValidation(projectId);
 
     // Step 3: Export resolved specification
     const exportResult = await this.exportResolvedSpec(projectId);
 
     // Handle export failure early
     if (!exportResult.success || !exportResult.resolved) {
+      if (exportResult.diagnostics && exportResult.diagnostics.length > 0) {
+        schemaErrors = schemaErrors.concat(
+          this.cueDiagnosticsToValidationErrors(exportResult.diagnostics)
+        );
+      }
+
       return this.createFailureResult(schemaErrors, exportResult.error);
     }
 
@@ -776,7 +762,7 @@ export class SpecEngine {
    * Create validation result for export failures
    */
   private createFailureResult(
-    schemaErrors: ValidationError[],
+    errors: ValidationError[],
     exportError?: string
   ): {
     success: boolean;
@@ -785,16 +771,19 @@ export class SpecEngine {
     errors: ValidationError[];
     warnings: ValidationWarning[];
   } {
+    const aggregated = [...errors];
+
+    if (exportError) {
+      aggregated.push({
+        type: 'schema',
+        message: exportError,
+      });
+    }
+
     return {
       success: false,
       specHash: '',
-      errors: [
-        ...schemaErrors,
-        {
-          type: 'schema',
-          message: exportError || 'Failed to export resolved specification',
-        },
-      ],
+      errors: aggregated,
       warnings: [],
     };
   }

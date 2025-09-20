@@ -99,7 +99,7 @@ arbiter onboard --dry-run
 
 #### `arbiter add`
 
-Incrementally build specifications using compositional commands. This is the
+Incrementally build CUE specifications with modular generators. This is the
 primary way to build complex systems piece by piece.
 
 **Usage:**

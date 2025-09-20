@@ -4,19 +4,22 @@
  */
 
 import { access, readdir, stat } from 'node:fs/promises';
-import { basename, extname, join } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { logger as defaultLogger, generateId } from '../utils.js';
+import { basename, extname, join, relative } from 'node:path';
+import { logger as defaultLogger } from '../utils.js';
 import type { HandlerDiscoveryConfig, HandlerModule, Logger, RegisteredHandler } from './types.js';
+import { HandlerLoader } from './loader.js';
 
 export class HandlerDiscovery {
   private handlers = new Map<string, RegisteredHandler>();
   private watchers = new Map<string, AbortController>();
+  private loader: HandlerLoader;
 
   constructor(
     private config: HandlerDiscoveryConfig,
     private logger: Logger = defaultLogger
-  ) {}
+  ) {
+    this.loader = new HandlerLoader(this.logger);
+  }
 
   /**
    * Discover all handlers in the configured directory
@@ -34,6 +37,7 @@ export class HandlerDiscovery {
     this.logger.info('Starting handler discovery', { directory: handlersDir });
 
     const handlers: RegisteredHandler[] = [];
+    const discoveredHandlers = new Map<string, RegisteredHandler>();
 
     // Discover GitHub handlers
     const githubHandlers = await this.discoverProviderHandlers(
@@ -51,8 +55,10 @@ export class HandlerDiscovery {
 
     // Cache discovered handlers
     for (const handler of handlers) {
-      this.handlers.set(handler.id, handler);
+      discoveredHandlers.set(handler.id, handler);
     }
+
+    this.handlers = discoveredHandlers;
 
     // Set up file watchers if enabled
     if (this.config.enableAutoReload) {
@@ -95,7 +101,8 @@ export class HandlerDiscovery {
       const eventName = basename(entry.name, ext);
 
       try {
-        const handler = await this.loadHandler(handlerPath, provider, eventName);
+        const handlerId = this.createHandlerId(provider, eventName, handlerPath);
+        const handler = await this.loadHandler(handlerPath, provider, eventName, handlerId);
         if (handler) {
           handlers.push(handler);
         }
@@ -117,7 +124,8 @@ export class HandlerDiscovery {
   private async loadHandler(
     handlerPath: string,
     provider: 'github' | 'gitlab',
-    eventName: string
+    eventName: string,
+    handlerId?: string
   ): Promise<RegisteredHandler | null> {
     try {
       this.logger.debug('Loading handler', { path: handlerPath, provider, event: eventName });
@@ -127,22 +135,28 @@ export class HandlerDiscovery {
         throw new Error('Handler path outside allowed directory');
       }
 
-      // Dynamic import with file URL for compatibility
-      const fileUrl = pathToFileURL(handlerPath).href;
-      const module = await import(fileUrl);
-
-      // Extract handler module (support both default export and named export)
-      const handlerModule: HandlerModule = module.default || module.handler || module;
-
-      if (!handlerModule.handler || typeof handlerModule.handler !== 'function') {
-        throw new Error('Handler module must export a handler function');
-      }
+      const handlerModule = await this.loader.load({
+        id: handlerId ?? this.createHandlerId(provider, eventName, handlerPath),
+        provider,
+        event: eventName,
+        handlerPath,
+        enabled: true,
+        config: {
+          enabled: true,
+          timeout: this.config.defaultTimeout,
+          retries: this.config.defaultRetries,
+          environment: {},
+          secrets: {},
+        },
+        executionCount: 0,
+        errorCount: 0,
+      } as RegisteredHandler);
 
       // Validate handler metadata
       this.validateHandlerModule(handlerModule, eventName);
 
       const registeredHandler: RegisteredHandler = {
-        id: generateId(),
+        id: handlerId ?? this.createHandlerId(provider, eventName, handlerPath),
         provider,
         event: eventName,
         handlerPath,
@@ -184,6 +198,15 @@ export class HandlerDiscovery {
     }
   }
 
+  private createHandlerId(
+    provider: 'github' | 'gitlab',
+    eventName: string,
+    handlerPath: string
+  ): string {
+    const relativePath = relative(this.config.handlersDirectory, handlerPath);
+    return `${provider}:${eventName}:${relativePath}`;
+  }
+
   /**
    * Validate handler module structure
    */
@@ -215,6 +238,22 @@ export class HandlerDiscovery {
         }
       }
     }
+  }
+
+  async registerHandlerFromFile(
+    handlerPath: string,
+    provider: 'github' | 'gitlab',
+    eventName: string
+  ): Promise<RegisteredHandler> {
+    const handlerId = this.createHandlerId(provider, eventName, handlerPath);
+    const handler = await this.loadHandler(handlerPath, provider, eventName, handlerId);
+
+    if (!handler) {
+      throw new Error('Failed to load handler after creation');
+    }
+
+    this.handlers.set(handler.id, handler);
+    return handler;
   }
 
   /**
@@ -309,14 +348,12 @@ export class HandlerDiscovery {
     if (!existingHandler) return false;
 
     try {
-      // Clear module cache (Node.js specific)
-      delete require.cache[require.resolve(existingHandler.handlerPath)];
-
       // Reload handler
       const reloadedHandler = await this.loadHandler(
         existingHandler.handlerPath,
         existingHandler.provider,
-        existingHandler.event
+        existingHandler.event,
+        existingHandler.id
       );
 
       if (reloadedHandler) {

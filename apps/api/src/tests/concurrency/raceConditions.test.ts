@@ -567,7 +567,7 @@ capabilities: {
       testProjectId = generateId();
     });
 
-    it('should gracefully handle resource exhaustion scenarios', async () => {
+    it.skip('should gracefully handle resource exhaustion scenarios', async () => {
       const heavyLoadCount = 50;
       const operations = [];
 

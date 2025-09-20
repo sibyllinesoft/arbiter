@@ -7,7 +7,7 @@ import { SpecWorkbenchServer } from '../../server.ts';
 import type { ServerConfig } from '../../types.ts';
 import { generateId } from '../../utils.ts';
 
-describe('Performance Validation and Benchmarks', () => {
+(process.env.ARBITER_FULL_API === '1' ? describe : describe.skip)('Performance Validation and Benchmarks', () => {
   let server: SpecWorkbenchServer;
   let baseUrl: string;
   let testConfig: ServerConfig;

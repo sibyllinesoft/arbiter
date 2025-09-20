@@ -3,7 +3,12 @@
  */
 
 import type { CustomHandlerManager } from './manager.js';
-import type { HandlerExecution, HandlerResult, RegisteredHandler } from './types.js';
+import type {
+  HandlerCreationOptions,
+  HandlerExecution,
+  HandlerResult,
+  RegisteredHandler,
+} from './types.js';
 
 // Request/Response types for API endpoints
 export interface ListHandlersRequest {
@@ -60,24 +65,7 @@ export interface ValidateHandlerResponse {
   warnings: string[];
 }
 
-export interface CreateHandlerRequest {
-  provider: 'github' | 'gitlab';
-  event: string;
-  code: string;
-  config?: {
-    enabled?: boolean;
-    timeout?: number;
-    retries?: number;
-    environment?: Record<string, string>;
-    secrets?: Record<string, string>;
-  };
-  metadata?: {
-    name: string;
-    description: string;
-    version?: string;
-    author?: string;
-  };
-}
+export type CreateHandlerRequest = HandlerCreationOptions;
 
 export interface CreateHandlerResponse {
   success: boolean;
@@ -306,14 +294,15 @@ export class HandlerAPIController {
   /**
    * POST /api/handlers
    * Create a new handler
-   */
+  */
   async createHandler(request: CreateHandlerRequest): Promise<CreateHandlerResponse> {
     try {
-      // This would save the handler code to the filesystem and register it
-      // For now, return a placeholder response
+      const handler = await this.handlerManager.createHandler(request);
+
       return {
-        success: false,
-        message: 'Handler creation not yet implemented',
+        success: true,
+        handler,
+        message: 'Handler created successfully',
       };
     } catch (error) {
       return {

@@ -17,7 +17,7 @@ import { SpecWorkbenchDB } from './db.ts';
 import { EventService } from './events.ts';
 import { HandlerAPIController } from './handlers/api.js';
 import { IRGenerator } from './ir.ts';
-import { McpCliIntegration } from './mcp-cli-integration.js';
+import { McpCliIntegration } from './mcp-cli-integration.ts';
 import { SpecEngine } from './specEngine.ts';
 import type { ServerConfig } from './types.ts';
 import { TokenBucket, createProblemDetails, logger } from './utils.ts';

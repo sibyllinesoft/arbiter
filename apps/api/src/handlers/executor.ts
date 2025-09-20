@@ -7,6 +7,8 @@ import { setTimeout } from 'node:timers/promises';
 import type { SpecWorkbenchDB } from '../db.js';
 import type { EventService } from '../events.js';
 import { logger as defaultLogger, generateId, getCurrentTimestamp } from '../utils.js';
+import { HandlerLoader } from './loader.js';
+import { HandlerSecurityValidator } from './services.js';
 import type { HandlerDiscovery } from './discovery.js';
 import type {
   EnhancedWebhookPayload,
@@ -24,12 +26,15 @@ import type {
 export class HandlerExecutor {
   private activeExecutions = new Map<string, AbortController>();
   private executionHistory: HandlerExecution[] = [];
+  private loader: HandlerLoader;
 
   constructor(
     private discovery: HandlerDiscovery,
     private services: HandlerServices,
     private logger: Logger = defaultLogger
-  ) {}
+  ) {
+    this.loader = new HandlerLoader(this.logger);
+  }
 
   /**
    * Execute handlers for a webhook event
@@ -303,15 +308,7 @@ export class HandlerExecutor {
    * Load handler module dynamically
    */
   private async loadHandlerModule(handler: RegisteredHandler): Promise<any> {
-    try {
-      // In production, this would implement proper module loading with caching
-      const module = await import(handler.handlerPath);
-      return module.default || module.handler || module;
-    } catch (error) {
-      throw new Error(
-        `Failed to load handler module: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
+    return this.loader.load(handler);
   }
 
   /**
@@ -323,9 +320,26 @@ export class HandlerExecutor {
     executionId: string,
     abortSignal: AbortSignal
   ): Promise<HandlerContext> {
+    const sanitizedEnvironment = HandlerSecurityValidator.sanitizeEnvironment(
+      handler.config.environment
+    );
+
+    const secretsValidation = HandlerSecurityValidator.validateSecrets(handler.config.secrets);
+    if (!secretsValidation.valid) {
+      throw new Error(
+        `Handler secrets configuration invalid: ${secretsValidation.errors.join(', ')}`
+      );
+    }
+
+    const sanitizedConfig = {
+      ...handler.config,
+      environment: sanitizedEnvironment,
+      secrets: { ...handler.config.secrets },
+    } as HandlerContext['config'];
+
     return {
       projectId,
-      config: handler.config,
+      config: sanitizedConfig,
       logger: this.createHandlerLogger(handler.id, executionId),
       services: this.services,
       metadata: {

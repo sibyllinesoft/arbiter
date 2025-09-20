@@ -31,5 +31,8 @@
     "utilities"
   ],
   "author": "Nathan Rice",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@arbiter/shared-types": "workspace:*"
+  }
 }

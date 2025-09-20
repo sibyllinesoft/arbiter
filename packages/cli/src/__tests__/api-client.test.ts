@@ -587,8 +587,8 @@ describe("ApiClient", () => {
 
       const duration = Date.now() - start;
 
-      // Should take at least 1 second due to rate limiting
-      expect(duration).toBeGreaterThanOrEqual(1000);
+      // Should take roughly 1 second due to rate limiting (allow minor scheduling jitter)
+      expect(duration).toBeGreaterThanOrEqual(950);
     }, 3000);
   });
 

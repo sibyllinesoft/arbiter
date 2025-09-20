@@ -1,0 +1,13 @@
+import { ServerInfo } from "./core";
+import { Authenticator, ConnectionOptions } from "./core";
+export declare const DEFAULT_MAX_RECONNECT_ATTEMPTS = 10;
+export declare const DEFAULT_JITTER = 100;
+export declare const DEFAULT_JITTER_TLS = 1000;
+export declare const DEFAULT_PING_INTERVAL: number;
+export declare const DEFAULT_MAX_PING_OUT = 2;
+export declare const DEFAULT_RECONNECT_TIME_WAIT: number;
+export declare function defaultOptions(): ConnectionOptions;
+export declare function buildAuthenticator(opts: ConnectionOptions): Authenticator;
+export declare function parseOptions(opts?: ConnectionOptions): ConnectionOptions;
+export declare function checkOptions(info: ServerInfo, options: ConnectionOptions): void;
+export declare function checkUnsupportedOption(prop: string, v?: string): void;

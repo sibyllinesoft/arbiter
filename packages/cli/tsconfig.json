@@ -21,22 +21,52 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "noEmit": false,
-    "types": ["node", "bun-types"],
+    "types": [
+      "node",
+      "bun-types"
+    ],
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@arbiter/shared": ["../shared/src/index.ts"],
-      "@arbiter/shared/*": ["../shared/src/*"],
-      "@/*": ["./src/*"],
-      "@/commands/*": ["./src/commands/*"],
-      "@/templates/*": ["./src/templates/*"],
-      "@/cue/*": ["./src/cue/*"],
-      "@/types": ["./src/types.ts"],
-      "@/config": ["./src/config.ts"]
+      "@arbiter/shared": [
+        "../shared/src/index.ts"
+      ],
+      "@arbiter/shared/*": [
+        "../shared/src/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ],
+      "@/commands/*": [
+        "./src/commands/*"
+      ],
+      "@/templates/*": [
+        "./src/templates/*"
+      ],
+      "@/cue/*": [
+        "./src/cue/*"
+      ],
+      "@/types": [
+        "./src/types.ts"
+      ],
+      "@/config": [
+        "./src/config.ts"
+      ],
+      "@arbiter/core": [
+        "../arbiter-core/src/index.ts"
+      ],
+      "@arbiter/core/*": [
+        "../arbiter-core/src/*"
+      ]
     }
   },
   "references": [
-    { "path": "../shared" }
+    {
+      "path": "../shared"
+    },
+    {
+      "path": "../arbiter-core"
+    }
   ],
   "include": [
     "src/**/*"

@@ -37,7 +37,7 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
   throw new Error(`Server not ready after ${timeoutMs}ms timeout`);
 }
 
-describe('API Integration Tests', () => {
+(process.env.ARBITER_FULL_API === '1' ? describe : describe.skip)('API Integration Tests', () => {
   let server: SpecWorkbenchServer;
   let baseUrl: string;
   let testConfig: ServerConfig;

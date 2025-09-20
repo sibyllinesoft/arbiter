@@ -2,7 +2,6 @@ import path from 'node:path';
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import inquirer from 'inquirer';
-import { ProjectCompositionManager } from '../composition/index.js';
 import type { InitOptions, ProjectTemplate } from '../types.js';
 import { withProgress } from '../utils/progress.js';
 
@@ -207,16 +206,7 @@ export async function initCommand(
       async () => {
         await createProject(targetDir, name, template);
 
-        // Initialize composition system if requested
-        if (options.composition || options.enableFragments) {
-          await initializeCompositionSystem(targetDir, name, template.description, options);
-        }
-
         console.log(chalk.green(`\n✓ Created project "${name}" in ${directory}`));
-
-        if (options.composition) {
-          console.log(chalk.green('✓ Initialized project composition system'));
-        }
 
         console.log(chalk.yellow('\n📋 IMPORTANT: Basic project structure created'));
         console.log(chalk.red('⚠️  NO CUE files have been generated yet - this is intentional!'));
@@ -233,11 +223,6 @@ export async function initCommand(
         console.log(chalk.green('  3. Validate your generated CUE files:'));
         console.log(chalk.cyan('     arbiter check  # Validate the generated CUE'));
         console.log(chalk.dim("\n💡 Use 'arbiter --help' to see all available add commands"));
-
-        if (options.composition) {
-          console.log(chalk.dim('  arbiter composition validate  # Validate composition setup'));
-          console.log(chalk.dim('  arbiter composition import <srf-file>  # Import SRF fragments'));
-        }
 
         return 0;
       }
@@ -262,19 +247,10 @@ async function getProjectDetails(
   const name = displayName || path.basename(process.cwd());
   const templateKey = options.template || 'basic';
   const directory = process.cwd();
-  const composition = options.composition ?? false;
-  const compositionTemplate = options.compositionTemplate || 'basic';
-
   const template = TEMPLATES[templateKey];
   if (!template) {
     throw new Error(`Unknown template: ${templateKey}`);
   }
-
-  // Update options with composition settings
-  options.composition = composition;
-  options.compositionTemplate = compositionTemplate;
-  options.enableFragments = composition; // Enable fragments if composition is enabled
-  options.enableFragments = composition; // Enable fragments if composition is enabled
 
   return { name, directory, template };
 }
@@ -320,25 +296,6 @@ async function createProject(
     JSON.stringify(configContent, null, 2),
     'utf-8'
   );
-}
-
-/**
- * Initialize project composition system
- */
-async function initializeCompositionSystem(
-  targetDir: string,
-  projectName: string,
-  description: string,
-  options: InitOptions
-): Promise<void> {
-  const compositionManager = new ProjectCompositionManager(targetDir);
-
-  await compositionManager.initialize({
-    name: projectName,
-    description: description,
-    compositionTemplate: options.compositionTemplate || 'basic',
-    enableFragments: options.enableFragments || false,
-  });
 }
 
 /**

@@ -137,11 +137,11 @@ program
   });
 
 /**
- * Add command - Compositional specification builder
+ * Add command - Modular specification builder
  */
 const addCmd = program
   .command('add')
-  .description('incrementally build specifications using compositional commands');
+  .description('incrementally build CUE specifications with modular generators');
 
 addCmd
   .command('service <name>')

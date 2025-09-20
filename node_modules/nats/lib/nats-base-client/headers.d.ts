@@ -1,0 +1,31 @@
+import { Match, MsgHdrs } from "./core";
+export declare function canonicalMIMEHeaderKey(k: string): string;
+export declare function headers(code?: number, description?: string): MsgHdrs;
+export declare class MsgHdrsImpl implements MsgHdrs {
+    _code: number;
+    headers: Map<string, string[]>;
+    _description: string;
+    constructor(code?: number, description?: string);
+    [Symbol.iterator](): MapIterator<[string, string[]]>;
+    size(): number;
+    equals(mh: MsgHdrsImpl): boolean;
+    static decode(a: Uint8Array): MsgHdrsImpl;
+    toString(): string;
+    encode(): Uint8Array;
+    static validHeaderValue(k: string): string;
+    keys(): string[];
+    findKeys(k: string, match?: Match): string[];
+    get(k: string, match?: Match): string;
+    last(k: string, match?: Match): string;
+    has(k: string, match?: Match): boolean;
+    set(k: string, v: string, match?: Match): void;
+    append(k: string, v: string, match?: Match): void;
+    values(k: string, match?: Match): string[];
+    delete(k: string, match?: Match): void;
+    get hasError(): boolean;
+    get status(): string;
+    toRecord(): Record<string, string[]>;
+    get code(): number;
+    get description(): string;
+    static fromRecord(r: Record<string, string[]>): MsgHdrs;
+}

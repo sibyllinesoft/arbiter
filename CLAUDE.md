@@ -64,7 +64,7 @@ arbiter/
 │   └── shared/             # Shared types and utilities
 ├── scripts/
 │   └── cloudflare-tunnel.sh # Secure tunnel setup and management
-├── arbiter/handlers/        # User-defined webhook handlers
+├── packages/arbiter-core/src/handlers/        # User-defined webhook handlers
 │   ├── github/             # GitHub-specific event handlers
 │   ├── gitlab/             # GitLab-specific event handlers
 │   ├── shared/             # Shared handler utilities and types
@@ -85,7 +85,7 @@ arbiter/
   and handlers
 - **apps/web**: Web frontend for visual spec editing with handlers management
   (React + Vite)
-- **arbiter/handlers**: User-defined webhook handlers (not in package.json,
+- **packages/arbiter-core/src/handlers**: User-defined webhook handlers (not in package.json,
   dynamically loaded)
 
 ### Technology Stack
@@ -326,7 +326,7 @@ interface HandlerModule {
 curl -X POST localhost:5050/api/handlers/init
 
 # Create new handler file
-./arbiter/handlers/github/custom-push.ts
+./packages/arbiter-core/src/handlers/github/custom-push.ts
 ```
 
 #### 2. **Handler Structure**
@@ -445,7 +445,7 @@ GITLAB_WEBHOOK_SECRET=gitlab-specific-secret
 
 # Handler System
 HANDLERS_ENABLED=true
-HANDLERS_DIR=./arbiter/handlers
+HANDLERS_DIR=./packages/arbiter-core/src/handlers
 HANDLERS_MAX_CONCURRENT=10
 HANDLERS_DEFAULT_TIMEOUT=30000
 
@@ -785,10 +785,10 @@ await withProgress('Processing files...', async () => {
 
    ```bash
    # For GitHub events
-   touch ./arbiter/handlers/github/my-handler.ts
+   touch ./packages/arbiter-core/src/handlers/github/my-handler.ts
 
    # For GitLab events
-   touch ./arbiter/handlers/gitlab/my-handler.ts
+   touch ./packages/arbiter-core/src/handlers/gitlab/my-handler.ts
    ```
 
 3. **Implement handler using the standard structure**:
@@ -982,7 +982,7 @@ UPDATE_GOLDEN=1 bun test     # Update golden files
 - `apps/api/src/handlers/manager.ts` - Custom handlers system management
 - `apps/api/src/handlers/executor.ts` - Sandboxed handler execution engine
 - `scripts/cloudflare-tunnel.sh` - Secure tunnel setup and management
-- `arbiter/handlers/examples/` - Example handler implementations
+- `packages/arbiter-core/src/handlers/examples/` - Example handler implementations
 
 ### Exit Codes
 

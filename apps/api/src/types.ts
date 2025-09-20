@@ -323,6 +323,19 @@ export interface ServerConfig {
     sandboxEnabled: boolean;
     allowedModules: string[];
     enableMetrics: boolean;
+    notifications?: {
+      email?: {
+        mode?: 'disabled' | 'log' | 'smtp';
+        from?: string;
+        smtp?: {
+          host?: string;
+          port?: number;
+          secure?: boolean;
+          user?: string;
+          pass?: string;
+        };
+      };
+    };
   };
   oauth?: {
     enabled: boolean;

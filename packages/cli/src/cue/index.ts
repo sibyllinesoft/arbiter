@@ -11,11 +11,10 @@
  * - Type-safe operations with proper error handling
  */
 
-import { spawn } from 'node:child_process';
 import * as os from 'node:os';
 import path from 'node:path';
-import { promisify } from 'node:util';
 import fs from 'fs-extra';
+import { CueRunner } from '@arbiter/cue-runner';
 
 /**
  * Platform-specific service types for popular cloud providers
@@ -140,8 +139,16 @@ export class CUEManipulator {
     await fs.writeFile(tempFile, content);
 
     try {
-      const result = await this.runCueCommand(['export', tempFile]);
-      return JSON.parse(result.stdout);
+      const runner = this.createRunner();
+      const exportResult = await runner.exportJson([tempFile]);
+
+      if (exportResult.success && exportResult.value) {
+        return exportResult.value;
+      }
+
+      const firstDiagnostic = exportResult.diagnostics[0];
+      const reason = firstDiagnostic?.message || exportResult.error || 'Unknown CUE export error';
+      throw new Error(reason);
     } catch (error) {
       throw new Error(`Failed to parse CUE content: ${error}`);
     }
@@ -344,7 +351,12 @@ export class CUEManipulator {
     await fs.writeFile(tempFile, content);
 
     try {
-      await this.runCueCommand(['fmt', tempFile]);
+      const runner = this.createRunner();
+      const result = await runner.fmt([tempFile]);
+      if (!result.success) {
+        throw new Error(result.stderr || 'cue fmt failed');
+      }
+
       return await fs.readFile(tempFile, 'utf-8');
     } catch (error) {
       throw new Error(`Failed to format CUE content: ${error}`);
@@ -359,51 +371,26 @@ export class CUEManipulator {
     await fs.writeFile(tempFile, content);
 
     try {
-      await this.runCueCommand(['vet', tempFile]);
-      return { valid: true, errors: [] };
-    } catch (error: any) {
-      const errorMessage = error.stderr || error.message || String(error);
-      const errors = errorMessage
-        .split('\n')
-        .filter((line: string) => line.trim())
-        .map((line: string) => line.replace(`${tempFile}:`, '').trim());
+      const runner = this.createRunner();
+      const result = await runner.vet([tempFile]);
+
+      if (result.success) {
+        return { valid: true, errors: [] };
+      }
+
+      const errors = result.diagnostics.length
+        ? result.diagnostics.map(diag => diag.message)
+        : [result.raw.stderr || 'cue vet failed'];
 
       return { valid: false, errors };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { valid: false, errors: [message] };
     }
   }
 
-  /**
-   * Run a CUE command and return the result
-   */
-  private async runCueCommand(args: string[]): Promise<{ stdout: string; stderr: string }> {
-    return new Promise((resolve, reject) => {
-      const child = spawn('cue', args);
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', data => {
-        stdout += data.toString();
-      });
-
-      child.stderr.on('data', data => {
-        stderr += data.toString();
-      });
-
-      child.on('close', code => {
-        if (code === 0) {
-          resolve({ stdout, stderr });
-        } else {
-          const error = new Error(`CUE command failed with code ${code}: ${stderr}`);
-          (error as any).stderr = stderr;
-          (error as any).stdout = stdout;
-          reject(error);
-        }
-      });
-
-      child.on('error', error => {
-        reject(new Error(`Failed to run CUE command: ${error.message}`));
-      });
-    });
+  private createRunner(): CueRunner {
+    return new CueRunner({ cwd: this.tempDir });
   }
 
   /**
