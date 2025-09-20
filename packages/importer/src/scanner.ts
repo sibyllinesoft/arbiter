@@ -205,7 +205,7 @@ export class PluginRegistry {
 // ============================================================================
 
 /**
- * Build efficient file index with basename and suffix lookups
+ * Git-first file discovery with allowlist and content guards
  */
 async function buildFileIndex(
   projectRoot: string,
@@ -215,26 +215,15 @@ async function buildFileIndex(
   const files = new Map<string, FileInfo>();
   const directories = new Map<string, DirectoryInfo>();
 
-  // Build combined glob patterns
-  const includePatterns =
-    parseOptions.patterns.include.length > 0 ? parseOptions.patterns.include : ['**/*'];
+  // Try git-first enumeration, fall back to glob if no git repo
+  const allFiles =
+    (await tryGitFileEnumeration(projectRoot)) ??
+    (await fallbackGlobEnumeration(projectRoot, ignorePatterns, parseOptions));
 
-  const excludePatterns = [...ignorePatterns, ...parseOptions.patterns.exclude];
-
-  // Find all files using glob
-  const allFiles = await glob(includePatterns, {
-    cwd: projectRoot,
-    ignore: excludePatterns,
-    absolute: true,
-    nodir: true,
-    dot: false,
-  });
-
-  // Process each file
+  // Process each file with enhanced filters and git metadata
   for (const filePath of allFiles) {
     try {
       const stats = await fs.stat(filePath);
-
       if (!stats.isFile()) continue;
 
       // Skip files that are too large
@@ -243,9 +232,18 @@ async function buildFileIndex(
       const relativePath = path.relative(projectRoot, filePath);
       const extension = path.extname(filePath).toLowerCase();
 
+      // Apply path heuristics - drop noise paths
+      if (shouldIgnorePath(relativePath)) continue;
+
+      // Apply config allowlist with basename check
+      if (!passesConfigAllowlist(relativePath, path.basename(filePath))) continue;
+
       // Check if binary
       const isBinary = await isFileB(filePath, parseOptions.includeBinaries);
       if (isBinary && !parseOptions.includeBinaries) continue;
+
+      // Apply content guards for config files
+      if (!(await passesContentGuard(filePath, extension))) continue;
 
       // Generate file hash
       const hash = await generateFileHash(filePath);
@@ -258,6 +256,9 @@ async function buildFileIndex(
         if (!parseOptions.targetLanguages.includes(language)) continue;
       }
 
+      // Enrich with git metadata
+      const gitMetadata = await attachGitMetadata(filePath, projectRoot);
+
       const fileInfo: FileInfo = {
         path: filePath,
         relativePath,
@@ -267,6 +268,9 @@ async function buildFileIndex(
         isBinary,
         hash,
         language,
+        metadata: {
+          git: gitMetadata,
+        },
       };
 
       files.set(filePath, fileInfo);
@@ -301,6 +305,325 @@ async function buildFileIndex(
     directories,
     timestamp: Date.now(),
   };
+}
+
+/**
+ * Try git-first file enumeration with metadata enrichment
+ */
+async function tryGitFileEnumeration(projectRoot: string): Promise<string[] | null> {
+  try {
+    // Check if we're in a git repository
+    const gitDir = path.join(projectRoot, '.git');
+    if (!(await fs.pathExists(gitDir))) {
+      return null;
+    }
+
+    // Use git ls-files to enumerate tracked files
+    const { spawn } = await import('child_process');
+    const { promisify } = await import('util');
+    const exec = promisify(spawn);
+
+    return new Promise((resolve, reject) => {
+      const gitProcess = spawn('git', ['ls-files', '-z'], {
+        cwd: projectRoot,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      gitProcess.stdout?.on('data', data => {
+        stdout += data.toString();
+      });
+
+      gitProcess.stderr?.on('data', data => {
+        stderr += data.toString();
+      });
+
+      gitProcess.on('close', code => {
+        if (code !== 0) {
+          reject(new Error(`git ls-files failed: ${stderr}`));
+          return;
+        }
+
+        // Parse null-terminated output and convert to absolute paths
+        const relativeFiles = stdout.split('\0').filter(f => f.length > 0);
+        const absoluteFiles = relativeFiles.map(f => path.resolve(projectRoot, f));
+        resolve(absoluteFiles);
+      });
+
+      gitProcess.on('error', error => {
+        reject(error);
+      });
+    });
+  } catch (error) {
+    // Fall back to glob enumeration
+    return null;
+  }
+}
+
+/**
+ * Fallback glob enumeration when git is not available
+ */
+async function fallbackGlobEnumeration(
+  projectRoot: string,
+  ignorePatterns: string[],
+  parseOptions: ParseOptions
+): Promise<string[]> {
+  // Build combined glob patterns
+  const includePatterns =
+    parseOptions.patterns.include.length > 0 ? parseOptions.patterns.include : ['**/*'];
+
+  const excludePatterns = [...ignorePatterns, ...parseOptions.patterns.exclude];
+
+  // Find all files using glob
+  return await glob(includePatterns, {
+    cwd: projectRoot,
+    ignore: excludePatterns,
+    absolute: true,
+    nodir: true,
+    dot: false,
+  });
+}
+
+/**
+ * Check if path should be ignored based on noise heuristics
+ */
+function shouldIgnorePath(relativePath: string): boolean {
+  const noisePaths = [
+    '**/examples/**',
+    '**/sample/**',
+    '**/samples/**',
+    '**/test/**',
+    '**/tests/**',
+    '**/__tests__/**',
+    '**/vendor/**',
+    '**/.history/**',
+    '**/backup/**',
+    '**/backups/**',
+    '**/tmp/**',
+    '**/temp/**',
+    '**/.cache/**',
+    '**/cache/**',
+    '**/node_modules/**',
+    '**/dist/**',
+    '**/build/**',
+    '**/target/**',
+    '**/__pycache__/**',
+    '**/*.pyc',
+    '.next/**',
+    '.nuxt/**',
+    'coverage/**',
+  ];
+
+  return noisePaths.some(pattern => {
+    // Convert glob pattern to regex for matching
+    const regexPattern = pattern
+      .replace(/\*\*/g, '.*')
+      .replace(/\*/g, '[^/]*')
+      .replace(/\?/g, '[^/]');
+    return new RegExp(`^${regexPattern}$`).test(relativePath);
+  });
+}
+
+/**
+ * Check if file passes config allowlist based on basename and path
+ */
+function passesConfigAllowlist(relativePath: string, basename: string): boolean {
+  // Config file patterns with high confidence
+  const configPatterns = [
+    // Containers/Orchestration
+    /^Dockerfile/,
+    /^docker-compose.*\.ya?ml$/,
+    /^compose.*\.ya?ml$/,
+    /kubernetes\/.*\.ya?ml$/,
+    /helm\//,
+    /^Chart\.yaml$/,
+    /^values.*\.ya?ml$/,
+
+    // IaC
+    /\.tf$/,
+    /^terragrunt\.hcl$/,
+    /\.bicep$/,
+    /\.cloudformation\.ya?ml$/,
+
+    // Package managers and build
+    /^package\.json$/,
+    /^pnpm-workspace\.yaml$/,
+    /^yarn\.lock$/,
+    /^pyproject\.toml$/,
+    /^requirements.*\.txt$/,
+    /^Pipfile$/,
+    /^setup\.cfg$/,
+    /^poetry\.lock$/,
+    /^go\.mod$/,
+    /^go\.sum$/,
+    /^Cargo\.toml$/,
+    /^Cargo\.lock$/,
+    /^pom\.xml$/,
+    /^build\.gradle(\.kts)?$/,
+    /^settings\.gradle(\.kts)?$/,
+    /^Makefile$/,
+    /^CMakeLists\.txt$/,
+    /^Gemfile$/,
+    /^mix\.exs$/,
+    /^composer\.json$/,
+
+    // Runtime/env
+    /^\.env$/,
+    /^\.env\./,
+    /^Procfile$/,
+    /^supervisord\.conf$/,
+    /systemd\/.*\.service$/,
+
+    // Deploy/CI
+    /^\.github\/workflows\/.*\.ya?ml$/,
+    /^\.gitlab-ci\.yml$/,
+    /^azure-pipelines\.yml$/,
+    /^circle\.yml$/,
+    /^\.circleci\/config\.yml$/,
+    /^Jenkinsfile$/,
+    /^skaffold\.yaml$/,
+    /^Tiltfile$/,
+
+    // DB/schema
+    /^migrations\//,
+    /\.sql$/,
+    /^schema\.prisma$/,
+    /^prisma\/schema\.prisma$/,
+    /^openapi.*\.ya?ml$/,
+    /\.proto$/,
+
+    // Reverse-proxy
+    /nginx\/.*\.conf$/,
+    /haproxy\/.*\.cfg$/,
+    /^Caddyfile$/,
+  ];
+
+  // Check if basename matches any config pattern
+  const matchesConfig = configPatterns.some(
+    pattern => pattern.test(basename) || pattern.test(relativePath)
+  );
+
+  if (matchesConfig) return true;
+
+  // Allow general source files but with lower priority
+  const generalPatterns = [
+    /\.(js|jsx|ts|tsx|py|java|kt|scala|cs|cpp|cc|cxx|c|h|hpp|rs|go|rb|php|swift|dart)$/,
+    /\.(yaml|yml|json|xml|toml|ini|cfg|conf)$/,
+    /\.(md|txt|rst)$/,
+  ];
+
+  return generalPatterns.some(pattern => pattern.test(basename));
+}
+
+/**
+ * Apply content guards to validate config files contain expected tokens
+ */
+async function passesContentGuard(filePath: string, extension: string): Promise<boolean> {
+  try {
+    // Only apply guards to config-like files
+    const basename = path.basename(filePath);
+    const shouldGuard =
+      basename.includes('docker-compose') ||
+      basename.includes('compose') ||
+      basename.startsWith('Dockerfile') ||
+      extension === '.tf' ||
+      basename.includes('kubernetes') ||
+      basename === 'Chart.yaml' ||
+      basename.startsWith('values') ||
+      basename.includes('openapi');
+
+    if (!shouldGuard) return true;
+
+    // Read first 1KB for content checking
+    const buffer = await fs.readFile(filePath, { flag: 'r' });
+    const sample = buffer.subarray(0, Math.min(1024, buffer.length)).toString('utf-8');
+
+    // Apply specific guards based on file type
+    if (basename.includes('docker-compose') || basename.includes('compose')) {
+      return /services:\s*$/m.test(sample) || /version:\s*['"]?[0-9]/m.test(sample);
+    }
+
+    if (extension === '.yaml' || extension === '.yml') {
+      // K8s guard
+      if (/apiVersion:\s*/.test(sample) && /kind:\s*/.test(sample)) {
+        return true;
+      }
+      // Generic YAML structure
+      return /\w+:\s*/.test(sample);
+    }
+
+    if (extension === '.tf') {
+      return (
+        /provider\s*"/.test(sample) || /resource\s*"/.test(sample) || /variable\s*"/.test(sample)
+      );
+    }
+
+    if (basename.includes('openapi')) {
+      return /openapi:\s*['"]?[0-9]/.test(sample) || /swagger:\s*['"]?[0-9]/.test(sample);
+    }
+
+    return true;
+  } catch (error) {
+    // If we can't read the file, let it pass - will be caught later
+    return true;
+  }
+}
+
+/**
+ * Attach git metadata to file information
+ */
+async function attachGitMetadata(
+  filePath: string,
+  projectRoot: string
+): Promise<
+  | {
+      lastModified?: number;
+      author?: string;
+      commit?: string;
+    }
+  | undefined
+> {
+  try {
+    const relativePath = path.relative(projectRoot, filePath);
+    const { spawn } = await import('child_process');
+
+    return new Promise(resolve => {
+      const gitProcess = spawn('git', ['log', '-1', '--format=%ct,%an,%H', '--', relativePath], {
+        cwd: projectRoot,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+
+      let stdout = '';
+
+      gitProcess.stdout?.on('data', data => {
+        stdout += data.toString();
+      });
+
+      gitProcess.on('close', code => {
+        if (code !== 0 || !stdout.trim()) {
+          resolve(undefined);
+          return;
+        }
+
+        const [timestampStr, author, commit] = stdout.trim().split(',');
+        const lastModified = parseInt(timestampStr) * 1000; // Convert to milliseconds
+
+        resolve({
+          lastModified: isNaN(lastModified) ? undefined : lastModified,
+          author: author || undefined,
+          commit: commit || undefined,
+        });
+      });
+
+      gitProcess.on('error', () => {
+        resolve(undefined);
+      });
+    });
+  } catch (error) {
+    return undefined;
+  }
 }
 
 /**
@@ -434,7 +757,7 @@ function mergeConfidenceScores(scores: ConfidenceScore[]): ConfidenceScore {
 }
 
 /**
- * Create confidence score from evidence
+ * Create confidence score from evidence with git and content feature weighting
  */
 function calculateConfidenceFromEvidence(evidence: Evidence[]): ConfidenceScore {
   if (evidence.length === 0) {
@@ -445,11 +768,27 @@ function calculateConfidenceFromEvidence(evidence: Evidence[]): ConfidenceScore 
     };
   }
 
-  // Calculate overall confidence as weighted average
+  // Calculate base confidence as weighted average
   const totalConfidence = evidence.reduce((sum, e) => sum + e.confidence, 0);
-  const overall = totalConfidence / evidence.length;
+  let baseConfidence = totalConfidence / evidence.length;
 
-  // Calculate breakdown by evidence type
+  // Apply git-based weighting factors
+  const gitBonus = calculateGitRecencyBonus(evidence);
+  const contentStrengthBonus = calculateContentStrengthBonus(evidence);
+  const topologyConsistencyBonus = calculateTopologyConsistencyBonus(evidence);
+
+  // Combine factors using a capped logistic function
+  const weightedFactors = [
+    baseConfidence * 1.0, // Base evidence weight
+    gitBonus * 0.15, // Git recency and activity
+    contentStrengthBonus * 0.25, // Content quality and completeness
+    topologyConsistencyBonus * 0.1, // Cross-file consistency
+  ];
+
+  const logisticInput = weightedFactors.reduce((sum, factor) => sum + factor, 0);
+  const overall = Math.max(0.3, Math.min(0.95, logisticInput));
+
+  // Calculate breakdown by evidence type with feature bonuses
   const breakdown: Record<string, number> = {};
   const evidenceByType = new Map<string, Evidence[]>();
 
@@ -466,18 +805,197 @@ function calculateConfidenceFromEvidence(evidence: Evidence[]): ConfidenceScore 
     breakdown[type] = typeConfidence;
   }
 
-  // Generate confidence factors
+  // Add feature breakdown
+  breakdown.git_recency = gitBonus;
+  breakdown.content_strength = contentStrengthBonus;
+  breakdown.topology_consistency = topologyConsistencyBonus;
+
+  // Generate enhanced confidence factors
   const factors = evidence.map(e => ({
     description: `Evidence from ${e.source} in ${path.basename(e.filePath)}`,
     weight: e.confidence,
     source: e.source,
   }));
 
+  // Add feature factors
+  factors.push(
+    {
+      description: 'Git recency and activity signals',
+      weight: gitBonus,
+      source: 'git-analysis',
+    },
+    {
+      description: 'Content strength and completeness',
+      weight: contentStrengthBonus,
+      source: 'content-analysis',
+    },
+    {
+      description: 'Cross-file topology consistency',
+      weight: topologyConsistencyBonus,
+      source: 'topology-analysis',
+    }
+  );
+
   return {
     overall,
     breakdown,
     factors,
   };
+}
+
+/**
+ * Calculate git recency bonus based on recent activity
+ */
+function calculateGitRecencyBonus(evidence: Evidence[]): number {
+  let totalRecencyScore = 0;
+  let gitEvidenceCount = 0;
+
+  for (const e of evidence) {
+    if (e.metadata.git?.lastModified) {
+      const daysSinceModified = (Date.now() - e.metadata.git.lastModified) / (1000 * 60 * 60 * 24);
+
+      // Recent files get higher scores (exponential decay)
+      let recencyScore = 0;
+      if (daysSinceModified < 7) {
+        recencyScore = 1.0; // Very recent
+      } else if (daysSinceModified < 30) {
+        recencyScore = 0.8; // Recent
+      } else if (daysSinceModified < 90) {
+        recencyScore = 0.6; // Moderately recent
+      } else if (daysSinceModified < 365) {
+        recencyScore = 0.3; // Older
+      } else {
+        recencyScore = 0.1; // Very old
+      }
+
+      totalRecencyScore += recencyScore;
+      gitEvidenceCount++;
+    }
+  }
+
+  return gitEvidenceCount > 0 ? totalRecencyScore / gitEvidenceCount : 0.5;
+}
+
+/**
+ * Calculate content strength bonus based on evidence quality and completeness
+ */
+function calculateContentStrengthBonus(evidence: Evidence[]): number {
+  let strengthScore = 0;
+  const evidenceCount = evidence.length;
+
+  for (const e of evidence) {
+    let itemScore = 0;
+
+    // Config files with key fields present get higher scores
+    if (e.type === 'config') {
+      const data = e.data as any;
+
+      if (data.configType === 'dockerfile' && data.exposedPorts?.length > 0) {
+        itemScore += 0.3;
+      }
+      if (
+        data.configType === 'package-json' &&
+        data.scripts &&
+        Object.keys(data.scripts).length > 0
+      ) {
+        itemScore += 0.3;
+      }
+      if (data.configType === 'compose-service' && data.ports?.length > 0) {
+        itemScore += 0.3;
+      }
+      if (data.configType === 'k8s-resource' && data.containers?.length > 0) {
+        itemScore += 0.3;
+      }
+
+      // Bonus for environment variables and dependencies
+      if (data.environment || data.dependencies || data.dependencyName) {
+        itemScore += 0.2;
+      }
+    }
+
+    // Source code with entry points and patterns
+    if (e.type === 'function' && e.data.isEntryPoint) {
+      itemScore += 0.4;
+    }
+
+    // Dependencies with known frameworks
+    if (e.type === 'dependency' && e.data.framework) {
+      itemScore += 0.2;
+    }
+
+    strengthScore += Math.min(1.0, itemScore);
+  }
+
+  return evidenceCount > 0 ? strengthScore / evidenceCount : 0.5;
+}
+
+/**
+ * Calculate topology consistency bonus for matching cross-file patterns
+ */
+function calculateTopologyConsistencyBonus(evidence: Evidence[]): number {
+  let consistencyScore = 0;
+  let consistencyChecks = 0;
+
+  // Group evidence by file path for cross-file analysis
+  const evidenceByFile = new Map<string, Evidence[]>();
+  for (const e of evidence) {
+    if (!evidenceByFile.has(e.filePath)) {
+      evidenceByFile.set(e.filePath, []);
+    }
+    evidenceByFile.get(e.filePath)!.push(e);
+  }
+
+  // Check for consistency patterns
+  const dockerfileEvidence = evidence.find(e => e.data.configType === 'dockerfile');
+  const composeEvidence = evidence.find(e => e.data.configType === 'compose-service');
+  const k8sEvidence = evidence.find(e => e.data.configType === 'k8s-resource');
+
+  // Docker compose + Dockerfile consistency
+  if (dockerfileEvidence && composeEvidence) {
+    consistencyChecks++;
+    const dockerPorts = (dockerfileEvidence.data as any).exposedPorts || [];
+    const composePorts = (composeEvidence.data as any).ports?.map((p: any) => p.container) || [];
+
+    if (
+      Array.isArray(dockerPorts) &&
+      Array.isArray(composePorts) &&
+      dockerPorts.some((port: number) => composePorts.includes(port))
+    ) {
+      consistencyScore += 1.0; // Port alignment
+    }
+  }
+
+  // Kubernetes + Container image consistency
+  if (k8sEvidence && (dockerfileEvidence || composeEvidence)) {
+    consistencyChecks++;
+    // Basic presence check (would need deeper analysis for image name matching)
+    consistencyScore += 0.5;
+  }
+
+  // Package manager + source file consistency
+  const packageEvidence = evidence.find(
+    e => e.data.configType === 'package-json' || e.data.configType === 'cargo-toml'
+  );
+  const sourceEvidence = evidence.find(e => e.data.configType === 'source-file');
+
+  if (packageEvidence && sourceEvidence) {
+    consistencyChecks++;
+    // Check if source patterns align with package type
+    if ((packageEvidence.data as any).dependencies && (sourceEvidence.data as any).frameworkUsage) {
+      const packageFrameworks = Object.keys((packageEvidence.data as any).dependencies);
+      const sourceFrameworks = (sourceEvidence.data as any).frameworkUsage || [];
+
+      if (
+        Array.isArray(packageFrameworks) &&
+        Array.isArray(sourceFrameworks) &&
+        packageFrameworks.some((pf: string) => sourceFrameworks.includes(pf))
+      ) {
+        consistencyScore += 1.0;
+      }
+    }
+  }
+
+  return consistencyChecks > 0 ? consistencyScore / consistencyChecks : 0.5;
 }
 
 // ============================================================================
@@ -751,6 +1269,144 @@ export class ScannerRunner {
     );
 
     return filteredArtifacts;
+  }
+
+  /**
+   * Apply multi-signal gating to filter artifacts with insufficient evidence
+   * Requires at least 2 orthogonal evidence sources for promotion, or 1 very high confidence source
+   */
+  private applyMultiSignalGating(artifacts: InferredArtifact[]): InferredArtifact[] {
+    const gatedArtifacts: InferredArtifact[] = [];
+    const quarantinedCandidates: InferredArtifact[] = [];
+
+    for (const artifact of artifacts) {
+      const evidenceAnalysis = this.analyzeEvidenceSignals(artifact);
+
+      // High confidence single source (e.g., explicit declarative config)
+      if (evidenceAnalysis.hasHighConfidenceDeclarative) {
+        gatedArtifacts.push(artifact);
+        continue;
+      }
+
+      // Multi-signal requirement for services and deployments
+      if (artifact.artifact.type === 'service' || artifact.artifact.type === 'deployment') {
+        if (evidenceAnalysis.orthogonalSignalCount >= 2) {
+          gatedArtifacts.push(artifact);
+        } else {
+          quarantinedCandidates.push(artifact);
+        }
+        continue;
+      }
+
+      // Libraries and binaries can pass with single strong signal
+      if (artifact.artifact.type === 'library' || artifact.artifact.type === 'binary') {
+        if (evidenceAnalysis.strongSignalCount >= 1) {
+          gatedArtifacts.push(artifact);
+        } else {
+          quarantinedCandidates.push(artifact);
+        }
+        continue;
+      }
+
+      // Default: require at least one strong signal
+      if (evidenceAnalysis.strongSignalCount >= 1) {
+        gatedArtifacts.push(artifact);
+      } else {
+        quarantinedCandidates.push(artifact);
+      }
+    }
+
+    // Store quarantined candidates for inspection (could be added to statistics)
+    if (quarantinedCandidates.length > 0) {
+      this.debug(`Quarantined ${quarantinedCandidates.length} low-confidence candidates`);
+    }
+
+    return gatedArtifacts;
+  }
+
+  /**
+   * Analyze evidence signals for multi-signal gating
+   */
+  private analyzeEvidenceSignals(artifact: InferredArtifact): {
+    orthogonalSignalCount: number;
+    strongSignalCount: number;
+    hasHighConfidenceDeclarative: boolean;
+    signalTypes: Set<string>;
+  } {
+    const signalTypes = new Set<string>();
+    let strongSignalCount = 0;
+    let hasHighConfidenceDeclarative = false;
+
+    // Analyze provenance evidence for signal diversity
+    for (const evidenceId of artifact.provenance.evidence) {
+      // Extract signal type from evidence ID pattern
+      const signalType = this.extractSignalType(evidenceId);
+      signalTypes.add(signalType);
+
+      // Check for strong signals (high confidence config evidence)
+      if (
+        evidenceId.includes('dockerfile') ||
+        evidenceId.includes('package-json') ||
+        evidenceId.includes('cargo-toml') ||
+        evidenceId.includes('k8s')
+      ) {
+        strongSignalCount++;
+      }
+
+      // Check for declarative evidence with very high confidence
+      if (
+        (evidenceId.includes('dockerfile') ||
+          evidenceId.includes('compose-service') ||
+          evidenceId.includes('k8s-deployment')) &&
+        artifact.confidence.overall >= 0.9
+      ) {
+        hasHighConfidenceDeclarative = true;
+      }
+    }
+
+    // Additional signal analysis based on artifact metadata
+    if (artifact.artifact.metadata.language && artifact.artifact.metadata.framework) {
+      signalTypes.add('language-framework');
+    }
+
+    if (
+      artifact.artifact.metadata.port ||
+      (artifact.artifact as any).metadata?.exposedPorts?.length > 0
+    ) {
+      signalTypes.add('network-binding');
+    }
+
+    return {
+      orthogonalSignalCount: signalTypes.size,
+      strongSignalCount,
+      hasHighConfidenceDeclarative,
+      signalTypes,
+    };
+  }
+
+  /**
+   * Extract signal type from evidence ID for orthogonal signal counting
+   */
+  private extractSignalType(evidenceId: string): string {
+    // Config files
+    if (evidenceId.includes('dockerfile')) return 'dockerfile';
+    if (evidenceId.includes('compose')) return 'compose';
+    if (evidenceId.includes('k8s') || evidenceId.includes('kubernetes')) return 'kubernetes';
+    if (evidenceId.includes('package-json')) return 'package-manifest';
+    if (evidenceId.includes('cargo-toml')) return 'cargo-manifest';
+
+    // Source code signals
+    if (evidenceId.includes('source') || evidenceId.includes('main')) return 'source-code';
+    if (evidenceId.includes('script')) return 'build-script';
+
+    // Dependency signals
+    if (evidenceId.includes('dep')) return 'dependency';
+
+    // Infrastructure signals
+    if (evidenceId.includes('service') || evidenceId.includes('ingress')) return 'infrastructure';
+
+    // Default category
+    return 'generic';
   }
 
   /**

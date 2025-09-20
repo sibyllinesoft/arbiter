@@ -1,0 +1,228 @@
+/**
+ * Generation commands module - Code generation, documentation, and examples
+ */
+
+import chalk from 'chalk';
+import { Command } from 'commander';
+import { docsCommand } from '../commands/docs.js';
+import { examplesCommand } from '../commands/examples.js';
+import { executeCommand } from '../commands/execute.js';
+import { explainCommand } from '../commands/explain.js';
+import { generateCommand } from '../commands/generate.js';
+import { renameCommand, showNamingHelp } from '../commands/rename.js';
+import { loadConfigWithGitDetection } from '../config.js';
+import type { GenerateOptions } from '../types.js';
+
+export function createGenerationCommands(program: Command): void {
+  // Generate command (with integrated docs functionality)
+  program
+    .command('generate [spec-name]')
+    .description('generate project files from stored specifications')
+    .option('--output-dir <dir>', 'output directory for generated files', '.')
+    .option('--include-ci', 'include CI/CD workflow files')
+    .option('--include-docs', 'include documentation generation')
+    .option('--docs-format <format>', 'documentation format (markdown, html)', 'markdown')
+    .option('--docs-output <dir>', 'documentation output directory', './docs')
+    .option('--include-examples', 'generate example files alongside documentation')
+    .option('--force', 'overwrite existing files without prompting')
+    .option('--dry-run', 'preview what would be generated without creating files')
+    .option('--exclude <patterns>', 'comma-separated patterns to exclude from generation')
+    .option('--github-dry-run', 'preview GitHub sync changes without applying them')
+    .option('--use-config', 'use configuration file repository info (for conflict resolution)')
+    .action(async (specName: string | undefined, options: GenerateOptions, command) => {
+      try {
+        let config = command.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        // Auto-detect git repository information if needed
+        config = await loadConfigWithGitDetection(config, {
+          includeGitRemote: options.includeGitRemote !== false,
+        });
+
+        const exitCode = await generateCommand(options, config, specName);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+
+  // Standalone docs command (for backward compatibility)
+  const docsCmd = program
+    .command('docs')
+    .description('generate documentation from CUE schemas and API surfaces');
+
+  docsCmd
+    .command('schema')
+    .description('generate schema documentation from project specifications')
+    .option('--output <dir>', 'documentation output directory', './docs')
+    .option('--format <format>', 'output format (markdown, html)', 'markdown')
+    .option('--include-examples', 'generate example files alongside documentation')
+    .action(async (options, command) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        const exitCode = await docsCommand('schema', options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+
+  docsCmd
+    .command('api')
+    .description('generate API documentation from specifications')
+    .option('--output <dir>', 'documentation output directory', './docs')
+    .option('--format <format>', 'output format (openapi, markdown)', 'openapi')
+    .option('--include-examples', 'include request/response examples')
+    .action(async (options, command) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        const exitCode = await docsCommand('api', options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+
+  // Examples command
+  program
+    .command('examples <type>')
+    .description('generate example projects by profile or language type')
+    .option('--output <dir>', 'output directory for examples', './examples')
+    .option('--profile <name>', 'specific profile to generate (library, cli, service)')
+    .option('--language <lang>', 'specific language to generate (typescript, python, rust, go)')
+    .option('--force', 'overwrite existing examples')
+    .action(async (type: string, options, command) => {
+      try {
+        const config = command.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        const exitCode = await examplesCommand(type, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+
+  // Execute command
+  program
+    .command('execute <epic>')
+    .description('execute Epic v2 for deterministic, agent-first code generation')
+    .option('--stage <stage>', 'execution stage (planning, implementation, testing, deployment)')
+    .option('--parallel', 'execute tasks in parallel where possible')
+    .option('--dry-run', 'preview execution plan without running tasks')
+    .option('--continue-on-error', 'continue execution even if some tasks fail')
+    .option('--timeout <seconds>', 'overall execution timeout in seconds', value =>
+      Number.parseInt(value, 10)
+    )
+    .action(async (epic: string, options, command) => {
+      try {
+        const config = command.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        const exitCode = await executeCommand(epic, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+
+  // Explain command
+  program
+    .command('explain')
+    .description('generate plain-English summary of project specifications')
+    .option('--output <file>', 'output file path (default: stdout)')
+    .option('--format <format>', 'output format (markdown, text)', 'markdown')
+    .option('--verbose', 'detailed explanation with all configuration details')
+    .action(async (options, command) => {
+      try {
+        const config = command.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        const exitCode = await explainCommand(options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+
+  // Rename command
+  program
+    .command('rename')
+    .description('migrate existing files to project-specific naming')
+    .option('--dry-run', 'preview rename operations without applying them')
+    .option('--pattern <pattern>', 'file pattern to rename (glob syntax)')
+    .option('--force', 'force rename even if already using project-specific names')
+    .option('--help-naming', 'show naming convention help')
+    .action(async (options, command) => {
+      try {
+        if (options.helpNaming) {
+          showNamingHelp();
+          return;
+        }
+
+        const config = command.parent?.config;
+        if (!config) {
+          throw new Error('Configuration not loaded');
+        }
+
+        // Parse types if provided
+        const types = options.types
+          ? options.types.split(',').map((t: string) => t.trim())
+          : undefined;
+
+        const renameOptions = {
+          ...options,
+          types,
+        };
+
+        const exitCode = await renameCommand(renameOptions, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red('Command failed:'),
+          error instanceof Error ? error.message : String(error)
+        );
+        process.exit(2);
+      }
+    });
+}

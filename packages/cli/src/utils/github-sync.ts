@@ -3,8 +3,8 @@ import chalk from 'chalk';
 import type { GitHubSyncConfig, IssueSpec } from '../types.js';
 import { FileBasedTemplateManager } from './file-based-template-manager.js';
 import { ConfigurableTemplateManager } from './github-template-config.js';
-import { GitHubTemplateManager, type GitHubTemplateOptions } from './github-templates.js';
 import type { Epic, Task } from './sharded-storage.js';
+import { UnifiedGitHubTemplateManager } from './unified-github-template-manager.js';
 
 export interface GitHubIssue {
   number: number;
@@ -65,7 +65,7 @@ export interface SyncPreview {
 export class GitHubSyncClient {
   private octokit: Octokit;
   private config: GitHubSyncConfig;
-  private templateManager: GitHubTemplateManager;
+  private templateManager: UnifiedGitHubTemplateManager;
   private configurableTemplateManager: ConfigurableTemplateManager;
   private fileBasedTemplateManager: FileBasedTemplateManager;
   private issueCache: Map<string, GitHubIssue> = new Map();
@@ -73,7 +73,7 @@ export class GitHubSyncClient {
 
   constructor(config: GitHubSyncConfig) {
     this.config = config;
-    this.templateManager = new GitHubTemplateManager();
+    this.templateManager = new UnifiedGitHubTemplateManager();
     this.configurableTemplateManager = new ConfigurableTemplateManager(config.templates);
     this.fileBasedTemplateManager = new FileBasedTemplateManager(config.templates || {});
 

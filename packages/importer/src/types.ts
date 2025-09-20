@@ -300,6 +300,33 @@ export interface DatabaseArtifact extends BaseArtifact {
   };
 }
 
+/**
+ * Deployment artifact representing deployment configurations
+ */
+export interface DeploymentArtifact extends BaseArtifact {
+  type: 'deployment';
+  metadata: {
+    /** Deployment platform (e.g., 'kubernetes', 'docker-compose', 'terraform') */
+    platform: string;
+    /** Target environment */
+    environment?: string;
+    /** Namespace or scope */
+    namespace?: string;
+    /** Deployment resources */
+    resources?: Array<{ kind: string; name: string; apiVersion?: string }>;
+    /** Configuration files */
+    configFiles?: string[];
+    /** Deployment strategy */
+    strategy?: string;
+    /** Scaling configuration */
+    scaling?: {
+      min?: number;
+      max?: number;
+      targetCPU?: number;
+    };
+  };
+}
+
 // ============================================================================
 // Supporting Types
 // ============================================================================
@@ -503,6 +530,15 @@ export interface FileInfo {
   hash: string;
   /** Language detected (if applicable) */
   language?: string;
+  /** Additional metadata including git information */
+  metadata?: {
+    git?: {
+      lastModified?: number;
+      author?: string;
+      commit?: string;
+    };
+    [key: string]: unknown;
+  };
 }
 
 /**
