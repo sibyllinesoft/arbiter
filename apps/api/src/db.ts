@@ -25,6 +25,8 @@ export class SpecWorkbenchDB {
    * Configure SQLite pragmas for optimal performance
    */
   private configurePragmas(): void {
+    // Enable foreign key constraints
+    this.db.exec('PRAGMA foreign_keys = ON');
     // Enable WAL mode for better concurrent access
     this.db.exec('PRAGMA journal_mode = WAL');
     this.db.exec('PRAGMA synchronous = NORMAL');
@@ -52,8 +54,8 @@ export class SpecWorkbenchDB {
       CREATE TABLE IF NOT EXISTS projects (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
       )
     `);
   }
@@ -69,8 +71,8 @@ export class SpecWorkbenchDB {
         path TEXT NOT NULL,
         content TEXT NOT NULL,
         head_revision_id TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+        updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
         UNIQUE (project_id, path)
       )
@@ -90,7 +92,7 @@ export class SpecWorkbenchDB {
         content_hash TEXT NOT NULL,
         author TEXT,
         message TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         FOREIGN KEY (fragment_id) REFERENCES fragments (id) ON DELETE CASCADE,
         UNIQUE (fragment_id, revision_number)
       )
@@ -107,7 +109,7 @@ export class SpecWorkbenchDB {
         project_id TEXT NOT NULL,
         spec_hash TEXT NOT NULL,
         resolved_json TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
         UNIQUE (project_id, spec_hash)
       )
@@ -124,7 +126,7 @@ export class SpecWorkbenchDB {
         project_id TEXT NOT NULL,
         event_type TEXT NOT NULL,
         data TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
       )
     `);
@@ -189,7 +191,7 @@ export class SpecWorkbenchDB {
       AFTER UPDATE ON fragments
       FOR EACH ROW
       BEGIN
-        UPDATE fragments SET updated_at = datetime('now') WHERE id = NEW.id;
+        UPDATE fragments SET updated_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = NEW.id;
       END
     `);
   }
@@ -529,6 +531,25 @@ export class SpecWorkbenchDB {
 
     const stmt = this.db.prepare(query);
     const results = stmt.all(...params) as (Event & { data: string })[];
+
+    return results.map(event => ({
+      ...event,
+      data: JSON.parse(event.data),
+    }));
+  }
+
+  // Alias method for compatibility with tests
+  async listEvents(projectId: string, limit = 100): Promise<Event[]> {
+    return this.getEvents(projectId, limit);
+  }
+
+  async listEventsByType(projectId: string, eventType: EventType): Promise<Event[]> {
+    const stmt = this.db.prepare(`
+      SELECT * FROM events 
+      WHERE project_id = ? AND event_type = ?
+      ORDER BY created_at DESC
+    `);
+    const results = stmt.all(projectId, eventType) as (Event & { data: string })[];
 
     return results.map(event => ({
       ...event,

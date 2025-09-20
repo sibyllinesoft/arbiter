@@ -528,7 +528,6 @@ The project uses a comprehensive testing approach:
 #### 4. **E2E Testing**
 
 - **Framework**: Docker Compose + custom test harness
-- **Location**: `tests/e2e-docker-compose/`
 - **Purpose**: Full system integration testing
 
 #### 5. **Webhook & Handler Testing**

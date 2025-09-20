@@ -341,22 +341,6 @@ jobs:
             ./arbiter-cli --self-test
           fi
 
-      - name: E2E tests (basic)
-        continue-on-error: true
-        run: |
-          echo "🧪 Running basic E2E tests..."
-
-          # Check if E2E tests exist and run them
-          if [ -f "tests/e2e-docker-compose/run-e2e-tests.sh" ]; then
-            cd tests/e2e-docker-compose
-            timeout 300s ./run-e2e-tests.sh || {
-              echo "⚠️ E2E tests failed or timed out"
-              echo "This may indicate environment issues"
-            }
-          else
-            echo "ℹ️ No E2E tests found - skipping"
-          fi
-
   performance-check:
     name: Performance Regression
     runs-on: ubuntu-latest

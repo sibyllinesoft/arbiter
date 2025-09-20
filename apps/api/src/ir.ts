@@ -319,7 +319,12 @@ export class IRGenerator {
    * Generate capabilities IR for dependency graph visualization
    */
   private generateCapabilitiesIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    const capabilities = (resolved.capabilities as Record<string, any>) || {};
+    const capabilities =
+      resolved.capabilities &&
+      typeof resolved.capabilities === 'object' &&
+      !Array.isArray(resolved.capabilities)
+        ? (resolved.capabilities as Record<string, any>)
+        : {};
     const nodes: any[] = [];
     const edges: any[] = [];
     const groups: any[] = [];
@@ -369,6 +374,9 @@ export class IRGenerator {
       nodes,
       edges,
       groups,
+      layout: {
+        algorithm: 'hierarchical',
+      },
       metadata: {
         totalCapabilities: nodes.length,
         dependencies: edges.length,
@@ -381,20 +389,94 @@ export class IRGenerator {
    * Generate flows IR for flowchart visualization (alias for flow)
    */
   private generateFlowsIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    const flows = (resolved.flows as Record<string, any>) || {};
+    const flows =
+      resolved.flows && typeof resolved.flows === 'object' && !Array.isArray(resolved.flows)
+        ? (resolved.flows as Record<string, any>)
+        : {};
     const flowList: any[] = [];
+    const nodes: any[] = [];
+    const edges: any[] = [];
+    let totalSteps = 0;
+    let totalDecisions = 0;
 
     Object.entries(flows).forEach(([flowId, flow]) => {
+      const flowSteps = flow.steps || [];
+      totalSteps += flowSteps.length;
+
+      // Add flow to list
       flowList.push({
         id: flowId,
         name: flow.name || flowId,
-        steps: flow.steps || [],
+        trigger: flow.trigger,
+        outcome: flow.outcome,
+        steps: flowSteps,
+      });
+
+      // Generate nodes for each step
+      flowSteps.forEach((step: any, index: number) => {
+        const nodeId = `${flowId}.${index}`;
+
+        nodes.push({
+          id: nodeId,
+          label: step.name || `Step ${index + 1}`,
+          type: 'process',
+          properties: {
+            action: step.action,
+            actor: step.actor,
+            duration: step.estimated_duration,
+            complexity: step.complexity,
+          },
+        });
+
+        // Create sequence edges
+        if (index > 0) {
+          edges.push({
+            source: `${flowId}.${index - 1}`,
+            target: nodeId,
+            type: 'sequence',
+          });
+        }
+
+        // Handle branches (decision nodes)
+        if (step.branches && Array.isArray(step.branches)) {
+          step.branches.forEach((branch: any, branchIndex: number) => {
+            const decisionNodeId = `${nodeId}.${branch.condition}`;
+            totalDecisions++;
+
+            nodes.push({
+              id: decisionNodeId,
+              label: branch.name || branch.condition,
+              type: 'decision',
+              properties: {
+                condition: branch.condition,
+                description: branch.description,
+              },
+            });
+
+            edges.push({
+              source: nodeId,
+              target: decisionNodeId,
+              type: 'branch',
+              label: branch.condition,
+            });
+          });
+        }
       });
     });
 
     return {
       type: 'flowchart',
+      nodes,
+      edges,
       flows: flowList,
+      layout: {
+        algorithm: 'dagre',
+      },
+      metadata: {
+        totalFlows: flowList.length,
+        totalSteps,
+        totalDecisions,
+      },
     };
   }
 
@@ -402,44 +484,100 @@ export class IRGenerator {
    * Generate dependencies IR for layered graph visualization
    */
   private generateDependenciesIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    const capabilities = (resolved.capabilities as Record<string, any>) || {};
+    const capabilities =
+      resolved.capabilities &&
+      typeof resolved.capabilities === 'object' &&
+      !Array.isArray(resolved.capabilities)
+        ? (resolved.capabilities as Record<string, any>)
+        : {};
+    const services =
+      resolved.services &&
+      typeof resolved.services === 'object' &&
+      !Array.isArray(resolved.services)
+        ? (resolved.services as Record<string, any>)
+        : {};
     const layers: any[] = [];
+    const nodes: any[] = [];
+    const edges: any[] = [];
     const processed = new Set<string>();
     let layerIndex = 0;
 
-    // Build dependency layers (topological sort)
-    while (processed.size < Object.keys(capabilities).length && layerIndex < 10) {
-      const currentLayer: any[] = [];
-
-      Object.entries(capabilities).forEach(([capId, capability]) => {
-        if (processed.has(capId)) return;
-
-        const dependencies = capability.depends_on || [];
-        const allDepsProcessed = dependencies.every((dep: string) => processed.has(dep));
-
-        if (allDepsProcessed) {
-          currentLayer.push({
-            id: capId,
-            label: capability.name || capId,
-            dependencies: dependencies,
-          });
-          processed.add(capId);
-        }
+    // Add capability nodes
+    Object.entries(capabilities).forEach(([capId, capability]) => {
+      nodes.push({
+        id: capId,
+        label: capability.name || capId,
+        type: 'capability',
+        properties: {
+          dependencies: capability.depends_on || [],
+        },
       });
 
-      if (currentLayer.length > 0) {
-        layers.push({
-          level: layerIndex,
-          nodes: currentLayer,
+      // Add dependency edges
+      if (capability.depends_on && Array.isArray(capability.depends_on)) {
+        capability.depends_on.forEach((depId: string) => {
+          edges.push({
+            source: depId,
+            target: capId,
+            type: 'depends',
+          });
         });
       }
+    });
 
-      layerIndex++;
+    // Add service nodes
+    Object.entries(services).forEach(([serviceId, service]) => {
+      nodes.push({
+        id: serviceId,
+        label: service.name || serviceId,
+        type: 'service',
+        properties: {
+          technology: service.technology,
+          environment: service.environment,
+          implements: service.implements || [],
+        },
+      });
+
+      // Add implementation edges
+      if (service.implements && Array.isArray(service.implements)) {
+        service.implements.forEach((capId: string) => {
+          edges.push({
+            source: serviceId,
+            target: capId,
+            type: 'implements',
+          });
+        });
+      }
+    });
+
+    // Create logical layers (capabilities and services)
+    const capabilityNodes = nodes.filter(n => n.type === 'capability');
+    const serviceNodes = nodes.filter(n => n.type === 'service');
+
+    if (capabilityNodes.length > 0) {
+      layers.push({
+        id: 'business',
+        label: 'Business Layer',
+        nodeIds: capabilityNodes.map(n => n.id),
+      });
+    }
+
+    if (serviceNodes.length > 0) {
+      layers.push({
+        id: 'application',
+        label: 'Application Layer',
+        nodeIds: serviceNodes.map(n => n.id),
+      });
     }
 
     return {
       type: 'layered_graph',
+      nodes,
+      edges,
       layers,
+      layout: {
+        algorithm: 'layered',
+      },
     };
   }
 
@@ -447,43 +585,146 @@ export class IRGenerator {
    * Generate coverage IR for test coverage visualization
    */
   private generateCoverageIR(resolved: Record<string, unknown>): Record<string, unknown> {
-    const capabilities = (resolved.capabilities as Record<string, any>) || {};
-    const tests = (resolved.tests as Record<string, any>) || {};
+    const capabilities =
+      resolved.capabilities &&
+      typeof resolved.capabilities === 'object' &&
+      !Array.isArray(resolved.capabilities)
+        ? (resolved.capabilities as Record<string, any>)
+        : {};
+    const tests =
+      resolved.tests && typeof resolved.tests === 'object' && !Array.isArray(resolved.tests)
+        ? (resolved.tests as Record<string, any>)
+        : {};
+    const requirements =
+      resolved.requirements &&
+      typeof resolved.requirements === 'object' &&
+      !Array.isArray(resolved.requirements)
+        ? (resolved.requirements as Record<string, any>)
+        : {};
 
-    const totalCapabilities = Object.keys(capabilities).length;
-    let coveredCapabilities = 0;
+    const nodes: any[] = [];
+    const edges: any[] = [];
     const coverage: Record<string, any> = {};
+    let fullyTested = 0;
+    let partiallyTested = 0;
+    let untested = 0;
 
-    // Calculate coverage for each capability
+    // Add capability nodes and calculate coverage
     Object.entries(capabilities).forEach(([capId, capability]) => {
       const coveringTests = Object.entries(tests).filter(([_, test]) => {
         const covers = test.covers || [];
         return covers.includes(capId);
       });
 
-      const isCovered = coveringTests.length > 0;
-      if (isCovered) coveredCapabilities++;
+      const relatedRequirements = Object.entries(requirements).filter(([_, req]) => {
+        return req.capability === capId;
+      });
+
+      const testCount = coveringTests.length;
+      const requirementCount = relatedRequirements.length;
+
+      // Coverage calculation: tests + requirements (simplified)
+      let coveragePercentage = 0;
+      if (testCount >= 8 && requirementCount >= 2) {
+        coveragePercentage = 100;
+        fullyTested++;
+      } else if (testCount >= 1 || requirementCount >= 1) {
+        coveragePercentage = Math.min(80, testCount * 10 + requirementCount * 20);
+        partiallyTested++;
+      } else {
+        coveragePercentage = 0;
+        untested++;
+      }
+
+      nodes.push({
+        id: capId,
+        label: capability.name || capId,
+        type: 'capability',
+        properties: {
+          testCount,
+          requirementCount,
+          coverage: coveragePercentage,
+        },
+      });
 
       coverage[capId] = {
-        covered: isCovered,
-        testCount: coveringTests.length,
+        covered: testCount > 0,
+        testCount,
+        requirementCount,
+        coveragePercentage,
         tests: coveringTests.map(([testId, _]) => testId),
+        requirements: relatedRequirements.map(([reqId, _]) => reqId),
       };
     });
 
+    // Add test nodes
+    Object.entries(tests).forEach(([testId, test]) => {
+      nodes.push({
+        id: testId,
+        label: test.name || testId,
+        type: 'test',
+        properties: {
+          covers: test.covers || [],
+        },
+      });
+
+      // Add coverage edges from tests to capabilities
+      if (test.covers && Array.isArray(test.covers)) {
+        test.covers.forEach((capId: string) => {
+          edges.push({
+            source: testId,
+            target: capId,
+            type: 'covers',
+          });
+        });
+      }
+    });
+
+    // Add requirement nodes
+    Object.entries(requirements).forEach(([reqId, req]) => {
+      nodes.push({
+        id: reqId,
+        label: req.name || reqId,
+        type: 'requirement',
+        properties: {
+          capability: req.capability,
+        },
+      });
+
+      // Add specifies edges from requirements to capabilities
+      if (req.capability) {
+        edges.push({
+          source: reqId,
+          target: req.capability,
+          type: 'specifies',
+        });
+      }
+    });
+
+    const totalCapabilities = Object.keys(capabilities).length;
     const overallCoverage =
-      totalCapabilities > 0 ? (coveredCapabilities / totalCapabilities) * 100 : 0;
+      totalCapabilities > 0
+        ? Math.round(((fullyTested + partiallyTested) / totalCapabilities) * 100)
+        : 0;
 
     return {
       type: 'coverage_graph',
+      nodes,
+      edges,
       coverage: {
-        overall: Math.round(overallCoverage),
-        capabilities: coverage,
-        summary: {
-          total: totalCapabilities,
-          covered: coveredCapabilities,
-          uncovered: totalCapabilities - coveredCapabilities,
-        },
+        overall: overallCoverage,
+        fullyTested,
+        partiallyTested,
+        untested,
+        details: coverage,
+      },
+      layout: {
+        algorithm: 'force',
+      },
+      metadata: {
+        totalCapabilities,
+        totalTests: Object.keys(tests).length,
+        totalRequirements: Object.keys(requirements).length,
       },
     };
   }
