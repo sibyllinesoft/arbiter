@@ -31,9 +31,11 @@
     "lint:fix": "bunx @biomejs/biome check src/ --write"
   },
   "dependencies": {
-    "@arbiter/shared": "workspace:*",
-    "@arbiter/cue-runner": "workspace:*",
     "@arbiter/api-types": "workspace:*",
+    "@arbiter/cue-runner": "workspace:*",
+    "@arbiter/shared": "workspace:*",
+    "@hono/mcp": "^0.1.4",
+    "@modelcontextprotocol/sdk": "^1.18.1",
     "better-sqlite3": "^12.2.0",
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.5",

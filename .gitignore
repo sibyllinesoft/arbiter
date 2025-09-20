@@ -17,4 +17,5 @@ Thumbs.db
 *.tmp
 *.temp
 
+arbiter-cli
 node_modules/
