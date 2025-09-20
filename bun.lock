@@ -5,6 +5,7 @@
       "name": "spec-workbench-backend",
       "dependencies": {
         "@headlessui/react": "^2.2.7",
+        "@modelcontextprotocol/sdk": "^1.18.1",
         "@octokit/rest": "^22.0.0",
         "handlebars": "^4.7.8",
       },

@@ -242,5 +242,154 @@ export function createApiRouter(_: Dependencies) {
     }
   });
 
+  // Add endpoint for MCP add commands
+  app.post('/api/add', async c => {
+    try {
+      const body = await c.req.json();
+      const { subcommand, name, options = {} } = body;
+
+      if (!subcommand || !name) {
+        return c.json(
+          {
+            success: false,
+            error: 'subcommand and name parameters are required',
+          },
+          400
+        );
+      }
+
+      // Import the addCommand function
+      const { addCommand } = await import(
+        '/home/nathan/Projects/arbiter/packages/cli/src/commands/add.js'
+      );
+
+      // Create a basic CLI config (you may want to make this configurable)
+      const config = {
+        apiUrl: 'http://localhost:5050',
+        timeout: 30000,
+        format: 'json' as const,
+        color: false,
+        projectDir: process.cwd(),
+      };
+
+      // Call the add command
+      const exitCode = await addCommand(subcommand, name, options, config);
+
+      if (exitCode === 0) {
+        return c.json({
+          success: true,
+          message: `Successfully added ${subcommand}: ${name}`,
+          subcommand,
+          name,
+          options,
+        });
+      } else {
+        return c.json(
+          {
+            success: false,
+            error: `Add command failed with exit code ${exitCode}`,
+            subcommand,
+            name,
+          },
+          500
+        );
+      }
+    } catch (error) {
+      console.error('Add API error:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Add command failed',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  // Create endpoint for MCP create project command
+  app.post('/api/create', async c => {
+    try {
+      const body = await c.req.json();
+      const { name, options = {} } = body;
+
+      if (!name) {
+        return c.json(
+          {
+            success: false,
+            error: 'name parameter is required',
+          },
+          400
+        );
+      }
+
+      // Import the initCommand function
+      const { initCommand } = await import(
+        '/home/nathan/Projects/arbiter/packages/cli/src/commands/init.js'
+      );
+
+      // Determine target directory
+      const targetDir = options.directory
+        ? path.resolve(options.directory, name)
+        : path.resolve(process.cwd(), name);
+
+      // Prepare init options
+      const initOptions = {
+        template: options.template || 'basic',
+        force: options.force || false,
+        ...options,
+      };
+
+      // Change to target directory for project creation
+      const originalCwd = process.cwd();
+
+      try {
+        // Ensure parent directory exists
+        await fs.ensureDir(path.dirname(targetDir));
+
+        // Create and change to target directory
+        await fs.ensureDir(targetDir);
+        process.chdir(targetDir);
+
+        // Call the init command
+        const exitCode = await initCommand(name, initOptions);
+
+        if (exitCode === 0) {
+          return c.json({
+            success: true,
+            message: `Successfully created project: ${name}`,
+            name,
+            directory: targetDir,
+            template: initOptions.template,
+            options: initOptions,
+          });
+        } else {
+          return c.json(
+            {
+              success: false,
+              error: `Init command failed with exit code ${exitCode}`,
+              name,
+              directory: targetDir,
+            },
+            500
+          );
+        }
+      } finally {
+        // Always restore original working directory
+        process.chdir(originalCwd);
+      }
+    } catch (error) {
+      console.error('Create API error:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Create project failed',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
   return app;
 }

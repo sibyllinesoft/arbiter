@@ -121,7 +121,26 @@ function createMcpServer() {
               endpoints: ['/health', '/api/validate', '/mcp', '/webhooks/*'],
               public_url: 'https://arbiter-dev.sibylline.dev',
               timestamp: new Date().toISOString(),
-              mcp_tools: ['check_health', 'validate_spec', 'get_server_info', 'search', 'fetch'],
+              mcp_tools: [
+                'check_health',
+                'validate_spec',
+                'get_server_info',
+                'search',
+                'fetch',
+                'create_project',
+                'add_service',
+                'add_endpoint',
+                'add_route',
+                'add_flow',
+                'add_load-balancer',
+                'add_database',
+                'add_cache',
+                'add_locator',
+                'add_schema',
+                'add_package',
+                'add_component',
+                'add_module',
+              ],
               include_metrics,
             },
             null,
@@ -255,6 +274,177 @@ function createMcpServer() {
       }
     }
   );
+
+  // Register create project tool
+  server.registerTool(
+    'create_project',
+    {
+      title: 'Create Project',
+      description: 'Create a new Arbiter project with basic structure and templates',
+      inputSchema: {
+        name: z.string().describe('Name of the project to create'),
+        options: z
+          .object({
+            template: z
+              .enum(['basic', 'kubernetes', 'api'])
+              .optional()
+              .describe('Project template to use (default: basic)'),
+            directory: z
+              .string()
+              .optional()
+              .describe('Target directory for the project (default: current directory)'),
+            force: z.boolean().optional().describe('Overwrite existing directory if it exists'),
+          })
+          .optional()
+          .describe('Additional options for project creation'),
+      },
+    },
+    async ({ name, options = {} }) => {
+      try {
+        const response = await fetch('http://localhost:5050/api/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            options: {
+              template: options.template || 'basic',
+              directory: options.directory,
+              force: options.force || false,
+              ...options,
+            },
+          }),
+        }).then(r => r.json());
+
+        if (!response.success) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to create project: ${response.error || 'Unknown error'}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                success: true,
+                action: 'create_project',
+                name,
+                message: response.message || `Successfully created project: ${name}`,
+                template: options.template || 'basic',
+                directory: response.directory,
+                next_steps: [
+                  `cd ${response.directory || name}`,
+                  'arbiter add <component-type> <name>  # Add models, endpoints, configs, etc.',
+                  'arbiter generate  # Creates the actual CUE files',
+                  'arbiter check  # Validate the generated CUE',
+                ],
+              }),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Failed to create project: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Register add commands for building specifications
+  const addCommands = [
+    { name: 'service', description: 'Add a service to the specification' },
+    { name: 'endpoint', description: 'Add an API endpoint to a service' },
+    { name: 'route', description: 'Add a UI route for frontend applications' },
+    { name: 'flow', description: 'Add a user flow for testing and validation' },
+    { name: 'load-balancer', description: 'Add a load balancer with health check invariants' },
+    { name: 'database', description: 'Add a database with automatic service attachment' },
+    { name: 'cache', description: 'Add a cache service with automatic attachment' },
+    { name: 'locator', description: 'Add a UI locator for testing' },
+    { name: 'schema', description: 'Add a schema for API documentation' },
+    { name: 'package', description: 'Add a reusable package/library' },
+    { name: 'component', description: 'Add a UI component' },
+    { name: 'module', description: 'Add a standalone module' },
+  ];
+
+  for (const cmd of addCommands) {
+    server.registerTool(
+      `add_${cmd.name}`,
+      {
+        title: `Add ${cmd.name.charAt(0).toUpperCase() + cmd.name.slice(1)}`,
+        description: cmd.description,
+        inputSchema: {
+          name: z.string().describe('Name of the component to add'),
+          options: z.record(z.any()).optional().describe('Additional options for the component'),
+        },
+      },
+      async ({ name, options = {} }) => {
+        try {
+          const response = await fetch('http://localhost:5050/api/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subcommand: cmd.name,
+              name,
+              options: {
+                ...options,
+                dryRun: false,
+                verbose: true,
+              },
+            }),
+          }).then(r => r.json());
+
+          if (!response.success) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Failed to add ${cmd.name}: ${response.error || 'Unknown error'}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  success: true,
+                  action: `add_${cmd.name}`,
+                  name,
+                  message: response.message || `Successfully added ${cmd.name}: ${name}`,
+                  details: response.details,
+                }),
+              },
+            ],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `Failed to add ${cmd.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+    );
+  }
 
   return server;
 }
