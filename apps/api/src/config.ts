@@ -9,7 +9,7 @@ export function loadConfig(): ServerConfig {
     return JSON.parse(raw) as ServerConfig;
   } catch {
     return {
-      port: 5050,
+      port: parseInt(process.env.PORT || '5050', 10),
       host: 'localhost',
       database_path: ':memory:',
       spec_workdir: path.join(process.cwd(), '.spec-workdir'),

@@ -541,31 +541,13 @@ export async function generateCommand(
     }
 
     if (validationResult.hasWarnings && !options.force) {
+      console.log('\n' + chalk.yellow('⚠️  Specification validation warnings found:'));
       console.log(formatWarnings(validationResult));
-      console.error(chalk.red('\n❌ Cannot generate with warnings present.'));
-      console.log(
-        chalk.blue('Use --force to generate anyway, but this may result in incomplete artifacts.')
-      );
+      console.log(chalk.blue('\n💡 To proceed: Add --force flag to generate with warnings'));
       console.log(
         chalk.dim(
           'Recommendation: Fix the warnings above for a complete, production-ready specification.'
         )
-      );
-
-      // Critical prompt for agents/automation
-      console.log(chalk.red.bold('\n🚨 IMPORTANT FOR AI AGENTS:'));
-      console.log(
-        chalk.yellow(
-          'IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.'
-        )
-      );
-      console.log(
-        chalk.yellow(
-          'YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force` TO GENERATE AN INCOMPLETE SPEC.'
-        )
-      );
-      console.log(
-        chalk.dim('Incomplete specifications lead to production issues and technical debt.')
       );
 
       return 1;

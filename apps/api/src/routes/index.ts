@@ -444,6 +444,125 @@ export function createApiRouter(_: Dependencies) {
     });
   });
 
+  // Specifications endpoint for CLI
+  app.get('/api/specifications', async c => {
+    const startTime = Date.now();
+    const requestId = Math.random().toString(36).substr(2, 9);
+
+    try {
+      console.log(`[SPECS-GET] ${requestId} - Request started at ${new Date().toISOString()}`);
+
+      const query = c.req.query();
+      const { type, path: specPath } = query;
+      console.log(`[SPECS-GET] ${requestId} - Query params:`, { type, path: specPath });
+
+      if (specPath && (await fs.pathExists(specPath))) {
+        console.log(`[SPECS-GET] ${requestId} - File exists, reading content...`);
+        const content = await fs.readFile(specPath, 'utf-8');
+        const stat = await fs.stat(specPath);
+        const duration = Date.now() - startTime;
+
+        console.log(`[SPECS-GET] ${requestId} - Success after ${duration}ms`);
+
+        return c.json({
+          success: true,
+          type,
+          path: specPath,
+          content,
+          lastModified: stat.mtime.toISOString(),
+        });
+      }
+
+      const duration = Date.now() - startTime;
+      console.log(`[SPECS-GET] ${requestId} - File not found after ${duration}ms`);
+
+      return c.json(
+        {
+          success: false,
+          error: 'Specification not found',
+          type,
+          path: specPath,
+        },
+        404
+      );
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[SPECS-GET] ${requestId} - Error after ${duration}ms:`, error);
+
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to retrieve specification',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  app.post('/api/specifications', async c => {
+    const startTime = Date.now();
+    const requestId = Math.random().toString(36).substr(2, 9);
+
+    try {
+      console.log(`[SPECS-POST] ${requestId} - Request started at ${new Date().toISOString()}`);
+
+      const body = await c.req.json();
+      const { type, path: specPath, content } = body;
+      console.log(`[SPECS-POST] ${requestId} - Body params:`, {
+        type,
+        path: specPath,
+        contentLength: content?.length || 0,
+      });
+
+      if (!specPath || !content) {
+        const duration = Date.now() - startTime;
+        console.log(
+          `[SPECS-POST] ${requestId} - Bad request after ${duration}ms - missing path or content`
+        );
+
+        return c.json(
+          {
+            success: false,
+            error: 'path and content are required',
+          },
+          400
+        );
+      }
+
+      console.log(`[SPECS-POST] ${requestId} - Ensuring directory exists...`);
+      // Ensure directory exists
+      await fs.ensureDir(path.dirname(specPath));
+
+      console.log(`[SPECS-POST] ${requestId} - Writing file...`);
+      // Write the specification file
+      await fs.writeFile(specPath, content, 'utf-8');
+
+      const duration = Date.now() - startTime;
+      console.log(`[SPECS-POST] ${requestId} - Success after ${duration}ms`);
+
+      return c.json({
+        success: true,
+        type,
+        path: specPath,
+        message: 'Specification created successfully',
+        lastModified: new Date().toISOString(),
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[SPECS-POST] ${requestId} - Error after ${duration}ms:`, error);
+
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to create specification',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
   // Handler endpoints that integrate with the existing HandlerAPIController
   // Order matters! More specific routes must come before parameterized routes
 

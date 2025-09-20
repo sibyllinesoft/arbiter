@@ -298,9 +298,23 @@ export class ApiClient {
     path: string;
     shard?: string;
   }): Promise<CommandResult<{ success: boolean; id: string; shard?: string }>> {
+    const startTime = Date.now();
+    const requestId = Math.random().toString(36).substr(2, 9);
+
+    console.log(
+      `[CLI-STORE] ${requestId} - Starting storeSpecification at ${new Date().toISOString()}`
+    );
+    console.log(`[CLI-STORE] ${requestId} - Spec details:`, {
+      type: spec.type,
+      path: spec.path,
+      contentLength: spec.content?.length || 0,
+    });
+
     await this.enforceRateLimit();
 
     try {
+      console.log(`[CLI-STORE] ${requestId} - Making POST request to /api/specifications`);
+
       const response = await this.fetch('/api/specifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -310,8 +324,16 @@ export class ApiClient {
         }),
       });
 
+      const duration = Date.now() - startTime;
+      console.log(
+        `[CLI-STORE] ${requestId} - Response received after ${duration}ms, status: ${response.status}`
+      );
+
       if (!response.ok) {
         const error = await response.text();
+        console.error(
+          `[CLI-STORE] ${requestId} - Failed with status ${response.status}, error: ${error}`
+        );
         return {
           success: false,
           data: null,
@@ -321,8 +343,12 @@ export class ApiClient {
       }
 
       const data = await response.json();
+      console.log(`[CLI-STORE] ${requestId} - Success after ${duration}ms`);
       return { success: true, data, error: null, exitCode: 0 };
     } catch (error) {
+      const duration = Date.now() - startTime;
+      console.error(`[CLI-STORE] ${requestId} - Network error after ${duration}ms:`, error);
+
       return {
         success: false,
         data: null,
@@ -528,28 +554,252 @@ export class ApiClient {
   }
 
   /**
+   * List components by type
+   */
+  async listComponents(type?: string): Promise<CommandResult<any[]>> {
+    try {
+      await this.enforceRateLimit();
+
+      const url = type ? `/api/components?type=${encodeURIComponent(type)}` : '/api/components';
+      const response = await this.fetch(url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data: data.components || [],
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
+   * Get project status
+   */
+  async getProjectStatus(): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+
+      const response = await this.fetch('/api/status');
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
+   * Validate best practices (if API supports it)
+   */
+  async validateBestPractices?(content: string): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      this.validatePayloadSize(content);
+
+      const requestPayload = JSON.stringify({ content });
+      this.validatePayloadSize(requestPayload);
+
+      const response = await this.fetch('/api/validate/best-practices', {
+        method: 'POST',
+        body: requestPayload,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
+   * Validate custom rules (if API supports it)
+   */
+  async validateCustomRules?(content: string, rules: string[]): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      this.validatePayloadSize(content);
+
+      const requestPayload = JSON.stringify({ content, rules });
+      this.validatePayloadSize(requestPayload);
+
+      const response = await this.fetch('/api/validate/custom-rules', {
+        method: 'POST',
+        body: requestPayload,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
+   * Validate project consistency (if API supports it)
+   */
+  async validateProjectConsistency?(content: string): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      this.validatePayloadSize(content);
+
+      const requestPayload = JSON.stringify({ content });
+      this.validatePayloadSize(requestPayload);
+
+      const response = await this.fetch('/api/validate/consistency', {
+        method: 'POST',
+        body: requestPayload,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  /**
    * Internal fetch wrapper with timeout and error handling
    */
   private async fetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
     const baseUrl = this.getEffectiveBaseUrl();
     const url = `${baseUrl}${endpoint}`;
+    const fetchStartTime = Date.now();
+    const fetchId = Math.random().toString(36).substr(2, 9);
+
+    console.log(
+      `[CLI-FETCH] ${fetchId} - Starting request to ${url} at ${new Date().toISOString()}`
+    );
+    console.log(`[CLI-FETCH] ${fetchId} - Timeout configured: ${this.timeout}ms`);
+    console.log(`[CLI-FETCH] ${fetchId} - Method: ${options.method || 'GET'}`);
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+    const timeoutId = setTimeout(() => {
+      console.log(`[CLI-FETCH] ${fetchId} - TIMEOUT! Aborting after ${this.timeout}ms`);
+      controller.abort();
+    }, this.timeout);
 
     try {
+      console.log(`[CLI-FETCH] ${fetchId} - Calling fetch() now...`);
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
       });
 
-      clearTimeout(timeoutId);
-      return response;
-    } catch (error) {
+      const duration = Date.now() - fetchStartTime;
       clearTimeout(timeoutId);
 
+      console.log(`[CLI-FETCH] ${fetchId} - Response received after ${duration}ms`);
+      console.log(`[CLI-FETCH] ${fetchId} - Status: ${response.status} ${response.statusText}`);
+
+      return response;
+    } catch (error) {
+      const duration = Date.now() - fetchStartTime;
+      clearTimeout(timeoutId);
+
+      console.error(`[CLI-FETCH] ${fetchId} - Error after ${duration}ms:`, error);
+
       if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${this.timeout}ms connecting to ${baseUrl}`);
+        const errorMsg = `Request timeout after ${this.timeout}ms connecting to ${baseUrl}`;
+        console.error(`[CLI-FETCH] ${fetchId} - TIMEOUT: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
       // Enhance error message with connection details
@@ -557,9 +807,12 @@ export class ApiClient {
         error instanceof Error &&
         (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed'))
       ) {
-        throw new Error(`Connection failed to ${baseUrl}. Is the Arbiter server running?`);
+        const errorMsg = `Connection failed to ${baseUrl}. Is the Arbiter server running?`;
+        console.error(`[CLI-FETCH] ${fetchId} - CONNECTION FAILED: ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
+      console.error(`[CLI-FETCH] ${fetchId} - OTHER ERROR:`, error);
       throw error;
     }
   }

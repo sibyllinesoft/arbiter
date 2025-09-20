@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import Table from 'cli-table3';
+import yaml from 'yaml';
 import type { ValidationResult } from '../types.js';
 
 /**
@@ -232,6 +233,127 @@ export function formatTable(headers: string[], rows: string[][]): string {
   rows.forEach(row => {
     table.push(row);
   });
+
+  return table.toString();
+}
+
+/**
+ * Format YAML output with colors
+ */
+export function formatYaml(data: any, color = true): string {
+  const yamlString = yaml.stringify(data, {
+    indent: 2,
+    lineWidth: 0,
+  });
+
+  if (!color) {
+    return yamlString;
+  }
+
+  // Basic YAML syntax highlighting
+  return yamlString
+    .replace(/^(\s*)([^:\s]+):/gm, (_, indent, key) => `${indent}${chalk.blue(key)}:`)
+    .replace(/:\s*(["`'].*["`'])/g, (_, value) => `: ${chalk.green(value)}`)
+    .replace(/:\s*(true|false|null)/g, (_, value) => `: ${chalk.yellow(value)}`)
+    .replace(/:\s*(\d+\.?\d*)/g, (_, value) => `: ${chalk.magenta(value)}`);
+}
+
+/**
+ * Format components as a table
+ */
+export function formatComponentTable(components: any[]): string {
+  if (components.length === 0) {
+    return chalk.dim('No components found');
+  }
+
+  const table = new Table({
+    head: [chalk.cyan('Name'), chalk.cyan('Type'), chalk.cyan('Status'), chalk.cyan('Description')],
+    style: {
+      head: [],
+      border: ['dim'],
+    },
+  });
+
+  components.forEach(component => {
+    const statusColor =
+      component.status === 'active' ? 'green' : component.status === 'inactive' ? 'red' : 'yellow';
+    const statusSymbol =
+      component.status === 'active' ? '●' : component.status === 'inactive' ? '○' : '◐';
+
+    table.push([
+      component.name || '',
+      chalk.cyan(component.type || ''),
+      chalk[statusColor](`${statusSymbol} ${component.status || 'unknown'}`),
+      chalk.dim(component.description || ''),
+    ]);
+  });
+
+  return table.toString();
+}
+
+/**
+ * Format project status as a table
+ */
+export function formatStatusTable(status: any): string {
+  const table = new Table({
+    head: [chalk.cyan('Category'), chalk.cyan('Status'), chalk.cyan('Details')],
+    style: {
+      head: [],
+      border: ['dim'],
+    },
+  });
+
+  // Health status
+  const healthColor =
+    status.health === 'healthy' ? 'green' : status.health === 'unhealthy' ? 'red' : 'yellow';
+  const healthSymbol =
+    status.health === 'healthy' ? '✓' : status.health === 'unhealthy' ? '✗' : '!';
+
+  table.push([
+    'Health',
+    chalk[healthColor](`${healthSymbol} ${status.health || 'unknown'}`),
+    chalk.dim(status.healthDetails || ''),
+  ]);
+
+  // Components
+  if (status.components) {
+    const activeCount = status.components.filter((c: any) => c.status === 'active').length;
+    const totalCount = status.components.length;
+    const componentStatus =
+      activeCount === totalCount
+        ? 'All Active'
+        : activeCount === 0
+          ? 'None Active'
+          : `${activeCount}/${totalCount} Active`;
+
+    table.push([
+      'Components',
+      chalk.cyan(componentStatus),
+      chalk.dim(`${totalCount} total components`),
+    ]);
+  }
+
+  // Validation
+  if (status.validation) {
+    const validationColor =
+      status.validation.status === 'valid'
+        ? 'green'
+        : status.validation.status === 'invalid'
+          ? 'red'
+          : 'yellow';
+    const validationSymbol =
+      status.validation.status === 'valid'
+        ? '✓'
+        : status.validation.status === 'invalid'
+          ? '✗'
+          : '!';
+
+    table.push([
+      'Validation',
+      chalk[validationColor](`${validationSymbol} ${status.validation.status || 'unknown'}`),
+      chalk.dim(status.validation.summary || ''),
+    ]);
+  }
 
   return table.toString();
 }

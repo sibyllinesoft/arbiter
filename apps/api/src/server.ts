@@ -19,7 +19,7 @@ import { HandlerAPIController } from './handlers/api.js';
 import { IRGenerator } from './ir.ts';
 import { SpecEngine } from './specEngine.ts';
 import type { ServerConfig } from './types.ts';
-import { TokenBucket, createProblemDetails, logger } from './utils.ts';
+import { createProblemDetails, logger } from './utils.ts';
 import { WebhookService } from './webhooks.ts';
 
 import { createMcpApp } from './mcp.ts';
@@ -36,7 +36,6 @@ export class SpecWorkbenchServer {
   private events: EventService;
   private webhooks: WebhookService;
   private handlersApi: HandlerAPIController;
-  private rateLimiter: TokenBucket;
 
   // Modular components
   private apiRouter: ReturnType<typeof createApiRouter>;
@@ -54,11 +53,6 @@ export class SpecWorkbenchServer {
     this.events = new EventService(config);
     this.webhooks = new WebhookService(config, this.events, this.db);
     this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
-    this.rateLimiter = new TokenBucket(
-      config.rate_limit.max_tokens,
-      config.rate_limit.refill_rate,
-      config.rate_limit.window_ms
-    );
 
     // Initialize modular components
     const dependencies: Dependencies = {
@@ -113,11 +107,6 @@ export class SpecWorkbenchServer {
     this.httpApp.onError((err, c) => {
       return this.handleRequestError(err, c.req.method, new URL(c.req.url).pathname);
     });
-
-    // Clean up rate limiter buckets periodically
-    setInterval(() => {
-      this.rateLimiter.cleanup();
-    }, 60000); // Every minute
   }
 
   /**
@@ -238,29 +227,6 @@ export class SpecWorkbenchServer {
   }
 
   /**
-   * Check rate limiting
-   */
-  private checkRateLimit(request: Request, corsHeaders: Record<string, string>): Response | null {
-    const clientId = this.getClientId(request);
-
-    if (!this.rateLimiter.consume(clientId)) {
-      return new Response(
-        JSON.stringify(createProblemDetails(429, 'Too Many Requests', 'Rate limit exceeded')),
-        {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/problem+json',
-            'Retry-After': '60',
-            ...corsHeaders,
-          },
-        }
-      );
-    }
-
-    return null;
-  }
-
-  /**
    * Main request handler - routes to appropriate modules
    */
   private async handleRequest(request: Request, server: any): Promise<Response> {
@@ -299,12 +265,7 @@ export class SpecWorkbenchServer {
         return upgradeResult.response || new Response('WebSocket upgrade successful');
       }
 
-      logger.info('[SERVER] Not a WebSocket upgrade - checking rate limit');
-      const rateLimitResponse = this.checkRateLimit(request, corsHeaders);
-      if (rateLimitResponse) {
-        logger.warn('[SERVER] Rate limit exceeded');
-        return rateLimitResponse;
-      }
+      logger.info('[SERVER] Not a WebSocket upgrade - proceeding to app routing');
 
       logger.info('[SERVER] Passing to httpApp.fetch');
       return await this.httpApp.fetch(request);
@@ -402,7 +363,6 @@ export class SpecWorkbenchServer {
       await this.auth.stopOAuthService();
 
       // Clean up any other resources
-      this.rateLimiter.cleanup();
 
       logger.info('Server shutdown complete');
     } catch (error) {
@@ -413,6 +373,164 @@ export class SpecWorkbenchServer {
 
 // Export for external usage
 export { createApiRouter, WebSocketHandler, McpService, StaticFileHandler };
+
+// Enhanced process monitoring and error handling
+class ProcessMonitor {
+  private memoryWarningThreshold = 500 * 1024 * 1024; // 500MB
+  private errorCount = 0;
+  private lastMemoryCheck = Date.now();
+  private isShuttingDown = false;
+
+  constructor(private server: SpecWorkbenchServer) {
+    this.setupProcessMonitoring();
+    this.setupMemoryMonitoring();
+    this.setupUncaughtExceptionHandling();
+  }
+
+  private setupProcessMonitoring() {
+    // Log process health every 30 seconds
+    setInterval(() => {
+      if (!this.isShuttingDown) {
+        this.logProcessHealth();
+      }
+    }, 30000);
+  }
+
+  private setupMemoryMonitoring() {
+    // Check memory usage every 10 seconds
+    setInterval(() => {
+      if (!this.isShuttingDown) {
+        this.checkMemoryUsage();
+      }
+    }, 10000);
+  }
+
+  private setupUncaughtExceptionHandling() {
+    // Handle uncaught exceptions
+    process.on('uncaughtException', error => {
+      this.errorCount++;
+      logger.error('❌ UNCAUGHT EXCEPTION', error, {
+        errorCount: this.errorCount,
+        processUptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        pid: process.pid,
+      });
+
+      // If we get too many errors, shutdown gracefully
+      if (this.errorCount > 5) {
+        logger.error('🚨 Too many uncaught exceptions, initiating shutdown');
+        this.gracefulShutdown('uncaught-exceptions');
+      }
+    });
+
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      this.errorCount++;
+      logger.error('❌ UNHANDLED PROMISE REJECTION', reason instanceof Error ? reason : undefined, {
+        reason: reason,
+        promise: promise,
+        errorCount: this.errorCount,
+        processUptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        pid: process.pid,
+      });
+
+      // If we get too many errors, shutdown gracefully
+      if (this.errorCount > 10) {
+        logger.error('🚨 Too many unhandled rejections, initiating shutdown');
+        this.gracefulShutdown('unhandled-rejections');
+      }
+    });
+
+    // Handle warnings
+    process.on('warning', warning => {
+      logger.warn('⚠️ Node.js Warning', undefined, {
+        name: warning.name,
+        message: warning.message,
+        stack: warning.stack,
+      });
+    });
+
+    // Handle exit events
+    process.on('beforeExit', code => {
+      if (!this.isShuttingDown) {
+        logger.info('🔄 Process beforeExit event', { code });
+      }
+    });
+
+    process.on('exit', code => {
+      console.log(`🔚 Process exit with code: ${code}`);
+    });
+  }
+
+  private logProcessHealth() {
+    const memUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
+
+    logger.info('📊 Process Health Check', {
+      uptime: Math.floor(process.uptime()),
+      pid: process.pid,
+      nodeVersion: process.version,
+      platform: process.platform,
+      errorCount: this.errorCount,
+      memory: {
+        rss: Math.round(memUsage.rss / 1024 / 1024) + 'MB',
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
+        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + 'MB',
+        external: Math.round(memUsage.external / 1024 / 1024) + 'MB',
+      },
+      cpu: {
+        user: cpuUsage.user,
+        system: cpuUsage.system,
+      },
+    });
+  }
+
+  private checkMemoryUsage() {
+    const memUsage = process.memoryUsage();
+
+    if (memUsage.heapUsed > this.memoryWarningThreshold) {
+      logger.warn('⚠️ High memory usage detected', {
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
+        threshold: Math.round(this.memoryWarningThreshold / 1024 / 1024) + 'MB',
+        recommendation: 'Consider garbage collection or restart',
+      });
+
+      // Force garbage collection if available
+      if (global.gc) {
+        logger.info('🗑️ Running garbage collection');
+        global.gc();
+      }
+    }
+  }
+
+  async gracefulShutdown(reason: string) {
+    if (this.isShuttingDown) {
+      logger.warn('⚠️ Shutdown already in progress, ignoring duplicate request');
+      return;
+    }
+
+    this.isShuttingDown = true;
+    logger.info(`🔸 Graceful shutdown initiated: ${reason}`);
+
+    try {
+      // Set a timeout for shutdown
+      const shutdownTimeout = setTimeout(() => {
+        logger.error('🚨 Shutdown timeout exceeded, forcing exit');
+        process.exit(1);
+      }, 10000); // 10 second timeout
+
+      await this.server.shutdown();
+      clearTimeout(shutdownTimeout);
+
+      logger.info('✅ Graceful shutdown completed');
+      process.exit(0);
+    } catch (error) {
+      logger.error('❌ Error during graceful shutdown', error instanceof Error ? error : undefined);
+      process.exit(1);
+    }
+  }
+}
 
 let config: ServerConfig;
 
@@ -425,24 +543,45 @@ try {
 
 // Start the server
 const server = new SpecWorkbenchServer(config);
+const monitor = new ProcessMonitor(server);
 
-// Handle graceful shutdown
+// Handle graceful shutdown signals
 process.on('SIGINT', async () => {
-  console.log('\n🔸 Received SIGINT, shutting down gracefully...');
-  await server.shutdown();
-  process.exit(0);
+  console.log('\n🔸 Received SIGINT signal');
+  await monitor.gracefulShutdown('SIGINT');
 });
 
 process.on('SIGTERM', async () => {
-  console.log('\n🔸 Received SIGTERM, shutting down gracefully...');
-  await server.shutdown();
-  process.exit(0);
+  console.log('\n🔸 Received SIGTERM signal');
+  await monitor.gracefulShutdown('SIGTERM');
 });
 
-// Start the server and handle startup errors
-try {
-  await server.start();
-} catch (error) {
-  logger.error('Failed to start server', error instanceof Error ? error : undefined);
-  process.exit(1);
+// Enhanced startup with retry logic
+async function startServerWithRetry(maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      logger.info(`🚀 Starting server (attempt ${attempt}/${maxRetries})`);
+      await server.start();
+      logger.info('✅ Server started successfully');
+      return;
+    } catch (error) {
+      logger.error(
+        `❌ Server startup failed (attempt ${attempt}/${maxRetries})`,
+        error instanceof Error ? error : undefined
+      );
+
+      if (attempt === maxRetries) {
+        logger.error('🚨 All startup attempts failed, exiting');
+        process.exit(1);
+      }
+
+      // Wait before retry
+      const delay = attempt * 2000; // 2s, 4s, 6s
+      logger.info(`⏳ Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
 }
+
+// Start the server with retry logic
+await startServerWithRetry();
