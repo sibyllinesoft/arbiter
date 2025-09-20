@@ -3,6 +3,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Hono } from 'hono';
 import { z } from 'zod';
 
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:5050';
+
 function createMcpServer() {
   const server = new McpServer(
     {
@@ -60,7 +62,7 @@ function createMcpServer() {
     },
     async ({ spec_content, spec_type }) => {
       try {
-        const validationResult = await fetch('http://localhost:5050/api/validate', {
+        const validationResult = await fetch(`${API_BASE_URL}/api/validate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -164,7 +166,7 @@ function createMcpServer() {
     },
     async ({ query }) => {
       try {
-        const searchResult = await fetch('http://localhost:5050/api/search', {
+        const searchResult = await fetch(`${API_BASE_URL}/api/search`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -218,7 +220,7 @@ function createMcpServer() {
         // Extract path from the id (format: "path-index")
         const path = id.split('-').slice(0, -1).join('-');
 
-        const fetchResult = await fetch('http://localhost:5050/api/fetch', {
+        const fetchResult = await fetch(`${API_BASE_URL}/api/fetch`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -301,7 +303,7 @@ function createMcpServer() {
     },
     async ({ name, options = {} }) => {
       try {
-        const response = await fetch('http://localhost:5050/api/create', {
+        const response = await fetch(`${API_BASE_URL}/api/create`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -391,7 +393,7 @@ function createMcpServer() {
       },
       async ({ name, options = {} }) => {
         try {
-          const response = await fetch('http://localhost:5050/api/add', {
+          const response = await fetch(`${API_BASE_URL}/api/add`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

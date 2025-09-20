@@ -38,10 +38,14 @@ export class ApiError extends Error {
 }
 
 class ApiService {
-  private baseUrl = 'http://localhost:8080';
+  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5050';
   private defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  constructor() {
+    // Constructor
+  }
 
   private buildRequestConfig(
     endpoint: string,
@@ -186,17 +190,16 @@ class ApiService {
   // Resolved spec endpoints
   async getResolvedSpec(projectId: string): Promise<ResolvedSpecResponse> {
     const response = await this.request<{
+      success: boolean;
       projectId: string;
-      specHash: string;
-      updatedAt: string;
-      json: Record<string, unknown>;
+      resolved: Record<string, unknown>;
     }>(`/api/resolved?projectId=${projectId}`);
 
     // Transform response to match expected interface
     return {
-      spec_hash: response.specHash,
-      resolved: response.json,
-      last_updated: response.updatedAt,
+      spec_hash: 'generated', // The API doesn't return this field
+      resolved: response.resolved,
+      last_updated: new Date().toISOString(),
     };
   }
 

@@ -61,15 +61,27 @@ const getFileIcon = (fileName: string) => {
 
 export interface FileTreeProps {
   className?: string;
+  multiSelect?: boolean;
+  onSelectionChange?: (selectedFiles: string[]) => void;
 }
 
-export function FileTree({ className }: FileTreeProps) {
+export interface FileTreeRef {
+  getSelectedFiles: () => string[];
+  clearSelection: () => void;
+  selectFiles: (fileIds: string[]) => void;
+}
+
+export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function FileTree(
+  { className, multiSelect = false, onSelectionChange },
+  ref
+) {
   const { state, dispatch, setActiveFragment, setError } = useApp();
   const currentProject = useCurrentProject();
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newFragmentPath, setNewFragmentPath] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
   // Build tree structure from flat fragment list
   const buildFileTree = useCallback(
@@ -141,11 +153,103 @@ export function FileTree({ className }: FileTreeProps) {
 
   // Handle file selection
   const handleFileSelect = useCallback(
-    (fragmentId: string) => {
+    (fragmentId: string, event?: React.MouseEvent) => {
+      if (multiSelect && event) {
+        if (event.ctrlKey || event.metaKey) {
+          // Toggle selection for ctrl/cmd+click
+          setSelectedFiles(prev => {
+            const newSelection = new Set(prev);
+            if (newSelection.has(fragmentId)) {
+              newSelection.delete(fragmentId);
+            } else {
+              newSelection.add(fragmentId);
+            }
+            // Notify parent of selection change
+            if (onSelectionChange) {
+              onSelectionChange(Array.from(newSelection));
+            }
+            return newSelection;
+          });
+        } else if (event.shiftKey && selectedFiles.size > 0) {
+          // Range selection for shift+click
+          const fragments = state.fragments.filter(f => f.type === 'file');
+          const currentIndex = fragments.findIndex(f => f.id === fragmentId);
+          const lastSelectedId = Array.from(selectedFiles).pop();
+          const lastIndex = fragments.findIndex(f => f.id === lastSelectedId);
+
+          if (currentIndex !== -1 && lastIndex !== -1) {
+            const start = Math.min(currentIndex, lastIndex);
+            const end = Math.max(currentIndex, lastIndex);
+            const rangeIds = fragments.slice(start, end + 1).map(f => f.id);
+
+            setSelectedFiles(prev => {
+              const newSelection = new Set([...prev, ...rangeIds]);
+              if (onSelectionChange) {
+                onSelectionChange(Array.from(newSelection));
+              }
+              return newSelection;
+            });
+          }
+        } else {
+          // Single selection
+          setSelectedFiles(new Set([fragmentId]));
+          if (onSelectionChange) {
+            onSelectionChange([fragmentId]);
+          }
+        }
+      } else if (!multiSelect) {
+        // Clear selection when not in multiSelect mode
+        setSelectedFiles(new Set());
+        if (onSelectionChange) {
+          onSelectionChange([]);
+        }
+      }
+
+      // Always set active fragment for editing
       setActiveFragment(fragmentId);
     },
-    [setActiveFragment]
+    [setActiveFragment, multiSelect, selectedFiles, state.fragments, onSelectionChange]
   );
+
+  // Expose methods via ref
+  const getSelectedFiles = useCallback(() => {
+    return Array.from(selectedFiles);
+  }, [selectedFiles]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFiles(new Set());
+    if (onSelectionChange) {
+      onSelectionChange([]);
+    }
+  }, [onSelectionChange]);
+
+  const selectFiles = useCallback(
+    (fileIds: string[]) => {
+      setSelectedFiles(new Set(fileIds));
+      if (onSelectionChange) {
+        onSelectionChange(fileIds);
+      }
+    },
+    [onSelectionChange]
+  );
+
+  // Expose methods via ref
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      getSelectedFiles,
+      clearSelection,
+      selectFiles,
+    }),
+    [getSelectedFiles, clearSelection, selectFiles]
+  );
+
+  // Notify parent of selection changes
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      onSelectionChange(Array.from(selectedFiles));
+    }
+  }, [selectedFiles, onSelectionChange]);
 
   // Handle create new fragment
   const handleCreateFragment = useCallback(async () => {
@@ -323,6 +427,8 @@ export function FileTree({ className }: FileTreeProps) {
                 level={0}
                 expandedFolders={expandedFolders}
                 activeFragmentId={state.activeFragmentId}
+                selectedFiles={selectedFiles}
+                multiSelect={multiSelect}
                 onToggleFolder={toggleFolder}
                 onFileSelect={handleFileSelect}
                 onDeleteFragment={handleDeleteFragment}
@@ -333,15 +439,17 @@ export function FileTree({ className }: FileTreeProps) {
       </div>
     </div>
   );
-}
+});
 
 interface FileTreeItemComponentProps {
   item: FileTreeItem;
   level: number;
   expandedFolders: Set<string>;
   activeFragmentId: string | null;
+  selectedFiles: Set<string>;
+  multiSelect: boolean;
   onToggleFolder: (path: string) => void;
-  onFileSelect: (fragmentId: string) => void;
+  onFileSelect: (fragmentId: string, event?: React.MouseEvent) => void;
   onDeleteFragment: (fragmentId: string, fragmentPath: string) => void;
 }
 
@@ -350,19 +458,22 @@ function FileTreeItemComponent({
   level,
   expandedFolders,
   activeFragmentId,
+  selectedFiles,
+  multiSelect,
   onToggleFolder,
   onFileSelect,
   onDeleteFragment,
 }: FileTreeItemComponentProps) {
   const isExpanded = expandedFolders.has(item.path);
   const isActive = item.type === 'file' && activeFragmentId === item.id;
+  const isSelected = item.type === 'file' && selectedFiles.has(item.id);
   const [showActions, setShowActions] = useState(false);
 
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
     if (item.type === 'directory') {
       onToggleFolder(item.path);
     } else {
-      onFileSelect(item.id);
+      onFileSelect(item.id, event);
     }
   };
 
@@ -396,13 +507,22 @@ function FileTreeItemComponent({
           'hover:bg-graphite-50 active:bg-graphite-100',
           'transition-all duration-200 ease-out',
           'focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-graphite-50',
-          // Active state for files
+          // Active state for files (editing)
           isActive && [
             'bg-gradient-to-r from-blue-50 to-blue-50/30',
             'border border-blue-200/60',
             'shadow-sm shadow-blue-100/50',
             'text-blue-700',
           ],
+          // Selected state for files (multi-select)
+          multiSelect &&
+            isSelected &&
+            !isActive && [
+              'bg-gradient-to-r from-green-50 to-green-50/30',
+              'border border-green-200/60',
+              'shadow-sm shadow-green-100/50',
+              'text-green-700',
+            ],
           // Directory styling
           item.type === 'directory' && 'font-medium',
           // Unsaved changes styling
@@ -472,6 +592,30 @@ function FileTreeItemComponent({
           {fileName}
         </span>
 
+        {/* Multi-select checkbox */}
+        {multiSelect && item.type === 'file' && (
+          <div className="flex-shrink-0 flex items-center mr-2">
+            <div
+              className={cn(
+                'w-4 h-4 border-2 rounded transition-all duration-200 flex items-center justify-center',
+                isSelected
+                  ? 'bg-green-500 border-green-500 text-white'
+                  : 'border-graphite-300 hover:border-green-400'
+              )}
+            >
+              {isSelected && (
+                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Unsaved changes indicator */}
         {item.hasUnsavedChanges && (
           <div className="flex-shrink-0 flex items-center gap-1">
@@ -533,6 +677,8 @@ function FileTreeItemComponent({
                 level={level + 1}
                 expandedFolders={expandedFolders}
                 activeFragmentId={activeFragmentId}
+                selectedFiles={selectedFiles}
+                multiSelect={multiSelect}
                 onToggleFolder={onToggleFolder}
                 onFileSelect={onFileSelect}
                 onDeleteFragment={onDeleteFragment}

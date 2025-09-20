@@ -18,11 +18,11 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize mermaid with modern configuration
+    // Initialize mermaid with modern configuration and security
     mermaid.initialize({
       startOnLoad: true,
       theme: 'default',
-      securityLevel: 'loose',
+      securityLevel: 'strict', // Use strict security to prevent XSS
       fontFamily: 'Inter, system-ui, sans-serif',
       flowchart: {
         useMaxWidth: true,
@@ -54,25 +54,42 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
       setIsLoading(true);
       setError(null);
 
+      // Sanitize chart input to prevent malicious content
+      const sanitizedChart = chart
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+        .replace(/javascript:/gi, '') // Remove javascript: URLs
+        .replace(/on\w+\s*=/gi, ''); // Remove event handlers like onclick=
+
       // Clear previous content
       containerRef.current.innerHTML = '';
 
       // Generate unique ID for this diagram
       const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      // Render the diagram
-      const { svg } = await mermaid.render(diagramId, chart);
+      // Render the diagram with sanitized input
+      const { svg } = await mermaid.render(diagramId, sanitizedChart);
 
-      // Insert the SVG into the container
-      containerRef.current.innerHTML = svg;
+      // Safely insert the SVG into the container
+      // Parse SVG as XML to avoid script execution
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+      const svgElement = svgDoc.documentElement;
+
+      // Clear previous content and append the SVG element
+      containerRef.current.innerHTML = '';
+      if (svgElement && svgElement.nodeName === 'svg') {
+        containerRef.current.appendChild(svgElement);
+      } else {
+        throw new Error('Invalid SVG content received from mermaid');
+      }
 
       // Make sure the SVG is responsive
-      const svgElement = containerRef.current.querySelector('svg');
-      if (svgElement) {
-        svgElement.style.maxWidth = '100%';
-        svgElement.style.height = 'auto';
-        svgElement.style.display = 'block';
-        svgElement.style.margin = '0 auto';
+      const responsiveSvg = containerRef.current.querySelector('svg');
+      if (responsiveSvg) {
+        responsiveSvg.style.maxWidth = '100%';
+        responsiveSvg.style.height = 'auto';
+        responsiveSvg.style.display = 'block';
+        responsiveSvg.style.margin = '0 auto';
       }
     } catch (err) {
       console.error('Failed to render mermaid diagram:', err);

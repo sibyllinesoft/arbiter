@@ -80,13 +80,13 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
   const getProjectStatus = () => {
     if (!currentProject) return null;
 
-    // This would typically come from validation/health checks
+    // Use actual project data from API
     return {
-      status: 'active' as const,
-      services: 3,
-      databases: 1,
+      status: currentProject.status || ('active' as const),
+      services: currentProject.services || 0,
+      databases: currentProject.databases || 0,
       infrastructure: 'configured',
-      lastActivity: '2 minutes ago',
+      lastActivity: currentProject.lastActivity || '2 minutes ago',
     };
   };
 

@@ -44,6 +44,19 @@ export class SpecWorkbenchDB {
     } catch (error) {
       // Column already exists or table doesn't exist yet, ignore
     }
+
+    // Schema migration - add service_count and database_count columns to projects table
+    try {
+      this.db.exec('ALTER TABLE projects ADD COLUMN service_count INTEGER DEFAULT 0');
+    } catch (error) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
+    try {
+      this.db.exec('ALTER TABLE projects ADD COLUMN database_count INTEGER DEFAULT 0');
+    } catch (error) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
   }
 
   /**
@@ -133,6 +146,27 @@ export class SpecWorkbenchDB {
   }
 
   /**
+   * Create the artifacts table for storing brownfield detection results
+   */
+  private createArtifactsTable(): void {
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS artifacts (
+        id TEXT PRIMARY KEY,
+        project_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        language TEXT,
+        framework TEXT,
+        metadata TEXT,
+        file_path TEXT,
+        confidence REAL DEFAULT 1.0,
+        created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+        FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+      )
+    `);
+  }
+
+  /**
    * Create all database tables
    */
   private createTables(): void {
@@ -141,6 +175,7 @@ export class SpecWorkbenchDB {
     this.createFragmentRevisionsTable();
     this.createVersionsTable();
     this.createEventsTable();
+    this.createArtifactsTable();
   }
 
   /**
@@ -169,6 +204,10 @@ export class SpecWorkbenchDB {
     // Event indices
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_events_project_id ON events (project_id)');
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC)');
+
+    // Artifact indices
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_artifacts_project_id ON artifacts (project_id)');
+    this.db.exec('CREATE INDEX IF NOT EXISTS idx_artifacts_type ON artifacts (project_id, type)');
   }
 
   /**
@@ -208,13 +247,18 @@ export class SpecWorkbenchDB {
   }
 
   // Project operations
-  async createProject(id: string, name: string): Promise<Project> {
+  async createProject(
+    id: string,
+    name: string,
+    serviceCount = 0,
+    databaseCount = 0
+  ): Promise<Project> {
     const stmt = this.db.prepare(`
-      INSERT INTO projects (id, name) VALUES (?, ?)
-      RETURNING id, name, created_at, updated_at
+      INSERT INTO projects (id, name, service_count, database_count) VALUES (?, ?, ?, ?)
+      RETURNING id, name, service_count, database_count, created_at, updated_at
     `);
 
-    const result = stmt.get(id, name) as Project;
+    const result = stmt.get(id, name, serviceCount, databaseCount) as Project;
     if (!result) {
       throw new Error('Failed to create project');
     }
@@ -555,6 +599,75 @@ export class SpecWorkbenchDB {
       ...event,
       data: JSON.parse(event.data),
     }));
+  }
+
+  // Artifact operations
+  async createArtifact(
+    id: string,
+    projectId: string,
+    name: string,
+    type: string,
+    language?: string,
+    framework?: string,
+    metadata?: any,
+    filePath?: string,
+    confidence = 1.0
+  ): Promise<any> {
+    const stmt = this.db.prepare(`
+      INSERT INTO artifacts (id, project_id, name, type, language, framework, metadata, file_path, confidence)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id, project_id, name, type, language, framework, metadata, file_path, confidence, created_at
+    `);
+
+    const result = stmt.get(
+      id,
+      projectId,
+      name,
+      type,
+      language,
+      framework,
+      metadata ? JSON.stringify(metadata) : null,
+      filePath,
+      confidence
+    ) as any;
+
+    if (!result) {
+      throw new Error('Failed to create artifact');
+    }
+
+    return {
+      ...result,
+      metadata: result.metadata ? JSON.parse(result.metadata) : null,
+    };
+  }
+
+  async getArtifacts(projectId: string): Promise<any[]> {
+    const stmt = this.db.prepare(
+      'SELECT * FROM artifacts WHERE project_id = ? ORDER BY created_at'
+    );
+    const results = stmt.all(projectId) as any[];
+
+    return results.map(artifact => ({
+      ...artifact,
+      metadata: artifact.metadata ? JSON.parse(artifact.metadata) : null,
+    }));
+  }
+
+  async getArtifactsByType(projectId: string, type: string): Promise<any[]> {
+    const stmt = this.db.prepare(
+      'SELECT * FROM artifacts WHERE project_id = ? AND type = ? ORDER BY created_at'
+    );
+    const results = stmt.all(projectId, type) as any[];
+
+    return results.map(artifact => ({
+      ...artifact,
+      metadata: artifact.metadata ? JSON.parse(artifact.metadata) : null,
+    }));
+  }
+
+  async deleteArtifacts(projectId: string): Promise<void> {
+    const stmt = this.db.prepare('DELETE FROM artifacts WHERE project_id = ?');
+    stmt.run(projectId);
   }
 
   // Transaction support

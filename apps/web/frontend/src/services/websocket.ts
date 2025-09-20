@@ -106,8 +106,11 @@ class WebSocketService {
 
     this.isManuallyDisconnected = false;
     const protocol = this.locationService.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use API server port (5050) instead of frontend port for WebSocket connection
-    this.wsUrl = `${protocol}//localhost:5050/ws?project_id=${projectId}`;
+    // Use configurable API server URL - extract hostname and port from VITE_API_URL
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5050';
+    const url = new URL(apiUrl);
+    const wsHost = url.hostname === 'localhost' ? 'localhost:5050' : url.host;
+    this.wsUrl = `${protocol}//${wsHost}/ws?project_id=${projectId}`;
 
     try {
       this.ws = this.webSocketFactory.create(this.wsUrl);

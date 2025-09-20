@@ -4,16 +4,68 @@
 import type { AuthContext, ServerConfig } from './types.ts';
 import { logger, parseBearerToken } from './utils.ts';
 
+// OAuth-related interfaces
+export interface OAuthToken {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  scope: string;
+  user_id?: string;
+}
+
+export interface OAuthService {
+  validateToken(token: string): Promise<OAuthToken | null>;
+  introspectToken(token: string): Promise<any>;
+  getTokenInfo(token: string): Promise<any>;
+}
+
+export interface ProtectedResourceMetadata {
+  issuer: string;
+  authorization_endpoint: string;
+  token_endpoint: string;
+  scopes_supported: string[];
+  response_types_supported: string[];
+  grant_types_supported: string[];
+}
+
+export interface AuthorizationServer {
+  issueToken(clientId: string, scope: string): Promise<OAuthToken>;
+  validateClient(clientId: string, clientSecret: string): Promise<boolean>;
+  revokeToken(token: string): Promise<boolean>;
+}
+
+export interface OAuthProvider {
+  authorize(params: any): Promise<string>;
+  getTokenFromCode(code: string, clientId: string, clientSecret: string): Promise<OAuthToken>;
+  refreshToken(refreshToken: string): Promise<OAuthToken>;
+}
+
 export class AuthService {
   private validTokens: Set<string> = new Set();
   private tokenToUserMap: Map<string, string> = new Map();
   private userProjectAccess: Map<string, string[]> = new Map();
+  private oauthService: OAuthService | null = null;
+  private authorizationServer: AuthorizationServer | null = null;
+  private oauthProvider: OAuthProvider | null = null;
 
   constructor(private config: ServerConfig) {
-    // Initialize with some default tokens for development
+    // Initialize with development tokens only in development mode
     if (process.env.NODE_ENV === 'development') {
-      this.addToken('dev-token', 'dev-user', ['*']);
-      logger.info('Development mode: added default auth token');
+      const devToken = process.env.DEV_AUTH_TOKEN || 'dev-token';
+      const devUser = process.env.DEV_AUTH_USER || 'dev-user';
+
+      this.addToken(devToken, devUser, ['*']);
+
+      logger.warn('DEVELOPMENT MODE: Authentication tokens configured!', {
+        devToken: `${devToken.substring(0, 4)}...`,
+        devUser,
+        warning: 'This should NEVER be enabled in production!',
+      });
+    }
+
+    // Fail-safe: Ensure no dev tokens in production
+    if (process.env.NODE_ENV === 'production' && this.validTokens.has('dev-token')) {
+      throw new Error('SECURITY ERROR: Development tokens detected in production environment!');
     }
   }
 
@@ -227,54 +279,315 @@ export class AuthService {
   }
 
   /**
-   * Start OAuth service if enabled (placeholder when OAuth is disabled)
+   * Start OAuth service if enabled
    */
   async startOAuthService(): Promise<void> {
-    // OAuth functionality requires SuperTokens integration
-    // Currently disabled - no OAuth service to start
+    if (!this.config.oauth?.enabled) {
+      logger.info('OAuth service disabled, skipping startup');
+      return;
+    }
+
+    try {
+      // Initialize OAuth service components
+      this.oauthService = this.createOAuthServiceInstance();
+
+      if (this.config.oauth.enableAuthServer) {
+        this.authorizationServer = this.createAuthorizationServerInstance();
+        logger.info('OAuth Authorization Server started', {
+          url: this.config.oauth.authServerUrl,
+          port: this.config.oauth.authServerPort,
+        });
+      }
+
+      this.oauthProvider = this.createOAuthProviderInstance();
+
+      logger.info('OAuth service started successfully', {
+        authServerEnabled: this.config.oauth.enableAuthServer,
+        mcpBaseUrl: this.config.oauth.mcpBaseUrl,
+        requiredScopes: this.config.oauth.requiredScopes || [],
+      });
+    } catch (error) {
+      logger.error('Failed to start OAuth service', { error });
+      throw new Error(
+        `OAuth service startup failed: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
   }
 
   /**
-   * Stop OAuth service if enabled (placeholder when OAuth is disabled)
+   * Stop OAuth service if enabled
    */
   async stopOAuthService(): Promise<void> {
-    // OAuth functionality requires SuperTokens integration
-    // Currently disabled - no OAuth service to stop
+    if (!this.config.oauth?.enabled) {
+      return;
+    }
+
+    try {
+      this.oauthService = null;
+      this.authorizationServer = null;
+      this.oauthProvider = null;
+
+      logger.info('OAuth service stopped successfully');
+    } catch (error) {
+      logger.error('Error stopping OAuth service', { error });
+    }
   }
 
   /**
-   * Get OAuth service instance (placeholder when OAuth is disabled)
+   * Get OAuth service instance
    */
-  getOAuthService(): undefined {
-    return undefined;
+  getOAuthService(): OAuthService | null {
+    return this.oauthService;
   }
 
   /**
-   * Get protected resource metadata for OAuth (placeholder when OAuth is disabled)
+   * Get protected resource metadata for OAuth
    */
-  getProtectedResourceMetadata(): undefined {
-    return undefined;
+  getProtectedResourceMetadata(): ProtectedResourceMetadata | null {
+    if (!this.config.oauth?.enabled) {
+      return null;
+    }
+
+    return {
+      issuer: this.config.oauth.authServerUrl,
+      authorization_endpoint: `${this.config.oauth.authServerUrl}/oauth/authorize`,
+      token_endpoint: `${this.config.oauth.authServerUrl}/oauth/token`,
+      scopes_supported: this.config.oauth.requiredScopes || ['read', 'write'],
+      response_types_supported: ['code', 'token'],
+      grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
+    };
   }
 
   /**
-   * Get OAuth authorization server instance (placeholder when OAuth is disabled)
+   * Get OAuth authorization server instance
    */
-  getAuthorizationServer(): undefined {
-    return undefined;
+  getAuthorizationServer(): AuthorizationServer | null {
+    return this.authorizationServer;
   }
 
   /**
-   * Get OAuth provider instance (placeholder when OAuth is disabled)
+   * Get OAuth provider instance
    */
-  getOAuthProvider(): undefined {
-    return undefined;
+  getOAuthProvider(): OAuthProvider | null {
+    return this.oauthProvider;
   }
 
   /**
-   * Create OAuth-aware auth middleware (falls back to regular auth when OAuth is disabled)
+   * Create OAuth-aware auth middleware
    */
   createOAuthAwareAuthMiddleware() {
-    // When OAuth is disabled, fall back to regular auth middleware
-    return this.createAuthMiddleware();
+    if (!this.config.oauth?.enabled) {
+      // When OAuth is disabled, fall back to regular auth middleware
+      return this.createAuthMiddleware();
+    }
+
+    return async (req: any, res: any, next: any) => {
+      try {
+        const token = parseBearerToken(req.headers.authorization || '');
+
+        if (!token) {
+          return res.status(401).json({ error: 'Authorization token required' });
+        }
+
+        // Try OAuth validation first
+        if (this.oauthService) {
+          const oauthToken = await this.oauthService.validateToken(token);
+          if (oauthToken) {
+            // Set OAuth context
+            req.auth = {
+              token,
+              user_id: oauthToken.user_id,
+              project_access: this.extractProjectAccessFromScope(oauthToken.scope),
+              oauth_token: oauthToken,
+            } as AuthContext;
+            return next();
+          }
+        }
+
+        // Fall back to regular token validation
+        const regularAuthMiddleware = this.createAuthMiddleware();
+        return regularAuthMiddleware(req, res, next);
+      } catch (error) {
+        logger.error('OAuth-aware auth middleware error', { error });
+        return res.status(500).json({ error: 'Authentication error' });
+      }
+    };
+  }
+
+  /**
+   * Validate OAuth token and extract user context
+   */
+  async validateOAuthToken(token: string): Promise<AuthContext | null> {
+    if (!this.oauthService) {
+      return null;
+    }
+
+    try {
+      const oauthToken = await this.oauthService.validateToken(token);
+      if (!oauthToken) {
+        return null;
+      }
+
+      return {
+        token,
+        user_id: oauthToken.user_id,
+        project_access: this.extractProjectAccessFromScope(oauthToken.scope),
+        oauth_token: oauthToken,
+      };
+    } catch (error) {
+      logger.error('OAuth token validation failed', { error });
+      return null;
+    }
+  }
+
+  /**
+   * Extract project access from OAuth scope
+   */
+  private extractProjectAccessFromScope(scope: string): string[] {
+    // Parse scope string to extract project access
+    // Format: "read:project:proj1 write:project:proj2" etc.
+    const scopes = scope.split(' ');
+    const projectAccess = new Set<string>();
+
+    for (const scopeItem of scopes) {
+      const match = scopeItem.match(/^(read|write):project:(.+)$/);
+      if (match) {
+        projectAccess.add(match[2]);
+      }
+    }
+
+    return Array.from(projectAccess);
+  }
+
+  /**
+   * Create OAuth service instance (stub implementation)
+   */
+  private createOAuthServiceInstance(): OAuthService {
+    return {
+      async validateToken(token: string): Promise<OAuthToken | null> {
+        // Stub implementation for OAuth token validation
+        // In production, this would validate against OAuth server
+        logger.debug('OAuth token validation (stub)', { tokenPrefix: token.substring(0, 8) });
+
+        // For development, accept tokens that start with 'oauth_'
+        if (token.startsWith('oauth_')) {
+          return {
+            access_token: token,
+            token_type: 'Bearer',
+            expires_in: 3600,
+            scope: 'read write',
+            user_id: 'oauth-user',
+          };
+        }
+
+        return null;
+      },
+
+      async introspectToken(token: string): Promise<any> {
+        // Stub implementation for token introspection
+        logger.debug('OAuth token introspection (stub)', { tokenPrefix: token.substring(0, 8) });
+        return {
+          active: token.startsWith('oauth_'),
+          client_id: 'arbiter-client',
+          username: 'oauth-user',
+          scope: 'read write',
+        };
+      },
+
+      async getTokenInfo(token: string): Promise<any> {
+        // Stub implementation for token info
+        logger.debug('OAuth token info (stub)', { tokenPrefix: token.substring(0, 8) });
+        return {
+          sub: 'oauth-user',
+          aud: 'arbiter-api',
+          iss: 'arbiter-oauth-server',
+          exp: Math.floor(Date.now() / 1000) + 3600,
+        };
+      },
+    };
+  }
+
+  /**
+   * Create authorization server instance (stub implementation)
+   */
+  private createAuthorizationServerInstance(): AuthorizationServer {
+    return {
+      async issueToken(clientId: string, scope: string): Promise<OAuthToken> {
+        // Stub implementation for token issuance
+        logger.debug('OAuth token issuance (stub)', { clientId, scope });
+
+        const token = `oauth_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        return {
+          access_token: token,
+          token_type: 'Bearer',
+          expires_in: 3600,
+          scope,
+          user_id: `user_${clientId}`,
+        };
+      },
+
+      async validateClient(clientId: string, clientSecret: string): Promise<boolean> {
+        // Stub implementation for client validation
+        logger.debug('OAuth client validation (stub)', { clientId });
+
+        // For development, accept any client with 'arbiter' in the ID
+        return clientId.includes('arbiter') && clientSecret.length > 8;
+      },
+
+      async revokeToken(token: string): Promise<boolean> {
+        // Stub implementation for token revocation
+        logger.debug('OAuth token revocation (stub)', { tokenPrefix: token.substring(0, 8) });
+        return true;
+      },
+    };
+  }
+
+  /**
+   * Create OAuth provider instance (stub implementation)
+   */
+  private createOAuthProviderInstance(): OAuthProvider {
+    return {
+      async authorize(params: any): Promise<string> {
+        // Stub implementation for OAuth authorization
+        logger.debug('OAuth authorization (stub)', { params });
+
+        const code = `auth_code_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        return code;
+      },
+
+      async getTokenFromCode(
+        code: string,
+        clientId: string,
+        clientSecret: string
+      ): Promise<OAuthToken> {
+        // Stub implementation for authorization code exchange
+        logger.debug('OAuth code exchange (stub)', { code, clientId });
+
+        const token = `oauth_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        return {
+          access_token: token,
+          token_type: 'Bearer',
+          expires_in: 3600,
+          scope: 'read write',
+          user_id: `user_${clientId}`,
+        };
+      },
+
+      async refreshToken(refreshToken: string): Promise<OAuthToken> {
+        // Stub implementation for token refresh
+        logger.debug('OAuth token refresh (stub)', {
+          refreshTokenPrefix: refreshToken.substring(0, 8),
+        });
+
+        const token = `oauth_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+        return {
+          access_token: token,
+          token_type: 'Bearer',
+          expires_in: 3600,
+          scope: 'read write',
+          user_id: 'refreshed-user',
+        };
+      },
+    };
   }
 }

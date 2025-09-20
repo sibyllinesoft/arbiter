@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import { apiService } from '../../services/api';
 
 interface ArchitectureDiagramProps {
   projectId: string;
@@ -280,6 +281,158 @@ const ARCHITECTURE_CONNECTIONS: Connection[] = [
 const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, className = '' }) => {
   const [hoveredComponent, setHoveredComponent] = useState<string | null>(null);
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
+  const [projectData, setProjectData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch real project data
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const result = await apiService.getResolvedSpec(projectId);
+        setProjectData(result.resolved);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch project data');
+        console.error('Failed to fetch project data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (projectId) {
+      fetchProjectData();
+    }
+  }, [projectId]);
+
+  // Generate components from real project data
+  const generateComponentsFromData = (
+    data: any
+  ): { components: Component[]; connections: Connection[] } => {
+    if (!data) {
+      return { components: [], connections: [] };
+    }
+
+    const components: Component[] = [];
+    const connections: Connection[] = [];
+
+    // Extract services, databases, and other components from the data
+    const services = data.spec?.services || data.services || {};
+    const databases = data.spec?.databases || data.databases || {};
+    const otherComponents = data.spec?.components || data.components || {};
+
+    let xOffset = 50;
+    let yOffset = 50;
+    const componentSpacing = 220;
+    const rowHeight = 140;
+
+    // Add services as backend components
+    const serviceEntries = Object.entries(services);
+    serviceEntries.forEach(([serviceName, serviceData]: [string, any], index) => {
+      const row = Math.floor(index / 4);
+      const col = index % 4;
+
+      components.push({
+        id: `service-${serviceName}`,
+        name: serviceData.name || serviceName,
+        type: 'backend',
+        description: serviceData.description || `${serviceName} service`,
+        technologies: [
+          serviceData.metadata?.language || 'Unknown',
+          serviceData.metadata?.framework || 'Service',
+        ],
+        position: {
+          x: xOffset + col * componentSpacing,
+          y: yOffset + row * rowHeight,
+        },
+        size: { width: 200, height: 100 },
+        ports: [
+          { id: 'api', position: { x: 100, y: 0 } },
+          { id: 'data', position: { x: 100, y: 100 } },
+        ],
+      });
+    });
+
+    // Add databases as data components
+    const databaseEntries = Object.entries(databases);
+    const dbStartY = yOffset + Math.ceil(serviceEntries.length / 4) * rowHeight + 20;
+
+    databaseEntries.forEach(([dbName, dbData]: [string, any], index) => {
+      components.push({
+        id: `db-${dbName}`,
+        name: (dbData as any).name || dbName,
+        type: 'data',
+        description: `${(dbData as any).type || 'Database'} database`,
+        technologies: [(dbData as any).type || 'Database', (dbData as any).version || ''],
+        position: {
+          x: xOffset + (index % 3) * componentSpacing,
+          y: dbStartY,
+        },
+        size: { width: 180, height: 80 },
+      });
+    });
+
+    // Add other components (tools, clients, libraries)
+    const otherEntries = Object.entries(otherComponents);
+    const otherStartY = dbStartY + (databaseEntries.length > 0 ? 100 : 0);
+
+    otherEntries.forEach(([componentName, componentData]: [string, any], index) => {
+      let componentType: 'cli' | 'frontend' | 'external' = 'external';
+
+      if (
+        (componentData as any).type === 'client' ||
+        componentName.includes('web') ||
+        componentName.includes('ui')
+      ) {
+        componentType = 'frontend';
+      } else if (
+        (componentData as any).type === 'tool' ||
+        componentName.includes('cli') ||
+        componentName.includes('shell')
+      ) {
+        componentType = 'cli';
+      }
+
+      const row = Math.floor(index / 4);
+      const col = index % 4;
+
+      components.push({
+        id: `component-${componentName}`,
+        name: (componentData as any).name || componentName,
+        type: componentType,
+        description: `${(componentData as any).type || 'Component'}: ${componentName}`,
+        technologies: [
+          (componentData as any).language || 'Unknown',
+          (componentData as any).framework || 'Component',
+        ],
+        position: {
+          x: xOffset + col * componentSpacing,
+          y: otherStartY + row * rowHeight,
+        },
+        size: { width: 190, height: 90 },
+      });
+    });
+
+    // Add basic connections - services to databases
+    serviceEntries.forEach(([serviceName]) => {
+      databaseEntries.forEach(([dbName]) => {
+        connections.push({
+          from: { componentId: `service-${serviceName}`, portId: 'data' },
+          to: { componentId: `db-${dbName}` },
+          type: 'data',
+          label: 'Data',
+        });
+      });
+    });
+
+    return { components, connections };
+  };
+
+  const { components: dynamicComponents, connections: dynamicConnections } =
+    generateComponentsFromData(projectData);
+  const componentsToRender = dynamicComponents;
+  const connectionsToRender = dynamicConnections;
 
   const renderComponent = (component: Component) => {
     const colors = LAYER_COLORS[component.type];
@@ -390,8 +543,8 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   };
 
   const renderConnection = (connection: Connection) => {
-    const fromComponent = ARCHITECTURE_COMPONENTS.find(c => c.id === connection.from.componentId);
-    const toComponent = ARCHITECTURE_COMPONENTS.find(c => c.id === connection.to.componentId);
+    const fromComponent = componentsToRender.find(c => c.id === connection.from.componentId);
+    const toComponent = componentsToRender.find(c => c.id === connection.to.componentId);
 
     if (!fromComponent || !toComponent) return null;
 
@@ -445,13 +598,64 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     );
   };
 
+  // Handle loading state
+  if (loading) {
+    return (
+      <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
+        <div className="p-4 bg-white border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">System Architecture</h3>
+          <p className="text-sm text-gray-600">Loading project architecture...</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-600">Loading architecture data...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
+        <div className="p-4 bg-white border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">System Architecture</h3>
+          <p className="text-sm text-red-600">Error loading project architecture</p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-400 mb-4">
+              <svg
+                className="w-12 h-12 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <p className="text-gray-900 font-medium mb-2">Failed to load architecture data</p>
+            <p className="text-sm text-gray-600">{error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
       {/* Header */}
       <div className="p-4 bg-white border-b border-gray-200">
         <h3 className="text-lg font-medium text-gray-900">System Architecture</h3>
         <p className="text-sm text-gray-600">
-          Interactive diagram showing the Arbiter system components and their relationships
+          {dynamicComponents.length > 0
+            ? `Interactive diagram showing the project's ${dynamicComponents.length} components and their relationships`
+            : 'Interactive diagram showing the Arbiter system components (fallback)'}
         </p>
 
         {/* Legend */}
@@ -582,17 +786,17 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
           </g>
 
           {/* Connections (rendered first so they appear behind components) */}
-          {ARCHITECTURE_CONNECTIONS.map(renderConnection)}
+          {connectionsToRender.map(renderConnection)}
 
           {/* Components */}
-          {ARCHITECTURE_COMPONENTS.map(renderComponent)}
+          {componentsToRender.map(renderComponent)}
         </svg>
 
         {/* Component Details Panel */}
         {selectedComponent && (
           <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
             {(() => {
-              const component = ARCHITECTURE_COMPONENTS.find(c => c.id === selectedComponent);
+              const component = componentsToRender.find(c => c.id === selectedComponent);
               if (!component) return null;
 
               return (

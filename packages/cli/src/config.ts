@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
@@ -10,6 +11,33 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
+ * Generate a project ID based on current directory and git repository
+ */
+function generateProjectId(): string {
+  const cwd = process.cwd();
+  const projectName = path.basename(cwd);
+
+  // Try to read git config for a more stable identifier
+  try {
+    const gitConfigPath = path.join(cwd, '.git', 'config');
+    if (fs.existsSync(gitConfigPath)) {
+      const gitConfig = fs.readFileSync(gitConfigPath, 'utf-8');
+      const match = gitConfig.match(/url = .*[:/]([^/]+\/[^/]+?)(?:\.git)?$/m);
+      if (match) {
+        // Use repo owner/name as project ID (e.g., "owner-repo")
+        return match[1].replace('/', '-').toLowerCase();
+      }
+    }
+  } catch {
+    // Ignore git config read errors
+  }
+
+  // Fallback to directory name with a hash for uniqueness
+  const hash = crypto.createHash('md5').update(cwd).digest('hex').substring(0, 8);
+  return `${projectName.toLowerCase()}-${hash}`;
+}
+
+/**
  * Default CLI configuration
  * Updated to match Arbiter specification constraints
  */
@@ -19,6 +47,7 @@ export const DEFAULT_CONFIG: CLIConfig = {
   format: 'table',
   color: true,
   projectDir: process.cwd(),
+  projectId: generateProjectId(), // Auto-generate project ID
 };
 
 /**
@@ -164,6 +193,7 @@ const configSchema = z.object({
   format: z.enum(['table', 'json', 'yaml']).optional(),
   color: z.boolean().optional(),
   projectDir: z.string().optional(),
+  projectId: z.string().optional(),
   github: gitHubSyncSchema.optional(),
 });
 

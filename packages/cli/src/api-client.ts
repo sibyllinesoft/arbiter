@@ -10,6 +10,7 @@ import type { CLIConfig, CommandResult } from './types.js';
 export class ApiClient {
   private baseUrl: string;
   private timeout: number;
+  private projectId: string;
   private lastRequestTime = 0;
   private discoveredUrl: string | null = null;
   private readonly MAX_PAYLOAD_SIZE = 64 * 1024; // 64KB
@@ -20,6 +21,21 @@ export class ApiClient {
     this.baseUrl = config.apiUrl.replace(/\/$/, ''); // Remove trailing slash
     // Ensure timeout compliance with spec (≤750ms)
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
+    this.projectId = config.projectId || 'cli-project'; // Use configured project ID or fallback
+  }
+
+  /**
+   * Update the project ID for subsequent requests
+   */
+  setProjectId(projectId: string): void {
+    this.projectId = projectId;
+  }
+
+  /**
+   * Get the current project ID
+   */
+  getProjectId(): string {
+    return this.projectId;
   }
 
   /**
@@ -107,7 +123,7 @@ export class ApiClient {
       const request: ValidationRequest = {
         text: content,
         files: [], // Empty files array for text-based validation
-        projectId: 'cli-project', // Use a default project ID for CLI
+        projectId: this.projectId, // Use configured project ID
       };
 
       const requestPayload = JSON.stringify(request);

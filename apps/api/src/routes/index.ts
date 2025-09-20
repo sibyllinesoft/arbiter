@@ -393,17 +393,22 @@ export function createApiRouter(deps: Dependencies) {
 
   // Projects endpoint - using real database
   app.get('/api/projects', async c => {
+    console.log(
+      '🔄 GET /api/projects - Request received from:',
+      c.req.header('origin') || 'unknown'
+    );
     try {
       const db = deps.db as any;
       const projects = await db.listProjects();
+      console.log('📊 GET /api/projects - Raw projects from DB:', projects.length, 'projects');
 
       // Transform database projects to match frontend format
       const formattedProjects = projects.map((project: any) => ({
         id: project.id,
         name: project.name,
         status: 'active',
-        services: 0, // TODO: calculate from fragments
-        databases: 0, // TODO: calculate from fragments
+        services: project.service_count || 0,
+        databases: project.database_count || 0,
         lastActivity: project.updated_at,
       }));
 
@@ -419,23 +424,312 @@ export function createApiRouter(deps: Dependencies) {
     try {
       const db = deps.db as any;
       const body = await c.req.json();
-      const { name } = body;
+      const { name, path: projectPath } = body;
 
       if (!name) {
         return c.json({ error: 'Project name is required' }, 400);
       }
 
       // Generate project ID
-      const projectId = `smith-project-${Date.now()}`;
+      const projectId = `project-${Date.now()}`;
 
-      const project = await db.createProject(projectId, name);
+      // Extract project name from directory if path is provided
+      let actualProjectName = name;
+      if (projectPath) {
+        actualProjectName = path.basename(projectPath);
+      }
+
+      // If path is provided, run enhanced brownfield detection
+      let services = 0;
+      let databases = 0;
+      let artifacts: any[] = [];
+
+      if (projectPath) {
+        try {
+          // Get all files in the git repository
+          const gitFiles = await glob('**/*', {
+            cwd: projectPath,
+            ignore: [
+              '**/target/**',
+              '**/node_modules/**',
+              '**/.git/**',
+              '**/dist/**',
+              '**/build/**',
+            ],
+            onlyFiles: true,
+          });
+
+          // Parse Cargo.toml for Rust projects
+          const cargoTomlPath = path.join(projectPath, 'Cargo.toml');
+          if (await fs.pathExists(cargoTomlPath)) {
+            const cargoContent = await fs.readFile(cargoTomlPath, 'utf-8');
+
+            // Extract workspace members from Cargo.toml
+            const workspaceMatch = cargoContent.match(
+              /\[workspace\][\s\S]*?members\s*=\s*\[([\s\S]*?)\]/
+            );
+            if (workspaceMatch) {
+              const membersSection = workspaceMatch[1];
+              const memberLines = membersSection
+                .split(',')
+                .map(line => {
+                  const match = line.trim().match(/"([^"]+)"/);
+                  return match ? match[1] : null;
+                })
+                .filter(Boolean);
+
+              // Process each member to prepare artifacts
+              for (const member of memberLines) {
+                if (!member || member.startsWith('#')) continue;
+
+                const memberPath = path.join(projectPath, member);
+                const isService = member.startsWith('service/') || member.includes('service');
+                const isShared = member.startsWith('shared/');
+                const isClient = member.startsWith('clients/');
+                const isTool = member.startsWith('tools/');
+
+                let artifactType = 'library';
+                if (isService) artifactType = 'service';
+                else if (isClient) artifactType = 'client';
+                else if (isTool) artifactType = 'tool';
+
+                const artifactName = member.split('/').pop() || member;
+
+                artifacts.push({
+                  id: `${projectId}-${artifactName.replace(/[^a-zA-Z0-9]/g, '-')}`,
+                  name: artifactName,
+                  type: artifactType,
+                  member,
+                  language: 'rust',
+                  framework: 'cargo',
+                  metadata: {
+                    workspaceMember: member,
+                    isService,
+                    isShared,
+                    path: memberPath,
+                  },
+                  filePath: member,
+                });
+
+                if (artifactType === 'service') services++;
+              }
+            }
+          }
+
+          // Parse package.json files for Node.js/JavaScript projects
+          const packageJsonFiles = gitFiles.filter(file => file.endsWith('package.json'));
+          for (const packageFile of packageJsonFiles) {
+            try {
+              const packageContent = await fs.readFile(
+                path.join(projectPath, packageFile),
+                'utf-8'
+              );
+              const packageData = JSON.parse(packageContent);
+
+              if (packageData.name) {
+                const isRootPackage = packageFile === 'package.json';
+                const packageName = packageData.name.replace('@', '').replace('/', '-');
+                const packageDir = path.dirname(packageFile);
+
+                // Determine artifact type based on package.json contents
+                let artifactType = 'library';
+                if (packageData.scripts?.start || packageData.scripts?.dev) {
+                  if (
+                    packageData.dependencies?.react ||
+                    packageData.dependencies?.vue ||
+                    packageData.dependencies?.angular
+                  ) {
+                    artifactType = 'frontend';
+                  } else if (
+                    packageData.dependencies?.express ||
+                    packageData.dependencies?.fastify ||
+                    packageData.dependencies?.koa
+                  ) {
+                    artifactType = 'service';
+                    services++;
+                  } else {
+                    artifactType = 'application';
+                  }
+                } else if (packageData.bin) {
+                  artifactType = 'tool';
+                }
+
+                artifacts.push({
+                  id: `${projectId}-${packageName.replace(/[^a-zA-Z0-9]/g, '-')}`,
+                  name: packageName,
+                  type: artifactType,
+                  language: 'javascript',
+                  framework: packageData.dependencies?.typescript ? 'typescript' : 'node.js',
+                  metadata: {
+                    packagePath: packageFile,
+                    version: packageData.version,
+                    scripts: packageData.scripts,
+                    dependencies: Object.keys(packageData.dependencies || {}),
+                    isRootPackage,
+                  },
+                  filePath: packageFile,
+                });
+              }
+            } catch (error) {
+              console.warn(`Failed to parse package.json file ${packageFile}:`, error);
+            }
+          }
+
+          // Look for database configurations in all files
+          const configFiles = gitFiles.filter(
+            file =>
+              file.includes('config') &&
+              (file.endsWith('.toml') ||
+                file.endsWith('.json') ||
+                file.endsWith('.yaml') ||
+                file.endsWith('.yml') ||
+                file.endsWith('.env'))
+          );
+
+          for (const configFile of configFiles) {
+            try {
+              const configContent = await fs.readFile(path.join(projectPath, configFile), 'utf-8');
+
+              // Detect PostgreSQL
+              if (
+                (configContent.includes('postgres') ||
+                  configContent.includes('database_url') ||
+                  configContent.includes('DATABASE_URL')) &&
+                !artifacts.find(a => a.name === 'postgres')
+              ) {
+                databases++;
+                artifacts.push({
+                  id: `${projectId}-postgres-db`,
+                  name: 'postgres',
+                  type: 'database',
+                  language: null,
+                  framework: 'postgresql',
+                  metadata: { configFile, detected: true },
+                  filePath: configFile,
+                });
+              }
+
+              // Detect Redis
+              if (
+                (configContent.includes('redis') ||
+                  configContent.includes('cache') ||
+                  configContent.includes('REDIS_URL')) &&
+                !artifacts.find(a => a.name === 'redis')
+              ) {
+                databases++;
+                artifacts.push({
+                  id: `${projectId}-redis-cache`,
+                  name: 'redis',
+                  type: 'database',
+                  language: null,
+                  framework: 'redis',
+                  metadata: { configFile, detected: true },
+                  filePath: configFile,
+                });
+              }
+
+              // Detect MongoDB
+              if (
+                (configContent.includes('mongodb') ||
+                  configContent.includes('mongo') ||
+                  configContent.includes('MONGODB_URL')) &&
+                !artifacts.find(a => a.name === 'mongodb')
+              ) {
+                databases++;
+                artifacts.push({
+                  id: `${projectId}-mongodb`,
+                  name: 'mongodb',
+                  type: 'database',
+                  language: null,
+                  framework: 'mongodb',
+                  metadata: { configFile, detected: true },
+                  filePath: configFile,
+                });
+              }
+            } catch (error) {
+              console.warn(`Failed to parse config file ${configFile}:`, error);
+            }
+          }
+
+          // Look for Docker files to detect containerized services
+          const dockerFiles = gitFiles.filter(
+            file =>
+              file.toLowerCase().includes('dockerfile') ||
+              file.toLowerCase().includes('docker-compose')
+          );
+
+          for (const dockerFile of dockerFiles) {
+            try {
+              const dockerContent = await fs.readFile(path.join(projectPath, dockerFile), 'utf-8');
+
+              // Extract service names from docker-compose files
+              if (dockerFile.includes('docker-compose')) {
+                // Look for services section specifically
+                const servicesMatch = dockerContent.match(/services:\s*\n([\s\S]*?)(?=\n\S|\n$|$)/);
+                if (servicesMatch) {
+                  const servicesSection = servicesMatch[1];
+                  const serviceMatches = servicesSection.match(/^\s{2,}([a-zA-Z0-9_-]+):/gm);
+                  if (serviceMatches) {
+                    serviceMatches.forEach(match => {
+                      const serviceName = match.trim().replace(':', '');
+                      if (!artifacts.find(a => a.name === serviceName)) {
+                        artifacts.push({
+                          id: `${projectId}-docker-${serviceName}`,
+                          name: serviceName,
+                          type: 'service',
+                          language: 'docker',
+                          framework: 'container',
+                          metadata: {
+                            dockerFile,
+                            detected: true,
+                            containerized: true,
+                          },
+                          filePath: dockerFile,
+                        });
+                        services++;
+                      }
+                    });
+                  }
+                }
+              }
+            } catch (error) {
+              console.warn(`Failed to parse Docker file ${dockerFile}:`, error);
+            }
+          }
+        } catch (error) {
+          console.warn('Enhanced brownfield detection failed, creating empty project:', error);
+          // Continue with empty project if brownfield detection fails
+        }
+      }
+
+      // Create project with detected counts
+      const project = await db.createProject(projectId, actualProjectName, services, databases);
+
+      // Now create all the artifacts for the project
+      for (const artifact of artifacts) {
+        try {
+          await db.createArtifact(
+            artifact.id,
+            projectId,
+            artifact.name,
+            artifact.type,
+            artifact.language,
+            artifact.framework,
+            artifact.metadata,
+            artifact.filePath
+          );
+        } catch (error) {
+          console.warn(`Failed to create artifact ${artifact.name}:`, error);
+        }
+      }
 
       return c.json({
         id: project.id,
         name: project.name,
         status: 'active',
-        services: 0,
-        databases: 0,
+        services,
+        databases,
+        artifacts: artifacts.length,
         lastActivity: project.created_at,
       });
     } catch (error) {
@@ -685,71 +979,139 @@ export function createApiRouter(deps: Dependencies) {
       return c.json({ error: 'projectId parameter is required' }, 400);
     }
 
-    // Mock resolved spec data for now
-    return c.json({
-      success: true,
-      projectId,
-      resolved: {
-        apiVersion: 'v2',
-        kind: 'Application',
-        metadata: {
-          name: `project-${projectId}`,
-          version: '1.0.0',
-        },
-        spec: {
-          services: {
-            'api-service': {
-              name: 'API Service',
-              type: 'deployment',
-              image: 'nginx:latest',
-              ports: [{ port: 80, targetPort: 8080 }],
-            },
+    try {
+      // Get project from database to fetch real brownfield detection data
+      const db = deps.db as any;
+      const projects = await db.listProjects();
+      const project = projects.find((p: any) => p.id === projectId);
+
+      if (!project) {
+        return c.json({ error: 'Project not found' }, 404);
+      }
+
+      // Get real artifacts from database
+      const artifacts = await db.getArtifacts(projectId);
+
+      // Build services from real artifacts
+      const services: Record<string, any> = {};
+      const serviceArtifacts = artifacts.filter((a: any) => a.type === 'service');
+
+      for (const artifact of serviceArtifacts) {
+        const serviceName = artifact.name.replace(/_/g, '-');
+        services[serviceName] = {
+          name: artifact.name
+            .split(/[-_]/)
+            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' '),
+          type: 'deployment',
+          image: 'rust:latest',
+          ports: [{ port: 8080, targetPort: 8080 }],
+          metadata: {
+            language: artifact.language || 'rust',
+            framework: artifact.framework || 'cargo',
+            workspaceMember: artifact.metadata?.workspaceMember,
+            filePath: artifact.file_path,
+            detected: true,
           },
-          ui: {
-            routes: [
+        };
+      }
+
+      // Build databases from real artifacts
+      const databases: Record<string, any> = {};
+      const databaseArtifacts = artifacts.filter((a: any) => a.type === 'database');
+
+      for (const artifact of databaseArtifacts) {
+        const dbName = artifact.name.replace(/_/g, '-');
+        databases[dbName] = {
+          name: artifact.name
+            .split(/[-_]/)
+            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' '),
+          type: artifact.framework || 'postgresql',
+          version: artifact.name === 'postgres' ? '14' : '7',
+          metadata: {
+            configFile: artifact.metadata?.configFile,
+            detected: true,
+          },
+        };
+      }
+
+      // Build other artifacts (clients, tools, libraries)
+      const components: Record<string, any> = {};
+      const otherArtifacts = artifacts.filter(
+        (a: any) => !['service', 'database'].includes(a.type)
+      );
+
+      for (const artifact of otherArtifacts) {
+        const componentName = artifact.name.replace(/_/g, '-');
+        components[componentName] = {
+          name: artifact.name
+            .split(/[-_]/)
+            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' '),
+          type: artifact.type,
+          language: artifact.language || 'rust',
+          framework: artifact.framework || 'cargo',
+          metadata: {
+            workspaceMember: artifact.metadata?.workspaceMember,
+            filePath: artifact.file_path,
+            detected: true,
+          },
+        };
+      }
+
+      // Generate UI routes based on detected services
+      const routes = Object.keys(services)
+        .slice(0, 3)
+        .map((serviceName, index) => ({
+          id: serviceName.replace('-service', '').replace('service-', ''),
+          path: `/${serviceName.replace('-service', '').replace('service-', '')}`,
+          name: services[serviceName].name,
+          component: `${serviceName.replace('-service', '').replace('service-', '').charAt(0).toUpperCase() + serviceName.replace('-service', '').replace('service-', '').slice(1)}Page`,
+          capabilities: ['read-data'],
+        }));
+
+      return c.json({
+        success: true,
+        projectId,
+        resolved: {
+          apiVersion: 'v2',
+          kind: 'Application',
+          metadata: {
+            name: project.name,
+            version: '1.0.0',
+            brownfield: true,
+            detectedServices: serviceArtifacts.length,
+            detectedDatabases: databaseArtifacts.length,
+            totalArtifacts: artifacts.length,
+          },
+          spec: {
+            services,
+            databases,
+            components,
+            ui: {
+              routes,
+            },
+            flows: [
               {
-                id: 'home',
-                path: '/',
-                name: 'Home',
-                component: 'HomePage',
-                capabilities: ['read-data'],
-              },
-              {
-                id: 'dashboard',
-                path: '/dashboard',
-                name: 'Dashboard',
-                component: 'DashboardPage',
-                capabilities: ['analytics'],
+                id: 'service-flow',
+                name: 'Service Integration Flow',
+                steps: [{ visit: '/' }, { expect_api: { method: 'GET', path: '/health' } }],
               },
             ],
-          },
-          flows: [
-            {
-              id: 'user-login',
-              name: 'User Login Flow',
-              steps: [
-                { visit: '/' },
-                { click: { locator: 'login-button' } },
-                { fill: { locator: 'email-input', value: 'user@example.com' } },
-                { fill: { locator: 'password-input', value: 'password' } },
-                { click: { locator: 'submit-button' } },
-                { expect_api: { method: 'POST', path: '/api/auth/login' } },
-              ],
-            },
-          ],
-          capabilities: {
-            'read-data': {
-              name: 'Read Data',
-              description: 'Capability to read application data',
-            },
-            analytics: {
-              name: 'Analytics',
-              description: 'View analytics and metrics',
+            capabilities: {
+              'read-data': {
+                name: 'Read Data',
+                description: 'Capability to read application data',
+              },
             },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error('Error fetching resolved spec:', error);
+      return c.json({ error: 'Failed to fetch project specification' }, 500);
+    }
   });
 
   app.get('/api/ir/flow', async c => {
@@ -853,6 +1215,91 @@ export function createApiRouter(deps: Dependencies) {
         },
       ],
     });
+  });
+
+  // Surface analysis endpoint - thin wrapper around CLI surface command
+  app.post('/api/surface', async c => {
+    try {
+      const body = await c.req.json();
+      const { targets = [], options = {} } = body;
+
+      if (!targets.length) {
+        return c.json(
+          {
+            success: false,
+            error: 'targets parameter is required',
+          },
+          400
+        );
+      }
+
+      // Import the CLI surface command directly
+      const { surfaceCommand } = await import('@arbiter/cli/commands/surface');
+
+      // Create a minimal config object
+      const config = {
+        apiUrl: 'http://localhost:5050',
+        timeout: 30000,
+        format: 'json' as const,
+        color: false,
+        projectDir: targets[0],
+      };
+
+      // Map API options to CLI surface options
+      const surfaceOptions = {
+        language: options.language ?? 'typescript', // Default language
+        output: options.output,
+        outputDir: options.outputDir,
+        projectName: options.projectName,
+        genericNames: options.genericNames ?? false,
+        diff: options.diff ?? false,
+        format: 'json' as const,
+        ndjsonOutput: false,
+        agentMode: true, // Use agent mode for API
+        verbose: options.verbose ?? false,
+      };
+
+      // Change to the target directory for analysis
+      const originalCwd = process.cwd();
+      process.chdir(targets[0]);
+
+      try {
+        // Execute the CLI surface command
+        const exitCode = await surfaceCommand(surfaceOptions, config);
+
+        if (exitCode !== 0) {
+          return c.json(
+            {
+              success: false,
+              error: 'Surface analysis failed',
+              message: `CLI command exited with code ${exitCode}`,
+            },
+            500
+          );
+        }
+
+        // Return success - the CLI surface command handles its own output
+        return c.json({
+          success: true,
+          targets,
+          message: 'Surface analysis completed successfully',
+          note: 'Results written to surface file in project directory',
+        });
+      } finally {
+        // Restore original working directory
+        process.chdir(originalCwd);
+      }
+    } catch (error) {
+      console.error('Surface analysis error:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Surface analysis failed',
+          message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
   });
 
   return app;

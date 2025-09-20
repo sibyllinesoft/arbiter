@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# DEPRECATED: Use local-ci.ts for better cross-platform compatibility
+# This script requires Unix/Linux/macOS - for Windows, use: bun scripts/local-ci.ts
 # Ensure the script aborts on errors, unset variables, or failed pipelines
 set -euo pipefail
 

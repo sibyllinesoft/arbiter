@@ -1,5 +1,7 @@
 import { createWriteStream } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import chalk from 'chalk';
 
 /**
@@ -333,8 +335,38 @@ export class StandardizedOutputManager {
       apiVersion: API_VERSION,
       timestamp: Date.now(),
       command: this.command,
-      version: '0.1.0', // TODO: Get from package.json
+      version: this.getPackageVersion(),
     };
+  }
+
+  /**
+   * Get version from package.json
+   */
+  private getPackageVersion(): string {
+    try {
+      // Try to find package.json by walking up from current file
+      const currentDir = dirname(fileURLToPath(import.meta.url));
+      const packagePaths = [
+        join(currentDir, '../../package.json'), // cli package
+        join(currentDir, '../../../package.json'), // root package
+      ];
+
+      for (const packagePath of packagePaths) {
+        try {
+          const fs = require('fs');
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+          if (packageJson.version) {
+            return packageJson.version;
+          }
+        } catch {
+          // Continue to next path
+        }
+      }
+    } catch {
+      // Fallback if version detection fails
+    }
+
+    return '0.1.0'; // Fallback version
   }
 
   /**

@@ -18,6 +18,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3"
   },
@@ -33,6 +34,8 @@
   "author": "Nathan Rice",
   "license": "MIT",
   "dependencies": {
-    "@arbiter/shared-types": "workspace:*"
+    "@arbiter/shared-types": "workspace:*",
+    "fs-extra": "^11.2.0",
+    "glob": "^10.3.10"
   }
 }

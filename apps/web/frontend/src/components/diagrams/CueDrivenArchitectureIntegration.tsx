@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { CueDrivenArchitectureDiagram } from './CueDrivenArchitectureDiagram';
 import { type CueArchitectureData, type DiagramType } from '../../types/architecture';
+import { apiService } from '../../services/api';
 
 interface CueDrivenArchitectureIntegrationProps {
   /** Project ID to fetch CUE data for */
@@ -17,8 +18,8 @@ interface CueDrivenArchitectureIntegrationProps {
 }
 
 export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureIntegrationProps> = ({
-  projectId = 'demo-project',
-  apiBaseUrl = 'http://localhost:5050',
+  projectId,
+  apiBaseUrl,
   className = '',
 }) => {
   const [cueData, setCueData] = useState<CueArchitectureData | null>(null);
@@ -35,48 +36,37 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
         setLoading(true);
         setError(null);
 
-        // First try to get the resolved specification
-        const response = await fetch(`${apiBaseUrl}/api/ir/validate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            projectId,
-            timeout: 10000,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch CUE data: ${response.statusText}`);
+        if (!projectId) {
+          throw new Error('No project ID provided');
         }
 
-        const result = await response.json();
+        // Use the fixed API service to get resolved spec
+        const result = await apiService.getResolvedSpec(projectId);
 
-        if (!result.success || !result.resolved) {
+        if (!result.resolved) {
           throw new Error('No resolved CUE data available');
         }
 
         const architectureData: CueArchitectureData = {
           // Extract metadata
           metadata: {
-            name: result.resolved.metadata?.name || result.resolved.product?.name || projectId,
+            name: result.resolved.metadata?.name || projectId,
             version: result.resolved.metadata?.version || '1.0.0',
-            apiVersion: result.resolved.apiVersion || 'arbiter.dev/v2',
-            kind: result.resolved.kind || 'Assembly',
+            apiVersion: result.resolved.apiVersion || 'v2',
+            kind: result.resolved.kind || 'Application',
           },
 
-          // v2 schema elements
+          // v2 schema elements from resolved spec
           product: result.resolved.product,
-          ui: result.resolved.ui,
-          flows: result.resolved.flows,
-          capabilities: result.resolved.capabilities,
+          ui: result.resolved.ui || result.resolved.spec?.ui,
+          flows: result.resolved.flows || result.resolved.spec?.flows,
+          capabilities: result.resolved.capabilities || result.resolved.spec?.capabilities,
           paths: result.resolved.paths,
           stateModels: result.resolved.stateModels || result.resolved.states,
           locators: result.resolved.locators,
 
-          // v1 schema elements
-          services: result.resolved.services,
+          // v1 schema elements (services from spec)
+          services: result.resolved.services || result.resolved.spec?.services,
           deployment: result.resolved.deployment,
         };
 
