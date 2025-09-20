@@ -17,5 +17,11 @@ Thumbs.db
 *.tmp
 *.temp
 
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+arbiter.db*
+
 arbiter-cli
 node_modules/

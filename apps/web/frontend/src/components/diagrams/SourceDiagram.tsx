@@ -82,11 +82,15 @@ ${indentStr}}`;
     cueContent += 'package arbiter\n\n';
 
     // Add resolved data as CUE definitions
-    const entries = Object.entries(data);
+    if (data && typeof data === 'object') {
+      const entries = Object.entries(data);
 
-    for (const [key, value] of entries) {
-      const formattedKey = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `"${key}"`;
-      cueContent += `${formattedKey}: ${formatValue(value)}\n\n`;
+      for (const [key, value] of entries) {
+        const formattedKey = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(key) ? key : `"${key}"`;
+        cueContent += `${formattedKey}: ${formatValue(value)}\n\n`;
+      }
+    } else {
+      cueContent += '// No resolved data available\n';
     }
 
     return cueContent;

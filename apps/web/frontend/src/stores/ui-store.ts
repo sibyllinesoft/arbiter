@@ -31,10 +31,10 @@ export const useUiStore = create<UiState>(set => ({
 
 // Convenience hooks for specific parts of the state
 export function useTabs() {
-  return useUiStore(state => ({
-    leftTab: state.leftTab,
-    rightTab: state.rightTab,
-    setLeftTab: state.setLeftTab,
-    setRightTab: state.setRightTab,
-  }));
+  const leftTab = useUiStore(state => state.leftTab);
+  const rightTab = useUiStore(state => state.rightTab);
+  const setLeftTab = useUiStore(state => state.setLeftTab);
+  const setRightTab = useUiStore(state => state.setRightTab);
+
+  return { leftTab, rightTab, setLeftTab, setRightTab };
 }

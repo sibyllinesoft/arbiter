@@ -25,6 +25,7 @@ import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { useHandlers } from '../hooks/api-hooks';
 import { apiService } from '../services/api';
 import { toast } from 'react-toastify';
+import { useAppSettings } from '../contexts/AppContext';
 
 interface ConfigScreenProps {
   onNavigateBack: () => void;
@@ -39,6 +40,7 @@ interface WebhookConfig {
 
 export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
   const { data: handlers, isLoading: handlersLoading, refetch: refetchHandlers } = useHandlers();
+  const { settings, updateSettings } = useAppSettings();
 
   const [webhookConfigs, setWebhookConfigs] = useState<Record<string, WebhookConfig>>({
     github: {
@@ -196,6 +198,36 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
+          {/* UI Settings */}
+          <Card className="p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Settings className="w-6 h-6 text-gray-600" />
+              <h2 className="text-xl font-semibold text-gray-900">UI Settings</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">Show Async Notifications</h3>
+                  <p className="text-sm text-gray-500">
+                    Display toast notifications for webhook events and handler executions
+                  </p>
+                </div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={settings.showNotifications}
+                    onChange={e => updateSettings({ showNotifications: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">
+                    {settings.showNotifications ? 'Enabled' : 'Disabled'}
+                  </span>
+                </label>
+              </div>
+            </div>
+          </Card>
+
           {/* Webhook Configuration */}
           <Card className="p-6">
             <div className="flex items-center gap-3 mb-6">

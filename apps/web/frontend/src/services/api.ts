@@ -38,7 +38,7 @@ export class ApiError extends Error {
 }
 
 class ApiService {
-  private baseUrl = 'http://localhost:5050';
+  private baseUrl = 'http://localhost:8080';
   private defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -119,7 +119,8 @@ class ApiService {
 
   // Project endpoints
   async getProjects(): Promise<Project[]> {
-    return this.request<Project[]>('/api/projects');
+    const response = await this.request<{ projects: Project[] }>('/api/projects');
+    return response.projects;
   }
 
   async getProject(projectId: string): Promise<Project> {

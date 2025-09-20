@@ -101,7 +101,7 @@ async function searchFiles(
   }
 }
 
-export function createApiRouter(_: Dependencies) {
+export function createApiRouter(deps: Dependencies) {
   const app = new Hono();
 
   app.get('/health', c =>
@@ -391,28 +391,57 @@ export function createApiRouter(_: Dependencies) {
     }
   });
 
-  // Projects endpoint - mock data for frontend
-  app.get('/api/projects', c => {
-    return c.json({
-      projects: [
-        {
-          id: 'project-1',
-          name: 'Sample Project',
-          status: 'active',
-          services: 3,
-          databases: 1,
-          lastActivity: '2025-09-20T10:30:00Z',
-        },
-        {
-          id: 'project-2',
-          name: 'Demo Project',
-          status: 'active',
-          services: 2,
-          databases: 1,
-          lastActivity: '2025-09-20T09:15:00Z',
-        },
-      ],
-    });
+  // Projects endpoint - using real database
+  app.get('/api/projects', async c => {
+    try {
+      const db = deps.db as any;
+      const projects = await db.listProjects();
+
+      // Transform database projects to match frontend format
+      const formattedProjects = projects.map((project: any) => ({
+        id: project.id,
+        name: project.name,
+        status: 'active',
+        services: 0, // TODO: calculate from fragments
+        databases: 0, // TODO: calculate from fragments
+        lastActivity: project.updated_at,
+      }));
+
+      return c.json({ projects: formattedProjects });
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      return c.json({ projects: [] });
+    }
+  });
+
+  // Create project endpoint
+  app.post('/api/projects', async c => {
+    try {
+      const db = deps.db as any;
+      const body = await c.req.json();
+      const { name } = body;
+
+      if (!name) {
+        return c.json({ error: 'Project name is required' }, 400);
+      }
+
+      // Generate project ID
+      const projectId = `smith-project-${Date.now()}`;
+
+      const project = await db.createProject(projectId, name);
+
+      return c.json({
+        id: project.id,
+        name: project.name,
+        status: 'active',
+        services: 0,
+        databases: 0,
+        lastActivity: project.created_at,
+      });
+    } catch (error) {
+      console.error('Error creating project:', error);
+      return c.json({ error: 'Failed to create project' }, 500);
+    }
   });
 
   // Action log endpoint for service activities
@@ -646,6 +675,184 @@ export function createApiRouter(_: Dependencies) {
     const id = c.req.param('id');
     const response = await _.handlersApi.reloadHandler({ id });
     return c.json(response);
+  });
+
+  // Missing endpoints that the frontend expects
+  app.get('/api/resolved', async c => {
+    const projectId = c.req.query('projectId');
+
+    if (!projectId) {
+      return c.json({ error: 'projectId parameter is required' }, 400);
+    }
+
+    // Mock resolved spec data for now
+    return c.json({
+      success: true,
+      projectId,
+      resolved: {
+        apiVersion: 'v2',
+        kind: 'Application',
+        metadata: {
+          name: `project-${projectId}`,
+          version: '1.0.0',
+        },
+        spec: {
+          services: {
+            'api-service': {
+              name: 'API Service',
+              type: 'deployment',
+              image: 'nginx:latest',
+              ports: [{ port: 80, targetPort: 8080 }],
+            },
+          },
+          ui: {
+            routes: [
+              {
+                id: 'home',
+                path: '/',
+                name: 'Home',
+                component: 'HomePage',
+                capabilities: ['read-data'],
+              },
+              {
+                id: 'dashboard',
+                path: '/dashboard',
+                name: 'Dashboard',
+                component: 'DashboardPage',
+                capabilities: ['analytics'],
+              },
+            ],
+          },
+          flows: [
+            {
+              id: 'user-login',
+              name: 'User Login Flow',
+              steps: [
+                { visit: '/' },
+                { click: { locator: 'login-button' } },
+                { fill: { locator: 'email-input', value: 'user@example.com' } },
+                { fill: { locator: 'password-input', value: 'password' } },
+                { click: { locator: 'submit-button' } },
+                { expect_api: { method: 'POST', path: '/api/auth/login' } },
+              ],
+            },
+          ],
+          capabilities: {
+            'read-data': {
+              name: 'Read Data',
+              description: 'Capability to read application data',
+            },
+            analytics: {
+              name: 'Analytics',
+              description: 'View analytics and metrics',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  app.get('/api/ir/flow', async c => {
+    const projectId = c.req.query('projectId');
+
+    if (!projectId) {
+      return c.json({ error: 'projectId parameter is required' }, 400);
+    }
+
+    // Mock intermediate representation flow data
+    return c.json({
+      success: true,
+      projectId,
+      flows: [
+        {
+          id: 'user-registration',
+          name: 'User Registration',
+          description: 'New user sign-up process',
+          nodes: [
+            {
+              id: 'start',
+              type: 'start',
+              position: { x: 0, y: 0 },
+              data: { label: 'Start Registration' },
+            },
+            {
+              id: 'form',
+              type: 'form',
+              position: { x: 200, y: 0 },
+              data: { label: 'Registration Form', fields: ['email', 'password', 'name'] },
+            },
+            {
+              id: 'validate',
+              type: 'decision',
+              position: { x: 400, y: 0 },
+              data: { label: 'Validate Input' },
+            },
+            {
+              id: 'create-user',
+              type: 'action',
+              position: { x: 600, y: 0 },
+              data: { label: 'Create User Account' },
+            },
+            {
+              id: 'send-email',
+              type: 'action',
+              position: { x: 800, y: 0 },
+              data: { label: 'Send Welcome Email' },
+            },
+            {
+              id: 'success',
+              type: 'end',
+              position: { x: 1000, y: 0 },
+              data: { label: 'Registration Complete' },
+            },
+          ],
+          edges: [
+            { id: 'e1', source: 'start', target: 'form' },
+            { id: 'e2', source: 'form', target: 'validate' },
+            { id: 'e3', source: 'validate', target: 'create-user', data: { label: 'Valid' } },
+            { id: 'e4', source: 'create-user', target: 'send-email' },
+            { id: 'e5', source: 'send-email', target: 'success' },
+            { id: 'e6', source: 'validate', target: 'form', data: { label: 'Invalid' } },
+          ],
+        },
+        {
+          id: 'user-login',
+          name: 'User Login',
+          description: 'User authentication process',
+          nodes: [
+            {
+              id: 'start',
+              type: 'start',
+              position: { x: 0, y: 100 },
+              data: { label: 'Start Login' },
+            },
+            {
+              id: 'credentials',
+              type: 'form',
+              position: { x: 200, y: 100 },
+              data: { label: 'Enter Credentials', fields: ['email', 'password'] },
+            },
+            {
+              id: 'authenticate',
+              type: 'action',
+              position: { x: 400, y: 100 },
+              data: { label: 'Authenticate User' },
+            },
+            {
+              id: 'success',
+              type: 'end',
+              position: { x: 600, y: 100 },
+              data: { label: 'Login Successful' },
+            },
+          ],
+          edges: [
+            { id: 'e1', source: 'start', target: 'credentials' },
+            { id: 'e2', source: 'credentials', target: 'authenticate' },
+            { id: 'e3', source: 'authenticate', target: 'success' },
+          ],
+        },
+      ],
+    });
   });
 
   return app;

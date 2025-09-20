@@ -8,8 +8,8 @@ import {
   type CueArchitectureData,
   type DiagramComponent,
   type DiagramConnection,
-  DiagramLayer,
-  ElementType,
+  type DiagramLayer,
+  type ElementType,
   type FlowStep,
 } from '../types/architecture';
 

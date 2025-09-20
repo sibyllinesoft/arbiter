@@ -7,7 +7,7 @@ import {
   type DiagramComponent,
   type DiagramConnection,
   type DiagramLayer,
-  DiagramLayout,
+  type DiagramLayout,
   type LayoutAlgorithm,
 } from '../types/architecture';
 

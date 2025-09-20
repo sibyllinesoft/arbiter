@@ -4,7 +4,7 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import { CueDrivenArchitectureDiagram } from './CueDrivenArchitectureDiagram';
-import { CueArchitectureData } from '../../types/architecture';
+import { type CueArchitectureData } from '../../types/architecture';
 
 const meta: Meta<typeof CueDrivenArchitectureDiagram> = {
   title: 'Components/Diagrams/CueDrivenArchitectureDiagram',

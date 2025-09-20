@@ -10,6 +10,7 @@ import { AppProvider } from './contexts/AppContext';
 // Pages
 import { LandingPage } from './pages/LandingPage';
 import { ConfigScreen } from './pages/ConfigScreen';
+import { ProjectView } from './pages/project-view';
 
 // Error boundary component
 class ErrorBoundary extends React.Component<
@@ -61,15 +62,28 @@ class ErrorBoundary extends React.Component<
 
 // Main app content with simple routing
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'config'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'config' | 'project'>('dashboard');
+  const [selectedProject, setSelectedProject] = useState<any>(null);
 
   const navigateToConfig = () => setCurrentView('config');
   const navigateToDashboard = () => setCurrentView('dashboard');
+  const navigateToProject = (project: any) => {
+    setSelectedProject(project);
+    setCurrentView('project');
+  };
 
   return (
     <>
-      {currentView === 'dashboard' && <LandingPage onNavigateToConfig={navigateToConfig} />}
+      {currentView === 'dashboard' && (
+        <LandingPage
+          onNavigateToConfig={navigateToConfig}
+          onNavigateToProject={navigateToProject}
+        />
+      )}
       {currentView === 'config' && <ConfigScreen onNavigateBack={navigateToDashboard} />}
+      {currentView === 'project' && selectedProject && (
+        <ProjectView project={selectedProject} onNavigateBack={navigateToDashboard} />
+      )}
     </>
   );
 }

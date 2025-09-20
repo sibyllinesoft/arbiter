@@ -11,7 +11,7 @@ export function loadConfig(): ServerConfig {
     return {
       port: parseInt(process.env.PORT || '5050', 10),
       host: 'localhost',
-      database_path: ':memory:',
+      database_path: 'arbiter.db',
       spec_workdir: path.join(process.cwd(), '.spec-workdir'),
       cue_binary_path: 'cue',
       jq_binary_path: 'jq',

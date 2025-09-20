@@ -22,6 +22,9 @@ interface AppState {
   editorContent: Record<string, string>;
   loading: boolean;
   error: string | null;
+  settings: {
+    showNotifications: boolean;
+  };
 }
 
 type AppAction =
@@ -40,7 +43,8 @@ type AppAction =
   | { type: 'MARK_SAVED'; payload: string }
   | { type: 'SET_EDITOR_CONTENT'; payload: { fragmentId: string; content: string } }
   | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_ERROR'; payload: string | null };
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'UPDATE_SETTINGS'; payload: Partial<AppState['settings']> };
 
 const initialState: AppState = {
   projects: [],
@@ -59,6 +63,9 @@ const initialState: AppState = {
   editorContent: {},
   loading: false,
   error: null,
+  settings: {
+    showNotifications: false,
+  },
 };
 
 function appReducer(state: AppState, action: AppAction): AppState {
@@ -93,6 +100,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, loading: action.payload };
     case 'SET_ERROR':
       return { ...state, error: action.payload };
+    case 'UPDATE_SETTINGS':
+      return { ...state, settings: { ...state.settings, ...action.payload } };
     default:
       return state;
   }
@@ -104,6 +113,7 @@ interface AppContextValue {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setSelectedCueFile: (file: string | null) => void;
+  updateSettings: (settings: Partial<AppState['settings']>) => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
@@ -119,6 +129,8 @@ export function AppProvider({ children }: AppProviderProps) {
   const setError = (error: string | null) => dispatch({ type: 'SET_ERROR', payload: error });
   const setSelectedCueFile = (file: string | null) =>
     dispatch({ type: 'SET_SELECTED_CUE_FILE', payload: file });
+  const updateSettings = (settings: Partial<AppState['settings']>) =>
+    dispatch({ type: 'UPDATE_SETTINGS', payload: settings });
 
   const value: AppContextValue = {
     state,
@@ -126,6 +138,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setLoading,
     setError,
     setSelectedCueFile,
+    updateSettings,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -169,5 +182,13 @@ export function useCueFileState() {
   return {
     selectedCueFile: state.selectedCueFile,
     availableCueFiles: state.availableCueFiles,
+  };
+}
+
+export function useAppSettings() {
+  const { state, updateSettings } = useApp();
+  return {
+    settings: state.settings,
+    updateSettings,
   };
 }

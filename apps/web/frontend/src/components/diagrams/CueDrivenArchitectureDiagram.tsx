@@ -8,12 +8,12 @@ import { clsx } from 'clsx';
 import { CueArchitectureParser } from '../../utils/cueArchitectureParser';
 import { DiagramLayoutEngine } from '../../utils/diagramLayout';
 import {
-  DiagramComponent,
-  DiagramConnection,
-  CueArchitectureData,
-  DiagramType,
-  DiagramTheme,
-  ConnectionType,
+  type DiagramComponent,
+  type DiagramConnection,
+  type CueArchitectureData,
+  type DiagramType,
+  type DiagramTheme,
+  type ConnectionType,
 } from '../../types/architecture';
 
 interface CueDrivenArchitectureDiagramProps {

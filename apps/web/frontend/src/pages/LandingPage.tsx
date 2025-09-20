@@ -21,19 +21,22 @@ import { Button, Card, StatusBadge, cn } from '../design-system';
 import { useProjects, useHealthCheck } from '../hooks/api-hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useCurrentProject, useSetCurrentProject } from '../contexts/ProjectContext';
+import { useAppSettings } from '../contexts/AppContext';
 import { ActionLog } from '../components/ActionLog';
 import { apiService } from '../services/api';
 import { toast } from 'react-toastify';
 
 interface LandingPageProps {
   onNavigateToConfig: () => void;
+  onNavigateToProject: (project: any) => void;
 }
 
-export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
+export function LandingPage({ onNavigateToConfig, onNavigateToProject }: LandingPageProps) {
   const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useProjects();
   const { data: health, isLoading: healthLoading } = useHealthCheck();
   const currentProject = useCurrentProject();
   const setCurrentProject = useSetCurrentProject();
+  const { settings } = useAppSettings();
 
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -41,7 +44,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
   // WebSocket for real-time updates
   const { isConnected, lastMessage } = useWebSocket(currentProject?.id || null, {
     autoReconnect: true,
-    showToastNotifications: true,
+    showToastNotifications: settings.showNotifications,
   });
 
   const handleCreateProject = async () => {
@@ -64,7 +67,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
 
   const handleSelectProject = (project: any) => {
     setCurrentProject(project);
-    toast.info(`Switched to project "${project.name}"`);
+    onNavigateToProject(project);
   };
 
   // Auto-select first project if none selected

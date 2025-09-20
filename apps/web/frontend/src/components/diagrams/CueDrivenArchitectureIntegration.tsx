@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { CueDrivenArchitectureDiagram } from './CueDrivenArchitectureDiagram';
-import { CueArchitectureData, DiagramType } from '../../types/architecture';
+import { type CueArchitectureData, type DiagramType } from '../../types/architecture';
 
 interface CueDrivenArchitectureIntegrationProps {
   /** Project ID to fetch CUE data for */
