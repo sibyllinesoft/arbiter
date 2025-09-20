@@ -1,3 +1,3 @@
-export { GitHubIssueAdapter } from './GitHubIssueAdapter.js';
-export { GitHubPRAdapter } from './GitHubPRAdapter.js';
-export { GitHubPushAdapter } from './GitHubPushAdapter.js';
+export { GitHubIssueAdapter } from "./GitHubIssueAdapter.js";
+export { GitHubPRAdapter } from "./GitHubPRAdapter.js";
+export { GitHubPushAdapter } from "./GitHubPushAdapter.js";

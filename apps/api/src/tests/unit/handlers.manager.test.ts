@@ -2,10 +2,10 @@ import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { SpecWorkbenchDB } from "../../db.ts";
+import type { EventService } from "../../events.ts";
 import { CustomHandlerManager } from "../../handlers/manager.ts";
 import type { HandlerCreationOptions, RegisteredHandler } from "../../handlers/types.ts";
-import type { EventService } from "../../events.ts";
-import type { SpecWorkbenchDB } from "../../db.ts";
 import type { ServerConfig } from "../../types.ts";
 
 // Minimal event service stub for tests
@@ -69,7 +69,9 @@ describe("CustomHandlerManager.createHandler", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  const createHandler = (overrides: Partial<HandlerCreationOptions> = {}): Promise<RegisteredHandler> => {
+  const createHandler = (
+    overrides: Partial<HandlerCreationOptions> = {},
+  ): Promise<RegisteredHandler> => {
     return manager.createHandler({
       provider: "github",
       event: "Push",
@@ -93,7 +95,7 @@ describe("CustomHandlerManager.createHandler", () => {
     expect(fileContents).toContain("const message = 'hi';");
     expect(fileContents).toContain("metadata:");
 
-    const registered = manager.getHandlers().find(h => h.id === handler.id);
+    const registered = manager.getHandlers().find((h) => h.id === handler.id);
     expect(registered).toBeDefined();
   });
 

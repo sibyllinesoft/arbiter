@@ -11,36 +11,36 @@
  * - Type-safe operations with proper error handling
  */
 
-import * as os from 'node:os';
-import path from 'node:path';
-import fs from 'fs-extra';
-import { CueRunner } from '@arbiter/cue-runner';
+import * as os from "node:os";
+import path from "node:path";
+import { CueRunner } from "@arbiter/cue-runner";
+import fs from "fs-extra";
 
 /**
  * Platform-specific service types for popular cloud providers
  */
 export type PlatformServiceType =
   // Generic types
-  | 'bespoke'
-  | 'prebuilt'
+  | "bespoke"
+  | "prebuilt"
   // Cloudflare platform
-  | 'cloudflare_worker'
-  | 'cloudflare_d1'
-  | 'cloudflare_kv'
-  | 'cloudflare_r2'
-  | 'cloudflare_durable_object'
+  | "cloudflare_worker"
+  | "cloudflare_d1"
+  | "cloudflare_kv"
+  | "cloudflare_r2"
+  | "cloudflare_durable_object"
   // Vercel platform
-  | 'vercel_function'
-  | 'vercel_edge_function'
-  | 'vercel_kv'
-  | 'vercel_postgres'
-  | 'vercel_blob'
+  | "vercel_function"
+  | "vercel_edge_function"
+  | "vercel_kv"
+  | "vercel_postgres"
+  | "vercel_blob"
   // Supabase platform
-  | 'supabase_database'
-  | 'supabase_auth'
-  | 'supabase_storage'
-  | 'supabase_functions'
-  | 'supabase_realtime';
+  | "supabase_database"
+  | "supabase_auth"
+  | "supabase_storage"
+  | "supabase_functions"
+  | "supabase_realtime";
 
 /**
  * Configuration for a service in the CUE specification
@@ -48,11 +48,11 @@ export type PlatformServiceType =
 export interface ServiceConfig {
   serviceType: PlatformServiceType;
   language: string;
-  type: 'deployment' | 'statefulset' | 'serverless' | 'managed';
+  type: "deployment" | "statefulset" | "serverless" | "managed";
   sourceDirectory?: string;
   image?: string;
   // Platform-specific configurations
-  platform?: 'cloudflare' | 'vercel' | 'supabase' | 'kubernetes';
+  platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
   runtime?: string; // e.g., "durable_object", "edge", "nodejs18"
   region?: string;
   // Standard configurations
@@ -128,14 +128,14 @@ export class CUEManipulator {
   private tempDir: string;
 
   constructor() {
-    this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cue-manipulator-'));
+    this.tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "cue-manipulator-"));
   }
 
   /**
    * Parse CUE content into a JavaScript object using the CUE tool
    */
   async parse(content: string): Promise<any> {
-    const tempFile = path.join(this.tempDir, 'input.cue');
+    const tempFile = path.join(this.tempDir, "input.cue");
     await fs.writeFile(tempFile, content);
 
     try {
@@ -147,7 +147,7 @@ export class CUEManipulator {
       }
 
       const firstDiagnostic = exportResult.diagnostics[0];
-      const reason = firstDiagnostic?.message || exportResult.error || 'Unknown CUE export error';
+      const reason = firstDiagnostic?.message || exportResult.error || "Unknown CUE export error";
       throw new Error(reason);
     } catch (error) {
       throw new Error(`Failed to parse CUE content: ${error}`);
@@ -231,10 +231,10 @@ export class CUEManipulator {
           const connectionString = this.generateDbConnectionString(
             config.image,
             dbName,
-            config.ports?.[0]?.port || 5432
+            config.ports?.[0]?.port || 5432,
           );
           ast.services[config.attachTo].env.DATABASE_URL = connectionString;
-        } else if (config.serviceType && config.serviceType !== 'prebuilt') {
+        } else if (config.serviceType && config.serviceType !== "prebuilt") {
           // Platform-managed database - generate appropriate env vars
           const envVars = this.generatePlatformDbEnvVars(config.serviceType, dbName);
           Object.assign(ast.services[config.attachTo].env, envVars);
@@ -300,7 +300,7 @@ export class CUEManipulator {
       const ast = await this.parse(content);
 
       // Navigate to the section (support nested sections like "components.schemas")
-      const sections = section.split('.');
+      const sections = section.split(".");
       let current = ast;
 
       for (const sec of sections) {
@@ -325,7 +325,7 @@ export class CUEManipulator {
   async serialize(ast: any, originalContent?: string): Promise<string> {
     try {
       // Extract package declaration from original content if available
-      let packageDeclaration = 'package main';
+      let packageDeclaration = "package main";
       if (originalContent) {
         const packageMatch = originalContent.match(/package\s+(\w+)/);
         if (packageMatch) {
@@ -347,17 +347,17 @@ export class CUEManipulator {
    * Format CUE content using the CUE tool
    */
   async format(content: string): Promise<string> {
-    const tempFile = path.join(this.tempDir, 'format.cue');
+    const tempFile = path.join(this.tempDir, "format.cue");
     await fs.writeFile(tempFile, content);
 
     try {
       const runner = this.createRunner();
       const result = await runner.fmt([tempFile]);
       if (!result.success) {
-        throw new Error(result.stderr || 'cue fmt failed');
+        throw new Error(result.stderr || "cue fmt failed");
       }
 
-      return await fs.readFile(tempFile, 'utf-8');
+      return await fs.readFile(tempFile, "utf-8");
     } catch (error) {
       throw new Error(`Failed to format CUE content: ${error}`);
     }
@@ -367,7 +367,7 @@ export class CUEManipulator {
    * Validate CUE content using the CUE tool
    */
   async validate(content: string): Promise<ValidationResult> {
-    const tempFile = path.join(this.tempDir, 'validate.cue');
+    const tempFile = path.join(this.tempDir, "validate.cue");
     await fs.writeFile(tempFile, content);
 
     try {
@@ -379,8 +379,8 @@ export class CUEManipulator {
       }
 
       const errors = result.diagnostics.length
-        ? result.diagnostics.map(diag => diag.message)
-        : [result.raw.stderr || 'cue vet failed'];
+        ? result.diagnostics.map((diag) => diag.message)
+        : [result.raw.stderr || "cue vet failed"];
 
       return { valid: false, errors };
     } catch (error) {
@@ -447,15 +447,15 @@ export class CUEManipulator {
         const connectionString = this.generateDbConnectionString(
           config.image,
           dbName,
-          config.ports?.[0]?.port || 5432
+          config.ports?.[0]?.port || 5432,
         );
         result = this.addEnvironmentVariable(
           result,
           config.attachTo,
-          'DATABASE_URL',
-          connectionString
+          "DATABASE_URL",
+          connectionString,
         );
-      } else if (config.serviceType && config.serviceType !== 'prebuilt') {
+      } else if (config.serviceType && config.serviceType !== "prebuilt") {
         // Platform-managed database - add multiple env vars
         const envVars = this.generatePlatformDbEnvVars(config.serviceType, dbName);
         for (const [key, value] of Object.entries(envVars)) {
@@ -478,7 +478,7 @@ export class CUEManipulator {
 
     if (match) {
       const existing = match[2];
-      const separator = existing.trim() ? ',\n\t' : '\n\t';
+      const separator = existing.trim() ? ",\n\t" : "\n\t";
       return content.replace(routesRegex, `$1${existing}${separator}${routeBlock}\n]`);
     }
     return content.replace(/ui:\s*routes:\s*\[\]/, `ui: routes: [\n\t${routeBlock}\n]`);
@@ -495,7 +495,7 @@ export class CUEManipulator {
 
     if (match) {
       const existing = match[2];
-      const separator = existing.trim() ? ',\n\t' : '\n\t';
+      const separator = existing.trim() ? ",\n\t" : "\n\t";
       return content.replace(flowsRegex, `$1${existing}${separator}${flowBlock}\n]`);
     }
     return content.replace(/flows:\s*\[\]/, `flows: [\n\t${flowBlock}\n]`);
@@ -507,7 +507,7 @@ export class CUEManipulator {
   private directSectionAdd(content: string, section: string, key: string, value: any): string {
     const valueStr = this.formatCueObject(value);
 
-    const sectionRegex = new RegExp(`(${section.replace('.', ':\\s+')}:\\s*{)([^}]*)(})`, 's');
+    const sectionRegex = new RegExp(`(${section.replace(".", ":\\s+")}:\\s*{)([^}]*)(})`, "s");
     const match = content.match(sectionRegex);
 
     if (match) {
@@ -526,9 +526,9 @@ export class CUEManipulator {
     content: string,
     serviceName: string,
     key: string,
-    value: string
+    value: string,
   ): string {
-    const envRegex = new RegExp(`(${serviceName}:\\s*{[^}]*env:\\s*{)([^}]*)(})`, 's');
+    const envRegex = new RegExp(`(${serviceName}:\\s*{[^}]*env:\\s*{)([^}]*)(})`, "s");
     const match = content.match(envRegex);
 
     if (match) {
@@ -538,39 +538,39 @@ export class CUEManipulator {
       return content.replace(envRegex, `$1${updated}\n\t$3`);
     }
     // Add env section to service
-    const serviceRegex = new RegExp(`(${serviceName}:\\s*{[^}]*)(})`, 's');
+    const serviceRegex = new RegExp(`(${serviceName}:\\s*{[^}]*)(})`, "s");
     return content.replace(serviceRegex, `$1\tenv: {\n\t\t${key}: "${value}"\n\t}\n$2`);
   }
 
   /**
    * Format a JavaScript object as CUE syntax
    */
-  private formatCueObject(obj: any, indent = ''): string {
-    if (typeof obj === 'string') {
+  private formatCueObject(obj: any, indent = ""): string {
+    if (typeof obj === "string") {
       return `"${obj.replace(/"/g, '\\"')}"`;
     }
-    if (typeof obj === 'number' || typeof obj === 'boolean') {
+    if (typeof obj === "number" || typeof obj === "boolean") {
       return String(obj);
     }
 
     if (Array.isArray(obj)) {
       if (obj.length === 0) {
-        return '[]';
+        return "[]";
       }
-      const items = obj.map(item => `${indent}\t${this.formatCueObject(item, `${indent}\t`)}`);
-      return `[\n${items.join(',\n')}\n${indent}]`;
+      const items = obj.map((item) => `${indent}\t${this.formatCueObject(item, `${indent}\t`)}`);
+      return `[\n${items.join(",\n")}\n${indent}]`;
     }
 
-    if (typeof obj === 'object' && obj !== null) {
+    if (typeof obj === "object" && obj !== null) {
       const entries = Object.entries(obj);
       if (entries.length === 0) {
-        return '{}';
+        return "{}";
       }
       const formattedEntries = entries.map(([k, v]) => {
         const key = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(k) ? k : `"${k}"`;
         return `${indent}\t${key}: ${this.formatCueObject(v, `${indent}\t`)}`;
       });
-      return `{\n${formattedEntries.join('\n')}\n${indent}}`;
+      return `{\n${formattedEntries.join("\n")}\n${indent}}`;
     }
 
     return String(obj);
@@ -581,12 +581,12 @@ export class CUEManipulator {
    */
   private generateDbConnectionString(image: string, dbName: string, port: number): string {
     if (!image) {
-      throw new Error('generateDbConnectionString called with undefined image');
+      throw new Error("generateDbConnectionString called with undefined image");
     }
-    if (image.includes('postgres')) {
+    if (image.includes("postgres")) {
       return `postgresql://user:password@${dbName}:${port}/${dbName}`;
     }
-    if (image.includes('mysql')) {
+    if (image.includes("mysql")) {
       return `mysql://user:password@${dbName}:${port}/${dbName}`;
     }
     return `db://${dbName}:${port}/${dbName}`;
@@ -597,30 +597,30 @@ export class CUEManipulator {
    */
   private generatePlatformDbEnvVars(serviceType: string, dbName: string): Record<string, string> {
     switch (serviceType) {
-      case 'cloudflare_d1':
+      case "cloudflare_d1":
         return {
           D1_DATABASE_ID: `${dbName}_id`,
           D1_DATABASE_NAME: dbName,
           DATABASE_URL: `d1://${dbName}`,
         };
-      case 'cloudflare_kv':
+      case "cloudflare_kv":
         return {
           KV_NAMESPACE_ID: `${dbName}_namespace_id`,
           KV_BINDING_NAME: dbName.toUpperCase(),
         };
-      case 'vercel_postgres':
+      case "vercel_postgres":
         return {
           POSTGRES_URL: `postgres://${dbName}`,
           POSTGRES_PRISMA_URL: `postgres://${dbName}?pgbouncer=true`,
           POSTGRES_URL_NON_POOLING: `postgres://${dbName}`,
         };
-      case 'vercel_kv':
+      case "vercel_kv":
         return {
           KV_REST_API_URL: `https://${dbName}.kv.vercel-storage.com`,
           KV_REST_API_TOKEN: `${dbName}_token`,
           KV_URL: `redis://${dbName}`,
         };
-      case 'supabase_database':
+      case "supabase_database":
         return {
           SUPABASE_URL: `https://${dbName}.supabase.co`,
           SUPABASE_ANON_KEY: `${dbName}_anon_key`,

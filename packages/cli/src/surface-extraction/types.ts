@@ -1,4 +1,4 @@
-export type SurfaceLanguage = 'typescript' | 'python' | 'rust' | 'go' | 'bash';
+export type SurfaceLanguage = "typescript" | "python" | "rust" | "go" | "bash";
 
 export interface SurfaceOptions {
   /** Programming language to analyze */
@@ -25,8 +25,8 @@ export interface SurfaceOptions {
 
 export interface APISymbol {
   name: string;
-  type: 'function' | 'class' | 'interface' | 'type' | 'variable' | 'constant';
-  visibility: 'public' | 'private' | 'internal';
+  type: "function" | "class" | "interface" | "type" | "variable" | "constant";
+  visibility: "public" | "private" | "internal";
   signature?: string;
   documentation?: string;
   location: {

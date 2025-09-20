@@ -1,19 +1,19 @@
-import chalk from 'chalk';
-import { glob } from 'glob';
-import type { CLIConfig } from '../types.js';
-import { withStepProgress } from '../utils/progress.js';
-import { resolveSmartNaming } from '../utils/smart-naming.js';
+import chalk from "chalk";
+import { glob } from "glob";
+import type { CLIConfig } from "../types.js";
+import { withStepProgress } from "../utils/progress.js";
+import { resolveSmartNaming } from "../utils/smart-naming.js";
 import {
   type SurfaceOutput,
   createOutputManager,
   shouldUseAgentMode,
-} from '../utils/standardized-output.js';
+} from "../utils/standardized-output.js";
 
-import type { APISurface, APISymbol, SurfaceOptions } from '../surface-extraction/types.js';
-import { getExtractor } from '../surface-extraction/index.js';
-import { calculateSurfaceDelta } from '../surface-extraction/delta.js';
+import { calculateSurfaceDelta } from "../surface-extraction/delta.js";
+import { getExtractor } from "../surface-extraction/index.js";
+import type { APISurface, APISymbol, SurfaceOptions } from "../surface-extraction/types.js";
 
-export type { APISurface } from '../surface-extraction/types.js';
+export type { APISurface } from "../surface-extraction/types.js";
 
 /**
  * Surface command implementation
@@ -21,33 +21,33 @@ export type { APISurface } from '../surface-extraction/types.js';
  */
 export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig): Promise<number> {
   const agentMode = shouldUseAgentMode(options);
-  const outputManager = createOutputManager('surface', agentMode, options.ndjsonOutput);
+  const outputManager = createOutputManager("surface", agentMode, options.ndjsonOutput);
 
   // Define the steps for surface extraction
   const steps = [
-    'Resolving project configuration',
-    'Scanning source files',
-    'Analyzing code structure',
-    'Extracting API symbols',
-    'Generating surface definition',
-    'Writing output file',
+    "Resolving project configuration",
+    "Scanning source files",
+    "Analyzing code structure",
+    "Extracting API symbols",
+    "Generating surface definition",
+    "Writing output file",
   ];
 
   return withStepProgress(
     {
       title: `Extracting ${options.language} API surface`,
       steps,
-      color: 'blue',
+      color: "blue",
     },
-    async progress => {
+    async (progress) => {
       try {
         // Step 1: Resolve smart naming for output file
-        if ('nextStep' in progress) {
-          progress.nextStep('Resolving project configuration');
+        if ("nextStep" in progress) {
+          progress.nextStep("Resolving project configuration");
         } else {
-          progress.log('Resolving project configuration');
+          progress.log("Resolving project configuration");
         }
-        const namingResult = await resolveSmartNaming('surface', {
+        const namingResult = await resolveSmartNaming("surface", {
           output: options.output,
           outputDir: options.outputDir,
           projectName: options.projectName,
@@ -56,8 +56,8 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
 
         // Emit start event for agent mode
         outputManager.emitEvent({
-          phase: 'surface',
-          status: 'start',
+          phase: "surface",
+          status: "start",
           data: {
             language: options.language,
             outputFile: namingResult.filename,
@@ -71,15 +71,15 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
         }
 
         // Step 2: Scan source files
-        if ('nextStep' in progress) {
-          progress.nextStep('Scanning source files');
+        if ("nextStep" in progress) {
+          progress.nextStep("Scanning source files");
         } else {
-          progress.log('Scanning source files');
+          progress.log("Scanning source files");
         }
         const sourceFiles = await findSourceFiles(options.language);
 
         if (sourceFiles.length === 0) {
-          if ('failCurrentStep' in progress) {
+          if ("failCurrentStep" in progress) {
             progress.failCurrentStep(`No ${options.language} files found`);
           } else {
             progress.error(`No ${options.language} files found`);
@@ -88,39 +88,39 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
         }
 
         // Step 3: Analyze code structure
-        if ('nextStep' in progress) {
+        if ("nextStep" in progress) {
           progress.nextStep(`Analyzing code structure (${sourceFiles.length} files)`);
         } else {
           progress.log(`Analyzing code structure (${sourceFiles.length} files)`);
         }
 
         // Step 4: Extract API symbols
-        if ('nextStep' in progress) {
-          progress.nextStep('Extracting API symbols');
+        if ("nextStep" in progress) {
+          progress.nextStep("Extracting API symbols");
         } else {
-          progress.log('Extracting API symbols');
+          progress.log("Extracting API symbols");
         }
         const surface = await extractAPISurface(options, sourceFiles);
 
         if (!surface) {
-          if ('failCurrentStep' in progress) {
-            progress.failCurrentStep('Failed to extract API surface');
+          if ("failCurrentStep" in progress) {
+            progress.failCurrentStep("Failed to extract API surface");
           } else {
-            progress.error('Failed to extract API surface');
+            progress.error("Failed to extract API surface");
           }
           outputManager.emitEvent({
-            phase: 'surface',
-            status: 'error',
-            error: 'Failed to extract API surface',
+            phase: "surface",
+            status: "error",
+            error: "Failed to extract API surface",
           });
           return 1;
         }
 
         // Step 5: Generate surface definition and calculate delta if requested
-        if ('nextStep' in progress) {
-          progress.nextStep('Generating surface definition');
+        if ("nextStep" in progress) {
+          progress.nextStep("Generating surface definition");
         } else {
-          progress.log('Generating surface definition');
+          progress.log("Generating surface definition");
         }
         let delta;
         if (options.diff) {
@@ -129,13 +129,13 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
 
         // Create standardized surface output
         const surfaceOutput: SurfaceOutput = {
-          apiVersion: 'arbiter.dev/v2',
+          apiVersion: "arbiter.dev/v2",
           timestamp: Date.now(),
-          command: 'surface',
-          kind: 'Surface',
+          command: "surface",
+          kind: "Surface",
           language: options.language,
           surface: {
-            symbols: surface.symbols.map(s => ({
+            symbols: surface.symbols.map((s) => ({
               name: s.name,
               type: s.type,
               visibility: s.visibility,
@@ -148,15 +148,15 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
         };
 
         // Step 6: Write output file
-        if ('nextStep' in progress) {
-          progress.nextStep('Writing output file');
+        if ("nextStep" in progress) {
+          progress.nextStep("Writing output file");
         } else {
-          progress.log('Writing output file');
+          progress.log("Writing output file");
         }
         await outputManager.writeSurfaceFile(surfaceOutput, namingResult.fullPath);
 
         if (!agentMode) {
-          console.log(chalk.cyan('\nStatistics:'));
+          console.log(chalk.cyan("\nStatistics:"));
           console.log(`  Total symbols: ${surface.statistics.totalSymbols}`);
           console.log(`  Public symbols: ${surface.statistics.publicSymbols}`);
           console.log(`  Private symbols: ${surface.statistics.privateSymbols}`);
@@ -167,7 +167,7 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
           }
 
           if (delta) {
-            console.log(chalk.yellow('\n⚠️  API changes detected:'));
+            console.log(chalk.yellow("\n⚠️  API changes detected:"));
             if (delta.added > 0) {
               console.log(chalk.green(`  + ${delta.added} added symbols`));
             }
@@ -176,7 +176,9 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
             }
             if (delta.breaking) {
               console.log(
-                chalk.red(`  🚨 Breaking changes detected - ${delta.requiredBump} bump recommended`)
+                chalk.red(
+                  `  🚨 Breaking changes detected - ${delta.requiredBump} bump recommended`,
+                ),
               );
             }
           }
@@ -184,8 +186,8 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
 
         // Emit completion event
         outputManager.emitEvent({
-          phase: 'surface',
-          status: 'complete',
+          phase: "surface",
+          status: "complete",
           data: {
             symbols: surface.statistics.totalSymbols,
             delta,
@@ -198,19 +200,19 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
         const errorMessage = error instanceof Error ? error.message : String(error);
 
         if (!agentMode) {
-          console.error(chalk.red('❌ Surface command failed:'), errorMessage);
+          console.error(chalk.red("❌ Surface command failed:"), errorMessage);
         }
 
         outputManager.emitEvent({
-          phase: 'surface',
-          status: 'error',
+          phase: "surface",
+          status: "error",
           error: errorMessage,
         });
 
         outputManager.close();
         return 1;
       }
-    }
+    },
   );
 }
 
@@ -219,23 +221,23 @@ export async function surfaceCommand(options: SurfaceOptions, _config: CLIConfig
  */
 async function findSourceFiles(language: string): Promise<string[]> {
   const patterns: Record<string, string[]> = {
-    typescript: ['**/*.ts', '**/*.tsx'],
-    python: ['**/*.py'],
-    rust: ['**/*.rs'],
-    go: ['**/*.go'],
-    bash: ['**/*.sh', '**/*.bash'],
+    typescript: ["**/*.ts", "**/*.tsx"],
+    python: ["**/*.py"],
+    rust: ["**/*.rs"],
+    go: ["**/*.go"],
+    bash: ["**/*.sh", "**/*.bash"],
   };
 
   const ignorePatterns = [
-    'node_modules/**',
-    'dist/**',
-    'build/**',
-    'target/**',
-    '**/*.test.*',
-    '**/*.spec.*',
-    '**/*_test.*',
-    '**/__tests__/**',
-    '**/.git/**',
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "target/**",
+    "**/*.test.*",
+    "**/*.spec.*",
+    "**/*_test.*",
+    "**/__tests__/**",
+    "**/.git/**",
   ];
 
   const files = await glob(patterns[language] || [], {
@@ -250,7 +252,7 @@ async function findSourceFiles(language: string): Promise<string[]> {
  */
 async function extractAPISurface(
   options: SurfaceOptions,
-  sourceFiles: string[]
+  sourceFiles: string[],
 ): Promise<APISurface | null> {
   const extractor = getExtractor(options.language);
   if (extractor) {

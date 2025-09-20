@@ -1,14 +1,14 @@
-import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
-import { createResponse } from '../../shared/utils.js';
+import type { HandlerResponse, WebhookEvent } from "../../shared/utils.js";
+import { createResponse } from "../../shared/utils.js";
 import {
   GitHubIssueAdapter,
   GitHubIssueCommentAdapter,
-} from '../adapters/github/GitHubIssueAdapter.js';
-import { AIAgentHandler } from '../base/AIAgentHandler.js';
-import type { AIAgentConfig, AICommand } from '../base/types.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
+} from "../adapters/github/GitHubIssueAdapter.js";
+import { AIAgentHandler } from "../base/AIAgentHandler.js";
+import type { AIAgentConfig, AICommand } from "../base/types.js";
+import { ClaudeProvider } from "../providers/ClaudeProvider.js";
+import { GeminiProvider } from "../providers/GeminiProvider.js";
+import { OpenAIProvider } from "../providers/OpenAIProvider.js";
 
 /**
  * AI-powered Issue Analysis Agent
@@ -33,13 +33,13 @@ export class IssueAnalysisAgent extends AIAgentHandler {
     // Initialize AI provider based on config
     let provider: ClaudeProvider | OpenAIProvider | GeminiProvider;
     switch (config.provider.type) {
-      case 'claude':
+      case "claude":
         provider = new ClaudeProvider(config.provider.config);
         break;
-      case 'openai':
+      case "openai":
         provider = new OpenAIProvider(config.provider.config);
         break;
-      case 'gemini':
+      case "gemini":
         provider = new GeminiProvider(config.provider.config);
         break;
       default: {
@@ -51,8 +51,8 @@ export class IssueAnalysisAgent extends AIAgentHandler {
     super(config, provider);
 
     // Register adapters for different platforms
-    this.registerAdapter('github', 'issues', new GitHubIssueAdapter());
-    this.registerAdapter('github', 'issue_comment', new GitHubIssueCommentAdapter());
+    this.registerAdapter("github", "issues", new GitHubIssueAdapter());
+    this.registerAdapter("github", "issue_comment", new GitHubIssueCommentAdapter());
   }
 
   /**
@@ -60,12 +60,12 @@ export class IssueAnalysisAgent extends AIAgentHandler {
    */
   protected initializeCommands(): void {
     // Comprehensive issue analysis
-    this.registerCommand('analyze-issue', {
-      name: 'analyze-issue',
+    this.registerCommand("analyze-issue", {
+      name: "analyze-issue",
       description:
-        'Comprehensive analysis of issue including categorization, priority, and recommendations',
-      usage: '/analyze-issue [focus]',
-      examples: ['/analyze-issue', '/analyze-issue priority', '/analyze-issue complexity'],
+        "Comprehensive analysis of issue including categorization, priority, and recommendations",
+      usage: "/analyze-issue [focus]",
+      examples: ["/analyze-issue", "/analyze-issue priority", "/analyze-issue complexity"],
       requiresArgs: false,
       prompt: `Analyze this issue comprehensively. Provide:
 
@@ -103,11 +103,11 @@ Provide actionable insights that help with project planning and issue management
     });
 
     // Issue categorization
-    this.registerCommand('categorize', {
-      name: 'categorize',
-      description: 'Categorize and label issues for better organization',
-      usage: '/categorize [system]',
-      examples: ['/categorize', '/categorize detailed', '/categorize simple'],
+    this.registerCommand("categorize", {
+      name: "categorize",
+      description: "Categorize and label issues for better organization",
+      usage: "/categorize [system]",
+      examples: ["/categorize", "/categorize detailed", "/categorize simple"],
       requiresArgs: false,
       prompt: `Categorize this issue and recommend appropriate labels. Consider:
 
@@ -143,11 +143,11 @@ Recommend 3-7 relevant labels that would help with issue organization and filter
     });
 
     // Complexity estimation
-    this.registerCommand('estimate', {
-      name: 'estimate',
-      description: 'Estimate complexity and effort required for the issue',
-      usage: '/estimate [methodology]',
-      examples: ['/estimate', '/estimate story-points', '/estimate time'],
+    this.registerCommand("estimate", {
+      name: "estimate",
+      description: "Estimate complexity and effort required for the issue",
+      usage: "/estimate [methodology]",
+      examples: ["/estimate", "/estimate story-points", "/estimate time"],
       requiresArgs: false,
       prompt: `Estimate the complexity and effort required for this issue. Provide:
 
@@ -182,11 +182,11 @@ Provide realistic estimates with clear reasoning and assumptions.`,
     });
 
     // Issue triage
-    this.registerCommand('triage', {
-      name: 'triage',
-      description: 'Triage issue for priority and next actions',
-      usage: '/triage [criteria]',
-      examples: ['/triage', '/triage business-impact', '/triage technical-debt'],
+    this.registerCommand("triage", {
+      name: "triage",
+      description: "Triage issue for priority and next actions",
+      usage: "/triage [criteria]",
+      examples: ["/triage", "/triage business-impact", "/triage technical-debt"],
       requiresArgs: false,
       prompt: `Triage this issue for priority and immediate actions. Assess:
 
@@ -223,11 +223,11 @@ Focus on actionable next steps to move the issue forward efficiently.`,
     });
 
     // Assignment suggestion
-    this.registerCommand('suggest-assignee', {
-      name: 'suggest-assignee',
-      description: 'Suggest appropriate team members for issue assignment',
-      usage: '/suggest-assignee [criteria]',
-      examples: ['/suggest-assignee', '/suggest-assignee skills', '/suggest-assignee workload'],
+    this.registerCommand("suggest-assignee", {
+      name: "suggest-assignee",
+      description: "Suggest appropriate team members for issue assignment",
+      usage: "/suggest-assignee [criteria]",
+      examples: ["/suggest-assignee", "/suggest-assignee skills", "/suggest-assignee workload"],
       requiresArgs: false,
       prompt: `Analyze this issue and suggest appropriate team members for assignment. Consider:
 
@@ -268,13 +268,13 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
    */
   protected async processEvent(
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<HandlerResponse> {
     // Check if automatic analysis is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, 'Automatic analysis disabled', {
+      return createResponse(true, "Automatic analysis disabled", {
         skipped: true,
-        reason: 'auto_response_disabled',
+        reason: "auto_response_disabled",
       });
     }
 
@@ -282,17 +282,17 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
     const shouldAutoAnalyze = eventData.issue && eventData.action && eventData.action.isOpened;
 
     if (!shouldAutoAnalyze) {
-      return createResponse(true, 'Event does not require automatic analysis', {
+      return createResponse(true, "Event does not require automatic analysis", {
         skipped: true,
-        reason: 'not_new_issue',
+        reason: "not_new_issue",
       });
     }
 
     try {
       // Perform automatic issue analysis
-      const analyzeCommand = this.commands.get('analyze-issue')!;
+      const analyzeCommand = this.commands.get("analyze-issue")!;
       const aiContext = {
-        command: 'analyze-issue',
+        command: "analyze-issue",
         args: [],
         eventData,
         originalEvent,
@@ -311,12 +311,12 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
         actionResults = await this.executeActions(aiResponse.actions, eventData, originalEvent);
       }
 
-      return createResponse(true, 'Automatic issue analysis completed', {
+      return createResponse(true, "Automatic issue analysis completed", {
         analysis: aiResponse.data,
         actions: actionResults,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return createResponse(false, `Automatic analysis error: ${errorMessage}`);
     }
   }
@@ -327,19 +327,19 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   protected async executeAction(
     action: any,
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     switch (action.type) {
-      case 'comment':
+      case "comment":
         return await this.postComment(action.data, eventData, originalEvent);
 
-      case 'label':
+      case "label":
         return await this.addLabels(action.data, eventData, originalEvent);
 
-      case 'assign':
+      case "assign":
         return await this.assignUsers(action.data, eventData, originalEvent);
 
-      case 'issue':
+      case "issue":
         return await this.createRelatedIssue(action.data, eventData, originalEvent);
 
       default:
@@ -353,21 +353,21 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   private async postComment(
     data: { body: string },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.comment',
+      type: "ai.agent.action.comment",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'comment',
+      action: "comment",
       target: `Issue #${eventData.issue?.number}`,
       preview: data.body.substring(0, 100),
     });
 
     return {
-      action: 'comment',
-      status: 'success',
-      message: 'Analysis comment posted successfully',
+      action: "comment",
+      status: "success",
+      message: "Analysis comment posted successfully",
       preview: data.body.substring(0, 100),
     };
   }
@@ -378,22 +378,22 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   private async addLabels(
     data: { labels: string[] },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.label',
+      type: "ai.agent.action.label",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'label',
+      action: "label",
       target: `Issue #${eventData.issue?.number}`,
       labels: data.labels,
     });
 
     return {
-      action: 'label',
-      status: 'success',
+      action: "label",
+      status: "success",
       labels: data.labels,
-      message: `Added labels: ${data.labels.join(', ')}`,
+      message: `Added labels: ${data.labels.join(", ")}`,
     };
   }
 
@@ -403,22 +403,22 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   private async assignUsers(
     data: { assignees: string[] },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.assign',
+      type: "ai.agent.action.assign",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'assign',
+      action: "assign",
       target: `Issue #${eventData.issue?.number}`,
       assignees: data.assignees,
     });
 
     return {
-      action: 'assign',
-      status: 'success',
+      action: "assign",
+      status: "success",
       assignees: data.assignees,
-      message: `Assignment recommended: ${data.assignees.join(', ')}`,
+      message: `Assignment recommended: ${data.assignees.join(", ")}`,
     };
   }
 
@@ -428,22 +428,22 @@ Note: Base recommendations on technical requirements and issue complexity. Actua
   private async createRelatedIssue(
     data: { title: string; body: string; labels?: string[] },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.issue',
+      type: "ai.agent.action.issue",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'create_issue',
+      action: "create_issue",
       title: data.title,
       relatedIssue: eventData.issue?.number,
     });
 
     return {
-      action: 'create_issue',
-      status: 'success',
+      action: "create_issue",
+      status: "success",
       title: data.title,
-      message: 'Related issue creation recommended',
+      message: "Related issue creation recommended",
     };
   }
 }

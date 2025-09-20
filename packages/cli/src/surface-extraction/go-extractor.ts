@@ -1,28 +1,28 @@
-import { spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import chalk from 'chalk';
-import { glob } from 'glob';
-import type { APISurface, APISymbol, SurfaceOptions } from './types.js';
-import { calculateStatistics } from './utils.js';
+import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import chalk from "chalk";
+import { glob } from "glob";
+import type { APISurface, APISymbol, SurfaceOptions } from "./types.js";
+import { calculateStatistics } from "./utils.js";
 
 export async function extractGoSurface(
   options: SurfaceOptions,
-  _sourceFiles: string[] = []
+  _sourceFiles: string[] = [],
 ): Promise<APISurface | null> {
   try {
-    const goModExists = await glob('go.mod').then(files => files.length > 0);
+    const goModExists = await glob("go.mod").then((files) => files.length > 0);
     if (!goModExists) {
-      console.log(chalk.yellow('No go.mod found - not a Go project'));
+      console.log(chalk.yellow("No go.mod found - not a Go project"));
       return null;
     }
 
-    console.log(chalk.dim('Attempting Go surface extraction...'));
+    console.log(chalk.dim("Attempting Go surface extraction..."));
 
     try {
-      console.log(chalk.dim('Strategy 1: Using go list + go doc...'));
+      console.log(chalk.dim("Strategy 1: Using go list + go doc..."));
       const goSurface = await extractGoWithGoTools(options);
       if (goSurface) {
-        console.log(chalk.green('✅ Successfully extracted using go tools'));
+        console.log(chalk.green("✅ Successfully extracted using go tools"));
         return goSurface;
       }
     } catch (error) {
@@ -31,10 +31,10 @@ export async function extractGoSurface(
     }
 
     try {
-      console.log(chalk.dim('Strategy 2: Attempting basic Go parsing...'));
+      console.log(chalk.dim("Strategy 2: Attempting basic Go parsing..."));
       const basicSurface = await extractGoWithBasicParsing(options);
       if (basicSurface) {
-        console.log(chalk.green('✅ Successfully extracted using basic parsing'));
+        console.log(chalk.green("✅ Successfully extracted using basic parsing"));
         return basicSurface;
       }
     } catch (error) {
@@ -42,29 +42,29 @@ export async function extractGoSurface(
       console.log(chalk.dim(`basic parsing failed: ${message}`));
     }
 
-    console.log(chalk.red('❌ All Go extraction strategies failed'));
+    console.log(chalk.red("❌ All Go extraction strategies failed"));
     return null;
   } catch (error) {
-    console.error(chalk.red('Go surface extraction failed:'), error);
+    console.error(chalk.red("Go surface extraction failed:"), error);
     return null;
   }
 }
 
 async function extractGoWithGoTools(options: SurfaceOptions): Promise<APISurface | null> {
   return new Promise((resolve, reject) => {
-    const child = spawn('go', ['list', '-json', './...'], { stdio: 'pipe' });
-    let output = '';
-    let errorOutput = '';
+    const child = spawn("go", ["list", "-json", "./..."], { stdio: "pipe" });
+    let output = "";
+    let errorOutput = "";
 
-    child.stdout.on('data', data => {
+    child.stdout.on("data", (data) => {
       output += data.toString();
     });
 
-    child.stderr.on('data', data => {
+    child.stderr.on("data", (data) => {
       errorOutput += data.toString();
     });
 
-    child.on('close', async code => {
+    child.on("close", async (code) => {
       if (code !== 0) {
         reject(new Error(`go list failed: ${errorOutput}`));
         return;
@@ -72,13 +72,13 @@ async function extractGoWithGoTools(options: SurfaceOptions): Promise<APISurface
 
       try {
         const symbols: APISymbol[] = [];
-        const lines = output.trim().split('\n');
+        const lines = output.trim().split("\n");
 
         for (const line of lines) {
           if (!line.trim()) continue;
 
           const packageInfo = JSON.parse(line);
-          if (packageInfo.Name?.endsWith('_test')) continue;
+          if (packageInfo.Name?.endsWith("_test")) continue;
 
           const packagePath: string = packageInfo.ImportPath;
           const packageSymbols = await getGoPackageSymbols(packagePath);
@@ -91,10 +91,12 @@ async function extractGoWithGoTools(options: SurfaceOptions): Promise<APISurface
         }
 
         resolve({
-          language: 'go',
+          language: "go",
           version: await getGoVersion(),
           timestamp: Date.now(),
-          symbols: options.includePrivate ? symbols : symbols.filter(s => s.visibility === 'public'),
+          symbols: options.includePrivate
+            ? symbols
+            : symbols.filter((s) => s.visibility === "public"),
           statistics: calculateStatistics(symbols),
         });
       } catch (error) {
@@ -102,26 +104,28 @@ async function extractGoWithGoTools(options: SurfaceOptions): Promise<APISurface
       }
     });
 
-    child.on('error', error => {
-      reject(new Error(`go list command failed: ${error instanceof Error ? error.message : error}`));
+    child.on("error", (error) => {
+      reject(
+        new Error(`go list command failed: ${error instanceof Error ? error.message : error}`),
+      );
     });
   });
 }
 
 async function getGoPackageSymbols(packagePath: string): Promise<APISymbol[]> {
-  return new Promise(resolve => {
-    const child = spawn('go', ['doc', '-all', packagePath], { stdio: 'pipe' });
-    let output = '';
+  return new Promise((resolve) => {
+    const child = spawn("go", ["doc", "-all", packagePath], { stdio: "pipe" });
+    let output = "";
 
-    child.stdout.on('data', data => {
+    child.stdout.on("data", (data) => {
       output += data.toString();
     });
 
-    child.on('close', () => {
+    child.on("close", () => {
       resolve(parseGoDocOutput(output, packagePath));
     });
 
-    child.on('error', () => {
+    child.on("error", () => {
       resolve([]);
     });
   });
@@ -132,7 +136,7 @@ class GoDocParser {
 
   parseDocOutput(docOutput: string): APISymbol[] {
     const symbols: APISymbol[] = [];
-    const lines = docOutput.split('\n');
+    const lines = docOutput.split("\n");
 
     for (const line of lines) {
       const trimmed = line.trim();
@@ -168,12 +172,12 @@ class GoDocParser {
 
     return {
       name,
-      type: 'function',
-      visibility: 'public',
+      type: "function",
+      visibility: "public",
       signature: line,
       location: this.createLocation(),
       parameters: this.parseParameters(params),
-      returnType: returnType || returns || 'void',
+      returnType: returnType || returns || "void",
     };
   }
 
@@ -187,7 +191,7 @@ class GoDocParser {
     return {
       name,
       type: this.mapGoTypeToSymbolType(typeKind),
-      visibility: 'public',
+      visibility: "public",
       signature: line,
       location: this.createLocation(),
     };
@@ -202,37 +206,37 @@ class GoDocParser {
 
     return {
       name,
-      type: kind === 'const' ? 'constant' : 'variable',
-      visibility: 'public',
+      type: kind === "const" ? "constant" : "variable",
+      visibility: "public",
       signature: line,
       location: this.createLocation(),
       returnType: type,
     };
   }
 
-  private parseParameters(params: string): APISymbol['parameters'] {
+  private parseParameters(params: string): APISymbol["parameters"] {
     if (!params) return [];
 
     return params
-      .split(',')
-      .map(param => {
-        const parts = param.trim().split(' ');
+      .split(",")
+      .map((param) => {
+        const parts = param.trim().split(" ");
         return {
-          name: parts[0] || 'param',
-          type: parts.slice(1).join(' ') || 'interface{}',
+          name: parts[0] || "param",
+          type: parts.slice(1).join(" ") || "interface{}",
         };
       })
-      .filter(param => param.name !== 'param');
+      .filter((param) => param.name !== "param");
   }
 
   private isExported(name: string): boolean {
     return Boolean(name) && name[0] === name[0].toUpperCase();
   }
 
-  private mapGoTypeToSymbolType(typeKind: string): APISymbol['type'] {
-    if (typeKind.startsWith('struct')) return 'class';
-    if (typeKind.startsWith('interface')) return 'interface';
-    return 'type';
+  private mapGoTypeToSymbolType(typeKind: string): APISymbol["type"] {
+    if (typeKind.startsWith("struct")) return "class";
+    if (typeKind.startsWith("interface")) return "interface";
+    return "type";
   }
 
   private createLocation() {
@@ -250,28 +254,28 @@ function parseGoDocOutput(docOutput: string, packagePath: string): APISymbol[] {
 }
 
 async function extractGoWithBasicParsing(options: SurfaceOptions): Promise<APISurface | null> {
-  const files = await glob('**/*.go', {
-    ignore: ['vendor/**', 'node_modules/**', '**/*_test.go'],
+  const files = await glob("**/*.go", {
+    ignore: ["vendor/**", "node_modules/**", "**/*_test.go"],
   });
 
   if (files.length === 0) {
-    throw new Error('No Go files found');
+    throw new Error("No Go files found");
   }
 
   const symbols: APISymbol[] = [];
 
   for (const file of files) {
-    const content = await readFile(file, 'utf-8');
+    const content = await readFile(file, "utf-8");
     const fileSymbols = await parseGoFile(file, content, options);
     symbols.push(...fileSymbols);
   }
 
   const visibleSymbols = options.includePrivate
     ? symbols
-    : symbols.filter(symbol => symbol.visibility === 'public');
+    : symbols.filter((symbol) => symbol.visibility === "public");
 
   return {
-    language: 'go',
+    language: "go",
     version: await getGoVersion(),
     timestamp: Date.now(),
     symbols: visibleSymbols,
@@ -282,16 +286,16 @@ async function extractGoWithBasicParsing(options: SurfaceOptions): Promise<APISu
 async function parseGoFile(
   filePath: string,
   content: string,
-  options: SurfaceOptions
+  options: SurfaceOptions,
 ): Promise<APISymbol[]> {
   const symbols: APISymbol[] = [];
-  const lines = content.split('\n');
+  const lines = content.split("\n");
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const trimmedLine = line.trim();
 
-    if (!trimmedLine || trimmedLine.startsWith('//')) continue;
+    if (!trimmedLine || trimmedLine.startsWith("//")) continue;
 
     const funcSymbol = parseGoFunction(trimmedLine, filePath, lineIndex);
     if (funcSymbol) {
@@ -323,7 +327,9 @@ async function parseGoFile(
     }
   }
 
-  return options.includePrivate ? symbols : symbols.filter(symbol => symbol.visibility === 'public');
+  return options.includePrivate
+    ? symbols
+    : symbols.filter((symbol) => symbol.visibility === "public");
 }
 
 function parseGoFunction(line: string, filePath: string, lineIndex: number): APISymbol | null {
@@ -335,8 +341,8 @@ function parseGoFunction(line: string, filePath: string, lineIndex: number): API
 
   return {
     name,
-    type: 'function',
-    visibility: 'public',
+    type: "function",
+    visibility: "public",
     signature: line,
     location: {
       file: filePath,
@@ -344,16 +350,16 @@ function parseGoFunction(line: string, filePath: string, lineIndex: number): API
       column: line.indexOf(name) + 1,
     },
     parameters: params
-      .split(',')
-      .map(param => {
-        const parts = param.trim().split(' ');
+      .split(",")
+      .map((param) => {
+        const parts = param.trim().split(" ");
         return {
-          name: parts[0] || 'param',
-          type: parts.slice(1).join(' ') || 'interface{}',
+          name: parts[0] || "param",
+          type: parts.slice(1).join(" ") || "interface{}",
         };
       })
-      .filter(param => param.name !== 'param'),
-    returnType: returnType?.trim() || 'void',
+      .filter((param) => param.name !== "param"),
+    returnType: returnType?.trim() || "void",
   };
 }
 
@@ -366,8 +372,8 @@ function parseGoStruct(line: string, filePath: string, lineIndex: number): APISy
 
   return {
     name,
-    type: 'class',
-    visibility: 'public',
+    type: "class",
+    visibility: "public",
     signature: line,
     location: {
       file: filePath,
@@ -386,8 +392,8 @@ function parseGoInterface(line: string, filePath: string, lineIndex: number): AP
 
   return {
     name,
-    type: 'interface',
-    visibility: 'public',
+    type: "interface",
+    visibility: "public",
     signature: line,
     location: {
       file: filePath,
@@ -406,8 +412,8 @@ function parseGoConstant(line: string, filePath: string, lineIndex: number): API
 
   return {
     name,
-    type: 'constant',
-    visibility: 'public',
+    type: "constant",
+    visibility: "public",
     signature: line,
     location: {
       file: filePath,
@@ -427,8 +433,8 @@ function parseGoVariable(line: string, filePath: string, lineIndex: number): API
 
   return {
     name,
-    type: 'variable',
-    visibility: 'public',
+    type: "variable",
+    visibility: "public",
     signature: line,
     location: {
       file: filePath,
@@ -444,21 +450,21 @@ function isExported(name: string | undefined): boolean {
 }
 
 async function getGoVersion(): Promise<string> {
-  return new Promise(resolve => {
-    const child = spawn('go', ['version'], { stdio: 'pipe' });
-    let output = '';
+  return new Promise((resolve) => {
+    const child = spawn("go", ["version"], { stdio: "pipe" });
+    let output = "";
 
-    child.stdout.on('data', data => {
+    child.stdout.on("data", (data) => {
       output += data.toString();
     });
 
-    child.on('close', () => {
-      const version = output.match(/go\s+version\s+go([\d.]+)/)?.[1] || 'unknown';
+    child.on("close", () => {
+      const version = output.match(/go\s+version\s+go([\d.]+)/)?.[1] || "unknown";
       resolve(version);
     });
 
-    child.on('error', () => {
-      resolve('unknown');
+    child.on("error", () => {
+      resolve("unknown");
     });
   });
 }

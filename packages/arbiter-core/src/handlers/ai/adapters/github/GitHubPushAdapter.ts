@@ -1,6 +1,6 @@
-import type { WebhookEvent } from '../../../shared/utils.js';
-import type { WebhookEventData } from '../../base/types.js';
-import { BaseHookAdapter } from '../base/IHookAdapter.js';
+import type { WebhookEvent } from "../../../shared/utils.js";
+import type { WebhookEventData } from "../../base/types.js";
+import { BaseHookAdapter } from "../base/IHookAdapter.js";
 
 type CommitSummary = {
   id: string;
@@ -25,33 +25,33 @@ type CommitSummary = {
  * - Push context (force push, branch creation/deletion)
  */
 export class GitHubPushAdapter extends BaseHookAdapter {
-  readonly provider = 'github';
-  readonly eventType = 'push';
+  readonly provider = "github";
+  readonly eventType = "push";
 
   async extractEventData(event: WebhookEvent): Promise<WebhookEventData> {
     try {
       const payload = event.payload;
 
       // Validate required fields
-      const errors = this.validatePayload(payload, ['ref', 'repository', 'pusher']);
+      const errors = this.validatePayload(payload, ["ref", "repository", "pusher"]);
 
       if (errors.length > 0) {
-        return this.createErrorResponse(`Validation failed: ${errors.join(', ')}`);
+        return this.createErrorResponse(`Validation failed: ${errors.join(", ")}`);
       }
 
       const repository = this.extractRepositoryInfo(payload);
-      const user = this.extractUserInfo(payload, 'pusher');
+      const user = this.extractUserInfo(payload, "pusher");
 
       if (!repository || !user) {
-        return this.createErrorResponse('Failed to extract repository or user information');
+        return this.createErrorResponse("Failed to extract repository or user information");
       }
 
       // Extract branch name from ref
-      const branch = payload.ref.replace('refs/heads/', '');
+      const branch = payload.ref.replace("refs/heads/", "");
 
       // Determine push type
-      const isNewBranch = payload.before === '0000000000000000000000000000000000000000';
-      const isBranchDeletion = payload.after === '0000000000000000000000000000000000000000';
+      const isNewBranch = payload.before === "0000000000000000000000000000000000000000";
+      const isBranchDeletion = payload.after === "0000000000000000000000000000000000000000";
       const isForcePush = payload.forced || false;
 
       // Extract commit information
@@ -82,18 +82,18 @@ export class GitHubPushAdapter extends BaseHookAdapter {
         isNewBranch,
         isBranchDeletion,
         isForcePush,
-        isTag: payload.ref.startsWith('refs/tags/'),
+        isTag: payload.ref.startsWith("refs/tags/"),
 
         // Branch analysis
-        isProtectedBranch: ['main', 'master', 'develop', 'staging'].includes(branch.toLowerCase()),
-        isFeatureBranch: branch.startsWith('feature/'),
-        isHotfixBranch: branch.startsWith('hotfix/'),
-        isBugfixBranch: branch.startsWith('bugfix/'),
-        isReleaseBranch: branch.startsWith('release/'),
+        isProtectedBranch: ["main", "master", "develop", "staging"].includes(branch.toLowerCase()),
+        isFeatureBranch: branch.startsWith("feature/"),
+        isHotfixBranch: branch.startsWith("hotfix/"),
+        isBugfixBranch: branch.startsWith("bugfix/"),
+        isReleaseBranch: branch.startsWith("release/"),
 
         // Statistics
         commitCount: commits.length,
-        distinctCommitCount: commits.filter(c => c.distinct).length,
+        distinctCommitCount: commits.filter((c) => c.distinct).length,
 
         // Head commit details
         headCommit: payload.head_commit
@@ -115,10 +115,10 @@ export class GitHubPushAdapter extends BaseHookAdapter {
       };
 
       // Analyze commit messages for patterns
-      const conventionalCommits = commits.filter(commit =>
+      const conventionalCommits = commits.filter((commit) =>
         /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?: .+/.test(
-          commit.message
-        )
+          commit.message,
+        ),
       );
 
       const analysisData = {
@@ -140,14 +140,14 @@ export class GitHubPushAdapter extends BaseHookAdapter {
         analysis: analysisData,
 
         // Additional event context
-        eventType: 'push',
+        eventType: "push",
         timestamp: event.timestamp,
 
         // Raw payload for advanced processing
         raw: payload,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return this.createErrorResponse(`Failed to extract GitHub push data: ${errorMessage}`);
     }
   }
@@ -169,13 +169,13 @@ export class GitHubPushAdapter extends BaseHookAdapter {
       totalLength += message.length;
 
       // Check for breaking changes
-      if (message.includes('BREAKING CHANGE') || message.includes('!:')) {
+      if (message.includes("BREAKING CHANGE") || message.includes("!:")) {
         hasBreakingChanges = true;
       }
 
       // Extract conventional commit type
       const match = message.match(
-        /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?:/
+        /^(feat|fix|docs|style|refactor|test|chore|ci|perf|revert)(\(.+\))?:/,
       );
       if (match) {
         const type = match[1];
@@ -219,19 +219,19 @@ export class GitHubPushAdapter extends BaseHookAdapter {
         allFiles.add(file);
 
         // Get file extension
-        const ext = file.split('.').pop()?.toLowerCase() || 'no-ext';
+        const ext = file.split(".").pop()?.toLowerCase() || "no-ext";
         fileTypes[ext] = (fileTypes[ext] || 0) + 1;
 
         // Detect special file types
-        if (file.match(/\.(json|yaml|yml|toml|ini|config)$/i) || file.includes('config')) {
+        if (file.match(/\.(json|yaml|yml|toml|ini|config)$/i) || file.includes("config")) {
           hasConfigChanges = true;
         }
 
-        if (file.match(/\.(test|spec)\./i) || file.includes('test') || file.includes('spec')) {
+        if (file.match(/\.(test|spec)\./i) || file.includes("test") || file.includes("spec")) {
           hasTestChanges = true;
         }
 
-        if (file.match(/\.(md|txt|rst)$/i) || file.includes('README') || file.includes('docs')) {
+        if (file.match(/\.(md|txt|rst)$/i) || file.includes("README") || file.includes("docs")) {
           hasDocumentationChanges = true;
         }
       }
@@ -248,10 +248,10 @@ export class GitHubPushAdapter extends BaseHookAdapter {
 
   getMetadata() {
     return {
-      name: 'github-push-adapter',
-      version: '1.0.0',
-      description: 'Extracts structured data from GitHub Push webhooks for AI processing',
-      supportedEvents: ['push'],
+      name: "github-push-adapter",
+      version: "1.0.0",
+      description: "Extracts structured data from GitHub Push webhooks for AI processing",
+      supportedEvents: ["push"],
     };
   }
 }

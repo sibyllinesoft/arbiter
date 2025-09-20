@@ -49,17 +49,17 @@ export interface Event {
 
 // Event types for real-time collaboration
 export type EventType =
-  | 'fragment_created'
-  | 'fragment_updated'
-  | 'fragment_deleted'
-  | 'fragment_revision_created'
-  | 'validation_started'
-  | 'validation_completed'
-  | 'validation_failed'
-  | 'version_frozen'
-  | 'webhook_received'
-  | 'git_push_processed'
-  | 'git_merge_processed';
+  | "fragment_created"
+  | "fragment_updated"
+  | "fragment_deleted"
+  | "fragment_revision_created"
+  | "validation_started"
+  | "validation_completed"
+  | "validation_failed"
+  | "version_frozen"
+  | "webhook_received"
+  | "git_push_processed"
+  | "git_merge_processed";
 
 // API request/response types
 export interface CreateFragmentRequest {
@@ -91,14 +91,14 @@ export interface ValidationResponse {
 }
 
 export interface ValidationError {
-  type: 'schema' | 'assertion' | 'custom';
+  type: "schema" | "assertion" | "custom";
   message: string;
   location?: string;
   details?: Record<string, unknown>;
 }
 
 export interface ValidationWarning {
-  type: 'orphan_token' | 'coverage' | 'duplicate';
+  type: "orphan_token" | "coverage" | "duplicate";
   message: string;
   location?: string;
 }
@@ -125,21 +125,21 @@ export interface CoverageGap {
 }
 
 export interface Duplicate {
-  type: 'capability' | 'requirement' | 'test_case';
+  type: "capability" | "requirement" | "test_case";
   name: string;
   locations: string[];
 }
 
 // IR (Intermediate Representation) types for diagrams
 export type IRKind =
-  | 'flow'
-  | 'fsm'
-  | 'view'
-  | 'site'
-  | 'capabilities'
-  | 'flows'
-  | 'dependencies'
-  | 'coverage';
+  | "flow"
+  | "fsm"
+  | "view"
+  | "site"
+  | "capabilities"
+  | "flows"
+  | "dependencies"
+  | "coverage";
 
 export interface IRResponse {
   kind: IRKind;
@@ -186,7 +186,7 @@ export interface RateLimitBucket {
 
 // WebSocket message types
 export interface WebSocketMessage {
-  type: 'event' | 'error' | 'ping' | 'pong';
+  type: "event" | "error" | "ping" | "pong";
   project_id?: string;
   data: Record<string, unknown>;
 }
@@ -195,7 +195,7 @@ export interface WebSocketMessage {
 export interface NatsSpecEvent {
   topic: string;
   projectId: string;
-  event: Omit<Event, 'id' | 'created_at'>;
+  event: Omit<Event, "id" | "created_at">;
   metadata: {
     timestamp: string;
     specHash?: string;
@@ -260,7 +260,7 @@ export interface WebhookPayload {
 export interface WebhookConfig {
   id: string;
   project_id: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   repository_url: string;
   secret_hash?: string;
   enabled: boolean;
@@ -269,10 +269,10 @@ export interface WebhookConfig {
   updated_at: string;
 }
 
-export type WebhookEventType = 'push' | 'merge_request' | 'pull_request' | 'tag';
+export type WebhookEventType = "push" | "merge_request" | "pull_request" | "tag";
 
 export interface WebhookRequest {
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   signature?: string;
   payload: WebhookPayload;
@@ -325,7 +325,7 @@ export interface ServerConfig {
     enableMetrics: boolean;
     notifications?: {
       email?: {
-        mode?: 'disabled' | 'log' | 'smtp';
+        mode?: "disabled" | "log" | "smtp";
         from?: string;
         smtp?: {
           host?: string;

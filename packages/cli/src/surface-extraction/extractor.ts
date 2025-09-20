@@ -1,4 +1,4 @@
-import type { APISurface, SurfaceLanguage, SurfaceOptions } from './types.js';
+import type { APISurface, SurfaceLanguage, SurfaceOptions } from "./types.js";
 
 export interface SurfaceExtractor {
   readonly language: SurfaceLanguage;

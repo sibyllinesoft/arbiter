@@ -1,5 +1,5 @@
-import type { WebhookEvent } from '../../../shared/utils.js';
-import type { WebhookEventData } from '../../base/types.js';
+import type { WebhookEvent } from "../../../shared/utils.js";
+import type { WebhookEventData } from "../../base/types.js";
 
 /**
  * Interface for webhook adapters that extract structured data from provider-specific payloads
@@ -61,24 +61,24 @@ export abstract class BaseHookAdapter implements IHookAdapter {
   } | null {
     try {
       switch (this.provider) {
-        case 'github':
+        case "github":
           if (payload.repository) {
             return {
               name: payload.repository.name,
               fullName: payload.repository.full_name,
               url: payload.repository.html_url,
-              defaultBranch: payload.repository.default_branch || 'main',
+              defaultBranch: payload.repository.default_branch || "main",
             };
           }
           break;
 
-        case 'gitlab':
+        case "gitlab":
           if (payload.project) {
             return {
               name: payload.project.name,
               fullName: payload.project.path_with_namespace,
               url: payload.project.web_url,
-              defaultBranch: payload.project.default_branch || 'main',
+              defaultBranch: payload.project.default_branch || "main",
             };
           }
           break;
@@ -99,7 +99,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
    */
   protected extractUserInfo(
     payload: any,
-    context: 'author' | 'pusher' | 'sender' = 'sender'
+    context: "author" | "pusher" | "sender" = "sender",
   ): {
     login: string;
     name?: string;
@@ -110,13 +110,13 @@ export abstract class BaseHookAdapter implements IHookAdapter {
       let userObj;
 
       switch (this.provider) {
-        case 'github':
+        case "github":
           switch (context) {
-            case 'author':
+            case "author":
               userObj =
                 payload.pull_request?.user || payload.issue?.user || payload.head_commit?.author;
               break;
-            case 'pusher':
+            case "pusher":
               userObj = payload.pusher || payload.sender;
               break;
             default:
@@ -134,9 +134,9 @@ export abstract class BaseHookAdapter implements IHookAdapter {
           }
           break;
 
-        case 'gitlab':
+        case "gitlab":
           switch (context) {
-            case 'author':
+            case "author":
               userObj = payload.object_attributes?.author || payload.user;
               break;
             default:
@@ -202,7 +202,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
    * Get nested value from object using dot notation
    */
   private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => {
+    return path.split(".").reduce((current, key) => {
       return current && current[key] !== undefined ? current[key] : undefined;
     }, obj);
   }
@@ -218,7 +218,7 @@ export abstract class BaseHookAdapter implements IHookAdapter {
   } {
     return {
       name: `${this.provider}-${this.eventType}-adapter`,
-      version: '1.0.0',
+      version: "1.0.0",
       description: `Adapter for ${this.provider} ${this.eventType} events`,
       supportedEvents: [this.eventType],
     };

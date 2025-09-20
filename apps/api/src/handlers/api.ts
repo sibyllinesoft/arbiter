@@ -2,17 +2,17 @@
  * API endpoints for custom webhook handlers management
  */
 
-import type { CustomHandlerManager } from './manager.js';
+import type { CustomHandlerManager } from "./manager.js";
 import type {
   HandlerCreationOptions,
   HandlerExecution,
   HandlerResult,
   RegisteredHandler,
-} from './types.js';
+} from "./types.js";
 
 // Request/Response types for API endpoints
 export interface ListHandlersRequest {
-  provider?: 'github' | 'gitlab';
+  provider?: "github" | "gitlab";
   event?: string;
   enabled?: boolean;
 }
@@ -76,7 +76,7 @@ export interface CreateHandlerResponse {
 export interface ExecutionHistoryRequest {
   handlerId?: string;
   projectId?: string;
-  provider?: 'github' | 'gitlab';
+  provider?: "github" | "gitlab";
   event?: string;
   limit?: number;
   offset?: number;
@@ -119,15 +119,15 @@ export class HandlerAPIController {
 
       // Apply filters
       if (request.provider) {
-        handlers = handlers.filter(h => h.provider === request.provider);
+        handlers = handlers.filter((h) => h.provider === request.provider);
       }
 
       if (request.event) {
-        handlers = handlers.filter(h => h.event === request.event);
+        handlers = handlers.filter((h) => h.event === request.event);
       }
 
       if (request.enabled !== undefined) {
-        handlers = handlers.filter(h => h.enabled === request.enabled);
+        handlers = handlers.filter((h) => h.enabled === request.enabled);
       }
 
       return {
@@ -155,7 +155,7 @@ export class HandlerAPIController {
       if (!handler) {
         return {
           success: false,
-          message: 'Handler not found',
+          message: "Handler not found",
         };
       }
 
@@ -166,7 +166,7 @@ export class HandlerAPIController {
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -182,7 +182,7 @@ export class HandlerAPIController {
       if (!success) {
         return {
           success: false,
-          message: 'Handler not found or update failed',
+          message: "Handler not found or update failed",
         };
       }
 
@@ -190,12 +190,12 @@ export class HandlerAPIController {
       return {
         success: true,
         handler,
-        message: 'Handler updated successfully',
+        message: "Handler updated successfully",
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -211,18 +211,18 @@ export class HandlerAPIController {
       if (!success) {
         return {
           success: false,
-          message: 'Handler not found',
+          message: "Handler not found",
         };
       }
 
       return {
         success: true,
-        message: `Handler ${request.enabled ? 'enabled' : 'disabled'} successfully`,
+        message: `Handler ${request.enabled ? "enabled" : "disabled"} successfully`,
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -237,12 +237,12 @@ export class HandlerAPIController {
 
       return {
         success,
-        message: success ? 'Handler removed successfully' : 'Handler not found',
+        message: success ? "Handler removed successfully" : "Handler not found",
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -257,12 +257,12 @@ export class HandlerAPIController {
 
       return {
         success,
-        message: success ? 'Handler reloaded successfully' : 'Handler not found or reload failed',
+        message: success ? "Handler reloaded successfully" : "Handler not found or reload failed",
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -285,7 +285,7 @@ export class HandlerAPIController {
       return {
         success: false,
         valid: false,
-        errors: [error instanceof Error ? error.message : 'Unknown error'],
+        errors: [error instanceof Error ? error.message : "Unknown error"],
         warnings: [],
       };
     }
@@ -294,7 +294,7 @@ export class HandlerAPIController {
   /**
    * POST /api/handlers
    * Create a new handler
-  */
+   */
   async createHandler(request: CreateHandlerRequest): Promise<CreateHandlerResponse> {
     try {
       const handler = await this.handlerManager.createHandler(request);
@@ -302,12 +302,12 @@ export class HandlerAPIController {
       return {
         success: true,
         handler,
-        message: 'Handler created successfully',
+        message: "Handler created successfully",
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -322,19 +322,19 @@ export class HandlerAPIController {
 
       // Apply filters
       if (request.handlerId) {
-        executions = executions.filter(e => e.handlerId === request.handlerId);
+        executions = executions.filter((e) => e.handlerId === request.handlerId);
       }
 
       if (request.projectId) {
-        executions = executions.filter(e => e.projectId === request.projectId);
+        executions = executions.filter((e) => e.projectId === request.projectId);
       }
 
       if (request.provider) {
-        executions = executions.filter(e => e.provider === request.provider);
+        executions = executions.filter((e) => e.provider === request.provider);
       }
 
       if (request.event) {
-        executions = executions.filter(e => e.event === request.event);
+        executions = executions.filter((e) => e.event === request.event);
       }
 
       // Apply pagination
@@ -372,10 +372,10 @@ export class HandlerAPIController {
       const oneDayAgo = now - 24 * 60 * 60 * 1000;
 
       const executionsLast24h = executions.filter(
-        e => new Date(e.startedAt).getTime() > oneDayAgo
+        (e) => new Date(e.startedAt).getTime() > oneDayAgo,
       ).length;
 
-      const completedExecutions = executions.filter(e => e.result.duration);
+      const completedExecutions = executions.filter((e) => e.result.duration);
       const avgExecutionTime =
         completedExecutions.length > 0
           ? completedExecutions.reduce((sum, e) => sum + (e.result.duration || 0), 0) /
@@ -420,12 +420,12 @@ export class HandlerAPIController {
       await this.handlerManager.createHandlerStructure();
       return {
         success: true,
-        message: 'Handler directory structure created successfully',
+        message: "Handler directory structure created successfully",
       };
     } catch (error) {
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }

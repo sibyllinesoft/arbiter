@@ -1,7 +1,8 @@
 /**
  * Spec validation engine with CUE and jq integration
  */
-import { join } from 'node:path';
+import { join } from "node:path";
+import { type CueDiagnostic, CueRunner } from "@arbiter/cue-runner";
 import type {
   CoverageGap,
   Duplicate,
@@ -12,9 +13,15 @@ import type {
   TokenReference,
   ValidationError,
   ValidationWarning,
-} from './types.ts';
-import { CueRunner, type CueDiagnostic } from '@arbiter/cue-runner';
-import { computeSpecHash, ensureDir, executeCommand, formatCUE, generateId, logger } from './utils.ts';
+} from "./types.ts";
+import {
+  computeSpecHash,
+  ensureDir,
+  executeCommand,
+  formatCUE,
+  generateId,
+  logger,
+} from "./utils.ts";
 
 /**
  * Interface for assertion configurations
@@ -66,7 +73,7 @@ class TempFileManager {
     try {
       const exists = await Bun.file(this.tempFile).exists();
       if (exists) {
-        await Bun.write(this.tempFile, '');
+        await Bun.write(this.tempFile, "");
       }
     } catch {
       // Ignore cleanup errors
@@ -90,15 +97,15 @@ class AssertionResultProcessor {
     config: AssertionConfig,
     result: AssertionResult,
     errorType:
-      | 'execution'
-      | 'command_failed'
-      | 'threshold_exceeded'
-      | 'minimum_not_met' = 'threshold_exceeded',
-    error?: Error
+      | "execution"
+      | "command_failed"
+      | "threshold_exceeded"
+      | "minimum_not_met" = "threshold_exceeded",
+    error?: Error,
   ): ValidationError {
     if (error) {
       return {
-        type: 'assertion',
+        type: "assertion",
         message: `jq execution error for ${config.description}`,
         details: {
           query: config.query,
@@ -109,7 +116,7 @@ class AssertionResultProcessor {
 
     if (!result.success) {
       return {
-        type: 'assertion',
+        type: "assertion",
         message: `jq assertion failed: ${config.description}`,
         details: {
           query: config.query,
@@ -121,10 +128,10 @@ class AssertionResultProcessor {
     // Create appropriate error message based on error type
     let message: string;
     switch (errorType) {
-      case 'threshold_exceeded':
+      case "threshold_exceeded":
         message = `${config.description}: expected <= ${config.threshold}, got ${result.value}`;
         break;
-      case 'minimum_not_met':
+      case "minimum_not_met":
         message = `${config.description}: expected >= ${config.threshold}, got ${result.value}`;
         break;
       default:
@@ -132,7 +139,7 @@ class AssertionResultProcessor {
     }
 
     return {
-      type: 'assertion',
+      type: "assertion",
       message,
       details: {
         query: config.query,
@@ -162,7 +169,7 @@ abstract class AbstractAssertionCommand implements AssertionCommand {
         return AssertionResultProcessor.createValidationError(
           this.config,
           result,
-          'command_failed'
+          "command_failed",
         );
       }
 
@@ -170,7 +177,7 @@ abstract class AbstractAssertionCommand implements AssertionCommand {
         return AssertionResultProcessor.createValidationError(
           this.config,
           result,
-          this.getErrorType()
+          this.getErrorType(),
         );
       }
 
@@ -179,14 +186,14 @@ abstract class AbstractAssertionCommand implements AssertionCommand {
       return AssertionResultProcessor.createValidationError(
         this.config,
         { success: false },
-        'execution',
-        error instanceof Error ? error : new Error('Unknown error')
+        "execution",
+        error instanceof Error ? error : new Error("Unknown error"),
       );
     }
   }
 
   protected abstract shouldCreateError(result: AssertionResult): boolean;
-  protected abstract getErrorType(): 'threshold_exceeded' | 'minimum_not_met';
+  protected abstract getErrorType(): "threshold_exceeded" | "minimum_not_met";
 
   protected async executeJqCommand(tempFilePath: string, jqBinaryPath: string): Promise<any> {
     return executeCommand(jqBinaryPath, [this.config.query, tempFilePath], { timeout: 5000 });
@@ -211,8 +218,8 @@ class ThresholdAssertionCommand extends AbstractAssertionCommand {
     );
   }
 
-  protected getErrorType(): 'threshold_exceeded' | 'minimum_not_met' {
-    return 'threshold_exceeded';
+  protected getErrorType(): "threshold_exceeded" | "minimum_not_met" {
+    return "threshold_exceeded";
   }
 }
 
@@ -228,8 +235,8 @@ class MinimumThresholdCommand extends AbstractAssertionCommand {
     );
   }
 
-  protected getErrorType(): 'threshold_exceeded' | 'minimum_not_met' {
-    return 'minimum_not_met';
+  protected getErrorType(): "threshold_exceeded" | "minimum_not_met" {
+    return "minimum_not_met";
   }
 }
 
@@ -241,8 +248,8 @@ class ExistenceAssertionCommand extends AbstractAssertionCommand {
     return result.value === 0; // Fail if nothing exists
   }
 
-  protected getErrorType(): 'threshold_exceeded' | 'minimum_not_met' {
-    return 'minimum_not_met'; // Existence is essentially minimum threshold of 1
+  protected getErrorType(): "threshold_exceeded" | "minimum_not_met" {
+    return "minimum_not_met"; // Existence is essentially minimum threshold of 1
   }
 }
 
@@ -278,21 +285,21 @@ class AssertionCommandBuilder {
 
   buildThreshold(): ThresholdAssertionCommand {
     if (!this.config.query || !this.config.description) {
-      throw new Error('Query and description are required');
+      throw new Error("Query and description are required");
     }
     return new ThresholdAssertionCommand(this.config as AssertionConfig);
   }
 
   buildMinimum(): MinimumThresholdCommand {
     if (!this.config.query || !this.config.description) {
-      throw new Error('Query and description are required');
+      throw new Error("Query and description are required");
     }
     return new MinimumThresholdCommand(this.config as AssertionConfig);
   }
 
   buildExistence(): ExistenceAssertionCommand {
     if (!this.config.query || !this.config.description) {
-      throw new Error('Query and description are required');
+      throw new Error("Query and description are required");
     }
     return new ExistenceAssertionCommand(this.config as AssertionConfig);
   }
@@ -305,7 +312,7 @@ interface AssertionExecutionStrategy {
   execute(
     commands: AssertionCommand[],
     tempFilePath: string,
-    jqBinaryPath: string
+    jqBinaryPath: string,
   ): Promise<ValidationError[]>;
 }
 
@@ -316,7 +323,7 @@ class SequentialExecutionStrategy implements AssertionExecutionStrategy {
   async execute(
     commands: AssertionCommand[],
     tempFilePath: string,
-    jqBinaryPath: string
+    jqBinaryPath: string,
   ): Promise<ValidationError[]> {
     const errors: ValidationError[] = [];
 
@@ -338,9 +345,9 @@ class ParallelExecutionStrategy implements AssertionExecutionStrategy {
   async execute(
     commands: AssertionCommand[],
     tempFilePath: string,
-    jqBinaryPath: string
+    jqBinaryPath: string,
   ): Promise<ValidationError[]> {
-    const promises = commands.map(command => command.execute(tempFilePath, jqBinaryPath));
+    const promises = commands.map((command) => command.execute(tempFilePath, jqBinaryPath));
 
     const results = await Promise.all(promises);
     return results.filter((error): error is ValidationError => error !== null);
@@ -376,15 +383,15 @@ class AssertionExecutor {
       return await this.strategy.execute(
         this.commands,
         tempFileManager.getPath(),
-        this.config.jq_binary_path
+        this.config.jq_binary_path,
       );
     } catch (error) {
       return [
         {
-          type: 'assertion',
-          message: 'Failed to create temporary file for jq processing',
+          type: "assertion",
+          message: "Failed to create temporary file for jq processing",
           details: {
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: error instanceof Error ? error.message : "Unknown error",
           },
         },
       ];
@@ -397,9 +404,9 @@ class AssertionExecutor {
     return [
       AssertionCommandBuilder.create()
         .query(
-          '[paths(scalars) as $p | select(getpath($p) | type == "string" and test("[$][{][^}]+[}]")) | $p] | length'
+          '[paths(scalars) as $p | select(getpath($p) | type == "string" and test("[$][{][^}]+[}]")) | $p] | length',
         )
-        .description('Check for unresolved template tokens')
+        .description("Check for unresolved template tokens")
         .threshold(0)
         .buildThreshold(), // Fail if > 0 tokens found
 
@@ -423,7 +430,7 @@ export class SpecEngine {
    * Get the fragments directory path
    */
   private getFragmentsDir(projectId: string): string {
-    return join(this.getProjectDir(projectId), 'fragments');
+    return join(this.getProjectDir(projectId), "fragments");
   }
 
   private createCueRunner(projectId: string): CueRunner {
@@ -435,7 +442,7 @@ export class SpecEngine {
   }
 
   private cueDiagnosticsToValidationErrors(diagnostics: CueDiagnostic[]): ValidationError[] {
-    return diagnostics.map(diag => {
+    return diagnostics.map((diag) => {
       const detailEntries: Record<string, unknown> = {
         raw: diag.raw,
       };
@@ -443,22 +450,20 @@ export class SpecEngine {
       if (diag.file) {
         detailEntries.file = diag.file;
       }
-      if (typeof diag.line === 'number') {
+      if (typeof diag.line === "number") {
         detailEntries.line = diag.line;
       }
-      if (typeof diag.column === 'number') {
+      if (typeof diag.column === "number") {
         detailEntries.column = diag.column;
       }
       if (diag.summary) {
         detailEntries.summary = diag.summary;
       }
 
-      const location = diag.file
-        ? `${diag.file}:${diag.line ?? 0}:${diag.column ?? 0}`
-        : undefined;
+      const location = diag.file ? `${diag.file}:${diag.line ?? 0}:${diag.column ?? 0}` : undefined;
 
       return {
-        type: 'schema' as const,
+        type: "schema" as const,
         message: diag.message,
         ...(location ? { location } : {}),
         details: detailEntries,
@@ -476,17 +481,17 @@ export class SpecEngine {
     // Write each fragment to its path
     for (const fragment of fragments) {
       // Ensure fragment path has .cue extension
-      const fragmentFileName = fragment.path.endsWith('.cue')
+      const fragmentFileName = fragment.path.endsWith(".cue")
         ? fragment.path
         : `${fragment.path}.cue`;
       const fragmentPath = join(fragmentsDir, fragmentFileName);
-      const fragmentDir = join(fragmentPath, '..');
+      const fragmentDir = join(fragmentPath, "..");
 
       await ensureDir(fragmentDir);
       await Bun.write(fragmentPath, fragment.content);
     }
 
-    logger.debug('Wrote fragments to filesystem', {
+    logger.debug("Wrote fragments to filesystem", {
       projectId,
       fragmentCount: fragments.length,
     });
@@ -496,7 +501,7 @@ export class SpecEngine {
    * Format CUE fragment content
    */
   async formatFragment(
-    content: string
+    content: string,
   ): Promise<{ formatted: string; success: boolean; error?: string }> {
     return formatCUE(content, this.config.cue_binary_path);
   }
@@ -522,8 +527,8 @@ export class SpecEngine {
 
       return [
         {
-          type: 'schema',
-          message: vetResult.raw.stderr || 'CUE validation failed',
+          type: "schema",
+          message: vetResult.raw.stderr || "CUE validation failed",
         },
       ];
     } catch (error) {
@@ -539,7 +544,7 @@ export class SpecEngine {
     result: ExternalToolResult,
     diagnostics: CueDiagnostic[],
   ): void {
-    logger.debug('CUE validation completed', {
+    logger.debug("CUE validation completed", {
       projectId,
       success: result.success,
       errorCount: diagnostics.length,
@@ -552,11 +557,11 @@ export class SpecEngine {
    */
   private handleCueValidationError(projectId: string, error: unknown): ValidationError[] {
     const validationError: ValidationError = {
-      type: 'schema',
-      message: `CUE validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      type: "schema",
+      message: `CUE validation failed: ${error instanceof Error ? error.message : "Unknown error"}`,
     };
 
-    logger.error('CUE validation error', error instanceof Error ? error : undefined, {
+    logger.error("CUE validation error", error instanceof Error ? error : undefined, {
       projectId,
     });
 
@@ -577,7 +582,7 @@ export class SpecEngine {
       const exportResult = await runner.exportJson();
 
       if (exportResult.success && exportResult.value) {
-        logger.debug('CUE export completed', {
+        logger.debug("CUE export completed", {
           projectId,
           duration: exportResult.raw.duration_ms,
         });
@@ -591,11 +596,11 @@ export class SpecEngine {
         diagnostics: exportResult.diagnostics,
       };
     } catch (error) {
-      logger.error('CUE export error', error instanceof Error ? error : undefined, { projectId });
+      logger.error("CUE export error", error instanceof Error ? error : undefined, { projectId });
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -612,7 +617,7 @@ export class SpecEngine {
    * Run custom TypeScript validators
    */
   private async runCustomValidators(
-    resolved: Record<string, unknown>
+    resolved: Record<string, unknown>,
   ): Promise<{ errors: ValidationError[]; warnings: ValidationWarning[] }> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
@@ -620,22 +625,22 @@ export class SpecEngine {
     try {
       // Validate duplicates
       const duplicateCheck = this.findDuplicates(resolved);
-      duplicateCheck.forEach(duplicate => {
+      duplicateCheck.forEach((duplicate) => {
         warnings.push({
-          type: 'duplicate',
+          type: "duplicate",
           message: `Duplicate ${duplicate.type}: ${duplicate.name}`,
-          location: duplicate.locations.join(', '),
+          location: duplicate.locations.join(", "),
         });
       });
 
       // Check for undefined capabilities
-      if (typeof resolved === 'object' && resolved !== null) {
+      if (typeof resolved === "object" && resolved !== null) {
         const capabilities = (resolved as any).capabilities;
 
         if (!capabilities || Object.keys(capabilities).length === 0) {
           errors.push({
-            type: 'custom',
-            message: 'No capabilities defined in specification',
+            type: "custom",
+            message: "No capabilities defined in specification",
           });
         }
       }
@@ -643,8 +648,8 @@ export class SpecEngine {
       // Add more custom validations as needed
     } catch (error) {
       errors.push({
-        type: 'custom',
-        message: `Custom validator error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: "custom",
+        message: `Custom validator error: ${error instanceof Error ? error.message : "Unknown error"}`,
       });
     }
 
@@ -661,15 +666,15 @@ export class SpecEngine {
       // This is a simplified implementation
       // In a real system, you'd want more sophisticated duplicate detection
 
-      if (typeof resolved === 'object' && resolved !== null) {
+      if (typeof resolved === "object" && resolved !== null) {
         const capabilities = (resolved as any).capabilities || {};
         const capabilityNames = Object.keys(capabilities);
         const nameCount: Record<string, string[]> = {};
 
         // Count occurrences of capability names
-        capabilityNames.forEach(name => {
-          const parts = name.split('.');
-          parts.forEach(part => {
+        capabilityNames.forEach((name) => {
+          const parts = name.split(".");
+          parts.forEach((part) => {
             if (!nameCount[part]) nameCount[part] = [];
             nameCount[part].push(name);
           });
@@ -679,7 +684,7 @@ export class SpecEngine {
         Object.entries(nameCount).forEach(([name, locations]) => {
           if (locations.length > 1) {
             duplicates.push({
-              type: 'capability',
+              type: "capability",
               name,
               locations,
             });
@@ -687,7 +692,7 @@ export class SpecEngine {
         });
       }
     } catch (error) {
-      logger.error('Error finding duplicates', error instanceof Error ? error : undefined);
+      logger.error("Error finding duplicates", error instanceof Error ? error : undefined);
     }
 
     return duplicates;
@@ -698,7 +703,7 @@ export class SpecEngine {
    */
   async validateProject(
     projectId: string,
-    fragments: Fragment[]
+    fragments: Fragment[],
   ): Promise<{
     success: boolean;
     specHash: string;
@@ -726,7 +731,7 @@ export class SpecEngine {
    */
   private async executeValidationWorkflow(
     projectId: string,
-    fragments: Fragment[]
+    fragments: Fragment[],
   ): Promise<{
     success: boolean;
     specHash: string;
@@ -747,7 +752,7 @@ export class SpecEngine {
     if (!exportResult.success || !exportResult.resolved) {
       if (exportResult.diagnostics && exportResult.diagnostics.length > 0) {
         schemaErrors = schemaErrors.concat(
-          this.cueDiagnosticsToValidationErrors(exportResult.diagnostics)
+          this.cueDiagnosticsToValidationErrors(exportResult.diagnostics),
         );
       }
 
@@ -763,7 +768,7 @@ export class SpecEngine {
    */
   private createFailureResult(
     errors: ValidationError[],
-    exportError?: string
+    exportError?: string,
   ): {
     success: boolean;
     specHash: string;
@@ -775,14 +780,14 @@ export class SpecEngine {
 
     if (exportError) {
       aggregated.push({
-        type: 'schema',
+        type: "schema",
         message: exportError,
       });
     }
 
     return {
       success: false,
-      specHash: '',
+      specHash: "",
       errors: aggregated,
       warnings: [],
     };
@@ -793,7 +798,7 @@ export class SpecEngine {
    */
   private async processSuccessfulExport(
     resolved: Record<string, unknown>,
-    schemaErrors: ValidationError[]
+    schemaErrors: ValidationError[],
   ): Promise<{
     success: boolean;
     specHash: string;
@@ -832,13 +837,13 @@ export class SpecEngine {
       errors: ValidationError[];
       warnings: ValidationWarning[];
     },
-    duration: number
+    duration: number,
   ): void {
     // Reduced logging - only log validation failures or significant events
     const errorCount = result.errors.length;
     const warningCount = result.warnings.length;
     if (!result.success || errorCount > 0) {
-      logger.info('Validation completed', {
+      logger.info("Validation completed", {
         projectId,
         success: result.success,
         specHash: result.specHash,
@@ -855,7 +860,7 @@ export class SpecEngine {
   private handleValidationError(
     projectId: string,
     error: unknown,
-    duration: number
+    duration: number,
   ): {
     success: boolean;
     specHash: string;
@@ -863,18 +868,18 @@ export class SpecEngine {
     errors: ValidationError[];
     warnings: ValidationWarning[];
   } {
-    logger.error('Validation pipeline error', error instanceof Error ? error : undefined, {
+    logger.error("Validation pipeline error", error instanceof Error ? error : undefined, {
       projectId,
       duration,
     });
 
     return {
       success: false,
-      specHash: '',
+      specHash: "",
       errors: [
         {
-          type: 'custom',
-          message: `Validation pipeline failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          type: "custom",
+          message: `Validation pipeline failed: ${error instanceof Error ? error.message : "Unknown error"}`,
         },
       ],
       warnings: [],
@@ -892,7 +897,7 @@ export class SpecEngine {
 
       return this.buildGapSet(gapData.duplicates, orphanedTokens, coverageGaps);
     } catch (error) {
-      logger.error('Gap analysis error', error instanceof Error ? error : undefined);
+      logger.error("Gap analysis error", error instanceof Error ? error : undefined);
       return this.createEmptyGapSet();
     }
   }
@@ -915,10 +920,10 @@ export class SpecEngine {
     const jsonStr = JSON.stringify(resolved);
     const tokenMatches = jsonStr.match(/\$\{[^}]+\}/g) || [];
 
-    return tokenMatches.map(token => ({
+    return tokenMatches.map((token) => ({
       token,
       defined_in: [],
-      referenced_in: ['resolved.json'],
+      referenced_in: ["resolved.json"],
     }));
   }
 
@@ -926,7 +931,7 @@ export class SpecEngine {
    * Analyze coverage gaps between capabilities and tests
    */
   private analyzeCoverageGaps(resolved: Record<string, unknown>): CoverageGap[] {
-    if (typeof resolved !== 'object' || resolved === null) {
+    if (typeof resolved !== "object" || resolved === null) {
       return [];
     }
 
@@ -934,13 +939,13 @@ export class SpecEngine {
     const tests = (resolved as any).tests || {};
     const coverageGaps: CoverageGap[] = [];
 
-    Object.keys(capabilities).forEach(capability => {
+    Object.keys(capabilities).forEach((capability) => {
       if (!this.hasTestCoverage(capability, tests)) {
         coverageGaps.push({
           capability,
           expected_coverage: 100,
           actual_coverage: 0,
-          missing_scenarios: ['basic', 'error_handling', 'edge_cases'],
+          missing_scenarios: ["basic", "error_handling", "edge_cases"],
         });
       }
     });
@@ -953,7 +958,7 @@ export class SpecEngine {
    */
   private hasTestCoverage(capability: string, tests: Record<string, any>): boolean {
     return Object.keys(tests).some(
-      test => test.includes(capability) || tests[test]?.covers?.includes(capability)
+      (test) => test.includes(capability) || tests[test]?.covers?.includes(capability),
     );
   }
 
@@ -963,7 +968,7 @@ export class SpecEngine {
   private buildGapSet(
     duplicates: Duplicate[],
     orphanedTokens: TokenReference[],
-    coverageGaps: CoverageGap[]
+    coverageGaps: CoverageGap[],
   ): GapSet {
     return {
       missing_capabilities: [], // Simplified implementation
@@ -991,16 +996,16 @@ export class SpecEngine {
   async cleanupProject(projectId: string): Promise<void> {
     try {
       const projectDir = this.getProjectDir(projectId);
-      await executeCommand('rm', ['-rf', projectDir]);
+      await executeCommand("rm", ["-rf", projectDir]);
 
-      logger.debug('Cleaned up project workspace', { projectId });
+      logger.debug("Cleaned up project workspace", { projectId });
     } catch (error) {
       logger.error(
-        'Failed to cleanup project workspace',
+        "Failed to cleanup project workspace",
         error instanceof Error ? error : undefined,
         {
           projectId,
-        }
+        },
       );
     }
   }

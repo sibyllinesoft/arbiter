@@ -148,7 +148,8 @@ await services.notifications.sendWebhook(url, payload);
 await services.notifications.sendEmail('owner@example.com', 'Handler alert', 'Details');
 ```
 
-Email delivery is disabled by default. Enable or change behaviour via environment variables:
+Email delivery is disabled by default. Enable or change behaviour via
+environment variables:
 
 ```
 HANDLER_EMAIL_MODE=log            # log-only mode for development (no external calls)
@@ -161,10 +162,10 @@ HANDLER_EMAIL_SMTP_USER=apikey
 HANDLER_EMAIL_SMTP_PASS=secret
 ```
 
-When `HANDLER_EMAIL_MODE=log`, the API records the attempted email without contacting an SMTP
-server—useful for tests and sandboxes. When set to `smtp`, the notification service will send
-messages using the configured credentials and propagate any delivery failures back to the
-handler.
+When `HANDLER_EMAIL_MODE=log`, the API records the attempted email without
+contacting an SMTP server—useful for tests and sandboxes. When set to `smtp`,
+the notification service will send messages using the configured credentials and
+propagate any delivery failures back to the handler.
 
 #### Events
 

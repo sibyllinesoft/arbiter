@@ -1,14 +1,14 @@
-import { Octokit } from '@octokit/rest';
-import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
-import { createResponse } from '../../shared/utils.js';
-import { GitHubPRAdapter } from '../adapters/github/GitHubPRAdapter.js';
-import { GitHubPushAdapter } from '../adapters/github/GitHubPushAdapter.js';
-import { GitLabMRAdapter } from '../adapters/gitlab/GitLabMRAdapter.js';
-import { AIAgentHandler } from '../base/AIAgentHandler.js';
-import type { AIAgentConfig, AICommand, GitHubActionIntegrationConfig } from '../base/types.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
+import { Octokit } from "@octokit/rest";
+import type { HandlerResponse, WebhookEvent } from "../../shared/utils.js";
+import { createResponse } from "../../shared/utils.js";
+import { GitHubPRAdapter } from "../adapters/github/GitHubPRAdapter.js";
+import { GitHubPushAdapter } from "../adapters/github/GitHubPushAdapter.js";
+import { GitLabMRAdapter } from "../adapters/gitlab/GitLabMRAdapter.js";
+import { AIAgentHandler } from "../base/AIAgentHandler.js";
+import type { AIAgentConfig, AICommand, GitHubActionIntegrationConfig } from "../base/types.js";
+import { ClaudeProvider } from "../providers/ClaudeProvider.js";
+import { GeminiProvider } from "../providers/GeminiProvider.js";
+import { OpenAIProvider } from "../providers/OpenAIProvider.js";
 
 /**
  * AI-powered Code Review Agent
@@ -34,13 +34,13 @@ export class CodeReviewAgent extends AIAgentHandler {
     // Initialize AI provider based on config
     let provider: ClaudeProvider | OpenAIProvider | GeminiProvider;
     switch (config.provider.type) {
-      case 'claude':
+      case "claude":
         provider = new ClaudeProvider(config.provider.config);
         break;
-      case 'openai':
+      case "openai":
         provider = new OpenAIProvider(config.provider.config);
         break;
-      case 'gemini':
+      case "gemini":
         provider = new GeminiProvider(config.provider.config);
         break;
       default: {
@@ -52,9 +52,9 @@ export class CodeReviewAgent extends AIAgentHandler {
     super(config, provider);
 
     // Register adapters for different platforms
-    this.registerAdapter('github', 'pull_request', new GitHubPRAdapter());
-    this.registerAdapter('github', 'push', new GitHubPushAdapter());
-    this.registerAdapter('gitlab', 'merge_request', new GitLabMRAdapter());
+    this.registerAdapter("github", "pull_request", new GitHubPRAdapter());
+    this.registerAdapter("github", "push", new GitHubPushAdapter());
+    this.registerAdapter("gitlab", "merge_request", new GitLabMRAdapter());
   }
 
   /**
@@ -62,12 +62,12 @@ export class CodeReviewAgent extends AIAgentHandler {
    */
   protected initializeCommands(): void {
     // Comprehensive code review command
-    this.registerCommand('review-code', {
-      name: 'review-code',
+    this.registerCommand("review-code", {
+      name: "review-code",
       description:
-        'Perform comprehensive code review including quality, security, and performance analysis',
-      usage: '/review-code [focus-area]',
-      examples: ['/review-code', '/review-code security', '/review-code performance'],
+        "Perform comprehensive code review including quality, security, and performance analysis",
+      usage: "/review-code [focus-area]",
+      examples: ["/review-code", "/review-code security", "/review-code performance"],
       requiresArgs: false,
       prompt: `Perform a comprehensive code review of the changes in this pull request or push. Analyze:
 
@@ -91,11 +91,11 @@ Provide specific, actionable feedback that will help the developer improve their
     });
 
     // Security-focused scan
-    this.registerCommand('security-scan', {
-      name: 'security-scan',
-      description: 'Focused security analysis of code changes',
-      usage: '/security-scan [severity-level]',
-      examples: ['/security-scan', '/security-scan high-only', '/security-scan all'],
+    this.registerCommand("security-scan", {
+      name: "security-scan",
+      description: "Focused security analysis of code changes",
+      usage: "/security-scan [severity-level]",
+      examples: ["/security-scan", "/security-scan high-only", "/security-scan all"],
       requiresArgs: false,
       prompt: `Perform a thorough security analysis of the code changes. Focus on:
 
@@ -126,15 +126,15 @@ For each issue, provide:
     });
 
     // Performance analysis
-    this.registerCommand('performance-check', {
-      name: 'performance-check',
-      description: 'Analyze code changes for performance implications',
-      usage: '/performance-check [metric]',
+    this.registerCommand("performance-check", {
+      name: "performance-check",
+      description: "Analyze code changes for performance implications",
+      usage: "/performance-check [metric]",
       examples: [
-        '/performance-check',
-        '/performance-check memory',
-        '/performance-check cpu',
-        '/performance-check database',
+        "/performance-check",
+        "/performance-check memory",
+        "/performance-check cpu",
+        "/performance-check database",
       ],
       requiresArgs: false,
       prompt: `Analyze the code changes for performance implications. Focus on:
@@ -160,11 +160,11 @@ For each performance concern:
     });
 
     // Code style and formatting
-    this.registerCommand('style-check', {
-      name: 'style-check',
-      description: 'Review code style, formatting, and conventions',
-      usage: '/style-check [language]',
-      examples: ['/style-check', '/style-check typescript', '/style-check python'],
+    this.registerCommand("style-check", {
+      name: "style-check",
+      description: "Review code style, formatting, and conventions",
+      usage: "/style-check [language]",
+      examples: ["/style-check", "/style-check typescript", "/style-check python"],
       requiresArgs: false,
       prompt: `Review the code changes for style, formatting, and convention compliance. Analyze:
 
@@ -191,14 +191,14 @@ Focus on maintainability and team consistency rather than personal preferences.`
     });
 
     // Architecture and design review
-    this.registerCommand('architecture-review', {
-      name: 'architecture-review',
-      description: 'High-level design and architecture analysis',
-      usage: '/architecture-review [aspect]',
+    this.registerCommand("architecture-review", {
+      name: "architecture-review",
+      description: "High-level design and architecture analysis",
+      usage: "/architecture-review [aspect]",
       examples: [
-        '/architecture-review',
-        '/architecture-review patterns',
-        '/architecture-review dependencies',
+        "/architecture-review",
+        "/architecture-review patterns",
+        "/architecture-review dependencies",
       ],
       requiresArgs: false,
       prompt: `Analyze the architectural and design aspects of the code changes. Focus on:
@@ -229,13 +229,13 @@ For architectural concerns:
    */
   protected async processEvent(
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<HandlerResponse> {
     // Check if automatic review is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, 'Automatic review disabled', {
+      return createResponse(true, "Automatic review disabled", {
         skipped: true,
-        reason: 'auto_response_disabled',
+        reason: "auto_response_disabled",
       });
     }
 
@@ -243,17 +243,17 @@ For architectural concerns:
     const shouldAutoReview = eventData.pullRequest || eventData.push?.isProtectedBranch;
 
     if (!shouldAutoReview) {
-      return createResponse(true, 'Event does not require automatic review', {
+      return createResponse(true, "Event does not require automatic review", {
         skipped: true,
-        reason: 'not_reviewable',
+        reason: "not_reviewable",
       });
     }
 
     try {
       // Perform automatic code review
-      const reviewCommand = this.commands.get('review-code')!;
+      const reviewCommand = this.commands.get("review-code")!;
       const aiContext = {
-        command: 'review-code',
+        command: "review-code",
         args: [],
         eventData,
         originalEvent,
@@ -272,12 +272,12 @@ For architectural concerns:
         actionResults = await this.executeActions(aiResponse.actions, eventData, originalEvent);
       }
 
-      return createResponse(true, 'Automatic code review completed', {
+      return createResponse(true, "Automatic code review completed", {
         review: aiResponse.data,
         actions: actionResults,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return createResponse(false, `Automatic review error: ${errorMessage}`);
     }
   }
@@ -288,16 +288,16 @@ For architectural concerns:
   protected async executeAction(
     action: any,
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     switch (action.type) {
-      case 'comment':
+      case "comment":
         return await this.postComment(action.data, eventData, originalEvent);
 
-      case 'label':
+      case "label":
         return await this.addLabels(action.data, eventData, originalEvent);
 
-      case 'assign':
+      case "assign":
         return await this.assignUsers(action.data, eventData, originalEvent);
 
       default:
@@ -328,8 +328,8 @@ For architectural concerns:
     }
 
     const envToken = potentialEnvNames
-      .map(name => process.env[name])
-      .find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+      .map((name) => process.env[name])
+      .find((value): value is string => typeof value === "string" && value.trim().length > 0);
 
     const explicitToken =
       integration.token && !/^[A-Z0-9_]+$/.test(integration.token) ? integration.token : undefined;
@@ -363,8 +363,8 @@ For architectural concerns:
     const name: string | undefined = repoData.name;
     const owner: string | undefined = repoData.owner?.login || repoData.owner?.name;
 
-    if (fullName && fullName.includes('/')) {
-      const [repoOwner, repoName] = fullName.split('/');
+    if (fullName && fullName.includes("/")) {
+      const [repoOwner, repoName] = fullName.split("/");
       return { owner: repoOwner, repo: repoName };
     }
 
@@ -376,8 +376,8 @@ For architectural concerns:
   }
 
   private resolveGitHubAction(
-    action: 'comment' | 'label' | 'assign',
-    eventData: any
+    action: "comment" | "label" | "assign",
+    eventData: any,
   ): { client: Octokit; owner: string; repo: string; issueNumber: number } | null {
     const integration = this.getGitHubIntegration();
     if (!integration) {
@@ -392,7 +392,7 @@ For architectural concerns:
     const repo = this.extractRepository(eventData);
     const issueNumber = eventData?.pullRequest?.number ?? eventData?.issue?.number;
 
-    if (!repo || typeof issueNumber !== 'number') {
+    if (!repo || typeof issueNumber !== "number") {
       return null;
     }
 
@@ -418,7 +418,7 @@ For architectural concerns:
       return error.message;
     }
 
-    if (error && typeof error === 'object') {
+    if (error && typeof error === "object") {
       const maybeStatus = (error as any).status;
       const message = (error as any).message || (error as any).response?.data?.message;
       if (message && maybeStatus) {
@@ -432,7 +432,7 @@ For architectural concerns:
       }
     }
 
-    return typeof error === 'string' ? error : 'Unknown GitHub API error';
+    return typeof error === "string" ? error : "Unknown GitHub API error";
   }
 
   /**
@@ -441,31 +441,31 @@ For architectural concerns:
   private async postComment(
     data: { body: string },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
-    const actionContext = this.resolveGitHubAction('comment', eventData);
-    const preview = data.body?.substring(0, 120) || '';
+    const actionContext = this.resolveGitHubAction("comment", eventData);
+    const preview = data.body?.substring(0, 120) || "";
 
     if (!actionContext) {
       await this.logActivity({
-        type: 'ai.agent.action.comment.skipped',
+        type: "ai.agent.action.comment.skipped",
         timestamp: new Date().toISOString(),
-        reason: 'github_integration_disabled',
+        reason: "github_integration_disabled",
         agentId: this.config.id,
         preview,
       });
 
       return {
-        action: 'comment',
-        status: 'skipped',
-        reason: 'github_integration_disabled',
+        action: "comment",
+        status: "skipped",
+        reason: "github_integration_disabled",
         preview,
       };
     }
 
     if (this.isDryRun()) {
       await this.logActivity({
-        type: 'ai.agent.action.comment.dry_run',
+        type: "ai.agent.action.comment.dry_run",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
@@ -473,8 +473,8 @@ For architectural concerns:
       });
 
       return {
-        action: 'comment',
-        status: 'dry-run',
+        action: "comment",
+        status: "dry-run",
         preview,
       };
     }
@@ -488,7 +488,7 @@ For architectural concerns:
       });
 
       await this.logActivity({
-        type: 'ai.agent.action.comment',
+        type: "ai.agent.action.comment",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
@@ -497,15 +497,15 @@ For architectural concerns:
       });
 
       return {
-        action: 'comment',
-        status: 'success',
+        action: "comment",
+        status: "success",
         url: response.data.html_url,
         id: response.data.id,
       };
     } catch (error) {
       const message = this.formatGitHubError(error);
       await this.logActivity({
-        type: 'ai.agent.action.comment.error',
+        type: "ai.agent.action.comment.error",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         error: message,
@@ -521,38 +521,38 @@ For architectural concerns:
   private async addLabels(
     data: { labels: string[] },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     if (!data.labels || data.labels.length === 0) {
       return {
-        action: 'label',
-        status: 'skipped',
-        reason: 'no_labels_requested',
+        action: "label",
+        status: "skipped",
+        reason: "no_labels_requested",
       };
     }
 
-    const actionContext = this.resolveGitHubAction('label', eventData);
+    const actionContext = this.resolveGitHubAction("label", eventData);
 
     if (!actionContext) {
       await this.logActivity({
-        type: 'ai.agent.action.label.skipped',
+        type: "ai.agent.action.label.skipped",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
-        reason: 'github_integration_disabled',
+        reason: "github_integration_disabled",
         labels: data.labels,
       });
 
       return {
-        action: 'label',
-        status: 'skipped',
-        reason: 'github_integration_disabled',
+        action: "label",
+        status: "skipped",
+        reason: "github_integration_disabled",
         labels: data.labels,
       };
     }
 
     if (this.isDryRun()) {
       await this.logActivity({
-        type: 'ai.agent.action.label.dry_run',
+        type: "ai.agent.action.label.dry_run",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         labels: data.labels,
@@ -560,8 +560,8 @@ For architectural concerns:
       });
 
       return {
-        action: 'label',
-        status: 'dry-run',
+        action: "label",
+        status: "dry-run",
         labels: data.labels,
       };
     }
@@ -575,23 +575,23 @@ For architectural concerns:
       });
 
       await this.logActivity({
-        type: 'ai.agent.action.label',
+        type: "ai.agent.action.label",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         labels: data.labels,
         target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
-        appliedLabels: response.data.map(label => label.name),
+        appliedLabels: response.data.map((label) => label.name),
       });
 
       return {
-        action: 'label',
-        status: 'success',
-        labels: response.data.map(label => label.name),
+        action: "label",
+        status: "success",
+        labels: response.data.map((label) => label.name),
       };
     } catch (error) {
       const message = this.formatGitHubError(error);
       await this.logActivity({
-        type: 'ai.agent.action.label.error',
+        type: "ai.agent.action.label.error",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         error: message,
@@ -608,38 +608,38 @@ For architectural concerns:
   private async assignUsers(
     data: { assignees: string[] },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     if (!data.assignees || data.assignees.length === 0) {
       return {
-        action: 'assign',
-        status: 'skipped',
-        reason: 'no_assignees_provided',
+        action: "assign",
+        status: "skipped",
+        reason: "no_assignees_provided",
       };
     }
 
-    const actionContext = this.resolveGitHubAction('assign', eventData);
+    const actionContext = this.resolveGitHubAction("assign", eventData);
 
     if (!actionContext) {
       await this.logActivity({
-        type: 'ai.agent.action.assign.skipped',
+        type: "ai.agent.action.assign.skipped",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
-        reason: 'github_integration_disabled',
+        reason: "github_integration_disabled",
         assignees: data.assignees,
       });
 
       return {
-        action: 'assign',
-        status: 'skipped',
-        reason: 'github_integration_disabled',
+        action: "assign",
+        status: "skipped",
+        reason: "github_integration_disabled",
         assignees: data.assignees,
       };
     }
 
     if (this.isDryRun()) {
       await this.logActivity({
-        type: 'ai.agent.action.assign.dry_run',
+        type: "ai.agent.action.assign.dry_run",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         assignees: data.assignees,
@@ -647,8 +647,8 @@ For architectural concerns:
       });
 
       return {
-        action: 'assign',
-        status: 'dry-run',
+        action: "assign",
+        status: "dry-run",
         assignees: data.assignees,
       };
     }
@@ -662,23 +662,23 @@ For architectural concerns:
       });
 
       await this.logActivity({
-        type: 'ai.agent.action.assign',
+        type: "ai.agent.action.assign",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         assignees: data.assignees,
         target: `${actionContext.owner}/${actionContext.repo}#${actionContext.issueNumber}`,
-        addedAssignees: response.data.assignees?.map(assignee => assignee.login),
+        addedAssignees: response.data.assignees?.map((assignee) => assignee.login),
       });
 
       return {
-        action: 'assign',
-        status: 'success',
-        assignees: response.data.assignees?.map(assignee => assignee.login) ?? data.assignees,
+        action: "assign",
+        status: "success",
+        assignees: response.data.assignees?.map((assignee) => assignee.login) ?? data.assignees,
       };
     } catch (error) {
       const message = this.formatGitHubError(error);
       await this.logActivity({
-        type: 'ai.agent.action.assign.error',
+        type: "ai.agent.action.assign.error",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         error: message,

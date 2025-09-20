@@ -1,13 +1,13 @@
-import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import type { HandlerResponse, WebhookEvent } from '../shared/utils.js';
-import { createResponse, logEvent } from '../shared/utils.js';
-import { CodeReviewAgent } from './agents/CodeReviewAgent.js';
-import { DocumentationAgent } from './agents/DocumentationAgent.js';
-import { IssueAnalysisAgent } from './agents/IssueAnalysisAgent.js';
-import { SecurityAgent } from './agents/SecurityAgent.js';
-import type { AIAgentHandler } from './base/AIAgentHandler.js';
-import type { AIAgentConfig } from './base/types.js';
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { HandlerResponse, WebhookEvent } from "../shared/utils.js";
+import { createResponse, logEvent } from "../shared/utils.js";
+import { CodeReviewAgent } from "./agents/CodeReviewAgent.js";
+import { DocumentationAgent } from "./agents/DocumentationAgent.js";
+import { IssueAnalysisAgent } from "./agents/IssueAnalysisAgent.js";
+import { SecurityAgent } from "./agents/SecurityAgent.js";
+import type { AIAgentHandler } from "./base/AIAgentHandler.js";
+import type { AIAgentConfig } from "./base/types.js";
 
 type AgentManagerMetrics = {
   totalRequests: number;
@@ -46,7 +46,8 @@ export class AgentManager {
   constructor(configPath?: string) {
     this.agents = new Map();
     this.configPath =
-      configPath || join(process.cwd(), 'packages/arbiter-core/src/handlers/ai/config/ai-agents.json');
+      configPath ||
+      join(process.cwd(), "packages/arbiter-core/src/handlers/ai/config/ai-agents.json");
     this.isInitialized = false;
     this.metrics = {
       totalRequests: 0,
@@ -75,15 +76,15 @@ export class AgentManager {
       this.isInitialized = true;
 
       await logEvent({
-        type: 'ai.agent.manager.initialized',
+        type: "ai.agent.manager.initialized",
         timestamp: new Date().toISOString(),
         agentCount: this.agents.size,
         enabledAgents: Array.from(this.agents.keys()),
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       await logEvent({
-        type: 'ai.agent.manager.initialization.failed',
+        type: "ai.agent.manager.initialization.failed",
         timestamp: new Date().toISOString(),
         error: errorMessage,
       });
@@ -96,19 +97,19 @@ export class AgentManager {
    */
   private async loadConfiguration(): Promise<void> {
     try {
-      const configContent = await readFile(this.configPath, 'utf8');
+      const configContent = await readFile(this.configPath, "utf8");
       this.config = JSON.parse(configContent);
 
       // Validate configuration structure
       if (!this.config.agents) {
-        throw new Error('Configuration missing agents section');
+        throw new Error("Configuration missing agents section");
       }
 
       if (!this.config.aiProviders) {
-        throw new Error('Configuration missing aiProviders section');
+        throw new Error("Configuration missing aiProviders section");
       }
     } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
         throw new Error(`Configuration file not found at ${this.configPath}`);
       }
       throw error;
@@ -120,7 +121,7 @@ export class AgentManager {
    */
   private async initializeAgents(): Promise<void> {
     const enabledAgents = Object.entries(this.config.agents).filter(
-      ([_, config]: [string, any]) => config.enabled
+      ([_, config]: [string, any]) => config.enabled,
     );
 
     for (const [agentId, agentConfig] of enabledAgents) {
@@ -131,9 +132,9 @@ export class AgentManager {
         // Initialize usage tracking
         this.metrics.agentUsage[agentId] = 0;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         await logEvent({
-          type: 'ai.agent.initialization.failed',
+          type: "ai.agent.initialization.failed",
           timestamp: new Date().toISOString(),
           agentId,
           error: errorMessage,
@@ -145,7 +146,7 @@ export class AgentManager {
     }
 
     if (this.agents.size === 0) {
-      console.warn('No AI agents were successfully initialized');
+      console.warn("No AI agents were successfully initialized");
     }
   }
 
@@ -170,16 +171,16 @@ export class AgentManager {
 
     // Create agent based on type
     switch (config.type) {
-      case 'code-review':
+      case "code-review":
         return new CodeReviewAgent(fullConfig);
 
-      case 'issue-analysis':
+      case "issue-analysis":
         return new IssueAnalysisAgent(fullConfig);
 
-      case 'documentation':
+      case "documentation":
         return new DocumentationAgent(fullConfig);
 
-      case 'security':
+      case "security":
         return new SecurityAgent(fullConfig);
 
       default:
@@ -192,7 +193,7 @@ export class AgentManager {
    */
   async processEvent(event: WebhookEvent): Promise<HandlerResponse> {
     if (!this.isInitialized) {
-      return createResponse(false, 'AgentManager not initialized');
+      return createResponse(false, "AgentManager not initialized");
     }
 
     const startTime = Date.now();
@@ -203,7 +204,7 @@ export class AgentManager {
       const applicableAgents = this.findApplicableAgents(event);
 
       if (applicableAgents.length === 0) {
-        return createResponse(true, 'No AI agents configured for this event type', {
+        return createResponse(true, "No AI agents configured for this event type", {
           eventType: event.eventType,
           provider: event.provider,
           agentCount: 0,
@@ -212,7 +213,7 @@ export class AgentManager {
 
       // Process event through each applicable agent
       const results = await Promise.allSettled(
-        applicableAgents.map(async agentId => {
+        applicableAgents.map(async (agentId) => {
           const agent = this.agents.get(agentId)!;
           this.metrics.agentUsage[agentId]++;
 
@@ -220,17 +221,17 @@ export class AgentManager {
             agentId,
             result: await agent.handleEvent(event),
           };
-        })
+        }),
       );
 
       // Collect results
       const successful = results
-        .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
-        .map(result => result.value);
+        .filter((result): result is PromiseFulfilledResult<any> => result.status === "fulfilled")
+        .map((result) => result.value);
 
       const failed = results
-        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-        .map(result => result.reason);
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+        .map((result) => result.reason);
 
       // Update metrics
       const responseTime = Date.now() - startTime;
@@ -238,7 +239,7 @@ export class AgentManager {
 
       // Log processing results
       await logEvent({
-        type: 'ai.agent.manager.event.processed',
+        type: "ai.agent.manager.event.processed",
         timestamp: new Date().toISOString(),
         eventType: event.eventType,
         provider: event.provider,
@@ -253,23 +254,23 @@ export class AgentManager {
         `Processed by ${successful.length}/${applicableAgents.length} agents`,
         {
           agentsProcessed: applicableAgents.length,
-          successful: successful.map(s => ({
+          successful: successful.map((s) => ({
             agentId: s.agentId,
             success: s.result.success,
             message: s.result.message,
           })),
           failed: failed.map((error, index) => ({
             agentId: applicableAgents[index],
-            error: error instanceof Error ? error.message : 'Unknown error',
+            error: error instanceof Error ? error.message : "Unknown error",
           })),
           processingTime: responseTime,
-        }
+        },
       );
     } catch (error) {
       const responseTime = Date.now() - startTime;
       this.updateMetrics(false, responseTime);
 
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return createResponse(false, `Agent processing failed: ${errorMessage}`);
     }
   }
@@ -281,10 +282,10 @@ export class AgentManager {
     command: string,
     args: string[],
     event: WebhookEvent,
-    context: any
+    context: any,
   ): Promise<HandlerResponse> {
     if (!this.isInitialized) {
-      return createResponse(false, 'AgentManager not initialized');
+      return createResponse(false, "AgentManager not initialized");
     }
 
     const startTime = Date.now();
@@ -323,7 +324,7 @@ export class AgentManager {
       this.metrics.agentUsage[agentId]++;
 
       await logEvent({
-        type: 'ai.agent.manager.command.processed',
+        type: "ai.agent.manager.command.processed",
         timestamp: new Date().toISOString(),
         command,
         args,
@@ -342,7 +343,7 @@ export class AgentManager {
       const responseTime = Date.now() - startTime;
       this.updateMetrics(false, responseTime);
 
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return createResponse(false, `Command processing failed: ${errorMessage}`);
     }
   }
@@ -452,7 +453,7 @@ export class AgentManager {
    */
   async reload(): Promise<void> {
     await logEvent({
-      type: 'ai.agent.manager.reload.started',
+      type: "ai.agent.manager.reload.started",
       timestamp: new Date().toISOString(),
     });
 
@@ -465,14 +466,14 @@ export class AgentManager {
       await this.initialize();
 
       await logEvent({
-        type: 'ai.agent.manager.reload.completed',
+        type: "ai.agent.manager.reload.completed",
         timestamp: new Date().toISOString(),
         agentCount: this.agents.size,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       await logEvent({
-        type: 'ai.agent.manager.reload.failed',
+        type: "ai.agent.manager.reload.failed",
         timestamp: new Date().toISOString(),
         error: errorMessage,
       });
@@ -503,7 +504,7 @@ export class AgentManager {
     }
 
     await logEvent({
-      type: 'ai.agent.manager.agent.toggled',
+      type: "ai.agent.manager.agent.toggled",
       timestamp: new Date().toISOString(),
       agentId,
       enabled,
@@ -524,7 +525,7 @@ export class AgentManager {
       } catch (error) {
         results[agentId] = {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof Error ? error.message : "Unknown error",
         };
       }
     }
@@ -537,7 +538,7 @@ export class AgentManager {
    */
   async shutdown(): Promise<void> {
     await logEvent({
-      type: 'ai.agent.manager.shutdown',
+      type: "ai.agent.manager.shutdown",
       timestamp: new Date().toISOString(),
       agentCount: this.agents.size,
     });

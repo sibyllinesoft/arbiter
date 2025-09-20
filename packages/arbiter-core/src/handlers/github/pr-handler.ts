@@ -1,8 +1,8 @@
-import type { HandlerResponse, WebhookEvent } from '../shared/utils.js';
-import { createResponse, logEvent, validatePayload } from '../shared/utils.js';
+import type { HandlerResponse, WebhookEvent } from "../shared/utils.js";
+import { createResponse, logEvent, validatePayload } from "../shared/utils.js";
 
 export interface GitHubPRPayload {
-  action: 'opened' | 'closed' | 'reopened' | 'synchronize' | 'edited';
+  action: "opened" | "closed" | "reopened" | "synchronize" | "edited";
   number: number;
   pull_request: {
     id: number;
@@ -21,7 +21,7 @@ export interface GitHubPRPayload {
     draft: boolean;
     mergeable: boolean | null;
     merged: boolean;
-    state: 'open' | 'closed';
+    state: "open" | "closed";
   };
   repository: {
     name: string;
@@ -39,12 +39,12 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
   try {
     // Validate the payload structure
     const validationResult = validatePayload(event.payload, [
-      'action',
-      'pull_request',
-      'repository',
+      "action",
+      "pull_request",
+      "repository",
     ]);
     if (!validationResult.isValid) {
-      return createResponse(false, `Invalid payload: ${validationResult.errors.join(', ')}`);
+      return createResponse(false, `Invalid payload: ${validationResult.errors.join(", ")}`);
     }
 
     const payload = event.payload as GitHubPRPayload;
@@ -52,7 +52,7 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
 
     // Log the PR event
     await logEvent({
-      type: 'github.pr',
+      type: "github.pr",
       timestamp: new Date().toISOString(),
       repository: repository.full_name,
       action,
@@ -64,27 +64,27 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
     });
 
     // Validate branch naming for feature branches
-    if (action === 'opened' || action === 'synchronize') {
+    if (action === "opened" || action === "synchronize") {
       const sourceBranch = pr.head.ref;
 
       // Check if it's a feature branch
-      if (sourceBranch.startsWith('feature/')) {
+      if (sourceBranch.startsWith("feature/")) {
         const featureBranchPattern = /^feature\/[a-z0-9-]+$/;
         if (!featureBranchPattern.test(sourceBranch)) {
           return createResponse(
             false,
-            `Invalid feature branch naming: ${sourceBranch}. Use format: feature/your-feature-name`
+            `Invalid feature branch naming: ${sourceBranch}. Use format: feature/your-feature-name`,
           );
         }
       }
 
       // Check if it's a hotfix branch
-      if (sourceBranch.startsWith('hotfix/')) {
+      if (sourceBranch.startsWith("hotfix/")) {
         const hotfixBranchPattern = /^hotfix\/[a-z0-9-]+$/;
         if (!hotfixBranchPattern.test(sourceBranch)) {
           return createResponse(
             false,
-            `Invalid hotfix branch naming: ${sourceBranch}. Use format: hotfix/your-fix-name`
+            `Invalid hotfix branch naming: ${sourceBranch}. Use format: hotfix/your-fix-name`,
           );
         }
       }
@@ -94,7 +94,7 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
       if (!conventionalTitlePattern.test(pr.title)) {
         return createResponse(
           false,
-          `PR title should follow conventional commit format. Current: "${pr.title}"`
+          `PR title should follow conventional commit format. Current: "${pr.title}"`,
         );
       }
 
@@ -102,25 +102,25 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
       if (!pr.draft && (!pr.body || pr.body.trim().length < 10)) {
         return createResponse(
           false,
-          'PR description is required and should be at least 10 characters long'
+          "PR description is required and should be at least 10 characters long",
         );
       }
 
       // Validate target branch
-      const allowedTargetBranches = ['main', 'master', 'develop', 'staging'];
+      const allowedTargetBranches = ["main", "master", "develop", "staging"];
       if (!allowedTargetBranches.includes(pr.base.ref)) {
         return createResponse(
           false,
-          `Invalid target branch: ${pr.base.ref}. Allowed: ${allowedTargetBranches.join(', ')}`
+          `Invalid target branch: ${pr.base.ref}. Allowed: ${allowedTargetBranches.join(", ")}`,
         );
       }
 
       // Check for direct pushes to main/master (should use develop)
-      if (['main', 'master'].includes(pr.base.ref) && !sourceBranch.startsWith('hotfix/')) {
-        if (!['develop', 'staging'].includes(pr.base.ref)) {
+      if (["main", "master"].includes(pr.base.ref) && !sourceBranch.startsWith("hotfix/")) {
+        if (!["develop", "staging"].includes(pr.base.ref)) {
           return createResponse(
             false,
-            'Feature branches should target "develop" branch, not main/master directly'
+            'Feature branches should target "develop" branch, not main/master directly',
           );
         }
       }
@@ -139,19 +139,19 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
     };
 
     switch (action) {
-      case 'opened':
+      case "opened":
         message = `New PR opened: "${pr.title}" (#${payload.number})`;
         metadata.isDraft = pr.draft;
         break;
 
-      case 'closed':
+      case "closed":
         if (pr.merged) {
           message = `PR merged: "${pr.title}" (#${payload.number})`;
           metadata.merged = true;
 
           // Log successful merge
           await logEvent({
-            type: 'github.pr.merged',
+            type: "github.pr.merged",
             timestamp: new Date().toISOString(),
             repository: repository.full_name,
             prNumber: payload.number,
@@ -165,25 +165,25 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
         }
         break;
 
-      case 'synchronize':
+      case "synchronize":
         message = `PR updated with new commits: "${pr.title}" (#${payload.number})`;
         metadata.headCommit = pr.head.sha;
         break;
 
-      case 'reopened':
+      case "reopened":
         message = `PR reopened: "${pr.title}" (#${payload.number})`;
         break;
 
-      case 'edited':
+      case "edited":
         message = `PR edited: "${pr.title}" (#${payload.number})`;
         break;
     }
 
     return createResponse(true, message, metadata);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await logEvent({
-      type: 'github.pr.error',
+      type: "github.pr.error",
       timestamp: new Date().toISOString(),
       error: errorMessage,
     });
@@ -193,10 +193,10 @@ export async function handleGitHubPR(event: WebhookEvent): Promise<HandlerRespon
 }
 
 export const config = {
-  name: 'github-pr-handler',
-  description: 'Handles GitHub PR events with branch naming and workflow validation',
-  version: '1.0.0',
-  events: ['pull_request'],
-  provider: 'github',
+  name: "github-pr-handler",
+  description: "Handles GitHub PR events with branch naming and workflow validation",
+  version: "1.0.0",
+  events: ["pull_request"],
+  provider: "github",
   enabled: true,
 };

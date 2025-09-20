@@ -1,10 +1,10 @@
 /**
  * Integration tests for API endpoints with real server instance
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { SpecWorkbenchServer } from '../../server.ts';
-import type { CreateFragmentRequest, ServerConfig, ValidationRequest } from '../../types.ts';
-import { generateId } from '../../utils.ts';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { SpecWorkbenchServer } from "../../server.ts";
+import type { CreateFragmentRequest, ServerConfig, ValidationRequest } from "../../types.ts";
+import { generateId } from "../../utils.ts";
 
 /**
  * Wait for server to be ready by polling health endpoint
@@ -16,13 +16,13 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
   while (Date.now() - startTime < timeoutMs) {
     try {
       const response = await fetch(`${baseUrl}/health`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       });
 
       if (response.status === 200) {
         const health = await response.json();
-        if (health.status === 'healthy' || health.status === 'ok') {
+        if (health.status === "healthy" || health.status === "ok") {
           console.log(`✅ Server ready after ${Date.now() - startTime}ms`);
           return;
         }
@@ -31,13 +31,13 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
       // Server not ready yet, continue polling
     }
 
-    await new Promise(resolve => setTimeout(resolve, pollInterval));
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
   throw new Error(`Server not ready after ${timeoutMs}ms timeout`);
 }
 
-(process.env.ARBITER_FULL_API === '1' ? describe : describe.skip)('API Integration Tests', () => {
+(process.env.ARBITER_FULL_API === "1" ? describe : describe.skip)("API Integration Tests", () => {
   let server: SpecWorkbenchServer;
   let baseUrl: string;
   let testConfig: ServerConfig;
@@ -49,11 +49,11 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
 
     testConfig = {
       port,
-      host: 'localhost',
-      database_path: ':memory:',
+      host: "localhost",
+      database_path: ":memory:",
       spec_workdir: `/tmp/api-test-${Date.now()}`,
-      cue_binary_path: 'cue',
-      jq_binary_path: 'jq',
+      cue_binary_path: "cue",
+      jq_binary_path: "jq",
       auth_required: false, // Disable auth for testing
       rate_limit: {
         max_tokens: 100,
@@ -82,9 +82,9 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
       try {
         await server.shutdown();
         // Give a moment for cleanup
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (error) {
-        console.warn('Error during server shutdown:', error);
+        console.warn("Error during server shutdown:", error);
       }
     }
   });
@@ -99,7 +99,7 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
   async function makeRequest(endpoint: string, options: RequestInit = {}): Promise<Response> {
     const url = `${baseUrl}${endpoint}`;
     const defaultHeaders = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     };
 
@@ -109,24 +109,24 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
     });
   }
 
-  describe('Health Check Endpoint', () => {
-    it('should return healthy status', async () => {
-      const response = await makeRequest('/health');
+  describe("Health Check Endpoint", () => {
+    it("should return healthy status", async () => {
+      const response = await makeRequest("/health");
 
       expect(response.status).toBe(200);
 
       const health = await response.json();
-      expect(health.status).toBe('healthy');
+      expect(health.status).toBe("healthy");
       expect(health.timestamp).toBeDefined();
       expect(health.database).toBe(true);
     });
   });
 
-  describe('Fragments API', () => {
-    it('should create fragment successfully', async () => {
+  describe("Fragments API", () => {
+    it("should create fragment successfully", async () => {
       const fragmentData: CreateFragmentRequest & { project_id: string } = {
         project_id: testProjectId,
-        path: 'test.cue',
+        path: "test.cue",
         content: `package spec
 
 routes: {
@@ -137,8 +137,8 @@ routes: {
 }`,
       };
 
-      const response = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const response = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify(fragmentData),
       });
 
@@ -146,14 +146,14 @@ routes: {
 
       const result = await response.json();
       expect(result.id).toBeDefined();
-      expect(result.path).toBe('test.cue');
+      expect(result.path).toBe("test.cue");
       expect(result.created_at).toBeDefined();
     });
 
-    it('should validate fragment content format', async () => {
+    it("should validate fragment content format", async () => {
       const invalidData = {
         project_id: testProjectId,
-        path: 'invalid.cue',
+        path: "invalid.cue",
         content: `package spec
 
 // Invalid CUE syntax
@@ -167,8 +167,8 @@ routes: {
 `,
       };
 
-      const response = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const response = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify(invalidData),
       });
 
@@ -176,55 +176,55 @@ routes: {
       expect(response.status).toBe(201);
     });
 
-    it('should reject invalid path format', async () => {
+    it("should reject invalid path format", async () => {
       const invalidData = {
         project_id: testProjectId,
-        path: '../../../etc/passwd', // Invalid path
-        content: 'package spec',
+        path: "../../../etc/passwd", // Invalid path
+        content: "package spec",
       };
 
-      const response = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const response = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify(invalidData),
       });
 
       expect(response.status).toBe(400);
 
       const error = await response.json();
-      expect(error.title).toBe('Bad Request');
-      expect(error.detail).toContain('Invalid path format');
+      expect(error.title).toBe("Bad Request");
+      expect(error.detail).toContain("Invalid path format");
     });
 
-    it('should handle missing required fields', async () => {
+    it("should handle missing required fields", async () => {
       const incompleteData = {
         project_id: testProjectId,
-        path: 'test.cue',
+        path: "test.cue",
         // Missing content
       };
 
-      const response = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const response = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify(incompleteData),
       });
 
       expect(response.status).toBe(400);
 
       const error = await response.json();
-      expect(error.detail).toContain('content are required');
+      expect(error.detail).toContain("content are required");
     });
 
-    it('should handle update of existing fragment', async () => {
-      const fragmentPath = 'update.cue';
+    it("should handle update of existing fragment", async () => {
+      const fragmentPath = "update.cue";
 
       // Create initial fragment
       const initialData = {
         project_id: testProjectId,
         path: fragmentPath,
-        content: 'package spec\n\ninitial: true',
+        content: "package spec\n\ninitial: true",
       };
 
-      const createResponse = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const createResponse = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify(initialData),
       });
       expect(createResponse.status).toBe(201);
@@ -233,17 +233,17 @@ routes: {
       const updateData = {
         project_id: testProjectId,
         path: fragmentPath,
-        content: 'package spec\n\nupdated: true',
+        content: "package spec\n\nupdated: true",
       };
 
-      const updateResponse = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const updateResponse = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify(updateData),
       });
       expect(updateResponse.status).toBe(201);
     });
 
-    it('should handle concurrent fragment creation', async () => {
+    it("should handle concurrent fragment creation", async () => {
       const promises = [];
 
       // Create 10 fragments concurrently
@@ -254,8 +254,8 @@ routes: {
           content: `package spec\n\nfragment${i}: true`,
         };
 
-        const promise = makeRequest('/api/fragments', {
-          method: 'POST',
+        const promise = makeRequest("/api/fragments", {
+          method: "POST",
           body: JSON.stringify(data),
         });
         promises.push(promise);
@@ -264,20 +264,20 @@ routes: {
       const responses = await Promise.all(promises);
 
       // All should succeed
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.status).toBe(201);
       });
     });
   });
 
-  describe('Validation API', () => {
+  describe("Validation API", () => {
     beforeEach(async () => {
       // Create a valid fragment for validation tests
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'main.cue',
+          path: "main.cue",
           content: `package spec
 
 routes: {
@@ -299,13 +299,13 @@ capabilities: {
       });
     });
 
-    it('should validate project successfully', async () => {
+    it("should validate project successfully", async () => {
       const validationData: ValidationRequest & { project_id: string } = {
         project_id: testProjectId,
       };
 
-      const response = await makeRequest('/api/validate', {
-        method: 'POST',
+      const response = await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify(validationData),
       });
 
@@ -318,13 +318,13 @@ capabilities: {
       expect(result.errors).toEqual([]);
     });
 
-    it('should return validation errors for invalid CUE', async () => {
+    it("should return validation errors for invalid CUE", async () => {
       // Add invalid fragment
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'invalid.cue',
+          path: "invalid.cue",
           content: `package spec
 
 // This will cause validation error
@@ -338,8 +338,8 @@ config: {
         }),
       });
 
-      const response = await makeRequest('/api/validate', {
-        method: 'POST',
+      const response = await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: testProjectId }),
       });
 
@@ -348,29 +348,29 @@ config: {
       const result = await response.json();
       expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0].type).toBe('schema');
+      expect(result.errors[0].type).toBe("schema");
     });
 
-    it('should handle validation timeout gracefully', async () => {
+    it("should handle validation timeout gracefully", async () => {
       // Create a complex fragment that might cause timeout
       const complexContent = `package spec
 
 // Generate large structure that could cause timeout
 data: {
-	${Array.from({ length: 1000 }, (_, i) => `"item${i}": "${i}"`).join('\n\t')}
+	${Array.from({ length: 1000 }, (_, i) => `"item${i}": "${i}"`).join("\n\t")}
 }`;
 
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'complex.cue',
+          path: "complex.cue",
           content: complexContent,
         }),
       });
 
-      const response = await makeRequest('/api/validate', {
-        method: 'POST',
+      const response = await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: testProjectId }),
       });
 
@@ -379,18 +379,18 @@ data: {
 
       const result = await response.json();
       expect(result).toBeDefined();
-      expect(typeof result.success).toBe('boolean');
+      expect(typeof result.success).toBe("boolean");
     });
   });
 
-  describe('Resolved Specification API', () => {
+  describe("Resolved Specification API", () => {
     beforeEach(async () => {
       // Create and validate a project
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'base.cue',
+          path: "base.cue",
           content: `package spec
 
 routes: {
@@ -410,13 +410,13 @@ config: {
       });
 
       // Validate to create version
-      await makeRequest('/api/validate', {
-        method: 'POST',
+      await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: testProjectId }),
       });
     });
 
-    it('should retrieve resolved specification', async () => {
+    it("should retrieve resolved specification", async () => {
       const response = await makeRequest(`/api/resolved?project_id=${testProjectId}`);
 
       expect(response.status).toBe(200);
@@ -428,11 +428,11 @@ config: {
 
       // Check resolved structure
       expect(result.resolved.routes).toBeDefined();
-      expect(result.resolved.routes.api.users.path).toBe('/api/users');
-      expect(result.resolved.config.version).toBe('1.0.0');
+      expect(result.resolved.routes.api.users.path).toBe("/api/users");
+      expect(result.resolved.config.version).toBe("1.0.0");
     });
 
-    it('should return 404 for project with no resolved spec', async () => {
+    it("should return 404 for project with no resolved spec", async () => {
       const emptyProjectId = generateId();
 
       const response = await makeRequest(`/api/resolved?project_id=${emptyProjectId}`);
@@ -440,27 +440,27 @@ config: {
       expect(response.status).toBe(404);
 
       const error = await response.json();
-      expect(error.title).toBe('Not Found');
+      expect(error.title).toBe("Not Found");
     });
 
-    it('should require project_id parameter', async () => {
-      const response = await makeRequest('/api/resolved');
+    it("should require project_id parameter", async () => {
+      const response = await makeRequest("/api/resolved");
 
       expect(response.status).toBe(400);
 
       const error = await response.json();
-      expect(error.detail).toContain('project_id parameter is required');
+      expect(error.detail).toContain("project_id parameter is required");
     });
   });
 
-  describe('Gap Analysis API', () => {
+  describe("Gap Analysis API", () => {
     beforeEach(async () => {
       // Create project with gaps for analysis
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'gaps.cue',
+          path: "gaps.cue",
           content: `package spec
 
 capabilities: {
@@ -489,13 +489,13 @@ template: "Welcome \${user.name} to project \${project.id}"`,
       });
 
       // Validate to create resolved spec
-      await makeRequest('/api/validate', {
-        method: 'POST',
+      await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: testProjectId }),
       });
     });
 
-    it('should generate gap analysis', async () => {
+    it("should generate gap analysis", async () => {
       const response = await makeRequest(`/api/gaps?project_id=${testProjectId}`);
 
       expect(response.status).toBe(200);
@@ -509,33 +509,33 @@ template: "Welcome \${user.name} to project \${project.id}"`,
       // Should detect coverage gap for project.create
       expect(gapSet.coverage_gaps.length).toBeGreaterThan(0);
       const hasProjectGap = gapSet.coverage_gaps.some(
-        (gap: any) => gap.capability === 'project.create'
+        (gap: any) => gap.capability === "project.create",
       );
       expect(hasProjectGap).toBe(true);
 
       // Should detect orphaned tokens
       expect(gapSet.orphaned_tokens.length).toBeGreaterThan(0);
       const tokenStrings = gapSet.orphaned_tokens.map((t: any) => t.token);
-      const hasUserToken = tokenStrings.some((token: string) => token.includes('user.name'));
-      const hasProjectToken = tokenStrings.some((token: string) => token.includes('project.id'));
+      const hasUserToken = tokenStrings.some((token: string) => token.includes("user.name"));
+      const hasProjectToken = tokenStrings.some((token: string) => token.includes("project.id"));
       expect(hasUserToken || hasProjectToken).toBe(true);
     });
 
-    it('should handle empty project gracefully', async () => {
+    it("should handle empty project gracefully", async () => {
       const emptyProjectId = generateId();
 
       // Create empty project
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: emptyProjectId,
-          path: 'empty.cue',
-          content: 'package spec\n\n// Empty project',
+          path: "empty.cue",
+          content: "package spec\n\n// Empty project",
         }),
       });
 
-      await makeRequest('/api/validate', {
-        method: 'POST',
+      await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: emptyProjectId }),
       });
 
@@ -551,14 +551,14 @@ template: "Welcome \${user.name} to project \${project.id}"`,
     });
   });
 
-  describe('IR Generation API', () => {
+  describe("IR Generation API", () => {
     beforeEach(async () => {
       // Create project with data for IR generation
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'ir-data.cue',
+          path: "ir-data.cue",
           content: `package spec
 
 capabilities: {
@@ -600,20 +600,20 @@ tests: {
       });
 
       // Validate to create resolved spec
-      await makeRequest('/api/validate', {
-        method: 'POST',
+      await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: testProjectId }),
       });
     });
 
-    it('should generate capabilities IR', async () => {
+    it("should generate capabilities IR", async () => {
       const response = await makeRequest(`/api/ir/capabilities?project_id=${testProjectId}`);
 
       expect(response.status).toBe(200);
 
       const ir = await response.json();
-      expect(ir.kind).toBe('capabilities');
-      expect(ir.data.type).toBe('directed_graph');
+      expect(ir.kind).toBe("capabilities");
+      expect(ir.data.type).toBe("directed_graph");
       expect(ir.data.nodes).toBeDefined();
       expect(ir.data.edges).toBeDefined();
       expect(ir.generated_at).toBeDefined();
@@ -622,126 +622,126 @@ tests: {
       const nodes = ir.data.nodes;
       expect(nodes.length).toBe(2);
 
-      const authNode = nodes.find((n: any) => n.id === 'user.auth');
+      const authNode = nodes.find((n: any) => n.id === "user.auth");
       expect(authNode).toBeDefined();
-      expect(authNode.label).toBe('User Authentication');
+      expect(authNode.label).toBe("User Authentication");
     });
 
-    it('should generate flows IR', async () => {
+    it("should generate flows IR", async () => {
       const response = await makeRequest(`/api/ir/flows?project_id=${testProjectId}`);
 
       expect(response.status).toBe(200);
 
       const ir = await response.json();
-      expect(ir.kind).toBe('flows');
-      expect(ir.data.type).toBe('flowchart');
+      expect(ir.kind).toBe("flows");
+      expect(ir.data.type).toBe("flowchart");
       expect(ir.data.flows).toBeDefined();
 
       const flows = ir.data.flows;
       expect(flows.length).toBe(1);
-      expect(flows[0].name).toBe('User Login Flow');
+      expect(flows[0].name).toBe("User Login Flow");
     });
 
-    it('should generate dependencies IR', async () => {
+    it("should generate dependencies IR", async () => {
       const response = await makeRequest(`/api/ir/dependencies?project_id=${testProjectId}`);
 
       expect(response.status).toBe(200);
 
       const ir = await response.json();
-      expect(ir.kind).toBe('dependencies');
-      expect(ir.data.type).toBe('layered_graph');
+      expect(ir.kind).toBe("dependencies");
+      expect(ir.data.type).toBe("layered_graph");
       expect(ir.data.layers).toBeDefined();
     });
 
-    it('should generate coverage IR', async () => {
+    it("should generate coverage IR", async () => {
       const response = await makeRequest(`/api/ir/coverage?project_id=${testProjectId}`);
 
       expect(response.status).toBe(200);
 
       const ir = await response.json();
-      expect(ir.kind).toBe('coverage');
-      expect(ir.data.type).toBe('coverage_graph');
+      expect(ir.kind).toBe("coverage");
+      expect(ir.data.type).toBe("coverage_graph");
       expect(ir.data.coverage).toBeDefined();
 
       const coverage = ir.data.coverage;
-      expect(typeof coverage.overall).toBe('number');
+      expect(typeof coverage.overall).toBe("number");
       expect(coverage.overall).toBeGreaterThanOrEqual(0);
       expect(coverage.overall).toBeLessThanOrEqual(100);
     });
 
-    it('should reject invalid IR kind', async () => {
+    it("should reject invalid IR kind", async () => {
       const response = await makeRequest(`/api/ir/invalid?project_id=${testProjectId}`);
 
       expect(response.status).toBe(400);
 
       const error = await response.json();
-      expect(error.detail).toContain('Invalid IR kind');
+      expect(error.detail).toContain("Invalid IR kind");
     });
   });
 
-  describe('Error Handling', () => {
-    it('should return CORS headers for all responses', async () => {
-      const response = await makeRequest('/health');
+  describe("Error Handling", () => {
+    it("should return CORS headers for all responses", async () => {
+      const response = await makeRequest("/health");
 
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('GET');
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(response.headers.get("Access-Control-Allow-Methods")).toContain("GET");
     });
 
-    it('should handle preflight OPTIONS requests', async () => {
-      const response = await makeRequest('/api/fragments', {
-        method: 'OPTIONS',
+    it("should handle preflight OPTIONS requests", async () => {
+      const response = await makeRequest("/api/fragments", {
+        method: "OPTIONS",
       });
 
       expect(response.status).toBe(204);
-      expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-      expect(response.headers.get('Access-Control-Allow-Methods')).toContain('POST');
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+      expect(response.headers.get("Access-Control-Allow-Methods")).toContain("POST");
     });
 
-    it('should return 404 for non-existent routes', async () => {
-      const response = await makeRequest('/api/nonexistent');
+    it("should return 404 for non-existent routes", async () => {
+      const response = await makeRequest("/api/nonexistent");
 
       expect(response.status).toBe(404);
 
       const error = await response.json();
       expect(error.type).toBeDefined();
-      expect(error.title).toBe('Not Found');
+      expect(error.title).toBe("Not Found");
     });
 
-    it('should return proper error format for malformed JSON', async () => {
-      const response = await makeRequest('/api/fragments', {
-        method: 'POST',
-        body: '{ invalid json',
+    it("should return proper error format for malformed JSON", async () => {
+      const response = await makeRequest("/api/fragments", {
+        method: "POST",
+        body: "{ invalid json",
       });
 
       expect(response.status).toBe(400);
     });
 
-    it('should handle rate limiting', async () => {
+    it("should handle rate limiting", async () => {
       // Make many requests quickly to trigger rate limiting
       const promises = [];
       for (let i = 0; i < 150; i++) {
         // Exceed rate limit
-        promises.push(makeRequest('/health'));
+        promises.push(makeRequest("/health"));
       }
 
       const responses = await Promise.all(promises);
 
       // Some requests should be rate limited
-      const rateLimitedResponses = responses.filter(r => r.status === 429);
+      const rateLimitedResponses = responses.filter((r) => r.status === 429);
       expect(rateLimitedResponses.length).toBeGreaterThan(0);
     });
   });
 
-  describe('Performance Validation', () => {
-    it('should handle API requests within performance targets', async () => {
+  describe("Performance Validation", () => {
+    it("should handle API requests within performance targets", async () => {
       // Fragment creation should be fast
       const start = Date.now();
-      const response = await makeRequest('/api/fragments', {
-        method: 'POST',
+      const response = await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'perf.cue',
-          content: 'package spec\n\ntest: true',
+          path: "perf.cue",
+          content: "package spec\n\ntest: true",
         }),
       });
       const duration = Date.now() - start;
@@ -750,31 +750,31 @@ tests: {
       expect(duration).toBeLessThan(1000); // Should complete under 1 second
     });
 
-    it('should complete validation within target time', async () => {
+    it("should complete validation within target time", async () => {
       // Create fragment
-      await makeRequest('/api/fragments', {
-        method: 'POST',
+      await makeRequest("/api/fragments", {
+        method: "POST",
         body: JSON.stringify({
           project_id: testProjectId,
-          path: 'validation-perf.cue',
+          path: "validation-perf.cue",
           content: `package spec
 
 routes: {
 	${Array.from({ length: 50 }, (_, i) => `"route${i}": { path: "/path${i}", method: "GET" }`).join(
-    '\n\t'
+    "\n\t",
   )}
 }
 
 capabilities: {
-	${Array.from({ length: 20 }, (_, i) => `"cap${i}": "Capability ${i}"`).join('\n\t')}
+	${Array.from({ length: 20 }, (_, i) => `"cap${i}": "Capability ${i}"`).join("\n\t")}
 }`,
         }),
       });
 
       // Validation should complete within target
       const start = Date.now();
-      const response = await makeRequest('/api/validate', {
-        method: 'POST',
+      const response = await makeRequest("/api/validate", {
+        method: "POST",
         body: JSON.stringify({ project_id: testProjectId }),
       });
       const duration = Date.now() - start;
@@ -786,13 +786,13 @@ capabilities: {
       expect(result.success).toBe(true);
     });
 
-    it('should handle concurrent API requests efficiently', async () => {
+    it("should handle concurrent API requests efficiently", async () => {
       const concurrentRequests = 20;
       const promises = [];
 
       for (let i = 0; i < concurrentRequests; i++) {
-        const promise = makeRequest('/api/fragments', {
-          method: 'POST',
+        const promise = makeRequest("/api/fragments", {
+          method: "POST",
           body: JSON.stringify({
             project_id: `concurrent-${i}`,
             path: `concurrent-${i}.cue`,
@@ -807,7 +807,7 @@ capabilities: {
       const duration = Date.now() - start;
 
       // All should succeed
-      responses.forEach(response => {
+      responses.forEach((response) => {
         expect(response.status).toBe(201);
       });
 

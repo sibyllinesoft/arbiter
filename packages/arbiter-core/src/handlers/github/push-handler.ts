@@ -1,5 +1,5 @@
-import type { HandlerResponse, WebhookEvent } from '../shared/utils.js';
-import { createResponse, logEvent, validatePayload } from '../shared/utils.js';
+import type { HandlerResponse, WebhookEvent } from "../shared/utils.js";
+import { createResponse, logEvent, validatePayload } from "../shared/utils.js";
 
 export interface GitHubPushPayload {
   ref: string;
@@ -42,40 +42,40 @@ export interface GitHubPushPayload {
 export async function handleGitHubPush(event: WebhookEvent): Promise<HandlerResponse> {
   try {
     // Validate the payload structure
-    const validationResult = validatePayload(event.payload, ['ref', 'repository', 'pusher']);
+    const validationResult = validatePayload(event.payload, ["ref", "repository", "pusher"]);
     if (!validationResult.isValid) {
-      return createResponse(false, `Invalid payload: ${validationResult.errors.join(', ')}`);
+      return createResponse(false, `Invalid payload: ${validationResult.errors.join(", ")}`);
     }
 
     const payload = event.payload as GitHubPushPayload;
 
     // Extract branch name from ref
-    const branch = payload.ref.replace('refs/heads/', '');
+    const branch = payload.ref.replace("refs/heads/", "");
 
     // Log the push event
     await logEvent({
-      type: 'github.push',
+      type: "github.push",
       timestamp: new Date().toISOString(),
       repository: payload.repository.full_name,
       branch,
       pusher: payload.pusher.name,
       commitCount: payload.commits.length,
-      headCommit: payload.head_commit?.id || 'deleted',
+      headCommit: payload.head_commit?.id || "deleted",
     });
 
     // Check for special branches
-    const isMainBranch = ['main', 'master', 'develop'].includes(branch);
-    const isFeatureBranch = branch.startsWith('feature/');
-    const isHotfixBranch = branch.startsWith('hotfix/');
+    const isMainBranch = ["main", "master", "develop"].includes(branch);
+    const isFeatureBranch = branch.startsWith("feature/");
+    const isHotfixBranch = branch.startsWith("hotfix/");
 
     let message = `Processed push to ${branch} in ${payload.repository.name}`;
 
     if (isMainBranch) {
-      message += ' (protected branch detected)';
+      message += " (protected branch detected)";
 
       // Additional validation for main branch pushes
       if (payload.commits.length > 10) {
-        return createResponse(false, 'Too many commits pushed to protected branch at once');
+        return createResponse(false, "Too many commits pushed to protected branch at once");
       }
     }
 
@@ -89,7 +89,7 @@ export async function handleGitHubPush(event: WebhookEvent): Promise<HandlerResp
     }
 
     // Check commit messages for conventional commits
-    const invalidCommits = payload.commits.filter(commit => {
+    const invalidCommits = payload.commits.filter((commit) => {
       const conventionalPattern = /^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: .+/;
       return !conventionalPattern.test(commit.message);
     });
@@ -97,7 +97,7 @@ export async function handleGitHubPush(event: WebhookEvent): Promise<HandlerResp
     if (invalidCommits.length > 0 && isMainBranch) {
       return createResponse(
         false,
-        `Non-conventional commit messages found: ${invalidCommits.map(c => c.id.substring(0, 7)).join(', ')}`
+        `Non-conventional commit messages found: ${invalidCommits.map((c) => c.id.substring(0, 7)).join(", ")}`,
       );
     }
 
@@ -109,9 +109,9 @@ export async function handleGitHubPush(event: WebhookEvent): Promise<HandlerResp
       isProtectedBranch: isMainBranch,
     });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     await logEvent({
-      type: 'github.push.error',
+      type: "github.push.error",
       timestamp: new Date().toISOString(),
       error: errorMessage,
     });
@@ -121,10 +121,10 @@ export async function handleGitHubPush(event: WebhookEvent): Promise<HandlerResp
 }
 
 export const config = {
-  name: 'github-push-handler',
-  description: 'Handles GitHub push events with branch protection and commit validation',
-  version: '1.0.0',
-  events: ['push'],
-  provider: 'github',
+  name: "github-push-handler",
+  description: "Handles GitHub push events with branch protection and commit validation",
+  version: "1.0.0",
+  events: ["push"],
+  provider: "github",
   enabled: true,
 };

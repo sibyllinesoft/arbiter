@@ -1,13 +1,13 @@
-import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
-import { createResponse } from '../../shared/utils.js';
-import { GitHubPRAdapter } from '../adapters/github/GitHubPRAdapter.js';
-import { GitHubPushAdapter } from '../adapters/github/GitHubPushAdapter.js';
-import { GitLabMRAdapter } from '../adapters/gitlab/GitLabMRAdapter.js';
-import { AIAgentHandler } from '../base/AIAgentHandler.js';
-import type { AIAgentConfig, AICommand } from '../base/types.js';
-import { ClaudeProvider } from '../providers/ClaudeProvider.js';
-import { GeminiProvider } from '../providers/GeminiProvider.js';
-import { OpenAIProvider } from '../providers/OpenAIProvider.js';
+import type { HandlerResponse, WebhookEvent } from "../../shared/utils.js";
+import { createResponse } from "../../shared/utils.js";
+import { GitHubPRAdapter } from "../adapters/github/GitHubPRAdapter.js";
+import { GitHubPushAdapter } from "../adapters/github/GitHubPushAdapter.js";
+import { GitLabMRAdapter } from "../adapters/gitlab/GitLabMRAdapter.js";
+import { AIAgentHandler } from "../base/AIAgentHandler.js";
+import type { AIAgentConfig, AICommand } from "../base/types.js";
+import { ClaudeProvider } from "../providers/ClaudeProvider.js";
+import { GeminiProvider } from "../providers/GeminiProvider.js";
+import { OpenAIProvider } from "../providers/OpenAIProvider.js";
 
 /**
  * AI-powered Documentation Agent
@@ -33,13 +33,13 @@ export class DocumentationAgent extends AIAgentHandler {
     // Initialize AI provider based on config
     let provider: ClaudeProvider | OpenAIProvider | GeminiProvider;
     switch (config.provider.type) {
-      case 'claude':
+      case "claude":
         provider = new ClaudeProvider(config.provider.config);
         break;
-      case 'openai':
+      case "openai":
         provider = new OpenAIProvider(config.provider.config);
         break;
-      case 'gemini':
+      case "gemini":
         provider = new GeminiProvider(config.provider.config);
         break;
       default: {
@@ -51,9 +51,9 @@ export class DocumentationAgent extends AIAgentHandler {
     super(config, provider);
 
     // Register adapters for different platforms
-    this.registerAdapter('github', 'pull_request', new GitHubPRAdapter());
-    this.registerAdapter('github', 'push', new GitHubPushAdapter());
-    this.registerAdapter('gitlab', 'merge_request', new GitLabMRAdapter());
+    this.registerAdapter("github", "pull_request", new GitHubPRAdapter());
+    this.registerAdapter("github", "push", new GitHubPushAdapter());
+    this.registerAdapter("gitlab", "merge_request", new GitLabMRAdapter());
   }
 
   /**
@@ -61,15 +61,15 @@ export class DocumentationAgent extends AIAgentHandler {
    */
   protected initializeCommands(): void {
     // Comprehensive documentation generation
-    this.registerCommand('generate-docs', {
-      name: 'generate-docs',
-      description: 'Generate comprehensive documentation for code changes',
-      usage: '/generate-docs [type]',
+    this.registerCommand("generate-docs", {
+      name: "generate-docs",
+      description: "Generate comprehensive documentation for code changes",
+      usage: "/generate-docs [type]",
       examples: [
-        '/generate-docs',
-        '/generate-docs api',
-        '/generate-docs user-guide',
-        '/generate-docs technical',
+        "/generate-docs",
+        "/generate-docs api",
+        "/generate-docs user-guide",
+        "/generate-docs technical",
       ],
       requiresArgs: false,
       prompt: `Generate comprehensive documentation for the code changes in this pull request or push. Analyze the changes and create appropriate documentation including:
@@ -106,11 +106,11 @@ Format the documentation appropriately for its intended use (Markdown, JSDoc, Op
     });
 
     // API documentation generation
-    this.registerCommand('api-docs', {
-      name: 'api-docs',
-      description: 'Generate API documentation from code changes',
-      usage: '/api-docs [format]',
-      examples: ['/api-docs', '/api-docs openapi', '/api-docs postman', '/api-docs swagger'],
+    this.registerCommand("api-docs", {
+      name: "api-docs",
+      description: "Generate API documentation from code changes",
+      usage: "/api-docs [format]",
+      examples: ["/api-docs", "/api-docs openapi", "/api-docs postman", "/api-docs swagger"],
       requiresArgs: false,
       prompt: `Generate comprehensive API documentation for the endpoints and interfaces changed in this code. Include:
 
@@ -154,11 +154,11 @@ Format as OpenAPI/Swagger specification or Markdown documentation as appropriate
     });
 
     // README generation and updates
-    this.registerCommand('readme', {
-      name: 'readme',
-      description: 'Generate or update README documentation',
-      usage: '/readme [section]',
-      examples: ['/readme', '/readme installation', '/readme usage', '/readme complete'],
+    this.registerCommand("readme", {
+      name: "readme",
+      description: "Generate or update README documentation",
+      usage: "/readme [section]",
+      examples: ["/readme", "/readme installation", "/readme usage", "/readme complete"],
       requiresArgs: false,
       prompt: `Generate or update README documentation based on the code changes. Create a comprehensive README that includes:
 
@@ -201,11 +201,11 @@ Use clear headings, bullet points, code blocks, and examples. Make it beginner-f
     });
 
     // Changelog generation
-    this.registerCommand('changelog', {
-      name: 'changelog',
-      description: 'Generate changelog entries for code changes',
-      usage: '/changelog [format]',
-      examples: ['/changelog', '/changelog semantic', '/changelog traditional'],
+    this.registerCommand("changelog", {
+      name: "changelog",
+      description: "Generate changelog entries for code changes",
+      usage: "/changelog [format]",
+      examples: ["/changelog", "/changelog semantic", "/changelog traditional"],
       requiresArgs: false,
       prompt: `Generate changelog entries for the code changes in this pull request or push. Follow these guidelines:
 
@@ -245,11 +245,11 @@ Format as standard changelog (Keep a Changelog format) or release notes as appro
     });
 
     // Migration guide generation
-    this.registerCommand('migration-guide', {
-      name: 'migration-guide',
-      description: 'Create migration guides for breaking changes',
-      usage: '/migration-guide [version]',
-      examples: ['/migration-guide', '/migration-guide v2.0', '/migration-guide breaking-changes'],
+    this.registerCommand("migration-guide", {
+      name: "migration-guide",
+      description: "Create migration guides for breaking changes",
+      usage: "/migration-guide [version]",
+      examples: ["/migration-guide", "/migration-guide v2.0", "/migration-guide breaking-changes"],
       requiresArgs: false,
       prompt: `Create a comprehensive migration guide for any breaking changes in this code. Include:
 
@@ -291,15 +291,15 @@ Make the guide practical and actionable, with working code examples and clear ex
     });
 
     // Code comment suggestions
-    this.registerCommand('code-comments', {
-      name: 'code-comments',
-      description: 'Suggest code comments and inline documentation',
-      usage: '/code-comments [style]',
+    this.registerCommand("code-comments", {
+      name: "code-comments",
+      description: "Suggest code comments and inline documentation",
+      usage: "/code-comments [style]",
       examples: [
-        '/code-comments',
-        '/code-comments jsdoc',
-        '/code-comments inline',
-        '/code-comments comprehensive',
+        "/code-comments",
+        "/code-comments jsdoc",
+        "/code-comments inline",
+        "/code-comments comprehensive",
       ],
       requiresArgs: false,
       prompt: `Analyze the code changes and suggest appropriate comments and inline documentation. Focus on:
@@ -348,13 +348,13 @@ Provide specific suggestions with line numbers where comments should be added or
    */
   protected async processEvent(
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<HandlerResponse> {
     // Check if automatic documentation is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, 'Automatic documentation disabled', {
+      return createResponse(true, "Automatic documentation disabled", {
         skipped: true,
-        reason: 'auto_response_disabled',
+        reason: "auto_response_disabled",
       });
     }
 
@@ -362,9 +362,9 @@ Provide specific suggestions with line numbers where comments should be added or
     const shouldSuggestDocs = this.shouldSuggestDocumentation(eventData);
 
     if (!shouldSuggestDocs) {
-      return createResponse(true, 'Event does not require documentation suggestions', {
+      return createResponse(true, "Event does not require documentation suggestions", {
         skipped: true,
-        reason: 'no_documentation_needed',
+        reason: "no_documentation_needed",
       });
     }
 
@@ -393,13 +393,13 @@ Provide specific suggestions with line numbers where comments should be added or
         actionResults = await this.executeActions(aiResponse.actions, eventData, originalEvent);
       }
 
-      return createResponse(true, 'Automatic documentation suggestions completed', {
+      return createResponse(true, "Automatic documentation suggestions completed", {
         documentation: aiResponse.data,
         actions: actionResults,
         command: docCommand,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return createResponse(false, `Automatic documentation error: ${errorMessage}`);
     }
   }
@@ -424,8 +424,8 @@ Provide specific suggestions with line numbers where comments should be added or
 
       // New features need documentation
       if (
-        pr.title.toLowerCase().includes('feat') ||
-        pr.body.toLowerCase().includes('new feature')
+        pr.title.toLowerCase().includes("feat") ||
+        pr.body.toLowerCase().includes("new feature")
       ) {
         return true;
       }
@@ -445,20 +445,20 @@ Provide specific suggestions with line numbers where comments should be added or
   private hasAPIChanges(eventData: any): boolean {
     // This is a simplified check - in production, you'd analyze the actual file changes
     const indicators = [
-      'api',
-      'endpoint',
-      'route',
-      'controller',
-      'swagger',
-      'openapi',
-      'schema',
-      'model',
+      "api",
+      "endpoint",
+      "route",
+      "controller",
+      "swagger",
+      "openapi",
+      "schema",
+      "model",
     ];
 
     const searchText =
-      `${eventData.pullRequest?.title} ${eventData.pullRequest?.body} ${eventData.push?.commits?.map((c: any) => c.message).join(' ') || ''}`.toLowerCase();
+      `${eventData.pullRequest?.title} ${eventData.pullRequest?.body} ${eventData.push?.commits?.map((c: any) => c.message).join(" ") || ""}`.toLowerCase();
 
-    return indicators.some(indicator => searchText.includes(indicator));
+    return indicators.some((indicator) => searchText.includes(indicator));
   }
 
   /**
@@ -466,18 +466,18 @@ Provide specific suggestions with line numbers where comments should be added or
    */
   private selectDocumentationCommand(eventData: any): string {
     if (this.hasAPIChanges(eventData)) {
-      return 'api-docs';
+      return "api-docs";
     }
 
     if (
-      eventData.pullRequest?.title.toLowerCase().includes('readme') ||
-      eventData.push?.commits?.some((c: any) => c.message.toLowerCase().includes('readme'))
+      eventData.pullRequest?.title.toLowerCase().includes("readme") ||
+      eventData.push?.commits?.some((c: any) => c.message.toLowerCase().includes("readme"))
     ) {
-      return 'readme';
+      return "readme";
     }
 
     // Default to general documentation
-    return 'generate-docs';
+    return "generate-docs";
   }
 
   /**
@@ -486,16 +486,16 @@ Provide specific suggestions with line numbers where comments should be added or
   protected async executeAction(
     action: any,
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     switch (action.type) {
-      case 'comment':
+      case "comment":
         return await this.postDocumentationComment(action.data, eventData, originalEvent);
 
-      case 'issue':
+      case "issue":
         return await this.createDocumentationIssue(action.data, eventData, originalEvent);
 
-      case 'webhook':
+      case "webhook":
         return await this.triggerDocumentationWebhook(action.data, eventData, originalEvent);
 
       default:
@@ -509,13 +509,13 @@ Provide specific suggestions with line numbers where comments should be added or
   private async postDocumentationComment(
     data: { body: string },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.comment',
+      type: "ai.agent.action.comment",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'documentation_comment',
+      action: "documentation_comment",
       target: eventData.pullRequest
         ? `PR #${eventData.pullRequest.number}`
         : `Push to ${eventData.push?.branch}`,
@@ -523,9 +523,9 @@ Provide specific suggestions with line numbers where comments should be added or
     });
 
     return {
-      action: 'comment',
-      status: 'success',
-      message: 'Documentation comment posted successfully',
+      action: "comment",
+      status: "success",
+      message: "Documentation comment posted successfully",
       preview: data.body.substring(0, 100),
     };
   }
@@ -536,23 +536,23 @@ Provide specific suggestions with line numbers where comments should be added or
   private async createDocumentationIssue(
     data: { title: string; body: string; labels?: string[] },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.issue',
+      type: "ai.agent.action.issue",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'documentation_issue',
+      action: "documentation_issue",
       title: data.title,
-      labels: data.labels || ['documentation'],
+      labels: data.labels || ["documentation"],
     });
 
     return {
-      action: 'create_issue',
-      status: 'success',
+      action: "create_issue",
+      status: "success",
       title: data.title,
-      labels: data.labels || ['documentation'],
-      message: 'Documentation issue created successfully',
+      labels: data.labels || ["documentation"],
+      message: "Documentation issue created successfully",
     };
   }
 
@@ -562,21 +562,21 @@ Provide specific suggestions with line numbers where comments should be added or
   private async triggerDocumentationWebhook(
     data: { webhookUrl: string; [key: string]: any },
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any> {
     await this.logActivity({
-      type: 'ai.agent.action.webhook',
+      type: "ai.agent.action.webhook",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: 'documentation_webhook',
+      action: "documentation_webhook",
       webhookUrl: data.webhookUrl,
     });
 
     return {
-      action: 'webhook',
-      status: 'success',
+      action: "webhook",
+      status: "success",
       url: data.webhookUrl,
-      message: 'Documentation webhook triggered successfully',
+      message: "Documentation webhook triggered successfully",
     };
   }
 }

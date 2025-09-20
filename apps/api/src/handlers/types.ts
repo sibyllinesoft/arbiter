@@ -109,7 +109,7 @@ export interface EnhancedWebhookPayload extends WebhookPayload {
 // Handler function signature
 export type WebhookHandler = (
   payload: EnhancedWebhookPayload,
-  context: HandlerContext
+  context: HandlerContext,
 ) => Promise<HandlerResult>;
 
 // Handler module interface
@@ -181,7 +181,7 @@ export interface GitService {
 
 export interface FileDiff {
   path: string;
-  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  status: "added" | "modified" | "deleted" | "renamed";
   additions: number;
   deletions: number;
   patch?: string;
@@ -190,7 +190,7 @@ export interface FileDiff {
 // Handler registry types
 export interface RegisteredHandler {
   id: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   handlerPath: string;
   enabled: boolean;
@@ -198,11 +198,11 @@ export interface RegisteredHandler {
   lastExecuted?: string;
   executionCount: number;
   errorCount: number;
-  metadata: HandlerModule['metadata'];
+  metadata: HandlerModule["metadata"];
 }
 
 export interface HandlerCreationOptions {
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   code: string;
   config?: Partial<HandlerConfig>;
@@ -218,7 +218,7 @@ export interface HandlerExecution {
   id: string;
   handlerId: string;
   projectId: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   payload: EnhancedWebhookPayload;
   result: HandlerResult;

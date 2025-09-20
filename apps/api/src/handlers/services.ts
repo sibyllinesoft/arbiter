@@ -2,12 +2,12 @@
  * Handler Services - Provide secure, sandboxed services for custom handlers
  */
 
-import { mkdir } from 'node:fs/promises';
-import path from 'node:path';
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
-import { logger as defaultLogger } from '../utils.js';
-import { HandlerSandbox } from './sandbox.js';
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
+import { logger as defaultLogger } from "../utils.js";
+import { HandlerSandbox } from "./sandbox.js";
 import type {
   FileDiff,
   GitService,
@@ -17,9 +17,9 @@ import type {
   NotificationService,
   RequestOptions,
   SlackMessage,
-} from './types.js';
+} from "./types.js";
 
-type EmailMode = 'disabled' | 'log' | 'smtp';
+type EmailMode = "disabled" | "log" | "smtp";
 
 export interface HandlerEmailConfig {
   mode?: EmailMode;
@@ -40,38 +40,38 @@ export class HandlerHttpClient implements HttpClient {
   private requestCounts = new Map<string, { count: number; resetTime: number }>();
   private readonly maxRequestsPerMinute = 60;
   private readonly allowedDomains = new Set([
-    'api.github.com',
-    'gitlab.com',
-    'hooks.slack.com',
-    'api.slack.com',
-    'discord.com',
-    'api.trello.com',
-    'api.atlassian.com',
+    "api.github.com",
+    "gitlab.com",
+    "hooks.slack.com",
+    "api.slack.com",
+    "discord.com",
+    "api.trello.com",
+    "api.atlassian.com",
   ]);
 
   constructor(private logger: Logger) {}
 
   async get(url: string, options: RequestOptions = {}): Promise<HttpResponse> {
-    return this.makeRequest('GET', url, undefined, options);
+    return this.makeRequest("GET", url, undefined, options);
   }
 
   async post(url: string, data?: unknown, options: RequestOptions = {}): Promise<HttpResponse> {
-    return this.makeRequest('POST', url, data, options);
+    return this.makeRequest("POST", url, data, options);
   }
 
   async put(url: string, data?: unknown, options: RequestOptions = {}): Promise<HttpResponse> {
-    return this.makeRequest('PUT', url, data, options);
+    return this.makeRequest("PUT", url, data, options);
   }
 
   async delete(url: string, options: RequestOptions = {}): Promise<HttpResponse> {
-    return this.makeRequest('DELETE', url, undefined, options);
+    return this.makeRequest("DELETE", url, undefined, options);
   }
 
   private async makeRequest(
     method: string,
     url: string,
     data?: unknown,
-    options: RequestOptions = {}
+    options: RequestOptions = {},
   ): Promise<HttpResponse> {
     // Validate URL
     this.validateUrl(url);
@@ -90,26 +90,26 @@ export class HandlerHttpClient implements HttpClient {
         const requestOptions: RequestInit = {
           method,
           headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Arbiter-Webhook-Handler/1.0',
+            "Content-Type": "application/json",
+            "User-Agent": "Arbiter-Webhook-Handler/1.0",
             ...options.headers,
           },
           signal: controller.signal,
         };
 
-        if (data && (method === 'POST' || method === 'PUT')) {
+        if (data && (method === "POST" || method === "PUT")) {
           requestOptions.body = JSON.stringify(data);
         }
 
-        this.logger.debug('Making HTTP request', { method, url, attempt });
+        this.logger.debug("Making HTTP request", { method, url, attempt });
 
         const response = await fetch(url, requestOptions);
         clearTimeout(timeoutId);
 
         let responseData: unknown;
-        const contentType = response.headers.get('content-type') || '';
+        const contentType = response.headers.get("content-type") || "";
 
-        if (contentType.includes('application/json')) {
+        if (contentType.includes("application/json")) {
           responseData = await response.json();
         } else {
           responseData = await response.text();
@@ -123,7 +123,7 @@ export class HandlerHttpClient implements HttpClient {
         };
 
         // Log result
-        this.logger.info('HTTP request completed', {
+        this.logger.info("HTTP request completed", {
           method,
           url: this.sanitizeUrl(url),
           status: response.status,
@@ -135,7 +135,7 @@ export class HandlerHttpClient implements HttpClient {
         lastError = error as Error;
 
         if (attempt === retries) {
-          this.logger.error('HTTP request failed', lastError, {
+          this.logger.error("HTTP request failed", lastError, {
             method,
             url: this.sanitizeUrl(url),
             attempt,
@@ -145,11 +145,11 @@ export class HandlerHttpClient implements HttpClient {
 
         // Exponential backoff for retries
         const delay = Math.min(1000 * 2 ** attempt, 5000);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
 
-    throw lastError || new Error('HTTP request failed');
+    throw lastError || new Error("HTTP request failed");
   }
 
   private validateUrl(url: string): void {
@@ -157,24 +157,24 @@ export class HandlerHttpClient implements HttpClient {
       const parsedUrl = new URL(url);
 
       // Only allow HTTPS (except localhost for development)
-      if (parsedUrl.protocol !== 'https:' && !parsedUrl.hostname.includes('localhost')) {
-        throw new Error('Only HTTPS URLs are allowed');
+      if (parsedUrl.protocol !== "https:" && !parsedUrl.hostname.includes("localhost")) {
+        throw new Error("Only HTTPS URLs are allowed");
       }
 
       // Check allowed domains
       if (
         !this.allowedDomains.has(parsedUrl.hostname) &&
-        !parsedUrl.hostname.includes('localhost')
+        !parsedUrl.hostname.includes("localhost")
       ) {
         throw new Error(`Domain not allowed: ${parsedUrl.hostname}`);
       }
 
       // Prevent SSRF attacks
-      if (parsedUrl.hostname.includes('metadata') || parsedUrl.hostname.includes('169.254')) {
-        throw new Error('Blocked URL pattern detected');
+      if (parsedUrl.hostname.includes("metadata") || parsedUrl.hostname.includes("169.254")) {
+        throw new Error("Blocked URL pattern detected");
       }
     } catch (error) {
-      throw new Error(`Invalid URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(`Invalid URL: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   }
 
@@ -185,7 +185,7 @@ export class HandlerHttpClient implements HttpClient {
     const current = this.requestCounts.get(String(minute)) || { count: 0, resetTime: minute };
 
     if (current.count >= this.maxRequestsPerMinute) {
-      throw new Error('Rate limit exceeded: too many HTTP requests');
+      throw new Error("Rate limit exceeded: too many HTTP requests");
     }
 
     current.count++;
@@ -205,7 +205,7 @@ export class HandlerHttpClient implements HttpClient {
       const parsedUrl = new URL(url);
       return `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
     } catch {
-      return '[invalid-url]';
+      return "[invalid-url]";
     }
   }
 }
@@ -218,33 +218,36 @@ export class HandlerNotificationService implements NotificationService {
   private emailFrom?: string;
   private transporter?: Transporter;
 
-  constructor(private logger: Logger, private emailConfig: HandlerEmailConfig = {}) {
+  constructor(
+    private logger: Logger,
+    private emailConfig: HandlerEmailConfig = {},
+  ) {
     this.emailMode = this.resolveEmailMode(emailConfig.mode);
     this.emailFrom = emailConfig.from ?? process.env.HANDLER_EMAIL_FROM;
 
-    if (this.emailMode === 'smtp') {
+    if (this.emailMode === "smtp") {
       this.configureSmtpTransport(emailConfig.smtp);
     }
   }
 
   async sendSlack(webhookUrl: string, message: SlackMessage): Promise<void> {
-    if (!webhookUrl.includes('hooks.slack.com')) {
-      throw new Error('Invalid Slack webhook URL');
+    if (!webhookUrl.includes("hooks.slack.com")) {
+      throw new Error("Invalid Slack webhook URL");
     }
 
     const payload = {
       text: message.text,
       blocks: message.blocks,
       channel: message.channel,
-      username: message.username || 'Arbiter Webhook',
-      icon_emoji: message.iconEmoji || ':robot_face:',
+      username: message.username || "Arbiter Webhook",
+      icon_emoji: message.iconEmoji || ":robot_face:",
     };
 
     try {
       const response = await fetch(webhookUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -253,9 +256,9 @@ export class HandlerNotificationService implements NotificationService {
         throw new Error(`Slack webhook failed: ${response.status} ${response.statusText}`);
       }
 
-      this.logger.info('Slack notification sent successfully');
+      this.logger.info("Slack notification sent successfully");
     } catch (error) {
-      this.logger.error('Failed to send Slack notification', error as Error);
+      this.logger.error("Failed to send Slack notification", error as Error);
       throw error;
     }
   }
@@ -263,15 +266,15 @@ export class HandlerNotificationService implements NotificationService {
   async sendEmail(to: string, subject: string, body: string): Promise<void> {
     const sanitizedTo = this.sanitizeEmail(to);
 
-    if (this.emailMode === 'disabled') {
+    if (this.emailMode === "disabled") {
       const message =
-        'Email notifications are disabled. Set HANDLER_EMAIL_MODE=log or smtp to enable.';
+        "Email notifications are disabled. Set HANDLER_EMAIL_MODE=log or smtp to enable.";
       this.logger.warn(message, { to: sanitizedTo });
       throw new Error(message);
     }
 
-    if (this.emailMode === 'log') {
-      this.logger.info('Email notification logged (log mode)', {
+    if (this.emailMode === "log") {
+      this.logger.info("Email notification logged (log mode)", {
         to: sanitizedTo,
         subject,
       });
@@ -279,7 +282,7 @@ export class HandlerNotificationService implements NotificationService {
     }
 
     if (!this.transporter || !this.emailFrom) {
-      const message = 'Email transporter not configured. Check SMTP credentials and from address.';
+      const message = "Email transporter not configured. Check SMTP credentials and from address.";
       this.logger.error(message, undefined, { to: sanitizedTo });
       throw new Error(message);
     }
@@ -293,9 +296,9 @@ export class HandlerNotificationService implements NotificationService {
         html: this.renderEmailHtml(subject, body),
       });
 
-      this.logger.info('Email notification sent successfully', { to: sanitizedTo, subject });
+      this.logger.info("Email notification sent successfully", { to: sanitizedTo, subject });
     } catch (error) {
-      this.logger.error('Failed to send email notification', error as Error, {
+      this.logger.error("Failed to send email notification", error as Error, {
         to: sanitizedTo,
       });
       throw error;
@@ -305,10 +308,10 @@ export class HandlerNotificationService implements NotificationService {
   async sendWebhook(url: string, payload: unknown): Promise<void> {
     try {
       const response = await fetch(url, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Arbiter-Webhook-Handler/1.0',
+          "Content-Type": "application/json",
+          "User-Agent": "Arbiter-Webhook-Handler/1.0",
         },
         body: JSON.stringify(payload),
       });
@@ -317,11 +320,11 @@ export class HandlerNotificationService implements NotificationService {
         throw new Error(`Webhook failed: ${response.status} ${response.statusText}`);
       }
 
-      this.logger.info('Webhook notification sent successfully', {
+      this.logger.info("Webhook notification sent successfully", {
         url: this.sanitizeUrl(url),
       });
     } catch (error) {
-      this.logger.error('Failed to send webhook notification', error as Error, {
+      this.logger.error("Failed to send webhook notification", error as Error, {
         url: this.sanitizeUrl(url),
       });
       throw error;
@@ -331,34 +334,34 @@ export class HandlerNotificationService implements NotificationService {
   private resolveEmailMode(override?: EmailMode): EmailMode {
     if (override) return override;
 
-    const fromEnv = (process.env.HANDLER_EMAIL_MODE || '').toLowerCase();
-    if (fromEnv === 'smtp' || fromEnv === 'log') {
+    const fromEnv = (process.env.HANDLER_EMAIL_MODE || "").toLowerCase();
+    if (fromEnv === "smtp" || fromEnv === "log") {
       return fromEnv;
     }
-    return 'disabled';
+    return "disabled";
   }
 
-  private configureSmtpTransport(smtpConfig?: HandlerEmailConfig['smtp']): void {
+  private configureSmtpTransport(smtpConfig?: HandlerEmailConfig["smtp"]): void {
     const host = smtpConfig?.host ?? process.env.HANDLER_EMAIL_SMTP_HOST;
     const port = smtpConfig?.port ?? Number(process.env.HANDLER_EMAIL_SMTP_PORT || 587);
-    const secure = smtpConfig?.secure ?? process.env.HANDLER_EMAIL_SMTP_SECURE === 'true';
+    const secure = smtpConfig?.secure ?? process.env.HANDLER_EMAIL_SMTP_SECURE === "true";
     const user = smtpConfig?.user ?? process.env.HANDLER_EMAIL_SMTP_USER;
     const pass = smtpConfig?.pass ?? process.env.HANDLER_EMAIL_SMTP_PASS;
 
     if (!host || !user || !pass) {
-      this.logger.error('SMTP email mode enabled but configuration is incomplete', undefined, {
+      this.logger.error("SMTP email mode enabled but configuration is incomplete", undefined, {
         missing: {
           host: !host,
           user: !user,
           pass: !pass,
         },
       });
-      this.emailMode = 'disabled';
+      this.emailMode = "disabled";
       return;
     }
 
     if (!this.emailFrom) {
-      this.logger.warn('SMTP email mode enabled but HANDLER_EMAIL_FROM is not set. Using user.');
+      this.logger.warn("SMTP email mode enabled but HANDLER_EMAIL_FROM is not set. Using user.");
       this.emailFrom = user;
     }
 
@@ -380,8 +383,8 @@ export class HandlerNotificationService implements NotificationService {
   }
 
   private sanitizeEmail(email: string): string {
-    const parts = email.split('@');
-    if (parts.length !== 2) return '[invalid-email]';
+    const parts = email.split("@");
+    if (parts.length !== 2) return "[invalid-email]";
     return `${parts[0].substring(0, 2)}***@${parts[1]}`;
   }
 
@@ -390,12 +393,12 @@ export class HandlerNotificationService implements NotificationService {
       const parsedUrl = new URL(url);
       return `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
     } catch {
-      return '[invalid-url]';
+      return "[invalid-url]";
     }
   }
 
   private escapeHtml(value: string): string {
-    return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 }
 
@@ -406,15 +409,15 @@ export class HandlerGitService implements GitService {
   private readonly baseDir: string;
 
   constructor(private logger: Logger) {
-    this.baseDir = process.env.HANDLER_GIT_ROOT ?? '/tmp/arbiter-handler-git';
+    this.baseDir = process.env.HANDLER_GIT_ROOT ?? "/tmp/arbiter-handler-git";
   }
 
   async cloneRepository(url: string, target: string): Promise<void> {
     const validatedUrl = this.validateRepoUrl(url);
     const targetPath = await this.resolveTargetPath(target);
 
-    await this.runGit(['clone', '--depth', '1', validatedUrl, targetPath], process.cwd());
-    this.logger.info('Repository cloned for handler', {
+    await this.runGit(["clone", "--depth", "1", validatedUrl, targetPath], process.cwd());
+    this.logger.info("Repository cloned for handler", {
       url: this.sanitizeUrl(validatedUrl),
       target: targetPath,
     });
@@ -423,27 +426,27 @@ export class HandlerGitService implements GitService {
   async getCommitDiff(sha: string): Promise<FileDiff[]> {
     const repoPath = this.resolveRepoPath();
     const output = await this.runGitOutput(
-      ['diff', `${sha}^`, sha, '--name-status', '--stat'],
-      repoPath
+      ["diff", `${sha}^`, sha, "--name-status", "--stat"],
+      repoPath,
     );
 
     return this.parseDiff(output.stdout);
   }
 
-  async getFileContent(path: string, ref = 'HEAD'): Promise<string> {
+  async getFileContent(path: string, ref = "HEAD"): Promise<string> {
     const repoPath = this.resolveRepoPath();
-    const result = await this.runGitOutput(['show', `${ref}:${path}`], repoPath);
+    const result = await this.runGitOutput(["show", `${ref}:${path}`], repoPath);
     return result.stdout;
   }
 
-  async createBranch(name: string, from = 'HEAD'): Promise<void> {
+  async createBranch(name: string, from = "HEAD"): Promise<void> {
     const repoPath = this.resolveRepoPath();
-    await this.runGit(['branch', name, from], repoPath);
-    this.logger.info('Created branch for handler', { name, from });
+    await this.runGit(["branch", name, from], repoPath);
+    this.logger.info("Created branch for handler", { name, from });
   }
 
   async createPullRequest(): Promise<unknown> {
-    throw new Error('Pull request creation requires provider integration');
+    throw new Error("Pull request creation requires provider integration");
   }
 
   private resolveRepoPath(): string {
@@ -453,7 +456,7 @@ export class HandlerGitService implements GitService {
   private async resolveTargetPath(target: string): Promise<string> {
     const absolute = path.isAbsolute(target) ? target : path.join(this.baseDir, target);
     if (!absolute.startsWith(this.baseDir)) {
-      throw new Error('Target path outside allowed git directory');
+      throw new Error("Target path outside allowed git directory");
     }
     await mkdir(path.dirname(absolute), { recursive: true });
     return absolute;
@@ -462,36 +465,41 @@ export class HandlerGitService implements GitService {
   private validateRepoUrl(url: string): string {
     try {
       const parsed = new URL(url);
-      if (!['https:', 'git:'].includes(parsed.protocol)) {
-        throw new Error('Only HTTPS/GIT URLs are allowed');
+      if (!["https:", "git:"].includes(parsed.protocol)) {
+        throw new Error("Only HTTPS/GIT URLs are allowed");
       }
       return parsed.toString();
     } catch (error) {
-      throw new Error(`Invalid repository URL: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Invalid repository URL: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   }
 
   private async runGit(args: string[], cwd: string): Promise<void> {
-    const result = Bun.spawnSync(['git', ...args], { cwd, stderr: 'pipe', stdout: 'pipe' });
+    const result = Bun.spawnSync(["git", ...args], { cwd, stderr: "pipe", stdout: "pipe" });
     if (result.exitCode !== 0) {
       const error = new TextDecoder().decode(result.stderr);
-      throw new Error(error || `git ${args.join(' ')} failed`);
+      throw new Error(error || `git ${args.join(" ")} failed`);
     }
   }
 
-  private async runGitOutput(args: string[], cwd: string): Promise<{ stdout: string; stderr: string }> {
-    const result = Bun.spawnSync(['git', ...args], { cwd, stderr: 'pipe', stdout: 'pipe' });
+  private async runGitOutput(
+    args: string[],
+    cwd: string,
+  ): Promise<{ stdout: string; stderr: string }> {
+    const result = Bun.spawnSync(["git", ...args], { cwd, stderr: "pipe", stdout: "pipe" });
     const stdout = new TextDecoder().decode(result.stdout).trim();
     const stderr = new TextDecoder().decode(result.stderr).trim();
     if (result.exitCode !== 0) {
-      throw new Error(stderr || `git ${args.join(' ')} failed`);
+      throw new Error(stderr || `git ${args.join(" ")} failed`);
     }
     return { stdout, stderr };
   }
 
   private parseDiff(output: string): FileDiff[] {
     const diffs: FileDiff[] = [];
-    const lines = output.split('\n');
+    const lines = output.split("\n");
 
     for (const line of lines) {
       if (!line || !/^[AMDCRTU]/.test(line)) continue;
@@ -507,16 +515,16 @@ export class HandlerGitService implements GitService {
     return diffs;
   }
 
-  private mapStatus(status: string): FileDiff['status'] {
+  private mapStatus(status: string): FileDiff["status"] {
     switch (status[0]) {
-      case 'A':
-        return 'added';
-      case 'D':
-        return 'deleted';
-      case 'R':
-        return 'renamed';
+      case "A":
+        return "added";
+      case "D":
+        return "deleted";
+      case "R":
+        return "renamed";
       default:
-        return 'modified';
+        return "modified";
     }
   }
 
@@ -525,7 +533,7 @@ export class HandlerGitService implements GitService {
       const parsedUrl = new URL(url);
       return `${parsedUrl.protocol}//${parsedUrl.hostname}${parsedUrl.pathname}`;
     } catch {
-      return '[invalid-url]';
+      return "[invalid-url]";
     }
   }
 }
@@ -534,7 +542,10 @@ export class HandlerGitService implements GitService {
  * Security validator for handler services
  */
 export class HandlerSecurityValidator {
-  static validateHandlerCode(code: string, logger: Logger = defaultLogger): {
+  static validateHandlerCode(
+    code: string,
+    logger: Logger = defaultLogger,
+  ): {
     safe: boolean;
     violations: string[];
   } {
@@ -544,10 +555,10 @@ export class HandlerSecurityValidator {
 
   static sanitizeEnvironment(env: Record<string, string>): Record<string, string> {
     const sanitized: Record<string, string> = {};
-    const allowedKeys = ['NODE_ENV', 'LOG_LEVEL'];
+    const allowedKeys = ["NODE_ENV", "LOG_LEVEL"];
 
     for (const [key, value] of Object.entries(env)) {
-      if (allowedKeys.includes(key) || key.startsWith('HANDLER_')) {
+      if (allowedKeys.includes(key) || key.startsWith("HANDLER_")) {
         sanitized[key] = value;
       }
     }
@@ -559,7 +570,7 @@ export class HandlerSecurityValidator {
     const errors: string[] = [];
 
     for (const [key, value] of Object.entries(secrets)) {
-      if (!key.startsWith('HANDLER_')) {
+      if (!key.startsWith("HANDLER_")) {
         errors.push(`Secret key must start with 'HANDLER_': ${key}`);
       }
 

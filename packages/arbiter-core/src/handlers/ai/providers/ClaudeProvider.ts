@@ -5,7 +5,7 @@ import type {
   AIProviderStatus,
   AIResponse,
   ClaudeConfig,
-} from '../base/types.js';
+} from "../base/types.js";
 
 /**
  * Claude AI Provider for webhook processing
@@ -33,7 +33,7 @@ export class ClaudeProvider implements AIProvider {
   }
 
   getName(): string {
-    return 'claude';
+    return "claude";
   }
 
   getConfig(): ClaudeConfig {
@@ -62,7 +62,7 @@ export class ClaudeProvider implements AIProvider {
       return parsedResponse;
     } catch (error) {
       this.metrics.errorCount++;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
       return {
         success: false,
@@ -99,7 +99,7 @@ export class ClaudeProvider implements AIProvider {
       this.buildOutputFormatInstructions(command),
     ];
 
-    return sections.filter(section => section.length > 0).join('\n\n');
+    return sections.filter((section) => section.length > 0).join("\n\n");
   }
 
   /**
@@ -127,7 +127,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
   private buildEventContext(context: AIContext): string {
     const { eventData, originalEvent } = context;
 
-    let contextStr = '## Event Context\n';
+    let contextStr = "## Event Context\n";
     contextStr += `Event Type: ${originalEvent.eventType}\n`;
     contextStr += `Provider: ${originalEvent.provider}\n`;
     contextStr += `Timestamp: ${originalEvent.timestamp}\n`;
@@ -135,7 +135,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
     // Add event-specific details
     if (eventData.pullRequest) {
       const pr = eventData.pullRequest;
-      contextStr += '\n### Pull Request Details\n';
+      contextStr += "\n### Pull Request Details\n";
       contextStr += `Number: #${pr.number}\n`;
       contextStr += `Title: ${pr.title}\n`;
       contextStr += `State: ${pr.state}\n`;
@@ -152,12 +152,12 @@ Please provide precise, actionable, and helpful analysis based on the provided c
 
     if (eventData.issue) {
       const issue = eventData.issue;
-      contextStr += '\n### Issue Details\n';
+      contextStr += "\n### Issue Details\n";
       contextStr += `Number: #${issue.number}\n`;
       contextStr += `Title: ${issue.title}\n`;
       contextStr += `State: ${issue.state}\n`;
-      contextStr += `Labels: ${issue.labels.join(', ')}\n`;
-      contextStr += `Assignees: ${issue.assignees.join(', ')}\n`;
+      contextStr += `Labels: ${issue.labels.join(", ")}\n`;
+      contextStr += `Assignees: ${issue.assignees.join(", ")}\n`;
 
       if (issue.body) {
         contextStr += `\nDescription:\n${issue.body}\n`;
@@ -166,14 +166,14 @@ Please provide precise, actionable, and helpful analysis based on the provided c
 
     if (eventData.push) {
       const push = eventData.push;
-      contextStr += '\n### Push Details\n';
+      contextStr += "\n### Push Details\n";
       contextStr += `Branch: ${push.branch}\n`;
       contextStr += `Commit Count: ${push.commitCount}\n`;
       contextStr += `Is Protected Branch: ${push.isProtectedBranch}\n`;
       contextStr += `Is Force Push: ${push.isForcePush}\n`;
 
       if (push.commits && push.commits.length > 0) {
-        contextStr += '\n### Recent Commits\n';
+        contextStr += "\n### Recent Commits\n";
         push.commits.slice(0, 5).forEach((commit: any, i: number) => {
           contextStr += `${i + 1}. ${commit.id.substring(0, 7)} - ${commit.message}\n`;
         });
@@ -188,7 +188,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    */
   private buildRepositoryContext(context: AIContext): string {
     const { repository } = context.eventData;
-    if (!repository) return '';
+    if (!repository) return "";
 
     return `## Repository Context\nName: ${repository.name}\nFull Name: ${repository.fullName}\nDefault Branch: ${repository.defaultBranch}\nURL: ${repository.url}`;
   }
@@ -198,20 +198,20 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    */
   private buildUserContext(context: AIContext): string {
     const { user } = context.eventData;
-    if (!user) return '';
+    if (!user) return "";
 
-    return `## User Context\nUsername: ${user.login}\nName: ${user.name || 'Not provided'}\nEmail: ${user.email || 'Not provided'}`;
+    return `## User Context\nUsername: ${user.login}\nName: ${user.name || "Not provided"}\nEmail: ${user.email || "Not provided"}`;
   }
 
   /**
    * Build output format instructions
    */
   private buildOutputFormatInstructions(command: AICommand): string {
-    let instructions = '## Output Requirements\n';
-    instructions += 'Please structure your response as follows:\n\n';
+    let instructions = "## Output Requirements\n";
+    instructions += "Please structure your response as follows:\n\n";
 
     switch (command.name) {
-      case 'review-code':
+      case "review-code":
         instructions += `1. **Overall Assessment**: Provide a summary rating and key findings
 2. **Code Quality**: Comment on structure, readability, and best practices
 3. **Security**: Identify any security concerns or vulnerabilities
@@ -220,7 +220,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
 6. **Actions**: If you recommend any automated actions (comments, labels, etc.), specify them clearly`;
         break;
 
-      case 'analyze-issue':
+      case "analyze-issue":
         instructions += `1. **Category**: Classify the issue type (bug, feature, enhancement, question, etc.)
 2. **Priority**: Suggest priority level (low, medium, high, critical)
 3. **Complexity**: Estimate implementation complexity
@@ -229,14 +229,14 @@ Please provide precise, actionable, and helpful analysis based on the provided c
 6. **Next Steps**: Outline what should happen next`;
         break;
 
-      case 'generate-docs':
+      case "generate-docs":
         instructions += `1. **Documentation Type**: Identify what type of documentation is needed
 2. **Content**: Provide the actual documentation content
 3. **Suggestions**: Recommend where this documentation should be placed
 4. **Additional**: Suggest any related documentation improvements`;
         break;
 
-      case 'security-scan':
+      case "security-scan":
         instructions += `1. **Risk Level**: Overall security risk assessment (low/medium/high)
 2. **Vulnerabilities**: List any identified security issues
 3. **Dependencies**: Check for vulnerable dependencies
@@ -246,7 +246,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
 
       default:
         instructions +=
-          'Please provide a structured analysis with clear sections and actionable recommendations.';
+          "Please provide a structured analysis with clear sections and actionable recommendations.";
     }
 
     instructions += `\n\nIf you recommend any automated actions (posting comments, adding labels, creating issues, etc.), please specify them in a clear "ACTIONS" section at the end of your response.`;
@@ -264,26 +264,26 @@ Please provide precise, actionable, and helpful analysis based on the provided c
       temperature: command.temperature || this.config.temperature || 0.7,
       system:
         this.config.systemPrompt ||
-        'You are a helpful AI assistant specialized in code analysis and repository management.',
+        "You are a helpful AI assistant specialized in code analysis and repository management.",
       messages: [
         {
-          role: 'user',
+          role: "user",
           content: prompt,
         },
       ],
     };
 
     const response = await fetch(
-      `${this.config.baseUrl || 'https://api.anthropic.com'}/v1/messages`,
+      `${this.config.baseUrl || "https://api.anthropic.com"}/v1/messages`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': this.config.apiKey,
-          'anthropic-version': '2023-06-01',
+          "Content-Type": "application/json",
+          "x-api-key": this.config.apiKey,
+          "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify(requestBody),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -298,7 +298,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    * Parse Claude's response and extract actions
    */
   private parseResponse(response: any, command: AICommand, context: AIContext): AIResponse {
-    const content = response.content?.[0]?.text || '';
+    const content = response.content?.[0]?.text || "";
 
     // Extract actions if present
     const actions = this.extractActions(content, command, context);
@@ -306,19 +306,19 @@ Please provide precise, actionable, and helpful analysis based on the provided c
     // Parse different response types
     const data: any = { analysis: content };
 
-    if (command.name === 'review-code') {
+    if (command.name === "review-code") {
       data.codeReview = this.parseCodeReview(content);
-    } else if (command.name === 'analyze-issue') {
+    } else if (command.name === "analyze-issue") {
       data.issueAnalysis = this.parseIssueAnalysis(content);
-    } else if (command.name === 'generate-docs') {
+    } else if (command.name === "generate-docs") {
       data.documentation = this.parseDocumentation(content);
-    } else if (command.name === 'security-scan') {
+    } else if (command.name === "security-scan") {
       data.securityScan = this.parseSecurityScan(content);
     }
 
     return {
       success: true,
-      message: 'Analysis completed successfully',
+      message: "Analysis completed successfully",
       data,
       actions,
       usage: {
@@ -341,30 +341,30 @@ Please provide precise, actionable, and helpful analysis based on the provided c
       const actionText = actionMatch[1];
 
       // Parse common action patterns
-      if (actionText.includes('comment') || actionText.includes('Comment')) {
+      if (actionText.includes("comment") || actionText.includes("Comment")) {
         actions.push({
-          type: 'comment',
+          type: "comment",
           data: {
             body: this.extractCommentBody(actionText, content),
           },
         });
       }
 
-      if (actionText.includes('label') || actionText.includes('Label')) {
+      if (actionText.includes("label") || actionText.includes("Label")) {
         const labels = this.extractLabels(actionText);
         if (labels.length > 0) {
           actions.push({
-            type: 'label',
+            type: "label",
             data: { labels },
           });
         }
       }
 
-      if (actionText.includes('assign') || actionText.includes('Assign')) {
+      if (actionText.includes("assign") || actionText.includes("Assign")) {
         const assignees = this.extractAssignees(actionText);
         if (assignees.length > 0) {
           actions.push({
-            type: 'assign',
+            type: "assign",
             data: { assignees },
           });
         }
@@ -391,8 +391,8 @@ Please provide precise, actionable, and helpful analysis based on the provided c
     if (labelMatches) {
       return labelMatches[1]
         .split(/[,;]/)
-        .map(label => label.trim().replace(/["']/g, ''))
-        .filter(label => label.length > 0);
+        .map((label) => label.trim().replace(/["']/g, ""))
+        .filter((label) => label.length > 0);
     }
     return [];
   }
@@ -405,8 +405,8 @@ Please provide precise, actionable, and helpful analysis based on the provided c
     if (assigneeMatches) {
       return assigneeMatches[1]
         .split(/[,;]/)
-        .map(assignee => assignee.trim().replace(/[@"']/g, ''))
-        .filter(assignee => assignee.length > 0);
+        .map((assignee) => assignee.trim().replace(/[@"']/g, ""))
+        .filter((assignee) => assignee.length > 0);
     }
     return [];
   }
@@ -418,18 +418,18 @@ Please provide precise, actionable, and helpful analysis based on the provided c
     // This is a simplified parser - in production, you'd want more robust parsing
     return {
       overallRating: this.extractRating(content),
-      summary: this.extractSection(content, 'Overall Assessment') || content.substring(0, 200),
+      summary: this.extractSection(content, "Overall Assessment") || content.substring(0, 200),
       security: {
         riskLevel: this.extractSecurityRisk(content),
-        issues: this.extractList(content, 'Security'),
+        issues: this.extractList(content, "Security"),
       },
       performance: {
-        concerns: this.extractList(content, 'Performance'),
-        suggestions: this.extractList(content, 'Suggestions'),
+        concerns: this.extractList(content, "Performance"),
+        suggestions: this.extractList(content, "Suggestions"),
       },
       maintainability: {
         score: 8, // Default score
-        issues: this.extractList(content, 'Code Quality'),
+        issues: this.extractList(content, "Code Quality"),
       },
     };
   }
@@ -439,11 +439,11 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    */
   private parseIssueAnalysis(content: string): any {
     return {
-      category: this.extractValue(content, 'Category'),
-      priority: this.extractValue(content, 'Priority'),
-      complexity: this.extractValue(content, 'Complexity'),
+      category: this.extractValue(content, "Category"),
+      priority: this.extractValue(content, "Priority"),
+      complexity: this.extractValue(content, "Complexity"),
       labels: this.extractLabels(content),
-      nextSteps: this.extractSection(content, 'Next Steps'),
+      nextSteps: this.extractSection(content, "Next Steps"),
     };
   }
 
@@ -452,9 +452,9 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    */
   private parseDocumentation(content: string): any {
     return {
-      type: this.extractValue(content, 'Documentation Type'),
-      content: this.extractSection(content, 'Content') || content,
-      suggestions: this.extractSection(content, 'Suggestions'),
+      type: this.extractValue(content, "Documentation Type"),
+      content: this.extractSection(content, "Content") || content,
+      suggestions: this.extractSection(content, "Suggestions"),
     };
   }
 
@@ -464,8 +464,8 @@ Please provide precise, actionable, and helpful analysis based on the provided c
   private parseSecurityScan(content: string): any {
     return {
       riskLevel: this.extractSecurityRisk(content),
-      vulnerabilities: this.extractList(content, 'Vulnerabilities'),
-      recommendations: this.extractList(content, 'Recommendations'),
+      vulnerabilities: this.extractList(content, "Vulnerabilities"),
+      recommendations: this.extractList(content, "Recommendations"),
     };
   }
 
@@ -474,24 +474,24 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    */
   private extractRating(content: string): string {
     const ratingMatch = content.match(/(excellent|good|needs-improvement|poor)/i);
-    return ratingMatch ? ratingMatch[1].toLowerCase() : 'good';
+    return ratingMatch ? ratingMatch[1].toLowerCase() : "good";
   }
 
   private extractSecurityRisk(content: string): string {
     const riskMatch = content.match(/risk[:\s]*(low|medium|high)/i);
-    return riskMatch ? riskMatch[1].toLowerCase() : 'low';
+    return riskMatch ? riskMatch[1].toLowerCase() : "low";
   }
 
   private extractSection(content: string, sectionName: string): string {
-    const regex = new RegExp(`##?\\s*${sectionName}[:\\s]*\\n([^#]*?)(?=\\n##|$)`, 'is');
+    const regex = new RegExp(`##?\\s*${sectionName}[:\\s]*\\n([^#]*?)(?=\\n##|$)`, "is");
     const match = content.match(regex);
-    return match ? match[1].trim() : '';
+    return match ? match[1].trim() : "";
   }
 
   private extractValue(content: string, field: string): string {
-    const regex = new RegExp(`${field}[:\\s]*([^\\n]+)`, 'i');
+    const regex = new RegExp(`${field}[:\\s]*([^\\n]+)`, "i");
     const match = content.match(regex);
-    return match ? match[1].trim() : '';
+    return match ? match[1].trim() : "";
   }
 
   private extractList(content: string, section: string): string[] {
@@ -499,9 +499,9 @@ Please provide precise, actionable, and helpful analysis based on the provided c
     if (!sectionContent) return [];
 
     return sectionContent
-      .split('\n')
-      .map(line => line.replace(/^[-*]\s*/, '').trim())
-      .filter(line => line.length > 0);
+      .split("\n")
+      .map((line) => line.replace(/^[-*]\s*/, "").trim())
+      .filter((line) => line.length > 0);
   }
 
   /**
@@ -519,10 +519,10 @@ Please provide precise, actionable, and helpful analysis based on the provided c
    */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      const response = await this.callClaudeAPI('Test connection', {
-        name: 'test',
-        description: 'Connection test',
-        usage: '',
+      const response = await this.callClaudeAPI("Test connection", {
+        name: "test",
+        description: "Connection test",
+        usage: "",
         examples: [],
         requiresArgs: false,
         prompt: 'Please respond with "Connection successful"',
@@ -530,7 +530,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
 
       return { success: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return { success: false, error: errorMessage };
     }
   }
@@ -548,7 +548,7 @@ Please provide precise, actionable, and helpful analysis based on the provided c
         : 1;
 
     return {
-      name: 'Claude',
+      name: "Claude",
       connected: true,
       model: this.config.model,
 

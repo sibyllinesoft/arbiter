@@ -156,7 +156,7 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
 
   const skipIfNoGolden = (): boolean => {
     if (!goldenAvailable) {
-      console.warn('Skipping golden file test because fixtures are missing');
+      console.warn("Skipping golden file test because fixtures are missing");
       return true;
     }
     return false;

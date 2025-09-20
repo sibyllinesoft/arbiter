@@ -5,7 +5,7 @@ import type {
   AIProviderStatus,
   AIResponse,
   OpenAIConfig,
-} from '../base/types.js';
+} from "../base/types.js";
 
 /**
  * OpenAI Provider for webhook processing
@@ -33,7 +33,7 @@ export class OpenAIProvider implements AIProvider {
   }
 
   getName(): string {
-    return 'openai';
+    return "openai";
   }
 
   getConfig(): OpenAIConfig {
@@ -62,7 +62,7 @@ export class OpenAIProvider implements AIProvider {
       return parsedResponse;
     } catch (error) {
       this.metrics.errorCount++;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
       return {
         success: false,
@@ -80,13 +80,13 @@ export class OpenAIProvider implements AIProvider {
 
     // System message with role definition
     messages.push({
-      role: 'system',
+      role: "system",
       content: this.buildSystemPrompt(command),
     });
 
     // User message with event context and instructions
     messages.push({
-      role: 'user',
+      role: "user",
       content: this.buildUserPrompt(command, context),
     });
 
@@ -98,24 +98,24 @@ export class OpenAIProvider implements AIProvider {
    */
   private buildSystemPrompt(command: AICommand): string {
     const rolePrompts = {
-      'review-code':
-        'You are a senior software engineer and code reviewer with expertise in multiple programming languages, security best practices, and software architecture. You excel at identifying bugs, security vulnerabilities, performance issues, and opportunities for improvement.',
+      "review-code":
+        "You are a senior software engineer and code reviewer with expertise in multiple programming languages, security best practices, and software architecture. You excel at identifying bugs, security vulnerabilities, performance issues, and opportunities for improvement.",
 
-      'analyze-issue': `You are a technical product manager and issue triager with deep experience in software development. You're skilled at understanding requirements, categorizing issues, estimating complexity, and providing actionable next steps.`,
+      "analyze-issue": `You are a technical product manager and issue triager with deep experience in software development. You're skilled at understanding requirements, categorizing issues, estimating complexity, and providing actionable next steps.`,
 
-      'generate-docs':
-        'You are a technical writer and documentation specialist with expertise in creating clear, comprehensive, and user-friendly documentation. You understand developer workflows and can create docs that truly help users.',
+      "generate-docs":
+        "You are a technical writer and documentation specialist with expertise in creating clear, comprehensive, and user-friendly documentation. You understand developer workflows and can create docs that truly help users.",
 
-      'security-scan':
-        'You are a cybersecurity expert specializing in application security, vulnerability assessment, and secure coding practices. You have deep knowledge of OWASP guidelines, common attack vectors, and security best practices.',
+      "security-scan":
+        "You are a cybersecurity expert specializing in application security, vulnerability assessment, and secure coding practices. You have deep knowledge of OWASP guidelines, common attack vectors, and security best practices.",
 
-      'commit-analysis':
-        'You are a Git expert and development workflow specialist. You understand branching strategies, commit message conventions, and can analyze development patterns to provide insights and recommendations.',
+      "commit-analysis":
+        "You are a Git expert and development workflow specialist. You understand branching strategies, commit message conventions, and can analyze development patterns to provide insights and recommendations.",
     };
 
     const baseRole =
       rolePrompts[command.name as keyof typeof rolePrompts] ||
-      'You are an AI assistant specialized in analyzing software development activities and providing actionable insights.';
+      "You are an AI assistant specialized in analyzing software development activities and providing actionable insights.";
 
     return `${baseRole}
 
@@ -132,7 +132,7 @@ Always structure your responses clearly with appropriate headings and provide sp
       // Command-specific instructions
       `Task: ${command.name}`,
       `Description: ${command.description}`,
-      '',
+      "",
 
       // Event context
       this.buildEventContext(context),
@@ -144,7 +144,7 @@ Always structure your responses clearly with appropriate headings and provide sp
       this.buildOutputFormat(command),
     ];
 
-    return sections.join('\n');
+    return sections.join("\n");
   }
 
   /**
@@ -153,7 +153,7 @@ Always structure your responses clearly with appropriate headings and provide sp
   private buildEventContext(context: AIContext): string {
     const { eventData, originalEvent } = context;
 
-    let contextStr = '## Event Information\n';
+    let contextStr = "## Event Information\n";
     contextStr += `- Event Type: ${originalEvent.eventType}\n`;
     contextStr += `- Provider: ${originalEvent.provider}\n`;
     contextStr += `- Repository: ${eventData.repository?.fullName}\n`;
@@ -163,46 +163,46 @@ Always structure your responses clearly with appropriate headings and provide sp
     // Add specific event data
     if (eventData.pullRequest) {
       const pr = eventData.pullRequest;
-      contextStr += '### Pull Request Context\n';
+      contextStr += "### Pull Request Context\n";
       contextStr += `- PR #${pr.number}: ${pr.title}\n`;
-      contextStr += `- State: ${pr.state} ${pr.draft ? '(Draft)' : ''}\n`;
+      contextStr += `- State: ${pr.state} ${pr.draft ? "(Draft)" : ""}\n`;
       contextStr += `- Branch: ${pr.sourceBranch} → ${pr.targetBranch}\n`;
       contextStr += `- Changes: ${pr.changedFiles} files, +${pr.additions}/-${pr.deletions}\n`;
 
       if (pr.body?.trim()) {
-        contextStr += `- Description: ${pr.body.substring(0, 500)}${pr.body.length > 500 ? '...' : ''}\n`;
+        contextStr += `- Description: ${pr.body.substring(0, 500)}${pr.body.length > 500 ? "..." : ""}\n`;
       }
-      contextStr += '\n';
+      contextStr += "\n";
     }
 
     if (eventData.issue) {
       const issue = eventData.issue;
-      contextStr += '### Issue Context\n';
+      contextStr += "### Issue Context\n";
       contextStr += `- Issue #${issue.number}: ${issue.title}\n`;
       contextStr += `- State: ${issue.state}\n`;
-      contextStr += `- Labels: ${issue.labels.length ? issue.labels.join(', ') : 'None'}\n`;
-      contextStr += `- Assignees: ${issue.assignees.length ? issue.assignees.join(', ') : 'None'}\n`;
+      contextStr += `- Labels: ${issue.labels.length ? issue.labels.join(", ") : "None"}\n`;
+      contextStr += `- Assignees: ${issue.assignees.length ? issue.assignees.join(", ") : "None"}\n`;
 
       if (issue.body?.trim()) {
-        contextStr += `- Description: ${issue.body.substring(0, 500)}${issue.body.length > 500 ? '...' : ''}\n`;
+        contextStr += `- Description: ${issue.body.substring(0, 500)}${issue.body.length > 500 ? "..." : ""}\n`;
       }
-      contextStr += '\n';
+      contextStr += "\n";
     }
 
     if (eventData.push) {
       const push = eventData.push;
-      contextStr += '### Push Context\n';
+      contextStr += "### Push Context\n";
       contextStr += `- Branch: ${push.branch}\n`;
       contextStr += `- Commits: ${push.commitCount}\n`;
-      contextStr += `- Type: ${push.isProtectedBranch ? 'Protected branch' : 'Regular branch'}\n`;
+      contextStr += `- Type: ${push.isProtectedBranch ? "Protected branch" : "Regular branch"}\n`;
 
       if (push.commits && push.commits.length > 0) {
-        contextStr += '- Recent commits:\n';
+        contextStr += "- Recent commits:\n";
         push.commits.slice(0, 3).forEach((commit: any, i: number) => {
-          contextStr += `  ${i + 1}. ${commit.id.substring(0, 7)}: ${commit.message.split('\n')[0]}\n`;
+          contextStr += `  ${i + 1}. ${commit.id.substring(0, 7)}: ${commit.message.split("\n")[0]}\n`;
         });
       }
-      contextStr += '\n';
+      contextStr += "\n";
     }
 
     return contextStr;
@@ -213,7 +213,7 @@ Always structure your responses clearly with appropriate headings and provide sp
    */
   private buildOutputFormat(command: AICommand): string {
     const formats = {
-      'review-code': `## Response Format
+      "review-code": `## Response Format
 
 Please structure your response as follows:
 
@@ -243,7 +243,7 @@ Provide specific, actionable suggestions for improvement.
 ### Actions
 If you recommend automated actions (comments, labels, etc.), list them clearly.`,
 
-      'analyze-issue': `## Response Format
+      "analyze-issue": `## Response Format
 
 ### Issue Classification
 - Type: (bug/feature/enhancement/documentation/question/etc.)
@@ -265,7 +265,7 @@ Outline what should happen next to move this forward.
 ### Actions
 List any automated actions to take.`,
 
-      'generate-docs': `## Response Format
+      "generate-docs": `## Response Format
 
 ### Documentation Analysis
 What type of documentation is needed and why.
@@ -294,7 +294,7 @@ Any automated actions to take.`,
    */
   private async callOpenAIAPI(messages: any[], command: AICommand): Promise<any> {
     const requestBody = {
-      model: command.model || this.config.model || 'gpt-4-0125-preview',
+      model: command.model || this.config.model || "gpt-4-0125-preview",
       messages,
       max_tokens: command.maxTokens || this.config.maxTokens || 4000,
       temperature: command.temperature || this.config.temperature || 0.7,
@@ -302,27 +302,27 @@ Any automated actions to take.`,
     };
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${this.config.apiKey}`,
     };
 
     if (this.config.organizationId) {
-      headers['OpenAI-Organization'] = this.config.organizationId;
+      headers["OpenAI-Organization"] = this.config.organizationId;
     }
 
     const response = await fetch(
-      `${this.config.baseUrl || 'https://api.openai.com'}/v1/chat/completions`,
+      `${this.config.baseUrl || "https://api.openai.com"}/v1/chat/completions`,
       {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify(requestBody),
-      }
+      },
     );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(
-        `OpenAI API request failed: ${response.status} - ${errorData.error?.message || 'Unknown error'}`
+        `OpenAI API request failed: ${response.status} - ${errorData.error?.message || "Unknown error"}`,
       );
     }
 
@@ -333,7 +333,7 @@ Any automated actions to take.`,
    * Parse OpenAI response
    */
   private parseResponse(response: any, command: AICommand, context: AIContext): AIResponse {
-    const content = response.choices?.[0]?.message?.content || '';
+    const content = response.choices?.[0]?.message?.content || "";
 
     // Extract actions if present
     const actions = this.extractActions(content, command, context);
@@ -341,17 +341,17 @@ Any automated actions to take.`,
     // Parse different response types
     const data: any = { analysis: content };
 
-    if (command.name === 'review-code') {
+    if (command.name === "review-code") {
       data.codeReview = this.parseCodeReview(content);
-    } else if (command.name === 'analyze-issue') {
+    } else if (command.name === "analyze-issue") {
       data.issueAnalysis = this.parseIssueAnalysis(content);
-    } else if (command.name === 'generate-docs') {
+    } else if (command.name === "generate-docs") {
       data.documentation = content;
     }
 
     return {
       success: true,
-      message: 'Analysis completed successfully',
+      message: "Analysis completed successfully",
       data,
       actions,
       usage: {
@@ -378,32 +378,32 @@ Any automated actions to take.`,
 
       // Parse different action types
       if (
-        actionText.toLowerCase().includes('comment') ||
-        actionText.toLowerCase().includes('add comment')
+        actionText.toLowerCase().includes("comment") ||
+        actionText.toLowerCase().includes("add comment")
       ) {
         actions.push({
-          type: 'comment',
+          type: "comment",
           data: {
-            body: this.extractActionValue(actionText, 'comment') || content,
+            body: this.extractActionValue(actionText, "comment") || content,
           },
         });
       }
 
-      if (actionText.toLowerCase().includes('label')) {
+      if (actionText.toLowerCase().includes("label")) {
         const labels = this.extractLabels(actionText);
         if (labels.length > 0) {
           actions.push({
-            type: 'label',
+            type: "label",
             data: { labels },
           });
         }
       }
 
-      if (actionText.toLowerCase().includes('assign')) {
+      if (actionText.toLowerCase().includes("assign")) {
         const assignees = this.extractAssignees(actionText);
         if (assignees.length > 0) {
           actions.push({
-            type: 'assign',
+            type: "assign",
             data: { assignees },
           });
         }
@@ -420,52 +420,52 @@ Any automated actions to take.`,
     return {
       overallRating: this.extractRating(content),
       summary:
-        this.extractSection(content, 'Overall Assessment|Key Findings') ||
+        this.extractSection(content, "Overall Assessment|Key Findings") ||
         content.substring(0, 200),
       security: {
         riskLevel: this.extractSecurityRisk(content),
-        issues: this.extractBulletPoints(content, 'Security'),
+        issues: this.extractBulletPoints(content, "Security"),
       },
       performance: {
-        concerns: this.extractBulletPoints(content, 'Performance'),
-        suggestions: this.extractBulletPoints(content, 'Recommendations|Suggestions'),
+        concerns: this.extractBulletPoints(content, "Performance"),
+        suggestions: this.extractBulletPoints(content, "Recommendations|Suggestions"),
       },
     };
   }
 
   private parseIssueAnalysis(content: string): any {
     return {
-      category: this.extractValue(content, 'Type'),
-      priority: this.extractValue(content, 'Priority'),
-      complexity: this.extractValue(content, 'Complexity'),
-      nextSteps: this.extractSection(content, 'Next Steps'),
+      category: this.extractValue(content, "Type"),
+      priority: this.extractValue(content, "Priority"),
+      complexity: this.extractValue(content, "Complexity"),
+      nextSteps: this.extractSection(content, "Next Steps"),
     };
   }
 
   private extractRating(content: string): string {
     const ratingMatch = content.match(/(excellent|good|needs.?improvement|poor)/i);
-    return ratingMatch ? ratingMatch[1].toLowerCase().replace(/\s+/g, '-') : 'good';
+    return ratingMatch ? ratingMatch[1].toLowerCase().replace(/\s+/g, "-") : "good";
   }
 
   private extractSecurityRisk(content: string): string {
     const riskMatch = content.match(/risk[:\s]*(low|medium|high|critical)/i);
-    return riskMatch ? riskMatch[1].toLowerCase() : 'low';
+    return riskMatch ? riskMatch[1].toLowerCase() : "low";
   }
 
   private extractSection(content: string, sectionNames: string): string {
-    const patterns = sectionNames.split('|');
+    const patterns = sectionNames.split("|");
     for (const pattern of patterns) {
-      const regex = new RegExp(`##?#?\\s*${pattern}[:\\s]*\\n([^#]*?)(?=\\n##|\\n###|$)`, 'is');
+      const regex = new RegExp(`##?#?\\s*${pattern}[:\\s]*\\n([^#]*?)(?=\\n##|\\n###|$)`, "is");
       const match = content.match(regex);
       if (match) return match[1].trim();
     }
-    return '';
+    return "";
   }
 
   private extractValue(content: string, field: string): string {
-    const regex = new RegExp(`${field}[:\\s]*([^\\n]+)`, 'i');
+    const regex = new RegExp(`${field}[:\\s]*([^\\n]+)`, "i");
     const match = content.match(regex);
-    return match ? match[1].trim().replace(/[()]/g, '') : '';
+    return match ? match[1].trim().replace(/[()]/g, "") : "";
   }
 
   private extractBulletPoints(content: string, section: string): string[] {
@@ -473,9 +473,9 @@ Any automated actions to take.`,
     if (!sectionContent) return [];
 
     return sectionContent
-      .split('\n')
-      .map(line => line.replace(/^[-*•]\s*/, '').trim())
-      .filter(line => line.length > 0);
+      .split("\n")
+      .map((line) => line.replace(/^[-*•]\s*/, "").trim())
+      .filter((line) => line.length > 0);
   }
 
   private extractLabels(text: string): string[] {
@@ -483,8 +483,8 @@ Any automated actions to take.`,
     if (labelMatches) {
       return labelMatches[1]
         .split(/[,;]/)
-        .map(label => label.trim().replace(/["`']/g, ''))
-        .filter(label => label.length > 0);
+        .map((label) => label.trim().replace(/["`']/g, ""))
+        .filter((label) => label.length > 0);
     }
     return [];
   }
@@ -494,14 +494,14 @@ Any automated actions to take.`,
     if (assigneeMatches) {
       return assigneeMatches[1]
         .split(/[,;]/)
-        .map(assignee => assignee.trim().replace(/[@"`']/g, ''))
-        .filter(assignee => assignee.length > 0);
+        .map((assignee) => assignee.trim().replace(/[@"`']/g, ""))
+        .filter((assignee) => assignee.length > 0);
     }
     return [];
   }
 
   private extractActionValue(text: string, actionType: string): string | null {
-    const match = text.match(new RegExp(`${actionType}[:\\s]*["']?(.*?)["']?$`, 'im'));
+    const match = text.match(new RegExp(`${actionType}[:\\s]*["']?(.*?)["']?$`, "im"));
     return match ? match[1].trim() : null;
   }
 
@@ -522,23 +522,23 @@ Any automated actions to take.`,
     try {
       const messages = [
         {
-          role: 'user' as const,
+          role: "user" as const,
           content: 'Please respond with "Connection successful"',
         },
       ];
 
       await this.callOpenAIAPI(messages, {
-        name: 'test',
-        description: 'Connection test',
-        usage: '',
+        name: "test",
+        description: "Connection test",
+        usage: "",
         examples: [],
         requiresArgs: false,
-        prompt: 'Test connection',
+        prompt: "Test connection",
       });
 
       return { success: true };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return { success: false, error: errorMessage };
     }
   }
@@ -556,9 +556,9 @@ Any automated actions to take.`,
         : 1;
 
     return {
-      name: 'OpenAI',
+      name: "OpenAI",
       connected: true,
-      model: this.config.model || 'gpt-4-0125-preview',
+      model: this.config.model || "gpt-4-0125-preview",
 
       usage: {
         requestsToday: this.metrics.requestCount,

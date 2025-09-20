@@ -15,9 +15,9 @@ export interface AIAgentConfig {
 
   // AI Provider settings
   provider:
-    | { type: 'claude'; config: ClaudeConfig }
-    | { type: 'openai'; config: OpenAIConfig }
-    | { type: 'gemini'; config: GeminiConfig };
+    | { type: "claude"; config: ClaudeConfig }
+    | { type: "openai"; config: OpenAIConfig }
+    | { type: "gemini"; config: GeminiConfig };
 
   // Command settings
   commands: {
@@ -103,7 +103,7 @@ export interface AIProviderConfig {
  * Claude-specific configuration
  */
 export interface ClaudeConfig extends AIProviderConfig {
-  model: 'claude-3-5-sonnet-20241022' | 'claude-3-haiku-20240307' | 'claude-3-opus-20240229';
+  model: "claude-3-5-sonnet-20241022" | "claude-3-haiku-20240307" | "claude-3-opus-20240229";
   systemPrompt?: string;
 }
 
@@ -111,7 +111,7 @@ export interface ClaudeConfig extends AIProviderConfig {
  * OpenAI-specific configuration
  */
 export interface OpenAIConfig extends AIProviderConfig {
-  model: 'gpt-4-0125-preview' | 'gpt-4-turbo' | 'gpt-3.5-turbo' | 'gpt-4o';
+  model: "gpt-4-0125-preview" | "gpt-4-turbo" | "gpt-3.5-turbo" | "gpt-4o";
   organizationId?: string;
 }
 
@@ -119,7 +119,7 @@ export interface OpenAIConfig extends AIProviderConfig {
  * Gemini-specific configuration
  */
 export interface GeminiConfig extends AIProviderConfig {
-  model: 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-1.0-pro';
+  model: "gemini-1.5-pro" | "gemini-1.5-flash" | "gemini-1.0-pro";
   safetySettings?: Array<{
     category: string;
     threshold: string;
@@ -148,7 +148,7 @@ export interface AICommand {
 
   // Command permissions
   permissions?: {
-    requiredRole?: 'admin' | 'maintainer' | 'contributor';
+    requiredRole?: "admin" | "maintainer" | "contributor";
     allowedUsers?: string[];
     allowedRepos?: string[];
   };
@@ -246,7 +246,7 @@ export interface AIResponse {
  * AI-generated action to execute
  */
 export interface AIAction {
-  type: 'comment' | 'issue' | 'label' | 'assign' | 'merge' | 'close' | 'webhook';
+  type: "comment" | "issue" | "label" | "assign" | "merge" | "close" | "webhook";
 
   // Action-specific data
   data: {
@@ -270,22 +270,22 @@ export interface AIAction {
  * Code review result structure
  */
 export interface CodeReviewResult {
-  overallRating: 'excellent' | 'good' | 'needs-improvement' | 'poor';
+  overallRating: "excellent" | "good" | "needs-improvement" | "poor";
   summary: string;
 
   files: Array<{
     path: string;
-    rating: 'excellent' | 'good' | 'needs-improvement' | 'poor';
+    rating: "excellent" | "good" | "needs-improvement" | "poor";
     issues: Array<{
       line?: number;
-      type: 'error' | 'warning' | 'suggestion' | 'style';
+      type: "error" | "warning" | "suggestion" | "style";
       message: string;
       suggestion?: string;
     }>;
   }>;
 
   security: {
-    riskLevel: 'low' | 'medium' | 'high';
+    riskLevel: "low" | "medium" | "high";
     issues: string[];
   };
 
@@ -350,7 +350,7 @@ export interface WebhookEventData {
       number: number;
       title: string;
       body: string;
-      state: 'open' | 'closed' | 'merged';
+      state: "open" | "closed" | "merged";
       draft: boolean;
       sourceBranch: string;
       targetBranch: string;
@@ -365,7 +365,7 @@ export interface WebhookEventData {
       number: number;
       title: string;
       body: string;
-      state: 'open' | 'closed';
+      state: "open" | "closed";
       labels: string[];
       assignees: string[];
       url: string;

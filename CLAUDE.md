@@ -85,8 +85,8 @@ arbiter/
   and handlers
 - **apps/web**: Web frontend for visual spec editing with handlers management
   (React + Vite)
-- **packages/arbiter-core/src/handlers**: User-defined webhook handlers (not in package.json,
-  dynamically loaded)
+- **packages/arbiter-core/src/handlers**: User-defined webhook handlers (not in
+  package.json, dynamically loaded)
 
 ### Technology Stack
 
@@ -982,7 +982,8 @@ UPDATE_GOLDEN=1 bun test     # Update golden files
 - `apps/api/src/handlers/manager.ts` - Custom handlers system management
 - `apps/api/src/handlers/executor.ts` - Sandboxed handler execution engine
 - `scripts/cloudflare-tunnel.sh` - Secure tunnel setup and management
-- `packages/arbiter-core/src/handlers/examples/` - Example handler implementations
+- `packages/arbiter-core/src/handlers/examples/` - Example handler
+  implementations
 
 ### Exit Codes
 

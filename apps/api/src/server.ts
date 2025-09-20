@@ -9,25 +9,25 @@
  * - mcp/: Model Context Protocol tool handlers
  * - static/: Static file serving for frontend
  */
-import type { ServerWebSocket } from 'bun';
-import { Hono } from 'hono';
-import { AuthService } from './auth.ts';
-import { loadConfig } from './config.ts';
-import { SpecWorkbenchDB } from './db.ts';
-import { EventService } from './events.ts';
-import { HandlerAPIController } from './handlers/api.js';
-import { IRGenerator } from './ir.ts';
-import { McpCliIntegration } from './mcp-cli-integration.ts';
-import { SpecEngine } from './specEngine.ts';
-import type { ServerConfig } from './types.ts';
-import { TokenBucket, createProblemDetails, logger } from './utils.ts';
-import { WebhookService } from './webhooks.ts';
+import type { ServerWebSocket } from "bun";
+import { Hono } from "hono";
+import { AuthService } from "./auth.ts";
+import { loadConfig } from "./config.ts";
+import { SpecWorkbenchDB } from "./db.ts";
+import { EventService } from "./events.ts";
+import { HandlerAPIController } from "./handlers/api.js";
+import { IRGenerator } from "./ir.ts";
+import { McpCliIntegration } from "./mcp-cli-integration.ts";
+import { SpecEngine } from "./specEngine.ts";
+import type { ServerConfig } from "./types.ts";
+import { TokenBucket, createProblemDetails, logger } from "./utils.ts";
+import { WebhookService } from "./webhooks.ts";
 
-import { McpService } from './mcp/index.ts';
+import { McpService } from "./mcp/index.ts";
 // Import modular components
-import { type Dependencies, createApiRouter } from './routes/index.ts';
-import { StaticFileHandler } from './static/index.ts';
-import { WebSocketHandler } from './websocket/index.ts';
+import { type Dependencies, createApiRouter } from "./routes/index.ts";
+import { StaticFileHandler } from "./static/index.ts";
+import { WebSocketHandler } from "./websocket/index.ts";
 
 export class SpecWorkbenchServer {
   private db: SpecWorkbenchDB;
@@ -60,7 +60,7 @@ export class SpecWorkbenchServer {
     this.rateLimiter = new TokenBucket(
       config.rate_limit.max_tokens,
       config.rate_limit.refill_rate,
-      config.rate_limit.window_ms
+      config.rate_limit.window_ms,
     );
 
     // Initialize modular components
@@ -80,7 +80,7 @@ export class SpecWorkbenchServer {
     this.mcpService = new McpService(this.auth, this.mcpCli);
     this.staticHandler = new StaticFileHandler();
 
-    this.httpApp.use('*', async (c, next) => {
+    this.httpApp.use("*", async (c, next) => {
       await next();
 
       if (c.res) {
@@ -93,24 +93,24 @@ export class SpecWorkbenchServer {
       }
     });
 
-    this.httpApp.route('/', this.apiRouter);
+    this.httpApp.route("/", this.apiRouter);
 
-    this.httpApp.all('/mcp', async c => {
-      logger.info('MCP request received', {
+    this.httpApp.all("/mcp", async (c) => {
+      logger.info("MCP request received", {
         method: c.req.method,
-        userAgent: c.req.header('user-agent'),
-        contentType: c.req.header('content-type'),
+        userAgent: c.req.header("user-agent"),
+        contentType: c.req.header("content-type"),
       });
       const corsHeaders = this.getCorsHeaders();
       return await this.mcpService.handleRequest(c.req.raw, corsHeaders);
     });
 
-    this.httpApp.all('/webhooks/*', async c => {
+    this.httpApp.all("/webhooks/*", async (c) => {
       const corsHeaders = this.getCorsHeaders();
       return await this.webhooks.handleRequest(c.req.raw, corsHeaders);
     });
 
-    this.httpApp.notFound(async c => {
+    this.httpApp.notFound(async (c) => {
       const corsHeaders = this.getCorsHeaders();
       const pathname = new URL(c.req.url).pathname;
 
@@ -152,24 +152,24 @@ export class SpecWorkbenchServer {
         message: async (ws, message) => {
           await self.wsHandler.handleMessage(
             ws as any,
-            typeof message === 'string' ? message : message.toString()
+            typeof message === "string" ? message : message.toString(),
           );
         },
 
-        open: ws => {
+        open: (ws) => {
           self.wsHandler.handleOpen(ws as any);
         },
 
-        close: ws => {
+        close: (ws) => {
           self.wsHandler.handleClose(ws as any);
         },
       },
     });
 
-    logger.info('🚀 Arbiter API server started', {
+    logger.info("🚀 Arbiter API server started", {
       port: this.config.port,
       host: this.config.host,
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.NODE_ENV || "development",
     });
   }
 
@@ -178,14 +178,14 @@ export class SpecWorkbenchServer {
    */
   private getCorsHeaders(): Record<string, string> {
     return {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers':
-        'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-API-Key, ' +
-        'X-GitHub-Event, X-Hub-Signature-256, X-GitLab-Event, X-GitLab-Token',
-      'Access-Control-Expose-Headers': 'Content-Length, X-Request-ID',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Max-Age': '86400',
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Requested-With, Accept, Origin, X-API-Key, " +
+        "X-GitHub-Event, X-Hub-Signature-256, X-GitLab-Event, X-GitLab-Token",
+      "Access-Control-Expose-Headers": "Content-Length, X-Request-ID",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
     };
   }
 
@@ -207,15 +207,15 @@ export class SpecWorkbenchServer {
 
     if (!this.rateLimiter.consume(clientId)) {
       return new Response(
-        JSON.stringify(createProblemDetails(429, 'Too Many Requests', 'Rate limit exceeded')),
+        JSON.stringify(createProblemDetails(429, "Too Many Requests", "Rate limit exceeded")),
         {
           status: 429,
           headers: {
-            'Content-Type': 'application/problem+json',
-            'Retry-After': '60',
+            "Content-Type": "application/problem+json",
+            "Retry-After": "60",
             ...corsHeaders,
           },
-        }
+        },
       );
     }
 
@@ -233,13 +233,13 @@ export class SpecWorkbenchServer {
     try {
       const corsHeaders = this.getCorsHeaders();
 
-      if (method === 'OPTIONS') {
+      if (method === "OPTIONS") {
         return this.handlePreflightRequest(corsHeaders);
       }
 
       if (this.wsHandler.isWebSocketUpgrade(pathname, request)) {
         const upgradeResult = await this.wsHandler.handleUpgrade(request, server);
-        return upgradeResult.response || new Response('WebSocket upgrade successful');
+        return upgradeResult.response || new Response("WebSocket upgrade successful");
       }
 
       const rateLimitResponse = this.checkRateLimit(request, corsHeaders);
@@ -261,22 +261,22 @@ export class SpecWorkbenchServer {
       JSON.stringify(
         createProblemDetails(
           404,
-          'Not Found',
+          "Not Found",
           `Route ${pathname} not found`,
           undefined, // type
           undefined, // instance
           {
-            available_endpoints: ['/health', '/status', '/mcp', '/api/*', '/ws'],
-          }
-        )
+            available_endpoints: ["/health", "/status", "/mcp", "/api/*", "/ws"],
+          },
+        ),
       ),
       {
         status: 404,
         headers: {
-          'Content-Type': 'application/problem+json',
+          "Content-Type": "application/problem+json",
           ...corsHeaders,
         },
-      }
+      },
     );
   }
 
@@ -284,22 +284,22 @@ export class SpecWorkbenchServer {
    * Handle request errors
    */
   private handleRequestError(error: unknown, method: string, pathname: string): Response {
-    logger.error('Request handling error', error instanceof Error ? error : undefined, {
+    logger.error("Request handling error", error instanceof Error ? error : undefined, {
       method,
       pathname,
     });
 
     return new Response(
       JSON.stringify(
-        createProblemDetails(500, 'Internal Server Error', 'An unexpected error occurred')
+        createProblemDetails(500, "Internal Server Error", "An unexpected error occurred"),
       ),
       {
         status: 500,
         headers: {
-          'Content-Type': 'application/problem+json',
-          'Access-Control-Allow-Origin': '*',
+          "Content-Type": "application/problem+json",
+          "Access-Control-Allow-Origin": "*",
         },
-      }
+      },
     );
   }
 
@@ -307,16 +307,16 @@ export class SpecWorkbenchServer {
    * Get client ID for rate limiting
    */
   private getClientId(request: Request): string {
-    const forwarded = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const cfConnectingIp = request.headers.get('cf-connecting-ip');
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
     // Use the first available IP, preferring Cloudflare's
-    const ip = cfConnectingIp || realIp || forwarded?.split(',')[0] || 'unknown';
+    const ip = cfConnectingIp || realIp || forwarded?.split(",")[0] || "unknown";
 
     // Include user agent for better rate limiting granularity
-    const userAgent = request.headers.get('user-agent') || 'unknown';
-    const authHeader = request.headers.get('authorization');
+    const userAgent = request.headers.get("user-agent") || "unknown";
+    const authHeader = request.headers.get("authorization");
 
     // If there's an auth header, use that for rate limiting (per user)
     if (authHeader) {
@@ -331,7 +331,7 @@ export class SpecWorkbenchServer {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    logger.info('Shutting down server...');
+    logger.info("Shutting down server...");
 
     try {
       // Close database connections
@@ -343,9 +343,9 @@ export class SpecWorkbenchServer {
       // Clean up any other resources
       this.rateLimiter.cleanup();
 
-      logger.info('Server shutdown complete');
+      logger.info("Server shutdown complete");
     } catch (error) {
-      logger.error('Error during shutdown', error instanceof Error ? error : undefined);
+      logger.error("Error during shutdown", error instanceof Error ? error : undefined);
     }
   }
 }
@@ -358,7 +358,7 @@ let config: ServerConfig;
 try {
   config = loadConfig();
 } catch (error) {
-  logger.error('Failed to load server configuration', error instanceof Error ? error : undefined);
+  logger.error("Failed to load server configuration", error instanceof Error ? error : undefined);
   process.exit(1);
 }
 
@@ -366,14 +366,14 @@ try {
 const server = new SpecWorkbenchServer(config);
 
 // Handle graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🔸 Received SIGINT, shutting down gracefully...');
+process.on("SIGINT", async () => {
+  console.log("\n🔸 Received SIGINT, shutting down gracefully...");
   await server.shutdown();
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  console.log('\n🔸 Received SIGTERM, shutting down gracefully...');
+process.on("SIGTERM", async () => {
+  console.log("\n🔸 Received SIGTERM, shutting down gracefully...");
   await server.shutdown();
   process.exit(0);
 });
@@ -382,6 +382,6 @@ process.on('SIGTERM', async () => {
 try {
   await server.start();
 } catch (error) {
-  logger.error('Failed to start server', error instanceof Error ? error : undefined);
+  logger.error("Failed to start server", error instanceof Error ? error : undefined);
   process.exit(1);
 }

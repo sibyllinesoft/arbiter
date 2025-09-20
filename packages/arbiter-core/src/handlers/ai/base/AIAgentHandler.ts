@@ -1,7 +1,7 @@
-import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
-import { createResponse, logEvent, sanitizePayload } from '../../shared/utils.js';
-import type { IHookAdapter } from '../adapters/base/IHookAdapter.js';
-import type { AIAgentConfig, AICommand, AIProvider, AIProviderConfig } from './types.js';
+import type { HandlerResponse, WebhookEvent } from "../../shared/utils.js";
+import { createResponse, logEvent, sanitizePayload } from "../../shared/utils.js";
+import type { IHookAdapter } from "../adapters/base/IHookAdapter.js";
+import type { AIAgentConfig, AICommand, AIProvider, AIProviderConfig } from "./types.js";
 
 /**
  * Base class for AI-powered webhook handlers
@@ -39,7 +39,7 @@ export abstract class AIAgentHandler {
     try {
       // Log the incoming event
       await this.logActivity({
-        type: 'ai.agent.event.received',
+        type: "ai.agent.event.received",
         timestamp: new Date().toISOString(),
         eventType: event.eventType,
         provider: event.provider,
@@ -48,9 +48,9 @@ export abstract class AIAgentHandler {
 
       // Check if agent is enabled
       if (!this.config.enabled) {
-        return createResponse(true, 'AI Agent is disabled', {
+        return createResponse(true, "AI Agent is disabled", {
           skipped: true,
-          reason: 'disabled',
+          reason: "disabled",
         });
       }
 
@@ -83,7 +83,7 @@ export abstract class AIAgentHandler {
       // Log completion metrics
       const processingTime = Date.now() - startTime;
       await this.logActivity({
-        type: 'ai.agent.event.completed',
+        type: "ai.agent.event.completed",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         processingTimeMs: processingTime,
@@ -93,10 +93,10 @@ export abstract class AIAgentHandler {
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
       await this.logActivity({
-        type: 'ai.agent.event.error',
+        type: "ai.agent.event.error",
         timestamp: new Date().toISOString(),
         agentId: this.config.id,
         error: errorMessage,
@@ -112,7 +112,7 @@ export abstract class AIAgentHandler {
    */
   protected abstract processEvent(
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<HandlerResponse>;
 
   /**
@@ -147,7 +147,7 @@ export abstract class AIAgentHandler {
    * Extract AI commands from event data (looks for /command patterns)
    */
   protected extractAICommands(
-    eventData: any
+    eventData: any,
   ): Array<{ command: string; args: string[]; context: any }> {
     const commands: Array<{ command: string; args: string[]; context: any }> = [];
     const commandPattern = /\/([a-zA-Z-]+)(\s+(.+))?/g;
@@ -158,13 +158,13 @@ export abstract class AIAgentHandler {
       eventData.body,
       eventData.description,
       eventData.comment?.body,
-    ].filter(text => typeof text === 'string');
+    ].filter((text) => typeof text === "string");
 
     for (const text of textSources) {
       let match;
       while ((match = commandPattern.exec(text)) !== null) {
         const [, command, , argsString] = match;
-        const args = argsString ? argsString.split(/\s+/).filter(arg => arg.length > 0) : [];
+        const args = argsString ? argsString.split(/\s+/).filter((arg) => arg.length > 0) : [];
 
         if (this.commands.has(command.toLowerCase())) {
           commands.push({
@@ -185,7 +185,7 @@ export abstract class AIAgentHandler {
   protected async processAICommands(
     aiCommands: Array<{ command: string; args: string[]; context: any }>,
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<HandlerResponse> {
     const results = [];
 
@@ -199,11 +199,11 @@ export abstract class AIAgentHandler {
           args,
           context,
           eventData,
-          originalEvent
+          originalEvent,
         );
         results.push({ command, result });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         results.push({
           command,
           result: { success: false, message: `Command failed: ${errorMessage}` },
@@ -211,13 +211,13 @@ export abstract class AIAgentHandler {
       }
     }
 
-    const successCount = results.filter(r => r.result.success).length;
+    const successCount = results.filter((r) => r.result.success).length;
     const totalCount = results.length;
 
     return createResponse(
       successCount === totalCount,
       `Processed ${successCount}/${totalCount} AI commands`,
-      { commands: results }
+      { commands: results },
     );
   }
 
@@ -229,10 +229,10 @@ export abstract class AIAgentHandler {
     args: string[],
     context: any,
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<HandlerResponse> {
     await this.logActivity({
-      type: 'ai.agent.command.started',
+      type: "ai.agent.command.started",
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
       command: command.name,
@@ -262,12 +262,12 @@ export abstract class AIAgentHandler {
         actionResults = await this.executeActions(aiResponse.actions, eventData, originalEvent);
       }
 
-      return createResponse(true, aiResponse.message || 'AI command completed', {
+      return createResponse(true, aiResponse.message || "AI command completed", {
         aiResponse: aiResponse.data,
         actions: actionResults,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return createResponse(false, `AI command execution failed: ${errorMessage}`);
     }
   }
@@ -278,7 +278,7 @@ export abstract class AIAgentHandler {
   protected async executeActions(
     actions: any[],
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any[]> {
     const results = [];
 
@@ -287,7 +287,7 @@ export abstract class AIAgentHandler {
         const result = await this.executeAction(action, eventData, originalEvent);
         results.push({ action: action.type, success: true, result });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         results.push({
           action: action.type,
           success: false,
@@ -305,7 +305,7 @@ export abstract class AIAgentHandler {
   protected abstract executeAction(
     action: any,
     eventData: any,
-    originalEvent: WebhookEvent
+    originalEvent: WebhookEvent,
   ): Promise<any>;
 
   /**
@@ -319,7 +319,7 @@ export abstract class AIAgentHandler {
         agentType: this.config.type,
       });
     } catch (error) {
-      console.error('Failed to log AI agent activity:', error);
+      console.error("Failed to log AI agent activity:", error);
     }
   }
 

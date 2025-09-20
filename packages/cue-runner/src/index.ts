@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { spawn } from "node:child_process";
 
 export interface ExternalToolResult {
   success: boolean;
@@ -46,14 +46,14 @@ export class CueRunner {
   private readonly env?: NodeJS.ProcessEnv;
 
   constructor(options: CueRunnerOptions) {
-    this.cueBinaryPath = options.cueBinaryPath ?? 'cue';
+    this.cueBinaryPath = options.cueBinaryPath ?? "cue";
     this.cwd = options.cwd;
     this.timeoutMs = options.timeoutMs ?? 10_000;
     this.env = options.env;
   }
 
-  async vet(targets: string[] = ['./...']): Promise<CueVetResult> {
-    const result = await this.runCueCommand(['vet', ...targets]);
+  async vet(targets: string[] = ["./..."]): Promise<CueVetResult> {
+    const result = await this.runCueCommand(["vet", ...targets]);
     const diagnostics = result.success ? [] : this.parseDiagnostics(result.stderr);
 
     return {
@@ -63,8 +63,8 @@ export class CueRunner {
     };
   }
 
-  async exportJson(targets: string[] = ['./...']): Promise<CueExportResult> {
-    const result = await this.runCueCommand(['export', '--out', 'json', ...targets]);
+  async exportJson(targets: string[] = ["./..."]): Promise<CueExportResult> {
+    const result = await this.runCueCommand(["export", "--out", "json", ...targets]);
 
     if (result.success && result.stdout) {
       const parsed = safeJsonParse<Record<string, unknown>>(result.stdout);
@@ -90,40 +90,40 @@ export class CueRunner {
     return {
       success: false,
       diagnostics,
-      error: result.stderr || 'CUE export failed',
+      error: result.stderr || "CUE export failed",
       raw: result,
     };
   }
 
-  async fmt(targets: string[] = ['./...']): Promise<ExternalToolResult> {
-    return this.runCueCommand(['fmt', ...targets]);
+  async fmt(targets: string[] = ["./..."]): Promise<ExternalToolResult> {
+    return this.runCueCommand(["fmt", ...targets]);
   }
 
   private async runCueCommand(args: string[]): Promise<ExternalToolResult> {
     const start = Date.now();
 
-    return new Promise<ExternalToolResult>(resolve => {
-      let stdout = '';
-      let stderr = '';
+    return new Promise<ExternalToolResult>((resolve) => {
+      let stdout = "";
+      let stderr = "";
       let settled = false;
       let timedOut = false;
 
       const child = spawn(this.cueBinaryPath, args, {
         cwd: this.cwd,
         env: { ...process.env, ...this.env },
-        stdio: ['ignore', 'pipe', 'pipe'],
+        stdio: ["ignore", "pipe", "pipe"],
       });
 
       const timeout = setTimeout(() => {
         timedOut = true;
-        child.kill('SIGTERM');
+        child.kill("SIGTERM");
       }, this.timeoutMs);
 
-      child.stdout?.on('data', chunk => {
+      child.stdout?.on("data", (chunk) => {
         stdout += chunk.toString();
       });
 
-      child.stderr?.on('data', chunk => {
+      child.stderr?.on("data", (chunk) => {
         stderr += chunk.toString();
       });
 
@@ -141,7 +141,7 @@ export class CueRunner {
         });
       };
 
-      child.on('error', error => {
+      child.on("error", (error) => {
         if (settled) return;
         settled = true;
         clearTimeout(timeout);
@@ -155,8 +155,8 @@ export class CueRunner {
         });
       });
 
-      child.on('close', code => {
-        finalize(typeof code === 'number' ? code : -1);
+      child.on("close", (code) => {
+        finalize(typeof code === "number" ? code : -1);
       });
     });
   }
@@ -167,7 +167,7 @@ export class CueRunner {
       return [];
     }
 
-    const lines = trimmed.split('\n');
+    const lines = trimmed.split("\n");
     const blocks: string[][] = [];
     let current: string[] = [];
 
@@ -194,7 +194,7 @@ export class CueRunner {
       blocks.push(current);
     }
 
-    return blocks.map(block => this.buildDiagnostic(block));
+    return blocks.map((block) => this.buildDiagnostic(block));
   }
 
   private isDiagnosticHeader(line: string): boolean {
@@ -202,9 +202,12 @@ export class CueRunner {
   }
 
   private buildDiagnostic(block: string[]): CueDiagnostic {
-    const header = block[0]?.trim() ?? '';
+    const header = block[0]?.trim() ?? "";
     const match = header.match(/^([^:]+):(\d+):(\d+):\s*(.+)$/);
-    const details = block.slice(1).map(line => line.trim()).filter(Boolean);
+    const details = block
+      .slice(1)
+      .map((line) => line.trim())
+      .filter(Boolean);
 
     if (match) {
       const [, file, line, column, message] = match;
@@ -213,27 +216,29 @@ export class CueRunner {
         line: Number.parseInt(line, 10),
         column: Number.parseInt(column, 10),
         message: message.trim(),
-        summary: details.length > 0 ? details.join('\n') : undefined,
-        raw: block.join('\n'),
+        summary: details.length > 0 ? details.join("\n") : undefined,
+        raw: block.join("\n"),
       };
     }
 
     return {
-      message: block.join(' ').trim(),
+      message: block.join(" ").trim(),
       summary: undefined,
-      raw: block.join('\n'),
+      raw: block.join("\n"),
     };
   }
 }
 
-function safeJsonParse<T = unknown>(json: string): { success: true; data: T } | { success: false; error: string } {
+function safeJsonParse<T = unknown>(
+  json: string,
+): { success: true; data: T } | { success: false; error: string } {
   try {
     const data = JSON.parse(json) as T;
     return { success: true, data };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Invalid JSON',
+      error: error instanceof Error ? error.message : "Invalid JSON",
     };
   }
 }
@@ -242,5 +247,5 @@ export function createCueRunner(options: CueRunnerOptions): CueRunner {
   return new CueRunner(options);
 }
 
-export * from './fixtures.js';
-export * from './ast.js';
+export * from "./fixtures.js";
+export * from "./ast.js";
