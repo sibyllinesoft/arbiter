@@ -42,57 +42,9 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
   const [autoScroll, setAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  // Sample entries for demonstration - in real app, these would come from API
+  // Initialize with empty entries - only show real WebSocket messages
   useEffect(() => {
-    const sampleEntries: ActionLogEntry[] = [
-      {
-        id: '1',
-        timestamp: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-        type: 'service',
-        action: 'Service Added',
-        details: 'User authentication service configured with JWT tokens',
-        status: 'success',
-        metadata: { serviceName: 'auth-service', port: 8080 },
-      },
-      {
-        id: '2',
-        timestamp: new Date(Date.now() - 240000).toISOString(), // 4 minutes ago
-        type: 'database',
-        action: 'Database Added',
-        details: 'PostgreSQL database initialized with user schema',
-        status: 'success',
-        metadata: { dbName: 'users_db', engine: 'postgresql' },
-      },
-      {
-        id: '3',
-        timestamp: new Date(Date.now() - 180000).toISOString(), // 3 minutes ago
-        type: 'infrastructure',
-        action: 'Infrastructure Configured',
-        details: 'Load balancer and auto-scaling policies applied',
-        status: 'success',
-        metadata: { instances: 2, loadBalancer: 'enabled' },
-      },
-      {
-        id: '4',
-        timestamp: new Date(Date.now() - 120000).toISOString(), // 2 minutes ago
-        type: 'webhook',
-        action: 'Webhook Received',
-        details: 'GitHub push event processed successfully',
-        status: 'success',
-        metadata: { repository: 'arbiter-test', branch: 'main' },
-      },
-      {
-        id: '5',
-        timestamp: new Date(Date.now() - 60000).toISOString(), // 1 minute ago
-        type: 'validation',
-        action: 'Validation Completed',
-        details: 'CUE specification validated with no errors',
-        status: 'success',
-        metadata: { specHash: 'a1b2c3d4', warnings: 0, errors: 0 },
-      },
-    ];
-
-    setEntries(sampleEntries);
+    setEntries([]);
   }, [projectId]);
 
   // Add new entries from WebSocket messages

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { FriendlyDiagram, SourceDiagram } from '../../../components/diagrams';
+import { SourceEditor, FriendlyEditor } from '../../../components/index';
 import { DiagramPlaceholder } from './DiagramPlaceholder';
 import type { Project } from '../../../types/api';
 
@@ -17,7 +17,7 @@ export function useEditorTabs({ project }: EditorTabsProps) {
       id: 'source',
       label: 'Source',
       content: project ? (
-        <SourceDiagram projectId={project.id} />
+        <SourceEditor projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Source Code" />
       ),
@@ -26,7 +26,7 @@ export function useEditorTabs({ project }: EditorTabsProps) {
       id: 'friendly',
       label: 'Friendly',
       content: project ? (
-        <FriendlyDiagram projectId={project.id} />
+        <FriendlyEditor projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Friendly Diagram" />
       ),

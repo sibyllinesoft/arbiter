@@ -111,10 +111,19 @@ ${indentStr}}`;
         setSourceContent(cueSource);
       } catch (err) {
         console.error('Failed to fetch resolved spec:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load specification data');
-        setSourceContent(
-          '// Error loading specification data\n// Please check the console for details'
-        );
+
+        // Handle specific error cases
+        if (err instanceof Error && err.message.includes('404')) {
+          setError('Project not found or has been deleted');
+          setSourceContent(
+            '// Project not found or has been deleted\n// Please select a valid project'
+          );
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to load specification data');
+          setSourceContent(
+            '// Error loading specification data\n// Please check the console for details'
+          );
+        }
       } finally {
         setLoading(false);
       }
@@ -122,6 +131,16 @@ ${indentStr}}`;
 
     if (projectId) {
       fetchResolvedSpec();
+    } else {
+      // Clear state when no project is selected
+      setLoading(false);
+      setError(null);
+      setResolvedData(null);
+      setSpecHash('');
+      setSourceContent(
+        '// No project selected\n// Please select a project to view its specification'
+      );
+      setLastSync(null);
     }
   }, [projectId]);
 

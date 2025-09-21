@@ -26,6 +26,8 @@ import { useHandlers } from '../hooks/api-hooks';
 import { apiService } from '../services/api';
 import { toast } from 'react-toastify';
 import { useAppSettings } from '../contexts/AppContext';
+import { TunnelManager } from '../components/TunnelManager';
+import { WebhookAutomation } from '../components/WebhookAutomation';
 
 interface ConfigScreenProps {
   onNavigateBack: () => void;
@@ -59,6 +61,7 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
 
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
 
   // Load webhook configurations (in real app, from API)
   useEffect(() => {
@@ -227,6 +230,12 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
               </div>
             </div>
           </Card>
+
+          {/* Tunnel Management */}
+          <TunnelManager onTunnelUrlChange={setTunnelUrl} />
+
+          {/* Webhook Automation */}
+          <WebhookAutomation tunnelUrl={tunnelUrl} />
 
           {/* Webhook Configuration */}
           <Card className="p-6">

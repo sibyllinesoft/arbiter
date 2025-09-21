@@ -10,6 +10,8 @@ interface FriendlyDiagramProps {
   className?: string;
   /** Optional title for the diagram */
   title?: string;
+  /** Callback to provide resolved data to parent for metadata banner */
+  onDataLoaded?: (data: Record<string, unknown>) => void;
 }
 
 // Removed AccordionSection interface - using single Main card approach
@@ -18,6 +20,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
   projectId,
   className = '',
   title = 'CUE Specification - Friendly View',
+  onDataLoaded,
 }) => {
   const [resolvedData, setResolvedData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,6 +37,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
         const response: ResolvedSpecResponse = await apiService.getResolvedSpec(projectId);
         setResolvedData(response.resolved);
         setSpecHash(response.spec_hash);
+        onDataLoaded?.(response.resolved);
       } catch (err) {
         console.error('Failed to fetch resolved spec:', err);
         setError(err instanceof Error ? err.message : 'Failed to load specification data');
@@ -94,15 +98,12 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
       }
 
       return (
-        <div className="space-y-2">
-          <span className="text-gray-600 text-sm font-medium">Array ({value.length} items)</span>
-          <ul className="list-disc list-inside space-y-1 ml-4">
-            {value.map((item, index) => (
-              <li key={index} className="text-gray-700">
-                {renderValue(item, level + 1, `${parentKey}[${index}]`)}
-              </li>
-            ))}
-          </ul>
+        <div className="space-y-1 ml-4">
+          {value.map((item, index) => (
+            <div key={index} className="text-gray-700">
+              {renderValue(item, level + 1, `${parentKey}[${index}]`)}
+            </div>
+          ))}
         </div>
       );
     }
@@ -115,9 +116,6 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
 
       return (
         <div className="space-y-2">
-          <span className="text-gray-600 text-sm font-medium">
-            Object ({entries.length} properties)
-          </span>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {entries.map(([key, val]) => {
               // For simple values, render as label/value pairs
@@ -143,11 +141,11 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
               return (
                 <div key={key} className="col-span-full">
                   <div
-                    className={`border rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors ${
-                      level === 0 ? 'border-gray-200' : 'border-gray-300'
+                    className={`p-1.5 bg-gray-50 hover:bg-gray-100 transition-colors ${
+                      level === 0 ? '' : ''
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-start justify-between mb-1">
                       <h4
                         className={`font-semibold text-gray-800 ${
                           level === 0 ? 'text-base' : level === 1 ? 'text-sm' : 'text-xs'
@@ -159,7 +157,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                         {Array.isArray(val) ? 'array' : typeof val}
                       </span>
                     </div>
-                    <div className="ml-2">
+                    <div className="ml-1">
                       {renderValue(val, level + 1, `${parentKey ? parentKey + '.' : ''}${key}`)}
                     </div>
                   </div>
@@ -175,14 +173,23 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
   };
 
   const renderMainCard = (data: Record<string, unknown>) => {
-    const entries = Object.entries(data);
+    // Filter out apiVersion, kind, and metadata to show only spec content
+    const filteredData = Object.fromEntries(
+      Object.entries(data).filter(([key]) => !['apiVersion', 'kind', 'metadata'].includes(key))
+    );
+
+    // If we have a spec property, use its contents as the main content
+    const mainData = filteredData.spec
+      ? (filteredData.spec as Record<string, unknown>)
+      : filteredData;
+    const entries = Object.entries(mainData);
     const hasContent = entries.length > 0;
 
     return (
-      <div className="border border-gray-200 rounded-lg bg-white shadow-sm">
+      <div className="bg-white">
         <button
           onClick={toggleMain}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-lg"
+          className="w-full px-2 py-1.5 flex items-center justify-between hover:bg-gray-50 transition-colors"
           disabled={!hasContent}
         >
           <div className="flex items-center space-x-3">
@@ -195,7 +202,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
             ) : (
               <div className="w-5 h-5" />
             )}
-            <h3 className="text-lg font-semibold text-gray-900 text-left">Main</h3>
+            <h3 className="text-lg font-semibold text-gray-900 text-left">Specification</h3>
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">{entries.length} properties</span>
@@ -208,8 +215,8 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
         </button>
 
         {isMainExpanded && hasContent && (
-          <div className="border-t border-gray-200 p-4 bg-gray-50/50">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="p-2 bg-gray-50/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {entries.map(([key, value]) => {
                 // For simple values, render as label/value pairs
                 if (
@@ -219,10 +226,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                   value === null
                 ) {
                   return (
-                    <div
-                      key={key}
-                      className="flex flex-col space-y-1 p-2 bg-gray-50 rounded border"
-                    >
+                    <div key={key} className="flex flex-col space-y-1 p-1 bg-gray-50 rounded">
                       <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
                         {key}
                       </span>
@@ -240,12 +244,17 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                     (Array.isArray(value) && value.length > 0) ||
                     (!Array.isArray(value) && Object.keys(value as object).length > 0));
 
+                // Hide empty top-level groups
+                if (!hasContent) {
+                  return null;
+                }
+
                 return (
                   <div key={key} className="col-span-full">
-                    <div className="border rounded-lg bg-white shadow-sm border-gray-200">
+                    <div className="bg-white">
                       <button
                         onClick={() => toggleCard(key)}
-                        className="w-full p-3 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-lg text-left"
+                        className="w-full p-1.5 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
                         disabled={!hasContent}
                       >
                         <div className="flex items-center space-x-3">
@@ -277,8 +286,8 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
                       </button>
 
                       {isCardExpanded && hasContent && (
-                        <div className="border-t border-gray-200 p-3 bg-gray-50/50">
-                          <div className="ml-2">{renderValue(value, 1, key)}</div>
+                        <div className="p-1.5 bg-gray-50/30">
+                          <div className="ml-1">{renderValue(value, 1, key)}</div>
                         </div>
                       )}
                     </div>
@@ -353,7 +362,7 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
   return (
     <div className={`h-full flex flex-col min-h-0 ${className}`}>
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
+      <div className="flex-shrink-0 p-2 bg-white">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-medium text-gray-900">{title}</h3>
@@ -398,8 +407,8 @@ export const FriendlyDiagram: React.FC<FriendlyDiagramProps> = ({
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 scrollbar-transparent">
-        <div className="space-y-3">{renderMainCard(resolvedData)}</div>
+      <div className="flex-1 min-h-0 overflow-y-auto p-2 scrollbar-transparent">
+        <div className="space-y-1">{renderMainCard(resolvedData)}</div>
       </div>
     </div>
   );

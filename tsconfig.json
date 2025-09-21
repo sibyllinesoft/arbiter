@@ -10,27 +10,15 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "@arbiter/shared": [
-        "./packages/shared/src"
-      ],
-      "@arbiter/cue-runner": [
-        "./packages/cue-runner/src"
-      ],
-      "@arbiter/cli": [
-        "./packages/cli/src"
-      ],
-      "@arbiter/api-types": [
-        "./packages/api-types/src"
-      ],
-      "@arbiter/core": [
-        "./packages/arbiter-core/src"
-      ],
-      "@arbiter/shared-types": [
-        "./packages/shared-types/src"
-      ],
-      "@arbiter/shared-types/*": [
-        "./packages/shared-types/src/*"
-      ]
+      "@arbiter/shared": ["./packages/shared/src"],
+      "@arbiter/cue-runner": ["./packages/cue-runner/src"],
+      "@arbiter/cli": ["./packages/cli/src"],
+      "@arbiter/api-types": ["./packages/api-types/src"],
+      "@arbiter/core": ["./packages/arbiter-core/src"],
+      "@arbiter/shared-types": ["./packages/shared-types/src"],
+      "@arbiter/shared-types/*": ["./packages/shared-types/src/*"],
+      "@arbiter/importer": ["./packages/importer/src"],
+      "@arbiter/importer/*": ["./packages/importer/src/*"]
     }
   },
   "files": [],
@@ -54,16 +42,14 @@
       "path": "./packages/api-types"
     },
     {
+      "path": "./packages/importer"
+    },
+    {
       "path": "./apps/api"
     },
     {
       "path": "./apps/web"
     }
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/dist/**",
-    "**/node_modules/**"
-  ]
+  "exclude": ["node_modules", "dist", "**/dist/**", "**/node_modules/**"]
 }

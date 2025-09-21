@@ -1,6 +1,6 @@
-import type { IRResponse, ValidationRequest, ValidationResponse } from '@arbiter/shared';
-import { COMMON_PORTS } from './config.js';
-import type { CLIConfig, CommandResult } from './types.js';
+import type { IRResponse, ValidationRequest, ValidationResponse } from "@arbiter/shared";
+import { COMMON_PORTS } from "./config.js";
+import type { CLIConfig, CommandResult } from "./types.js";
 
 /**
  * Rate-limited HTTP API client for Arbiter server
@@ -18,10 +18,10 @@ export class ApiClient {
   private readonly MAX_TIMEOUT = 750; // 750ms per spec
 
   constructor(config: CLIConfig) {
-    this.baseUrl = config.apiUrl.replace(/\/$/, ''); // Remove trailing slash
+    this.baseUrl = config.apiUrl.replace(/\/$/, ""); // Remove trailing slash
     // Ensure timeout compliance with spec (≤750ms)
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
-    this.projectId = config.projectId || 'cli-project'; // Use configured project ID or fallback
+    this.projectId = config.projectId || "cli-project"; // Use configured project ID or fallback
   }
 
   /**
@@ -54,7 +54,7 @@ export class ApiClient {
 
         const response = await fetch(`${testUrl}/health`, {
           signal: controller.signal,
-          method: 'GET',
+          method: "GET",
         });
 
         clearTimeout(timeoutId);
@@ -68,7 +68,7 @@ export class ApiClient {
 
     return {
       success: false,
-      error: `No Arbiter server found on common ports [${COMMON_PORTS.join(', ')}]. Please ensure the server is running.`,
+      error: `No Arbiter server found on common ports [${COMMON_PORTS.join(", ")}]. Please ensure the server is running.`,
     };
   }
 
@@ -88,7 +88,7 @@ export class ApiClient {
 
     if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
       const waitTime = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
-      await new Promise(resolve => setTimeout(resolve, waitTime));
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
     }
 
     this.lastRequestTime = Date.now();
@@ -101,7 +101,7 @@ export class ApiClient {
     const size = new TextEncoder().encode(payload).length;
     if (size > this.MAX_PAYLOAD_SIZE) {
       throw new Error(
-        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`
+        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`,
       );
     }
   }
@@ -114,7 +114,7 @@ export class ApiClient {
     _options: {
       schema?: string;
       strict?: boolean;
-    } = {}
+    } = {},
   ): Promise<CommandResult<ValidationResponse>> {
     try {
       await this.enforceRateLimit();
@@ -129,11 +129,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify(request);
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch('/api/validate', {
-        method: 'POST',
+      const response = await this.fetch("/api/validate", {
+        method: "POST",
         body: requestPayload,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -173,11 +173,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ text: content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch('/api/ir', {
-        method: 'POST',
+      const response = await this.fetch("/api/ir", {
+        method: "POST",
         body: requestPayload,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -217,12 +217,12 @@ export class ApiClient {
   /**
    * List fragments for a project
    */
-  async listFragments(projectId = 'default'): Promise<CommandResult<any[]>> {
+  async listFragments(projectId = "default"): Promise<CommandResult<any[]>> {
     try {
       await this.enforceRateLimit();
 
       const response = await this.fetch(
-        `/api/fragments?projectId=${encodeURIComponent(projectId)}`
+        `/api/fragments?projectId=${encodeURIComponent(projectId)}`,
       );
 
       if (!response.ok) {
@@ -257,7 +257,7 @@ export class ApiClient {
     projectId: string,
     path: string,
     content: string,
-    options?: { author?: string; message?: string }
+    options?: { author?: string; message?: string },
   ): Promise<CommandResult<any>> {
     try {
       await this.enforceRateLimit();
@@ -272,11 +272,11 @@ export class ApiClient {
       });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch('/api/fragments', {
-        method: 'POST',
+      const response = await this.fetch("/api/fragments", {
+        method: "POST",
         body: requestPayload,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -318,7 +318,7 @@ export class ApiClient {
     const requestId = Math.random().toString(36).substr(2, 9);
 
     console.log(
-      `[CLI-STORE] ${requestId} - Starting storeSpecification at ${new Date().toISOString()}`
+      `[CLI-STORE] ${requestId} - Starting storeSpecification at ${new Date().toISOString()}`,
     );
     console.log(`[CLI-STORE] ${requestId} - Spec details:`, {
       type: spec.type,
@@ -331,9 +331,9 @@ export class ApiClient {
     try {
       console.log(`[CLI-STORE] ${requestId} - Making POST request to /api/specifications`);
 
-      const response = await this.fetch('/api/specifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await this.fetch("/api/specifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...spec,
           sharded: true, // Indicate this should use sharded storage
@@ -342,13 +342,13 @@ export class ApiClient {
 
       const duration = Date.now() - startTime;
       console.log(
-        `[CLI-STORE] ${requestId} - Response received after ${duration}ms, status: ${response.status}`
+        `[CLI-STORE] ${requestId} - Response received after ${duration}ms, status: ${response.status}`,
       );
 
       if (!response.ok) {
         const error = await response.text();
         console.error(
-          `[CLI-STORE] ${requestId} - Failed with status ${response.status}, error: ${error}`
+          `[CLI-STORE] ${requestId} - Failed with status ${response.status}, error: ${error}`,
         );
         return {
           success: false,
@@ -389,7 +389,7 @@ export class ApiClient {
           return {
             success: false,
             data: null,
-            error: 'Specification not found',
+            error: "Specification not found",
             exitCode: 1,
           };
         }
@@ -423,19 +423,19 @@ export class ApiClient {
       await this.enforceRateLimit();
 
       // First try the configured URL
-      let response = await this.fetch('/health');
+      let response = await this.fetch("/health");
 
       // If it fails, try auto-discovery
       if (!response.ok || response.status === 404) {
         console.warn(
-          `Initial connection to ${this.baseUrl} failed. Attempting server discovery...`
+          `Initial connection to ${this.baseUrl} failed. Attempting server discovery...`,
         );
         const discovery = await this.discoverServer();
 
         if (discovery.success && discovery.url) {
           console.log(`✓ Found server at ${discovery.url}`);
           // Retry with discovered URL
-          response = await this.fetch('/health');
+          response = await this.fetch("/health");
         } else {
           return {
             success: false,
@@ -487,26 +487,26 @@ export class ApiClient {
     options: {
       strict?: boolean;
       includeExamples?: boolean;
-      outputMode?: 'single' | 'multiple';
-    } = {}
+      outputMode?: "single" | "multiple";
+    } = {},
   ): Promise<CommandResult<any>> {
     try {
-      const response = await this.fetch('/export', {
-        method: 'POST',
+      const response = await this.fetch("/export", {
+        method: "POST",
         body: JSON.stringify({
           text: content,
           format,
           strict: options.strict || false,
           includeExamples: options.includeExamples || false,
-          outputMode: options.outputMode || 'single',
+          outputMode: options.outputMode || "single",
         }),
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
         return {
           success: false,
           error: errorData.error || `Export failed: ${response.status}`,
@@ -519,7 +519,7 @@ export class ApiClient {
       if (!data.success) {
         return {
           success: false,
-          error: data.error || 'Export failed',
+          error: data.error || "Export failed",
           exitCode: 1,
         };
       }
@@ -543,7 +543,7 @@ export class ApiClient {
    */
   async getSupportedFormats(): Promise<CommandResult<any>> {
     try {
-      const response = await this.fetch('/export/formats');
+      const response = await this.fetch("/export/formats");
 
       if (!response.ok) {
         return {
@@ -576,7 +576,7 @@ export class ApiClient {
     try {
       await this.enforceRateLimit();
 
-      const url = type ? `/api/components?type=${encodeURIComponent(type)}` : '/api/components';
+      const url = type ? `/api/components?type=${encodeURIComponent(type)}` : "/api/components";
       const response = await this.fetch(url);
 
       if (!response.ok) {
@@ -611,7 +611,7 @@ export class ApiClient {
     try {
       await this.enforceRateLimit();
 
-      const response = await this.fetch('/api/status');
+      const response = await this.fetch("/api/status");
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -649,11 +649,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch('/api/validate/best-practices', {
-        method: 'POST',
+      const response = await this.fetch("/api/validate/best-practices", {
+        method: "POST",
         body: requestPayload,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -693,11 +693,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ content, rules });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch('/api/validate/custom-rules', {
-        method: 'POST',
+      const response = await this.fetch("/api/validate/custom-rules", {
+        method: "POST",
         body: requestPayload,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -737,11 +737,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch('/api/validate/consistency', {
-        method: 'POST',
+      const response = await this.fetch("/api/validate/consistency", {
+        method: "POST",
         body: requestPayload,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -780,10 +780,10 @@ export class ApiClient {
     const fetchId = Math.random().toString(36).substr(2, 9);
 
     console.log(
-      `[CLI-FETCH] ${fetchId} - Starting request to ${url} at ${new Date().toISOString()}`
+      `[CLI-FETCH] ${fetchId} - Starting request to ${url} at ${new Date().toISOString()}`,
     );
     console.log(`[CLI-FETCH] ${fetchId} - Timeout configured: ${this.timeout}ms`);
-    console.log(`[CLI-FETCH] ${fetchId} - Method: ${options.method || 'GET'}`);
+    console.log(`[CLI-FETCH] ${fetchId} - Method: ${options.method || "GET"}`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -812,7 +812,7 @@ export class ApiClient {
 
       console.error(`[CLI-FETCH] ${fetchId} - Error after ${duration}ms:`, error);
 
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         const errorMsg = `Request timeout after ${this.timeout}ms connecting to ${baseUrl}`;
         console.error(`[CLI-FETCH] ${fetchId} - TIMEOUT: ${errorMsg}`);
         throw new Error(errorMsg);
@@ -821,7 +821,7 @@ export class ApiClient {
       // Enhance error message with connection details
       if (
         error instanceof Error &&
-        (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed'))
+        (error.message.includes("ECONNREFUSED") || error.message.includes("fetch failed"))
       ) {
         const errorMsg = `Connection failed to ${baseUrl}. Is the Arbiter server running?`;
         console.error(`[CLI-FETCH] ${fetchId} - CONNECTION FAILED: ${errorMsg}`);
@@ -831,5 +831,70 @@ export class ApiClient {
       console.error(`[CLI-FETCH] ${fetchId} - OTHER ERROR:`, error);
       throw error;
     }
+  }
+
+  // Webhook automation methods
+  async setupGitHubWebhook(params: {
+    repoOwner: string;
+    repoName: string;
+    events?: string[];
+    tunnelUrl?: string;
+  }): Promise<{
+    success: boolean;
+    webhook?: {
+      id: number;
+      url: string;
+      events: string[];
+      active: boolean;
+      created_at: string;
+      updated_at: string;
+    };
+    message?: string;
+    error?: string;
+  }> {
+    await this.enforceRateLimit();
+    const response = await this.fetch("/api/webhooks/github/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    return await response.json();
+  }
+
+  async listGitHubWebhooks(
+    owner: string,
+    repo: string,
+  ): Promise<{
+    success: boolean;
+    webhooks?: Array<{
+      id: number;
+      name: string;
+      url: string;
+      events: string[];
+      active: boolean;
+      created_at: string;
+      updated_at: string;
+    }>;
+    error?: string;
+  }> {
+    await this.enforceRateLimit();
+    const response = await this.fetch(`/api/webhooks/github/list/${owner}/${repo}`);
+    return await response.json();
+  }
+
+  async deleteGitHubWebhook(
+    owner: string,
+    repo: string,
+    hookId: number,
+  ): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    await this.enforceRateLimit();
+    const response = await this.fetch(`/api/webhooks/github/${owner}/${repo}/${hookId}`, {
+      method: "DELETE",
+    });
+    return await response.json();
   }
 }

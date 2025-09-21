@@ -1,9 +1,11 @@
 /**
- * DiagramTabs - Right pane tabs for diagrams and handlers
+ * UnifiedTabs - Combines editor and diagram tabs into a single tab list
  */
 
 import React from 'react';
 import {
+  SourceEditor,
+  FriendlyEditor,
   FlowReport,
   SiteReport,
   FsmReport,
@@ -12,16 +14,55 @@ import {
   ResolvedReport,
   ArchitectureReport,
   HandlersReport,
-} from '../../../components/index';
-import { DiagramPlaceholder } from './DiagramPlaceholder';
-import type { Project } from '../../../types/api';
+} from './';
+import type { Project } from '../types/api';
 
-interface DiagramTabsProps {
+interface DiagramPlaceholderProps {
+  type: string;
+}
+
+function DiagramPlaceholder({ type }: DiagramPlaceholderProps) {
+  return (
+    <div className="flex items-center justify-center h-full bg-gray-50">
+      <div className="text-center">
+        <div className="text-gray-400 mb-2">
+          <div className="w-16 h-16 mx-auto bg-gray-200 rounded-lg flex items-center justify-center">
+            <span className="text-2xl">📊</span>
+          </div>
+        </div>
+        <h3 className="text-lg font-medium text-gray-900 mb-1">{type}</h3>
+        <p className="text-gray-600">Select a project to view this content</p>
+      </div>
+    </div>
+  );
+}
+
+interface UnifiedTabsProps {
   project: Project | null;
 }
 
-export function useDiagramTabs({ project }: DiagramTabsProps) {
-  const diagramTabs = [
+export function useUnifiedTabs({ project }: UnifiedTabsProps) {
+  const allTabs = [
+    // Editor tabs
+    {
+      id: 'source',
+      label: 'Source',
+      content: project ? (
+        <SourceEditor projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Source Code" />
+      ),
+    },
+    {
+      id: 'friendly',
+      label: 'Friendly',
+      content: project ? (
+        <FriendlyEditor projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Friendly Diagram" />
+      ),
+    },
+    // Diagram tabs
     {
       id: 'flow',
       label: 'Flow',
@@ -92,5 +133,5 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
     },
   ];
 
-  return diagramTabs;
+  return allTabs;
 }

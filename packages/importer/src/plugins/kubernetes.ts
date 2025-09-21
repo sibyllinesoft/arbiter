@@ -6,8 +6,8 @@
  * infer application architecture and deployment patterns.
  */
 
-import * as path from 'path';
-import * as yaml from 'yaml';
+import * as path from "path";
+import * as yaml from "yaml";
 import {
   ConfidenceScore,
   DatabaseArtifact,
@@ -19,41 +19,41 @@ import {
   ParseContext,
   Provenance,
   ServiceArtifact,
-} from '../types.js';
+} from "../types.js";
 
 // ============================================================================
 // Kubernetes Resource Types and Patterns
 // ============================================================================
 
 const K8S_WORKLOAD_TYPES = [
-  'Deployment',
-  'StatefulSet',
-  'DaemonSet',
-  'Job',
-  'CronJob',
-  'ReplicaSet',
-  'Pod',
+  "Deployment",
+  "StatefulSet",
+  "DaemonSet",
+  "Job",
+  "CronJob",
+  "ReplicaSet",
+  "Pod",
 ];
 
-const K8S_SERVICE_TYPES = ['Service', 'Ingress', 'NetworkPolicy'];
+const K8S_SERVICE_TYPES = ["Service", "Ingress", "NetworkPolicy"];
 
 const K8S_CONFIG_TYPES = [
-  'ConfigMap',
-  'Secret',
-  'PersistentVolume',
-  'PersistentVolumeClaim',
-  'ServiceAccount',
+  "ConfigMap",
+  "Secret",
+  "PersistentVolume",
+  "PersistentVolumeClaim",
+  "ServiceAccount",
 ];
 
 const DATABASE_IMAGES = [
-  'postgres',
-  'mysql',
-  'mongodb',
-  'redis',
-  'elasticsearch',
-  'cassandra',
-  'memcached',
-  'mariadb',
+  "postgres",
+  "mysql",
+  "mongodb",
+  "redis",
+  "elasticsearch",
+  "cassandra",
+  "memcached",
+  "mariadb",
 ];
 
 // ============================================================================
@@ -128,7 +128,7 @@ interface K8sIngressData extends K8sResourceData {
 
 export class KubernetesPlugin implements ImporterPlugin {
   name(): string {
-    return 'kubernetes';
+    return "kubernetes";
   }
 
   supports(filePath: string, fileContent?: string): boolean {
@@ -137,28 +137,28 @@ export class KubernetesPlugin implements ImporterPlugin {
 
     // Support YAML files in kubernetes directories
     if (
-      (extension === '.yaml' || extension === '.yml') &&
-      (filePath.includes('kubernetes') ||
-        filePath.includes('k8s') ||
-        filePath.includes('manifests') ||
-        fileName.includes('k8s'))
+      (extension === ".yaml" || extension === ".yml") &&
+      (filePath.includes("kubernetes") ||
+        filePath.includes("k8s") ||
+        filePath.includes("manifests") ||
+        fileName.includes("k8s"))
     ) {
       return true;
     }
 
     // Support files with k8s in the name
     if (
-      (extension === '.yaml' || extension === '.yml') &&
-      (fileName.includes('deployment') ||
-        fileName.includes('service') ||
-        fileName.includes('ingress') ||
-        fileName.includes('configmap'))
+      (extension === ".yaml" || extension === ".yml") &&
+      (fileName.includes("deployment") ||
+        fileName.includes("service") ||
+        fileName.includes("ingress") ||
+        fileName.includes("configmap"))
     ) {
       return true;
     }
 
     // Content-based detection - check for apiVersion and kind
-    if (fileContent && (extension === '.yaml' || extension === '.yml')) {
+    if (fileContent && (extension === ".yaml" || extension === ".yml")) {
       return /apiVersion:\s*[\w\/]+/.test(fileContent) && /kind:\s*\w+/.test(fileContent);
     }
 
@@ -169,7 +169,7 @@ export class KubernetesPlugin implements ImporterPlugin {
     if (!fileContent) return [];
 
     const evidence: Evidence[] = [];
-    const baseId = `k8s-${path.relative(context?.projectRoot || '', filePath).replace(/[/\\]/g, '-')}`;
+    const baseId = `k8s-${path.relative(context?.projectRoot || "", filePath)}`;
 
     try {
       // Parse YAML content - may contain multiple documents
@@ -193,7 +193,7 @@ export class KubernetesPlugin implements ImporterPlugin {
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const k8sEvidence = evidence.filter(e => e.source === 'kubernetes');
+    const k8sEvidence = evidence.filter((e) => e.source === "kubernetes");
     if (k8sEvidence.length === 0) return [];
 
     const artifacts: InferredArtifact[] = [];
@@ -201,7 +201,8 @@ export class KubernetesPlugin implements ImporterPlugin {
     try {
       // Infer from workload resources (Deployment, StatefulSet, etc.)
       const workloadEvidence = k8sEvidence.filter(
-        e => e.type === 'deployment' && K8S_WORKLOAD_TYPES.includes((e.data as any).kind as string)
+        (e) =>
+          e.type === "deployment" && K8S_WORKLOAD_TYPES.includes((e.data as any).kind as string),
       );
       for (const workload of workloadEvidence) {
         artifacts.push(...(await this.inferFromWorkload(workload, k8sEvidence, context)));
@@ -212,7 +213,7 @@ export class KubernetesPlugin implements ImporterPlugin {
         artifacts.push(...(await this.inferDeploymentArtifact(k8sEvidence, context)));
       }
     } catch (error) {
-      console.warn('Kubernetes plugin inference failed:', error);
+      console.warn("Kubernetes plugin inference failed:", error);
     }
 
     return artifacts;
@@ -225,16 +226,16 @@ export class KubernetesPlugin implements ImporterPlugin {
   private async parseK8sResource(
     filePath: string,
     resource: any,
-    baseId: string
+    baseId: string,
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
     const { apiVersion, kind, metadata = {}, spec = {}, status } = resource;
 
     const baseData: K8sResourceData = {
-      configType: 'k8s-resource',
+      configType: "k8s-resource",
       kind,
       apiVersion,
-      name: (metadata.name as string) || 'unnamed',
+      name: (metadata.name as string) || "unnamed",
       namespace: metadata.namespace,
       labels: metadata.labels || {},
       annotations: metadata.annotations || {},
@@ -248,8 +249,8 @@ export class KubernetesPlugin implements ImporterPlugin {
 
       evidence.push({
         id: `${baseId}-${kind.toLowerCase()}`,
-        source: 'kubernetes',
-        type: 'deployment',
+        source: "kubernetes",
+        type: "deployment",
         filePath,
         data: workloadData,
         confidence: 0.9,
@@ -261,13 +262,13 @@ export class KubernetesPlugin implements ImporterPlugin {
     }
 
     // Parse service resources
-    if (kind === 'Service') {
+    if (kind === "Service") {
       const serviceData = this.parseServiceResource(baseData, spec);
 
       evidence.push({
         id: `${baseId}-service`,
-        source: 'kubernetes',
-        type: 'infrastructure',
+        source: "kubernetes",
+        type: "infrastructure",
         filePath,
         data: serviceData,
         confidence: 0.9,
@@ -279,13 +280,13 @@ export class KubernetesPlugin implements ImporterPlugin {
     }
 
     // Parse ingress resources
-    if (kind === 'Ingress') {
+    if (kind === "Ingress") {
       const ingressData = this.parseIngressResource(baseData, spec);
 
       evidence.push({
         id: `${baseId}-ingress`,
-        source: 'kubernetes',
-        type: 'infrastructure',
+        source: "kubernetes",
+        type: "infrastructure",
         filePath,
         data: ingressData,
         confidence: 0.9,
@@ -300,8 +301,8 @@ export class KubernetesPlugin implements ImporterPlugin {
     if (K8S_CONFIG_TYPES.includes(kind)) {
       evidence.push({
         id: `${baseId}-${kind.toLowerCase()}`,
-        source: 'kubernetes',
-        type: 'config',
+        source: "kubernetes",
+        type: "config",
         filePath,
         data: baseData,
         confidence: 0.8,
@@ -344,7 +345,7 @@ export class KubernetesPlugin implements ImporterPlugin {
   private parseServiceResource(baseData: K8sResourceData, spec: any): K8sServiceData {
     return {
       ...baseData,
-      type: spec.type || 'ClusterIP',
+      type: spec.type || "ClusterIP",
       ports: spec.ports || [],
       selector: spec.selector || {},
       clusterIP: spec.clusterIP,
@@ -368,7 +369,7 @@ export class KubernetesPlugin implements ImporterPlugin {
   private async inferFromWorkload(
     workloadEvidence: Evidence,
     allEvidence: Evidence[],
-    context: InferenceContext
+    context: InferenceContext,
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
     const workloadData = workloadEvidence.data as unknown as K8sWorkloadData;
@@ -380,10 +381,10 @@ export class KubernetesPlugin implements ImporterPlugin {
       if (isDatabase) {
         const dbArtifact: DatabaseArtifact = {
           id: `k8s-db-${workloadData.name}-${container.name}`,
-          type: 'database',
+          type: "database",
           name: `${workloadData.name}-${container.name}`,
           description: `Kubernetes database: ${container.image}`,
-          tags: ['kubernetes', 'database', workloadData.kind.toLowerCase()],
+          tags: ["kubernetes", "database", workloadData.kind.toLowerCase()],
           metadata: {
             databaseType: this.detectDatabaseType(container.image),
             port: container.ports[0]?.containerPort,
@@ -402,16 +403,16 @@ export class KubernetesPlugin implements ImporterPlugin {
         // Regular service
         const serviceArtifact: ServiceArtifact = {
           id: `k8s-service-${workloadData.name}-${container.name}`,
-          type: 'service',
+          type: "service",
           name: `${workloadData.name}-${container.name}`,
           description: `Kubernetes service: ${container.image}`,
-          tags: ['kubernetes', 'service', workloadData.kind.toLowerCase()],
+          tags: ["kubernetes", "service", workloadData.kind.toLowerCase()],
           metadata: {
             language: this.detectLanguageFromImage(container.image),
             framework: this.detectFrameworkFromImage(container.image),
             port: container.ports[0]?.containerPort,
-            basePath: '/',
-            environmentVariables: container.env.map(env => env.name),
+            basePath: "/",
+            environmentVariables: container.env.map((env) => env.name),
             dependencies: this.extractDependencies(workloadData, allEvidence),
             endpoints: [],
             healthCheck: this.extractHealthCheck(container),
@@ -432,33 +433,33 @@ export class KubernetesPlugin implements ImporterPlugin {
 
   private async inferDeploymentArtifact(
     k8sEvidence: Evidence[],
-    context: InferenceContext
+    context: InferenceContext,
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
 
     // Group evidence by namespace or use default
-    const namespaces = new Set(k8sEvidence.map(e => (e.data as any).namespace || 'default'));
+    const namespaces = new Set(k8sEvidence.map((e) => (e.data as any).namespace || "default"));
 
     for (const namespace of namespaces) {
       const nsEvidence = k8sEvidence.filter(
-        e => ((e.data as any).namespace || 'default') === namespace
+        (e) => ((e.data as any).namespace || "default") === namespace,
       );
 
       const deploymentArtifact: DeploymentArtifact = {
         id: `k8s-deployment-${namespace}`,
-        type: 'deployment',
+        type: "deployment",
         name: `kubernetes-${namespace}`,
         description: `Kubernetes deployment in namespace: ${namespace}`,
-        tags: ['kubernetes', 'deployment', 'infrastructure'],
+        tags: ["kubernetes", "deployment", "infrastructure"],
         metadata: {
-          platform: 'kubernetes',
-          namespace: namespace || '',
-          resources: nsEvidence.map(e => ({
+          platform: "kubernetes",
+          namespace: namespace || "",
+          resources: nsEvidence.map((e) => ({
             kind: (e.data as any).kind as string,
             name: (e.data as any).name as string,
             apiVersion: (e.data as any).apiVersion as string,
           })),
-          configFiles: [...new Set(nsEvidence.map(e => e.filePath))],
+          configFiles: [...new Set(nsEvidence.map((e) => e.filePath))],
         },
       };
 
@@ -479,53 +480,53 @@ export class KubernetesPlugin implements ImporterPlugin {
 
   private isDatabaseContainer(container: { image: string }): boolean {
     const image = container.image.toLowerCase();
-    return DATABASE_IMAGES.some(db => image.includes(db));
+    return DATABASE_IMAGES.some((db) => image.includes(db));
   }
 
   private detectDatabaseType(image: string): string {
     const imageLower = image.toLowerCase();
 
-    if (imageLower.includes('postgres')) return 'postgresql';
-    if (imageLower.includes('mysql')) return 'mysql';
-    if (imageLower.includes('mongodb')) return 'mongodb';
-    if (imageLower.includes('redis')) return 'redis';
-    if (imageLower.includes('elasticsearch')) return 'elasticsearch';
-    if (imageLower.includes('cassandra')) return 'cassandra';
-    if (imageLower.includes('memcached')) return 'memcached';
-    if (imageLower.includes('mariadb')) return 'mariadb';
+    if (imageLower.includes("postgres")) return "postgresql";
+    if (imageLower.includes("mysql")) return "mysql";
+    if (imageLower.includes("mongodb")) return "mongodb";
+    if (imageLower.includes("redis")) return "redis";
+    if (imageLower.includes("elasticsearch")) return "elasticsearch";
+    if (imageLower.includes("cassandra")) return "cassandra";
+    if (imageLower.includes("memcached")) return "memcached";
+    if (imageLower.includes("mariadb")) return "mariadb";
 
-    return 'unknown';
+    return "unknown";
   }
 
   private detectLanguageFromImage(image: string): string {
     const imageLower = image.toLowerCase();
 
-    if (imageLower.includes('node')) return 'javascript';
-    if (imageLower.includes('python')) return 'python';
-    if (imageLower.includes('golang') || imageLower.includes('/go:')) return 'go';
-    if (imageLower.includes('openjdk') || imageLower.includes('java')) return 'java';
-    if (imageLower.includes('rust')) return 'rust';
-    if (imageLower.includes('ruby')) return 'ruby';
-    if (imageLower.includes('php')) return 'php';
-    if (imageLower.includes('dotnet') || imageLower.includes('aspnet')) return 'csharp';
+    if (imageLower.includes("node")) return "javascript";
+    if (imageLower.includes("python")) return "python";
+    if (imageLower.includes("golang") || imageLower.includes("/go:")) return "go";
+    if (imageLower.includes("openjdk") || imageLower.includes("java")) return "java";
+    if (imageLower.includes("rust")) return "rust";
+    if (imageLower.includes("ruby")) return "ruby";
+    if (imageLower.includes("php")) return "php";
+    if (imageLower.includes("dotnet") || imageLower.includes("aspnet")) return "csharp";
 
-    return 'unknown';
+    return "unknown";
   }
 
   private detectFrameworkFromImage(image: string): string | undefined {
     const imageLower = image.toLowerCase();
 
-    if (imageLower.includes('nginx')) return 'nginx';
-    if (imageLower.includes('apache')) return 'apache';
-    if (imageLower.includes('traefik')) return 'traefik';
-    if (imageLower.includes('envoy')) return 'envoy';
+    if (imageLower.includes("nginx")) return "nginx";
+    if (imageLower.includes("apache")) return "apache";
+    if (imageLower.includes("traefik")) return "traefik";
+    if (imageLower.includes("envoy")) return "envoy";
 
     // Framework detection would require more sophisticated analysis
     return undefined;
   }
 
   private extractEnvVars(
-    env: Array<{ name: string; value?: string; valueFrom?: any }>
+    env: Array<{ name: string; value?: string; valueFrom?: any }>,
   ): Record<string, string> {
     const envVars: Record<string, string> = {};
 
@@ -547,14 +548,14 @@ export class KubernetesPlugin implements ImporterPlugin {
     for (const container of workloadData.containers) {
       for (const envVar of container.env) {
         if (
-          envVar.name.includes('SERVICE_URL') ||
-          envVar.name.includes('DATABASE_URL') ||
-          envVar.name.includes('REDIS_URL') ||
-          envVar.name.endsWith('_HOST')
+          envVar.name.includes("SERVICE_URL") ||
+          envVar.name.includes("DATABASE_URL") ||
+          envVar.name.includes("REDIS_URL") ||
+          envVar.name.endsWith("_HOST")
         ) {
           dependencies.push({
-            serviceName: envVar.name.toLowerCase().replace(/_url|_host/g, ''),
-            type: envVar.name.includes('DATABASE') ? 'database' : 'service',
+            serviceName: envVar.name.toLowerCase().replace(/_url|_host/g, ""),
+            type: envVar.name.includes("DATABASE") ? "database" : "service",
             required: true,
           });
         }
@@ -569,7 +570,7 @@ export class KubernetesPlugin implements ImporterPlugin {
 
     if (probe?.httpGet) {
       return {
-        path: probe.httpGet.path || '/health',
+        path: probe.httpGet.path || "/health",
         expectedStatusCode: 200,
         timeoutMs: (probe.timeoutSeconds || 1) * 1000,
         intervalSeconds: probe.periodSeconds || 10,
@@ -577,7 +578,7 @@ export class KubernetesPlugin implements ImporterPlugin {
     }
 
     return {
-      path: '/health',
+      path: "/health",
       expectedStatusCode: 200,
       timeoutMs: 5000,
       intervalSeconds: 30,
@@ -594,7 +595,7 @@ export class KubernetesPlugin implements ImporterPlugin {
         evidence: avgEvidence,
         base: baseConfidence,
       },
-      factors: evidence.map(e => ({
+      factors: evidence.map((e) => ({
         description: `Evidence from ${e.type}`,
         weight: e.confidence,
         source: e.source,
@@ -604,11 +605,11 @@ export class KubernetesPlugin implements ImporterPlugin {
 
   private createProvenance(evidence: Evidence[]): Provenance {
     return {
-      evidence: evidence.map(e => e.id),
-      plugins: ['kubernetes'],
-      rules: ['k8s-resource-analysis', 'workload-inference'],
+      evidence: evidence.map((e) => e.id),
+      plugins: ["kubernetes"],
+      rules: ["k8s-resource-analysis", "workload-inference"],
       timestamp: Date.now(),
-      pipelineVersion: '1.0.0',
+      pipelineVersion: "1.0.0",
     };
   }
 }

@@ -16,15 +16,28 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  Component,
+  Navigation,
+  Workflow,
+  Shield,
+  X,
+  Upload,
+  Code,
+  Globe,
+  Smartphone,
+  Trash2,
+  GitBranch as GitIcon,
+  Link,
 } from 'lucide-react';
 import { Button, Card, StatusBadge, cn } from '../design-system';
-import { useProjects, useHealthCheck } from '../hooks/api-hooks';
+import { useProjects, useHealthCheck, useDeleteProject } from '../hooks/api-hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useCurrentProject, useSetCurrentProject } from '../contexts/ProjectContext';
 import { useAppSettings } from '../contexts/AppContext';
-import { ActionLog } from '../components/ActionLog';
 import { apiService } from '../services/api';
 import { toast } from 'react-toastify';
+import { ProjectList, useUnifiedTabs } from '../components';
+import Tabs from '../components/Layout/Tabs';
 
 interface LandingPageProps {
   onNavigateToConfig: () => void;
@@ -34,29 +47,33 @@ interface LandingPageProps {
 export function LandingPage({ onNavigateToConfig, onNavigateToProject }: LandingPageProps) {
   const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useProjects();
   const { data: health, isLoading: healthLoading } = useHealthCheck();
+  const deleteProjectMutation = useDeleteProject();
   const currentProject = useCurrentProject();
   const setCurrentProject = useSetCurrentProject();
   const { settings } = useAppSettings();
 
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
-  const [newProjectName, setNewProjectName] = useState('');
+  const [activeTab, setActiveTab] = useState('source');
+  const [gitUrl, setGitUrl] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<any>(null);
 
   // WebSocket for real-time updates
-  const { isConnected, lastMessage } = useWebSocket(currentProject?.id || null, {
+  const { isConnected } = useWebSocket(currentProject?.id || null, {
     autoReconnect: true,
     showToastNotifications: settings.showNotifications,
   });
 
-  const handleCreateProject = async () => {
-    if (!newProjectName.trim()) return;
-
+  const handleCreateProjectFromPreset = async (preset: any, projectName: string) => {
     setIsCreatingProject(true);
     try {
-      const newProject = await apiService.createProject(newProjectName.trim());
+      // TODO: Implement preset-based project creation
+      const newProject = await apiService.createProject(projectName);
       setCurrentProject(newProject);
-      setNewProjectName('');
       refetchProjects();
-      toast.success(`Project "${newProject.name}" created successfully`);
+      setIsProjectModalOpen(false);
+      toast.success(`Project "${newProject.name}" created from ${preset.name} preset`);
     } catch (error) {
       toast.error('Failed to create project');
       console.error('Failed to create project:', error);
@@ -65,38 +82,202 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
     }
   };
 
-  const handleSelectProject = (project: any) => {
-    setCurrentProject(project);
-    onNavigateToProject(project);
+  const handleScanGitUrl = async () => {
+    if (!gitUrl.trim()) {
+      toast.error('Please enter a valid Git URL');
+      return;
+    }
+
+    setIsScanning(true);
+    try {
+      const result = await apiService.scanGitUrl(gitUrl);
+      if (result.success) {
+        setScanResult(result);
+        toast.success('Repository scanned successfully');
+      } else {
+        toast.error(result.error || 'Failed to scan repository');
+      }
+    } catch (error) {
+      toast.error('Failed to scan git repository');
+      console.error('Git scan error:', error);
+    } finally {
+      setIsScanning(false);
+    }
   };
 
-  // Auto-select first project if none selected
-  useEffect(() => {
-    if (!currentProject && projects && projects.length > 0) {
-      setCurrentProject(projects[0]);
-    }
-  }, [currentProject, projects, setCurrentProject]);
+  const analyzeProjectStructure = (files: string[]) => {
+    const hasPackageJson = files.some(f => f.toLowerCase().includes('package.json'));
+    const hasCargoToml = files.some(f => f.toLowerCase().includes('cargo.toml'));
+    const hasDockerfile = files.some(f => f.toLowerCase().includes('dockerfile'));
+    const hasCueFiles = files.some(f => f.endsWith('.cue'));
+    const hasYamlFiles = files.some(f => f.endsWith('.yaml') || f.endsWith('.yml'));
+    const hasJsonFiles = files.some(f => f.endsWith('.json'));
 
-  const getProjectStatus = () => {
-    if (!currentProject) return null;
+    let detectedType = 'unknown';
+    if (hasPackageJson) detectedType = 'nodejs';
+    else if (hasCargoToml) detectedType = 'rust';
+    else if (hasDockerfile) detectedType = 'docker';
+    else if (
+      hasYamlFiles &&
+      files.some(f => ['deployment', 'service', 'configmap'].some(k => f.includes(k)))
+    )
+      detectedType = 'kubernetes';
+    else if (hasCueFiles || hasYamlFiles || hasJsonFiles) detectedType = 'config-only';
 
-    // Use actual project data from API
+    const importableFiles = files.filter(f => {
+      const ext = f.split('.').pop()?.toLowerCase();
+      return (
+        ['cue', 'json', 'yaml', 'yml', 'toml'].includes(ext || '') ||
+        ['package.json', 'cargo.toml', 'dockerfile'].some(pattern =>
+          f.toLowerCase().includes(pattern)
+        )
+      );
+    });
+
     return {
-      status: currentProject.status || ('active' as const),
-      services: currentProject.services || 0,
-      databases: currentProject.databases || 0,
-      infrastructure: 'configured',
-      lastActivity: currentProject.lastActivity || '2 minutes ago',
+      hasPackageJson,
+      hasCargoToml,
+      hasDockerfile,
+      hasCueFiles,
+      hasYamlFiles,
+      hasJsonFiles,
+      detectedType,
+      importableFiles,
     };
   };
 
-  const projectStatus = getProjectStatus();
+  const handleImportFromScan = async () => {
+    if (!scanResult) return;
+
+    setIsCreatingProject(true);
+    try {
+      // Create project name from git URL, detected project structure, or fallback
+      let projectName: string;
+      if (gitUrl) {
+        projectName = gitUrl.split('/').pop()?.replace('.git', '') || 'git-import';
+      } else {
+        projectName = scanResult.path || 'filesystem-import';
+      }
+
+      // For git scans, pass the temp path for brownfield detection
+      // For local file selection, create project without path (browser security limitation)
+      let projectPath: string | undefined;
+      if (!scanResult.isLocalFileSelection && scanResult.tempPath) {
+        projectPath = scanResult.tempPath;
+      }
+
+      console.log('Creating project:', {
+        projectName,
+        projectPath,
+        isLocal: scanResult.isLocalFileSelection,
+      });
+
+      const newProject = await apiService.createProject(projectName, projectPath);
+
+      console.log('Project created:', newProject);
+
+      setCurrentProject(newProject);
+      refetchProjects();
+      setIsProjectModalOpen(false);
+
+      // Clean up temp directory if it was created from git scan
+      if (scanResult.tempPath && !scanResult.isLocalFileSelection) {
+        try {
+          const tempId = Buffer.from(scanResult.tempPath).toString('base64');
+          await apiService.cleanupImport(tempId);
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup temp directory:', cleanupError);
+        }
+      }
+
+      const sourceType = scanResult.isLocalFileSelection ? 'local filesystem' : 'repository';
+      const detectedType = scanResult.projectStructure?.detectedType || 'unknown';
+      toast.success(`Project "${newProject.name}" created from ${sourceType} (${detectedType})`);
+    } catch (error) {
+      toast.error('Failed to create project from scan');
+      console.error('Import from scan error:', error);
+    } finally {
+      setIsCreatingProject(false);
+    }
+  };
+
+  const handleSelectProject = (project: any) => {
+    setCurrentProject(project);
+    // Don't navigate to project view anymore, just select it
+  };
+
+  const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
+    e.stopPropagation(); // Prevent project selection when clicking delete
+
+    if (
+      window.confirm('Are you sure you want to delete this project? This action cannot be undone.')
+    ) {
+      try {
+        await deleteProjectMutation.mutateAsync(projectId);
+
+        // If we deleted the current project, clear the selection
+        if (currentProject?.id === projectId) {
+          setCurrentProject(null);
+        }
+
+        toast.success('Project deleted successfully');
+      } catch (error) {
+        toast.error('Failed to delete project');
+        console.error('Failed to delete project:', error);
+      }
+    }
+  };
+
+  // Get unified tabs
+  const allTabs = useUnifiedTabs({ project: currentProject });
+
+  // Auto-select first project if none selected, or clear if no projects exist
+  useEffect(() => {
+    if (projects) {
+      if (projects.length === 0) {
+        // No projects exist, ensure current project is cleared
+        if (currentProject) {
+          setCurrentProject(null);
+        }
+      } else if (!currentProject) {
+        // Projects exist but none selected, select the first one
+        setCurrentProject(projects[0]);
+      } else {
+        // Check if current project still exists in the projects list
+        const currentProjectExists = projects.some(p => p.id === currentProject.id);
+        if (!currentProjectExists) {
+          // Current project was deleted, select first available or clear if none
+          setCurrentProject(projects.length > 0 ? projects[0] : null);
+        }
+      }
+    }
+  }, [currentProject, projects, setCurrentProject]);
+
+  const getProjectStatus = (project?: any) => {
+    if (!project) return null;
+
+    // Use entity counts from the API response - these are now calculated server-side
+    const entities = project.entities || {
+      services: 0,
+      databases: 0,
+      components: 0,
+      routes: 0,
+      flows: 0,
+      capabilities: 0,
+    };
+
+    return {
+      status: project.status || ('active' as const),
+      entities,
+      lastActivity: project.lastActivity || '2 minutes ago',
+    };
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
@@ -109,17 +290,6 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
             </div>
 
             <div className="flex items-center gap-4">
-              {/* Connection Status */}
-              <StatusBadge
-                variant={isConnected ? 'success' : 'error'}
-                size="sm"
-                icon={
-                  isConnected ? <Zap className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />
-                }
-              >
-                {isConnected ? 'Connected' : 'Disconnected'}
-              </StatusBadge>
-
               {/* Config Button */}
               <Button
                 variant="secondary"
@@ -134,178 +304,312 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Project Selector & Status */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Project Selector */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <GitBranch className="w-5 h-5" />
-                  Projects
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  leftIcon={<RefreshCw className="w-4 h-4" />}
-                  onClick={() => refetchProjects()}
-                  disabled={projectsLoading}
-                >
-                  Refresh
-                </Button>
+      {/* Main Content - Full Width Layout */}
+      <main className="h-[calc(100vh-4rem)] flex overflow-hidden">
+        {/* Left Sidebar - Project List */}
+        <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden">
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <GitBranch className="w-5 h-5" />
+                Projects
+              </h2>
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<Plus className="w-4 h-4" />}
+                onClick={() => setIsProjectModalOpen(true)}
+              >
+                New Project
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            <ProjectList
+              projects={projects || []}
+              currentProject={currentProject}
+              onSelectProject={handleSelectProject}
+              onDeleteProject={handleDeleteProject}
+              getProjectStatus={getProjectStatus}
+              isLoading={projectsLoading}
+            />
+          </div>
+        </div>
+
+        {/* Right Content - Unified Tabs */}
+        <div className="flex-1 bg-white overflow-hidden">
+          <Tabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            tabs={allTabs}
+            className="h-full"
+          />
+        </div>
+      </main>
+
+      {/* Project Creation Modal */}
+      {isProjectModalOpen && <ProjectCreationModal />}
+    </div>
+  );
+
+  function ProjectCreationModal() {
+    const [selectedPreset, setSelectedPreset] = useState<any>(null);
+    const [projectName, setProjectName] = useState('');
+
+    const presets = [
+      {
+        id: 'web-app',
+        name: 'Web Application',
+        description: 'Full-stack web application with React frontend and Node.js backend',
+        icon: Globe,
+        color: 'blue',
+        features: ['React Frontend', 'Node.js API', 'Database', 'Authentication'],
+      },
+      {
+        id: 'mobile-app',
+        name: 'Mobile Application',
+        description: 'Cross-platform mobile app with React Native',
+        icon: Smartphone,
+        color: 'green',
+        features: ['React Native', 'Push Notifications', 'Offline Support', 'App Store Ready'],
+      },
+      {
+        id: 'api-service',
+        name: 'API Service',
+        description: 'RESTful API service with database integration',
+        icon: Server,
+        color: 'purple',
+        features: ['REST API', 'Database Schema', 'Documentation', 'Testing'],
+      },
+      {
+        id: 'microservice',
+        name: 'Microservice',
+        description: 'Containerized microservice with monitoring',
+        icon: Component,
+        color: 'orange',
+        features: ['Docker', 'Health Checks', 'Metrics', 'Service Discovery'],
+      },
+    ];
+
+    const handlePresetSelect = (preset: any) => {
+      setSelectedPreset(preset);
+      setProjectName(preset.name.replace(/\s+/g, '-').toLowerCase());
+    };
+
+    const handleCreateFromPreset = () => {
+      if (selectedPreset && projectName.trim()) {
+        handleCreateProjectFromPreset(selectedPreset, projectName.trim());
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Create New Project</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsProjectModalOpen(false)}
+                leftIcon={<X className="w-4 h-4" />}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
+            {/* Left Side - Create from Preset */}
+            <div className="p-6 border-r border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Create from Preset
+              </h3>
+
+              <div className="space-y-3 mb-6">
+                {presets.map(preset => (
+                  <div
+                    key={preset.id}
+                    onClick={() => handlePresetSelect(preset)}
+                    className={cn(
+                      'p-4 border rounded-lg cursor-pointer transition-all',
+                      selectedPreset?.id === preset.id
+                        ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={cn(
+                          'p-2 rounded-lg',
+                          preset.color === 'blue' && 'bg-blue-100 text-blue-600',
+                          preset.color === 'green' && 'bg-green-100 text-green-600',
+                          preset.color === 'purple' && 'bg-purple-100 text-purple-600',
+                          preset.color === 'orange' && 'bg-orange-100 text-orange-600'
+                        )}
+                      >
+                        <preset.icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-900">{preset.name}</h4>
+                        <p className="text-sm text-gray-600 mt-1">{preset.description}</p>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {preset.features.map(feature => (
+                            <span
+                              key={feature}
+                              className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                            >
+                              {feature}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Create New Project */}
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="New project name..."
-                    value={newProjectName}
-                    onChange={e => setNewProjectName(e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    onKeyDown={e => e.key === 'Enter' && handleCreateProject()}
-                  />
+              {selectedPreset && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Project Name
+                    </label>
+                    <input
+                      type="text"
+                      value={projectName}
+                      onChange={e => setProjectName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter project name..."
+                    />
+                  </div>
                   <Button
                     variant="primary"
-                    size="sm"
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    onClick={handleCreateProject}
-                    disabled={!newProjectName.trim() || isCreatingProject}
+                    onClick={handleCreateFromPreset}
+                    disabled={!projectName.trim() || isCreatingProject}
+                    className="w-full"
                   >
-                    Create
+                    {isCreatingProject ? 'Creating...' : `Create ${selectedPreset.name}`}
                   </Button>
                 </div>
+              )}
+            </div>
+
+            {/* Right Side - Import Project */}
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Upload className="w-5 h-5" />
+                Import Project
+              </h3>
+
+              {/* Import Mode - Git URL Only */}
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
+                  <GitIcon className="w-5 h-5" />
+                  Import from Git Repository
+                </h4>
+                <p className="text-sm text-gray-600">
+                  Clone and import a project from a Git repository URL
+                </p>
               </div>
 
-              {/* Project List */}
-              <div className="space-y-2">
-                {projectsLoading ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="text-sm text-gray-500 mt-2">Loading projects...</p>
+              {/* Git URL Import */}
+              <div className="space-y-4">
+                <div className="border-2 border-dashed rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <GitIcon className="w-8 h-8 text-gray-400" />
+                    <div>
+                      <h4 className="text-lg font-medium text-gray-900">
+                        Clone from Git Repository
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        Enter a GitHub, GitLab, or other Git repository URL
+                      </p>
+                    </div>
                   </div>
-                ) : projects && projects.length > 0 ? (
-                  projects.map(project => (
-                    <button
-                      key={project.id}
-                      onClick={() => handleSelectProject(project)}
-                      className={cn(
-                        'w-full text-left p-3 rounded-lg border transition-all duration-200',
-                        'hover:border-blue-300 hover:bg-blue-50',
-                        currentProject?.id === project.id
-                          ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                          : 'border-gray-200 bg-white'
-                      )}
+
+                  <div className="space-y-3">
+                    <input
+                      type="url"
+                      value={gitUrl}
+                      onChange={e => setGitUrl(e.target.value)}
+                      placeholder="https://github.com/user/repo.git"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={handleScanGitUrl}
+                      disabled={!gitUrl.trim() || isScanning}
+                      className="w-full"
+                      leftIcon={
+                        isScanning ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Link className="w-4 h-4" />
+                        )
+                      }
                     >
-                      <div className="font-medium text-gray-900">{project.name}</div>
-                      <div className="text-sm text-gray-500">{project.id}</div>
-                      {currentProject?.id === project.id && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-blue-600">
-                          <CheckCircle className="w-3 h-3" />
-                          Current project
-                        </div>
+                      {isScanning ? 'Scanning Repository...' : 'Scan Repository'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Scan Results */}
+                {scanResult && (
+                  <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <h4 className="font-medium text-green-900">
+                        Repository Scanned Successfully
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                      <p className="text-green-800">
+                        <strong>Project Type:</strong>{' '}
+                        {scanResult.projectStructure?.detectedType || 'unknown'}
+                      </p>
+                      <p className="text-green-800">
+                        <strong>Files Found:</strong> {scanResult.files?.length || 0}
+                      </p>
+                      <p className="text-green-800">
+                        <strong>Importable Files:</strong>{' '}
+                        {scanResult.projectStructure?.importableFiles?.length || 0}
+                      </p>
+                      {scanResult.projectStructure?.performanceMetrics && (
+                        <p className="text-green-800">
+                          <strong>Scan Method:</strong>{' '}
+                          {scanResult.projectStructure.performanceMetrics.usedGitLsFiles
+                            ? 'Git ls-files (fast)'
+                            : 'Directory scan'}
+                          {scanResult.projectStructure.performanceMetrics.usedGitLsFiles && ' ⚡'}
+                        </p>
                       )}
-                    </button>
-                  ))
-                ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <GitBranch className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">No projects yet</p>
-                    <p className="text-xs">Create your first project above</p>
+                      {scanResult.projectStructure?.performanceMetrics?.scanTimeMs && (
+                        <p className="text-green-800">
+                          <strong>Scan Time:</strong>{' '}
+                          {scanResult.projectStructure.performanceMetrics.scanTimeMs}ms
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="primary"
+                      onClick={handleImportFromScan}
+                      disabled={isCreatingProject}
+                      className="w-full mt-4"
+                    >
+                      {isCreatingProject ? 'Creating Project...' : 'Create Project from Repository'}
+                    </Button>
                   </div>
                 )}
               </div>
-            </Card>
-
-            {/* Project Status */}
-            {currentProject && projectStatus && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Status</h3>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Overall Status</span>
-                    <StatusBadge variant="success" size="sm">
-                      {projectStatus.status === 'active' ? 'Active' : 'Inactive'}
-                    </StatusBadge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 bg-blue-50 rounded-lg">
-                      <Server className="w-6 h-6 text-blue-600 mx-auto mb-1" />
-                      <div className="text-lg font-semibold text-blue-900">
-                        {projectStatus.services}
-                      </div>
-                      <div className="text-xs text-blue-600">Services</div>
-                    </div>
-
-                    <div className="text-center p-3 bg-green-50 rounded-lg">
-                      <Database className="w-6 h-6 text-green-600 mx-auto mb-1" />
-                      <div className="text-lg font-semibold text-green-900">
-                        {projectStatus.databases}
-                      </div>
-                      <div className="text-xs text-green-600">Databases</div>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-gray-200">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Last Activity</span>
-                      <span className="text-gray-900 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {projectStatus.lastActivity}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* System Health */}
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">System Health</h3>
-
-              {healthLoading ? (
-                <div className="text-center py-4">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-2">Checking health...</p>
-                </div>
-              ) : health ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">API Server</span>
-                    <StatusBadge variant="success" size="sm">
-                      Online
-                    </StatusBadge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">WebSocket</span>
-                    <StatusBadge variant={isConnected ? 'success' : 'error'} size="sm">
-                      {isConnected ? 'Connected' : 'Disconnected'}
-                    </StatusBadge>
-                  </div>
-                  <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
-                    Last checked: {new Date(health.timestamp).toLocaleTimeString()}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-4 text-red-600">
-                  <AlertCircle className="w-6 h-6 mx-auto mb-2" />
-                  <p className="text-sm">Health check failed</p>
-                </div>
-              )}
-            </Card>
-          </div>
-
-          {/* Right Column - Action Log */}
-          <div className="lg:col-span-2">
-            <ActionLog projectId={currentProject?.id || null} lastWebSocketMessage={lastMessage} />
+            </div>
           </div>
         </div>
-      </main>
-    </div>
-  );
+      </div>
+    );
+  }
 }

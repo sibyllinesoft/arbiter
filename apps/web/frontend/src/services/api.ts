@@ -21,26 +21,26 @@ import type {
   ValidationRequest,
   ValidationResponse,
   WebhookHandler,
-} from '../types/api';
-import { createLogger } from '../utils/logger';
+} from "../types/api";
+import { createLogger } from "../utils/logger";
 
-const log = createLogger('API');
+const log = createLogger("API");
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public details?: ProblemDetails
+    public details?: ProblemDetails,
   ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5050';
+  private baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5050";
   private defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
 
   constructor() {
@@ -49,7 +49,7 @@ class ApiService {
 
   private buildRequestConfig(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): { url: string; config: RequestInit } {
     const url = `${this.baseUrl}${endpoint}`;
     const config: RequestInit = {
@@ -75,12 +75,12 @@ class ApiService {
     return new ApiError(
       errorDetails?.detail || `HTTP ${response.status}: ${response.statusText}`,
       response.status,
-      errorDetails
+      errorDetails,
     );
   }
 
   private shouldReturnEmptyResponse(response: Response): boolean {
-    return response.status === 204 || response.headers.get('content-length') === '0';
+    return response.status === 204 || response.headers.get("content-length") === "0";
   }
 
   private async handleErrorResponse(response: Response): Promise<never> {
@@ -100,8 +100,8 @@ class ApiService {
       throw error;
     }
     throw new ApiError(
-      `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      0
+      `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      0,
     );
   }
 
@@ -123,7 +123,7 @@ class ApiService {
 
   // Project endpoints
   async getProjects(): Promise<Project[]> {
-    const response = await this.request<{ projects: Project[] }>('/api/projects');
+    const response = await this.request<{ projects: Project[] }>("/api/projects");
     return response.projects;
   }
 
@@ -131,16 +131,16 @@ class ApiService {
     return this.request<Project>(`/api/projects/${projectId}`);
   }
 
-  async createProject(name: string): Promise<Project> {
-    return this.request<Project>('/api/projects', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
+  async createProject(name: string, path?: string): Promise<Project> {
+    return this.request<Project>("/api/projects", {
+      method: "POST",
+      body: JSON.stringify({ name, path }),
     });
   }
 
   async deleteProject(projectId: string): Promise<void> {
     await this.request<void>(`/api/projects/${projectId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -155,34 +155,34 @@ class ApiService {
 
   async createFragment(
     projectId: string,
-    request: CreateFragmentRequest
+    request: CreateFragmentRequest,
   ): Promise<CreateFragmentResponse> {
     return this.request<CreateFragmentResponse>(`/api/fragments?projectId=${projectId}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(request),
     });
   }
 
   async updateFragment(projectId: string, fragmentId: string, content: string): Promise<Fragment> {
     return this.request<Fragment>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ content }),
     });
   }
 
   async deleteFragment(projectId: string, fragmentId: string): Promise<void> {
     await this.request<void>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   // Validation endpoints
   async validateProject(
     projectId: string,
-    request: ValidationRequest = {}
+    request: ValidationRequest = {},
   ): Promise<ValidationResponse> {
-    return this.request<ValidationResponse>('/api/validate', {
-      method: 'POST',
+    return this.request<ValidationResponse>("/api/validate", {
+      method: "POST",
       body: JSON.stringify({ projectId, ...request }),
     });
   }
@@ -197,7 +197,7 @@ class ApiService {
 
     // Transform response to match expected interface
     return {
-      spec_hash: 'generated', // The API doesn't return this field
+      spec_hash: "generated", // The API doesn't return this field
       resolved: response.resolved,
       last_updated: new Date().toISOString(),
     };
@@ -214,7 +214,7 @@ class ApiService {
   }
 
   async getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
-    const kinds: IRKind[] = ['flow', 'fsm', 'view', 'site'];
+    const kinds: IRKind[] = ["flow", "fsm", "view", "site"];
     const irs: Record<string, IRResponse> = {};
 
     // Sequential requests with small delays to avoid rate limiting
@@ -229,7 +229,7 @@ class ApiService {
 
       // Add small delay between requests to avoid overwhelming rate limiter
       if (i < kinds.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
 
@@ -238,15 +238,20 @@ class ApiService {
 
   // Version freezing endpoints
   async freezeVersion(projectId: string, request: FreezeRequest): Promise<FreezeResponse> {
-    return this.request<FreezeResponse>('/api/freeze', {
-      method: 'POST',
+    return this.request<FreezeResponse>("/api/freeze", {
+      method: "POST",
       body: JSON.stringify({ projectId, ...request }),
     });
   }
 
   // Webhook Handler endpoints
   async getHandlers(): Promise<WebhookHandler[]> {
-    return this.request<WebhookHandler[]>('/api/handlers');
+    const response = await this.request<{
+      success: boolean;
+      handlers: WebhookHandler[];
+      total: number;
+    }>("/api/handlers");
+    return response.handlers;
   }
 
   async getHandler(handlerId: string): Promise<WebhookHandler> {
@@ -254,28 +259,28 @@ class ApiService {
   }
 
   async createHandler(request: CreateHandlerRequest): Promise<WebhookHandler> {
-    return this.request<WebhookHandler>('/api/handlers', {
-      method: 'POST',
+    return this.request<WebhookHandler>("/api/handlers", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   }
 
   async updateHandler(handlerId: string, request: UpdateHandlerRequest): Promise<WebhookHandler> {
     return this.request<WebhookHandler>(`/api/handlers/${handlerId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(request),
     });
   }
 
   async deleteHandler(handlerId: string): Promise<void> {
     await this.request<void>(`/api/handlers/${handlerId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async toggleHandler(handlerId: string, enabled: boolean): Promise<WebhookHandler> {
     return this.request<WebhookHandler>(`/api/handlers/${handlerId}/toggle`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ enabled }),
     });
   }
@@ -285,28 +290,200 @@ class ApiService {
   }
 
   async getHandlerExecutions(handlerId: string, limit?: number): Promise<HandlerExecution[]> {
-    const params = limit ? `?limit=${limit}` : '';
+    const params = limit ? `?limit=${limit}` : "";
     return this.request<HandlerExecution[]>(`/api/handlers/${handlerId}/executions${params}`);
   }
 
   async testHandler(
     handlerId: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
   ): Promise<{
-    status: 'success' | 'error';
+    status: "success" | "error";
     result?: Record<string, unknown>;
     error?: string;
     duration_ms: number;
   }> {
     return this.request(`/api/handlers/${handlerId}/test`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ payload }),
+    });
+  }
+
+  // Webhook automation methods
+  async setupGitHubWebhook(params: {
+    repoOwner: string;
+    repoName: string;
+    events?: string[];
+    tunnelUrl?: string;
+  }): Promise<{
+    success: boolean;
+    webhook?: {
+      id: number;
+      url: string;
+      events: string[];
+      active: boolean;
+      created_at: string;
+      updated_at: string;
+    };
+    message?: string;
+    error?: string;
+  }> {
+    return this.request("/api/webhooks/github/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+  }
+
+  async listGitHubWebhooks(
+    owner: string,
+    repo: string,
+  ): Promise<{
+    success: boolean;
+    webhooks?: Array<{
+      id: number;
+      name: string;
+      url: string;
+      events: string[];
+      active: boolean;
+      created_at: string;
+      updated_at: string;
+    }>;
+    error?: string;
+  }> {
+    return this.request(`/api/webhooks/github/list/${owner}/${repo}`);
+  }
+
+  async deleteGitHubWebhook(
+    owner: string,
+    repo: string,
+    hookId: number,
+  ): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    return this.request(`/api/webhooks/github/${owner}/${repo}/${hookId}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Cloudflare tunnel management methods
+  async getTunnelStatus(): Promise<{
+    success: boolean;
+    tunnel?: {
+      status: "running" | "stopped" | "failed";
+      url: string | null;
+      output: string;
+      error: string | null;
+    };
+    error?: string;
+  }> {
+    return this.request("/api/tunnel/status");
+  }
+
+  async startTunnel(mode?: "webhook-only" | "full-api" | "custom"): Promise<{
+    success: boolean;
+    tunnel?: {
+      status: "running" | "stopped" | "failed";
+      url: string | null;
+      output: string;
+      error: string | null;
+    };
+    message?: string;
+    error?: string;
+  }> {
+    return this.request("/api/tunnel/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+  }
+
+  async stopTunnel(): Promise<{
+    success: boolean;
+    tunnel?: {
+      status: "running" | "stopped" | "failed";
+      url: string | null;
+      output: string;
+      error: string | null;
+    };
+    message?: string;
+    error?: string;
+  }> {
+    return this.request("/api/tunnel/stop", {
+      method: "POST",
+    });
+  }
+
+  async getTunnelLogs(): Promise<{
+    success: boolean;
+    logs?: string;
+    error?: string;
+  }> {
+    return this.request("/api/tunnel/logs");
+  }
+
+  // Import scanning methods
+  async scanGitUrl(gitUrl: string): Promise<{
+    success: boolean;
+    tempPath?: string;
+    files?: string[];
+    projectStructure?: {
+      hasPackageJson: boolean;
+      hasCargoToml: boolean;
+      hasDockerfile: boolean;
+      hasCueFiles: boolean;
+      hasYamlFiles: boolean;
+      hasJsonFiles: boolean;
+      detectedType: "nodejs" | "rust" | "docker" | "kubernetes" | "config-only" | "unknown";
+      importableFiles: string[];
+    };
+    error?: string;
+  }> {
+    return this.request("/api/import/scan-git", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gitUrl }),
+    });
+  }
+
+  async scanLocalPath(directoryPath: string): Promise<{
+    success: boolean;
+    path?: string;
+    files?: string[];
+    projectStructure?: {
+      hasPackageJson: boolean;
+      hasCargoToml: boolean;
+      hasDockerfile: boolean;
+      hasCueFiles: boolean;
+      hasYamlFiles: boolean;
+      hasJsonFiles: boolean;
+      detectedType: "nodejs" | "rust" | "docker" | "kubernetes" | "config-only" | "unknown";
+      importableFiles: string[];
+    };
+    error?: string;
+  }> {
+    return this.request("/api/import/scan-local", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ directoryPath }),
+    });
+  }
+
+  async cleanupImport(tempId: string): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    return this.request(`/api/import/cleanup/${tempId}`, {
+      method: "DELETE",
     });
   }
 
   // Health check
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    return this.request<{ status: string; timestamp: string }>('/health');
+    return this.request<{ status: string; timestamp: string }>("/health");
   }
 
   // Set authentication token

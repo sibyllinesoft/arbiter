@@ -12,7 +12,9 @@
       "@arbiter/core": ["../../packages/arbiter-core/src/index.ts"],
       "@arbiter/core/*": ["../../packages/arbiter-core/src/*"],
       "@arbiter/api-types": ["../../packages/api-types/src/index.ts"],
-      "@arbiter/api-types/*": ["../../packages/api-types/src/*"]
+      "@arbiter/api-types/*": ["../../packages/api-types/src/*"],
+      "@arbiter/importer": ["../../packages/importer/src/index.ts"],
+      "@arbiter/importer/*": ["../../packages/importer/src/*"]
     }
   },
   "references": [
@@ -24,6 +26,9 @@
     },
     {
       "path": "../../packages/api-types"
+    },
+    {
+      "path": "../../packages/importer"
     }
   ],
   "include": ["src/**/*"],
