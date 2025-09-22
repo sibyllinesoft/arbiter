@@ -2,18 +2,18 @@
  * Landing Page - Main dashboard for Arbiter web service
  */
 
-import React, { useState, useEffect } from 'react';
-import { Settings, GitBranch, Plus, Trash2 } from 'lucide-react';
-import { Button, Card, StatusBadge, cn } from '@design-system';
-import { useProjects, useHealthCheck, useDeleteProject } from '@hooks/api-hooks';
-import { useWebSocket } from '@hooks/useWebSocket';
-import { useCurrentProject, useSetCurrentProject } from '@contexts/ProjectContext';
-import { useAppSettings, useUIState } from '@contexts/AppContext';
-import { toast } from 'react-toastify';
+import arbiterLogo from '@assets/arbiter.webp';
 import { ProjectList, useUnifiedTabs } from '@components';
 import Tabs from '@components/Layout/Tabs';
 import { ProjectCreationModal } from '@components/ProjectCreation';
-import arbiterLogo from '@assets/arbiter.webp';
+import { useAppSettings, useUIState } from '@contexts/AppContext';
+import { useCurrentProject, useSetCurrentProject } from '@contexts/ProjectContext';
+import { Button, Card, StatusBadge, cn } from '@design-system';
+import { useDeleteProject, useHealthCheck, useProjects } from '@hooks/api-hooks';
+import { useWebSocket } from '@hooks/useWebSocket';
+import { GitBranch, Plus, Settings, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 
 interface LandingPageProps {
   onNavigateToConfig: () => void;
@@ -80,7 +80,10 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
     const entities = project.entities || {
       services: 0,
       databases: 0,
-      components: 0,
+      libraries: 0,
+      clis: 0,
+      frontends: 0,
+      external: 0,
       routes: 0,
       flows: 0,
       capabilities: 0,

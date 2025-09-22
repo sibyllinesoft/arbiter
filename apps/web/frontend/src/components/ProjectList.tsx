@@ -2,8 +2,18 @@
  * ProjectList - Displays a list of projects with entity badges and actions
  */
 
+import {
+  Component,
+  Database,
+  Layout,
+  Navigation,
+  Server,
+  Shield,
+  Terminal,
+  Trash2,
+  Workflow,
+} from 'lucide-react';
 import React from 'react';
-import { Server, Database, Component, Navigation, Workflow, Shield, Trash2 } from 'lucide-react';
 import { Card, cn } from '../design-system';
 
 interface ProjectListProps {
@@ -76,54 +86,96 @@ export function ProjectList({
                 {projectStatus && (
                   <div className="flex flex-wrap gap-2">
                     {projectStatus.entities.services > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 rounded-md shadow-sm">
-                        <Server className="w-3.5 h-3.5 text-blue-50" />
-                        <span className="text-xs font-medium text-blue-50">
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#3E82B6', borderColor: '#1E466B' }}
+                      >
+                        <Server className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
                           Services: {projectStatus.entities.services}
                         </span>
                       </div>
                     )}
 
+                    {projectStatus.entities.libraries > 0 && (
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#7666B9', borderColor: '#3A2A70' }}
+                      >
+                        <Component className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
+                          Libraries: {projectStatus.entities.libraries}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.clis > 0 && (
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#BA5956', borderColor: '#803131' }}
+                      >
+                        <Terminal className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
+                          CLIs: {projectStatus.entities.clis}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.frontends > 0 && (
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#45A190', borderColor: '#1D6A5B' }}
+                      >
+                        <Layout className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
+                          Frontends: {projectStatus.entities.frontends}
+                        </span>
+                      </div>
+                    )}
+
                     {projectStatus.entities.databases > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-600 to-green-500 rounded-md shadow-sm">
-                        <Database className="w-3.5 h-3.5 text-green-50" />
-                        <span className="text-xs font-medium text-green-50">
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#A6842A', borderColor: '#725718' }}
+                      >
+                        <Database className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
                           Databases: {projectStatus.entities.databases}
                         </span>
                       </div>
                     )}
 
-                    {projectStatus.entities.components > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-purple-500 rounded-md shadow-sm">
-                        <Component className="w-3.5 h-3.5 text-purple-50" />
-                        <span className="text-xs font-medium text-purple-50">
-                          Components: {projectStatus.entities.components}
-                        </span>
-                      </div>
-                    )}
-
                     {projectStatus.entities.routes > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-graphite-500 to-graphite-400 rounded-md shadow-sm">
-                        <Navigation className="w-3.5 h-3.5 text-graphite-50" />
-                        <span className="text-xs font-medium text-graphite-50">
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                      >
+                        <Navigation className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
                           Routes: {projectStatus.entities.routes}
                         </span>
                       </div>
                     )}
 
                     {projectStatus.entities.flows > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gold-600 to-gold-500 rounded-md shadow-sm">
-                        <Workflow className="w-3.5 h-3.5 text-gold-50" />
-                        <span className="text-xs font-medium text-gold-50">
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                      >
+                        <Workflow className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
                           Flows: {projectStatus.entities.flows}
                         </span>
                       </div>
                     )}
 
                     {projectStatus.entities.capabilities > 0 && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-500 rounded-md shadow-sm">
-                        <Shield className="w-3.5 h-3.5 text-red-50" />
-                        <span className="text-xs font-medium text-red-50">
+                      <div
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                        style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                      >
+                        <Shield className="w-3.5 h-3.5 text-white" />
+                        <span className="text-xs font-medium text-white">
                           Capabilities: {projectStatus.entities.capabilities}
                         </span>
                       </div>

@@ -3,19 +3,19 @@
  */
 
 import React from 'react';
-import {
-  SourceEditor,
-  FriendlyEditor,
-  FlowReport,
-  SiteReport,
-  FsmReport,
-  ViewReport,
-  GapsReport,
-  ResolvedReport,
-  ArchitectureReport,
-  HandlersReport,
-} from './';
 import type { Project } from '../types/api';
+import {
+  ArchitectureReport,
+  FlowReport,
+  FriendlyEditor,
+  FsmReport,
+  GapsReport,
+  HandlersReport,
+  ResolvedReport,
+  SiteReport,
+  SourceEditor,
+  ViewReport,
+} from './';
 
 interface DiagramPlaceholderProps {
   type: string;
@@ -119,7 +119,7 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
     },
     {
       id: 'architecture',
-      label: 'Architecture',
+      label: 'Sources',
       content: project ? (
         <ArchitectureReport projectId={project.id} />
       ) : (

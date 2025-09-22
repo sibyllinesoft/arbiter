@@ -239,28 +239,16 @@ export class ConfigOnlyPlugin implements ImporterPlugin {
   supports(filePath: string, fileContent?: string): boolean {
     const fileName = path.basename(filePath);
 
-    // Config files we care about
-    const configPatterns = [
-      // Package manifests
-      'package.json',
-      'pyproject.toml',
-      'requirements.txt',
-      'Pipfile',
-      'setup.cfg',
-      'Cargo.toml',
-      'go.mod',
-      'pom.xml',
-      'build.gradle',
+    // IMPORTANT: This plugin is a fallback for projects without proper language plugins
+    // Don't process files that are already handled by specialized plugins:
+    // - package.json is handled by nodejs.ts
+    // - Cargo.toml is handled by rust.ts
+    // - pyproject.toml, requirements.txt, etc are handled by python.ts
+    // - Docker files are handled by docker.ts
 
-      // Docker/Compose
-      'Dockerfile',
-      'docker-compose.yml',
-      'docker-compose.yaml',
-      'compose.yml',
-      'compose.yaml',
-    ];
-
-    return configPatterns.some(pattern => fileName.includes(pattern));
+    // For now, disable this plugin entirely to avoid duplicates
+    // TODO: Implement proper coordination between plugins
+    return false;
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {

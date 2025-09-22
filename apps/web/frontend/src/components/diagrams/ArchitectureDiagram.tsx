@@ -28,34 +28,39 @@ interface Connection {
 
 const LAYER_COLORS = {
   frontend: {
-    bg: '#dbeafe',
-    border: '#3b82f6',
-    text: '#1e40af',
-    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #dbeafe, #c7d2fe, #bfdbfe)',
+    bg: '#45A190', // Design token green-300 (flat color)
+    border: '#1D6A5B', // Design token green-500 border
+    text: '#ffffff', // White text for contrast
   },
   backend: {
-    bg: '#1E466B', // Blue-600 - darker blue background for services
-    border: '#163759', // Blue-700 - darker blue for services
-    text: '#D8E6F3', // Blue-50 - light text for contrast
-    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #25557E, #1E466B, #163759)', // Blue-500 to Blue-600 to Blue-700
+    bg: '#3E82B6', // Design token blue-300 (flat color)
+    border: '#1E466B', // Primary blue-600 border
+    text: '#ffffff', // White text for contrast
+  },
+  service: {
+    bg: '#3E82B6', // Design token blue-300 (flat color)
+    border: '#1E466B', // Primary blue-600 border
+    text: '#ffffff', // White text for contrast
   },
   cli: {
-    bg: '#3A2A70', // Purple-600 - darker purple background for libraries
-    border: '#31205A', // Purple-700 - darker purple for libraries
-    text: '#E7E6F5', // Purple-50 - light text for contrast
-    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #4A378B, #3A2A70, #31205A)', // Purple-500 to Purple-600 to Purple-700
+    bg: '#BA5956', // Design token red-300 (flat color)
+    border: '#803131', // Design token red-500 border
+    text: '#ffffff', // White text for contrast
+  },
+  library: {
+    bg: '#7666B9', // Design token purple-300 (flat color)
+    border: '#3A2A70', // Purple-600 border
+    text: '#ffffff', // White text for contrast
   },
   data: {
-    bg: '#f3e8ff',
-    border: '#a855f7',
-    text: '#7c3aed',
-    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #f3e8ff, #ede9fe, #e9d5ff)',
+    bg: '#A6842A', // Design token gold-300 (flat color)
+    border: '#725718', // Design token gold-500 border
+    text: '#ffffff', // White text for contrast
   },
   external: {
-    bg: '#fee2e2',
-    border: '#ef4444',
-    text: '#dc2626',
-    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #fee2e2, #fed7d7, #fecaca)',
+    bg: '#8C97AA', // Design token graphite-200 (flat color)
+    border: '#50617A', // Design token graphite-400 border
+    text: '#ffffff', // White text for contrast
   },
 };
 
@@ -406,13 +411,13 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   if (projectData) {
     const services = projectData.spec?.services || projectData.services || {};
     const databases = projectData.spec?.databases || projectData.databases || {};
-    const otherComponents = projectData.spec?.components || projectData.components || {};
+    const components = projectData.spec?.components || projectData.components || {};
 
     // Re-group for display with deduplication by display name
     const allEntries = [
       ...Object.entries(services),
       ...Object.entries(databases),
-      ...Object.entries(otherComponents),
+      ...Object.entries(components),
     ];
 
     // Track seen display names to avoid duplicates
@@ -662,43 +667,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       <div className="p-4 bg-white border-b border-gray-200">
         <h3 className="text-lg font-medium text-gray-900">Sources</h3>
         <p className="text-sm text-gray-600">
-          {dynamicComponents.length > 0
-            ? `Interactive diagram showing the project's ${dynamicComponents.length} components and their relationships`
-            : 'Interactive diagram showing the Arbiter system components (fallback)'}
+          {Object.keys(groupedComponents).length > 0
+            ? `Showing ${Object.values(groupedComponents).reduce((sum, arr) => sum + arr.length, 0)} imported components`
+            : 'Import a project to see its components'}
         </p>
-
-        {/* Legend */}
-        <div className="mt-3 flex flex-wrap gap-4 text-xs">
-          {Object.entries(LAYER_COLORS).map(([layer, colors]) => (
-            <div key={layer} className="flex items-center gap-1">
-              <div
-                className="w-3 h-3 rounded border"
-                style={{ backgroundColor: colors.bg, borderColor: colors.border }}
-              />
-              <span className="capitalize font-medium">{layer}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Connection Legend */}
-        <div className="mt-2 flex flex-wrap gap-4 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-6 h-0.5 bg-blue-500"></div>
-            <span>REST API</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-6 h-0.5 bg-green-500"></div>
-            <span>WebSocket</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-6 h-0.5 bg-yellow-500"></div>
-            <span>File System</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-6 h-0.5 bg-purple-500"></div>
-            <span>Data Flow</span>
-          </div>
-        </div>
       </div>
 
       {/* Components by Source File */}
@@ -779,46 +751,61 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                 <div className="p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {components.map(({ name, data }) => {
-                      const componentType =
+                      // Standardize component types
+                      let componentType =
                         data.type ||
                         data.metadata?.type ||
                         (name.includes('@') ? 'library' : 'service');
+
+                      // Standardize binary to cli
+                      if (componentType === 'binary') {
+                        componentType = 'cli';
+                      }
                       const colors =
                         componentType === 'service'
-                          ? LAYER_COLORS.backend
-                          : componentType === 'database'
-                            ? LAYER_COLORS.data
-                            : componentType === 'library'
+                          ? LAYER_COLORS.service
+                          : componentType === 'frontend'
+                            ? LAYER_COLORS.frontend
+                            : componentType === 'cli'
                               ? LAYER_COLORS.cli
-                              : LAYER_COLORS.external;
+                              : componentType === 'library'
+                                ? LAYER_COLORS.library
+                                : componentType === 'database'
+                                  ? LAYER_COLORS.data
+                                  : LAYER_COLORS.external;
 
                       return (
                         <div
                           key={`${sourceFile}-${name}`}
-                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer relative overflow-hidden"
                           style={{
-                            background: colors.gradient || colors.bg,
+                            backgroundColor: colors.bg,
                             borderColor: colors.border,
+                            position: 'relative',
                           }}
                           onClick={() =>
                             setSelectedComponent(selectedComponent === name ? null : name)
                           }
                         >
                           {/* Component Name */}
-                          <h4 className="font-medium text-sm mb-1" style={{ color: colors.text }}>
+                          <h4
+                            className="font-medium text-sm mb-1 relative"
+                            style={{ color: colors.text }}
+                          >
                             {data.name || name}
                           </h4>
 
                           {/* Component Metadata */}
-                          <div className="space-y-1 text-xs text-gray-600">
+                          <div
+                            className="space-y-1 text-xs relative"
+                            style={{ color: colors.text, opacity: 0.9 }}
+                          >
                             {data.metadata?.language &&
                               data.metadata.language !== 'unknown' &&
                               data.metadata.language.trim() !== '' && (
                                 <div>
                                   Language:{' '}
-                                  <span className="font-mono text-gray-800">
-                                    {data.metadata.language}
-                                  </span>
+                                  <span className="font-mono">{data.metadata.language}</span>
                                 </div>
                               )}
                             {data.metadata?.framework &&
@@ -826,26 +813,23 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                               data.metadata.framework.trim() !== '' && (
                                 <div>
                                   Framework:{' '}
-                                  <span className="font-mono text-gray-800">
-                                    {data.metadata.framework}
-                                  </span>
+                                  <span className="font-mono">{data.metadata.framework}</span>
                                 </div>
                               )}
                             {data.version && data.version.trim() !== '' && (
                               <div>
-                                Version:{' '}
-                                <span className="font-mono text-gray-800">{data.version}</span>
+                                Version: <span className="font-mono">{data.version}</span>
                               </div>
                             )}
                             {data.image && data.image.trim() !== '' && (
                               <div>
-                                Image: <span className="font-mono text-gray-800">{data.image}</span>
+                                Image: <span className="font-mono">{data.image}</span>
                               </div>
                             )}
                             {data.ports && (
                               <div>
                                 Ports:{' '}
-                                <span className="font-mono text-gray-800">
+                                <span className="font-mono">
                                   {(() => {
                                     if (Array.isArray(data.ports)) {
                                       // Handle array of ports - extract port numbers
@@ -903,8 +887,8 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                           </div>
 
                           {/* Component Type Badge */}
-                          <div className="mt-2">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          <div className="mt-2 relative">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
                               {componentType}
                             </span>
                           </div>

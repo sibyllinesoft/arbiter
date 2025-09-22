@@ -4,17 +4,17 @@
 
 import React from 'react';
 import {
-  FlowReport,
-  SiteReport,
-  FsmReport,
-  ViewReport,
-  GapsReport,
-  ResolvedReport,
   ArchitectureReport,
+  FlowReport,
+  FsmReport,
+  GapsReport,
   HandlersReport,
+  ResolvedReport,
+  SiteReport,
+  ViewReport,
 } from '../../../components/index';
-import { DiagramPlaceholder } from './DiagramPlaceholder';
 import type { Project } from '../../../types/api';
+import { DiagramPlaceholder } from './DiagramPlaceholder';
 
 interface DiagramTabsProps {
   project: Project | null;
@@ -78,7 +78,7 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
     },
     {
       id: 'architecture',
-      label: 'Architecture',
+      label: 'Sources',
       content: project ? (
         <ArchitectureReport projectId={project.id} />
       ) : (

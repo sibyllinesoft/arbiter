@@ -28,7 +28,8 @@ export type { ImporterPlugin } from '../types.js';
  */
 export function getAllPlugins() {
   return [
-    configOnlyPlugin, // Use simplified plugin first
+    // configOnlyPlugin disabled to prevent duplicate artifacts
+    // It was processing package.json files that are already handled by nodejsPlugin
     rustPlugin,
     dockerPlugin,
     kubernetesPlugin,

@@ -1,4 +1,6 @@
 import path from 'path';
+import { getAllPlugins } from '@arbiter/importer/plugins';
+import { ScannerRunner } from '@arbiter/importer/scanner';
 import fs from 'fs-extra';
 import { glob } from 'glob';
 import { Hono } from 'hono';
@@ -410,7 +412,11 @@ export function createApiRouter(deps: Dependencies) {
           let entities = {
             services: 0,
             databases: 0,
-            components: 0,
+            libraries: 0,
+            clis: 0,
+            frontends: 0,
+            external: 0,
+            // CUE spec entities
             routes: 0,
             flows: 0,
             capabilities: 0,
@@ -428,7 +434,7 @@ export function createApiRouter(deps: Dependencies) {
               const serviceName = artifact.name.replace(/_/g, '-');
               services[serviceName] = {
                 name: artifact.name,
-                type: 'deployment',
+                type: 'service',
                 metadata: { detected: true },
               };
             }
@@ -462,19 +468,43 @@ export function createApiRouter(deps: Dependencies) {
               };
             }
 
-            // Build components from other artifacts
-            const components: Record<string, any> = {};
+            // Count other artifact types properly
             const otherArtifacts = artifacts.filter(
               (a: any) => !['service', 'database'].includes(a.type)
             );
 
+            // Group artifacts by type for debugging
+            const typeGroups: Record<string, number> = {};
             for (const artifact of otherArtifacts) {
-              const componentName = artifact.name.replace(/_/g, '-');
-              components[componentName] = {
-                name: artifact.name,
-                type: artifact.type,
-                metadata: { detected: true },
-              };
+              const type = artifact.type;
+              typeGroups[type] = (typeGroups[type] || 0) + 1;
+            }
+            console.log(`[DEBUG] Artifact types for project ${project.name}:`, typeGroups);
+
+            let libraryCount = 0;
+            let cliCount = 0;
+            let frontendCount = 0;
+            let externalCount = 0;
+
+            for (const artifact of otherArtifacts) {
+              // Normalize types
+              let type = artifact.type;
+              if (type === 'binary') type = 'cli';
+
+              switch (type) {
+                case 'library':
+                  libraryCount++;
+                  break;
+                case 'cli':
+                  cliCount++;
+                  break;
+                case 'frontend':
+                  frontendCount++;
+                  break;
+                default:
+                  externalCount++;
+                  break;
+              }
             }
 
             // Generate UI routes based on detected services (limit to 3)
@@ -490,7 +520,10 @@ export function createApiRouter(deps: Dependencies) {
             entities = {
               services: Object.keys(services).length,
               databases: Object.keys(databases).length,
-              components: Object.keys(components).length,
+              libraries: libraryCount,
+              clis: cliCount,
+              frontends: frontendCount,
+              external: externalCount,
               routes: routes.length,
               flows: routes.length > 0 ? 1 : 0, // Generate one flow if we have routes
               capabilities: routes.length > 0 ? 1 : 0, // Generate one capability if we have routes
@@ -501,7 +534,10 @@ export function createApiRouter(deps: Dependencies) {
             entities = {
               services: project.service_count || 0,
               databases: project.database_count || 0,
-              components: 0,
+              libraries: 0,
+              clis: 0,
+              frontends: 0,
+              external: 0,
               routes: 0,
               flows: 0,
               capabilities: 0,
@@ -563,9 +599,13 @@ export function createApiRouter(deps: Dependencies) {
 
       if (projectPath) {
         try {
-          // Import the scanner and plugins from the importer package
-          const { ScannerRunner } = await import('@arbiter/importer/scanner');
-          const { getAllPlugins } = await import('@arbiter/importer/plugins');
+          // Use regular imports for HMR to work properly
+          const plugins = getAllPlugins();
+          console.log(
+            '[SCANNER] Available plugins:',
+            plugins.map(p => p.name())
+          );
+          console.log('[SCANNER] Project path:', projectPath);
 
           // Configure the scanner
           const scanner = new ScannerRunner({
@@ -578,12 +618,14 @@ export function createApiRouter(deps: Dependencies) {
               '**/dist/**',
               '**/build/**',
             ],
-            plugins: getAllPlugins(),
+            plugins,
             maxFileSize: 1024 * 1024, // 1MB
           });
 
           // Run the scanner
+          console.log('[SCANNER] Starting scan...');
           const result = await scanner.scan();
+          console.log('[SCANNER] Scan complete, found', result.artifacts.length, 'artifacts');
 
           // Convert importer results to our artifact format
           for (const inferredArtifact of result.artifacts) {
@@ -616,7 +658,8 @@ export function createApiRouter(deps: Dependencies) {
             `[SCAN] Processed ${result.artifacts.length} artifacts: ${services} services, ${databases} databases`
           );
         } catch (error) {
-          console.warn('Enhanced brownfield detection failed, creating empty project:', error);
+          console.error('[ERROR] Enhanced brownfield detection failed:', error);
+          console.error('[ERROR] Stack trace:', (error as any).stack);
           // Continue with empty project if brownfield detection fails
         }
       }
@@ -715,8 +758,8 @@ export function createApiRouter(deps: Dependencies) {
         },
         {
           id: 'act-3',
-          type: 'deployment',
-          message: 'Deployed to staging environment',
+          type: 'service',
+          message: 'Service deployed to staging environment',
           timestamp: '2025-09-20T09:45:00Z',
           projectId: 'project-2',
         },
@@ -1398,7 +1441,7 @@ export function createApiRouter(deps: Dependencies) {
             .split(/[-_]/)
             .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' '),
-          type: 'deployment',
+          type: 'service',
           image: imageToUse,
           ports: [{ port, targetPort: port }],
           metadata: {
