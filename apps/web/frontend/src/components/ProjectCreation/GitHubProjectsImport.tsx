@@ -32,11 +32,6 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
     setLoadingGitHub,
   } = useGitHubState();
 
-  // Monitor reposByOwner updates for debugging (can be removed in production)
-  useEffect(() => {
-    console.log('Repos by owner updated:', Object.keys(reposByOwner).length, 'owners');
-  }, [reposByOwner]);
-
   const handleLoadGitHubProjects = async () => {
     setLoadingGitHub(true);
     try {
@@ -45,18 +40,16 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
         apiService.getGitHubUserOrgs(),
       ]);
 
+      let allRepos: any[] = [];
+      const allGrouped: Record<string, any[]> = {};
+
       if (reposResult.success && reposResult.repositories) {
-        setGitHubRepos(reposResult.repositories);
-        const grouped = reposResult.repositories.reduce(
-          (acc, repo) => {
-            const owner = repo.owner.login;
-            if (!acc[owner]) acc[owner] = [];
-            acc[owner].push(repo);
-            return acc;
-          },
-          {} as Record<string, any[]>
-        );
-        setReposByOwner(grouped);
+        allRepos = [...reposResult.repositories];
+        reposResult.repositories.forEach(repo => {
+          const owner = repo.owner.login;
+          if (!allGrouped[owner]) allGrouped[owner] = [];
+          allGrouped[owner].push(repo);
+        });
       }
 
       if (orgsResult.success && orgsResult.organizations) {
@@ -65,19 +58,19 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
           try {
             const orgReposResult = await apiService.getGitHubOrgRepos(org.login);
             if (orgReposResult.success && orgReposResult.repositories) {
-              // Add org repos to both reposByOwner AND gitHubRepos
-              setReposByOwner(prev => ({
-                ...prev,
-                [org.login]: orgReposResult.repositories || [],
-              }));
-              // Also add to main repos array so they can be found by ID
-              setGitHubRepos(prev => [...prev, ...(orgReposResult.repositories || [])]);
+              // Add org repos to the collections
+              allRepos = [...allRepos, ...orgReposResult.repositories];
+              allGrouped[org.login] = orgReposResult.repositories;
             }
           } catch (error) {
             console.warn(`Failed to load repos for org ${org.login}:`, error);
           }
         }
       }
+
+      // Set all repos and grouped repos at once
+      setGitHubRepos(allRepos);
+      setReposByOwner(allGrouped);
 
       if (!reposResult.success) {
         toast.error(reposResult.error || 'Failed to load GitHub repositories');
@@ -164,7 +157,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       {Object.keys(reposByOwner).length > 0 && !isLoadingGitHub && (
         <>
           <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-transparent">
               {Object.entries(reposByOwner).map(([owner, repos]) => (
                 <div key={owner} className="border border-gray-200 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-3">
@@ -194,8 +187,9 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
                         <input
                           type="checkbox"
                           checked={selectedRepos.has(repo.id)}
-                          onChange={() => handleSelectRepo(repo.id)}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                          onChange={e => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
+                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 pointer-events-none"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
