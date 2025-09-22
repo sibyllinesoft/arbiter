@@ -60,10 +60,14 @@
   "files": {
     "include": [
       "apps/**/*.ts",
+      "apps/**/*.tsx",
       "apps/**/*.js",
+      "apps/**/*.jsx",
       "apps/**/*.mjs",
       "packages/**/*.ts",
+      "packages/**/*.tsx",
       "packages/**/*.js",
+      "packages/**/*.jsx",
       "packages/**/*.mjs",
       "scripts/**/*.ts",
       "scripts/**/*.js",

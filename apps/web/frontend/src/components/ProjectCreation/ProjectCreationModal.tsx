@@ -2,11 +2,11 @@
  * ProjectCreationModal - Main modal for creating new projects
  */
 
-import React from 'react';
-import { X } from 'lucide-react';
 import { Button } from '@design-system';
-import { PresetCreationPane } from './PresetCreationPane';
+import { X } from 'lucide-react';
+import React from 'react';
 import { ImportProjectPane } from './ImportProjectPane';
+import { PresetCreationPane } from './PresetCreationPane';
 
 interface ProjectCreationModalProps {
   onClose: () => void;

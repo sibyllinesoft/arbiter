@@ -2,13 +2,13 @@
  * GitHubProjectsImport - Component for importing projects from GitHub repositories
  */
 
-import React, { useEffect } from 'react';
-import { RefreshCw, GitBranch as GitIcon, Upload } from 'lucide-react';
-import { toast } from 'react-toastify';
-import { Button, cn } from '@design-system';
 import { useGitHubState } from '@contexts/AppContext';
+import { Button, cn } from '@design-system';
 import { useProjects } from '@hooks/api-hooks';
 import { apiService } from '@services/api';
+import { GitBranch as GitIcon, RefreshCw, Upload } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { toast } from 'react-toastify';
 
 interface GitHubProjectsImportProps {
   onClose: () => void;
