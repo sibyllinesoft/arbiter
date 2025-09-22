@@ -42,104 +42,108 @@ export function ProjectList({
 
   if (!projects || projects.length === 0) {
     return (
-      <Card className="p-12 text-center">
+      <div className="p-12 text-center">
         <div className="text-gray-400 mb-4">
           <Server className="w-12 h-12 mx-auto" />
         </div>
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Projects</h3>
         <p className="text-gray-600">Create your first project to get started</p>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="divide-y divide-graphite-600">
       {projects.map(project => {
         const projectStatus = getProjectStatus(project);
         const isSelected = currentProject?.id === project.id;
 
         return (
-          <Card
+          <div
             key={project.id}
             className={cn(
-              'relative p-6 cursor-pointer transition-all duration-200 hover:shadow-md',
-              isSelected && 'ring-2 ring-blue-500 bg-blue-50'
+              'relative cursor-pointer transition-all duration-200 hover:bg-graphite-800',
+              isSelected && 'bg-blue-600/10 border-l-4 border-l-blue-500'
             )}
             onClick={() => onSelectProject(project)}
           >
-            {/* Project Header */}
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gray-900">{project.name}</h3>
-              <div className="flex items-center gap-2">
+            {/* Project Header with Floating Badges */}
+            <div className="flex items-start justify-between p-6">
+              <div className="flex-1">
+                <h3 className="text-2xl font-semibold text-graphite-25 mb-3">{project.name}</h3>
+
+                {/* Entity Metrics - Floating with name */}
+                {projectStatus && (
+                  <div className="flex flex-wrap gap-2">
+                    {projectStatus.entities.services > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-blue-500 rounded-md shadow-sm">
+                        <Server className="w-3.5 h-3.5 text-blue-50" />
+                        <span className="text-xs font-medium text-blue-50">
+                          Services: {projectStatus.entities.services}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.databases > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-600 to-green-500 rounded-md shadow-sm">
+                        <Database className="w-3.5 h-3.5 text-green-50" />
+                        <span className="text-xs font-medium text-green-50">
+                          Databases: {projectStatus.entities.databases}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.components > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-purple-500 rounded-md shadow-sm">
+                        <Component className="w-3.5 h-3.5 text-purple-50" />
+                        <span className="text-xs font-medium text-purple-50">
+                          Components: {projectStatus.entities.components}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.routes > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-graphite-500 to-graphite-400 rounded-md shadow-sm">
+                        <Navigation className="w-3.5 h-3.5 text-graphite-50" />
+                        <span className="text-xs font-medium text-graphite-50">
+                          Routes: {projectStatus.entities.routes}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.flows > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-gold-600 to-gold-500 rounded-md shadow-sm">
+                        <Workflow className="w-3.5 h-3.5 text-gold-50" />
+                        <span className="text-xs font-medium text-gold-50">
+                          Flows: {projectStatus.entities.flows}
+                        </span>
+                      </div>
+                    )}
+
+                    {projectStatus.entities.capabilities > 0 && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 to-red-500 rounded-md shadow-sm">
+                        <Shield className="w-3.5 h-3.5 text-red-50" />
+                        <span className="text-xs font-medium text-red-50">
+                          Capabilities: {projectStatus.entities.capabilities}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Delete Button */}
+              <div className="flex items-center gap-2 ml-4">
                 <button
                   onClick={e => onDeleteProject(e, project.id)}
-                  className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                  className="p-1 text-graphite-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
                   title="Delete project"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
-
-            {/* Entity Metrics */}
-            {projectStatus && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {projectStatus.entities.services > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 rounded-md">
-                    <Server className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-xs font-medium text-blue-900">
-                      Services: {projectStatus.entities.services}
-                    </span>
-                  </div>
-                )}
-
-                {projectStatus.entities.databases > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-green-50 rounded-md">
-                    <Database className="w-3.5 h-3.5 text-green-600" />
-                    <span className="text-xs font-medium text-green-900">
-                      Databases: {projectStatus.entities.databases}
-                    </span>
-                  </div>
-                )}
-
-                {projectStatus.entities.components > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-purple-50 rounded-md">
-                    <Component className="w-3.5 h-3.5 text-purple-600" />
-                    <span className="text-xs font-medium text-purple-900">
-                      Components: {projectStatus.entities.components}
-                    </span>
-                  </div>
-                )}
-
-                {projectStatus.entities.routes > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 rounded-md">
-                    <Navigation className="w-3.5 h-3.5 text-indigo-600" />
-                    <span className="text-xs font-medium text-indigo-900">
-                      Routes: {projectStatus.entities.routes}
-                    </span>
-                  </div>
-                )}
-
-                {projectStatus.entities.flows > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-yellow-50 rounded-md">
-                    <Workflow className="w-3.5 h-3.5 text-yellow-600" />
-                    <span className="text-xs font-medium text-yellow-900">
-                      Flows: {projectStatus.entities.flows}
-                    </span>
-                  </div>
-                )}
-
-                {projectStatus.entities.capabilities > 0 && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-red-50 rounded-md">
-                    <Shield className="w-3.5 h-3.5 text-red-600" />
-                    <span className="text-xs font-medium text-red-900">
-                      Capabilities: {projectStatus.entities.capabilities}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
+          </div>
         );
       })}
     </div>

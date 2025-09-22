@@ -37,7 +37,9 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
 
   const connect = () => {
     try {
-      const wsUrl = `ws://localhost:5050/events${projectId ? `?projectId=${projectId}` : ''}`;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/events${projectId ? `?projectId=${projectId}` : ''}`;
       const ws = new WebSocket(wsUrl);
 
       // Handle immediate connection (if already open)

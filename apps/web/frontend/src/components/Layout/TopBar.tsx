@@ -20,11 +20,11 @@ import {
 } from 'lucide-react';
 import {
   useApp,
-  useCurrentProject,
   useConnectionStatus,
   useValidationState,
   useCueFileState,
 } from '../../contexts/AppContext';
+import { useCurrentProject } from '../../contexts/ProjectContext';
 import { apiService } from '../../services/api';
 import { toast } from 'react-toastify';
 import { Button, StatusBadge, cn } from '../../design-system';

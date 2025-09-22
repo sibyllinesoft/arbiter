@@ -18,6 +18,7 @@ interface GitScanResult {
   files?: string[];
   projectStructure?: ProjectStructure;
   gitUrl?: string;
+  projectName?: string;
   error?: string;
 }
 
@@ -29,13 +30,6 @@ interface ProjectStructure {
   hasYamlFiles: boolean;
   hasJsonFiles: boolean;
   importableFiles: string[];
-  performanceMetrics?: {
-    scanTimeMs: number;
-    filesScanned: number;
-    workersUsed: number;
-    parallelBatches: number;
-    usedGitLsFiles?: boolean;
-  };
 }
 
 export class GitScanner {
@@ -63,6 +57,9 @@ export class GitScanner {
         };
       }
 
+      // Extract project name from git URL
+      const projectName = this.extractProjectNameFromGitUrl(gitUrl);
+
       // Create temporary directory
       tempPath = await this.createTempDir();
       this.tempDirs.add(tempPath);
@@ -71,8 +68,8 @@ export class GitScanner {
       await this.cloneRepository(gitUrl, tempPath);
 
       // Scan the cloned repository using parallel workers
-      const { files, metrics } = await this.scanDirectoryParallel(tempPath);
-      const projectStructure = await this.analyzeProjectStructure(tempPath, files, metrics);
+      const { files } = await this.scanDirectoryParallel(tempPath);
+      const projectStructure = await this.analyzeProjectStructure(tempPath, files);
 
       return {
         success: true,
@@ -80,6 +77,7 @@ export class GitScanner {
         files,
         projectStructure,
         gitUrl,
+        projectName,
       };
     } catch (error) {
       // Cleanup on error
@@ -109,8 +107,8 @@ export class GitScanner {
       }
 
       // Scan the directory using parallel workers
-      const { files, metrics } = await this.scanDirectoryParallel(directoryPath);
-      const projectStructure = await this.analyzeProjectStructure(directoryPath, files, metrics);
+      const { files } = await this.scanDirectoryParallel(directoryPath);
+      const projectStructure = await this.analyzeProjectStructure(directoryPath, files);
 
       return {
         success: true,
@@ -153,23 +151,18 @@ export class GitScanner {
   private async scanDirectoryParallel(basePath: string): Promise<{
     files: string[];
     metrics: {
-      scanTimeMs: number;
       filesScanned: number;
       workersUsed: number;
       parallelBatches: number;
       usedGitLsFiles?: boolean;
     };
   }> {
-    const startTime = Date.now();
-
     // Try git ls-files first for much better performance and Git-aware scanning
     const gitFiles = await this.tryGitLsFiles(basePath);
     if (gitFiles) {
-      const scanTimeMs = Date.now() - startTime;
       return {
         files: gitFiles,
         metrics: {
-          scanTimeMs,
           filesScanned: gitFiles.length,
           workersUsed: 0, // git ls-files doesn't use workers
           parallelBatches: 0,
@@ -233,12 +226,9 @@ export class GitScanner {
     // Convert FileInfo objects to simple file paths and extract importable files
     const files = allFileInfos.filter(file => !file.isDirectory).map(file => file.relativePath);
 
-    const scanTimeMs = Date.now() - startTime;
-
     return {
       files,
       metrics: {
-        scanTimeMs,
         filesScanned: files.length,
         workersUsed: this.maxConcurrentWorkers,
         parallelBatches: totalBatches,
@@ -301,6 +291,41 @@ export class GitScanner {
     return gitUrlPatterns.some(pattern => pattern.test(url));
   }
 
+  private extractProjectNameFromGitUrl(gitUrl: string): string {
+    // Extract project name from various git URL formats
+    // Examples:
+    // https://github.com/owner/repo.git -> repo
+    // https://github.com/owner/repo -> repo
+    // git@github.com:owner/repo.git -> repo
+
+    try {
+      // Remove .git suffix if present
+      const cleanUrl = gitUrl.replace(/\.git$/, '');
+
+      // Extract the last part of the path (repo name)
+      const match = cleanUrl.match(/\/([^\/]+)$/);
+      if (match) {
+        return match[1];
+      }
+
+      // For SSH URLs like git@host:owner/repo
+      const sshMatch = cleanUrl.match(/:([^\/]+\/)?([^\/]+)$/);
+      if (sshMatch) {
+        return sshMatch[2];
+      }
+
+      // Fallback: try to get last segment after splitting by / or :
+      const segments = cleanUrl.split(/[\/:]/).filter(s => s.length > 0);
+      if (segments.length > 0) {
+        return segments[segments.length - 1];
+      }
+
+      return 'imported-project';
+    } catch {
+      return 'imported-project';
+    }
+  }
+
   private async createTempDir(): Promise<string> {
     const tempBase = tmpdir();
     const tempName = `arbiter-git-scan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -325,8 +350,7 @@ export class GitScanner {
 
   private async analyzeProjectStructure(
     basePath: string,
-    files: string[],
-    metrics?: any
+    files: string[]
   ): Promise<ProjectStructure> {
     const structure: ProjectStructure = {
       hasPackageJson: false,
@@ -376,11 +400,6 @@ export class GitScanner {
           structure.importableFiles.push(file);
         }
       }
-    }
-
-    // Add performance metrics if provided
-    if (metrics) {
-      structure.performanceMetrics = metrics;
     }
 
     return structure;

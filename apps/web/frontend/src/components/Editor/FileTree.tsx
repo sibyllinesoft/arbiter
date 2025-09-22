@@ -22,7 +22,8 @@ import {
   Image,
   Archive,
 } from 'lucide-react';
-import { useApp, useCurrentProject } from '../../contexts/AppContext';
+import { useApp } from '../../contexts/AppContext';
+import { useCurrentProject } from '../../contexts/ProjectContext';
 import { apiService } from '../../services/api';
 import { toast } from 'react-toastify';
 import type { Fragment } from '../../types/api';

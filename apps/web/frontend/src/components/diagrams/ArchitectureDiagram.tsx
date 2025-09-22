@@ -31,26 +31,31 @@ const LAYER_COLORS = {
     bg: '#dbeafe',
     border: '#3b82f6',
     text: '#1e40af',
+    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #dbeafe, #c7d2fe, #bfdbfe)',
   },
   backend: {
-    bg: '#dcfce7',
-    border: '#22c55e',
-    text: '#15803d',
+    bg: '#1E466B', // Blue-600 - darker blue background for services
+    border: '#163759', // Blue-700 - darker blue for services
+    text: '#D8E6F3', // Blue-50 - light text for contrast
+    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #25557E, #1E466B, #163759)', // Blue-500 to Blue-600 to Blue-700
   },
   cli: {
-    bg: '#fef3c7',
-    border: '#f59e0b',
-    text: '#d97706',
+    bg: '#3A2A70', // Purple-600 - darker purple background for libraries
+    border: '#31205A', // Purple-700 - darker purple for libraries
+    text: '#E7E6F5', // Purple-50 - light text for contrast
+    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #4A378B, #3A2A70, #31205A)', // Purple-500 to Purple-600 to Purple-700
   },
   data: {
     bg: '#f3e8ff',
     border: '#a855f7',
     text: '#7c3aed',
+    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #f3e8ff, #ede9fe, #e9d5ff)',
   },
   external: {
     bg: '#fee2e2',
     border: '#ef4444',
     text: '#dc2626',
+    gradient: 'radial-gradient(ellipse 120% 80% at 20% 30%, #fee2e2, #fed7d7, #fecaca)',
   },
 };
 
@@ -403,12 +408,25 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     const databases = projectData.spec?.databases || projectData.databases || {};
     const otherComponents = projectData.spec?.components || projectData.components || {};
 
-    // Re-group for display
-    [
+    // Re-group for display with deduplication by display name
+    const allEntries = [
       ...Object.entries(services),
       ...Object.entries(databases),
       ...Object.entries(otherComponents),
-    ].forEach(([name, data]: [string, any]) => {
+    ];
+
+    // Track seen display names to avoid duplicates
+    const seenDisplayNames = new Set<string>();
+
+    allEntries.forEach(([name, data]: [string, any]) => {
+      const displayName = data.name || name;
+
+      // Skip if we've already seen this display name
+      if (seenDisplayNames.has(displayName)) {
+        return;
+      }
+      seenDisplayNames.add(displayName);
+
       const sourceFile =
         data.metadata?.sourceFile ||
         data.sourceFile ||
@@ -594,7 +612,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     return (
       <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
         <div className="p-4 bg-white border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">System Architecture</h3>
+          <h3 className="text-lg font-medium text-gray-900">Sources</h3>
           <p className="text-sm text-gray-600">Loading project architecture...</p>
         </div>
         <div className="flex items-center justify-center h-64">
@@ -610,7 +628,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     return (
       <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
         <div className="p-4 bg-white border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">System Architecture</h3>
+          <h3 className="text-lg font-medium text-gray-900">Sources</h3>
           <p className="text-sm text-red-600">Error loading project architecture</p>
         </div>
         <div className="flex items-center justify-center h-64">
@@ -642,7 +660,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
       {/* Header */}
       <div className="p-4 bg-white border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">System Architecture</h3>
+        <h3 className="text-lg font-medium text-gray-900">Sources</h3>
         <p className="text-sm text-gray-600">
           {dynamicComponents.length > 0
             ? `Interactive diagram showing the project's ${dynamicComponents.length} components and their relationships`
@@ -774,9 +792,12 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
 
                       return (
                         <div
-                          key={name}
+                          key={`${sourceFile}-${name}`}
                           className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
-                          style={{ backgroundColor: colors.bg, borderColor: colors.border }}
+                          style={{
+                            background: colors.gradient || colors.bg,
+                            borderColor: colors.border,
+                          }}
                           onClick={() =>
                             setSelectedComponent(selectedComponent === name ? null : name)
                           }
@@ -788,29 +809,33 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
 
                           {/* Component Metadata */}
                           <div className="space-y-1 text-xs text-gray-600">
-                            {data.metadata?.language && (
-                              <div>
-                                Language:{' '}
-                                <span className="font-mono text-gray-800">
-                                  {data.metadata.language}
-                                </span>
-                              </div>
-                            )}
-                            {data.metadata?.framework && (
-                              <div>
-                                Framework:{' '}
-                                <span className="font-mono text-gray-800">
-                                  {data.metadata.framework}
-                                </span>
-                              </div>
-                            )}
-                            {data.version && (
+                            {data.metadata?.language &&
+                              data.metadata.language !== 'unknown' &&
+                              data.metadata.language.trim() !== '' && (
+                                <div>
+                                  Language:{' '}
+                                  <span className="font-mono text-gray-800">
+                                    {data.metadata.language}
+                                  </span>
+                                </div>
+                              )}
+                            {data.metadata?.framework &&
+                              data.metadata.framework !== 'unknown' &&
+                              data.metadata.framework.trim() !== '' && (
+                                <div>
+                                  Framework:{' '}
+                                  <span className="font-mono text-gray-800">
+                                    {data.metadata.framework}
+                                  </span>
+                                </div>
+                              )}
+                            {data.version && data.version.trim() !== '' && (
                               <div>
                                 Version:{' '}
                                 <span className="font-mono text-gray-800">{data.version}</span>
                               </div>
                             )}
-                            {data.image && (
+                            {data.image && data.image.trim() !== '' && (
                               <div>
                                 Image: <span className="font-mono text-gray-800">{data.image}</span>
                               </div>
@@ -819,7 +844,57 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                               <div>
                                 Ports:{' '}
                                 <span className="font-mono text-gray-800">
-                                  {Array.isArray(data.ports) ? data.ports.join(', ') : data.ports}
+                                  {(() => {
+                                    if (Array.isArray(data.ports)) {
+                                      // Handle array of ports - extract port numbers
+                                      return data.ports
+                                        .map(port => {
+                                          if (typeof port === 'object' && port !== null) {
+                                            // Extract port number from object
+                                            return (
+                                              port.port ||
+                                              port.targetPort ||
+                                              port.number ||
+                                              port.value ||
+                                              JSON.stringify(port)
+                                            );
+                                          }
+                                          return String(port);
+                                        })
+                                        .join(', ');
+                                    } else if (
+                                      typeof data.ports === 'object' &&
+                                      data.ports !== null
+                                    ) {
+                                      // Handle port object - extract meaningful values
+                                      const portObj = data.ports as any;
+
+                                      // If it's a single port object with port/targetPort
+                                      if (portObj.port || portObj.targetPort) {
+                                        return `${portObj.port || portObj.targetPort}${portObj.targetPort && portObj.port !== portObj.targetPort ? `:${portObj.targetPort}` : ''}`;
+                                      }
+
+                                      // If it's an object with multiple port entries
+                                      return Object.entries(portObj)
+                                        .map(([key, value]) => {
+                                          if (typeof value === 'object' && value !== null) {
+                                            const port = value as any;
+                                            return (
+                                              port.port ||
+                                              port.targetPort ||
+                                              port.number ||
+                                              port.value ||
+                                              key
+                                            );
+                                          }
+                                          return value;
+                                        })
+                                        .filter(p => p !== null && p !== undefined)
+                                        .join(', ');
+                                    } else {
+                                      return String(data.ports);
+                                    }
+                                  })()}
                                 </span>
                               </div>
                             )}

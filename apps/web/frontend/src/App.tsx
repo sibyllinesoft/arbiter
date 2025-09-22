@@ -5,7 +5,8 @@ import 'react-toastify/dist/ReactToastify.css';
 // Providers
 import { QueryProvider } from './providers/QueryProvider';
 import { ProjectProvider } from './contexts/ProjectContext';
-import { AppProvider } from './contexts/AppContext';
+import { AppProvider, useUIState } from './contexts/AppContext';
+import { useCurrentProject, useSetCurrentProject } from './contexts/ProjectContext';
 
 // Pages
 import { LandingPage } from './pages/LandingPage';
@@ -62,13 +63,14 @@ class ErrorBoundary extends React.Component<
 
 // Main app content with simple routing
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'config' | 'project'>('dashboard');
-  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const { currentView, setCurrentView } = useUIState();
+  const currentProject = useCurrentProject();
+  const setCurrentProject = useSetCurrentProject();
 
   const navigateToConfig = () => setCurrentView('config');
   const navigateToDashboard = () => setCurrentView('dashboard');
   const navigateToProject = (project: any) => {
-    setSelectedProject(project);
+    setCurrentProject(project);
     setCurrentView('project');
   };
 
@@ -81,8 +83,8 @@ function AppContent() {
         />
       )}
       {currentView === 'config' && <ConfigScreen onNavigateBack={navigateToDashboard} />}
-      {currentView === 'project' && selectedProject && (
-        <ProjectView project={selectedProject} onNavigateBack={navigateToDashboard} />
+      {currentView === 'project' && currentProject && (
+        <ProjectView project={currentProject} onNavigateBack={navigateToDashboard} />
       )}
     </>
   );

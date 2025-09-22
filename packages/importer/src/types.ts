@@ -81,6 +81,8 @@ export interface InferenceContext {
   options: InferenceOptions;
   /** Cache for expensive operations */
   cache: Map<string, unknown>;
+  /** Project metadata including overridden project name */
+  projectMetadata: ProjectMetadata;
 }
 
 /**
@@ -125,7 +127,8 @@ export interface InferenceOptions {
  */
 export type ArtifactType =
   | 'service' // HTTP services, APIs, microservices
-  | 'binary' // Executable binaries, CLI tools
+  | 'binary' // Executable binaries
+  | 'cli' // Command-line interface tools
   | 'library' // Shared libraries, packages, modules
   | 'job' // Background jobs, cron jobs, workers
   | 'schema' // Database schemas, API schemas
@@ -181,6 +184,12 @@ export interface ServiceArtifact extends BaseArtifact {
     endpoints: ServiceEndpoint[];
     /** Health check configuration */
     healthCheck?: HealthCheckConfig;
+    /** Container image name from Docker/compose files */
+    containerImage?: string;
+    /** Docker build context path */
+    buildContext?: string;
+    /** Dockerfile path relative to build context */
+    dockerfile?: string;
   };
 }
 
@@ -196,6 +205,31 @@ export interface BinaryArtifact extends BaseArtifact {
     buildSystem?: string;
     /** Entry point file */
     entryPoint: string;
+    /** Command line arguments */
+    arguments: string[];
+    /** Environment variables required */
+    environmentVariables: string[];
+    /** Runtime dependencies */
+    dependencies: string[];
+  };
+}
+
+/**
+ * CLI artifact representing a command-line interface tool
+ */
+export interface CliArtifact extends BaseArtifact {
+  type: 'cli';
+  metadata: {
+    /** Programming language */
+    language: string;
+    /** CLI framework used (e.g., 'commander', 'click', 'clap') */
+    framework?: string;
+    /** Build system (e.g., 'maven', 'gradle', 'npm') */
+    buildSystem?: string;
+    /** Entry point file */
+    entryPoint: string;
+    /** Available commands */
+    commands: string[];
     /** Command line arguments */
     arguments: string[];
     /** Environment variables required */

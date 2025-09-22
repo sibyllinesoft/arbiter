@@ -14,6 +14,7 @@
   },
   "scripts": {
     "dev": "NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev",
+    "dev:workbench": "bun run --cwd apps/web/frontend dev",
     "start": "bun run --cwd apps/api start",
     "build": "bun run build:all",
     "ci": "bun scripts/local-ci.ts",

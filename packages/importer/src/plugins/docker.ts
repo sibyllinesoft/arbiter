@@ -6,8 +6,8 @@
  * docker-compose files to infer application architecture.
  */
 
-import * as path from "path";
-import * as yaml from "yaml";
+import * as path from 'path';
+import * as yaml from 'yaml';
 import {
   ConfidenceScore,
   DatabaseArtifact,
@@ -19,7 +19,7 @@ import {
   ParseContext,
   Provenance,
   ServiceArtifact,
-} from "../types.js";
+} from '../types.js';
 
 // ============================================================================
 // Docker Pattern Detection
@@ -27,46 +27,46 @@ import {
 
 const DOCKER_BASE_IMAGES = {
   // Language runtimes
-  node: "javascript",
-  python: "python",
-  openjdk: "java",
-  golang: "go",
-  rust: "rust",
-  ruby: "ruby",
-  php: "php",
-  dotnet: "csharp",
+  node: 'javascript',
+  python: 'python',
+  openjdk: 'java',
+  golang: 'go',
+  rust: 'rust',
+  ruby: 'ruby',
+  php: 'php',
+  dotnet: 'csharp',
 
   // Databases
-  postgres: "database",
-  mysql: "database",
-  mongodb: "database",
-  redis: "database",
-  elasticsearch: "database",
+  postgres: 'database',
+  mysql: 'database',
+  mongodb: 'database',
+  redis: 'database',
+  elasticsearch: 'database',
 
   // Web servers
-  nginx: "web-server",
-  apache: "web-server",
-  traefik: "proxy",
-  haproxy: "proxy",
+  nginx: 'web-server',
+  apache: 'web-server',
+  traefik: 'proxy',
+  haproxy: 'proxy',
 
   // Message queues
-  rabbitmq: "queue",
-  kafka: "queue",
-  nats: "queue",
+  rabbitmq: 'queue',
+  kafka: 'queue',
+  nats: 'queue',
 };
 
 const PORT_DEFAULTS = {
-  80: "http",
-  443: "https",
-  3000: "web-dev",
-  8080: "http-alt",
-  5432: "postgres",
-  3306: "mysql",
-  27017: "mongodb",
-  6379: "redis",
-  9200: "elasticsearch",
-  5672: "rabbitmq",
-  9092: "kafka",
+  80: 'http',
+  443: 'https',
+  3000: 'web-dev',
+  8080: 'http-alt',
+  5432: 'postgres',
+  3306: 'mysql',
+  27017: 'mongodb',
+  6379: 'redis',
+  9200: 'elasticsearch',
+  5672: 'rabbitmq',
+  9092: 'kafka',
 };
 
 // ============================================================================
@@ -111,14 +111,14 @@ interface ComposeServiceData extends Record<string, unknown> {
 
 export class DockerPlugin implements ImporterPlugin {
   name(): string {
-    return "docker";
+    return 'docker';
   }
 
   supports(filePath: string, fileContent?: string): boolean {
     const fileName = path.basename(filePath);
 
     // Support Dockerfiles
-    if (fileName.toLowerCase().startsWith("dockerfile")) {
+    if (fileName.toLowerCase().startsWith('dockerfile')) {
       return true;
     }
 
@@ -135,10 +135,10 @@ export class DockerPlugin implements ImporterPlugin {
 
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
-    const baseId = `docker-${path.relative(context?.projectRoot || "", filePath)}`;
+    const baseId = `docker-${path.relative(context?.projectRoot || '', filePath)}`;
 
     try {
-      if (fileName.toLowerCase().startsWith("dockerfile")) {
+      if (fileName.toLowerCase().startsWith('dockerfile')) {
         evidence.push(...(await this.parseDockerfile(filePath, fileContent, baseId)));
       } else if (
         fileName.match(/docker-compose.*\.ya?ml$/) ||
@@ -154,7 +154,7 @@ export class DockerPlugin implements ImporterPlugin {
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const dockerEvidence = evidence.filter((e) => e.source === "docker");
+    const dockerEvidence = evidence.filter(e => e.source === 'docker');
     if (dockerEvidence.length === 0) return [];
 
     const artifacts: InferredArtifact[] = [];
@@ -162,7 +162,7 @@ export class DockerPlugin implements ImporterPlugin {
     try {
       // Infer from Dockerfile evidence
       const dockerfileEvidence = dockerEvidence.filter(
-        (e) => e.type === "config" && e.data.configType === "dockerfile",
+        e => e.type === 'config' && e.data.configType === 'dockerfile'
       );
       for (const dockerfile of dockerfileEvidence) {
         artifacts.push(...(await this.inferFromDockerfile(dockerfile, dockerEvidence, context)));
@@ -170,13 +170,13 @@ export class DockerPlugin implements ImporterPlugin {
 
       // Infer from Compose evidence
       const composeEvidence = dockerEvidence.filter(
-        (e) => e.type === "config" && e.data.configType === "compose-service",
+        e => e.type === 'config' && e.data.configType === 'compose-service'
       );
       for (const compose of composeEvidence) {
         artifacts.push(...(await this.inferFromCompose(compose, dockerEvidence, context)));
       }
     } catch (error) {
-      console.warn("Docker plugin inference failed:", error);
+      console.warn('Docker plugin inference failed:', error);
     }
 
     return artifacts;
@@ -189,23 +189,23 @@ export class DockerPlugin implements ImporterPlugin {
   private async parseDockerfile(
     filePath: string,
     content: string,
-    baseId: string,
+    baseId: string
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
-    const lines = content.split("\n").map((line) => line.trim());
+    const lines = content.split('\n').map(line => line.trim());
 
-    let baseImage = "";
+    let baseImage = '';
     const exposedPorts: number[] = [];
     const environment: Record<string, string> = {};
     let entrypoint: string[] = [];
     let cmd: string[] = [];
-    let workdir = "";
+    let workdir = '';
     const copyPaths: string[] = [];
     const runCommands: string[] = [];
     const volumes: string[] = [];
 
     for (const line of lines) {
-      if (line.startsWith("#") || !line) continue;
+      if (line.startsWith('#') || !line) continue;
 
       // Parse FROM instruction
       const fromMatch = line.match(/^FROM\s+([^\s]+)/i);
@@ -219,8 +219,8 @@ export class DockerPlugin implements ImporterPlugin {
       if (exposeMatch) {
         const ports = exposeMatch[1]
           .split(/\s+/)
-          .map((p) => parseInt(p))
-          .filter((p) => !isNaN(p));
+          .map(p => parseInt(p))
+          .filter(p => !isNaN(p));
         exposedPorts.push(...ports);
         continue;
       }
@@ -229,8 +229,8 @@ export class DockerPlugin implements ImporterPlugin {
       const envMatch = line.match(/^ENV\s+([^=\s]+)(?:=(.+)|\s+(.+))/i);
       if (envMatch) {
         const key = envMatch[1];
-        const value = envMatch[2] || envMatch[3] || "";
-        environment[key] = value.replace(/^["']|["']$/g, "");
+        const value = envMatch[2] || envMatch[3] || '';
+        environment[key] = value.replace(/^["']|["']$/g, '');
         continue;
       }
 
@@ -285,7 +285,7 @@ export class DockerPlugin implements ImporterPlugin {
     const language = this.detectLanguageFromImage(baseImage);
 
     const dockerfileData: DockerfileData = {
-      configType: "dockerfile",
+      configType: 'dockerfile',
       baseImage,
       language,
       exposedPorts,
@@ -300,8 +300,8 @@ export class DockerPlugin implements ImporterPlugin {
 
     evidence.push({
       id: `${baseId}-dockerfile`,
-      source: "docker",
-      type: "config",
+      source: 'docker',
+      type: 'config',
       filePath,
       data: dockerfileData,
       confidence: 0.95,
@@ -317,7 +317,7 @@ export class DockerPlugin implements ImporterPlugin {
   private async parseComposeFile(
     filePath: string,
     content: string,
-    baseId: string,
+    baseId: string
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
@@ -326,27 +326,27 @@ export class DockerPlugin implements ImporterPlugin {
       if (!compose.services) return evidence;
 
       for (const [serviceName, serviceConfig] of Object.entries(
-        compose.services as Record<string, any>,
+        compose.services as Record<string, any>
       )) {
         const ports: Array<{ host: number; container: number; protocol?: string }> = [];
 
         // Parse port mappings
         if (serviceConfig.ports) {
           for (const port of serviceConfig.ports) {
-            if (typeof port === "string") {
+            if (typeof port === 'string') {
               const match = port.match(/^(?:(\d+):)?(\d+)(?:\/(\w+))?$/);
               if (match) {
                 ports.push({
                   host: parseInt(match[1] || match[2]),
                   container: parseInt(match[2]),
-                  protocol: match[3] || "tcp",
+                  protocol: match[3] || 'tcp',
                 });
               }
-            } else if (typeof port === "object" && port.target) {
+            } else if (typeof port === 'object' && port.target) {
               ports.push({
                 host: port.published || port.target,
                 container: port.target,
-                protocol: port.protocol || "tcp",
+                protocol: port.protocol || 'tcp',
               });
             }
           }
@@ -357,18 +357,18 @@ export class DockerPlugin implements ImporterPlugin {
         if (serviceConfig.environment) {
           if (Array.isArray(serviceConfig.environment)) {
             for (const env of serviceConfig.environment) {
-              const [key, value] = env.split("=", 2);
+              const [key, value] = env.split('=', 2);
               if (key && value !== undefined) {
                 environment[key] = value;
               }
             }
-          } else if (typeof serviceConfig.environment === "object") {
+          } else if (typeof serviceConfig.environment === 'object') {
             Object.assign(environment, serviceConfig.environment);
           }
         }
 
         const composeData: ComposeServiceData = {
-          configType: "compose-service",
+          configType: 'compose-service',
           serviceName,
           image: serviceConfig.image,
           build: serviceConfig.build
@@ -389,8 +389,8 @@ export class DockerPlugin implements ImporterPlugin {
 
         evidence.push({
           id: `${baseId}-service-${serviceName}`,
-          source: "docker",
-          type: "config",
+          source: 'docker',
+          type: 'config',
           filePath,
           data: composeData,
           confidence: 0.9,
@@ -401,7 +401,7 @@ export class DockerPlugin implements ImporterPlugin {
         });
       }
     } catch (error) {
-      console.warn("Failed to parse compose file:", error);
+      console.warn('Failed to parse compose file:', error);
     }
 
     return evidence;
@@ -414,7 +414,7 @@ export class DockerPlugin implements ImporterPlugin {
   private async inferFromDockerfile(
     dockerfileEvidence: Evidence,
     allEvidence: Evidence[],
-    context: InferenceContext,
+    context: InferenceContext
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
     const dockerData = dockerfileEvidence.data as unknown as DockerfileData;
@@ -425,24 +425,25 @@ export class DockerPlugin implements ImporterPlugin {
 
       const serviceArtifact: ServiceArtifact = {
         id: `docker-service-${serviceName}`,
-        type: "service",
+        type: 'service',
         name: serviceName,
         description: `Dockerized service: ${serviceName}`,
-        tags: ["docker", "container", "service"],
+        tags: ['docker', 'container', 'service'],
         metadata: {
-          language: dockerData.language || "",
+          language: dockerData.language || '',
           framework: this.detectFrameworkFromDockerfile(dockerData),
           port: dockerData.exposedPorts[0],
-          basePath: "/",
+          basePath: '/',
           environmentVariables: Object.keys(dockerData.environment),
           dependencies: [],
           endpoints: [],
           healthCheck: {
-            path: "/health",
+            path: '/health',
             expectedStatusCode: 200,
             timeoutMs: 5000,
             intervalSeconds: 30,
           },
+          containerImage: dockerData.baseImage, // Store the base image from Dockerfile
         },
       };
 
@@ -460,7 +461,7 @@ export class DockerPlugin implements ImporterPlugin {
   private async inferFromCompose(
     composeEvidence: Evidence,
     allEvidence: Evidence[],
-    context: InferenceContext,
+    context: InferenceContext
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
     const composeData = composeEvidence.data as unknown as ComposeServiceData;
@@ -468,15 +469,15 @@ export class DockerPlugin implements ImporterPlugin {
     // Determine artifact type based on image and configuration
     const artifactType = this.determineServiceType(composeData);
 
-    if (artifactType === "database") {
+    if (artifactType === 'database') {
       const dbArtifact: DatabaseArtifact = {
         id: `docker-db-${composeData.serviceName}`,
-        type: "database",
+        type: 'database',
         name: composeData.serviceName,
         description: `Dockerized database: ${composeData.serviceName}`,
-        tags: ["docker", "database"],
+        tags: ['docker', 'database'],
         metadata: {
-          databaseType: this.detectDatabaseType(composeData.image || ""),
+          databaseType: this.detectDatabaseType(composeData.image || ''),
           port: composeData.ports[0]?.container,
           schemas: [],
           configuration: composeData.environment,
@@ -493,28 +494,31 @@ export class DockerPlugin implements ImporterPlugin {
       // Regular service
       const serviceArtifact: ServiceArtifact = {
         id: `docker-service-${composeData.serviceName}`,
-        type: "service",
+        type: 'service',
         name: composeData.serviceName,
         description: `Dockerized service: ${composeData.serviceName}`,
-        tags: ["docker", "container", "service"],
+        tags: ['docker', 'container', 'service'],
         metadata: {
-          language: this.detectLanguageFromImage(composeData.image || ""),
+          language: this.detectLanguageFromImage(composeData.image || ''),
           framework: this.detectFrameworkFromCompose(composeData),
           port: composeData.ports[0]?.container,
-          basePath: "/",
+          basePath: '/',
           environmentVariables: Object.keys(composeData.environment),
-          dependencies: composeData.depends_on.map((dep) => ({
+          dependencies: composeData.depends_on.map(dep => ({
             serviceName: dep,
-            type: "docker-service",
+            type: 'docker-service',
             required: true,
           })),
           endpoints: [],
           healthCheck: {
-            path: "/health",
+            path: '/health',
             expectedStatusCode: 200,
             timeoutMs: 5000,
             intervalSeconds: 30,
           },
+          containerImage: composeData.image, // Store the actual image from docker-compose
+          buildContext: composeData.build?.context,
+          dockerfile: composeData.build?.dockerfile,
         },
       };
 
@@ -537,7 +541,7 @@ export class DockerPlugin implements ImporterPlugin {
     instruction = instruction.trim();
 
     // JSON format ["cmd", "arg1", "arg2"]
-    if (instruction.startsWith("[") && instruction.endsWith("]")) {
+    if (instruction.startsWith('[') && instruction.endsWith(']')) {
       try {
         return JSON.parse(instruction);
       } catch {
@@ -550,83 +554,83 @@ export class DockerPlugin implements ImporterPlugin {
   }
 
   private detectLanguageFromImage(image: string): string {
-    const imageName = image.split(":")[0].split("/").pop() || "";
+    const imageName = image.split(':')[0].split('/').pop() || '';
 
     for (const [pattern, language] of Object.entries(DOCKER_BASE_IMAGES)) {
       if (imageName.includes(pattern)) {
-        return language === "database" ? "sql" : language;
+        return language === 'database' ? 'sql' : language;
       }
     }
 
-    return "unknown";
+    return undefined;
   }
 
   private detectFrameworkFromDockerfile(dockerData: DockerfileData): string | undefined {
     // Check for framework-specific patterns in RUN commands
-    const runCommands = dockerData.runCommands.join(" ").toLowerCase();
+    const runCommands = dockerData.runCommands.join(' ').toLowerCase();
 
-    if (runCommands.includes("npm install") || runCommands.includes("yarn install")) {
-      return "node.js";
+    if (runCommands.includes('npm install') || runCommands.includes('yarn install')) {
+      return 'node.js';
     }
-    if (runCommands.includes("pip install")) {
-      return "python";
+    if (runCommands.includes('pip install')) {
+      return 'python';
     }
-    if (runCommands.includes("go build") || runCommands.includes("go mod")) {
-      return "go";
+    if (runCommands.includes('go build') || runCommands.includes('go mod')) {
+      return 'go';
     }
-    if (runCommands.includes("cargo build")) {
-      return "rust";
+    if (runCommands.includes('cargo build')) {
+      return 'rust';
     }
 
     return undefined;
   }
 
   private detectFrameworkFromCompose(composeData: ComposeServiceData): string | undefined {
-    const image = composeData.image || "";
+    const image = composeData.image || '';
 
-    if (image.includes("node")) return "node.js";
-    if (image.includes("python")) return "python";
-    if (image.includes("golang")) return "go";
-    if (image.includes("rust")) return "rust";
-    if (image.includes("openjdk")) return "java";
+    if (image.includes('node')) return 'node.js';
+    if (image.includes('python')) return 'python';
+    if (image.includes('golang')) return 'go';
+    if (image.includes('rust')) return 'rust';
+    if (image.includes('openjdk')) return 'java';
 
     return undefined;
   }
 
   private determineServiceType(
-    composeData: ComposeServiceData,
-  ): "service" | "database" | "queue" | "proxy" {
-    const image = composeData.image || "";
+    composeData: ComposeServiceData
+  ): 'service' | 'database' | 'queue' | 'proxy' {
+    const image = composeData.image || '';
 
     if (
-      image.includes("postgres") ||
-      image.includes("mysql") ||
-      image.includes("mongodb") ||
-      image.includes("redis") ||
-      image.includes("elasticsearch")
+      image.includes('postgres') ||
+      image.includes('mysql') ||
+      image.includes('mongodb') ||
+      image.includes('redis') ||
+      image.includes('elasticsearch')
     ) {
-      return "database";
+      return 'database';
     }
 
-    if (image.includes("rabbitmq") || image.includes("kafka") || image.includes("nats")) {
-      return "queue";
+    if (image.includes('rabbitmq') || image.includes('kafka') || image.includes('nats')) {
+      return 'queue';
     }
 
-    if (image.includes("nginx") || image.includes("traefik") || image.includes("haproxy")) {
-      return "proxy";
+    if (image.includes('nginx') || image.includes('traefik') || image.includes('haproxy')) {
+      return 'proxy';
     }
 
-    return "service";
+    return 'service';
   }
 
   private detectDatabaseType(image: string): string {
-    if (image.includes("postgres")) return "postgresql";
-    if (image.includes("mysql")) return "mysql";
-    if (image.includes("mongodb")) return "mongodb";
-    if (image.includes("redis")) return "redis";
-    if (image.includes("elasticsearch")) return "elasticsearch";
+    if (image.includes('postgres')) return 'postgresql';
+    if (image.includes('mysql')) return 'mysql';
+    if (image.includes('mongodb')) return 'mongodb';
+    if (image.includes('redis')) return 'redis';
+    if (image.includes('elasticsearch')) return 'elasticsearch';
 
-    return "unknown";
+    return undefined;
   }
 
   /**
@@ -644,7 +648,7 @@ export class DockerPlugin implements ImporterPlugin {
       return dependsOn;
     }
 
-    if (typeof dependsOn === "object") {
+    if (typeof dependsOn === 'object') {
       return Object.keys(dependsOn);
     }
 
@@ -661,7 +665,7 @@ export class DockerPlugin implements ImporterPlugin {
         evidence: avgEvidence,
         base: baseConfidence,
       },
-      factors: evidence.map((e) => ({
+      factors: evidence.map(e => ({
         description: `Evidence from ${e.type}`,
         weight: e.confidence,
         source: e.source,
@@ -671,11 +675,11 @@ export class DockerPlugin implements ImporterPlugin {
 
   private createProvenance(evidence: Evidence[]): Provenance {
     return {
-      evidence: evidence.map((e) => e.id),
-      plugins: ["docker"],
-      rules: ["dockerfile-analysis", "compose-analysis"],
+      evidence: evidence.map(e => e.id),
+      plugins: ['docker'],
+      rules: ['dockerfile-analysis', 'compose-analysis'],
       timestamp: Date.now(),
-      pipelineVersion: "1.0.0",
+      pipelineVersion: '1.0.0',
     };
   }
 }

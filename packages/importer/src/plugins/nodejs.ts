@@ -6,9 +6,15 @@
  * dependency patterns to infer application architecture.
  */
 
-import * as path from "path";
+import * as path from 'path';
+import {
+  type DetectionContext,
+  type SourceAnalysis,
+  detectArtifactType,
+} from '../detection/artifact-detector.js';
 import {
   BinaryArtifact,
+  CliArtifact,
   ConfidenceScore,
   Evidence,
   FrontendArtifact,
@@ -19,77 +25,77 @@ import {
   ParseContext,
   Provenance,
   ServiceArtifact,
-} from "../types.js";
+} from '../types.js';
 
 // ============================================================================
 // Node.js Framework and Library Detection
 // ============================================================================
 
 const NODE_WEB_FRAMEWORKS = [
-  "express",
-  "fastify",
-  "koa",
-  "hapi",
-  "nest",
-  "adonis",
-  "meteor",
-  "sails",
-  "loopback",
-  "restify",
+  'express',
+  'fastify',
+  'koa',
+  'hapi',
+  'nest',
+  'adonis',
+  'meteor',
+  'sails',
+  'loopback',
+  'restify',
 ];
 
 const NODE_FRONTEND_FRAMEWORKS = [
-  "react",
-  "vue",
-  "angular",
-  "svelte",
-  "solid-js",
-  "preact",
-  "lit",
-  "stimulus",
+  'react',
+  'vue',
+  'angular',
+  'svelte',
+  'solid-js',
+  'preact',
+  'lit',
+  'stimulus',
 ];
 
 const NODE_BUILD_TOOLS = [
-  "webpack",
-  "vite",
-  "rollup",
-  "parcel",
-  "esbuild",
-  "snowpack",
-  "turbopack",
+  'webpack',
+  'vite',
+  'rollup',
+  'parcel',
+  'esbuild',
+  'snowpack',
+  'turbopack',
 ];
 
 const NODE_TESTING_FRAMEWORKS = [
-  "jest",
-  "mocha",
-  "vitest",
-  "cypress",
-  "playwright",
-  "puppeteer",
-  "testing-library",
+  'jest',
+  'mocha',
+  'vitest',
+  'cypress',
+  'playwright',
+  'puppeteer',
+  'testing-library',
 ];
 
 const NODE_DATABASE_DRIVERS = [
-  "mongoose",
-  "sequelize",
-  "typeorm",
-  "prisma",
-  "pg",
-  "mysql",
-  "redis",
-  "mongodb",
-  "sqlite3",
-  "better-sqlite3",
+  'mongoose',
+  'sequelize',
+  'typeorm',
+  'prisma',
+  'pg',
+  'mysql',
+  'redis',
+  'mongodb',
+  'sqlite3',
+  'better-sqlite3',
 ];
 
 const NODE_CLI_FRAMEWORKS = [
-  "commander",
-  "yargs",
-  "inquirer",
-  "ora",
-  "chalk",
-  "boxen",
-  "cli-table3",
+  'commander',
+  'yargs',
+  'inquirer',
+  'ora',
+  'chalk',
+  'boxen',
+  'cli-table3',
 ];
 
 // ============================================================================
@@ -102,7 +108,7 @@ interface PackageJsonData extends Record<string, unknown> {
   version?: string;
   description?: string;
   main?: string;
-  type?: "module" | "commonjs";
+  type?: 'module' | 'commonjs';
   scripts: Record<string, string>;
   dependencies: Record<string, string>;
   devDependencies: Record<string, string>;
@@ -137,7 +143,7 @@ interface SourceFileData extends Record<string, unknown> {
 
 export class NodeJSPlugin implements ImporterPlugin {
   name(): string {
-    return "nodejs";
+    return 'nodejs';
   }
 
   supports(filePath: string, fileContent?: string): boolean {
@@ -145,17 +151,17 @@ export class NodeJSPlugin implements ImporterPlugin {
     const extension = path.extname(filePath);
 
     // Support package.json files
-    if (fileName === "package.json") {
+    if (fileName === 'package.json') {
       return true;
     }
 
     // Support JavaScript/TypeScript files
-    if ([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"].includes(extension)) {
+    if (['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'].includes(extension)) {
       return true;
     }
 
     // Support lock files
-    if (["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lockb"].includes(fileName)) {
+    if (['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb'].includes(fileName)) {
       return true;
     }
 
@@ -167,18 +173,18 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
-    const baseId = `nodejs-${path.relative(context?.projectRoot || "", filePath)}`;
+    const baseId = `nodejs-${path.relative(context?.projectRoot || '', filePath)}`;
 
     try {
-      if (fileName === "package.json") {
+      if (fileName === 'package.json') {
         evidence.push(...(await this.parsePackageJson(filePath, fileContent, baseId)));
       } else if (
-        fileName === "package-lock.json" ||
-        fileName === "yarn.lock" ||
-        fileName === "pnpm-lock.yaml"
+        fileName === 'package-lock.json' ||
+        fileName === 'yarn.lock' ||
+        fileName === 'pnpm-lock.yaml'
       ) {
         evidence.push(...(await this.parseLockFile(filePath, fileContent, baseId)));
-      } else if ([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs"].includes(path.extname(filePath))) {
+      } else if (['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs'].includes(path.extname(filePath))) {
         evidence.push(...(await this.parseSourceFile(filePath, fileContent, baseId)));
       }
     } catch (error) {
@@ -189,7 +195,7 @@ export class NodeJSPlugin implements ImporterPlugin {
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const nodeEvidence = evidence.filter((e) => e.source === "nodejs");
+    const nodeEvidence = evidence.filter(e => e.source === 'nodejs');
     if (nodeEvidence.length === 0) return [];
 
     const artifacts: InferredArtifact[] = [];
@@ -197,13 +203,13 @@ export class NodeJSPlugin implements ImporterPlugin {
     try {
       // Infer from package.json evidence
       const packageEvidence = nodeEvidence.filter(
-        (e) => e.type === "config" && e.data.configType === "package-json",
+        e => e.type === 'config' && e.data.configType === 'package-json'
       );
       for (const pkg of packageEvidence) {
         artifacts.push(...(await this.inferFromPackageJson(pkg, nodeEvidence, context)));
       }
     } catch (error) {
-      console.warn("Node.js plugin inference failed:", error);
+      console.warn('Node.js plugin inference failed:', error);
     }
 
     return artifacts;
@@ -216,7 +222,7 @@ export class NodeJSPlugin implements ImporterPlugin {
   private async parsePackageJson(
     filePath: string,
     content: string,
-    baseId: string,
+    baseId: string
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
@@ -224,7 +230,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       const pkg = JSON.parse(content);
 
       const packageData: PackageJsonData = {
-        configType: "package-json",
+        configType: 'package-json',
         name: pkg.name || path.basename(path.dirname(filePath)),
         version: pkg.version,
         description: pkg.description,
@@ -247,8 +253,8 @@ export class NodeJSPlugin implements ImporterPlugin {
 
       evidence.push({
         id: `${baseId}-package`,
-        source: "nodejs",
-        type: "config",
+        source: 'nodejs',
+        type: 'config',
         filePath,
         data: packageData,
         confidence: 0.95,
@@ -260,12 +266,12 @@ export class NodeJSPlugin implements ImporterPlugin {
 
       // Analyze scripts for insights
       for (const [scriptName, scriptCommand] of Object.entries(
-        (pkg.scripts as Record<string, string>) || {},
+        (pkg.scripts as Record<string, string>) || {}
       )) {
         evidence.push({
           id: `${baseId}-script-${scriptName}`,
-          source: "nodejs",
-          type: "build",
+          source: 'nodejs',
+          type: 'build',
           filePath,
           data: {
             scriptName,
@@ -285,8 +291,8 @@ export class NodeJSPlugin implements ImporterPlugin {
       for (const [depName, depVersion] of Object.entries(allDeps)) {
         evidence.push({
           id: `${baseId}-dep-${depName}`,
-          source: "nodejs",
-          type: "dependency",
+          source: 'nodejs',
+          type: 'dependency',
           filePath,
           data: {
             dependencyName: depName,
@@ -302,7 +308,7 @@ export class NodeJSPlugin implements ImporterPlugin {
         });
       }
     } catch (error) {
-      console.warn("Failed to parse package.json:", error);
+      console.warn('Failed to parse package.json:', error);
     }
 
     return evidence;
@@ -311,7 +317,7 @@ export class NodeJSPlugin implements ImporterPlugin {
   private async parseLockFile(
     filePath: string,
     content: string,
-    baseId: string,
+    baseId: string
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
@@ -319,8 +325,8 @@ export class NodeJSPlugin implements ImporterPlugin {
     // Basic lock file analysis - track that dependencies are locked
     evidence.push({
       id: `${baseId}-lockfile`,
-      source: "nodejs",
-      type: "dependency",
+      source: 'nodejs',
+      type: 'dependency',
       filePath,
       data: {
         lockFileType: fileName,
@@ -339,7 +345,7 @@ export class NodeJSPlugin implements ImporterPlugin {
   private async parseSourceFile(
     filePath: string,
     content: string,
-    baseId: string,
+    baseId: string
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
@@ -350,17 +356,17 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     // Detect if this is likely an entry point
     const isEntryPoint =
-      fileName === "index.js" ||
-      fileName === "index.ts" ||
-      fileName === "main.js" ||
-      fileName === "main.ts" ||
-      fileName === "app.js" ||
-      fileName === "app.ts" ||
-      fileName === "server.js" ||
-      fileName === "server.ts" ||
-      content.includes("process.argv") ||
-      content.includes("app.listen") ||
-      content.includes("server.listen");
+      fileName === 'index.js' ||
+      fileName === 'index.ts' ||
+      fileName === 'main.js' ||
+      fileName === 'main.ts' ||
+      fileName === 'app.js' ||
+      fileName === 'app.ts' ||
+      fileName === 'server.js' ||
+      fileName === 'server.ts' ||
+      content.includes('process.argv') ||
+      content.includes('app.listen') ||
+      content.includes('server.listen');
 
     // Detect framework usage
     const frameworkUsage = this.detectFrameworkUsage(content);
@@ -378,7 +384,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     const testPatterns = this.detectTestPatterns(content);
 
     const sourceData: SourceFileData = {
-      configType: "source-file",
+      configType: 'source-file',
       filePath,
       hasExports,
       hasImports,
@@ -392,8 +398,8 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     evidence.push({
       id: `${baseId}-source`,
-      source: "nodejs",
-      type: isEntryPoint ? "function" : hasExports ? "export" : "import",
+      source: 'nodejs',
+      type: isEntryPoint ? 'function' : hasExports ? 'export' : 'import',
       filePath,
       data: sourceData,
       confidence: 0.8,
@@ -413,7 +419,7 @@ export class NodeJSPlugin implements ImporterPlugin {
   private async inferFromPackageJson(
     packageEvidence: Evidence,
     allEvidence: Evidence[],
-    context: InferenceContext,
+    context: InferenceContext
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
     const packageData = packageEvidence.data as unknown as PackageJsonData;
@@ -422,16 +428,19 @@ export class NodeJSPlugin implements ImporterPlugin {
     const artifactType = this.determineArtifactType(packageData, allEvidence);
 
     switch (artifactType) {
-      case "service":
+      case 'service':
         artifacts.push(...(await this.createServiceArtifact(packageData, allEvidence)));
         break;
-      case "frontend":
+      case 'frontend':
         artifacts.push(...(await this.createFrontendArtifact(packageData, allEvidence)));
         break;
-      case "binary":
+      case 'cli':
+        artifacts.push(...(await this.createCliArtifact(packageData, allEvidence)));
+        break;
+      case 'binary':
         artifacts.push(...(await this.createBinaryArtifact(packageData, allEvidence)));
         break;
-      case "library":
+      case 'library':
         artifacts.push(...(await this.createLibraryArtifact(packageData, allEvidence)));
         break;
     }
@@ -440,70 +449,198 @@ export class NodeJSPlugin implements ImporterPlugin {
   }
 
   private determineArtifactType(packageData: PackageJsonData, allEvidence: Evidence[]): string {
-    // Check for binary/CLI
-    if (packageData.bin) {
-      return "binary";
-    }
+    // Create detection context
+    const context: DetectionContext = {
+      language: this.detectLanguage(allEvidence, packageData),
+      dependencies: [
+        ...Object.keys(packageData.dependencies || {}),
+        ...Object.keys(packageData.devDependencies || {}),
+        ...Object.keys(packageData.peerDependencies || {}),
+      ],
+      scripts: packageData.scripts || {},
+      filePatterns: this.extractFilePatterns(allEvidence),
+      packageConfig: packageData,
+      sourceAnalysis: this.createSourceAnalysis(allEvidence),
+    };
 
-    // Check for web frameworks (service)
-    const hasWebFramework = Object.keys(packageData.dependencies).some((dep) =>
-      NODE_WEB_FRAMEWORKS.includes(dep),
+    // Use the new detection engine
+    const result = detectArtifactType(context);
+
+    // Debug output to understand detection failures
+    console.log(`🔍 Node.js Plugin: Artifact detection for ${packageData.name}:`);
+    console.log(`   Language: ${context.language}`);
+    console.log(
+      `   Dependencies: ${context.dependencies.slice(0, 5).join(', ')}${context.dependencies.length > 5 ? '...' : ''}`
     );
-    if (hasWebFramework) {
-      return "service";
-    }
-
-    // Check for frontend frameworks
-    const hasFrontendFramework = Object.keys(packageData.dependencies).some((dep) =>
-      NODE_FRONTEND_FRAMEWORKS.includes(dep),
+    console.log(`   Scripts: ${Object.keys(context.scripts).join(', ') || 'none'}`);
+    console.log(`   File patterns (first 3): ${context.filePatterns.slice(0, 3).join(', ')}`);
+    console.log(`   Source analysis: ${JSON.stringify(context.sourceAnalysis)}`);
+    console.log(
+      `   Detection result: ${result.primaryType} (confidence: ${result.confidence.toFixed(2)})`
     );
-    if (hasFrontendFramework) {
-      return "frontend";
-    }
+    console.log(
+      `   Alternative types: ${result.alternativeTypes.map(t => `${t.type}(${t.confidence.toFixed(2)})`).join(', ')}`
+    );
+    console.log(`   Explanation: ${result.explanation.join('; ')}`);
 
-    // Check for private flag (likely application)
-    if (packageData.private) {
-      // Check source files for server patterns
-      const sourceEvidence = allEvidence.filter((e) => e.data.configType === "source-file");
-      const hasServerPatterns = sourceEvidence.some((e) => {
-        const sourceData = e.data as unknown as SourceFileData;
-        return sourceData.serverPatterns?.length > 0 || sourceData.portBindings?.length > 0;
-      });
+    // Map category names to our existing artifact types
+    const categoryMap: Record<string, string> = {
+      cli: 'cli',
+      web_service: 'service',
+      frontend: 'frontend',
+      library: 'library',
+      desktop_app: 'binary',
+      data_processing: 'library',
+      testing: 'library',
+      build_tool: 'library',
+      game: 'frontend',
+      mobile: 'frontend',
+    };
 
-      if (hasServerPatterns) {
-        return "service";
+    const mappedType = categoryMap[result.primaryType] || 'library';
+    console.log(`   Final mapped type: ${mappedType}`);
+    console.log('');
+
+    return mappedType;
+  }
+
+  private detectLanguage(allEvidence: Evidence[], packageData: PackageJsonData): string {
+    // Check for TypeScript indicators
+    const hasTypeScript =
+      // TypeScript dependency
+      packageData.dependencies?.typescript ||
+      packageData.devDependencies?.typescript ||
+      // TypeScript files in evidence
+      allEvidence.some(e => e.filePath?.match(/\.tsx?$/)) ||
+      // TypeScript config files
+      allEvidence.some(e => e.filePath?.includes('tsconfig.json')) ||
+      // TypeScript type definitions
+      packageData.types ||
+      packageData.typings;
+
+    return hasTypeScript ? 'typescript' : 'javascript';
+  }
+
+  private extractFilePatterns(allEvidence: Evidence[]): string[] {
+    const patterns: string[] = [];
+
+    // Extract file paths from evidence
+    allEvidence.forEach(evidence => {
+      if (evidence.filePath) {
+        patterns.push(evidence.filePath);
+      }
+      if (evidence.data?.filePath) {
+        patterns.push(evidence.data.filePath as string);
+      }
+    });
+
+    return patterns;
+  }
+
+  private createSourceAnalysis(allEvidence: Evidence[]): SourceAnalysis {
+    const sourceEvidence = allEvidence.filter(e => e.data?.configType === 'source-file');
+
+    let hasBinaryExecution = false;
+    let hasServerPatterns = false;
+    let hasFrontendPatterns = false;
+    let hasCliPatterns = false;
+    let hasDataProcessingPatterns = false;
+    let hasTestPatterns = false;
+    let hasBuildPatterns = false;
+    let hasGamePatterns = false;
+    let hasMobilePatterns = false;
+    let hasDesktopPatterns = false;
+
+    sourceEvidence.forEach(evidence => {
+      const sourceData = evidence.data as unknown as SourceFileData;
+
+      // Check for CLI patterns
+      if (sourceData.isEntryPoint && evidence.filePath?.includes('bin/')) {
+        hasBinaryExecution = true;
+        hasCliPatterns = true;
       }
 
-      return "frontend"; // Default for private packages
-    }
+      // Check for server patterns
+      if (sourceData.serverPatterns?.length > 0 || sourceData.portBindings?.length > 0) {
+        hasServerPatterns = true;
+      }
 
-    // Default to library for public packages
-    return "library";
+      // Check for frontend patterns
+      if (sourceData.frameworkUsage?.some(fw => NODE_FRONTEND_FRAMEWORKS.includes(fw))) {
+        hasFrontendPatterns = true;
+      }
+
+      // Check for test patterns
+      if (sourceData.testPatterns) {
+        hasTestPatterns = true;
+      }
+
+      // Check for CLI patterns in framework usage
+      if (sourceData.frameworkUsage?.some(fw => NODE_CLI_FRAMEWORKS.includes(fw))) {
+        hasCliPatterns = true;
+      }
+
+      // Check file patterns for additional indicators
+      const filePath = sourceData.filePath || evidence.filePath || '';
+
+      if (/electron|tauri|desktop/.test(filePath)) {
+        hasDesktopPatterns = true;
+      }
+
+      if (/game|phaser|three|babylon/.test(filePath)) {
+        hasGamePatterns = true;
+      }
+
+      if (/mobile|react-native|ionic/.test(filePath)) {
+        hasMobilePatterns = true;
+      }
+
+      if (/data|csv|xml|process/.test(filePath)) {
+        hasDataProcessingPatterns = true;
+      }
+
+      if (/build|webpack|rollup|gulp/.test(filePath)) {
+        hasBuildPatterns = true;
+      }
+    });
+
+    return {
+      hasBinaryExecution,
+      hasServerPatterns,
+      hasFrontendPatterns,
+      hasCliPatterns,
+      hasDataProcessingPatterns,
+      hasTestPatterns,
+      hasBuildPatterns,
+      hasGamePatterns,
+      hasMobilePatterns,
+      hasDesktopPatterns,
+    };
   }
 
   private async createServiceArtifact(
     packageData: PackageJsonData,
-    allEvidence: Evidence[],
+    allEvidence: Evidence[]
   ): Promise<InferredArtifact[]> {
     const framework = this.detectWebFramework(packageData.dependencies);
     const port = this.extractServicePort(packageData, allEvidence);
 
     const serviceArtifact: ServiceArtifact = {
       id: `nodejs-service-${packageData.name}`,
-      type: "service",
+      type: 'service',
       name: packageData.name,
       description: packageData.description || `Node.js service: ${packageData.name}`,
-      tags: ["nodejs", "service", framework].filter(Boolean),
+      tags: ['nodejs', 'service', framework].filter(Boolean),
       metadata: {
-        language: "javascript",
-        framework,
+        language: this.detectLanguage(allEvidence, packageData),
+        ...(framework && { framework }),
         port,
-        basePath: "/",
+        basePath: '/',
         environmentVariables: this.extractEnvVars(allEvidence),
         dependencies: this.extractServiceDependencies(packageData),
         endpoints: this.extractEndpoints(allEvidence),
         healthCheck: {
-          path: "/health",
+          path: '/health',
           expectedStatusCode: 200,
           timeoutMs: 5000,
           intervalSeconds: 30,
@@ -523,19 +660,19 @@ export class NodeJSPlugin implements ImporterPlugin {
 
   private async createFrontendArtifact(
     packageData: PackageJsonData,
-    allEvidence: Evidence[],
+    allEvidence: Evidence[]
   ): Promise<InferredArtifact[]> {
     const framework = this.detectFrontendFramework(packageData.dependencies);
     const buildSystem = this.detectBuildSystem(packageData.dependencies);
 
     const frontendArtifact: FrontendArtifact = {
       id: `nodejs-frontend-${packageData.name}`,
-      type: "frontend",
+      type: 'frontend',
       name: packageData.name,
       description: packageData.description || `Node.js frontend: ${packageData.name}`,
-      tags: ["nodejs", "frontend", framework].filter(Boolean),
+      tags: ['nodejs', 'frontend', framework].filter(Boolean),
       metadata: {
-        framework,
+        ...(framework && { framework }),
         buildSystem,
         routes: this.extractFrontendRoutes(allEvidence),
         apiDependencies: this.extractApiDependencies(allEvidence),
@@ -553,12 +690,56 @@ export class NodeJSPlugin implements ImporterPlugin {
     ];
   }
 
-  private async createBinaryArtifact(
+  private async createCliArtifact(
     packageData: PackageJsonData,
-    allEvidence: Evidence[],
+    allEvidence: Evidence[]
   ): Promise<InferredArtifact[]> {
     const binEntries =
-      typeof packageData.bin === "string"
+      typeof packageData.bin === 'string'
+        ? { [packageData.name]: packageData.bin }
+        : packageData.bin || {};
+
+    const artifacts: InferredArtifact[] = [];
+
+    for (const [binName, binPath] of Object.entries(binEntries)) {
+      const cliArtifact: CliArtifact = {
+        id: `nodejs-cli-${binName}`,
+        type: 'cli',
+        name: binName,
+        description: `Node.js CLI tool: ${binName}`,
+        tags: ['nodejs', 'cli', 'command-line'],
+        metadata: {
+          language: this.detectLanguage(allEvidence, packageData),
+          ...(() => {
+            const cliFramework = this.detectCliFramework(packageData.dependencies);
+            return cliFramework ? { framework: cliFramework } : {};
+          })(),
+          buildSystem: 'npm',
+          entryPoint: binPath,
+          commands: [binName], // The bin name is the primary command
+          arguments: [],
+          environmentVariables: this.extractEnvVars(allEvidence),
+          dependencies: Object.keys(packageData.dependencies || {}),
+        },
+      };
+
+      artifacts.push({
+        artifact: cliArtifact,
+        confidence: this.calculateConfidence([...allEvidence], 0.9),
+        provenance: this.createProvenance([...allEvidence]),
+        relationships: [],
+      });
+    }
+
+    return artifacts;
+  }
+
+  private async createBinaryArtifact(
+    packageData: PackageJsonData,
+    allEvidence: Evidence[]
+  ): Promise<InferredArtifact[]> {
+    const binEntries =
+      typeof packageData.bin === 'string'
         ? { [packageData.name]: packageData.bin }
         : packageData.bin || {};
 
@@ -567,13 +748,13 @@ export class NodeJSPlugin implements ImporterPlugin {
     for (const [binName, binPath] of Object.entries(binEntries)) {
       const binaryArtifact: BinaryArtifact = {
         id: `nodejs-binary-${binName}`,
-        type: "binary",
+        type: 'binary',
         name: binName,
         description: `Node.js CLI tool: ${binName}`,
-        tags: ["nodejs", "cli", "binary"],
+        tags: ['nodejs', 'cli', 'binary'],
         metadata: {
-          language: "javascript",
-          buildSystem: "npm",
+          language: this.detectLanguage(allEvidence, packageData),
+          buildSystem: 'npm',
           entryPoint: binPath,
           arguments: [],
           environmentVariables: this.extractEnvVars(allEvidence),
@@ -594,17 +775,17 @@ export class NodeJSPlugin implements ImporterPlugin {
 
   private async createLibraryArtifact(
     packageData: PackageJsonData,
-    allEvidence: Evidence[],
+    allEvidence: Evidence[]
   ): Promise<InferredArtifact[]> {
     const libraryArtifact: LibraryArtifact = {
       id: `nodejs-library-${packageData.name}`,
-      type: "library",
+      type: 'library',
       name: packageData.name,
       description: packageData.description || `Node.js library: ${packageData.name}`,
-      tags: ["nodejs", "library"],
+      tags: ['nodejs', 'library'],
       metadata: {
-        language: "javascript",
-        packageManager: "npm",
+        language: this.detectLanguage(allEvidence, packageData),
+        packageManager: 'npm',
         publicApi: this.extractPublicApi(allEvidence),
         dependencies: Object.keys(packageData.dependencies),
         version: packageData.version,
@@ -626,21 +807,21 @@ export class NodeJSPlugin implements ImporterPlugin {
   // ============================================================================
 
   private classifyScript(name: string, command: string): string {
-    if (name === "start" || command.includes("node")) return "start";
-    if (name === "build" || command.includes("build")) return "build";
-    if (name === "test" || command.includes("test")) return "test";
-    if (name === "dev" || name === "develop") return "dev";
-    if (name === "lint") return "lint";
-    return "other";
+    if (name === 'start' || command.includes('node')) return 'start';
+    if (name === 'build' || command.includes('build')) return 'build';
+    if (name === 'test' || command.includes('test')) return 'test';
+    if (name === 'dev' || name === 'develop') return 'dev';
+    if (name === 'lint') return 'lint';
+    return 'other';
   }
 
   private classifyFramework(depName: string): string | undefined {
-    if (NODE_WEB_FRAMEWORKS.includes(depName)) return "web";
-    if (NODE_FRONTEND_FRAMEWORKS.includes(depName)) return "frontend";
-    if (NODE_BUILD_TOOLS.includes(depName)) return "build";
-    if (NODE_TESTING_FRAMEWORKS.includes(depName)) return "test";
-    if (NODE_DATABASE_DRIVERS.includes(depName)) return "database";
-    if (NODE_CLI_FRAMEWORKS.includes(depName)) return "cli";
+    if (NODE_WEB_FRAMEWORKS.includes(depName)) return 'web';
+    if (NODE_FRONTEND_FRAMEWORKS.includes(depName)) return 'frontend';
+    if (NODE_BUILD_TOOLS.includes(depName)) return 'build';
+    if (NODE_TESTING_FRAMEWORKS.includes(depName)) return 'test';
+    if (NODE_DATABASE_DRIVERS.includes(depName)) return 'database';
+    if (NODE_CLI_FRAMEWORKS.includes(depName)) return 'cli';
     return undefined;
   }
 
@@ -648,12 +829,12 @@ export class NodeJSPlugin implements ImporterPlugin {
     const frameworks: string[] = [];
 
     const patterns = [
-      { pattern: /import\s+.*?\s+from\s+['"]express['"]/, framework: "express" },
-      { pattern: /import\s+.*?\s+from\s+['"]fastify['"]/, framework: "fastify" },
-      { pattern: /import\s+.*?\s+from\s+['"]react['"]/, framework: "react" },
-      { pattern: /import\s+.*?\s+from\s+['"]vue['"]/, framework: "vue" },
-      { pattern: /require\s*\(\s*['"]express['"]\s*\)/, framework: "express" },
-      { pattern: /require\s*\(\s*['"]fastify['"]\s*\)/, framework: "fastify" },
+      { pattern: /import\s+.*?\s+from\s+['"]express['"]/, framework: 'express' },
+      { pattern: /import\s+.*?\s+from\s+['"]fastify['"]/, framework: 'fastify' },
+      { pattern: /import\s+.*?\s+from\s+['"]react['"]/, framework: 'react' },
+      { pattern: /import\s+.*?\s+from\s+['"]vue['"]/, framework: 'vue' },
+      { pattern: /require\s*\(\s*['"]express['"]\s*\)/, framework: 'express' },
+      { pattern: /require\s*\(\s*['"]fastify['"]\s*\)/, framework: 'fastify' },
     ];
 
     for (const { pattern, framework } of patterns) {
@@ -668,11 +849,11 @@ export class NodeJSPlugin implements ImporterPlugin {
   private detectServerPatterns(content: string): string[] {
     const patterns: string[] = [];
 
-    if (/app\.listen|server\.listen/.test(content)) patterns.push("http-server");
-    if (/express\(\)/.test(content)) patterns.push("express-app");
-    if (/fastify\(\)/.test(content)) patterns.push("fastify-app");
-    if (/http\.createServer/.test(content)) patterns.push("http-createserver");
-    if (/https\.createServer/.test(content)) patterns.push("https-createserver");
+    if (/app\.listen|server\.listen/.test(content)) patterns.push('http-server');
+    if (/express\(\)/.test(content)) patterns.push('express-app');
+    if (/fastify\(\)/.test(content)) patterns.push('fastify-app');
+    if (/http\.createServer/.test(content)) patterns.push('http-createserver');
+    if (/https\.createServer/.test(content)) patterns.push('https-createserver');
 
     return patterns;
   }
@@ -701,7 +882,7 @@ export class NodeJSPlugin implements ImporterPlugin {
   private extractRouteDefinitions(content: string): string[] {
     const routes: string[] = [];
     const routeMatches = content.match(
-      /app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/g,
+      /app\.(get|post|put|delete|patch)\s*\(\s*['"`]([^'"`]+)['"`]/g
     );
 
     if (routeMatches) {
@@ -720,22 +901,22 @@ export class NodeJSPlugin implements ImporterPlugin {
     return /(?:describe|it|test|expect)\s*\(/.test(content);
   }
 
-  private detectWebFramework(dependencies: Record<string, string>): string {
+  private detectWebFramework(dependencies: Record<string, string>): string | undefined {
     for (const framework of NODE_WEB_FRAMEWORKS) {
       if (dependencies[framework]) {
         return framework;
       }
     }
-    return "unknown";
+    return undefined;
   }
 
-  private detectFrontendFramework(dependencies: Record<string, string>): string {
+  private detectFrontendFramework(dependencies: Record<string, string>): string | undefined {
     for (const framework of NODE_FRONTEND_FRAMEWORKS) {
       if (dependencies[framework]) {
         return framework;
       }
     }
-    return "unknown";
+    return undefined;
   }
 
   private detectBuildSystem(dependencies: Record<string, string>): string | undefined {
@@ -747,9 +928,30 @@ export class NodeJSPlugin implements ImporterPlugin {
     return undefined;
   }
 
+  private detectCliFramework(dependencies: Record<string, string> = {}): string | undefined {
+    // Common CLI frameworks in order of preference
+    const cliFrameworks = [
+      'commander',
+      'yargs',
+      'inquirer',
+      'chalk',
+      '@oclif/core',
+      'meow',
+      'minimist',
+      'arg',
+    ];
+
+    for (const framework of cliFrameworks) {
+      if (dependencies[framework]) {
+        return framework;
+      }
+    }
+    return undefined;
+  }
+
   private extractServicePort(packageData: PackageJsonData, allEvidence: Evidence[]): number {
     // Check source files for port bindings
-    const sourceEvidence = allEvidence.filter((e) => e.data.configType === "source-file");
+    const sourceEvidence = allEvidence.filter(e => e.data.configType === 'source-file');
     for (const source of sourceEvidence) {
       const sourceData = source.data as unknown as SourceFileData;
       if (sourceData.portBindings?.length > 0) {
@@ -759,19 +961,19 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     // Default based on framework
     const framework = this.detectWebFramework(packageData.dependencies);
-    return framework === "express" ? 3000 : 8080;
+    return framework === 'express' ? 3000 : 8080;
   }
 
   private extractEnvVars(allEvidence: Evidence[]): string[] {
     const envVars = new Set<string>();
 
     // Extract from source files
-    const sourceEvidence = allEvidence.filter((e) => e.data.configType === "source-file");
+    const sourceEvidence = allEvidence.filter(e => e.data.configType === 'source-file');
     for (const source of sourceEvidence) {
       // This would require more sophisticated parsing
       // For now, add common patterns
-      envVars.add("NODE_ENV");
-      envVars.add("PORT");
+      envVars.add('NODE_ENV');
+      envVars.add('PORT');
     }
 
     return Array.from(envVars);
@@ -784,7 +986,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       if (NODE_DATABASE_DRIVERS.includes(dep)) {
         dependencies.push({
           serviceName: dep,
-          type: "database",
+          type: 'database',
           required: true,
         });
       }
@@ -796,11 +998,11 @@ export class NodeJSPlugin implements ImporterPlugin {
   private extractEndpoints(allEvidence: Evidence[]): any[] {
     const endpoints: any[] = [];
 
-    const sourceEvidence = allEvidence.filter((e) => e.data.configType === "source-file");
+    const sourceEvidence = allEvidence.filter(e => e.data.configType === 'source-file');
     for (const source of sourceEvidence) {
       for (const route of (source.data as any).routeDefinitions || []) {
         endpoints.push({
-          method: "GET", // Would need more sophisticated parsing
+          method: 'GET', // Would need more sophisticated parsing
           path: route,
         });
       }
@@ -822,11 +1024,11 @@ export class NodeJSPlugin implements ImporterPlugin {
   private extractPublicApi(allEvidence: Evidence[]): string[] {
     const api: string[] = [];
 
-    const sourceEvidence = allEvidence.filter((e) => e.data.hasExports);
+    const sourceEvidence = allEvidence.filter(e => e.data.hasExports);
     for (const source of sourceEvidence) {
       const fileName = path.basename(
         (source.data as any).filePath as string,
-        path.extname((source.data as any).filePath as string),
+        path.extname((source.data as any).filePath as string)
       );
       api.push(fileName);
     }
@@ -844,7 +1046,7 @@ export class NodeJSPlugin implements ImporterPlugin {
         evidence: avgEvidence,
         base: baseConfidence,
       },
-      factors: evidence.map((e) => ({
+      factors: evidence.map(e => ({
         description: `Evidence from ${e.type}`,
         weight: e.confidence,
         source: e.source,
@@ -854,11 +1056,11 @@ export class NodeJSPlugin implements ImporterPlugin {
 
   private createProvenance(evidence: Evidence[]): Provenance {
     return {
-      evidence: evidence.map((e) => e.id),
-      plugins: ["nodejs"],
-      rules: ["package-json-analysis", "source-file-analysis"],
+      evidence: evidence.map(e => e.id),
+      plugins: ['nodejs'],
+      rules: ['package-json-analysis', 'source-file-analysis'],
       timestamp: Date.now(),
-      pipelineVersion: "1.0.0",
+      pipelineVersion: '1.0.0',
     };
   }
 }

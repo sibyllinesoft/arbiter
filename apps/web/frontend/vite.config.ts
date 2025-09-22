@@ -19,6 +19,24 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
+      '/events': {
+        target: 'http://localhost:5050',
+        changeOrigin: true,
+        ws: true,
+      },
+      '/health': {
+        target: 'http://localhost:5050',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'http://localhost:5050',
+        changeOrigin: true,
+        ws: true,
+      },
+      '/webhooks': {
+        target: 'http://localhost:5050',
+        changeOrigin: true,
+      },
     },
   },
   build: {

@@ -38,7 +38,7 @@ export class ApiError extends Error {
 }
 
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5050';
+  private baseUrl = import.meta.env.VITE_API_URL || '';
   private defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -439,6 +439,7 @@ class ApiService {
       importableFiles: string[];
     };
     gitUrl?: string;
+    projectName?: string;
     error?: string;
   }> {
     return this.request('/api/import/scan-git', {
@@ -478,6 +479,73 @@ class ApiService {
     return this.request(`/api/import/cleanup/${tempId}`, {
       method: 'DELETE',
     });
+  }
+
+  // GitHub API methods
+  async getGitHubUserRepos(): Promise<{
+    success: boolean;
+    repositories?: Array<{
+      id: number;
+      name: string;
+      full_name: string;
+      description: string | null;
+      private: boolean;
+      clone_url: string;
+      ssh_url: string;
+      html_url: string;
+      language: string | null;
+      stargazers_count: number;
+      forks_count: number;
+      updated_at: string;
+      owner: {
+        login: string;
+        type: 'User' | 'Organization';
+        avatar_url: string;
+      };
+    }>;
+    error?: string;
+  }> {
+    return this.request('/api/github/user/repos');
+  }
+
+  async getGitHubUserOrgs(): Promise<{
+    success: boolean;
+    organizations?: Array<{
+      login: string;
+      id: number;
+      description: string | null;
+      avatar_url: string;
+      public_repos: number;
+    }>;
+    error?: string;
+  }> {
+    return this.request('/api/github/user/orgs');
+  }
+
+  async getGitHubOrgRepos(org: string): Promise<{
+    success: boolean;
+    repositories?: Array<{
+      id: number;
+      name: string;
+      full_name: string;
+      description: string | null;
+      private: boolean;
+      clone_url: string;
+      ssh_url: string;
+      html_url: string;
+      language: string | null;
+      stargazers_count: number;
+      forks_count: number;
+      updated_at: string;
+      owner: {
+        login: string;
+        type: 'User' | 'Organization';
+        avatar_url: string;
+      };
+    }>;
+    error?: string;
+  }> {
+    return this.request(`/api/github/orgs/${org}/repos`);
   }
 
   // Health check

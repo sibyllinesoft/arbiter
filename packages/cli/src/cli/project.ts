@@ -12,6 +12,7 @@ import { statusCommand } from '../commands/status.js';
 import { surfaceCommand } from '../commands/surface.js';
 import { watchCommand } from '../commands/watch.js';
 import { loadConfig } from '../config.js';
+import type { SurfaceLanguage } from '../surface-extraction/types.js';
 import type { CheckOptions, InitOptions, SurfaceOptions, WatchOptions } from '../types.js';
 
 export function createProjectCommands(program: Command): void {
@@ -93,6 +94,7 @@ export function createProjectCommands(program: Command): void {
         }
 
         const surfaceOptions: SurfaceOptions = {
+          language: language as SurfaceLanguage,
           output: options.output,
           format: options.format,
           projectName: options.projectName,

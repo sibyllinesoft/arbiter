@@ -3,6 +3,7 @@ import fs from 'fs-extra';
 import { glob } from 'glob';
 import { Hono } from 'hono';
 import { gitScanner } from '../git-scanner';
+import { tunnelService } from '../tunnel-service';
 
 export type Dependencies = Record<string, unknown>;
 
@@ -541,6 +542,20 @@ export function createApiRouter(deps: Dependencies) {
       // Use the provided name (which should be extracted from git URL on frontend)
       let actualProjectName = name;
 
+      // Helper function to clean artifact names from temp directory patterns
+      const getCleanArtifactName = (originalName: string): string => {
+        // Detect temp directory patterns and replace with project name
+        if (
+          originalName.includes('arbiter-git-scan') ||
+          originalName.includes('Arbiter Git Scan') ||
+          /arbiter.*git.*scan.*\d+.*[a-z0-9]+/i.test(originalName) ||
+          /^[a-zA-Z0-9_-]*\d{13}[a-zA-Z0-9_-]*$/i.test(originalName)
+        ) {
+          return actualProjectName;
+        }
+        return originalName;
+      };
+
       // If path is provided, run proper brownfield detection using importer
       let services = 0;
       let databases = 0;
@@ -557,6 +572,7 @@ export function createApiRouter(deps: Dependencies) {
           // Configure the scanner
           const scanner = new ScannerRunner({
             projectRoot: projectPath,
+            projectName: actualProjectName, // Use the extracted project name instead of temp directory name
             ignorePatterns: [
               '**/target/**',
               '**/node_modules/**',
@@ -577,7 +593,7 @@ export function createApiRouter(deps: Dependencies) {
 
             artifacts.push({
               id: artifact.id,
-              name: artifact.name,
+              name: getCleanArtifactName(artifact.name),
               type: artifact.type,
               language: artifact.metadata?.language || null,
               framework: artifact.metadata?.framework || null,
@@ -1117,41 +1133,11 @@ export function createApiRouter(deps: Dependencies) {
   // Cloudflare tunnel management endpoints
   app.get('/api/tunnel/status', async c => {
     try {
-      const { spawn } = require('child_process');
-      const scriptPath = './scripts/cloudflare-tunnel.sh';
+      const status = tunnelService.getStatus();
 
-      return new Promise(resolve => {
-        const process = spawn('bash', [scriptPath, 'status'], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        process.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString();
-        });
-
-        process.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString();
-        });
-
-        process.on('close', (code: number) => {
-          const isRunning = code === 0 && stdout.includes('running');
-          const tunnelUrl = stdout.match(/https:\/\/[a-zA-Z0-9-]+\.cfargotunnel\.com/)?.[0];
-
-          resolve(
-            c.json({
-              success: true,
-              tunnel: {
-                status: isRunning ? 'running' : 'stopped',
-                url: tunnelUrl || null,
-                output: stdout,
-                error: stderr || null,
-              },
-            })
-          );
-        });
+      return c.json({
+        success: true,
+        tunnel: status,
       });
     } catch (error) {
       return c.json(
@@ -1167,48 +1153,21 @@ export function createApiRouter(deps: Dependencies) {
 
   app.post('/api/tunnel/start', async c => {
     try {
-      const { mode } = await c.req.json().catch(() => ({}));
-      const { spawn } = require('child_process');
-      const scriptPath = './scripts/cloudflare-tunnel.sh';
+      const { mode, customConfig, tunnelName, domain } = await c.req.json().catch(() => ({}));
+      const config = {
+        mode: mode || 'webhook-only',
+        customConfig,
+        port: 5050,
+        tunnelName,
+        domain,
+      };
 
-      return new Promise(resolve => {
-        const env = { ...process.env };
-        if (mode) {
-          env.TUNNEL_MODE = mode;
-        }
+      const status = await tunnelService.startTunnel(config);
 
-        const process = spawn('bash', [scriptPath, 'start'], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-          env,
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        process.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString();
-        });
-
-        process.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString();
-        });
-
-        process.on('close', (code: number) => {
-          const tunnelUrl = stdout.match(/https:\/\/[a-zA-Z0-9-]+\.cfargotunnel\.com/)?.[0];
-
-          resolve(
-            c.json({
-              success: code === 0,
-              tunnel: {
-                status: code === 0 ? 'running' : 'failed',
-                url: tunnelUrl || null,
-                output: stdout,
-                error: stderr || null,
-              },
-              message: code === 0 ? 'Tunnel started successfully' : 'Failed to start tunnel',
-            })
-          );
-        });
+      return c.json({
+        success: true,
+        tunnel: status,
+        message: 'Tunnel started successfully',
       });
     } catch (error) {
       return c.json(
@@ -1224,39 +1183,12 @@ export function createApiRouter(deps: Dependencies) {
 
   app.post('/api/tunnel/stop', async c => {
     try {
-      const { spawn } = require('child_process');
-      const scriptPath = './scripts/cloudflare-tunnel.sh';
+      const status = await tunnelService.stopTunnel();
 
-      return new Promise(resolve => {
-        const process = spawn('bash', [scriptPath, 'stop'], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        process.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString();
-        });
-
-        process.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString();
-        });
-
-        process.on('close', (code: number) => {
-          resolve(
-            c.json({
-              success: code === 0,
-              tunnel: {
-                status: 'stopped',
-                url: null,
-                output: stdout,
-                error: stderr || null,
-              },
-              message: code === 0 ? 'Tunnel stopped successfully' : 'Failed to stop tunnel',
-            })
-          );
-        });
+      return c.json({
+        success: true,
+        tunnel: status,
+        message: 'Tunnel stopped successfully',
       });
     } catch (error) {
       return c.json(
@@ -1272,40 +1204,104 @@ export function createApiRouter(deps: Dependencies) {
 
   app.get('/api/tunnel/logs', async c => {
     try {
-      const { spawn } = require('child_process');
-      const scriptPath = './scripts/cloudflare-tunnel.sh';
+      const logs = tunnelService.getLogs();
 
-      return new Promise(resolve => {
-        const process = spawn('bash', [scriptPath, 'logs'], {
-          stdio: ['pipe', 'pipe', 'pipe'],
-        });
-
-        let stdout = '';
-        let stderr = '';
-
-        process.stdout.on('data', (data: Buffer) => {
-          stdout += data.toString();
-        });
-
-        process.stderr.on('data', (data: Buffer) => {
-          stderr += data.toString();
-        });
-
-        process.on('close', (code: number) => {
-          resolve(
-            c.json({
-              success: true,
-              logs: stdout,
-              error: stderr || null,
-            })
-          );
-        });
+      return c.json({
+        success: true,
+        logs: logs,
+        error: null,
       });
     } catch (error) {
       return c.json(
         {
           success: false,
           error: 'Failed to get tunnel logs',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  // Named tunnel management endpoints
+  app.get('/api/tunnel/list', async c => {
+    try {
+      const tunnels = await tunnelService.listTunnels();
+
+      return c.json({
+        success: true,
+        tunnels: tunnels,
+      });
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to list tunnels',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  app.post('/api/tunnel/create', async c => {
+    try {
+      const { name } = await c.req.json().catch(() => ({}));
+      const tunnelId = await tunnelService.createTunnel(name);
+
+      return c.json({
+        success: true,
+        tunnelId: tunnelId,
+        name: name || 'arbiter-dev',
+        message: 'Tunnel created successfully',
+      });
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to create tunnel',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  app.delete('/api/tunnel/:nameOrId', async c => {
+    try {
+      const nameOrId = c.req.param('nameOrId');
+      await tunnelService.deleteTunnel(nameOrId);
+
+      return c.json({
+        success: true,
+        message: 'Tunnel deleted successfully',
+      });
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to delete tunnel',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  app.get('/api/tunnel/url', async c => {
+    try {
+      const url = tunnelService.getTunnelUrl();
+
+      return c.json({
+        success: true,
+        url: url,
+        isRunning: tunnelService.isHealthy(),
+      });
+    } catch (error) {
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to get tunnel URL',
           details: error instanceof Error ? error.message : 'Unknown error',
         },
         500
@@ -1333,6 +1329,23 @@ export function createApiRouter(deps: Dependencies) {
 
       // Get real artifacts from database
       const artifacts = await db.getArtifacts(projectId);
+
+      // Use the project name for cleaning artifact names
+      const actualProjectName = project.name;
+
+      // Helper function to clean artifact names from temp directory patterns
+      const getCleanArtifactName = (originalName: string): string => {
+        // Detect temp directory patterns and replace with project name
+        if (
+          originalName.includes('arbiter-git-scan') ||
+          originalName.includes('Arbiter Git Scan') ||
+          /arbiter.*git.*scan.*\d+.*[a-z0-9]+/i.test(originalName) ||
+          /^[a-zA-Z0-9_-]*\d{13}[a-zA-Z0-9_-]*$/i.test(originalName)
+        ) {
+          return actualProjectName;
+        }
+        return originalName;
+      };
 
       // Build services from real artifacts
       const services: Record<string, any> = {};
@@ -1378,13 +1391,17 @@ export function createApiRouter(deps: Dependencies) {
         const framework = artifact.framework || 'unknown';
         const port = artifact.metadata?.port || getDefaultPort(language, framework);
 
+        // Use actual container image if available, otherwise fall back to generated one
+        const actualImage = artifact.metadata?.containerImage;
+        const imageToUse = actualImage || getContainerImage(language, framework);
+
         services[serviceName] = {
-          name: artifact.name
+          name: getCleanArtifactName(artifact.name)
             .split(/[-_]/)
             .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' '),
           type: 'deployment',
-          image: getContainerImage(language, framework),
+          image: imageToUse,
           ports: [{ port, targetPort: port }],
           metadata: {
             language,
@@ -1392,6 +1409,9 @@ export function createApiRouter(deps: Dependencies) {
             workspaceMember: artifact.metadata?.workspaceMember,
             filePath: artifact.file_path,
             detected: true,
+            originalImage: actualImage, // Keep track of original detected image
+            buildContext: artifact.metadata?.buildContext,
+            dockerfile: artifact.metadata?.dockerfile,
           },
         };
       }
@@ -1437,7 +1457,7 @@ export function createApiRouter(deps: Dependencies) {
         const version = getDatabaseVersion(dbType, artifact.metadata?.version);
 
         databases[dbName] = {
-          name: artifact.name
+          name: getCleanArtifactName(artifact.name)
             .split(/[-_]/)
             .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' '),
@@ -1465,7 +1485,7 @@ export function createApiRouter(deps: Dependencies) {
         const framework = artifact.framework || 'unknown';
 
         components[componentName] = {
-          name: artifact.name
+          name: getCleanArtifactName(artifact.name)
             .split(/[-_]/)
             .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
             .join(' '),
@@ -2078,6 +2098,7 @@ export function createApiRouter(deps: Dependencies) {
         files: result.files,
         projectStructure: result.projectStructure,
         gitUrl: result.gitUrl,
+        projectName: result.projectName,
       });
     } catch (error) {
       console.error('Git scan error:', error);
@@ -2157,6 +2178,206 @@ export function createApiRouter(deps: Dependencies) {
           success: false,
           error: 'Failed to cleanup temporary directory',
           message: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  // GitHub API endpoints
+  app.get('/api/github/user/repos', async c => {
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      return c.json(
+        {
+          success: false,
+          error: 'GITHUB_TOKEN environment variable not set',
+        },
+        400
+      );
+    }
+
+    try {
+      const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return c.json(
+          {
+            success: false,
+            error: `GitHub API error: ${errorData.message}`,
+          },
+          response.status
+        );
+      }
+
+      const repositories = await response.json();
+
+      return c.json({
+        success: true,
+        repositories: repositories.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          full_name: repo.full_name,
+          description: repo.description,
+          private: repo.private,
+          clone_url: repo.clone_url,
+          ssh_url: repo.ssh_url,
+          html_url: repo.html_url,
+          language: repo.language,
+          stargazers_count: repo.stargazers_count,
+          forks_count: repo.forks_count,
+          updated_at: repo.updated_at,
+          owner: {
+            login: repo.owner.login,
+            type: repo.owner.type,
+            avatar_url: repo.owner.avatar_url,
+          },
+        })),
+      });
+    } catch (error) {
+      console.error('Failed to fetch GitHub user repos:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to fetch repositories',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  app.get('/api/github/user/orgs', async c => {
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      return c.json(
+        {
+          success: false,
+          error: 'GITHUB_TOKEN environment variable not set',
+        },
+        400
+      );
+    }
+
+    try {
+      const response = await fetch('https://api.github.com/user/orgs', {
+        headers: {
+          Authorization: `Bearer ${githubToken}`,
+          Accept: 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return c.json(
+          {
+            success: false,
+            error: `GitHub API error: ${errorData.message}`,
+          },
+          response.status
+        );
+      }
+
+      const organizations = await response.json();
+
+      return c.json({
+        success: true,
+        organizations: organizations.map((org: any) => ({
+          login: org.login,
+          id: org.id,
+          description: org.description,
+          avatar_url: org.avatar_url,
+          public_repos: org.public_repos,
+        })),
+      });
+    } catch (error) {
+      console.error('Failed to fetch GitHub user orgs:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to fetch organizations',
+          details: error instanceof Error ? error.message : 'Unknown error',
+        },
+        500
+      );
+    }
+  });
+
+  app.get('/api/github/orgs/:org/repos', async c => {
+    const org = c.req.param('org');
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      return c.json(
+        {
+          success: false,
+          error: 'GITHUB_TOKEN environment variable not set',
+        },
+        400
+      );
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.github.com/orgs/${org}/repos?per_page=100&sort=updated`,
+        {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return c.json(
+          {
+            success: false,
+            error: `GitHub API error: ${errorData.message}`,
+          },
+          response.status
+        );
+      }
+
+      const repositories = await response.json();
+
+      return c.json({
+        success: true,
+        repositories: repositories.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          full_name: repo.full_name,
+          description: repo.description,
+          private: repo.private,
+          clone_url: repo.clone_url,
+          ssh_url: repo.ssh_url,
+          html_url: repo.html_url,
+          language: repo.language,
+          stargazers_count: repo.stargazers_count,
+          forks_count: repo.forks_count,
+          updated_at: repo.updated_at,
+          owner: {
+            login: repo.owner.login,
+            type: repo.owner.type,
+            avatar_url: repo.owner.avatar_url,
+          },
+        })),
+      });
+    } catch (error) {
+      console.error('Failed to fetch GitHub org repos:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to fetch organization repositories',
+          details: error instanceof Error ? error.message : 'Unknown error',
         },
         500
       );

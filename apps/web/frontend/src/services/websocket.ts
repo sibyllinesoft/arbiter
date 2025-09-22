@@ -106,10 +106,8 @@ class WebSocketService {
 
     this.isManuallyDisconnected = false;
     const protocol = this.locationService.protocol === 'https:' ? 'wss:' : 'ws:';
-    // Use configurable API server URL - extract hostname and port from VITE_API_URL
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5050';
-    const url = new URL(apiUrl);
-    const wsHost = url.hostname === 'localhost' ? 'localhost:5050' : url.host;
+    // Use current host for WebSocket connection (goes through Vite proxy in dev)
+    const wsHost = this.locationService.host;
     this.wsUrl = `${protocol}//${wsHost}/ws?project_id=${projectId}`;
 
     try {

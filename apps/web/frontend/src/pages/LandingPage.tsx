@@ -34,11 +34,12 @@ import { Button, Card, StatusBadge, cn } from '../design-system';
 import { useProjects, useHealthCheck, useDeleteProject } from '../hooks/api-hooks';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useCurrentProject, useSetCurrentProject } from '../contexts/ProjectContext';
-import { useAppSettings } from '../contexts/AppContext';
+import { useAppSettings, useUIState, useGitHubState } from '../contexts/AppContext';
 import { apiService } from '../services/api';
 import { toast } from 'react-toastify';
 import { ProjectList, useUnifiedTabs } from '../components';
 import Tabs from '../components/Layout/Tabs';
+import arbiterLogo from '../assets/arbiter.webp';
 
 interface LandingPageProps {
   onNavigateToConfig: () => void;
@@ -52,13 +53,18 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
   const currentProject = useCurrentProject();
   const setCurrentProject = useSetCurrentProject();
   const { settings } = useAppSettings();
+  const { activeTab, gitUrl, setActiveTab, setGitUrl } = useUIState();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
-  const [activeTab, setActiveTab] = useState('source');
-  const [gitUrl, setGitUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
+  const [modalTab, setModalTab] = useState('git'); // 'git', 'github'
+
+  // Debug modalTab changes
+  useEffect(() => {
+    console.log('modalTab changed to:', modalTab);
+  }, [modalTab]);
 
   // WebSocket for real-time updates
   const { isConnected } = useWebSocket(currentProject?.id || null, {
@@ -140,9 +146,11 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
 
     setIsCreatingProject(true);
     try {
-      // Create project name from git URL, detected project structure, or fallback
+      // Use project name from scan result, or fallback logic
       let projectName: string;
-      if (scanResult.gitUrl) {
+      if (scanResult.projectName) {
+        projectName = scanResult.projectName;
+      } else if (scanResult.gitUrl) {
         projectName = scanResult.gitUrl.split('/').pop()?.replace('.git', '') || 'git-import';
       } else {
         projectName = scanResult.path || 'filesystem-import';
@@ -274,8 +282,12 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center">
-                <Layers className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 rounded-lg overflow-hidden">
+                <img
+                  src={arbiterLogo}
+                  alt="Arbiter Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Arbiter</h1>
@@ -319,7 +331,7 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto">
             <ProjectList
               projects={projects || []}
               currentProject={currentProject}
@@ -350,6 +362,21 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
   function ProjectCreationModal() {
     const [selectedPreset, setSelectedPreset] = useState<any>(null);
     const [projectName, setProjectName] = useState('');
+
+    // GitHub state from global context
+    const {
+      gitHubRepos,
+      gitHubOrgs,
+      selectedRepos,
+      reposByOwner,
+      isLoadingGitHub,
+      setGitHubRepos,
+      setGitHubOrgs,
+      setSelectedRepos,
+      toggleRepoSelection,
+      setReposByOwner,
+      setLoadingGitHub,
+    } = useGitHubState();
 
     const presets = [
       {
@@ -397,16 +424,258 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
       }
     };
 
+    const handleLoadGitHubProjects = async () => {
+      console.log('Loading GitHub projects, modalTab:', modalTab);
+      setLoadingGitHub(true);
+      try {
+        // Load user repos and organizations in parallel
+        const [reposResult, orgsResult] = await Promise.all([
+          apiService.getGitHubUserRepos(),
+          apiService.getGitHubUserOrgs(),
+        ]);
+
+        if (reposResult.success && reposResult.repositories) {
+          setGitHubRepos(reposResult.repositories);
+
+          // Group repos by owner
+          const grouped = reposResult.repositories.reduce(
+            (acc, repo) => {
+              const owner = repo.owner.login;
+              if (!acc[owner]) {
+                acc[owner] = [];
+              }
+              acc[owner].push(repo);
+              return acc;
+            },
+            {} as Record<string, any[]>
+          );
+
+          setReposByOwner(grouped);
+        }
+
+        if (orgsResult.success && orgsResult.organizations) {
+          setGitHubOrgs(orgsResult.organizations);
+
+          // Load repos for each organization
+          for (const org of orgsResult.organizations) {
+            try {
+              const orgReposResult = await apiService.getGitHubOrgRepos(org.login);
+              if (orgReposResult.success && orgReposResult.repositories) {
+                setReposByOwner(prev => ({
+                  ...prev,
+                  [org.login]: orgReposResult.repositories || [],
+                }));
+              }
+            } catch (error) {
+              console.warn(`Failed to load repos for org ${org.login}:`, error);
+            }
+          }
+        }
+
+        if (!reposResult.success) {
+          toast.error(reposResult.error || 'Failed to load GitHub repositories');
+        }
+      } catch (error) {
+        console.error('Failed to load GitHub projects:', error);
+        toast.error('Failed to load GitHub projects');
+      } finally {
+        console.log('Finished loading GitHub projects, modalTab:', modalTab);
+        setLoadingGitHub(false);
+      }
+    };
+
+    const handleSelectRepo = (repoId: number) => {
+      toggleRepoSelection(repoId);
+    };
+
+    const handleImportSelectedRepos = async () => {
+      if (selectedRepos.size === 0) {
+        toast.error('Please select at least one repository to import');
+        return;
+      }
+
+      setIsCreatingProject(true);
+      try {
+        for (const repoId of selectedRepos) {
+          const repo = gitHubRepos.find(r => r.id === repoId);
+          if (repo) {
+            // Use the existing scan and import functionality
+            const scanResult = await apiService.scanGitUrl(repo.clone_url);
+            if (scanResult.success) {
+              const projectName = repo.name;
+              await apiService.createProject(projectName, scanResult.tempPath);
+              toast.success(`Project "${projectName}" imported successfully`);
+            }
+          }
+        }
+
+        refetchProjects();
+        setIsProjectModalOpen(false);
+        setSelectedRepos(new Set());
+      } catch (error) {
+        toast.error('Failed to import repositories');
+        console.error('Import error:', error);
+      } finally {
+        setIsCreatingProject(false);
+      }
+    };
+
+    function GitHubProjectsTab() {
+      return (
+        <div className="flex flex-col h-full space-y-4">
+          <div className="flex items-center justify-between flex-shrink-0">
+            <h4 className="text-lg font-medium text-gray-900">Your GitHub Projects</h4>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleLoadGitHubProjects}
+              disabled={isLoadingGitHub}
+              leftIcon={
+                isLoadingGitHub ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )
+              }
+            >
+              {isLoadingGitHub ? 'Loading...' : 'Load Projects'}
+            </Button>
+          </div>
+
+          {isLoadingGitHub && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-gray-400" />
+                <p className="text-sm text-gray-600">Loading your GitHub projects...</p>
+              </div>
+            </div>
+          )}
+
+          {Object.keys(reposByOwner).length > 0 && (
+            <>
+              <div className="flex-1 min-h-0 flex flex-col">
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                  {Object.entries(reposByOwner).map(([owner, repos]) => (
+                    <div key={owner} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-600">
+                            {owner.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-gray-900">{owner}</h5>
+                          <p className="text-xs text-gray-500">{repos.length} repositories</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        {repos.map(repo => (
+                          <div
+                            key={repo.id}
+                            className={cn(
+                              'flex items-center gap-3 p-2 rounded border cursor-pointer transition-colors',
+                              selectedRepos.has(repo.id)
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            )}
+                            onClick={() => handleSelectRepo(repo.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedRepos.has(repo.id)}
+                              onChange={() => handleSelectRepo(repo.id)}
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h6 className="text-sm font-medium text-gray-900 truncate">
+                                  {repo.name}
+                                </h6>
+                                {repo.language && (
+                                  <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                                    {repo.language}
+                                  </span>
+                                )}
+                                {repo.private && (
+                                  <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 rounded">
+                                    Private
+                                  </span>
+                                )}
+                              </div>
+                              {repo.description && (
+                                <p className="text-xs text-gray-500 truncate mt-1">
+                                  {repo.description}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                                <span>★ {repo.stargazers_count}</span>
+                                <span>⑂ {repo.forks_count}</span>
+                                <span>
+                                  Updated {new Date(repo.updated_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedRepos.size > 0 && (
+                <div className="border-t border-gray-200 pt-4 flex-shrink-0">
+                  <Button
+                    variant="primary"
+                    onClick={handleImportSelectedRepos}
+                    disabled={isCreatingProject}
+                    className="w-full"
+                    leftIcon={
+                      isCreatingProject ? (
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )
+                    }
+                  >
+                    {isCreatingProject
+                      ? 'Importing Projects...'
+                      : `Import ${selectedRepos.size} Selected Project${selectedRepos.size > 1 ? 's' : ''}`}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+
+          {!isLoadingGitHub && Object.keys(reposByOwner).length === 0 && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <GitIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Projects Loaded</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Click "Load Projects" to fetch your GitHub repositories and organizations
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
+        <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+          <div className="p-6 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">Create New Project</h2>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsProjectModalOpen(false)}
+                onClick={() => {
+                  setIsProjectModalOpen(false);
+                  setModalTab('git'); // Reset to default tab
+                }}
                 leftIcon={<X className="w-4 h-4" />}
               >
                 Close
@@ -414,7 +683,7 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 min-h-[500px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 min-h-[500px] flex-1 min-h-0">
             {/* Left Side - Create from Preset */}
             <div className="p-6 border-r border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -492,122 +761,151 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
             </div>
 
             {/* Right Side - Import Project */}
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Upload className="w-5 h-5" />
-                Import Project
-              </h3>
+            <div className="p-6 flex flex-col h-full overflow-hidden">
+              <div className="flex-shrink-0">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Upload className="w-5 h-5" />
+                  Import Project
+                </h3>
 
-              {/* Import Mode - Git URL Only */}
-              <div className="mb-6">
-                <h4 className="text-lg font-medium text-gray-900 mb-2 flex items-center gap-2">
-                  <GitIcon className="w-5 h-5" />
-                  Import from Git Repository
-                </h4>
-                <p className="text-sm text-gray-600">
-                  Clone and import a project from a Git repository URL
-                </p>
-              </div>
-
-              {/* Git URL Import */}
-              <div className="space-y-4">
-                <div className="border-2 border-dashed rounded-lg p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <GitIcon className="w-8 h-8 text-gray-400" />
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900">
-                        Clone from Git Repository
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        Enter a GitHub, GitLab, or other Git repository URL
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <input
-                      type="url"
-                      value={gitUrl}
-                      onChange={e => setGitUrl(e.target.value)}
-                      placeholder="https://github.com/user/repo.git"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <Button
-                      variant="secondary"
-                      onClick={handleScanGitUrl}
-                      disabled={!gitUrl.trim() || isScanning}
-                      className="w-full"
-                      leftIcon={
-                        isScanning ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Link className="w-4 h-4" />
-                        )
-                      }
+                {/* Import Tabs */}
+                <div className="mb-6">
+                  <div className="flex border-b border-gray-200 mb-4">
+                    <button
+                      onClick={() => setModalTab('git')}
+                      className={cn(
+                        'px-4 py-2 text-sm font-medium border-b-2 -mb-px',
+                        modalTab === 'git'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      )}
                     >
-                      {isScanning ? 'Scanning Repository...' : 'Scan Repository'}
-                    </Button>
+                      <GitIcon className="w-4 h-4 inline mr-2" />
+                      Git URL
+                    </button>
+                    <button
+                      onClick={() => setModalTab('github')}
+                      className={cn(
+                        'px-4 py-2 text-sm font-medium border-b-2 -mb-px',
+                        modalTab === 'github'
+                          ? 'border-blue-500 text-blue-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700'
+                      )}
+                    >
+                      <GitIcon className="w-4 h-4 inline mr-2" />
+                      GitHub Projects
+                    </button>
                   </div>
                 </div>
+              </div>
 
-                {/* Scan Results */}
-                {scanResult && (
-                  <div className="border border-green-200 bg-green-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
-                      <h4 className="font-medium text-green-900">
-                        Repository Scanned Successfully
-                      </h4>
+              {/* Tab Content */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                {modalTab === 'git' && (
+                  <div className="space-y-4 h-full overflow-y-auto">
+                    <div className="border-2 border-dashed rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <GitIcon className="w-8 h-8 text-gray-400" />
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-900">
+                            Clone from Git Repository
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Enter a GitHub, GitLab, or other Git repository URL
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <input
+                          type="url"
+                          value={gitUrl}
+                          onChange={e => setGitUrl(e.target.value)}
+                          placeholder="https://github.com/user/repo.git"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <Button
+                          variant="secondary"
+                          onClick={handleScanGitUrl}
+                          disabled={!gitUrl.trim() || isScanning}
+                          className="w-full"
+                          leftIcon={
+                            isScanning ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Link className="w-4 h-4" />
+                            )
+                          }
+                        >
+                          {isScanning ? 'Scanning Repository...' : 'Scan Repository'}
+                        </Button>
+                      </div>
                     </div>
 
-                    <div className="space-y-2 text-sm">
-                      <p className="text-green-800">
-                        <strong>Detected Files:</strong>{' '}
-                        {(() => {
-                          const types = [];
-                          if (scanResult.projectStructure?.hasPackageJson) types.push('Node.js');
-                          if (scanResult.projectStructure?.hasCargoToml) types.push('Rust');
-                          if (scanResult.projectStructure?.hasDockerfile) types.push('Docker');
-                          if (scanResult.projectStructure?.hasCueFiles) types.push('CUE');
-                          if (scanResult.projectStructure?.hasYamlFiles) types.push('YAML');
-                          if (scanResult.projectStructure?.hasJsonFiles) types.push('JSON');
-                          return types.length > 0
-                            ? types.join(', ')
-                            : 'Various configuration files';
-                        })()}
-                      </p>
-                      <p className="text-green-800">
-                        <strong>Files Found:</strong> {scanResult.files?.length || 0}
-                      </p>
-                      <p className="text-green-800">
-                        <strong>Importable Files:</strong>{' '}
-                        {scanResult.projectStructure?.importableFiles?.length || 0}
-                      </p>
-                      {scanResult.projectStructure?.performanceMetrics && (
-                        <p className="text-green-800">
-                          <strong>Scan Method:</strong>{' '}
-                          {scanResult.projectStructure.performanceMetrics.usedGitLsFiles
-                            ? 'Git ls-files (fast)'
-                            : 'Directory scan'}
-                          {scanResult.projectStructure.performanceMetrics.usedGitLsFiles && ' ⚡'}
-                        </p>
-                      )}
-                      {scanResult.projectStructure?.performanceMetrics?.scanTimeMs && (
-                        <p className="text-green-800">
-                          <strong>Scan Time:</strong>{' '}
-                          {scanResult.projectStructure.performanceMetrics.scanTimeMs}ms
-                        </p>
-                      )}
-                    </div>
+                    {/* Scan Results */}
+                    {scanResult && (
+                      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <h4 className="font-medium text-green-900">
+                            Repository Scanned Successfully
+                          </h4>
+                        </div>
 
-                    <Button
-                      variant="primary"
-                      onClick={handleImportFromScan}
-                      disabled={isCreatingProject}
-                      className="w-full mt-4"
-                    >
-                      {isCreatingProject ? 'Creating Project...' : 'Create Project from Repository'}
-                    </Button>
+                        <div className="space-y-2 text-sm">
+                          <p className="text-green-800">
+                            <strong>Detected Files:</strong>{' '}
+                            {(() => {
+                              const types = [];
+                              if (scanResult.projectStructure?.hasPackageJson)
+                                types.push('Node.js');
+                              if (scanResult.projectStructure?.hasCargoToml) types.push('Rust');
+                              if (scanResult.projectStructure?.hasDockerfile) types.push('Docker');
+                              if (scanResult.projectStructure?.hasCueFiles) types.push('CUE');
+                              if (scanResult.projectStructure?.hasYamlFiles) types.push('YAML');
+                              if (scanResult.projectStructure?.hasJsonFiles) types.push('JSON');
+                              return types.length > 0
+                                ? types.join(', ')
+                                : 'Various configuration files';
+                            })()}
+                          </p>
+                          <p className="text-green-800">
+                            <strong>Files Found:</strong> {scanResult.files?.length || 0}
+                          </p>
+                          <p className="text-green-800">
+                            <strong>Importable Files:</strong>{' '}
+                            {scanResult.projectStructure?.importableFiles?.length || 0}
+                          </p>
+                          {scanResult.projectStructure?.performanceMetrics && (
+                            <p className="text-green-800">
+                              <strong>Scan Method:</strong>{' '}
+                              {scanResult.projectStructure.performanceMetrics.usedGitLsFiles
+                                ? 'Git ls-files (fast)'
+                                : 'Directory scan'}
+                              {scanResult.projectStructure.performanceMetrics.usedGitLsFiles &&
+                                ' ⚡'}
+                            </p>
+                          )}
+                        </div>
+
+                        <Button
+                          variant="primary"
+                          onClick={handleImportFromScan}
+                          disabled={isCreatingProject}
+                          className="w-full mt-4"
+                        >
+                          {isCreatingProject
+                            ? 'Creating Project...'
+                            : 'Create Project from Repository'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {modalTab === 'github' && (
+                  <div className="h-full">
+                    <GitHubProjectsTab />
                   </div>
                 )}
               </div>

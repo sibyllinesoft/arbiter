@@ -28,11 +28,15 @@ vi.mock('../../services/api', () => ({
 
 vi.mock('../../contexts/AppContext', () => ({
   useApp: vi.fn(),
+}));
+
+vi.mock('../../contexts/ProjectContext', () => ({
   useCurrentProject: vi.fn(),
 }));
 
 // Import mocked context hooks
-import { useApp, useCurrentProject } from '../../contexts/AppContext';
+import { useApp } from '../../contexts/AppContext';
+import { useCurrentProject } from '../../contexts/ProjectContext';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({

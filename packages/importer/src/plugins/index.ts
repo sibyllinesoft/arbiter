@@ -10,12 +10,14 @@ import { configOnlyPlugin } from './config-only.js';
 import { dockerPlugin } from './docker.js';
 import { kubernetesPlugin } from './kubernetes.js';
 import { nodejsPlugin } from './nodejs.js';
+import { pythonPlugin } from './python.js';
 import { rustPlugin } from './rust.js';
 
 export { RustPlugin, rustPlugin } from './rust.js';
 export { DockerPlugin, dockerPlugin } from './docker.js';
 export { KubernetesPlugin, kubernetesPlugin } from './kubernetes.js';
 export { NodeJSPlugin, nodejsPlugin } from './nodejs.js';
+export { PythonPlugin, pythonPlugin } from './python.js';
 export { ConfigOnlyPlugin, configOnlyPlugin } from './config-only.js';
 
 // Re-export types for convenience
@@ -30,7 +32,8 @@ export function getAllPlugins() {
     rustPlugin,
     dockerPlugin,
     kubernetesPlugin,
-    // nodejsPlugin, // Disable complex plugin for now
+    nodejsPlugin, // Re-enabled with improved detection
+    pythonPlugin, // Added Python support
   ];
 }
 
@@ -48,6 +51,9 @@ export function getPluginsByLanguage(language: string) {
     case 'node':
     case 'nodejs':
       return [nodejsPlugin];
+    case 'python':
+    case 'py':
+      return [pythonPlugin];
     case 'docker':
       return [dockerPlugin];
     case 'kubernetes':

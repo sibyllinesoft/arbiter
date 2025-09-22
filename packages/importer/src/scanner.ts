@@ -53,6 +53,8 @@ import {
 export interface ScannerConfig {
   /** Root directory to analyze */
   projectRoot: string;
+  /** Optional project name override (instead of using directory name) */
+  projectName?: string;
   /** Parse options */
   parseOptions: ParseOptions;
   /** Inference options */
@@ -1202,12 +1204,16 @@ export class ScannerRunner {
     evidence: Evidence[],
     fileIndex: FileIndex
   ): Promise<InferredArtifact[]> {
+    const projectMetadata = await this.generateProjectMetadata(fileIndex);
+    console.log(`🏗️ Scanner: Generated project metadata:`, projectMetadata);
+
     const inferenceContext: InferenceContext = {
       projectRoot: this.config.projectRoot,
       fileIndex,
       allEvidence: evidence,
       options: this.config.inferenceOptions,
       cache: this.cache,
+      projectMetadata,
     };
 
     const allArtifacts: InferredArtifact[] = [];
@@ -1605,7 +1611,7 @@ export class ScannerRunner {
     }
 
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-    const projectName = path.basename(this.config.projectRoot);
+    const projectName = this.config.projectName || path.basename(this.config.projectRoot);
 
     return {
       name: projectName,
@@ -1629,6 +1635,7 @@ export class ScannerRunner {
     const artifactCounts: Record<ArtifactType, number> = {
       service: 0,
       binary: 0,
+      cli: 0,
       library: 0,
       job: 0,
       schema: 0,
