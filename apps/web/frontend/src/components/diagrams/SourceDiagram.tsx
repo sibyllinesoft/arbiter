@@ -97,11 +97,28 @@ ${indentStr}}`;
   };
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     const fetchResolvedSpec = async () => {
       try {
         setLoading(true);
         setError(null);
+
+        // Add a small delay to allow for rapid project changes (like during deletion)
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Check if the request was cancelled during the delay
+        if (abortController.signal.aborted) {
+          return;
+        }
+
         const response: ResolvedSpecResponse = await apiService.getResolvedSpec(projectId);
+
+        // Check if the request was cancelled after the API call
+        if (abortController.signal.aborted) {
+          return;
+        }
+
         setResolvedData(response.resolved);
         setSpecHash(response.spec_hash);
         setLastSync(new Date().toISOString());
@@ -110,6 +127,11 @@ ${indentStr}}`;
         const cueSource = convertToCueSource(response.resolved);
         setSourceContent(cueSource);
       } catch (err) {
+        // Don't log errors or update state if the request was cancelled
+        if (abortController.signal.aborted) {
+          return;
+        }
+
         console.error('Failed to fetch resolved spec:', err);
 
         // Handle specific error cases
@@ -125,7 +147,9 @@ ${indentStr}}`;
           );
         }
       } finally {
-        setLoading(false);
+        if (!abortController.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -142,6 +166,11 @@ ${indentStr}}`;
       );
       setLastSync(null);
     }
+
+    // Cleanup function to cancel any pending requests
+    return () => {
+      abortController.abort();
+    };
   }, [projectId]);
 
   const handleCopy = async () => {

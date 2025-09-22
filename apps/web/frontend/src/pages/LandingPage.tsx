@@ -22,6 +22,7 @@ import {
   Shield,
   X,
   Upload,
+  FileText,
   Code,
   Globe,
   Smartphone,
@@ -113,17 +114,6 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
     const hasYamlFiles = files.some(f => f.endsWith('.yaml') || f.endsWith('.yml'));
     const hasJsonFiles = files.some(f => f.endsWith('.json'));
 
-    let detectedType = 'unknown';
-    if (hasPackageJson) detectedType = 'nodejs';
-    else if (hasCargoToml) detectedType = 'rust';
-    else if (hasDockerfile) detectedType = 'docker';
-    else if (
-      hasYamlFiles &&
-      files.some(f => ['deployment', 'service', 'configmap'].some(k => f.includes(k)))
-    )
-      detectedType = 'kubernetes';
-    else if (hasCueFiles || hasYamlFiles || hasJsonFiles) detectedType = 'config-only';
-
     const importableFiles = files.filter(f => {
       const ext = f.split('.').pop()?.toLowerCase();
       return (
@@ -141,7 +131,6 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
       hasCueFiles,
       hasYamlFiles,
       hasJsonFiles,
-      detectedType,
       importableFiles,
     };
   };
@@ -153,8 +142,8 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
     try {
       // Create project name from git URL, detected project structure, or fallback
       let projectName: string;
-      if (gitUrl) {
-        projectName = gitUrl.split('/').pop()?.replace('.git', '') || 'git-import';
+      if (scanResult.gitUrl) {
+        projectName = scanResult.gitUrl.split('/').pop()?.replace('.git', '') || 'git-import';
       } else {
         projectName = scanResult.path || 'filesystem-import';
       }
@@ -191,8 +180,13 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
       }
 
       const sourceType = scanResult.isLocalFileSelection ? 'local filesystem' : 'repository';
-      const detectedType = scanResult.projectStructure?.detectedType || 'unknown';
-      toast.success(`Project "${newProject.name}" created from ${sourceType} (${detectedType})`);
+      const fileTypes = [];
+      if (scanResult.projectStructure?.hasPackageJson) fileTypes.push('Node.js');
+      if (scanResult.projectStructure?.hasCargoToml) fileTypes.push('Rust');
+      if (scanResult.projectStructure?.hasDockerfile) fileTypes.push('Docker');
+      if (scanResult.projectStructure?.hasCueFiles) fileTypes.push('CUE');
+      const typeDescription = fileTypes.length > 0 ? fileTypes.join(', ') : 'mixed files';
+      toast.success(`Project "${newProject.name}" created from ${sourceType} (${typeDescription})`);
     } catch (error) {
       toast.error('Failed to create project from scan');
       console.error('Import from scan error:', error);
@@ -568,8 +562,19 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
 
                     <div className="space-y-2 text-sm">
                       <p className="text-green-800">
-                        <strong>Project Type:</strong>{' '}
-                        {scanResult.projectStructure?.detectedType || 'unknown'}
+                        <strong>Detected Files:</strong>{' '}
+                        {(() => {
+                          const types = [];
+                          if (scanResult.projectStructure?.hasPackageJson) types.push('Node.js');
+                          if (scanResult.projectStructure?.hasCargoToml) types.push('Rust');
+                          if (scanResult.projectStructure?.hasDockerfile) types.push('Docker');
+                          if (scanResult.projectStructure?.hasCueFiles) types.push('CUE');
+                          if (scanResult.projectStructure?.hasYamlFiles) types.push('YAML');
+                          if (scanResult.projectStructure?.hasJsonFiles) types.push('JSON');
+                          return types.length > 0
+                            ? types.join(', ')
+                            : 'Various configuration files';
+                        })()}
                       </p>
                       <p className="text-green-800">
                         <strong>Files Found:</strong> {scanResult.files?.length || 0}

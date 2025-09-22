@@ -76,7 +76,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Code editing with CUE syntax highlighting and validation',
     technologies: ['Monaco Editor', 'CUE Language Support'],
     position: { x: 300, y: 50 },
-    size: { width: 180, height: 80 },
+    size: { width: 120, height: 50 },
   },
   {
     id: 'diagram-renderers',
@@ -96,7 +96,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Bun HTTP server with REST API and WebSocket support',
     technologies: ['Bun', 'TypeScript', 'WebSockets'],
     position: { x: 50, y: 200 },
-    size: { width: 180, height: 100 },
+    size: { width: 120, height: 70 },
     ports: [
       { id: 'rest-api', position: { x: 90, y: 200 } },
       { id: 'websocket-server', position: { x: 140, y: 200 } },
@@ -110,7 +110,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'CUE specification validation, processing, and schema management',
     technologies: ['CUE Lang', 'JSON Schema', 'Validation'],
     position: { x: 270, y: 200 },
-    size: { width: 180, height: 100 },
+    size: { width: 120, height: 70 },
     ports: [
       { id: 'validation', position: { x: 360, y: 200 } },
       { id: 'ir-gen', position: { x: 360, y: 250 } },
@@ -123,7 +123,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Intermediate representation generation from CUE specs',
     technologies: ['Code Generation', 'Templates', 'AST Processing'],
     position: { x: 490, y: 200 },
-    size: { width: 180, height: 100 },
+    size: { width: 120, height: 70 },
   },
 
   // CLI Layer
@@ -158,7 +158,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Declarative system specifications in CUE format',
     technologies: ['CUE Files', 'Schema Definitions', 'Constraints'],
     position: { x: 50, y: 500 },
-    size: { width: 180, height: 80 },
+    size: { width: 120, height: 50 },
   },
   {
     id: 'sqlite-db',
@@ -167,7 +167,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Project metadata, fragments, validation cache, user data',
     technologies: ['SQLite', 'SQL Migrations', 'Data Persistence'],
     position: { x: 270, y: 500 },
-    size: { width: 180, height: 80 },
+    size: { width: 120, height: 50 },
   },
   {
     id: 'generated-code',
@@ -176,7 +176,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Generated code, configs, CI/CD pipelines, documentation',
     technologies: ['Templates', 'Code Generation', 'File Output'],
     position: { x: 490, y: 500 },
-    size: { width: 180, height: 80 },
+    size: { width: 120, height: 50 },
   },
 
   // External Integrations
@@ -187,7 +187,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Version control integration and code deployment',
     technologies: ['Git', 'GitHub/GitLab', 'CI/CD'],
     position: { x: 50, y: 620 },
-    size: { width: 160, height: 70 },
+    size: { width: 110, height: 50 },
   },
   {
     id: 'deployment',
@@ -196,7 +196,7 @@ const ARCHITECTURE_COMPONENTS: Component[] = [
     description: 'Production environments and cloud platforms',
     technologies: ['Docker', 'Kubernetes', 'Cloud Services'],
     position: { x: 250, y: 620 },
-    size: { width: 160, height: 70 },
+    size: { width: 110, height: 50 },
   },
 ];
 
@@ -284,6 +284,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   const [projectData, setProjectData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
 
   // Fetch real project data
   useEffect(() => {
@@ -306,7 +307,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     }
   }, [projectId]);
 
-  // Generate components from real project data
+  // Generate components grouped by source files
   const generateComponentsFromData = (
     data: any
   ): { components: Component[]; connections: Connection[] } => {
@@ -317,112 +318,73 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     const components: Component[] = [];
     const connections: Connection[] = [];
 
-    // Extract services, databases, and other components from the data
+    // Group components by their source files
+    const componentsBySource: Record<string, any[]> = {};
+
+    // Extract and group services, databases, and other components
     const services = data.spec?.services || data.services || {};
     const databases = data.spec?.databases || data.databases || {};
     const otherComponents = data.spec?.components || data.components || {};
 
-    let xOffset = 50;
-    let yOffset = 50;
-    const componentSpacing = 220;
-    const rowHeight = 140;
-
-    // Add services as backend components
-    const serviceEntries = Object.entries(services);
-    serviceEntries.forEach(([serviceName, serviceData]: [string, any], index) => {
-      const row = Math.floor(index / 4);
-      const col = index % 4;
-
-      components.push({
-        id: `service-${serviceName}`,
-        name: serviceData.name || serviceName,
+    // Group services by source file
+    Object.entries(services).forEach(([serviceName, serviceData]: [string, any]) => {
+      const sourceFile =
+        serviceData.metadata?.sourceFile || serviceData.sourceFile || 'docker-compose.yml';
+      if (!componentsBySource[sourceFile]) {
+        componentsBySource[sourceFile] = [];
+      }
+      componentsBySource[sourceFile].push({
+        name: serviceName,
+        displayName: serviceData.name || serviceName,
         type: 'backend',
-        description: serviceData.description || `${serviceName} service`,
-        technologies: [
-          serviceData.metadata?.language || 'Unknown',
-          serviceData.metadata?.framework || 'Service',
-        ],
-        position: {
-          x: xOffset + col * componentSpacing,
-          y: yOffset + row * rowHeight,
-        },
-        size: { width: 200, height: 100 },
-        ports: [
-          { id: 'api', position: { x: 100, y: 0 } },
-          { id: 'data', position: { x: 100, y: 100 } },
-        ],
+        data: serviceData,
+        kind: 'service',
       });
     });
 
-    // Add databases as data components
-    const databaseEntries = Object.entries(databases);
-    const dbStartY = yOffset + Math.ceil(serviceEntries.length / 4) * rowHeight + 20;
-
-    databaseEntries.forEach(([dbName, dbData]: [string, any], index) => {
-      components.push({
-        id: `db-${dbName}`,
-        name: (dbData as any).name || dbName,
+    // Group databases by source file
+    Object.entries(databases).forEach(([dbName, dbData]: [string, any]) => {
+      const sourceFile =
+        (dbData as any).metadata?.sourceFile || (dbData as any).sourceFile || 'docker-compose.yml';
+      if (!componentsBySource[sourceFile]) {
+        componentsBySource[sourceFile] = [];
+      }
+      componentsBySource[sourceFile].push({
+        name: dbName,
+        displayName: (dbData as any).name || dbName,
         type: 'data',
-        description: `${(dbData as any).type || 'Database'} database`,
-        technologies: [(dbData as any).type || 'Database', (dbData as any).version || ''],
-        position: {
-          x: xOffset + (index % 3) * componentSpacing,
-          y: dbStartY,
-        },
-        size: { width: 180, height: 80 },
+        data: dbData,
+        kind: 'database',
       });
     });
 
-    // Add other components (tools, clients, libraries)
-    const otherEntries = Object.entries(otherComponents);
-    const otherStartY = dbStartY + (databaseEntries.length > 0 ? 100 : 0);
+    // Group other components by source file
+    Object.entries(otherComponents).forEach(([componentName, componentData]: [string, any]) => {
+      const sourceFile =
+        (componentData as any).metadata?.sourceFile ||
+        (componentData as any).sourceFile ||
+        'package.json';
+      if (!componentsBySource[sourceFile]) {
+        componentsBySource[sourceFile] = [];
+      }
 
-    otherEntries.forEach(([componentName, componentData]: [string, any], index) => {
       let componentType: 'cli' | 'frontend' | 'external' = 'external';
-
       if (
         (componentData as any).type === 'client' ||
         componentName.includes('web') ||
         componentName.includes('ui')
       ) {
         componentType = 'frontend';
-      } else if (
-        (componentData as any).type === 'tool' ||
-        componentName.includes('cli') ||
-        componentName.includes('shell')
-      ) {
+      } else if ((componentData as any).type === 'tool' || componentName.includes('cli')) {
         componentType = 'cli';
       }
 
-      const row = Math.floor(index / 4);
-      const col = index % 4;
-
-      components.push({
-        id: `component-${componentName}`,
-        name: (componentData as any).name || componentName,
+      componentsBySource[sourceFile].push({
+        name: componentName,
+        displayName: (componentData as any).name || componentName,
         type: componentType,
-        description: `${(componentData as any).type || 'Component'}: ${componentName}`,
-        technologies: [
-          (componentData as any).language || 'Unknown',
-          (componentData as any).framework || 'Component',
-        ],
-        position: {
-          x: xOffset + col * componentSpacing,
-          y: otherStartY + row * rowHeight,
-        },
-        size: { width: 190, height: 90 },
-      });
-    });
-
-    // Add basic connections - services to databases
-    serviceEntries.forEach(([serviceName]) => {
-      databaseEntries.forEach(([dbName]) => {
-        connections.push({
-          from: { componentId: `service-${serviceName}`, portId: 'data' },
-          to: { componentId: `db-${dbName}` },
-          type: 'data',
-          label: 'Data',
-        });
+        data: componentData,
+        kind: 'component',
       });
     });
 
@@ -431,8 +393,32 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
 
   const { components: dynamicComponents, connections: dynamicConnections } =
     generateComponentsFromData(projectData);
-  const componentsToRender = dynamicComponents;
-  const connectionsToRender = dynamicConnections;
+
+  // Group components by source file for rendering
+  const componentsBySource = generateComponentsFromData(projectData);
+  const groupedComponents: Record<string, any[]> = {};
+
+  if (projectData) {
+    const services = projectData.spec?.services || projectData.services || {};
+    const databases = projectData.spec?.databases || projectData.databases || {};
+    const otherComponents = projectData.spec?.components || projectData.components || {};
+
+    // Re-group for display
+    [
+      ...Object.entries(services),
+      ...Object.entries(databases),
+      ...Object.entries(otherComponents),
+    ].forEach(([name, data]: [string, any]) => {
+      const sourceFile =
+        data.metadata?.sourceFile ||
+        data.sourceFile ||
+        (name.includes('@') ? 'package.json' : 'docker-compose.yml');
+      if (!groupedComponents[sourceFile]) {
+        groupedComponents[sourceFile] = [];
+      }
+      groupedComponents[sourceFile].push({ name, data });
+    });
+  }
 
   const renderComponent = (component: Component) => {
     const colors = LAYER_COLORS[component.type];
@@ -469,9 +455,9 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         {/* Component Title */}
         <text
           x={component.size.width / 2}
-          y={20}
+          y={15}
           textAnchor="middle"
-          className="text-sm font-semibold"
+          className="text-xs font-semibold"
           fill={colors.text}
         >
           {component.name}
@@ -480,11 +466,16 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         {/* Component Description */}
         <foreignObject
           x={8}
-          y={30}
-          width={component.size.width - 16}
-          height={component.size.height - 40}
+          y={20}
+          width={component.size.width - 8}
+          height={component.size.height - 25}
         >
-          <div className="text-xs text-gray-600 leading-tight">{component.description}</div>
+          <div
+            className="text-2xs text-gray-600 leading-tight overflow-hidden"
+            style={{ fontSize: '10px' }}
+          >
+            {component.description}
+          </div>
         </foreignObject>
 
         {/* Technology Stack (on hover/select) */}
@@ -506,18 +497,18 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
               x={component.size.width / 2}
               y={component.size.height + 20}
               textAnchor="middle"
-              className="text-xs font-medium"
+              className="text-2xs font-medium"
               fill={colors.text}
             >
               Technologies:
             </text>
             {component.technologies.map((tech, index) => (
               <text
-                key={tech}
+                key={`${component.id}-tech-${index}`}
                 x={component.size.width / 2}
-                y={component.size.height + 35 + index * 12}
+                y={component.size.height + 35 + index * 10}
                 textAnchor="middle"
-                className="text-xs"
+                className="text-2xs"
                 fill="#374151"
               >
                 {tech}
@@ -532,7 +523,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
             key={port.id}
             cx={port.position.x}
             cy={port.position.y}
-            r={3}
+            r={2}
             fill={colors.border}
             stroke="white"
             strokeWidth={1}
@@ -692,117 +683,186 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         </div>
       </div>
 
-      {/* Architecture Diagram */}
-      <div className="p-4">
-        <svg
-          viewBox="0 0 800 750"
-          className="w-full h-auto min-h-[600px] bg-white border border-gray-200 rounded-lg"
-        >
-          {/* Arrow Marker Definition */}
-          <defs>
-            <marker
-              id="arrowhead"
-              markerWidth="10"
-              markerHeight="7"
-              refX="9"
-              refY="3.5"
-              orient="auto"
+      {/* Components by Source File */}
+      <div className="p-4 space-y-4">
+        {Object.keys(groupedComponents).length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-400 mb-4">
+              <svg
+                className="w-16 h-16 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">No Components Found</h3>
+            <p className="text-gray-600">Import a project to see its architecture components</p>
+          </div>
+        ) : (
+          Object.entries(groupedComponents).map(([sourceFile, components]) => (
+            <div
+              key={sourceFile}
+              className="bg-white border border-gray-200 rounded-lg overflow-hidden"
             >
-              <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
-            </marker>
-          </defs>
+              {/* Source File Header */}
+              <button
+                onClick={() =>
+                  setExpandedSources(prev => ({ ...prev, [sourceFile]: !prev[sourceFile] }))
+                }
+                className="w-full px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <svg
+                      className="w-4 h-4 text-blue-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-medium text-gray-900">{sourceFile}</h3>
+                    <p className="text-sm text-gray-600">
+                      {components.length} component{components.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                <svg
+                  className={`w-5 h-5 text-gray-400 transition-transform ${expandedSources[sourceFile] ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
 
-          {/* Layer Background */}
-          <g className="layer-backgrounds">
-            <rect
-              x="30"
-              y="30"
-              width="720"
-              height="140"
-              rx="8"
-              fill="#f8fafc"
-              stroke="#e2e8f0"
-              strokeDasharray="5,5"
-            />
-            <text x="40" y="50" className="text-sm font-medium" fill="#64748b">
-              Frontend Layer
-            </text>
+              {/* Components Grid */}
+              {expandedSources[sourceFile] && (
+                <div className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {components.map(({ name, data }) => {
+                      const componentType =
+                        data.metadata?.type || (name.includes('@') ? 'library' : 'service');
+                      const colors =
+                        componentType === 'service'
+                          ? LAYER_COLORS.backend
+                          : componentType === 'database'
+                            ? LAYER_COLORS.data
+                            : componentType === 'library'
+                              ? LAYER_COLORS.cli
+                              : LAYER_COLORS.external;
 
-            <rect
-              x="30"
-              y="180"
-              width="720"
-              height="140"
-              rx="8"
-              fill="#f0fdf4"
-              stroke="#dcfce7"
-              strokeDasharray="5,5"
-            />
-            <text x="40" y="200" className="text-sm font-medium" fill="#16a34a">
-              Backend Layer
-            </text>
+                      return (
+                        <div
+                          key={name}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+                          style={{ backgroundColor: colors.bg, borderColor: colors.border }}
+                          onClick={() =>
+                            setSelectedComponent(selectedComponent === name ? null : name)
+                          }
+                        >
+                          {/* Component Name */}
+                          <h4 className="font-medium text-sm mb-1" style={{ color: colors.text }}>
+                            {data.name || name}
+                          </h4>
 
-            <rect
-              x="30"
-              y="330"
-              width="720"
-              height="140"
-              rx="8"
-              fill="#fffbeb"
-              stroke="#fef3c7"
-              strokeDasharray="5,5"
-            />
-            <text x="40" y="350" className="text-sm font-medium" fill="#d97706">
-              CLI Layer
-            </text>
+                          {/* Component Metadata */}
+                          <div className="space-y-1 text-xs text-gray-600">
+                            {data.metadata?.language && (
+                              <div>
+                                Language:{' '}
+                                <span className="font-mono text-gray-800">
+                                  {data.metadata.language}
+                                </span>
+                              </div>
+                            )}
+                            {data.metadata?.framework && (
+                              <div>
+                                Framework:{' '}
+                                <span className="font-mono text-gray-800">
+                                  {data.metadata.framework}
+                                </span>
+                              </div>
+                            )}
+                            {data.version && (
+                              <div>
+                                Version:{' '}
+                                <span className="font-mono text-gray-800">{data.version}</span>
+                              </div>
+                            )}
+                            {data.image && (
+                              <div>
+                                Image: <span className="font-mono text-gray-800">{data.image}</span>
+                              </div>
+                            )}
+                            {data.ports && (
+                              <div>
+                                Ports:{' '}
+                                <span className="font-mono text-gray-800">
+                                  {Array.isArray(data.ports) ? data.ports.join(', ') : data.ports}
+                                </span>
+                              </div>
+                            )}
+                          </div>
 
-            <rect
-              x="30"
-              y="480"
-              width="720"
-              height="120"
-              rx="8"
-              fill="#faf5ff"
-              stroke="#f3e8ff"
-              strokeDasharray="5,5"
-            />
-            <text x="40" y="500" className="text-sm font-medium" fill="#7c3aed">
-              Data Layer
-            </text>
+                          {/* Component Type Badge */}
+                          <div className="mt-2">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {componentType}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
 
-            <rect
-              x="30"
-              y="610"
-              width="720"
-              height="100"
-              rx="8"
-              fill="#fef2f2"
-              stroke="#fee2e2"
-              strokeDasharray="5,5"
-            />
-            <text x="40" y="630" className="text-sm font-medium" fill="#dc2626">
-              External Systems
-            </text>
-          </g>
-
-          {/* Connections (rendered first so they appear behind components) */}
-          {connectionsToRender.map(renderConnection)}
-
-          {/* Components */}
-          {componentsToRender.map(renderComponent)}
-        </svg>
-
-        {/* Component Details Panel */}
+        {/* Selected Component Details */}
         {selectedComponent && (
           <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg">
             {(() => {
-              const component = componentsToRender.find(c => c.id === selectedComponent);
-              if (!component) return null;
+              // Find the selected component in the grouped data
+              let selectedData = null;
+              for (const [sourceFile, components] of Object.entries(groupedComponents)) {
+                const found = components.find(({ name }) => name === selectedComponent);
+                if (found) {
+                  selectedData = { ...found, sourceFile };
+                  break;
+                }
+              }
+
+              if (!selectedData) return null;
 
               return (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-semibold text-gray-900">{component.name}</h4>
+                    <h4 className="font-semibold text-gray-900">
+                      {selectedData.data.name || selectedData.name}
+                    </h4>
                     <button
                       onClick={() => setSelectedComponent(null)}
                       className="text-gray-400 hover:text-gray-600"
@@ -822,18 +882,33 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                       </svg>
                     </button>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">{component.description}</p>
-                  <div className="space-y-2">
-                    <h5 className="text-sm font-medium text-gray-700">Technologies:</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {component.technologies.map(tech => (
-                        <span
-                          key={tech}
-                          className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-md"
-                        >
-                          {tech}
-                        </span>
-                      ))}
+                  <p className="text-sm text-gray-600 mb-3">Source: {selectedData.sourceFile}</p>
+
+                  {/* Full metadata display */}
+                  <div className="space-y-3">
+                    {selectedData.data.description && (
+                      <div>
+                        <h5 className="text-sm font-medium text-gray-700 mb-1">Description:</h5>
+                        <p className="text-sm text-gray-600">{selectedData.data.description}</p>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Object.entries(selectedData.data).map(([key, value]) => {
+                        if (key === 'name' || key === 'description' || !value) return null;
+                        return (
+                          <div key={key}>
+                            <h5 className="text-sm font-medium text-gray-700 mb-1 capitalize">
+                              {key}:
+                            </h5>
+                            <p className="text-sm text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded">
+                              {typeof value === 'object'
+                                ? JSON.stringify(value, null, 2)
+                                : String(value)}
+                            </p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
