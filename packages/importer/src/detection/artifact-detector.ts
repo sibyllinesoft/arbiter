@@ -429,7 +429,7 @@ export class ArtifactDetector {
       });
     }
 
-    // Library indicators
+    // Library indicators - enhanced detection
     const libraryIndicators: string[] = [];
     if (config.main && !config.bin) {
       libraryIndicators.push('has main without bin');
@@ -440,30 +440,65 @@ export class ArtifactDetector {
     if (config.types || config.typings) {
       libraryIndicators.push('provides TypeScript types');
     }
-    if (!config.private) {
-      libraryIndicators.push('public package');
+    if (!config.private && !config.bin) {
+      libraryIndicators.push('public package without CLI');
+    }
+    // Check for library-specific fields
+    if (config.module) {
+      libraryIndicators.push('has ESM module field');
+    }
+    if (config.peerDependencies && Object.keys(config.peerDependencies).length > 0) {
+      libraryIndicators.push('has peer dependencies');
+    }
+    if (config.keywords?.some((k: string) => /library|util|helper|plugin|middleware/i.test(k))) {
+      libraryIndicators.push('library-related keywords');
     }
     if (libraryIndicators.length > 0) {
       factors.push({
         category: 'library',
-        confidence: Math.min(0.6, libraryIndicators.length * 0.15),
+        confidence: Math.min(0.8, libraryIndicators.length * 0.2),
         indicators: libraryIndicators,
       });
     }
 
-    // Frontend indicators
+    // Frontend indicators - enhanced detection
     const frontendIndicators: string[] = [];
     if (config.private && (config.scripts?.build || config.scripts?.dev)) {
       frontendIndicators.push('private package with build/dev scripts');
     }
-    if (config.homepage && config.homepage.includes('github.io')) {
-      frontendIndicators.push('GitHub Pages homepage');
+    if (config.homepage) {
+      frontendIndicators.push('has homepage field');
+    }
+    if (config.browserslist) {
+      frontendIndicators.push('has browserslist config');
+    }
+    if (config.scripts?.start && !config.scripts?.start.includes('node')) {
+      frontendIndicators.push('non-node start script');
     }
     if (frontendIndicators.length > 0) {
       factors.push({
         category: 'frontend',
-        confidence: Math.min(0.5, frontendIndicators.length * 0.2),
+        confidence: Math.min(0.6, frontendIndicators.length * 0.2),
         indicators: frontendIndicators,
+      });
+    }
+
+    // Web service indicators - new detection
+    const webServiceIndicators: string[] = [];
+    if (config.scripts?.start?.includes('node')) {
+      webServiceIndicators.push('node start script');
+    }
+    if (config.scripts?.['start:prod'] || config.scripts?.production) {
+      webServiceIndicators.push('production start scripts');
+    }
+    if (config.engines?.node && !config.bin) {
+      webServiceIndicators.push('node engine requirement without CLI');
+    }
+    if (webServiceIndicators.length > 0) {
+      factors.push({
+        category: 'web_service',
+        confidence: Math.min(0.5, webServiceIndicators.length * 0.2),
+        indicators: webServiceIndicators,
       });
     }
 
@@ -555,11 +590,11 @@ export class ArtifactDetector {
   private aggregateScores(factors: DetectionFactors): Record<string, number> {
     const scores: Record<string, number> = {};
 
-    // Weights for different factor types
+    // Weights for different factor types - adjusted for better detection
     const weights = {
-      dependency: 0.4, // Dependencies are strong indicators
-      source: 0.3, // Source code analysis is very reliable
-      config: 0.15, // Package config is moderately reliable
+      dependency: 0.35, // Dependencies are strong indicators
+      source: 0.25, // Source code analysis is very reliable
+      config: 0.25, // Package config is highly reliable for CLI/library detection
       script: 0.1, // Scripts provide some indication
       filePattern: 0.05, // File patterns are weak indicators
     };
@@ -591,17 +626,34 @@ export class ArtifactDetector {
         (scores[factor.category] || 0) + factor.confidence * weights.filePattern;
     });
 
-    // If no scores were calculated, return default low score for library
-    if (Object.keys(scores).length === 0) {
-      scores['library'] = 0.1;
-      return scores;
-    }
+    // Enhanced default detection based on common patterns
+    if (Object.keys(scores).length === 0 || Math.max(...Object.values(scores)) < 0.1) {
+      // Try to make a more intelligent guess based on available evidence
 
-    // Don't normalize if all scores are very low (< 0.1)
-    const maxScore = Math.max(...Object.values(scores));
-    if (maxScore < 0.1) {
-      scores['library'] = 0.1;
-      return scores;
+      // Strong CLI indicators
+      if (factors.configFactors.some(f => f.category === 'cli' && f.confidence > 0.5)) {
+        scores['cli'] = 0.7;
+      }
+      // Strong library indicators
+      else if (factors.configFactors.some(f => f.category === 'library' && f.confidence > 0.3)) {
+        scores['library'] = 0.5;
+      }
+      // Check for web service patterns
+      else if (
+        factors.sourceFactors?.some(f => f.category === 'web_service' && f.confidence > 0.5)
+      ) {
+        scores['web_service'] = 0.6;
+      }
+      // Check for frontend patterns
+      else if (
+        factors.filePatternFactors.some(f => f.category === 'frontend' && f.confidence > 0.3)
+      ) {
+        scores['frontend'] = 0.5;
+      }
+      // Default to library with low confidence
+      else {
+        scores['library'] = 0.2;
+      }
     }
 
     // Normalize scores but keep them reasonable

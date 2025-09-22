@@ -1751,21 +1751,6 @@ export class ScannerRunner {
 }
 
 /**
- * Convenience function to create and run a scanner
- */
-export async function scanProject(
-  projectRoot: string,
-  config: Partial<ScannerConfig> = {}
-): Promise<ArtifactManifest> {
-  const scanner = new ScannerRunner({
-    projectRoot,
-    ...config,
-  });
-
-  return await scanner.scan();
-}
-
-/**
  * Export the default scanner configuration for external use
  */
 export { DEFAULT_SCANNER_CONFIG };

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
 import { clsx } from 'clsx';
+import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api';
 
 interface ArchitectureDiagramProps {
@@ -780,7 +780,9 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {components.map(({ name, data }) => {
                       const componentType =
-                        data.metadata?.type || (name.includes('@') ? 'library' : 'service');
+                        data.type ||
+                        data.metadata?.type ||
+                        (name.includes('@') ? 'library' : 'service');
                       const colors =
                         componentType === 'service'
                           ? LAYER_COLORS.backend

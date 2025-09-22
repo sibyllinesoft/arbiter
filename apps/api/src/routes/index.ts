@@ -565,9 +565,7 @@ export function createApiRouter(deps: Dependencies) {
         try {
           // Import the scanner and plugins from the importer package
           const { ScannerRunner } = await import('@arbiter/importer/scanner');
-          const { dockerPlugin, rustPlugin, nodejsPlugin, configOnlyPlugin } = await import(
-            '@arbiter/importer/plugins'
-          );
+          const { getAllPlugins } = await import('@arbiter/importer/plugins');
 
           // Configure the scanner
           const scanner = new ScannerRunner({
@@ -580,7 +578,7 @@ export function createApiRouter(deps: Dependencies) {
               '**/dist/**',
               '**/build/**',
             ],
-            plugins: [dockerPlugin, rustPlugin, nodejsPlugin, configOnlyPlugin],
+            plugins: getAllPlugins(),
             maxFileSize: 1024 * 1024, // 1MB
           });
 

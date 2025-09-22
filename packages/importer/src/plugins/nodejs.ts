@@ -102,7 +102,7 @@ const NODE_CLI_FRAMEWORKS = [
 // Types for structured evidence data
 // ============================================================================
 
-interface PackageJsonData extends Record<string, unknown> {
+export interface PackageJsonData extends Record<string, unknown> {
   configType: string;
   name: string;
   version?: string;
@@ -449,59 +449,173 @@ export class NodeJSPlugin implements ImporterPlugin {
   }
 
   private determineArtifactType(packageData: PackageJsonData, allEvidence: Evidence[]): string {
-    // Create detection context
-    const context: DetectionContext = {
-      language: this.detectLanguage(allEvidence, packageData),
-      dependencies: [
-        ...Object.keys(packageData.dependencies || {}),
-        ...Object.keys(packageData.devDependencies || {}),
-        ...Object.keys(packageData.peerDependencies || {}),
-      ],
-      scripts: packageData.scripts || {},
-      filePatterns: this.extractFilePatterns(allEvidence),
-      packageConfig: packageData,
-      sourceAnalysis: this.createSourceAnalysis(allEvidence),
-    };
+    const name = packageData.name || 'unknown';
+    console.log(`🔍 Detecting type for ${name}`);
 
-    // Use the new detection engine
-    const result = detectArtifactType(context);
+    // SIMPLE RULE-BASED DETECTION - No complex scoring, just clear rules
 
-    // Debug output to understand detection failures
-    console.log(`🔍 Node.js Plugin: Artifact detection for ${packageData.name}:`);
-    console.log(`   Language: ${context.language}`);
-    console.log(
-      `   Dependencies: ${context.dependencies.slice(0, 5).join(', ')}${context.dependencies.length > 5 ? '...' : ''}`
+    // Merge all dependencies for checking
+    const deps = { ...packageData.dependencies, ...packageData.devDependencies };
+
+    // 1. CLI - Has bin field or CLI framework
+    if (packageData.bin) {
+      console.log(`   ✅ CLI: Has bin field`);
+      return 'cli';
+    }
+
+    // Check for CLI frameworks even without bin field
+    const cliFrameworks = [
+      'commander',
+      'yargs',
+      'inquirer',
+      'oclif',
+      'meow',
+      'caporal',
+      'cac',
+      'clipanion',
+    ];
+    const hasCliFramework = Object.keys(deps).some(dep =>
+      cliFrameworks.some(cli => dep.toLowerCase().includes(cli))
     );
-    console.log(`   Scripts: ${Object.keys(context.scripts).join(', ') || 'none'}`);
-    console.log(`   File patterns (first 3): ${context.filePatterns.slice(0, 3).join(', ')}`);
-    console.log(`   Source analysis: ${JSON.stringify(context.sourceAnalysis)}`);
-    console.log(
-      `   Detection result: ${result.primaryType} (confidence: ${result.confidence.toFixed(2)})`
+
+    if (hasCliFramework && !packageData.private) {
+      console.log(`   ✅ CLI: Has CLI framework (public package)`);
+      return 'cli';
+    }
+
+    // 2. Types packages - Special case for type definition packages
+    // These are libraries even if they have web framework dependencies
+    const isTypesPackage =
+      name.toLowerCase().includes('types') ||
+      name.toLowerCase().includes('type-definitions') ||
+      (packageData.types && !packageData.main) ||
+      (packageData.typings && !packageData.main);
+
+    if (isTypesPackage) {
+      console.log(`   ✅ LIBRARY: Type definitions package`);
+      return 'library';
+    }
+
+    // 3. Web Service - Has web framework, database driver, or server-related scripts
+    const webFrameworks = [
+      'express',
+      'fastify',
+      'koa',
+      'hono',
+      'hapi',
+      'nestjs',
+      'restify',
+      'sails',
+      'feathers',
+      'apollo-server',
+      'graphql-yoga',
+      'trpc',
+      'socket.io',
+      'ws',
+    ];
+    const databases = [
+      'mongoose',
+      'sequelize',
+      'typeorm',
+      'prisma',
+      'drizzle-orm',
+      'pg',
+      'mysql',
+      'mysql2',
+      'mongodb',
+      'redis',
+      'ioredis',
+      'knex',
+      'objection',
+      'mikro-orm',
+    ];
+
+    const hasWebFramework = Object.keys(deps).some(dep =>
+      webFrameworks.some(fw => dep.toLowerCase().includes(fw))
     );
-    console.log(
-      `   Alternative types: ${result.alternativeTypes.map(t => `${t.type}(${t.confidence.toFixed(2)})`).join(', ')}`
+
+    const hasDatabase = Object.keys(deps).some(dep =>
+      databases.some(db => dep.toLowerCase().includes(db))
     );
-    console.log(`   Explanation: ${result.explanation.join('; ')}`);
 
-    // Map category names to our existing artifact types
-    const categoryMap: Record<string, string> = {
-      cli: 'cli',
-      web_service: 'service',
-      frontend: 'frontend',
-      library: 'library',
-      desktop_app: 'binary',
-      data_processing: 'library',
-      testing: 'library',
-      build_tool: 'library',
-      game: 'frontend',
-      mobile: 'frontend',
-    };
+    const hasServerScript =
+      packageData.scripts &&
+      (packageData.scripts.start?.includes('server') ||
+        packageData.scripts.start?.includes('src/server') ||
+        packageData.scripts.dev?.includes('server') ||
+        packageData.scripts.serve ||
+        packageData.main?.includes('server'));
 
-    const mappedType = categoryMap[result.primaryType] || 'library';
-    console.log(`   Final mapped type: ${mappedType}`);
-    console.log('');
+    if (hasWebFramework || hasDatabase || hasServerScript) {
+      console.log(
+        `   ✅ SERVICE: Has web framework (${hasWebFramework}), database (${hasDatabase}), or server script (${hasServerScript})`
+      );
+      return 'service';
+    }
 
-    return mappedType;
+    // 4. Build tools - webpack, rollup, etc.
+    const buildTools = [
+      'webpack',
+      'rollup',
+      'parcel',
+      'esbuild',
+      'turbopack',
+      'tsup',
+      'vite',
+      'snowpack',
+    ];
+    const hasBuildTool = Object.keys(deps).some(dep =>
+      buildTools.some(tool => dep.toLowerCase().includes(tool))
+    );
+
+    // Check if it's primarily a build tool (not a frontend app using vite)
+    const isBuildTool = hasBuildTool && !packageData.private && !packageData.browserslist;
+    if (isBuildTool) {
+      console.log(`   ✅ CLI/BUILD: Has build tool dependencies`);
+      return 'cli';
+    }
+
+    // 5. Frontend - Has frontend framework AND is private or has browserslist
+    const frontendFrameworks = [
+      'react',
+      'vue',
+      'angular',
+      'svelte',
+      'solid',
+      'preact',
+      'next',
+      'nuxt',
+      'gatsby',
+    ];
+    const hasFrontendFramework = Object.keys(deps).some(dep =>
+      frontendFrameworks.some(fw => dep.toLowerCase().includes(fw))
+    );
+
+    // It's a frontend app if it has a framework AND is private/has browserslist
+    // It's a library if it has a framework but also has peerDependencies or is public
+    if (hasFrontendFramework) {
+      const isComponentLibrary =
+        packageData.peerDependencies &&
+        Object.keys(packageData.peerDependencies).some(peer =>
+          frontendFrameworks.some(fw => peer.toLowerCase().includes(fw))
+        );
+
+      if (isComponentLibrary) {
+        console.log(`   ✅ LIBRARY: React/Vue component library (has peer deps)`);
+        return 'library';
+      }
+
+      if (packageData.private || packageData.browserslist) {
+        console.log(`   ✅ FRONTEND: Has frontend framework (private app)`);
+        return 'frontend';
+      }
+    }
+
+    // 6. Library - Everything else (has main/exports, types, or is just a package)
+    console.log(
+      `   ✅ LIBRARY: Default (has main: ${!!packageData.main}, types: ${!!packageData.types})`
+    );
+    return 'library';
   }
 
   private detectLanguage(allEvidence: Evidence[], packageData: PackageJsonData): string {
@@ -554,10 +668,21 @@ export class NodeJSPlugin implements ImporterPlugin {
     sourceEvidence.forEach(evidence => {
       const sourceData = evidence.data as unknown as SourceFileData;
 
-      // Check for CLI patterns
-      if (sourceData.isEntryPoint && evidence.filePath?.includes('bin/')) {
-        hasBinaryExecution = true;
-        hasCliPatterns = true;
+      // Check for CLI patterns - enhanced detection
+      if (sourceData.isEntryPoint) {
+        const filePath = sourceData.filePath || evidence.filePath || '';
+        // More comprehensive CLI detection
+        if (
+          filePath.includes('bin/') ||
+          filePath.includes('cli/') ||
+          filePath.includes('cli.') ||
+          filePath.endsWith('/cli.js') ||
+          filePath.endsWith('/cli.ts') ||
+          (filePath.endsWith('/index.js') && filePath.includes('cli'))
+        ) {
+          hasBinaryExecution = true;
+          hasCliPatterns = true;
+        }
       }
 
       // Check for server patterns
@@ -583,6 +708,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       // Check file patterns for additional indicators
       const filePath = sourceData.filePath || evidence.filePath || '';
 
+      // Enhanced path patterns
       if (/electron|tauri|desktop/.test(filePath)) {
         hasDesktopPatterns = true;
       }
@@ -595,12 +721,22 @@ export class NodeJSPlugin implements ImporterPlugin {
         hasMobilePatterns = true;
       }
 
-      if (/data|csv|xml|process/.test(filePath)) {
+      if (/data|csv|xml|etl|transform|pipeline/.test(filePath)) {
         hasDataProcessingPatterns = true;
       }
 
-      if (/build|webpack|rollup|gulp/.test(filePath)) {
+      if (/build|webpack|rollup|gulp|grunt|make/.test(filePath)) {
         hasBuildPatterns = true;
+      }
+
+      // Additional server/service patterns in file paths
+      if (/server|api|routes|controllers|middleware|models/.test(filePath)) {
+        hasServerPatterns = true;
+      }
+
+      // Additional frontend patterns
+      if (/components?|pages?|views?|layouts?|styles?/.test(filePath)) {
+        hasFrontendPatterns = true;
       }
     });
 
@@ -630,7 +766,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       type: 'service',
       name: packageData.name,
       description: packageData.description || `Node.js service: ${packageData.name}`,
-      tags: ['nodejs', 'service', framework].filter(Boolean),
+      tags: ['nodejs', 'service', framework].filter(Boolean) as string[],
       metadata: {
         language: this.detectLanguage(allEvidence, packageData),
         ...(framework && { framework }),
@@ -670,9 +806,9 @@ export class NodeJSPlugin implements ImporterPlugin {
       type: 'frontend',
       name: packageData.name,
       description: packageData.description || `Node.js frontend: ${packageData.name}`,
-      tags: ['nodejs', 'frontend', framework].filter(Boolean),
+      tags: ['nodejs', 'frontend', framework].filter(Boolean) as string[],
       metadata: {
-        ...(framework && { framework }),
+        framework: framework || 'unknown',
         buildSystem,
         routes: this.extractFrontendRoutes(allEvidence),
         apiDependencies: this.extractApiDependencies(allEvidence),
@@ -701,12 +837,44 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     const artifacts: InferredArtifact[] = [];
 
-    for (const [binName, binPath] of Object.entries(binEntries)) {
+    // If there are explicit bin entries, create artifacts for each
+    if (Object.keys(binEntries).length > 0) {
+      for (const [binName, binPath] of Object.entries(binEntries)) {
+        const cliArtifact: CliArtifact = {
+          id: `nodejs-cli-${binName}`,
+          type: 'cli',
+          name: binName,
+          description: `Node.js CLI tool: ${binName}`,
+          tags: ['nodejs', 'cli', 'command-line'],
+          metadata: {
+            language: this.detectLanguage(allEvidence, packageData),
+            ...(() => {
+              const cliFramework = this.detectCliFramework(packageData.dependencies);
+              return cliFramework ? { framework: cliFramework } : {};
+            })(),
+            buildSystem: 'npm',
+            entryPoint: binPath,
+            commands: [binName], // The bin name is the primary command
+            arguments: [],
+            environmentVariables: this.extractEnvVars(allEvidence),
+            dependencies: Object.keys(packageData.dependencies || {}),
+          },
+        };
+
+        artifacts.push({
+          artifact: cliArtifact,
+          confidence: this.calculateConfidence([...allEvidence], 0.9),
+          provenance: this.createProvenance([...allEvidence]),
+          relationships: [],
+        });
+      }
+    } else {
+      // If no bin field but detected as CLI (e.g., build tools), create a generic CLI artifact
       const cliArtifact: CliArtifact = {
-        id: `nodejs-cli-${binName}`,
+        id: `nodejs-cli-${packageData.name}`,
         type: 'cli',
-        name: binName,
-        description: `Node.js CLI tool: ${binName}`,
+        name: packageData.name,
+        description: packageData.description || `Node.js CLI tool: ${packageData.name}`,
         tags: ['nodejs', 'cli', 'command-line'],
         metadata: {
           language: this.detectLanguage(allEvidence, packageData),
@@ -715,8 +883,8 @@ export class NodeJSPlugin implements ImporterPlugin {
             return cliFramework ? { framework: cliFramework } : {};
           })(),
           buildSystem: 'npm',
-          entryPoint: binPath,
-          commands: [binName], // The bin name is the primary command
+          entryPoint: packageData.main || 'index.js',
+          commands: [packageData.name],
           arguments: [],
           environmentVariables: this.extractEnvVars(allEvidence),
           dependencies: Object.keys(packageData.dependencies || {}),
@@ -725,7 +893,7 @@ export class NodeJSPlugin implements ImporterPlugin {
 
       artifacts.push({
         artifact: cliArtifact,
-        confidence: this.calculateConfidence([...allEvidence], 0.9),
+        confidence: this.calculateConfidence([...allEvidence], 0.7), // Lower confidence without bin
         provenance: this.createProvenance([...allEvidence]),
         relationships: [],
       });
@@ -745,26 +913,52 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     const artifacts: InferredArtifact[] = [];
 
-    for (const [binName, binPath] of Object.entries(binEntries)) {
+    if (Object.keys(binEntries).length > 0) {
+      for (const [binName, binPath] of Object.entries(binEntries)) {
+        const binaryArtifact: BinaryArtifact = {
+          id: `nodejs-binary-${binName}`,
+          type: 'binary',
+          name: binName,
+          description: `Node.js CLI tool: ${binName}`,
+          tags: ['nodejs', 'cli', 'binary'],
+          metadata: {
+            language: this.detectLanguage(allEvidence, packageData),
+            buildSystem: 'npm',
+            entryPoint: binPath,
+            arguments: [],
+            environmentVariables: this.extractEnvVars(allEvidence),
+            dependencies: Object.keys(packageData.dependencies || {}),
+          },
+        };
+
+        artifacts.push({
+          artifact: binaryArtifact,
+          confidence: this.calculateConfidence([...allEvidence], 0.9),
+          provenance: this.createProvenance([...allEvidence]),
+          relationships: [],
+        });
+      }
+    } else {
+      // If no bin field but detected as binary/desktop app, create a generic binary artifact
       const binaryArtifact: BinaryArtifact = {
-        id: `nodejs-binary-${binName}`,
+        id: `nodejs-binary-${packageData.name}`,
         type: 'binary',
-        name: binName,
-        description: `Node.js CLI tool: ${binName}`,
-        tags: ['nodejs', 'cli', 'binary'],
+        name: packageData.name,
+        description: packageData.description || `Node.js binary: ${packageData.name}`,
+        tags: ['nodejs', 'binary'],
         metadata: {
           language: this.detectLanguage(allEvidence, packageData),
           buildSystem: 'npm',
-          entryPoint: binPath,
+          entryPoint: packageData.main || 'index.js',
           arguments: [],
           environmentVariables: this.extractEnvVars(allEvidence),
-          dependencies: Object.keys(packageData.dependencies),
+          dependencies: Object.keys(packageData.dependencies || {}),
         },
       };
 
       artifacts.push({
         artifact: binaryArtifact,
-        confidence: this.calculateConfidence([...allEvidence], 0.9),
+        confidence: this.calculateConfidence([...allEvidence], 0.7),
         provenance: this.createProvenance([...allEvidence]),
         relationships: [],
       });
@@ -787,7 +981,7 @@ export class NodeJSPlugin implements ImporterPlugin {
         language: this.detectLanguage(allEvidence, packageData),
         packageManager: 'npm',
         publicApi: this.extractPublicApi(allEvidence),
-        dependencies: Object.keys(packageData.dependencies),
+        dependencies: Object.keys(packageData.dependencies || {}),
         version: packageData.version,
       },
     };
