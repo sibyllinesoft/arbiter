@@ -28,6 +28,7 @@ interface AppState {
   activeTab: string;
   currentView: 'dashboard' | 'config' | 'project';
   gitUrl: string;
+  modalTab: 'git' | 'github';
   // GitHub Integration State
   gitHubRepos: any[];
   gitHubOrgs: any[];
@@ -56,6 +57,7 @@ type AppAction =
   | { type: 'SET_ACTIVE_TAB'; payload: string }
   | { type: 'SET_CURRENT_VIEW'; payload: 'dashboard' | 'config' | 'project' }
   | { type: 'SET_GIT_URL'; payload: string }
+  | { type: 'SET_MODAL_TAB'; payload: 'git' | 'github' }
   | { type: 'SET_GITHUB_REPOS'; payload: any[] }
   | { type: 'SET_GITHUB_ORGS'; payload: any[] }
   | { type: 'SET_SELECTED_REPOS'; payload: Set<number> }
@@ -86,77 +88,105 @@ const initialState: AppState = {
   activeTab: localStorage.getItem('arbiter:activeTab') || 'source',
   currentView: 'dashboard',
   gitUrl: localStorage.getItem('arbiter:gitUrl') || '',
+  modalTab: (localStorage.getItem('arbiter:modalTab') as 'git' | 'github') || 'git',
   // GitHub Integration State
-  gitHubRepos: [],
-  gitHubOrgs: [],
+  gitHubRepos: JSON.parse(localStorage.getItem('arbiter:githubRepos') || '[]'),
+  gitHubOrgs: JSON.parse(localStorage.getItem('arbiter:githubOrgs') || '[]'),
   selectedRepos: new Set<number>(),
-  reposByOwner: {},
+  reposByOwner: JSON.parse(localStorage.getItem('arbiter:reposByOwner') || '{}'),
   isLoadingGitHub: false,
 };
 
+// Persistence middleware for GitHub state
+function persistGitHubState(state: AppState): void {
+  const githubStateKeys = ['gitHubRepos', 'gitHubOrgs', 'reposByOwner'] as const;
+
+  githubStateKeys.forEach(key => {
+    try {
+      localStorage.setItem(`arbiter:${key.toLowerCase()}`, JSON.stringify(state[key]));
+    } catch (error) {
+      console.warn(`Failed to persist ${key} to localStorage:`, error);
+    }
+  });
+}
+
 function appReducer(state: AppState, action: AppAction): AppState {
-  switch (action.type) {
-    case 'SET_PROJECTS':
-      return { ...state, projects: action.payload };
-    case 'SET_CONNECTION_STATUS':
-      return { ...state, isConnected: action.payload };
-    case 'SET_VALIDATION_STATE':
-      return { ...state, ...action.payload };
-    case 'SET_SELECTED_CUE_FILE':
-      return { ...state, selectedCueFile: action.payload };
-    case 'SET_AVAILABLE_CUE_FILES':
-      return { ...state, availableCueFiles: action.payload };
-    case 'MARK_UNSAVED':
-      return { ...state, unsavedChanges: new Set([...state.unsavedChanges, action.payload]) };
-    case 'MARK_SAVED':
-      const newUnsavedChanges = new Set(state.unsavedChanges);
-      newUnsavedChanges.delete(action.payload);
-      return { ...state, unsavedChanges: newUnsavedChanges };
-    case 'SET_EDITOR_CONTENT':
-      return {
-        ...state,
-        editorContent: {
-          ...state.editorContent,
-          [action.payload.fragmentId]: action.payload.content,
-        },
-      };
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload };
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    case 'UPDATE_SETTINGS':
-      return { ...state, settings: { ...state.settings, ...action.payload } };
-    case 'SET_ACTIVE_TAB':
-      // Persist tab selection to localStorage
-      localStorage.setItem('arbiter:activeTab', action.payload);
-      return { ...state, activeTab: action.payload };
-    case 'SET_CURRENT_VIEW':
-      return { ...state, currentView: action.payload };
-    case 'SET_GIT_URL':
-      // Persist git URL to localStorage for convenience
-      localStorage.setItem('arbiter:gitUrl', action.payload);
-      return { ...state, gitUrl: action.payload };
-    case 'SET_GITHUB_REPOS':
-      return { ...state, gitHubRepos: action.payload };
-    case 'SET_GITHUB_ORGS':
-      return { ...state, gitHubOrgs: action.payload };
-    case 'SET_SELECTED_REPOS':
-      return { ...state, selectedRepos: action.payload };
-    case 'TOGGLE_REPO_SELECTION':
-      const newSelectedRepos = new Set(state.selectedRepos);
-      if (newSelectedRepos.has(action.payload)) {
-        newSelectedRepos.delete(action.payload);
-      } else {
-        newSelectedRepos.add(action.payload);
-      }
-      return { ...state, selectedRepos: newSelectedRepos };
-    case 'SET_REPOS_BY_OWNER':
-      return { ...state, reposByOwner: action.payload };
-    case 'SET_LOADING_GITHUB':
-      return { ...state, isLoadingGitHub: action.payload };
-    default:
-      return state;
+  const newState = (() => {
+    switch (action.type) {
+      case 'SET_PROJECTS':
+        return { ...state, projects: action.payload };
+      case 'SET_CONNECTION_STATUS':
+        return { ...state, isConnected: action.payload };
+      case 'SET_VALIDATION_STATE':
+        return { ...state, ...action.payload };
+      case 'SET_SELECTED_CUE_FILE':
+        return { ...state, selectedCueFile: action.payload };
+      case 'SET_AVAILABLE_CUE_FILES':
+        return { ...state, availableCueFiles: action.payload };
+      case 'MARK_UNSAVED':
+        return { ...state, unsavedChanges: new Set([...state.unsavedChanges, action.payload]) };
+      case 'MARK_SAVED':
+        const newUnsavedChanges = new Set(state.unsavedChanges);
+        newUnsavedChanges.delete(action.payload);
+        return { ...state, unsavedChanges: newUnsavedChanges };
+      case 'SET_EDITOR_CONTENT':
+        return {
+          ...state,
+          editorContent: {
+            ...state.editorContent,
+            [action.payload.fragmentId]: action.payload.content,
+          },
+        };
+      case 'SET_LOADING':
+        return { ...state, loading: action.payload };
+      case 'SET_ERROR':
+        return { ...state, error: action.payload };
+      case 'UPDATE_SETTINGS':
+        return { ...state, settings: { ...state.settings, ...action.payload } };
+      case 'SET_ACTIVE_TAB':
+        // Persist tab selection to localStorage
+        localStorage.setItem('arbiter:activeTab', action.payload);
+        return { ...state, activeTab: action.payload };
+      case 'SET_CURRENT_VIEW':
+        return { ...state, currentView: action.payload };
+      case 'SET_GIT_URL':
+        // Persist git URL to localStorage for convenience
+        localStorage.setItem('arbiter:gitUrl', action.payload);
+        return { ...state, gitUrl: action.payload };
+      case 'SET_MODAL_TAB':
+        // Persist modal tab to localStorage
+        localStorage.setItem('arbiter:modalTab', action.payload);
+        return { ...state, modalTab: action.payload };
+      case 'SET_GITHUB_REPOS':
+        return { ...state, gitHubRepos: action.payload };
+      case 'SET_GITHUB_ORGS':
+        return { ...state, gitHubOrgs: action.payload };
+      case 'SET_SELECTED_REPOS':
+        return { ...state, selectedRepos: action.payload };
+      case 'TOGGLE_REPO_SELECTION':
+        const newSelectedRepos = new Set(state.selectedRepos);
+        if (newSelectedRepos.has(action.payload)) {
+          newSelectedRepos.delete(action.payload);
+        } else {
+          newSelectedRepos.add(action.payload);
+        }
+        return { ...state, selectedRepos: newSelectedRepos };
+      case 'SET_REPOS_BY_OWNER':
+        return { ...state, reposByOwner: action.payload };
+      case 'SET_LOADING_GITHUB':
+        return { ...state, isLoadingGitHub: action.payload };
+      default:
+        return state;
+    }
+  })();
+
+  // Persist GitHub state changes to localStorage
+  const githubActions = ['SET_GITHUB_REPOS', 'SET_GITHUB_ORGS', 'SET_REPOS_BY_OWNER'];
+  if (githubActions.includes(action.type)) {
+    persistGitHubState(newState);
   }
+
+  return newState;
 }
 
 interface AppContextValue {
@@ -169,11 +199,14 @@ interface AppContextValue {
   setActiveTab: (tab: string) => void;
   setCurrentView: (view: 'dashboard' | 'config' | 'project') => void;
   setGitUrl: (url: string) => void;
+  setModalTab: (tab: 'git' | 'github') => void;
   setGitHubRepos: (repos: any[]) => void;
   setGitHubOrgs: (orgs: any[]) => void;
   setSelectedRepos: (repos: Set<number>) => void;
   toggleRepoSelection: (repoId: number) => void;
-  setReposByOwner: (reposByOwner: Record<string, any[]>) => void;
+  setReposByOwner: (
+    reposByOwner: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>)
+  ) => void;
   setLoadingGitHub: (loading: boolean) => void;
 }
 
@@ -196,14 +229,22 @@ export function AppProvider({ children }: AppProviderProps) {
   const setCurrentView = (view: 'dashboard' | 'config' | 'project') =>
     dispatch({ type: 'SET_CURRENT_VIEW', payload: view });
   const setGitUrl = (url: string) => dispatch({ type: 'SET_GIT_URL', payload: url });
+  const setModalTab = (tab: 'git' | 'github') => dispatch({ type: 'SET_MODAL_TAB', payload: tab });
   const setGitHubRepos = (repos: any[]) => dispatch({ type: 'SET_GITHUB_REPOS', payload: repos });
   const setGitHubOrgs = (orgs: any[]) => dispatch({ type: 'SET_GITHUB_ORGS', payload: orgs });
   const setSelectedRepos = (repos: Set<number>) =>
     dispatch({ type: 'SET_SELECTED_REPOS', payload: repos });
   const toggleRepoSelection = (repoId: number) =>
     dispatch({ type: 'TOGGLE_REPO_SELECTION', payload: repoId });
-  const setReposByOwner = (reposByOwner: Record<string, any[]>) =>
-    dispatch({ type: 'SET_REPOS_BY_OWNER', payload: reposByOwner });
+  const setReposByOwner = (
+    reposByOwner: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>)
+  ) => {
+    if (typeof reposByOwner === 'function') {
+      dispatch({ type: 'SET_REPOS_BY_OWNER', payload: reposByOwner(state.reposByOwner) });
+    } else {
+      dispatch({ type: 'SET_REPOS_BY_OWNER', payload: reposByOwner });
+    }
+  };
   const setLoadingGitHub = (loading: boolean) =>
     dispatch({ type: 'SET_LOADING_GITHUB', payload: loading });
 
@@ -217,6 +258,7 @@ export function AppProvider({ children }: AppProviderProps) {
     setActiveTab,
     setCurrentView,
     setGitUrl,
+    setModalTab,
     setGitHubRepos,
     setGitHubOrgs,
     setSelectedRepos,
@@ -275,14 +317,16 @@ export function useAppSettings() {
 }
 
 export function useUIState() {
-  const { state, setActiveTab, setCurrentView, setGitUrl } = useApp();
+  const { state, setActiveTab, setCurrentView, setGitUrl, setModalTab } = useApp();
   return {
     activeTab: state.activeTab,
     currentView: state.currentView,
     gitUrl: state.gitUrl,
+    modalTab: state.modalTab,
     setActiveTab,
     setCurrentView,
     setGitUrl,
+    setModalTab,
   };
 }
 
