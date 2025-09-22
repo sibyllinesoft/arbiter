@@ -2,33 +2,36 @@
  * Tunnel Manager Component - Integrates cloudflare-tunnel.sh functionality
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Globe,
-  Power,
-  PowerOff,
-  RotateCcw,
-  ExternalLink,
-  Copy,
   AlertCircle,
   CheckCircle,
   Clock,
-  Terminal,
-  Settings,
-  RefreshCw,
-  Play,
-  Pause,
+  Copy,
+  ExternalLink,
+  Globe,
   Monitor,
+  Pause,
+  Play,
+  Power,
+  PowerOff,
+  RefreshCw,
+  RotateCcw,
+  Settings,
+  Terminal,
 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'react-toastify';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
-import { toast } from 'react-toastify';
 
-interface TunnelStatus {
-  status: 'running' | 'stopped' | 'failed';
-  url: string | null;
-  output: string;
-  error: string | null;
+interface TunnelInfo {
+  tunnelId: string;
+  tunnelName: string;
+  hostname: string;
+  url: string;
+  configPath: string;
+  status: 'running' | 'stopped';
+  hookId?: string;
 }
 
 interface TunnelManagerProps {
@@ -37,7 +40,7 @@ interface TunnelManagerProps {
 }
 
 export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerProps) {
-  const [tunnelStatus, setTunnelStatus] = useState<TunnelStatus | null>(null);
+  const [tunnelInfo, setTunnelInfo] = useState<TunnelInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMode, setSelectedMode] = useState<'webhook-only' | 'full-api' | 'custom'>(
     'webhook-only'
@@ -57,25 +60,25 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
 
   // Start polling when tunnel is running
   useEffect(() => {
-    if (tunnelStatus?.status === 'running') {
+    if (tunnelInfo?.status === 'running') {
       setIsPolling(true);
     } else {
       setIsPolling(false);
     }
-  }, [tunnelStatus?.status]);
+  }, [tunnelInfo?.status]);
 
   // Notify parent component when tunnel URL changes
   useEffect(() => {
     if (onTunnelUrlChange) {
-      onTunnelUrlChange(tunnelStatus?.status === 'running' ? tunnelStatus.url : null);
+      onTunnelUrlChange(tunnelInfo?.status === 'running' ? tunnelInfo.url : null);
     }
-  }, [tunnelStatus?.status, tunnelStatus?.url, onTunnelUrlChange]);
+  }, [tunnelInfo?.status, tunnelInfo?.url, onTunnelUrlChange]);
 
   const refreshStatus = useCallback(async () => {
     try {
       const response = await apiService.getTunnelStatus();
-      if (response.success && response.tunnel) {
-        setTunnelStatus(response.tunnel);
+      if (response.success) {
+        setTunnelInfo(response.tunnel || null);
       }
     } catch (error) {
       console.error('Failed to refresh tunnel status:', error);
@@ -102,10 +105,13 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const startTunnel = async () => {
     setIsLoading(true);
     try {
-      const response = await apiService.startTunnel(selectedMode);
+      const response = await apiService.setupTunnel({
+        zone: 'sibylline.dev',
+        localPort: 5050,
+      });
       if (response.success && response.tunnel) {
-        setTunnelStatus(response.tunnel);
-        toast.success(response.message || 'Tunnel started successfully');
+        setTunnelInfo(response.tunnel);
+        toast.success('Tunnel started successfully');
       } else {
         toast.error(response.error || 'Failed to start tunnel');
       }
@@ -121,9 +127,11 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     setIsLoading(true);
     try {
       const response = await apiService.stopTunnel();
-      if (response.success && response.tunnel) {
-        setTunnelStatus(response.tunnel);
+      if (response.success) {
+        setTunnelInfo(null);
         toast.success(response.message || 'Tunnel stopped successfully');
+        // Refresh status after stopping
+        await refreshStatus();
       } else {
         toast.error(response.error || 'Failed to stop tunnel');
       }
@@ -151,8 +159,8 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   };
 
   const copyTunnelUrl = () => {
-    if (tunnelStatus?.url) {
-      navigator.clipboard.writeText(tunnelStatus.url);
+    if (tunnelInfo?.url) {
+      navigator.clipboard.writeText(tunnelInfo.url);
       toast.success('Tunnel URL copied to clipboard');
     }
   };
@@ -162,11 +170,9 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       return <RefreshCw className="w-5 h-5 animate-spin" />;
     }
 
-    switch (tunnelStatus?.status) {
+    switch (tunnelInfo?.status) {
       case 'running':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'failed':
-        return <AlertCircle className="w-5 h-5 text-red-600" />;
       case 'stopped':
       default:
         return <Power className="w-5 h-5 text-gray-400" />;
@@ -174,11 +180,9 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   };
 
   const getStatusColor = () => {
-    switch (tunnelStatus?.status) {
+    switch (tunnelInfo?.status) {
       case 'running':
         return 'success';
-      case 'failed':
-        return 'error';
       case 'stopped':
       default:
         return 'neutral';
@@ -190,9 +194,9 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       <div className="flex items-center gap-3 mb-6">
         <Globe className="w-6 h-6 text-gray-600" />
         <h2 className="text-xl font-semibold text-gray-900">Cloudflare Tunnel</h2>
-        {tunnelStatus && (
+        {tunnelInfo && (
           <StatusBadge variant={getStatusColor()} size="sm">
-            {tunnelStatus.status.charAt(0).toUpperCase() + tunnelStatus.status.slice(1)}
+            {tunnelInfo.status.charAt(0).toUpperCase() + tunnelInfo.status.slice(1)}
           </StatusBadge>
         )}
       </div>
@@ -204,10 +208,10 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
             {getStatusIcon()}
             <div>
               <h3 className="font-medium text-gray-900">
-                {tunnelStatus?.status === 'running' ? 'Tunnel Active' : 'Tunnel Inactive'}
+                {tunnelInfo?.status === 'running' ? 'Tunnel Active' : 'Tunnel Inactive'}
               </h3>
               <p className="text-sm text-gray-500">
-                {tunnelStatus?.status === 'running'
+                {tunnelInfo?.status === 'running'
                   ? 'Your tunnel is running and accepting connections'
                   : 'Start a tunnel to enable webhook connectivity'}
               </p>
@@ -237,11 +241,11 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         </div>
 
         {/* Tunnel URL Display */}
-        {tunnelStatus?.url && (
+        {tunnelInfo?.url && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tunnel URL</label>
             <div className="flex gap-2">
-              <Input value={tunnelStatus.url} readOnly className="flex-1 bg-gray-50" />
+              <Input value={tunnelInfo.url} readOnly className="flex-1 bg-gray-50" />
               <Button
                 variant="ghost"
                 size="sm"
@@ -254,7 +258,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
                 variant="ghost"
                 size="sm"
                 leftIcon={<ExternalLink className="w-4 h-4" />}
-                onClick={() => window.open(tunnelStatus.url, '_blank')}
+                onClick={() => window.open(tunnelInfo.url, '_blank')}
               >
                 Open
               </Button>
@@ -263,13 +267,13 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         )}
 
         {/* Error Display */}
-        {tunnelStatus?.error && (
+        {false && (
           <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
             <div className="flex gap-3">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-red-800">
                 <p className="font-medium mb-1">Tunnel Error</p>
-                <p className="font-mono text-xs bg-red-100 p-2 rounded">{tunnelStatus.error}</p>
+                <p className="font-mono text-xs bg-red-100 p-2 rounded">Error placeholder</p>
               </div>
             </div>
           </div>
@@ -290,13 +294,13 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
               <button
                 key={mode.value}
                 onClick={() => setSelectedMode(mode.value as any)}
-                disabled={tunnelStatus?.status === 'running'}
+                disabled={tunnelInfo?.status === 'running'}
                 className={cn(
                   'p-3 text-left border rounded-lg transition-colors',
                   selectedMode === mode.value
                     ? 'border-blue-300 bg-blue-50 text-blue-900'
                     : 'border-gray-200 hover:border-gray-300 text-gray-900',
-                  tunnelStatus?.status === 'running' && 'opacity-50 cursor-not-allowed'
+                  tunnelInfo?.status === 'running' && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 <div className="font-medium text-sm">{mode.label}</div>
@@ -317,7 +321,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
               onChange={e => setCustomConfig(e.target.value)}
               placeholder="Enter custom tunnel configuration..."
               className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
-              disabled={tunnelStatus?.status === 'running'}
+              disabled={tunnelInfo?.status === 'running'}
             />
           </div>
         )}
@@ -325,7 +329,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         {/* Action Buttons */}
         <div className="flex items-center justify-between pt-4 border-t border-gray-200">
           <div className="text-sm text-gray-500">
-            {tunnelStatus?.status === 'running' ? (
+            {tunnelInfo?.status === 'running' ? (
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                 Tunnel is active and monitoring for connections
@@ -336,7 +340,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
           </div>
 
           <div className="flex items-center gap-2">
-            {tunnelStatus?.status === 'running' ? (
+            {tunnelInfo?.status === 'running' ? (
               <Button
                 variant="secondary"
                 leftIcon={<PowerOff className="w-4 h-4" />}

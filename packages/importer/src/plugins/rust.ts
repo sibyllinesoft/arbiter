@@ -37,6 +37,7 @@ interface CargoToml {
     description?: string;
     authors?: string[];
     edition?: string;
+    keywords?: string[];
   };
   bin?: Array<{
     name: string;
@@ -613,6 +614,7 @@ export class RustPlugin implements ImporterPlugin {
           version: cargoData.package.version,
           publicApi: this.extractPublicApi(allEvidence),
           dependencies: Object.keys(cargoData.dependencies || {}),
+          keywords: cargoData.package.keywords || [],
         },
       };
 
@@ -750,7 +752,7 @@ export class RustPlugin implements ImporterPlugin {
       id: `rust-service-${cleanName}`,
       type: 'service',
       name: cleanName,
-      description: `Rust web service: ${binData.binaryName}`,
+      description: cargoData.package.description || `Rust web service: ${binData.binaryName}`,
       tags: ['rust', 'service', 'web', framework].filter(Boolean),
       metadata: {
         language: 'rust',
@@ -760,6 +762,7 @@ export class RustPlugin implements ImporterPlugin {
         environmentVariables: [],
         dependencies: this.extractServiceDependencies(cargoData.dependencies || {}),
         endpoints: [], // Would need deeper analysis to extract
+        keywords: cargoData.package.keywords || [],
         healthCheck: {
           path: '/health',
           expectedStatusCode: 200,
@@ -854,7 +857,9 @@ export class RustPlugin implements ImporterPlugin {
       id: `rust-bin-${cleanName}`,
       type: 'binary',
       name: cleanName,
-      description: `Rust ${isCli ? 'CLI tool' : 'binary'}: ${binData.binaryName}`,
+      description:
+        cargoData.package.description ||
+        `Rust ${isCli ? 'CLI tool' : 'binary'}: ${binData.binaryName}`,
       tags: ['rust', 'binary', isCli ? 'cli' : 'executable'].filter(Boolean),
       metadata: {
         language: 'rust',
@@ -863,6 +868,7 @@ export class RustPlugin implements ImporterPlugin {
         arguments: [],
         environmentVariables: [],
         dependencies: Object.keys(cargoData.dependencies || {}),
+        keywords: cargoData.package.keywords || [],
       },
     };
 
@@ -904,7 +910,7 @@ export class RustPlugin implements ImporterPlugin {
       id: `rust-service-${cleanName}`,
       type: 'service',
       name: cleanName,
-      description: `Rust web service: ${cargoData.package.name}`,
+      description: cargoData.package.description || `Rust web service: ${cargoData.package.name}`,
       tags: ['rust', 'service', 'web', framework].filter(Boolean),
       metadata: {
         language: 'rust',
@@ -914,6 +920,7 @@ export class RustPlugin implements ImporterPlugin {
         environmentVariables: [],
         dependencies: this.extractServiceDependencies(cargoData.dependencies || {}),
         endpoints: [],
+        keywords: cargoData.package.keywords || [],
         healthCheck: {
           path: '/health',
           expectedStatusCode: 200,
@@ -1006,7 +1013,9 @@ export class RustPlugin implements ImporterPlugin {
       id: `rust-bin-${cleanName}`,
       type: 'binary',
       name: cleanName,
-      description: `Rust ${isCli ? 'CLI tool' : 'binary'}: ${cargoData.package.name}`,
+      description:
+        cargoData.package.description ||
+        `Rust ${isCli ? 'CLI tool' : 'binary'}: ${cargoData.package.name}`,
       tags: ['rust', 'binary', isCli ? 'cli' : 'executable'].filter(Boolean),
       metadata: {
         language: 'rust',
@@ -1015,6 +1024,7 @@ export class RustPlugin implements ImporterPlugin {
         arguments: [],
         environmentVariables: [],
         dependencies: Object.keys(cargoData.dependencies || {}),
+        keywords: cargoData.package.keywords || [],
       },
     };
 

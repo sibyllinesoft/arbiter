@@ -6,6 +6,7 @@ import { glob } from 'glob';
 import { Hono } from 'hono';
 import { gitScanner } from '../git-scanner';
 import { tunnelService } from '../tunnel-service';
+import { tunnelRoutes } from './tunnel';
 
 export type Dependencies = Record<string, unknown>;
 
@@ -107,6 +108,9 @@ async function searchFiles(
 
 export function createApiRouter(deps: Dependencies) {
   const app = new Hono();
+
+  // Mount tunnel routes
+  app.route('/api/tunnel', tunnelRoutes);
 
   app.get('/health', c =>
     c.json({ status: 'healthy', timestamp: new Date().toISOString(), database: true })
@@ -1171,184 +1175,7 @@ export function createApiRouter(deps: Dependencies) {
     }
   });
 
-  // Cloudflare tunnel management endpoints
-  app.get('/api/tunnel/status', async c => {
-    try {
-      const status = tunnelService.getStatus();
-
-      return c.json({
-        success: true,
-        tunnel: status,
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to check tunnel status',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  app.post('/api/tunnel/start', async c => {
-    try {
-      const { mode, customConfig, tunnelName, domain } = await c.req.json().catch(() => ({}));
-      const config = {
-        mode: mode || 'webhook-only',
-        customConfig,
-        port: 5050,
-        tunnelName,
-        domain,
-      };
-
-      const status = await tunnelService.startTunnel(config);
-
-      return c.json({
-        success: true,
-        tunnel: status,
-        message: 'Tunnel started successfully',
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to start tunnel',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  app.post('/api/tunnel/stop', async c => {
-    try {
-      const status = await tunnelService.stopTunnel();
-
-      return c.json({
-        success: true,
-        tunnel: status,
-        message: 'Tunnel stopped successfully',
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to stop tunnel',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  app.get('/api/tunnel/logs', async c => {
-    try {
-      const logs = tunnelService.getLogs();
-
-      return c.json({
-        success: true,
-        logs: logs,
-        error: null,
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to get tunnel logs',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  // Named tunnel management endpoints
-  app.get('/api/tunnel/list', async c => {
-    try {
-      const tunnels = await tunnelService.listTunnels();
-
-      return c.json({
-        success: true,
-        tunnels: tunnels,
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to list tunnels',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  app.post('/api/tunnel/create', async c => {
-    try {
-      const { name } = await c.req.json().catch(() => ({}));
-      const tunnelId = await tunnelService.createTunnel(name);
-
-      return c.json({
-        success: true,
-        tunnelId: tunnelId,
-        name: name || 'arbiter-dev',
-        message: 'Tunnel created successfully',
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to create tunnel',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  app.delete('/api/tunnel/:nameOrId', async c => {
-    try {
-      const nameOrId = c.req.param('nameOrId');
-      await tunnelService.deleteTunnel(nameOrId);
-
-      return c.json({
-        success: true,
-        message: 'Tunnel deleted successfully',
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to delete tunnel',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
-
-  app.get('/api/tunnel/url', async c => {
-    try {
-      const url = tunnelService.getTunnelUrl();
-
-      return c.json({
-        success: true,
-        url: url,
-        isRunning: tunnelService.isHealthy(),
-      });
-    } catch (error) {
-      return c.json(
-        {
-          success: false,
-          error: 'Failed to get tunnel URL',
-          details: error instanceof Error ? error.message : 'Unknown error',
-        },
-        500
-      );
-    }
-  });
+  // Old tunnel v1 endpoints have been removed - use the routes at /api/tunnel instead
 
   // Missing endpoints that the frontend expects
   app.get('/api/resolved', async c => {
@@ -1437,10 +1264,7 @@ export function createApiRouter(deps: Dependencies) {
         const imageToUse = actualImage || getContainerImage(language, framework);
 
         services[serviceName] = {
-          name: getCleanArtifactName(artifact.name)
-            .split(/[-_]/)
-            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' '),
+          name: artifact.name, // Use the original name from docker-compose.yml
           type: 'service',
           image: imageToUse,
           ports: [{ port, targetPort: port }],
@@ -1498,10 +1322,7 @@ export function createApiRouter(deps: Dependencies) {
         const version = getDatabaseVersion(dbType, artifact.metadata?.version);
 
         databases[dbName] = {
-          name: getCleanArtifactName(artifact.name)
-            .split(/[-_]/)
-            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' '),
+          name: artifact.name, // Use the original name from docker-compose.yml
           type: dbType,
           version,
           metadata: {
@@ -1526,10 +1347,7 @@ export function createApiRouter(deps: Dependencies) {
         const framework = artifact.framework || 'unknown';
 
         components[componentName] = {
-          name: getCleanArtifactName(artifact.name)
-            .split(/[-_]/)
-            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' '),
+          name: artifact.name, // Use the original name
           type: artifact.type,
           language,
           framework,

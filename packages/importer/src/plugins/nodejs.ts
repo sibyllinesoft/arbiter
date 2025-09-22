@@ -424,6 +424,13 @@ export class NodeJSPlugin implements ImporterPlugin {
     const artifacts: InferredArtifact[] = [];
     const packageData = packageEvidence.data as unknown as PackageJsonData;
 
+    // Skip root package.json if it has workspaces (monorepo root)
+    // The actual packages will be processed from their own package.json files
+    if (packageData.workspaces && packageData.private) {
+      console.log(`   ⏭️  Skipping monorepo root package: ${packageData.name}`);
+      return [];
+    }
+
     // Determine primary artifact type based on analysis
     const artifactType = this.determineArtifactType(packageData, allEvidence);
 
@@ -575,7 +582,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       return 'cli';
     }
 
-    // 5. Frontend - Has frontend framework AND is private or has browserslist
+    // 5. Frontend - Has frontend framework OR frontend build tool with appropriate scripts
     const frontendFrameworks = [
       'react',
       'vue',
@@ -591,9 +598,32 @@ export class NodeJSPlugin implements ImporterPlugin {
       frontendFrameworks.some(fw => dep.toLowerCase().includes(fw))
     );
 
-    // It's a frontend app if it has a framework AND is private/has browserslist
-    // It's a library if it has a framework but also has peerDependencies or is public
-    if (hasFrontendFramework) {
+    // Check for frontend build tools with dev/build scripts (indicates a frontend app)
+    const hasFrontendBuildTool = Object.keys(deps).some(dep =>
+      ['vite', 'webpack', 'parcel', 'snowpack'].includes(dep.toLowerCase())
+    );
+
+    // Check for frontend-specific scripts (even if build tool is not in dependencies)
+    const hasFrontendScripts =
+      packageData.scripts &&
+      (packageData.scripts.dev?.includes('vite') ||
+        packageData.scripts.build?.includes('vite build') ||
+        packageData.scripts.preview?.includes('vite preview') ||
+        packageData.scripts.serve?.includes('webpack serve') ||
+        packageData.scripts.start?.includes('react-scripts') ||
+        packageData.scripts.start?.includes('vue-cli-service') ||
+        packageData.scripts.start?.includes('parcel') ||
+        packageData.scripts.start?.includes('snowpack'));
+
+    // It's a frontend app if:
+    // 1. Has a frontend framework AND is private/has browserslist
+    // 2. Has a frontend build tool with frontend scripts AND is private
+    // 3. Has frontend scripts (even without deps) AND is private
+    if (
+      hasFrontendFramework ||
+      (hasFrontendBuildTool && hasFrontendScripts) ||
+      hasFrontendScripts
+    ) {
       const isComponentLibrary =
         packageData.peerDependencies &&
         Object.keys(packageData.peerDependencies).some(peer =>
@@ -606,7 +636,10 @@ export class NodeJSPlugin implements ImporterPlugin {
       }
 
       if (packageData.private || packageData.browserslist) {
-        console.log(`   ✅ FRONTEND: Has frontend framework (private app)`);
+        const reason = hasFrontendFramework
+          ? 'Has frontend framework'
+          : 'Has frontend build tool with scripts';
+        console.log(`   ✅ FRONTEND: ${reason} (private app)`);
         return 'frontend';
       }
     }
@@ -775,6 +808,8 @@ export class NodeJSPlugin implements ImporterPlugin {
         environmentVariables: this.extractEnvVars(allEvidence),
         dependencies: this.extractServiceDependencies(packageData),
         endpoints: this.extractEndpoints(allEvidence),
+        keywords: packageData.keywords || [],
+        moduleType: packageData.type,
         healthCheck: {
           path: '/health',
           expectedStatusCode: 200,
@@ -813,6 +848,8 @@ export class NodeJSPlugin implements ImporterPlugin {
         routes: this.extractFrontendRoutes(allEvidence),
         apiDependencies: this.extractApiDependencies(allEvidence),
         environmentVariables: this.extractEnvVars(allEvidence),
+        keywords: packageData.keywords || [],
+        moduleType: packageData.type,
       },
     };
 
@@ -888,6 +925,8 @@ export class NodeJSPlugin implements ImporterPlugin {
           arguments: [],
           environmentVariables: this.extractEnvVars(allEvidence),
           dependencies: Object.keys(packageData.dependencies || {}),
+          keywords: packageData.keywords || [],
+          moduleType: packageData.type,
         },
       };
 
@@ -928,6 +967,8 @@ export class NodeJSPlugin implements ImporterPlugin {
             arguments: [],
             environmentVariables: this.extractEnvVars(allEvidence),
             dependencies: Object.keys(packageData.dependencies || {}),
+            keywords: packageData.keywords || [],
+            moduleType: packageData.type,
           },
         };
 
@@ -953,6 +994,8 @@ export class NodeJSPlugin implements ImporterPlugin {
           arguments: [],
           environmentVariables: this.extractEnvVars(allEvidence),
           dependencies: Object.keys(packageData.dependencies || {}),
+          keywords: packageData.keywords || [],
+          moduleType: packageData.type,
         },
       };
 
@@ -983,6 +1026,8 @@ export class NodeJSPlugin implements ImporterPlugin {
         publicApi: this.extractPublicApi(allEvidence),
         dependencies: Object.keys(packageData.dependencies || {}),
         version: packageData.version,
+        keywords: packageData.keywords || [],
+        moduleType: packageData.type,
       },
     };
 

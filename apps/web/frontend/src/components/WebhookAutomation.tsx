@@ -2,24 +2,27 @@
  * Webhook Automation Component - Automated GitHub webhook setup
  */
 
-import React, { useState, useCallback } from 'react';
 import {
-  Zap,
-  Github,
-  Settings,
-  CheckCircle,
   AlertCircle,
-  ExternalLink,
+  CheckCircle,
   Copy,
-  RefreshCw,
-  Play,
-  Trash2,
+  ExternalLink,
   Eye,
   EyeOff,
+  GitBranch,
+  Github,
+  Loader,
+  Play,
+  RefreshCw,
+  Settings,
+  Trash2,
+  Zap,
 } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import CreatableSelect from 'react-select/creatable';
+import { toast } from 'react-toastify';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
-import { toast } from 'react-toastify';
 
 interface GitHubWebhook {
   id: number;
@@ -29,6 +32,24 @@ interface GitHubWebhook {
   active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface GitHubRepo {
+  id: number;
+  name: string;
+  full_name: string;
+  owner: {
+    login: string;
+  };
+  clone_url: string;
+  description: string | null;
+  private: boolean;
+}
+
+interface GitHubOrg {
+  login: string;
+  id: number;
+  description: string | null;
 }
 
 interface WebhookAutomationProps {
@@ -45,6 +66,11 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
   const [isLoading, setIsLoading] = useState(false);
   const [existingWebhooks, setExistingWebhooks] = useState<GitHubWebhook[]>([]);
   const [showExisting, setShowExisting] = useState(false);
+
+  // GitHub projects state
+  const [gitHubRepos, setGitHubRepos] = useState<GitHubRepo[]>([]);
+  const [gitHubOrgs, setGitHubOrgs] = useState<GitHubOrg[]>([]);
+  const [isLoadingGitHub, setIsLoadingGitHub] = useState(false);
 
   const availableEvents = [
     { value: 'push', label: 'Push', description: 'Code pushed to repository' },
@@ -173,14 +199,79 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
     toast.success('Random secret generated');
   };
 
+  const handleLoadGitHubProjects = async () => {
+    setIsLoadingGitHub(true);
+    try {
+      const [reposResult, orgsResult] = await Promise.all([
+        apiService.getGitHubUserRepos(),
+        apiService.getGitHubUserOrgs(),
+      ]);
+
+      let allRepos: GitHubRepo[] = [];
+
+      if (reposResult.success && reposResult.repositories) {
+        allRepos = [...(reposResult.repositories as GitHubRepo[])];
+      }
+
+      if (orgsResult.success && orgsResult.organizations) {
+        setGitHubOrgs(orgsResult.organizations as GitHubOrg[]);
+
+        // Load repos for each org
+        for (const org of orgsResult.organizations) {
+          try {
+            const orgReposResult = await apiService.getGitHubOrgRepos(org.login);
+            if (orgReposResult.success && orgReposResult.repositories) {
+              allRepos = [...allRepos, ...(orgReposResult.repositories as GitHubRepo[])];
+            }
+          } catch (error) {
+            console.warn(`Failed to load repos for org ${org.login}:`, error);
+          }
+        }
+      }
+
+      setGitHubRepos(allRepos);
+
+      if (!reposResult.success) {
+        toast.error(reposResult.error || 'Failed to load GitHub repositories');
+      } else {
+        toast.success(`Loaded ${allRepos.length} repositories`);
+      }
+    } catch (error) {
+      console.error('Failed to load GitHub projects:', error);
+      toast.error('Failed to load GitHub projects');
+    } finally {
+      setIsLoadingGitHub(false);
+    }
+  };
+
   return (
     <Card className={cn('p-6', className)}>
-      <div className="flex items-center gap-3 mb-6">
-        <Zap className="w-6 h-6 text-gray-600" />
-        <h2 className="text-xl font-semibold text-gray-900">Webhook Automation</h2>
-        <StatusBadge variant={tunnelUrl ? 'success' : 'neutral'} size="sm">
-          {tunnelUrl ? 'Ready' : 'Waiting for tunnel'}
-        </StatusBadge>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Zap className="w-6 h-6 text-gray-600" />
+          <h2 className="text-xl font-semibold text-gray-900">Webhook Automation</h2>
+          <StatusBadge variant={tunnelUrl ? 'success' : 'neutral'} size="sm">
+            {tunnelUrl ? 'Ready' : 'Waiting for tunnel'}
+          </StatusBadge>
+        </div>
+        <Button
+          onClick={handleLoadGitHubProjects}
+          disabled={isLoadingGitHub}
+          size="sm"
+          variant="outline"
+        >
+          {isLoadingGitHub ? (
+            <>
+              <Loader className="w-4 h-4 mr-2 animate-spin" />
+              Loading...
+            </>
+          ) : (
+            <>
+              <GitBranch className="w-4 h-4 mr-2" />
+              Load Projects
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Repository Configuration */}
@@ -188,21 +279,99 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
         <div className="grid md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Repository Owner</label>
-            <Input
-              value={repoOwner}
-              onChange={e => setRepoOwner(e.target.value)}
-              placeholder="octocat"
-              className="w-full"
+            <CreatableSelect
+              value={repoOwner ? { value: repoOwner, label: repoOwner } : null}
+              onChange={option => {
+                setRepoOwner(option?.value || '');
+                setRepoName(''); // Reset repo name when owner changes
+              }}
+              onCreateOption={inputValue => {
+                setRepoOwner(inputValue);
+                setRepoName('');
+              }}
+              options={Array.from(new Set(gitHubRepos.map(r => r.owner.login))).map(owner => ({
+                value: owner,
+                label: owner,
+              }))}
+              isSearchable
+              isClearable
+              placeholder="Select or type owner..."
+              className="react-select-container"
+              classNamePrefix="react-select"
+              styles={{
+                control: base => ({
+                  ...base,
+                  minHeight: '36px',
+                  backgroundColor: 'white',
+                  borderColor: '#e5e7eb',
+                  '&:hover': {
+                    borderColor: '#d1d5db',
+                  },
+                }),
+                menu: base => ({
+                  ...base,
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isFocused ? '#f3f4f6' : 'transparent',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6',
+                  },
+                }),
+              }}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Repository Name</label>
-            <Input
-              value={repoName}
-              onChange={e => setRepoName(e.target.value)}
-              placeholder="hello-world"
-              className="w-full"
+            <CreatableSelect
+              value={repoName ? { value: repoName, label: repoName } : null}
+              onChange={option => {
+                setRepoName(option?.value || '');
+              }}
+              onCreateOption={inputValue => {
+                setRepoName(inputValue);
+              }}
+              options={gitHubRepos
+                .filter(r => !repoOwner || r.owner.login === repoOwner)
+                .map(r => ({ value: r.name, label: r.name }))}
+              isSearchable
+              isClearable
+              isDisabled={!repoOwner}
+              placeholder={repoOwner ? 'Select or type repository...' : 'Select owner first...'}
+              className="react-select-container"
+              classNamePrefix="react-select"
+              styles={{
+                control: (base, state) => ({
+                  ...base,
+                  minHeight: '36px',
+                  backgroundColor: 'white',
+                  borderColor: '#e5e7eb',
+                  opacity: state.isDisabled ? 0.5 : 1,
+                  '&:hover': {
+                    borderColor: '#d1d5db',
+                  },
+                }),
+                menu: base => ({
+                  ...base,
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                }),
+                option: (base, state) => ({
+                  ...base,
+                  backgroundColor: state.isFocused ? '#f3f4f6' : 'transparent',
+                  '&:hover': {
+                    backgroundColor: '#f3f4f6',
+                  },
+                }),
+              }}
             />
+            {gitHubRepos.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {gitHubRepos.length} repositories loaded
+              </p>
+            )}
           </div>
         </div>
 

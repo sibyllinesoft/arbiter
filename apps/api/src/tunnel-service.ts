@@ -48,9 +48,6 @@ class CloudflareTunnelService extends EventEmitter {
   private configDir: string;
   private credentialsDir: string;
 
-  private readonly defaultTunnelName = 'arbiter-dev';
-  private readonly defaultDomain = 'your-domain.com';
-
   constructor() {
     super();
 
@@ -71,6 +68,8 @@ class CloudflareTunnelService extends EventEmitter {
    * Get current tunnel status
    */
   getStatus(): TunnelStatus {
+    // Check if there's an external cloudflared process running
+    this.checkExternalTunnel();
     return { ...this.status };
   }
 
@@ -106,6 +105,39 @@ class CloudflareTunnelService extends EventEmitter {
    * Stop the tunnel
    */
   async stopTunnel(): Promise<TunnelStatus> {
+    // First check if there's an external tunnel running
+    this.checkExternalTunnel();
+
+    // If we detect an external tunnel but don't manage it, try to stop it
+    if (this.status.status === 'running' && !this.tunnelProcess) {
+      try {
+        const { execSync } = require('child_process');
+
+        // Try to stop the external cloudflared process
+        this.log('Attempting to stop external cloudflared process');
+        execSync('pkill cloudflared', { encoding: 'utf8' });
+
+        // Wait a bit for the process to stop
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Update status
+        this.status = {
+          status: 'stopped',
+          url: null,
+          output: 'External tunnel stopped',
+          error: null,
+        };
+        this.emit('stopped');
+        return this.getStatus();
+      } catch (error) {
+        // If pkill fails (no process found or permission denied)
+        this.log('Failed to stop external tunnel: ' + error);
+        this.status.error = 'Failed to stop external tunnel';
+        return this.getStatus();
+      }
+    }
+
+    // Handle internally managed tunnel
     if (!this.tunnelProcess) {
       this.status.status = 'stopped';
       return this.getStatus();
@@ -155,6 +187,166 @@ class CloudflareTunnelService extends EventEmitter {
    */
   isHealthy(): boolean {
     return this.status.status === 'running' && this.status.url !== null;
+  }
+
+  /**
+   * Check for externally managed cloudflared process
+   */
+  private checkExternalTunnel(): void {
+    try {
+      const { execSync } = require('child_process');
+
+      // Step 1: Check if cloudflared is running
+      const psOutput = execSync('ps aux | grep cloudflared | grep -v grep', {
+        encoding: 'utf8',
+      });
+
+      if (!psOutput || !psOutput.includes('cloudflared tunnel')) {
+        if (!this.tunnelProcess) {
+          this.status.status = 'stopped';
+          this.status.url = null;
+        }
+        return;
+      }
+
+      // Extract tunnel config file or ID from the process
+      // Look for config file first, then tunnel ID
+      let tunnelId: string | null = null;
+      let configPath: string | null = null;
+
+      const configMatch = psOutput.match(/--config\s+([^\s]+\.yml)/);
+      if (configMatch) {
+        configPath = configMatch[1];
+        // Read the config to get the tunnel ID
+        try {
+          const configContent = require('fs').readFileSync(configPath, 'utf8');
+          const tunnelMatch = configContent.match(
+            /tunnel:\s*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+          );
+          if (tunnelMatch) {
+            tunnelId = tunnelMatch[1];
+          }
+
+          // Also extract hostname directly from config
+          const hostnameMatch = configContent.match(/hostname:\s*([^\s]+)/);
+          if (hostnameMatch && !hostnameMatch[1].includes('cfargotunnel.com')) {
+            const hostname = hostnameMatch[1];
+            this.status.url = hostname.startsWith('http') ? hostname : `https://${hostname}`;
+            this.log(`Found tunnel URL from config: ${this.status.url}`);
+          }
+        } catch (e) {
+          this.log('Could not read tunnel config: ' + e);
+        }
+      }
+
+      // Fallback to extracting tunnel ID from process args
+      if (!tunnelId) {
+        const tunnelIdMatch = psOutput.match(
+          /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+        );
+        if (tunnelIdMatch) {
+          tunnelId = tunnelIdMatch[1];
+        }
+      }
+
+      if (!tunnelId) {
+        // Quick tunnel detected (no tunnel ID)
+        if (psOutput.includes('--url')) {
+          this.status.status = 'running';
+          this.status.error = 'Quick tunnel detected. Cannot determine URL from quick tunnels.';
+        }
+        return;
+      }
+
+      // If we detect an external tunnel, update the status
+      if (!this.tunnelProcess) {
+        this.status.status = 'running';
+        this.status.tunnelId = tunnelId;
+        this.status.error = null; // Clear any previous errors
+
+        try {
+          // Step 2: Get tunnel info using JSON output
+          const tunnelInfoJson = execSync(
+            `cloudflared tunnel info ${tunnelId} --output json 2>/dev/null`,
+            {
+              encoding: 'utf8',
+            }
+          );
+
+          const tunnelInfo = JSON.parse(tunnelInfoJson);
+          this.status.tunnelName = tunnelInfo.name || this.status.tunnelName;
+
+          // Step 3: Extract hostnames from ingress configuration
+          const hostnames = new Set<string>();
+
+          // Check ingress rules in the tunnel config
+          if (tunnelInfo.config?.config?.ingress) {
+            for (const rule of tunnelInfo.config.config.ingress) {
+              if (rule.hostname && !rule.hostname.includes('cfargotunnel.com')) {
+                hostnames.add(rule.hostname);
+              }
+            }
+          }
+
+          // Alternative: check the raw config if available
+          if (tunnelInfo.config?.src?.content?.ingress) {
+            for (const rule of tunnelInfo.config.src.content.ingress) {
+              if (rule.hostname && !rule.hostname.includes('cfargotunnel.com')) {
+                hostnames.add(rule.hostname);
+              }
+            }
+          }
+
+          // Step 4: Get DNS routes to find additional hostnames
+          try {
+            const routesJson = execSync(
+              'cloudflared tunnel route dns --list --output json 2>/dev/null',
+              {
+                encoding: 'utf8',
+              }
+            );
+
+            const routes = JSON.parse(routesJson);
+            for (const route of routes) {
+              if (route.tunnel_id === tunnelId && route.hostname) {
+                hostnames.add(route.hostname);
+              }
+            }
+          } catch (e) {
+            // DNS route listing might fail if not configured
+            this.log('Could not list DNS routes: ' + e);
+          }
+
+          // Step 5: Set the URL from discovered hostnames (if not already set)
+          if (!this.status.url && hostnames.size > 0) {
+            // Use the first non-cfargotunnel hostname
+            const hostname = Array.from(hostnames)[0];
+            this.status.url = hostname.startsWith('http') ? hostname : `https://${hostname}`;
+            this.status.error = null;
+            this.log(`Found tunnel URL: ${this.status.url}`);
+          } else if (!this.status.url) {
+            this.log('Warning: Tunnel is running but no hostname configured');
+            this.status.error =
+              'Tunnel is running but no DNS route configured. Use "cloudflared tunnel route dns" to set up a route.';
+          }
+        } catch (e) {
+          // Only set error if we don't already have a URL
+          if (!this.status.url) {
+            this.log('Error getting tunnel info: ' + e);
+            this.status.error = 'Could not determine tunnel configuration';
+          } else {
+            // We have the URL from config, so just log the issue
+            this.log('Could not get additional tunnel info via CLI: ' + e);
+          }
+        }
+      }
+    } catch (error) {
+      // If ps command fails, assume no tunnel is running
+      if (!this.tunnelProcess) {
+        this.status.status = 'stopped';
+        this.status.url = null;
+      }
+    }
   }
 
   /**
@@ -296,6 +488,29 @@ class CloudflareTunnelService extends EventEmitter {
     // Ensure we have a tunnel and configuration
     const tunnelName = this.config!.tunnelName || this.defaultTunnelName;
     const tunnelId = await this.ensureTunnel(tunnelName);
+
+    // Try to get existing tunnel hostname configuration
+    const tunnelInfo = await this.getTunnelInfo(tunnelId);
+    if (tunnelInfo?.hostname) {
+      this.log(`Found existing tunnel hostname from info: ${tunnelInfo.hostname}`);
+      // Update config with actual hostname if found
+      const hostnameMatch = tunnelInfo.hostname.match(/^([^.]+)\.(.+)$/);
+      if (hostnameMatch) {
+        this.config!.domain = hostnameMatch[2];
+      }
+    }
+
+    // Also try to get configured DNS route
+    const dnsRoute = await this.getTunnelRoute(tunnelId);
+    if (dnsRoute) {
+      this.log(`Found configured DNS route: ${dnsRoute}`);
+      // Extract domain from the route
+      const routeMatch = dnsRoute.match(/^([^.]+)\.(.+)$/);
+      if (routeMatch) {
+        this.config!.tunnelName = routeMatch[1];
+        this.config!.domain = routeMatch[2];
+      }
+    }
 
     // Generate configuration file
     await this.generateTunnelConfig(tunnelId, tunnelName);
@@ -465,29 +680,93 @@ ingress:
   }
 
   private extractTunnelUrl(output: string): void {
-    // For named tunnels, construct URL from configuration once connected
-    if (this.status.tunnelId && !this.status.url) {
-      // Check if tunnel is connected (look for connection messages)
-      if (
-        output.includes('Registered tunnel connection') ||
-        output.includes('Connection registered')
-      ) {
-        const domain = this.config?.domain || this.defaultDomain;
-        const tunnelName = this.config?.tunnelName || this.defaultTunnelName;
-        this.status.url = `https://${tunnelName}.${domain}`;
-        this.log(`Tunnel URL: ${this.status.url}`);
+    // Skip if we already have a URL
+    if (this.status.url) {
+      return;
+    }
+
+    // First try to extract the actual hostname from cloudflared output
+    // Cloudflared typically outputs something like:
+    // "INF | Registered tunnel connection" followed by connection details
+    // or "INF | +----------------------------+------------------------------------------------------------+"
+    // followed by the hostname in a table format
+    // or directly shows the URL being served
+    // or "INF Starting tunnel with hostname: arbiter-dev.example.com"
+
+    // Look for hostname announcements in various formats
+    const hostnamePatterns = [
+      /hostname:\s*([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
+      /serving\s+(?:on|at)\s+([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
+      /available\s+at\s+([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
+      /ingress\s+rule\s+.*?([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
+      /dns\s+record\s+.*?([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
+      /route\s+(?:to|dns)\s+([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
+      /tunnel\s+.*?([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})\s+(?:created|configured)/i,
+      /\|\s*([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})\s*\|/i, // Table format
+      /config.*hostname.*?([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i, // Config output
+    ];
+
+    for (const pattern of hostnamePatterns) {
+      const match = output.match(pattern);
+      if (match && match[1]) {
+        // Ensure it's a full URL
+        const hostname = match[1].startsWith('http') ? match[1] : `https://${match[1]}`;
+        this.status.url = hostname;
+        this.log(`Tunnel hostname detected from output: ${this.status.url}`);
         this.emit('url', this.status.url);
         return;
       }
     }
 
-    // Only look for URLs if we don't have a tunnel ID (quick tunnel mode)
+    // Look for any complete HTTPS URL in the output
+    const httpsUrlMatch = output.match(/https:\/\/[a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,}/g);
+    if (httpsUrlMatch) {
+      // Filter out known false positives - only accept actual tunnel URLs
+      const validUrl = httpsUrlMatch.find(
+        url =>
+          !url.includes('github.com') &&
+          !url.includes('cloudflare.com/docs') &&
+          !url.includes('quic-go') &&
+          !url.includes('wiki') &&
+          // Only accept trycloudflare URLs or URLs that cloudflared specifically outputs
+          (url.includes('.trycloudflare.com') ||
+            output.includes(`Serving at ${url}`) ||
+            output.includes(`Available at ${url}`) ||
+            output.includes(`Your tunnel is available at: ${url}`))
+      );
+
+      if (validUrl) {
+        this.status.url = validUrl;
+        this.log(`Tunnel URL detected from output: ${this.status.url}`);
+        this.emit('url', this.status.url);
+        return;
+      }
+    }
+
+    // For named tunnels, if connected but no URL found, log warning
+    if (this.status.tunnelId) {
+      // Check if tunnel is connected (look for connection messages)
+      if (
+        output.includes('Registered tunnel connection') ||
+        output.includes('Connection registered') ||
+        output.includes('tunnel connected') ||
+        output.includes('Serving HTTP traffic')
+      ) {
+        // Tunnel is connected but we haven't found a URL
+        if (!this.status.url) {
+          this.log('Warning: Tunnel connected but no URL found in output');
+          this.status.error =
+            'Tunnel is connected but URL cannot be determined from cloudflared output.';
+        }
+      }
+    }
+
+    // For quick tunnels (no tunnel ID), look for trycloudflare.com URLs
     if (!this.status.tunnelId) {
-      // Look for trycloudflare.com URLs specifically
-      const urlMatch = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
-      if (urlMatch && !this.status.url) {
-        this.status.url = urlMatch[0];
-        this.log(`Tunnel URL detected: ${this.status.url}`);
+      const trycloudflareMatch = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+      if (trycloudflareMatch) {
+        this.status.url = trycloudflareMatch[0];
+        this.log(`Quick tunnel URL detected: ${this.status.url}`);
         this.emit('url', this.status.url);
       }
     }
@@ -598,20 +877,94 @@ ingress:
   }
 
   /**
-   * Get tunnel URL from configuration
+   * Get tunnel URL from status
    */
   getTunnelUrl(): string | null {
-    if (this.status.url) {
-      return this.status.url;
-    }
+    return this.status.url;
+  }
 
-    if (this.status.tunnelId && this.config) {
-      const domain = this.config.domain || this.defaultDomain;
-      const tunnelName = this.config.tunnelName || this.defaultTunnelName;
-      return `https://${tunnelName}.${domain}`;
-    }
+  /**
+   * Get tunnel info including configured hostname
+   */
+  async getTunnelInfo(tunnelId: string): Promise<{ hostname?: string } | null> {
+    return new Promise((resolve, reject) => {
+      const process = spawn('cloudflared', ['tunnel', 'info', tunnelId], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
 
-    return null;
+      let output = '';
+      let error = '';
+
+      process.stdout?.on('data', data => {
+        output += data.toString();
+      });
+
+      process.stderr?.on('data', data => {
+        error += data.toString();
+      });
+
+      process.on('exit', code => {
+        if (code === 0) {
+          // Parse output for hostname
+          const hostnameMatch = output.match(
+            /hostname:\s*([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i
+          );
+          if (hostnameMatch && hostnameMatch[1]) {
+            resolve({ hostname: hostnameMatch[1] });
+          } else {
+            resolve(null);
+          }
+        } else {
+          // Don't reject, just return null if info command fails
+          this.log(`Could not get tunnel info: ${error}`);
+          resolve(null);
+        }
+      });
+
+      process.on('error', err => {
+        this.log(`Could not execute cloudflared info: ${err.message}`);
+        resolve(null);
+      });
+    });
+  }
+
+  /**
+   * Get configured DNS route for a tunnel
+   */
+  async getTunnelRoute(tunnelId: string): Promise<string | null> {
+    return new Promise(resolve => {
+      // Try to list routes for this tunnel
+      const process = spawn('cloudflared', ['tunnel', 'route', 'list'], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      let output = '';
+
+      process.stdout?.on('data', data => {
+        output += data.toString();
+      });
+
+      process.on('exit', () => {
+        // Parse output for routes matching this tunnel ID
+        const lines = output.split('\n');
+        for (const line of lines) {
+          if (line.includes(tunnelId)) {
+            // Extract hostname from route (format: HOSTNAME UUID TYPE)
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 1 && parts[0].includes('.')) {
+              this.log(`Found configured DNS route: ${parts[0]}`);
+              resolve(parts[0]);
+              return;
+            }
+          }
+        }
+        resolve(null);
+      });
+
+      process.on('error', () => {
+        resolve(null);
+      });
+    });
   }
 }
 

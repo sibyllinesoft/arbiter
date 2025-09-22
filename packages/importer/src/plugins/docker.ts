@@ -421,13 +421,35 @@ export class DockerPlugin implements ImporterPlugin {
 
     // Infer service artifact if ports are exposed
     if (dockerData.exposedPorts.length > 0) {
-      const serviceName = path.basename(path.dirname(dockerfileEvidence.filePath));
+      // Don't use the directory name directly, especially for root-level Dockerfiles
+      const dockerDir = path.dirname(dockerfileEvidence.filePath);
+      const relativeDir = path.relative(context.projectRoot, dockerDir);
+
+      // For root-level Dockerfile, use a generic name or try to infer from context
+      let serviceName: string;
+      if (!relativeDir || relativeDir === '.') {
+        // Root-level Dockerfile - try to infer from WORKDIR or CMD
+        if (dockerData.workdir && dockerData.workdir !== '/app' && dockerData.workdir !== '/') {
+          serviceName = path.basename(dockerData.workdir);
+        } else if (dockerData.cmd.length > 0) {
+          // Try to extract service name from CMD
+          const cmdFile = dockerData.cmd.find(
+            c => c.includes('.js') || c.includes('.ts') || c.includes('.py')
+          );
+          serviceName = cmdFile ? path.basename(cmdFile, path.extname(cmdFile)) : 'docker-app';
+        } else {
+          serviceName = 'docker-app'; // Generic name for root-level Docker service
+        }
+      } else {
+        // Dockerfile in a subdirectory - use the directory name
+        serviceName = path.basename(dockerDir);
+      }
 
       const serviceArtifact: ServiceArtifact = {
-        id: `docker-service-${serviceName}`,
+        id: `docker-service-${relativeDir?.replace(/\//g, '-') || 'root'}-${serviceName}`,
         type: 'service',
         name: serviceName,
-        description: `Dockerized service: ${serviceName}`,
+        description: `Dockerized service: ${serviceName}${relativeDir ? ` (from ${relativeDir})` : ' (root Dockerfile)'}`,
         tags: ['docker', 'container', 'service'],
         metadata: {
           language: dockerData.language || '',

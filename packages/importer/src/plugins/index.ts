@@ -12,6 +12,7 @@ import { kubernetesPlugin } from './kubernetes.js';
 import { nodejsPlugin } from './nodejs.js';
 import { pythonPlugin } from './python.js';
 import { rustPlugin } from './rust.js';
+import { terraformPlugin } from './terraform.js';
 
 export { RustPlugin, rustPlugin } from './rust.js';
 export { DockerPlugin, dockerPlugin } from './docker.js';
@@ -19,6 +20,7 @@ export { KubernetesPlugin, kubernetesPlugin } from './kubernetes.js';
 export { NodeJSPlugin, nodejsPlugin } from './nodejs.js';
 export { PythonPlugin, pythonPlugin } from './python.js';
 export { ConfigOnlyPlugin, configOnlyPlugin } from './config-only.js';
+export { TerraformPlugin, terraformPlugin } from './terraform.js';
 
 // Re-export types for convenience
 export type { ImporterPlugin } from '../types.js';
@@ -32,9 +34,10 @@ export function getAllPlugins() {
     // It was processing package.json files that are already handled by nodejsPlugin
     rustPlugin,
     dockerPlugin,
-    kubernetesPlugin,
+    kubernetesPlugin, // Re-enabled
     nodejsPlugin, // Re-enabled with improved detection
     pythonPlugin, // Added Python support
+    terraformPlugin, // Terraform support - requires .terraform.lock.hcl
   ];
 }
 
@@ -60,6 +63,10 @@ export function getPluginsByLanguage(language: string) {
     case 'kubernetes':
     case 'k8s':
       return [kubernetesPlugin];
+    case 'terraform':
+    case 'tf':
+    case 'hcl':
+      return [terraformPlugin];
     default:
       return [];
   }

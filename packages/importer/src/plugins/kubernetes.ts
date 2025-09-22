@@ -378,10 +378,16 @@ export class KubernetesPlugin implements ImporterPlugin {
       const isDatabase = this.isDatabaseContainer(container);
 
       if (isDatabase) {
+        // Use just the workload name if it's the same as the container name
+        const dbName =
+          workloadData.name === container.name
+            ? workloadData.name
+            : `${workloadData.name}-${container.name}`;
+
         const dbArtifact: DatabaseArtifact = {
-          id: `k8s-db-${workloadData.name}-${container.name}`,
+          id: `k8s-db-${dbName}`,
           type: 'database',
-          name: `${workloadData.name}-${container.name}`,
+          name: dbName,
           description: `Kubernetes database: ${container.image}`,
           tags: ['kubernetes', 'database', workloadData.kind.toLowerCase()],
           metadata: {
@@ -400,10 +406,16 @@ export class KubernetesPlugin implements ImporterPlugin {
         });
       } else {
         // Regular service
+        // Use just the workload name if it's the same as the container name
+        const serviceName =
+          workloadData.name === container.name
+            ? workloadData.name
+            : `${workloadData.name}-${container.name}`;
+
         const serviceArtifact: ServiceArtifact = {
-          id: `k8s-service-${workloadData.name}-${container.name}`,
+          id: `k8s-service-${serviceName}`,
           type: 'service',
-          name: `${workloadData.name}-${container.name}`,
+          name: serviceName,
           description: `Kubernetes service: ${container.image}`,
           tags: ['kubernetes', 'service', workloadData.kind.toLowerCase()],
           metadata: {
@@ -434,43 +446,9 @@ export class KubernetesPlugin implements ImporterPlugin {
     k8sEvidence: Evidence[],
     context: InferenceContext
   ): Promise<InferredArtifact[]> {
-    const artifacts: InferredArtifact[] = [];
-
-    // Group evidence by namespace or use default
-    const namespaces = new Set(k8sEvidence.map(e => (e.data as any).namespace || 'default'));
-
-    for (const namespace of namespaces) {
-      const nsEvidence = k8sEvidence.filter(
-        e => ((e.data as any).namespace || 'default') === namespace
-      );
-
-      const deploymentArtifact: DeploymentArtifact = {
-        id: `k8s-deployment-${namespace}`,
-        type: 'deployment',
-        name: `kubernetes-${namespace}`,
-        description: `Kubernetes deployment in namespace: ${namespace}`,
-        tags: ['kubernetes', 'deployment', 'infrastructure'],
-        metadata: {
-          platform: 'kubernetes',
-          namespace: namespace || '',
-          resources: nsEvidence.map(e => ({
-            kind: (e.data as any).kind as string,
-            name: (e.data as any).name as string,
-            apiVersion: (e.data as any).apiVersion as string,
-          })),
-          configFiles: [...new Set(nsEvidence.map(e => e.filePath))],
-        },
-      };
-
-      artifacts.push({
-        artifact: deploymentArtifact,
-        confidence: this.calculateConfidence(nsEvidence, 0.9),
-        provenance: this.createProvenance(nsEvidence),
-        relationships: [],
-      });
-    }
-
-    return artifacts;
+    // Skip creating generic namespace artifacts - they're not meaningful
+    // Each actual service/deployment is already handled by inferFromWorkload
+    return [];
   }
 
   // ============================================================================

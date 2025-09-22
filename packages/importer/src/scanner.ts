@@ -1207,30 +1207,94 @@ export class ScannerRunner {
     const projectMetadata = await this.generateProjectMetadata(fileIndex);
     console.log(`🏗️ Scanner: Generated project metadata:`, projectMetadata);
 
-    const inferenceContext: InferenceContext = {
-      projectRoot: this.config.projectRoot,
-      fileIndex,
-      allEvidence: evidence,
-      options: this.config.inferenceOptions,
-      cache: this.cache,
-      projectMetadata,
-    };
+    // Group evidence by top-level directories to process separately
+    const evidenceByScope = this.groupEvidenceByScope(evidence);
 
     const allArtifacts: InferredArtifact[] = [];
     const enabledPlugins = this.pluginRegistry.getEnabled();
 
-    // Each plugin can infer artifacts from the complete evidence set
-    for (const plugin of enabledPlugins) {
-      try {
-        const pluginArtifacts = await plugin.infer(evidence, inferenceContext);
-        allArtifacts.push(...pluginArtifacts);
-      } catch (error) {
-        throw new PluginError(plugin.name(), `Failed to infer artifacts: ${error}`, error as Error);
+    // Process each scope separately to prevent cross-contamination
+    for (const [scope, scopedEvidence] of evidenceByScope) {
+      this.debug(`Processing scope: ${scope} with ${scopedEvidence.length} evidence items`);
+
+      const inferenceContext: InferenceContext = {
+        projectRoot: this.config.projectRoot,
+        fileIndex,
+        allEvidence: scopedEvidence, // Only pass evidence from this scope
+        options: this.config.inferenceOptions,
+        cache: this.cache,
+        projectMetadata,
+      };
+
+      // Each plugin can infer artifacts from the scoped evidence set
+      for (const plugin of enabledPlugins) {
+        try {
+          const pluginArtifacts = await plugin.infer(scopedEvidence, inferenceContext);
+          allArtifacts.push(...pluginArtifacts);
+        } catch (error) {
+          throw new PluginError(
+            plugin.name(),
+            `Failed to infer artifacts for ${scope}: ${error}`,
+            error as Error
+          );
+        }
       }
     }
 
     this.debug(`Inferred ${allArtifacts.length} artifacts from ${evidence.length} evidence items`);
     return allArtifacts;
+  }
+
+  /**
+   * Group evidence by their top-level directory scope
+   * This prevents Docker/config files in root from claiming artifacts in subdirectories
+   */
+  private groupEvidenceByScope(evidence: Evidence[]): Map<string, Evidence[]> {
+    const scopes = new Map<string, Evidence[]>();
+
+    for (const e of evidence) {
+      const relativePath = path.relative(this.config.projectRoot, e.filePath);
+
+      // Determine the scope based on the file location
+      let scope: string;
+      if (!relativePath || relativePath.startsWith('..')) {
+        scope = 'root';
+      } else {
+        const parts = relativePath.split(path.sep);
+        if (parts.length === 1) {
+          // File in root directory
+          scope = 'root';
+        } else if (parts[0] === 'apps' || parts[0] === 'packages') {
+          // Monorepo structure - use two levels (e.g., 'apps/api', 'packages/cli')
+          scope = parts.length > 1 ? `${parts[0]}/${parts[1]}` : parts[0];
+        } else {
+          // Other top-level directories
+          scope = parts[0];
+        }
+      }
+
+      if (!scopes.has(scope)) {
+        scopes.set(scope, []);
+      }
+      scopes.get(scope)!.push(e);
+    }
+
+    // Add root-level evidence to all scopes for context (like .gitignore, etc.)
+    // but only config/build files, not source files
+    const rootEvidence = scopes.get('root') || [];
+    const sharedRootEvidence = rootEvidence.filter(
+      e =>
+        e.type === 'config' || e.type === 'dependency' || path.basename(e.filePath).startsWith('.')
+    );
+
+    for (const [scope, scopedEvidence] of scopes) {
+      if (scope !== 'root') {
+        // Add shared root config to each scope for context
+        scopedEvidence.push(...sharedRootEvidence);
+      }
+    }
+
+    return scopes;
   }
 
   // ============================================================================

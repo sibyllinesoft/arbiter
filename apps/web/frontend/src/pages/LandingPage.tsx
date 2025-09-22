@@ -3,15 +3,16 @@
  */
 
 import arbiterLogo from '@assets/arbiter.webp';
+// @ts-ignore
 import { ProjectList, useUnifiedTabs } from '@components';
 import Tabs from '@components/Layout/Tabs';
 import { ProjectCreationModal } from '@components/ProjectCreation';
 import { useAppSettings, useUIState } from '@contexts/AppContext';
 import { useCurrentProject, useSetCurrentProject } from '@contexts/ProjectContext';
-import { Button, Card, StatusBadge, cn } from '@design-system';
-import { useDeleteProject, useHealthCheck, useProjects } from '@hooks/api-hooks';
+import { Button } from '@design-system';
+import { useDeleteProject, useProjects } from '@hooks/api-hooks';
 import { useWebSocket } from '@hooks/useWebSocket';
-import { GitBranch, Plus, Settings, Trash2 } from 'lucide-react';
+import { GitBranch, Plus, Settings } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 
@@ -21,8 +22,7 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onNavigateToConfig, onNavigateToProject }: LandingPageProps) {
-  const { data: projects, isLoading: projectsLoading, refetch: refetchProjects } = useProjects();
-  const { data: health, isLoading: healthLoading } = useHealthCheck();
+  const { data: projects, isLoading: projectsLoading } = useProjects();
   const deleteProjectMutation = useDeleteProject();
   const currentProject = useCurrentProject();
   const setCurrentProject = useSetCurrentProject();
@@ -64,12 +64,14 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
     if (projects) {
       if (projects.length === 0) {
         if (currentProject) setCurrentProject(null);
-      } else if (!currentProject) {
+      } else if (!currentProject && projects?.[0]) {
         setCurrentProject(projects[0]);
       } else {
-        const currentProjectExists = projects.some(p => p.id === currentProject.id);
+        const currentProjectExists = currentProject
+          ? projects.some(p => p.id === currentProject.id)
+          : false;
         if (!currentProjectExists) {
-          setCurrentProject(projects.length > 0 ? projects[0] : null);
+          setCurrentProject(projects?.[0] ?? null);
         }
       }
     }

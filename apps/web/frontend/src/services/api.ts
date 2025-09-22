@@ -368,52 +368,85 @@ class ApiService {
     });
   }
 
-  // Cloudflare tunnel management methods
+  // Cloudflare tunnel management methods (v2 API)
   async getTunnelStatus(): Promise<{
     success: boolean;
     tunnel?: {
-      status: 'running' | 'stopped' | 'failed';
-      url: string | null;
-      output: string;
-      error: string | null;
-    };
+      tunnelId: string;
+      tunnelName: string;
+      hostname: string;
+      url: string;
+      configPath: string;
+      status: 'running' | 'stopped';
+      hookId?: string;
+    } | null;
     error?: string;
   }> {
     return this.request('/api/tunnel/status');
   }
 
-  async startTunnel(mode?: 'webhook-only' | 'full-api' | 'custom'): Promise<{
+  async setupTunnel(config: {
+    zone: string;
+    subdomain?: string;
+    localPort?: number;
+    githubToken?: string;
+    repository?: string;
+    webhookSecret?: string;
+  }): Promise<{
     success: boolean;
     tunnel?: {
-      status: 'running' | 'stopped' | 'failed';
-      url: string | null;
-      output: string;
-      error: string | null;
+      tunnelId: string;
+      tunnelName: string;
+      hostname: string;
+      url: string;
+      configPath: string;
+      status: 'running' | 'stopped';
+      hookId?: string;
     };
-    message?: string;
+    logs?: string[];
     error?: string;
   }> {
-    return this.request('/api/tunnel/start', {
+    return this.request('/api/tunnel/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify(config),
+    });
+  }
+
+  // Legacy startTunnel for backwards compatibility
+  async startTunnel(mode?: 'webhook-only' | 'full-api' | 'custom'): Promise<any> {
+    return this.setupTunnel({
+      zone: 'sibylline.dev',
+      localPort: 5050,
     });
   }
 
   async stopTunnel(): Promise<{
     success: boolean;
-    tunnel?: {
-      status: 'running' | 'stopped' | 'failed';
-      url: string | null;
-      output: string;
-      error: string | null;
-    };
     message?: string;
     error?: string;
   }> {
     return this.request('/api/tunnel/stop', {
       method: 'POST',
     });
+  }
+
+  async teardownTunnel(): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+  }> {
+    return this.request('/api/tunnel/teardown', {
+      method: 'POST',
+    });
+  }
+
+  async getTunnelPreflight(): Promise<{
+    success: boolean;
+    zones?: string[];
+    error?: string;
+  }> {
+    return this.request('/api/tunnel/preflight');
   }
 
   async getTunnelLogs(): Promise<{
