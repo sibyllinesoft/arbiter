@@ -11,6 +11,16 @@ import * as fs from 'fs-extra';
 import { glob } from 'glob';
 import { NodeJSPlugin } from './plugins/nodejs.js';
 import type { PackageJsonData } from './plugins/nodejs.js';
+// Mock InferenceContext for test script
+interface MockInferenceContext {
+  projectRoot: string;
+  fileIndex: any;
+  allEvidence: any[];
+  options: any;
+  cache: any;
+  projectMetadata: any;
+}
+import type { InferenceContext } from './types';
 
 interface DetectionData {
   projectPath: string;
@@ -42,16 +52,43 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
 
   for (const pkgPath of packageJsonPaths) {
     const fullPath = path.join(projectPath, pkgPath);
-    const packageDir = path.dirname(fullPath);
+    const packageDir = path.join(projectPath, path.dirname(pkgPath));
 
     try {
       const packageJson = await fs.readJson(fullPath);
 
-      // Get file patterns in the package directory
+      // Get file patterns in the package directory - use projectPath as cwd
       const filePatterns = await glob('**/*.{js,jsx,ts,tsx,mjs,cjs}', {
         cwd: packageDir,
         ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
         absolute: false,
+      });
+
+      // Build a simple fileIndex for hasSourceFiles check
+      const fileIndex = {
+        root: projectPath,
+        files: new Map(),
+        directories: new Map(),
+        timestamp: Date.now(),
+      };
+      const sourceFiles = await glob('**/*.{js,jsx,ts,tsx,mjs,cjs}', {
+        cwd: packageDir,
+        ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+        absolute: false,
+      });
+      sourceFiles.forEach(relPath => {
+        const absPath = path.join(packageDir, relPath);
+        fileIndex.files.set(absPath, {
+          path: absPath,
+          relativePath: path.relative(projectPath, absPath),
+          size: 0, // Mock
+          lastModified: Date.now(),
+          extension: path.extname(relPath),
+          isBinary: false,
+          hash: '',
+          language: undefined,
+          metadata: {},
+        });
       });
 
       // Create mock evidence for detection
@@ -62,8 +99,10 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
           type: 'config' as const,
           filePath: pkgPath,
           data: {
-            configType: 'package-json',
-            ...packageJson,
+            name: packageJson.name,
+            description: packageJson.description || '',
+            type: 'library',
+            filePath: pkgPath,
           },
           confidence: 0.95,
           metadata: {
@@ -73,44 +112,49 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
         },
       ];
 
+      // Create full inference context with proper fileIndex
+      const fullEvidence = evidence;
+      const projectMetadata = {
+        name: projectName,
+        root: projectPath,
+        languages: [],
+        frameworks: [],
+        fileCount: 0,
+        totalSize: 0,
+      };
+      const inferenceContext: InferenceContext = {
+        projectRoot: projectPath,
+        fileIndex,
+        allEvidence: fullEvidence,
+        options: {
+          minConfidence: 0.3,
+          inferRelationships: true,
+          maxDependencyDepth: 5,
+          useHeuristics: true,
+        },
+        cache: new Map(),
+        projectMetadata,
+      };
       // Run detection to get the type
-      const artifacts = await plugin.infer(evidence, { projectRoot: projectPath });
+      const artifacts = await plugin.infer(fullEvidence, inferenceContext);
       const detectedType = artifacts[0]?.artifact?.type || 'unknown';
 
       packages.push({
         name: packageJson.name || path.basename(packageDir),
         path: pkgPath,
         packageJson: {
-          configType: 'package-json',
           name: packageJson.name,
-          version: packageJson.version,
-          description: packageJson.description,
-          main: packageJson.main,
-          type: packageJson.type,
-          scripts: packageJson.scripts || {},
-          dependencies: packageJson.dependencies || {},
-          devDependencies: packageJson.devDependencies || {},
-          peerDependencies: packageJson.peerDependencies || {},
-          bin: packageJson.bin,
-          engines: packageJson.engines,
-          workspaces: packageJson.workspaces,
-          private: packageJson.private,
-          homepage: packageJson.homepage,
-          repository: packageJson.repository,
-          author: packageJson.author,
-          license: packageJson.license,
-          keywords: packageJson.keywords,
-          exports: packageJson.exports,
-          types: packageJson.types,
-          typings: packageJson.typings,
-          module: packageJson.module,
-          browserslist: packageJson.browserslist,
+          description: packageJson.description || '',
+          type: 'library',
+          filePath: pkgPath,
         },
         filePatterns: filePatterns.slice(0, 20), // Limit to first 20 files for brevity
         detectedType,
       });
 
-      console.log(`  ✅ ${packageJson.name || path.basename(packageDir)}: ${detectedType}`);
+      console.log(
+        `  ✅ ${packageJson.name || path.basename(packageDir)}: ${detectedType} (found ${filePatterns.length} source files)`
+      );
     } catch (error) {
       console.error(`  ❌ Error processing ${pkgPath}:`, error);
     }

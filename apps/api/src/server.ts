@@ -11,28 +11,27 @@
  */
 import type { ServerWebSocket } from 'bun';
 import { Hono } from 'hono';
-import { AuthService } from './auth.ts';
-import { loadConfig } from './config.ts';
-import { SpecWorkbenchDB } from './db.ts';
-import { EventService } from './events.ts';
+import { AuthService } from './auth';
+import { loadConfig } from './config';
+import { SpecWorkbenchDB } from './db';
+import { EventService } from './events';
 import { HandlerAPIController } from './handlers/api.js';
-import { IRGenerator } from './ir.ts';
-import { SpecEngine } from './specEngine.ts';
+import { IRGenerator } from './ir';
+import { SpecEngine } from './specEngine';
 import type { ServerConfig } from './types.ts';
-import { createProblemDetails, logger } from './utils.ts';
-import { WebhookService } from './webhooks.ts';
+import { createProblemDetails, logger } from './utils';
+import { WebhookService } from './webhooks';
 
-import { createMcpApp } from './mcp.ts';
+import { createMcpApp } from './mcp';
 // Import modular components
-import { type Dependencies, createApiRouter } from './routes/index.ts';
-import { StaticFileHandler } from './static/index.ts';
-import { WebSocketHandler } from './websocket/index.ts';
+import { type Dependencies, createApiRouter } from './routes/index';
+import { StaticFileHandler } from './static/index';
+import { WebSocketHandler } from './websocket/index';
 
 export class SpecWorkbenchServer {
   private db: SpecWorkbenchDB;
   private auth: AuthService;
   private specEngine: SpecEngine;
-  private irGenerator: IRGenerator;
   private events: EventService;
   private webhooks: WebhookService;
   private handlersApi: HandlerAPIController;
@@ -49,7 +48,6 @@ export class SpecWorkbenchServer {
     this.db = new SpecWorkbenchDB(config);
     this.auth = new AuthService(config);
     this.specEngine = new SpecEngine(config);
-    this.irGenerator = new IRGenerator();
     this.events = new EventService(config);
     this.webhooks = new WebhookService(config, this.events, this.db);
     this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
@@ -90,7 +88,33 @@ export class SpecWorkbenchServer {
 
     this.httpApp.all('/webhooks/*', async c => {
       const corsHeaders = this.getCorsHeaders();
-      return await this.webhooks.handleRequest(c.req.raw, corsHeaders);
+      const path = new URL(c.req.url).pathname;
+      const provider = path.split('/')[2] as 'github' | 'gitlab';
+
+      if (provider !== 'github' && provider !== 'gitlab') {
+        return new Response(JSON.stringify({ error: 'Invalid webhook provider' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const event = c.req.header('X-GitHub-Event') || c.req.header('X-GitLab-Event') || 'unknown';
+      const signature = c.req.header('X-Hub-Signature-256') || c.req.header('X-GitLab-Token');
+      const payload = await c.req.json();
+      const headers = Object.fromEntries(c.req.raw.headers.entries());
+
+      const result = await this.webhooks.processWebhook(
+        provider,
+        event,
+        signature,
+        payload,
+        headers
+      );
+
+      return new Response(JSON.stringify(result), {
+        status: result.success ? 200 : 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     });
 
     this.httpApp.notFound(async c => {
@@ -122,7 +146,7 @@ export class SpecWorkbenchServer {
       port: this.config.port,
       hostname: this.config.host,
 
-      async fetch(request, server) {
+      async fetch(request: Request, server: any) {
         console.log('[FETCH] Request received:', request.method, request.url);
 
         // Check for WebSocket upgrade requests explicitly
@@ -176,18 +200,18 @@ export class SpecWorkbenchServer {
       },
 
       websocket: {
-        message: async (ws, message) => {
+        message: async (ws: ServerWebSocket, message: string | Uint8Array) => {
           await self.wsHandler.handleMessage(
             ws as any,
             typeof message === 'string' ? message : message.toString()
           );
         },
 
-        open: ws => {
+        open: (ws: ServerWebSocket) => {
           self.wsHandler.handleOpen(ws as any);
         },
 
-        close: ws => {
+        close: (ws: ServerWebSocket) => {
           self.wsHandler.handleClose(ws as any);
         },
       },
@@ -372,7 +396,7 @@ export class SpecWorkbenchServer {
 }
 
 // Export for external usage
-export { createApiRouter, WebSocketHandler, McpService, StaticFileHandler };
+export { createApiRouter, WebSocketHandler, StaticFileHandler };
 
 // Enhanced process monitoring and error handling
 class ProcessMonitor {
@@ -380,6 +404,8 @@ class ProcessMonitor {
   private errorCount = 0;
   private lastMemoryCheck = Date.now();
   private isShuttingDown = false;
+  private healthInterval?: NodeJS.Timeout;
+  private memoryInterval?: NodeJS.Timeout;
 
   constructor(private server: SpecWorkbenchServer) {
     this.setupProcessMonitoring();
@@ -389,7 +415,7 @@ class ProcessMonitor {
 
   private setupProcessMonitoring() {
     // Log process health every 30 seconds
-    setInterval(() => {
+    this.healthInterval = setInterval(() => {
       if (!this.isShuttingDown) {
         this.logProcessHealth();
       }
@@ -398,7 +424,7 @@ class ProcessMonitor {
 
   private setupMemoryMonitoring() {
     // Check memory usage every 10 seconds
-    setInterval(() => {
+    this.memoryInterval = setInterval(() => {
       if (!this.isShuttingDown) {
         this.checkMemoryUsage();
       }
@@ -444,7 +470,7 @@ class ProcessMonitor {
 
     // Handle warnings
     process.on('warning', warning => {
-      logger.warn('⚠️ Node.js Warning', undefined, {
+      logger.warn('⚠️ Node.js Warning', {
         name: warning.name,
         message: warning.message,
         stack: warning.stack,
@@ -508,6 +534,16 @@ class ProcessMonitor {
     if (this.isShuttingDown) {
       logger.warn('⚠️ Shutdown already in progress, ignoring duplicate request');
       return;
+    }
+
+    // Clear intervals
+    if (this.healthInterval) {
+      clearInterval(this.healthInterval);
+      this.healthInterval = undefined;
+    }
+    if (this.memoryInterval) {
+      clearInterval(this.memoryInterval);
+      this.memoryInterval = undefined;
     }
 
     this.isShuttingDown = true;

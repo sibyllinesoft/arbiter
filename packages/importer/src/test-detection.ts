@@ -27,7 +27,8 @@ function detectPackageType(pkg: PackageDetectionData): string {
   const name = packageJson.name || 'unknown';
 
   // Merge all dependencies for checking
-  const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  const depsObj = packageJson as any;
+  const deps = { ...(depsObj.dependencies || {}), ...(depsObj.devDependencies || {}) };
 
   // 1. CLI - Has bin field or CLI framework
   if (packageJson.bin) {
@@ -108,12 +109,12 @@ function detectPackageType(pkg: PackageDetectionData): string {
   );
 
   const hasServerScript =
-    packageJson.scripts &&
-    (packageJson.scripts.start?.includes('server') ||
-      packageJson.scripts.start?.includes('src/server') ||
-      packageJson.scripts.dev?.includes('server') ||
-      packageJson.scripts.serve ||
-      packageJson.main?.includes('server'));
+    (packageJson as any).scripts &&
+    (((packageJson as any).scripts.start as string)?.includes('server') ||
+      ((packageJson as any).scripts.start as string)?.includes('src/server') ||
+      ((packageJson as any).scripts.dev as string)?.includes('server') ||
+      ((packageJson as any).scripts.serve as string | boolean) ||
+      ((packageJson as any).main as string)?.includes('server'));
 
   if (hasWebFramework || hasDatabase || hasServerScript) {
     return 'service';
@@ -224,9 +225,10 @@ async function runTests() {
         console.log(`  ❌ ${pkg.name}: expected ${expected}, got ${detected}`);
 
         // Debug info for failures
+        const pkgJson = pkg.packageJson as any;
         const deps = Object.keys({
-          ...pkg.packageJson.dependencies,
-          ...pkg.packageJson.devDependencies,
+          ...(pkgJson.dependencies || {}),
+          ...(pkgJson.devDependencies || {}),
         });
         console.log(
           `     Dependencies: ${deps.slice(0, 5).join(', ')}${deps.length > 5 ? '...' : ''}`

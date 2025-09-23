@@ -159,7 +159,9 @@ export interface BaseArtifact {
   /** Tags for categorization */
   tags: string[];
   /** Metadata specific to the artifact type */
-  metadata: Record<string, unknown>;
+  metadata: Record<string, unknown> & {
+    sourceFile?: string;
+  };
 }
 
 /**
@@ -168,6 +170,7 @@ export interface BaseArtifact {
 export interface ServiceArtifact extends BaseArtifact {
   type: 'service';
   metadata: {
+    sourceFile?: string;
     /** Programming language */
     language: string;
     /** Framework used (e.g., 'express', 'fastapi', 'spring') */
@@ -340,6 +343,7 @@ export interface DatabaseArtifact extends BaseArtifact {
 export interface DeploymentArtifact extends BaseArtifact {
   type: 'deployment';
   metadata: {
+    sourceFile?: string;
     /** Deployment platform (e.g., 'kubernetes', 'docker-compose', 'terraform') */
     platform: string;
     /** Target environment */
@@ -481,8 +485,6 @@ export interface Evidence {
   lineNumber?: number;
   /** Raw data extracted */
   data: Record<string, unknown>;
-  /** Confidence in the accuracy of this evidence (0-1) */
-  confidence: number;
   /** Additional metadata */
   metadata: EvidenceMetadata;
 }
@@ -561,7 +563,7 @@ export interface FileInfo {
   /** Whether the file is binary */
   isBinary: boolean;
   /** File hash for change detection */
-  hash: string;
+  hash?: string;
   /** Language detected (if applicable) */
   language?: string;
   /** Additional metadata including git information */
@@ -691,8 +693,12 @@ export interface ArtifactManifest {
   version: string;
   /** Metadata about the analyzed project */
   project: ProjectMetadata;
-  /** All inferred artifacts */
+  /** Artifacts grouped by config file */
+  perConfig: Record<string, InferredArtifact[]>;
+  /** All inferred artifacts (flattened for backward compatibility) */
   artifacts: InferredArtifact[];
+  /** Source-to-artifact provenance mapping: file basename -> array of artifact IDs */
+  provenance: Record<string, string[]>;
   /** Global statistics and metrics */
   statistics: AnalysisStatistics;
   /** Configuration used for the analysis */
@@ -734,8 +740,6 @@ export interface AnalysisStatistics {
   artifactCounts: Record<ArtifactType, number>;
   /** Number of evidence items by type */
   evidenceCounts: Record<EvidenceType, number>;
-  /** Average confidence scores by artifact type */
-  averageConfidence: Record<ArtifactType, number>;
   /** Processing time in milliseconds */
   processingTimeMs: number;
   /** Plugins that were executed */
@@ -757,6 +761,57 @@ export interface AnalysisConfiguration {
   /** Custom configuration per plugin */
   pluginConfiguration: Record<string, Record<string, unknown>>;
 }
+
+// ============================================================================
+// Persistence Types
+// ============================================================================
+
+/**
+ * Specification revision for tracking artifact changes
+ */
+export interface Spec {
+  /** Unique ID for this spec revision */
+  revision_id: string;
+  /** ID of the parent spec (null for root) */
+  parent_revision_id?: string;
+  /** Scope this spec applies to (e.g., 'packages/utils') */
+  scope: string;
+  /** Creation timestamp */
+  timestamp: number;
+  /** Config files that generated this spec */
+  config_files?: string[];
+}
+
+/**
+ * Log entry for artifact actions
+ */
+export interface ArtifactLogEntry {
+  /** Unique ID for this log entry */
+  id: string;
+  /** Spec revision this action belongs to */
+  spec_id: string;
+  /** Name of the artifact */
+  artifact_name: string;
+  /** Type of the artifact */
+  artifact_type: ArtifactType;
+  /** Hash of the artifact content */
+  artifact_hash: string;
+  /** JSON stringified artifact data */
+  artifact_data: string;
+  /** JSON stringified provenance data */
+  provenance_data?: string;
+  /** JSON stringified confidence data */
+  confidence_data?: string;
+  /** Action type */
+  action: ActionType;
+  /** Timestamp of the action */
+  timestamp: number;
+}
+
+/**
+ * Possible actions in the artifact log
+ */
+export type ActionType = 'add' | 'remove';
 
 // ============================================================================
 // Error Types

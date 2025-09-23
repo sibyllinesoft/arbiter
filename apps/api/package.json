@@ -50,14 +50,14 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
-    "bun-types": "^1.2.21",
-    "typescript": "^5.3.3",
-    "wrangler": "^3.78.12",
+    "bun-types": "^1.2.22",
     "miniflare": "^3.20241022.0",
-    "@cloudflare/workers-types": "^4.20241022.0"
+    "typescript": "^5.3.3",
+    "wrangler": "^3.78.12"
   },
   "engines": {
     "bun": ">=1.0.0"

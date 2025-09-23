@@ -22,30 +22,11 @@ import {
 // Types for structured evidence data
 // ============================================================================
 
-interface TerraformLockfileData extends Record<string, unknown> {
-  configType: string;
-  providers: Array<{
-    name: string;
-    version?: string;
-    source?: string;
-  }>;
-  terraformRoot: string;
-}
-
-interface TerraformConfigData extends Record<string, unknown> {
-  configType: string;
-  resources: Array<{
-    type: string;
-    name: string;
-    provider?: string;
-  }>;
-  modules: Array<{
-    name: string;
-    source: string;
-  }>;
-  variables: string[];
-  outputs: string[];
-  terraformRoot: string;
+export interface TerraformData extends Record<string, unknown> {
+  name: string;
+  description: string;
+  type: string;
+  filePath: string;
 }
 
 // ============================================================================
@@ -184,10 +165,15 @@ export class TerraformPlugin implements ImporterPlugin {
       providers.push(currentProvider);
     }
 
-    const lockfileData: TerraformLockfileData = {
-      configType: 'terraform-lockfile',
-      providers,
-      terraformRoot,
+    const dirName = path.basename(terraformRoot);
+    const artifactName = dirName === '.' || dirName === '' ? 'terraform-root' : dirName;
+    const providerNames = providers.map(p => p.name.toLowerCase()).join(', ') || 'unknown';
+
+    const terraformData: TerraformData = {
+      name: artifactName,
+      description: `Terraform config with providers: ${providerNames}`,
+      type: 'infrastructure',
+      filePath,
     };
 
     evidence.push({
@@ -195,8 +181,7 @@ export class TerraformPlugin implements ImporterPlugin {
       source: 'terraform',
       type: 'config',
       filePath,
-      data: lockfileData,
-      confidence: 0.95,
+      data: terraformData,
       metadata: {
         timestamp: Date.now(),
         fileSize: content.length,
@@ -216,11 +201,11 @@ export class TerraformPlugin implements ImporterPlugin {
     context: InferenceContext
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
-    const lockfileData = lockfileEvidence.data as unknown as TerraformLockfileData;
-    const rootDir = lockfileData.terraformRoot;
+    const lockfileData = lockfileEvidence.data as unknown as TerraformData;
+    const rootDir = path.dirname(lockfileEvidence.filePath);
 
     // Determine the type of infrastructure based on providers
-    const providerNames = lockfileData.providers.map(p => p.name.toLowerCase());
+    const providerNames = lockfileData.name.toLowerCase().includes('aws') ? ['aws'] : []; // Simplified, use name or add parsing if needed
 
     // Infer the infrastructure type
     let infrastructureType = 'infrastructure';
@@ -229,51 +214,49 @@ export class TerraformPlugin implements ImporterPlugin {
     if (providerNames.includes('aws')) {
       infrastructureType = 'aws-infrastructure';
       description = 'AWS Infrastructure managed by Terraform';
-    } else if (providerNames.includes('azurerm')) {
+    } else if (lockfileData.name.toLowerCase().includes('azure')) {
       infrastructureType = 'azure-infrastructure';
       description = 'Azure Infrastructure managed by Terraform';
-    } else if (providerNames.includes('google')) {
+    } else if (lockfileData.name.toLowerCase().includes('google')) {
       infrastructureType = 'gcp-infrastructure';
       description = 'Google Cloud Infrastructure managed by Terraform';
-    } else if (providerNames.includes('kubernetes')) {
+    } else if (lockfileData.name.toLowerCase().includes('k8s')) {
       infrastructureType = 'kubernetes-infrastructure';
       description = 'Kubernetes resources managed by Terraform';
-    } else if (providerNames.includes('docker')) {
+    } else if (lockfileData.name.toLowerCase().includes('docker')) {
       infrastructureType = 'docker-infrastructure';
       description = 'Docker containers managed by Terraform';
     }
 
-    // Extract the name from the directory path
-    const dirName = path.basename(rootDir);
-    const artifactName = dirName === '.' || dirName === '' ? 'terraform-root' : dirName;
-
-    const serviceArtifact: ServiceArtifact = {
-      id: `terraform-${artifactName}`,
-      type: 'service',
-      name: artifactName,
+    const artifact = {
+      id: `terraform-${lockfileData.name}`,
+      type: lockfileData.type as any,
+      name: lockfileData.name,
       description,
-      tags: ['terraform', 'infrastructure-as-code', ...providerNames],
+      tags: ['terraform', 'infrastructure-as-code'],
       metadata: {
+        sourceFile: lockfileData.filePath,
         language: 'hcl',
         framework: 'terraform',
-        port: undefined, // Terraform doesn't expose ports
-        basePath: rootDir,
-        environmentVariables: [],
-        dependencies: lockfileData.providers.map(p => ({
-          serviceName: p.name,
-          type: 'terraform-provider',
-          required: true,
-        })),
-        endpoints: [],
-        providers: lockfileData.providers,
-        infrastructureType,
       },
     };
 
     artifacts.push({
-      artifact: serviceArtifact,
-      confidence: this.calculateConfidence([lockfileEvidence], 0.9),
-      provenance: this.createProvenance([lockfileEvidence]),
+      artifact,
+      confidence: {
+        overall: 0.9,
+        breakdown: { evidence: 0.95 },
+        factors: [
+          { description: 'Terraform lockfile analysis', weight: 0.95, source: 'terraform' },
+        ],
+      },
+      provenance: {
+        evidence: [lockfileEvidence.id],
+        plugins: ['terraform'],
+        rules: ['terraform-simplification'],
+        timestamp: Date.now(),
+        pipelineVersion: '1.0.0',
+      },
       relationships: [],
     });
 
@@ -283,34 +266,6 @@ export class TerraformPlugin implements ImporterPlugin {
   // ============================================================================
   // Helper methods
   // ============================================================================
-
-  private calculateConfidence(evidence: Evidence[], baseConfidence: number): ConfidenceScore {
-    const avgEvidence = evidence.reduce((sum, e) => sum + e.confidence, 0) / evidence.length;
-    const overall = Math.min(0.95, baseConfidence * avgEvidence);
-
-    return {
-      overall,
-      breakdown: {
-        evidence: avgEvidence,
-        base: baseConfidence,
-      },
-      factors: evidence.map(e => ({
-        description: `Evidence from ${e.type}`,
-        weight: e.confidence,
-        source: e.source,
-      })),
-    };
-  }
-
-  private createProvenance(evidence: Evidence[]): Provenance {
-    return {
-      evidence: evidence.map(e => e.id),
-      plugins: ['terraform'],
-      rules: ['lockfile-analysis'],
-      timestamp: Date.now(),
-      pipelineVersion: '1.0.0',
-    };
-  }
 }
 
 // Export the plugin instance

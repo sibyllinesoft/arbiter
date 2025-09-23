@@ -25,6 +25,13 @@ export class WebhookService {
     private db: SpecWorkbenchDB
   ) {
     this.handlerManager = new CustomHandlerManager(this.config, this.events, this.db, logger);
+
+    // Initialize handlers if enabled
+    if (this.config.handlers?.enabled || process.env.HANDLERS_ENABLED === 'true') {
+      this.handlerManager.initialize().catch(err => {
+        logger.error('Failed to initialize handler manager', err);
+      });
+    }
   }
 
   /**

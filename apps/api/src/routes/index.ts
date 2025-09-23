@@ -5,8 +5,9 @@ import fs from 'fs-extra';
 import { glob } from 'glob';
 import { Hono } from 'hono';
 import { gitScanner } from '../git-scanner';
-import { tunnelService } from '../tunnel-service';
 import { tunnelRoutes } from './tunnel';
+
+const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
 
 export type Dependencies = Record<string, unknown>;
 
@@ -40,7 +41,7 @@ async function searchFiles(
   try {
     for (const pattern of patterns) {
       const files = await glob(pattern, {
-        cwd: '/home/nathan/Projects/arbiter',
+        cwd: PROJECT_ROOT,
         ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/build/**'],
         absolute: true,
       });
@@ -80,7 +81,7 @@ async function searchFiles(
           }
 
           if (relevance > 0) {
-            const relativePath = path.relative('/home/nathan/Projects/arbiter', filePath);
+            const relativePath = path.relative(PROJECT_ROOT, filePath);
             const fileType = path.extname(filePath).slice(1) || 'file';
 
             results.push({
@@ -170,10 +171,10 @@ export function createApiRouter(deps: Dependencies) {
 
       // Normalize the path - remove leading slash if present
       const normalizedPath = filePath.startsWith('/') ? filePath.slice(1) : filePath;
-      const fullPath = path.resolve('/home/nathan/Projects/arbiter', normalizedPath);
+      const fullPath = path.resolve(PROJECT_ROOT, normalizedPath);
 
       // Security check - ensure the path is within the project directory
-      if (!fullPath.startsWith('/home/nathan/Projects/arbiter/')) {
+      if (!fullPath.startsWith(`${PROJECT_ROOT}/`)) {
         return c.json(
           {
             success: false,
@@ -267,9 +268,7 @@ export function createApiRouter(deps: Dependencies) {
       }
 
       // Import the addCommand function
-      const { addCommand } = await import(
-        '/home/nathan/Projects/arbiter/packages/cli/src/commands/add.js'
-      );
+      const { addCommand } = await import(`${PROJECT_ROOT}/packages/cli/src/commands/add.js`);
 
       // Create a basic CLI config (you may want to make this configurable)
       const config = {
@@ -332,9 +331,7 @@ export function createApiRouter(deps: Dependencies) {
       }
 
       // Import the initCommand function
-      const { initCommand } = await import(
-        '/home/nathan/Projects/arbiter/packages/cli/src/commands/init.js'
-      );
+      const { initCommand } = await import(`${PROJECT_ROOT}/packages/cli/src/commands/init.js`);
 
       // Determine target directory
       const targetDir = options.directory
@@ -623,7 +620,16 @@ export function createApiRouter(deps: Dependencies) {
               '**/build/**',
             ],
             plugins,
-            maxFileSize: 1024 * 1024, // 1MB
+            parseOptions: {
+              deepAnalysis: false,
+              targetLanguages: [],
+              includeBinaries: false,
+              patterns: {
+                include: ['**/*'],
+                exclude: [],
+              },
+              maxFileSize: 1024 * 1024, // 1MB
+            },
           });
 
           // Run the scanner
@@ -1025,7 +1031,7 @@ export function createApiRouter(deps: Dependencies) {
             error: `GitHub API error: ${errorData.message}`,
             details: errorData,
           },
-          response.status
+          400
         );
       }
 
@@ -1087,7 +1093,7 @@ export function createApiRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          response.status
+          400
         );
       }
 
@@ -1154,7 +1160,7 @@ export function createApiRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          response.status
+          400
         );
       }
 
@@ -1359,16 +1365,26 @@ export function createApiRouter(deps: Dependencies) {
         };
       }
 
-      // Generate UI routes based on detected services
-      const routes = Object.keys(services)
-        .slice(0, 3)
-        .map((serviceName, index) => ({
-          id: serviceName.replace('-service', '').replace('service-', ''),
-          path: `/${serviceName.replace('-service', '').replace('service-', '')}`,
-          name: services[serviceName].name,
-          component: `${serviceName.replace('-service', '').replace('service-', '').charAt(0).toUpperCase() + serviceName.replace('-service', '').replace('service-', '').slice(1)}Page`,
-          capabilities: ['read-data'],
-        }));
+      // Generate UI routes based on detected services and packages
+      const allComponents = { ...services, ...components };
+      const routes = Object.keys(allComponents)
+        .slice(0, 5) // Include some packages
+        .map((compName, index) => {
+          const comp = allComponents[compName];
+          const baseId = compName
+            .replace('-service', '')
+            .replace('service-', '')
+            .replace('@arbiter/', '');
+          return {
+            id: baseId,
+            path: `/${baseId}`,
+            name: comp.name,
+            component: `${baseId.charAt(0).toUpperCase() + baseId.slice(1)}Page`,
+            capabilities:
+              comp.metadata?.scope === 'arbiter-package' ? ['api-access'] : ['read-data'],
+            type: comp.type || 'route',
+          };
+        });
 
       return c.json({
         success: true,
@@ -1856,7 +1872,9 @@ export function createApiRouter(deps: Dependencies) {
       }
 
       // Import the CLI surface command directly
-      const { surfaceCommand } = await import('@arbiter/cli/commands/surface');
+      const { surfaceCommand } = await import(
+        `${PROJECT_ROOT}/packages/cli/src/commands/surface.js`
+      );
 
       // Create a minimal config object
       const config = {
@@ -2072,7 +2090,7 @@ export function createApiRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          response.status
+          400
         );
       }
 
@@ -2141,7 +2159,7 @@ export function createApiRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          response.status
+          400
         );
       }
 
@@ -2202,7 +2220,7 @@ export function createApiRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          response.status
+          400
         );
       }
 

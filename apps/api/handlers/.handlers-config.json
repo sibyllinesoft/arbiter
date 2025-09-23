@@ -1,0 +1,21 @@
+{
+  "$schema": "./handler-config.schema.json",
+  "defaults": {
+    "timeout": 30000,
+    "retries": 2,
+    "enabled": true
+  },
+  "handlers": {
+    "github/push": {
+      "enabled": true,
+      "timeout": 15000,
+      "environment": {
+        "NODE_ENV": "production"
+      },
+      "secrets": {
+        "SLACK_WEBHOOK": "${HANDLER_SLACK_WEBHOOK}",
+        "JIRA_TOKEN": "${HANDLER_JIRA_TOKEN}"
+      }
+    }
+  }
+}

@@ -9,6 +9,7 @@
     "forceConsistentCasingInFileNames": true,
     "composite": true,
     "baseUrl": ".",
+    "types": ["bun-types"],
     "paths": {
       "@arbiter/shared": ["./packages/shared/src"],
       "@arbiter/cue-runner": ["./packages/cue-runner/src"],
@@ -49,6 +50,9 @@
     },
     {
       "path": "./apps/web"
+    },
+    {
+      "path": "./apps/client"
     }
   ],
   "exclude": ["node_modules", "dist", "**/dist/**", "**/node_modules/**"]
