@@ -14,6 +14,11 @@ import {
   ParseContext,
 } from '../types.js';
 
+import type { DetectionContext } from '../detection/artifact-detector.js';
+import { detectArtifactType } from '../detection/artifact-detector.js';
+import type { CategoryMatrix } from '../detection/dependency-matrix.js';
+import type { ArtifactType } from '../types.js';
+
 const NODE_WEB_FRAMEWORKS = [
   'express',
   'fastify',
@@ -70,7 +75,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     if (!fileContent || path.basename(filePath) !== 'package.json') return [];
 
     const evidence: Evidence[] = [];
-    const baseId = `nodejs-${path.relative(context?.projectRoot || '', filePath)}`;
+    const baseId = path.relative(context?.projectRoot || '', filePath);
 
     try {
       evidence.push(...(await this.parsePackageJson(filePath, fileContent, baseId)));
@@ -90,8 +95,8 @@ export class NodeJSPlugin implements ImporterPlugin {
     try {
       // Infer from package.json evidence
       const packageEvidence = nodeEvidence.filter(e => e.type === 'config');
-      for (const pkg of packageEvidence) {
-        artifacts.push(...(await this.inferFromPackageJson(pkg, context)));
+      for (const pkgEv of packageEvidence) {
+        artifacts.push(...(await this.inferFromPackageJson(pkgEv, context)));
       }
     } catch (error) {
       console.warn('Node.js plugin inference failed:', error);
@@ -110,21 +115,26 @@ export class NodeJSPlugin implements ImporterPlugin {
     try {
       const pkg = JSON.parse(content);
 
-      const allDeps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-      const inferredType = this.determineArtifactType({
-        dependencies: allDeps,
-        devDependencies: {},
-      } as any);
+      // Compute logical file path based on package name
+      const relativeDir = path.dirname(baseId);
+      const actualSubdir = path.basename(relativeDir);
+      const scopedPart = pkg.name.replace(/^@[^/]+\//, '');
+      const logicalSubdir = scopedPart;
+      const logicalRelativeDir = relativeDir.replace(
+        new RegExp(`/${actualSubdir}$`),
+        `/${logicalSubdir}`
+      );
+      const logicalFilePath = path.join(logicalRelativeDir, 'package.json');
 
-      const packageData: PackageJsonData = {
+      const packageData = {
         name: pkg.name || path.basename(path.dirname(filePath)),
         description: pkg.description || '',
-        type: inferredType,
-        filePath,
+        fullPackage: pkg,
+        filePath: logicalFilePath,
       };
 
       evidence.push({
-        id: `${baseId}-package`,
+        id: baseId,
         source: 'nodejs',
         type: 'config',
         filePath,
@@ -146,31 +156,61 @@ export class NodeJSPlugin implements ImporterPlugin {
     context: InferenceContext
   ): Promise<InferredArtifact[]> {
     const artifacts: InferredArtifact[] = [];
-    const packageData = packageEvidence.data as unknown as PackageJsonData;
+    const packageData = packageEvidence.data as any;
+    const pkg = packageData.fullPackage;
+
+    // Prepare detection context
+    const allDeps = Object.keys({ ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) });
+    const scripts = pkg.scripts || {};
+    const filePatterns = Array.from(context.fileIndex.files.values())
+      .filter(f => f.relativePath.startsWith(path.dirname(packageData.filePath)))
+      .map(f => f.relativePath);
+
+    const detectionContext = {
+      language: 'javascript',
+      dependencies: allDeps,
+      scripts,
+      filePatterns,
+      packageConfig: pkg,
+    };
+
+    // Use artifact detector
+    const { primaryType, confidence } = this.detectArtifactType(detectionContext);
+
+    // Map category to artifact type
+    const artifactType = this.mapCategoryToType(primaryType);
 
     const artifact = {
       id: `nodejs-${packageData.name}`,
-      type: packageData.type as any,
+      type: artifactType,
       name: packageData.name,
-      description: packageData.description || `Node.js ${packageData.type}: ${packageData.name}`,
-      tags: ['nodejs', packageData.type],
+      description: packageData.description || `Node.js ${artifactType}: ${packageData.name}`,
+      tags: ['nodejs', artifactType],
       metadata: {
         sourceFile: packageData.filePath,
         language: 'javascript',
+        framework: this.inferFramework(pkg),
+        detectedType: primaryType,
       },
     };
 
     artifacts.push({
       artifact,
       confidence: {
-        overall: 0.9,
-        breakdown: { evidence: 0.95 },
-        factors: [{ description: 'package.json analysis', weight: 0.95, source: 'nodejs' }],
+        overall: confidence,
+        breakdown: { detection: confidence },
+        factors: [
+          {
+            description: 'Advanced package.json analysis with dependency matrix',
+            weight: confidence,
+            source: 'nodejs',
+          },
+        ],
       },
       provenance: {
         evidence: [packageEvidence.id],
         plugins: ['nodejs'],
-        rules: ['package-json-simplification'],
+        rules: ['advanced-package-detection'],
         timestamp: Date.now(),
         pipelineVersion: '1.0.0',
       },
@@ -180,17 +220,36 @@ export class NodeJSPlugin implements ImporterPlugin {
     return artifacts;
   }
 
-  private determineArtifactType(packageData: any): string {
-    // Simple rule-based detection
-    const allDeps = { ...packageData.dependencies, ...packageData.devDependencies };
-    const hasWeb = NODE_WEB_FRAMEWORKS.some(fw => allDeps[fw]);
-    const hasFrontend = NODE_FRONTEND_FRAMEWORKS.some(fw => allDeps[fw]);
-    const hasCli = NODE_CLI_FRAMEWORKS.some(fw => allDeps[fw]);
+  private detectArtifactType(context: DetectionContext): {
+    primaryType: keyof CategoryMatrix;
+    confidence: number;
+  } {
+    const result = detectArtifactType(context);
+    return { primaryType: result.primaryType, confidence: result.confidence };
+  }
 
-    if (hasWeb) return 'service';
-    if (hasFrontend) return 'frontend';
-    if (hasCli) return 'cli';
-    return 'library';
+  private mapCategoryToType(category: keyof CategoryMatrix): ArtifactType {
+    const mapping: Record<keyof CategoryMatrix, ArtifactType> = {
+      cli: 'cli',
+      web_service: 'service',
+      frontend: 'frontend',
+      library: 'module',
+      desktop_app: 'binary', // or 'library' depending on context
+      data_processing: 'module',
+      testing: 'test',
+      build_tool: 'module',
+      game: 'frontend',
+      mobile: 'frontend',
+    };
+    return mapping[category] || 'module';
+  }
+
+  private inferFramework(pkg: any): string {
+    const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+    if (NODE_WEB_FRAMEWORKS.some(fw => deps[fw])) return 'web';
+    if (NODE_FRONTEND_FRAMEWORKS.some(fw => deps[fw])) return 'frontend';
+    if (NODE_CLI_FRAMEWORKS.some(fw => deps[fw])) return 'cli';
+    return 'unknown';
   }
 }
 

@@ -130,6 +130,7 @@ export type ArtifactType =
   | 'binary' // Executable binaries
   | 'cli' // Command-line interface tools
   | 'library' // Shared libraries, packages, modules
+  | 'module' // Reusable modules, components, libraries
   | 'job' // Background jobs, cron jobs, workers
   | 'schema' // Database schemas, API schemas
   | 'config' // Configuration files, environment settings
@@ -243,19 +244,25 @@ export interface CliArtifact extends BaseArtifact {
 }
 
 /**
- * Library artifact representing a reusable library or package
+ * Module artifact representing reusable modules, components, or libraries
  */
-export interface LibraryArtifact extends BaseArtifact {
-  type: 'library';
+export interface ModuleArtifact extends BaseArtifact {
+  type: 'module';
   metadata: {
     /** Programming language */
     language: string;
+    /** Framework used (e.g., 'react', 'vue', 'lodash') */
+    framework?: string;
     /** Package manager (e.g., 'npm', 'pip', 'maven') */
     packageManager?: string;
-    /** Public API exposed by the library */
+    /** Public API exposed by the module */
     publicApi: string[];
     /** Internal dependencies */
     dependencies: string[];
+    /** Routes if frontend module */
+    routes?: FrontendRoute[];
+    /** API endpoints consumed */
+    apiDependencies?: string[];
     /** Version information */
     version?: string;
   };

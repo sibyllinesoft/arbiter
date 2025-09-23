@@ -89,7 +89,7 @@ export class DockerPlugin implements ImporterPlugin {
       filePath,
     };
 
-    const evidenceId = `dockerfile:${path.relative(projectRoot, filePath)}`;
+    const evidenceId = path.relative(projectRoot, filePath);
     evidence.push({
       id: evidenceId,
       source: this.name(),
@@ -119,7 +119,7 @@ export class DockerPlugin implements ImporterPlugin {
       const serviceConfig = serviceConfigRaw as any;
       if (typeof serviceConfig !== 'object' || serviceConfig === null) continue;
 
-      const evidenceId = `compose-service:${serviceName}:${relativeComposePath}`;
+      const evidenceId = relativeComposePath;
       const data: DockerData = {
         name: serviceName as string,
         description: 'Docker service',

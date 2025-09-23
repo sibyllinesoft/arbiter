@@ -80,7 +80,7 @@ export class KubernetesPlugin implements ImporterPlugin {
     if (!fileContent) return [];
 
     const evidence: Evidence[] = [];
-    const baseId = `k8s-${path.relative(context?.projectRoot || '', filePath)}`;
+    const baseId = path.relative(context?.projectRoot || '', filePath);
 
     try {
       // Parse YAML content - may contain multiple documents
@@ -93,8 +93,7 @@ export class KubernetesPlugin implements ImporterPlugin {
         const resource = doc.toJS();
         if (!resource || !resource.apiVersion || !resource.kind) continue;
 
-        const docId = `${baseId}-${i}`;
-        evidence.push(...(await this.parseK8sResource(filePath, resource, docId)));
+        evidence.push(...(await this.parseK8sResource(filePath, resource, baseId)));
       }
     } catch (error) {
       console.warn(`Kubernetes plugin failed to parse ${filePath}:`, error);
@@ -141,7 +140,7 @@ export class KubernetesPlugin implements ImporterPlugin {
       filePath,
     };
     evidence.push({
-      id: `${baseId}-${kind.toLowerCase()}`,
+      id: `${baseId}-${name}`,
       source: 'kubernetes',
       type: 'config',
       filePath,

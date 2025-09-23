@@ -20,7 +20,7 @@ import {
   ImporterPlugin,
   InferenceContext,
   InferredArtifact,
-  LibraryArtifact,
+  ModuleArtifact,
   ParseContext,
   Provenance,
   ServiceArtifact,
@@ -100,7 +100,7 @@ export class PythonPlugin implements ImporterPlugin {
 
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
-    const baseId = `python-${path.relative(context?.projectRoot || '', filePath)}`;
+    const baseId = path.relative(context?.projectRoot || '', filePath);
 
     try {
       if (fileName === 'setup.py') {
@@ -199,12 +199,11 @@ export class PythonPlugin implements ImporterPlugin {
       };
 
       evidence.push({
-        id: `${baseId}-setup`,
+        id: baseId,
         source: 'python',
         type: 'config',
         filePath,
         data: packageData,
-        confidence: 0.95,
         metadata: {
           timestamp: Date.now(),
           fileSize: content.length,
@@ -276,12 +275,11 @@ export class PythonPlugin implements ImporterPlugin {
       };
 
       evidence.push({
-        id: `${baseId}-pyproject`,
+        id: baseId,
         source: 'python',
         type: 'config',
         filePath,
         data: packageData,
-        confidence: 0.95,
         metadata: {
           timestamp: Date.now(),
           fileSize: content.length,
@@ -309,7 +307,7 @@ export class PythonPlugin implements ImporterPlugin {
         .map(line => line.split(/[>=<~!]/)[0].trim());
 
       evidence.push({
-        id: `${baseId}-requirements`,
+        id: baseId,
         source: 'python',
         type: 'dependency',
         filePath,
@@ -318,7 +316,6 @@ export class PythonPlugin implements ImporterPlugin {
           dependencies,
           devDependencies: [],
         },
-        confidence: 0.8,
         metadata: {
           timestamp: Date.now(),
           fileSize: content.length,
@@ -347,7 +344,7 @@ export class PythonPlugin implements ImporterPlugin {
       const devDependencies = this.extractTomlDependencies(devPackagesMatch?.[1] || '');
 
       evidence.push({
-        id: `${baseId}-pipfile`,
+        id: baseId,
         source: 'python',
         type: 'dependency',
         filePath,
@@ -356,7 +353,6 @@ export class PythonPlugin implements ImporterPlugin {
           dependencies,
           devDependencies,
         },
-        confidence: 0.85,
         metadata: {
           timestamp: Date.now(),
           fileSize: content.length,
@@ -409,12 +405,11 @@ export class PythonPlugin implements ImporterPlugin {
       };
 
       evidence.push({
-        id: `${baseId}-source`,
+        id: baseId,
         source: 'python',
         type: hasIfMain ? 'function' : hasImports ? 'import' : 'export',
         filePath,
         data: sourceData,
-        confidence: 0.8,
         metadata: {
           timestamp: Date.now(),
           fileSize: content.length,
@@ -510,7 +505,7 @@ export class PythonPlugin implements ImporterPlugin {
       case 'frontend':
         return this.createFrontendArtifact(packageData, allEvidence);
       default:
-        return this.createLibraryArtifact(packageData, allEvidence);
+        return this.createModuleArtifact(packageData, allEvidence);
     }
   }
 
@@ -518,17 +513,17 @@ export class PythonPlugin implements ImporterPlugin {
     const categoryMap: Record<string, string> = {
       cli: 'binary',
       web_service: 'service',
-      frontend: 'frontend',
-      library: 'library',
+      frontend: 'module',
+      library: 'module',
       desktop_app: 'binary',
-      data_processing: 'library',
-      testing: 'library',
-      build_tool: 'library',
-      game: 'frontend',
-      mobile: 'frontend',
+      data_processing: 'module',
+      testing: 'test',
+      build_tool: 'module',
+      game: 'module',
+      mobile: 'module',
     };
 
-    return categoryMap[category] || 'library';
+    return categoryMap[category] || 'module';
   }
 
   // ============================================================================
@@ -798,16 +793,16 @@ export class PythonPlugin implements ImporterPlugin {
     ];
   }
 
-  private createLibraryArtifact(
+  private createModuleArtifact(
     packageData: PythonPackageData,
     allEvidence: Evidence[]
   ): InferredArtifact[] {
-    const libraryArtifact: LibraryArtifact = {
-      id: `python-library-${packageData.name}`,
-      type: 'library',
+    const moduleArtifact: ModuleArtifact = {
+      id: `python-module-${packageData.name}`,
+      type: 'module',
       name: packageData.name,
-      description: packageData.description || `Python library: ${packageData.name}`,
-      tags: ['python', 'library'],
+      description: packageData.description || `Python module: ${packageData.name}`,
+      tags: ['python', 'module'],
       metadata: {
         language: 'python',
         packageManager: 'pip',
@@ -819,7 +814,7 @@ export class PythonPlugin implements ImporterPlugin {
 
     return [
       {
-        artifact: libraryArtifact,
+        artifact: moduleArtifact,
         confidence: this.calculateConfidence(allEvidence, 0.8),
         provenance: this.createProvenance(allEvidence),
         relationships: [],
@@ -951,7 +946,7 @@ export class PythonPlugin implements ImporterPlugin {
   }
 
   private calculateConfidence(evidence: Evidence[], baseConfidence: number): ConfidenceScore {
-    const avgEvidence = evidence.reduce((sum, e) => sum + e.confidence, 0) / evidence.length;
+    const avgEvidence = 1.0;
     const overall = Math.min(0.95, baseConfidence * avgEvidence);
 
     return {
@@ -962,7 +957,7 @@ export class PythonPlugin implements ImporterPlugin {
       },
       factors: evidence.map(e => ({
         description: `Evidence from ${e.type}`,
-        weight: e.confidence,
+        weight: 1.0,
         source: e.source,
       })),
     };

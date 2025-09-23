@@ -77,7 +77,7 @@ export class RustPlugin implements ImporterPlugin {
     if (!fileContent || path.basename(filePath) !== 'Cargo.toml') return [];
 
     const evidence: Evidence[] = [];
-    const baseId = `rust-${path.relative(context?.projectRoot || '', filePath)}`;
+    const baseId = path.relative(context?.projectRoot || '', filePath);
 
     try {
       return this.parseCargoToml(filePath, fileContent, baseId);
@@ -129,7 +129,7 @@ export class RustPlugin implements ImporterPlugin {
     };
 
     evidence.push({
-      id: `${baseId}-package`,
+      id: baseId,
       source: 'rust',
       type: 'config',
       filePath,

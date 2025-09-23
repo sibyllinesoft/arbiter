@@ -60,7 +60,7 @@ export class TerraformPlugin implements ImporterPlugin {
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
     const dirPath = path.dirname(filePath);
-    const baseId = `terraform-${path.relative(context?.projectRoot || '', filePath)}`;
+    const baseId = path.relative(context?.projectRoot || '', filePath);
 
     try {
       if (fileName === '.terraform.lock.hcl') {
@@ -177,7 +177,7 @@ export class TerraformPlugin implements ImporterPlugin {
     };
 
     evidence.push({
-      id: `${baseId}-lockfile`,
+      id: baseId,
       source: 'terraform',
       type: 'config',
       filePath,
