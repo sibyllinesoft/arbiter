@@ -125,7 +125,7 @@ export function ProjectList({
                     >
                       <Terminal className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
-                        CLIs: {projectStatus.entities.clis}
+                        CLI: {projectStatus.entities.clis}
                       </span>
                     </div>
                   )}

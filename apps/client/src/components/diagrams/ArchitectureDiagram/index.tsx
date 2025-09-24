@@ -1,5 +1,6 @@
 import { clsx } from 'clsx';
 import React, { useState, useEffect } from 'react';
+import StatusBadge from '../../../design-system/components/StatusBadge';
 import { apiService } from '../../../services/api';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
@@ -71,30 +72,37 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   return (
     <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
       {/* Header */}
-      <div className="p-4 bg-white border-b border-gray-200">
+      <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
         <h3 className="text-lg font-medium text-gray-900">Components</h3>
-        <p className="text-sm text-gray-600">
-          {totalComponents > 0
-            ? `Showing ${totalComponents} components grouped by type`
-            : 'Import a project to see its components'}
-        </p>
+        {totalComponents > 0 && (
+          <StatusBadge
+            variant="info"
+            style="solid"
+            size="xs"
+            className="border-0 rounded-full text-[10px] text-gray-300"
+          >
+            {totalComponents}
+          </StatusBadge>
+        )}
       </div>
 
       {/* Components by Source File */}
-      <div className="p-4 space-y-4">
+      <div className="p-4">
         {Object.keys(groupedComponents).length === 0 ? (
           <EmptyState />
         ) : (
-          Object.entries(groupedComponents).map(([groupLabel, components]) => (
-            <SourceGroup
-              key={groupLabel}
-              groupLabel={groupLabel}
-              components={components}
-              expandedSources={expandedSources}
-              setExpandedSources={setExpandedSources}
-              onComponentClick={setSelectedComponent}
-            />
-          ))
+          <div className="space-y-4">
+            {Object.entries(groupedComponents).map(([groupLabel, components]) => (
+              <SourceGroup
+                key={groupLabel}
+                groupLabel={groupLabel}
+                components={components}
+                expandedSources={expandedSources}
+                setExpandedSources={setExpandedSources}
+                onComponentClick={setSelectedComponent}
+              />
+            ))}
+          </div>
         )}
 
         {/* Selected Component Details */}

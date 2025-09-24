@@ -1,4 +1,5 @@
 import React from 'react';
+import StatusBadge from '../../../../design-system/components/StatusBadge';
 import { ComponentCard } from './ComponentCard';
 
 interface SourceGroupProps {
@@ -41,23 +42,32 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
               />
             </svg>
           </div>
-          <div className="flex-1 min-w-0 text-left">
-            <h3 className="font-medium text-gray-900 truncate" title={groupLabel}>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-900 truncate mr-4" title={groupLabel}>
               {groupLabel}
             </h3>
-            <p className="text-sm text-gray-600">
-              {components.length} component{components.length !== 1 ? 's' : ''}
-            </p>
           </div>
         </div>
-        <svg
-          className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        <div className="flex items-center gap-2">
+          {components.length > 0 && (
+            <StatusBadge
+              variant="info"
+              style="solid"
+              size="xs"
+              className="border-0 rounded-full text-[10px] text-gray-300"
+            >
+              {components.length}
+            </StatusBadge>
+          )}
+          <svg
+            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </button>
 
       {/* Components Grid */}
