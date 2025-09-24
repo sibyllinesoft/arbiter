@@ -177,7 +177,7 @@ export function createProjectsRouter(deps: Dependencies) {
   });
 
   // Create project endpoint
-  router.post('/', async c => {
+  router.post('/projects', async c => {
     try {
       const db = deps.db as any;
       const body = await c.req.json();

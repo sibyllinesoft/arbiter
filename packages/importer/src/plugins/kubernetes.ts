@@ -9,13 +9,11 @@
 import * as path from 'path';
 import * as yaml from 'yaml';
 import {
-  ConfidenceScore,
   Evidence,
   ImporterPlugin,
   InferenceContext,
   InferredArtifact,
   ParseContext,
-  Provenance,
 } from '../types.js';
 
 // ============================================================================
@@ -140,7 +138,7 @@ export class KubernetesPlugin implements ImporterPlugin {
       filePath,
     };
     evidence.push({
-      id: `${baseId}-${name}`,
+      id: `${baseId}`,
       source: 'kubernetes',
       type: 'config',
       filePath,

@@ -45,8 +45,8 @@ export function createApiRouter(deps: Dependencies) {
   app.route('/api', createGapsRouter(deps));
   app.route('/api', createHandlersRouter(deps));
   app.route('/api', createWebhooksRouter(deps));
-  app.route('/api', createImportRouter(deps));
-  app.route('/api', createGithubRouter(deps));
+  app.route('/api/import', createImportRouter(deps));
+  app.route('/api/github', createGithubRouter(deps));
 
   return app;
 }
