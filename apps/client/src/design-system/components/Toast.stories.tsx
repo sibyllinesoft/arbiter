@@ -5,20 +5,10 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import {
-  AlertCircle,
-  CheckCircle,
-  Clock,
-  Copy,
-  Download,
-  RefreshCw,
-  Save,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle, Download, Upload } from 'lucide-react';
 import React, { useState } from 'react';
 import Button from './Button';
-import Toast, { ToastContainer, ToastManager, toast } from './Toast';
+import Toast, { ToastContainer, ToastManager } from './Toast';
 
 const meta = {
   title: 'Design System/Toast',
@@ -91,6 +81,9 @@ export const Default: Story = {
 
 // All variants
 export const Variants: Story = {
+  args: {
+    title: 'Variants Demo',
+  },
   render: () => {
     const [visibleToasts, setVisibleToasts] = useState({
       success: true,
@@ -205,6 +198,9 @@ export const Variants: Story = {
 
 // With progress indicators
 export const WithProgress: Story = {
+  args: {
+    title: 'With Progress',
+  },
   render: () => {
     const [toastVisible, setToastVisible] = useState(true);
 
@@ -240,6 +236,9 @@ export const WithProgress: Story = {
 
 // With custom actions
 export const WithActions: Story = {
+  args: {
+    title: 'With Actions',
+  },
   render: () => {
     const [toastVisible, setToastVisible] = useState(true);
 
@@ -298,6 +297,9 @@ export const WithActions: Story = {
 
 // Toast manager demonstration
 export const ToastManagerDemo: Story = {
+  args: {
+    title: 'Toast Manager Demo',
+  },
   render: () => {
     const [toasts, setToasts] = useState<any[]>([]);
     const [manager] = useState(() => {
@@ -370,6 +372,9 @@ export const ToastManagerDemo: Story = {
 
 // Professional developer tool examples
 export const DeveloperToolExamples: Story = {
+  args: {
+    title: 'Developer Tool Examples',
+  },
   render: () => {
     const [toasts, setToasts] = useState<any[]>([]);
     const [manager] = useState(() => {
@@ -395,7 +400,7 @@ export const DeveloperToolExamples: Story = {
     };
 
     const showDeploymentProcess = () => {
-      const steps = [
+      const steps: { title: string; desc: string; success?: boolean }[] = [
         { title: 'Building...', desc: 'Compiling source code' },
         { title: 'Testing...', desc: 'Running unit tests' },
         { title: 'Deploying...', desc: 'Uploading to production server' },
@@ -403,16 +408,16 @@ export const DeveloperToolExamples: Story = {
       ];
 
       let currentStep = 0;
-      const loadingId = manager.loading(steps[0].title, steps[0].desc);
+      let loadingId = manager.loading(steps[0]!.title, steps[0]!.desc)!;
 
       const interval = setInterval(() => {
         currentStep++;
         if (currentStep < steps.length - 1) {
           manager.hide(loadingId);
-          const newLoadingId = manager.loading(steps[currentStep].title, steps[currentStep].desc);
+          loadingId = manager.loading(steps[currentStep]!.title, steps[currentStep]!.desc)!;
         } else {
           manager.hide(loadingId);
-          manager.success(steps[currentStep].title, steps[currentStep].desc, {
+          manager.success(steps[currentStep]!.title, steps[currentStep]!.desc, {
             icon: <Upload />,
             action: (
               <Button size="sm" variant="ghost">
@@ -593,6 +598,9 @@ export const DeveloperToolExamples: Story = {
 
 // Different positions
 export const Positions: Story = {
+  args: {
+    title: 'Positions',
+  },
   render: () => {
     const positions: Array<
       'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center'

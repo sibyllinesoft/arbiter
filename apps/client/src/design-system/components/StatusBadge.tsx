@@ -4,9 +4,8 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
-import React, { type ReactNode } from 'react';
-import { cn, sizeVariants, statusVariants } from '../variants';
+import { type ReactNode } from 'react';
+import { cn, statusVariants } from '../variants';
 
 export interface StatusBadgeProps {
   /** Status variant determines the color scheme */
@@ -59,7 +58,7 @@ const sizeClasses = {
     gap: 'gap-1.5',
   },
   md: {
-    badge: 'px-3 py-1.5 text-sm',
+    badge: 'px-2 py-1 text-sm',
     icon: 'h-4 w-4',
     dot: 'h-2.5 w-2.5',
     gap: 'gap-2',

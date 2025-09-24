@@ -5,21 +5,15 @@
 import {
   AlertCircle,
   CheckCircle,
-  Clock,
   Copy,
   ExternalLink,
   Globe,
-  Monitor,
-  Pause,
-  Play,
   Power,
   PowerOff,
   RefreshCw,
-  RotateCcw,
-  Settings,
   Terminal,
 } from 'lucide-react';
-import React, { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
@@ -46,7 +40,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     'webhook-only'
   );
   const [customConfig, setCustomConfig] = useState('');
-  const [logs, setLogs] = useState<string>('');
+  const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
 
@@ -147,8 +141,8 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     try {
       const response = await apiService.getTunnelLogs();
       if (response.success && response.logs) {
-        setLogs(response.logs);
-        setShowLogs(true);
+        setLogs(response.logs.split('\n'));
+        if (!showLogs) setShowLogs(true);
       } else {
         toast.error(response.error || 'Failed to load logs');
       }
@@ -233,9 +227,9 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
               variant="ghost"
               size="sm"
               leftIcon={<Terminal className="w-4 h-4" />}
-              onClick={loadLogs}
+              onClick={() => setShowLogs(!showLogs)}
             >
-              Logs
+              {showLogs ? 'Hide Logs' : 'Show Logs'}
             </Button>
           </div>
         </div>
@@ -287,14 +281,27 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
           <label className="block text-sm font-medium text-gray-700 mb-2">Tunnel Mode</label>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { value: 'webhook-only', label: 'Webhook Only', desc: 'Secure (recommended)' },
-              { value: 'full-api', label: 'Full API', desc: 'Development mode' },
-              { value: 'custom', label: 'Custom', desc: 'Advanced configuration' },
+              {
+                value: 'webhook-only',
+                label: 'Webhook Only',
+                title: 'Secure mode - only webhook endpoints exposed (recommended)',
+              },
+              {
+                value: 'full-api',
+                label: 'Full API',
+                title: 'Development mode - all API endpoints accessible',
+              },
+              {
+                value: 'custom',
+                label: 'Custom',
+                title: 'Advanced configuration with custom settings',
+              },
             ].map(mode => (
               <button
                 key={mode.value}
                 onClick={() => setSelectedMode(mode.value as any)}
                 disabled={tunnelInfo?.status === 'running'}
+                title={mode.title}
                 className={cn(
                   'p-3 text-left border rounded-lg transition-colors',
                   selectedMode === mode.value
@@ -304,7 +311,6 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
                 )}
               >
                 <div className="font-medium text-sm">{mode.label}</div>
-                <div className="text-xs text-gray-500 mt-1">{mode.desc}</div>
               </button>
             ))}
           </div>
@@ -363,47 +369,44 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         </div>
       </div>
 
-      {/* Logs Modal/Section */}
-      {showLogs && (
-        <div className="mt-6 border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <div className="flex items-center gap-2">
-              <Terminal className="w-5 h-5 text-gray-600" />
-              <h3 className="font-medium text-gray-900">Tunnel Logs</h3>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => setShowLogs(false)}>
-              Close
-            </Button>
+      {/* Logs Section - Collapsible */}
+      <div className="mt-6 border border-gray-200 rounded-lg">
+        <div
+          className="flex items-center justify-between p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
+          onClick={() => setShowLogs(!showLogs)}
+        >
+          <div className="flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-gray-600" />
+            <h3 className="font-medium text-gray-900">Tunnel Logs</h3>
+            {logs.length > 0 && (
+              <StatusBadge variant="info" size="xs">
+                {logs.length} entries
+              </StatusBadge>
+            )}
           </div>
-          <div className="p-4">
-            <pre className="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-96">
-              {logs || 'No logs available'}
-            </pre>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={e => {
+              e.stopPropagation();
+              loadLogs();
+            }}
+            className="mr-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
         </div>
-      )}
-
-      {/* Information Panel */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div className="flex gap-3">
-          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Tunnel Information</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-700">
-              <li>
-                <strong>Webhook-only:</strong> Secure mode - only webhook endpoints exposed
-              </li>
-              <li>
-                <strong>Full API:</strong> Development mode - all API endpoints accessible
-              </li>
-              <li>
-                <strong>Custom:</strong> Advanced configuration with custom settings
-              </li>
-              <li>The tunnel automatically handles SSL/TLS certificates via Cloudflare</li>
-              <li>IP filtering is enforced for webhook-only mode (GitHub/GitLab IPs only)</li>
-            </ul>
+        {showLogs && (
+          <div className="p-4 max-h-96 overflow-auto">
+            {logs.length > 0 ? (
+              <pre className="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded-lg whitespace-pre-wrap">
+                {logs.join('\n')}
+              </pre>
+            ) : (
+              <p className="text-sm text-gray-500 italic">Click refresh to load logs</p>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </Card>
   );

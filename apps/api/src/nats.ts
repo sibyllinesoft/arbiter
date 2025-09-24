@@ -3,8 +3,8 @@
  * Publishes spec events to NATS topics for external AI agents to consume
  */
 import { type ConnectionOptions, type NatsConnection, connect } from 'nats';
-import type { Event, NatsConfig, NatsSpecEvent } from './types.ts';
-import { getCurrentTimestamp, logger } from './utils.ts';
+import type { Event, NatsConfig, NatsSpecEvent } from './types';
+import { getCurrentTimestamp, logger } from './utils';
 
 export class NatsService {
   private connection: NatsConnection | null = null;

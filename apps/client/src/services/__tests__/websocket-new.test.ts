@@ -61,7 +61,7 @@ class MockWebSocket {
 
   close(code?: number, reason?: string) {
     this.readyState = WebSocket.CLOSING;
-    const closeEvent = new CloseEvent('close', { code: code || 1000, reason });
+    const closeEvent = new CloseEvent('close', { code: code || 1000, reason: reason || '' });
     setTimeout(() => {
       this.readyState = WebSocket.CLOSED;
       this.dispatchEvent(closeEvent);
@@ -296,7 +296,7 @@ describe('WebSocketService (Comprehensive)', () => {
       service.connect('test-project');
       mockWebSocket.simulateOpen();
 
-      const message = { type: 'test', data: { value: 'hello' } };
+      const message = { type: 'event' as const, data: { value: 'hello' } };
       const sendSpy = vi.spyOn(mockWebSocket, 'send');
 
       service.send(message);
@@ -307,7 +307,7 @@ describe('WebSocketService (Comprehensive)', () => {
     it('should queue messages when not connected', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const message = { type: 'test', data: { value: 'hello' } };
+      const message = { type: 'event' as const, data: { value: 'hello' } };
       service.send(message);
 
       expect(consoleSpy).toHaveBeenCalledWith('WebSocket not connected, queuing message:', message);
@@ -316,8 +316,8 @@ describe('WebSocketService (Comprehensive)', () => {
     });
 
     it('should send queued messages on connection', () => {
-      const message1 = { type: 'test1', data: { value: 'hello1' } };
-      const message2 = { type: 'test2', data: { value: 'hello2' } };
+      const message1 = { type: 'event' as const, data: { value: 'hello1' } };
+      const message2 = { type: 'event' as const, data: { value: 'hello2' } };
 
       // Send messages while disconnected
       service.send(message1);
@@ -343,7 +343,7 @@ describe('WebSocketService (Comprehensive)', () => {
         type: 'fragment_updated',
         project_id: 'test-project',
         timestamp: '2023-01-01T00:00:00Z',
-        data: { fragment_id: 'frag-1' },
+        data: { fragment_id: 'frag-1' } as any,
       };
 
       mockWebSocket.simulateMessage({
@@ -460,7 +460,7 @@ describe('WebSocketService (Comprehensive)', () => {
       const handler2 = vi.fn();
 
       const unsubscribe1 = service.subscribe(handler1);
-      const _unsubscribe2 = service.subscribe(handler2);
+      service.subscribe(handler2);
 
       service.connect('test-project');
       mockWebSocket.simulateOpen();
@@ -469,7 +469,7 @@ describe('WebSocketService (Comprehensive)', () => {
         type: 'fragment_updated',
         project_id: 'test-project',
         timestamp: '2023-01-01T00:00:00Z',
-        data: { fragment_id: 'frag-1' },
+        data: { fragment_id: 'frag-1' } as any,
       };
 
       mockWebSocket.simulateMessage({
@@ -510,7 +510,7 @@ describe('WebSocketService (Comprehensive)', () => {
         type: 'fragment_updated',
         project_id: 'test-project',
         timestamp: '2023-01-01T00:00:00Z',
-        data: { fragment_id: 'frag-1' },
+        data: { fragment_id: 'frag-1' } as any,
       };
 
       mockWebSocket.simulateMessage({
@@ -755,7 +755,7 @@ describe('WebSocketService (Comprehensive)', () => {
       });
 
       expect(() => {
-        service.send({ type: 'test', data: {} });
+        service.send({ type: 'event' as const, data: {} });
       }).toThrow('Send failed');
     });
 

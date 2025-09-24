@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { Route, Routes } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-import { AppProvider, useUIState } from './contexts/AppContext';
+import { AppProvider } from './contexts/AppContext';
 import { ProjectProvider } from './contexts/ProjectContext';
-import { useCurrentProject, useSetCurrentProject } from './contexts/ProjectContext';
 // Providers
 import { QueryProvider } from './providers/QueryProvider';
 
@@ -61,35 +61,6 @@ class ErrorBoundary extends React.Component<
   }
 }
 
-// Main app content with simple routing
-function AppContent() {
-  const { currentView, setCurrentView } = useUIState();
-  const currentProject = useCurrentProject();
-  const setCurrentProject = useSetCurrentProject();
-
-  const navigateToConfig = () => setCurrentView('config');
-  const navigateToDashboard = () => setCurrentView('dashboard');
-  const navigateToProject = (project: any) => {
-    setCurrentProject(project);
-    setCurrentView('project');
-  };
-
-  return (
-    <>
-      {currentView === 'dashboard' && (
-        <LandingPage
-          onNavigateToConfig={navigateToConfig}
-          onNavigateToProject={navigateToProject}
-        />
-      )}
-      {currentView === 'config' && <ConfigScreen onNavigateBack={navigateToDashboard} />}
-      {currentView === 'project' && currentProject && (
-        <ProjectView project={currentProject} onNavigateBack={navigateToDashboard} />
-      )}
-    </>
-  );
-}
-
 // Main App component with all providers
 function App() {
   return (
@@ -97,7 +68,10 @@ function App() {
       <QueryProvider>
         <AppProvider>
           <ProjectProvider>
-            <AppContent />
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/project/:projectId" element={<ProjectView />} />
+            </Routes>
             <ToastContainer
               position="top-right"
               autoClose={3000}

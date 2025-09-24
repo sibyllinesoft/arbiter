@@ -14,6 +14,8 @@ export default defineConfig({
       '@design-system': path.resolve(__dirname, './src/design-system'),
       '@utils': path.resolve(__dirname, './src/utils'),
       '@assets': path.resolve(__dirname, './src/assets'),
+      react: path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
     },
   },
   plugins: [

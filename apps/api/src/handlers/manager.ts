@@ -11,12 +11,7 @@ import type { ServerConfig } from '../types.js';
 import { logger as defaultLogger } from '../utils.js';
 import { HandlerDiscovery } from './discovery.js';
 import { HandlerExecutor } from './executor.js';
-import {
-  type HandlerEmailConfig,
-  HandlerGitService,
-  HandlerHttpClient,
-  HandlerNotificationService,
-} from './services.js';
+import { HandlerGitService, HandlerHttpClient, HandlerNotificationService } from './services.js';
 import type {
   HandlerCreationOptions,
   HandlerDiscoveryConfig,
@@ -26,7 +21,7 @@ import type {
   Logger,
   RegisteredHandler,
   WebhookRequest,
-} from './types.js';
+} from './types.ts';
 
 export class CustomHandlerManager {
   private discovery: HandlerDiscovery;
@@ -41,15 +36,12 @@ export class CustomHandlerManager {
     private logger: Logger = defaultLogger
   ) {
     // Initialize handler services
-    const emailConfig = this.config.handlers?.notifications?.email as
-      | HandlerEmailConfig
-      | undefined;
 
     this.services = {
       events: this.events,
       db: this.db,
       http: new HandlerHttpClient(this.logger),
-      notifications: new HandlerNotificationService(this.logger, emailConfig),
+      notifications: new HandlerNotificationService(this.logger),
       git: new HandlerGitService(this.logger),
     };
 

@@ -156,6 +156,7 @@ export class DockerPlugin implements ImporterPlugin {
       if (data.type !== 'service' && (hasCompose || data.type !== 'dockerfile')) continue;
 
       const artifactType = data.type === 'dockerfile' ? 'service' : data.type;
+      const root = hasCompose ? path.basename(data.filePath) : path.dirname(data.filePath);
       const artifact = {
         id: `docker-${artifactType}-${data.name}`,
         type: artifactType as any,
@@ -164,7 +165,7 @@ export class DockerPlugin implements ImporterPlugin {
         tags: ['docker', artifactType],
         metadata: {
           sourceFile: data.filePath,
-          root: path.dirname(data.filePath),
+          root,
         },
       };
 

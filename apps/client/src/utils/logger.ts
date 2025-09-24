@@ -19,14 +19,25 @@
  * - __arbiterLogger.current() - shows current level
  */
 
-export enum LogLevel {
-  SILENT = 0,
-  ERROR = 1,
-  WARN = 2,
-  INFO = 3,
-  DEBUG = 4,
-  TRACE = 5,
-}
+export const LogLevel = {
+  SILENT: 0,
+  ERROR: 1,
+  WARN: 2,
+  INFO: 3,
+  DEBUG: 4,
+  TRACE: 5,
+} as const;
+
+export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
+
+export const LogLevelNames = {
+  [LogLevel.SILENT]: 'SILENT',
+  [LogLevel.ERROR]: 'ERROR',
+  [LogLevel.WARN]: 'WARN',
+  [LogLevel.INFO]: 'INFO',
+  [LogLevel.DEBUG]: 'DEBUG',
+  [LogLevel.TRACE]: 'TRACE',
+} as const;
 
 export interface LoggerConfig {
   level: LogLevel;
@@ -35,7 +46,7 @@ export interface LoggerConfig {
 }
 
 class Logger {
-  private config: LoggerConfig = {
+  public config: LoggerConfig = {
     level: this.getDefaultLogLevel(),
     enableColors: true,
     enableTimestamps: false,
@@ -184,11 +195,11 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
       const logLevel =
         typeof level === 'string' ? LogLevel[level.toUpperCase() as keyof typeof LogLevel] : level;
       if (logLevel !== undefined) {
-        logger.setLevel(logLevel);
-        console.log(`Log level set to: ${LogLevel[logLevel]}`);
+        logger.setLevel(logLevel as LogLevel);
+        console.log(`Log level set to: ${LogLevelNames[logLevel as LogLevel]}`);
       }
     },
     levels: LogLevel,
-    current: () => LogLevel[logger.config.level],
+    current: () => LogLevelNames[logger.config.level],
   };
 }

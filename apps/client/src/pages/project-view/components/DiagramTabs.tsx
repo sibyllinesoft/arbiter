@@ -2,7 +2,6 @@
  * DiagramTabs - Right pane tabs for diagrams and handlers
  */
 
-import React from 'react';
 import {
   ArchitectureReport,
   FlowReport,

@@ -430,7 +430,11 @@ export class UnifiedGitHubTemplateManager {
     const title = this.renderString(resolvedConfig.title || '{{name}}', data);
 
     // Generate body
-    const body = this.generateTemplateBody(resolvedConfig.sections, data);
+    const sectionsWithDefaults = {
+      ...resolvedConfig.sections,
+      description: resolvedConfig.sections?.description || '## Description\n\n{{description}}',
+    };
+    const body = this.generateTemplateBody(sectionsWithDefaults, data);
 
     // Process labels
     const labels = this.processLabels(resolvedConfig.labels || [], data);
@@ -447,7 +451,7 @@ export class UnifiedGitHubTemplateManager {
 
     // Validate the generated template
     const validation = validateIssue(result);
-    if (!validation.isValid) {
+    if (!validation.valid) {
       throw new Error(`Generated template validation failed: ${validation.errors.join(', ')}`);
     }
 
@@ -590,7 +594,7 @@ export class UnifiedGitHubTemplateManager {
 
     // Validate the generated template
     const validation = validateIssue(result);
-    if (!validation.isValid) {
+    if (!validation.valid) {
       throw new Error(`Generated template validation failed: ${validation.errors.join(', ')}`);
     }
 
@@ -956,7 +960,11 @@ export class UnifiedGitHubTemplateManager {
 
     // Add template sections as form fields
     if (resolvedConfig.sections) {
-      template += this.generateTemplateFormBody(resolvedConfig.sections, {});
+      const sectionsWithDefaults = {
+        ...resolvedConfig.sections,
+        description: resolvedConfig.sections?.description || '## Description\n\n{{description}}',
+      };
+      template += this.generateTemplateFormBody(sectionsWithDefaults, {});
     }
 
     return template;

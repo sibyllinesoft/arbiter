@@ -1,11 +1,12 @@
 import chalk from 'chalk';
 import { ApiClient } from '../api-client.js';
-import type { CLIConfig } from '../config.js';
+import type { CLIConfig } from '../types.js';
 import { formatComponentTable, formatJson, formatYaml } from '../utils/formatting.js';
 import { withProgress } from '../utils/progress.js';
 
 export interface ListOptions {
-  // No additional options for now, but extensible
+  format?: 'table' | 'json' | 'yaml';
+  verbose?: boolean;
 }
 
 const VALID_TYPES = [
@@ -46,7 +47,9 @@ export async function listCommand(
     const client = new ApiClient(config);
 
     // List components with progress indicator
-    const result = await withProgress(`Listing ${type}s...`, () => client.listComponents(type));
+    const result = await withProgress({ text: `Listing ${type}s...` }, () =>
+      client.listComponents(type)
+    );
 
     if (!result.success) {
       console.error(chalk.red('List failed:'), result.error);
@@ -62,7 +65,8 @@ export async function listCommand(
     }
 
     // Format and display results based on output format
-    switch (config.format) {
+    const outputFormat = options.format || config.format;
+    switch (outputFormat) {
       case 'json':
         console.log(formatJson(components));
         break;
@@ -76,7 +80,7 @@ export async function listCommand(
     }
 
     // Show summary if verbose
-    if (config.verbose) {
+    if (options.verbose) {
       console.log(chalk.gray(`\nFound ${components.length} ${type}(s)`));
     }
 

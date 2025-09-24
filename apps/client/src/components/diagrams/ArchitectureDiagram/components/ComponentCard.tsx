@@ -64,29 +64,33 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
           data.metadata.language !== 'unknown' &&
           data.metadata.language.trim() !== '' && (
             <div>
-              Language: <span className="font-mono">{data.metadata.language}</span>
+              <span className="text-gray-400">Language:</span>{' '}
+              <span className="font-mono">{data.metadata.language}</span>
             </div>
           )}
         {data.metadata?.framework &&
           data.metadata.framework !== 'unknown' &&
           data.metadata.framework.trim() !== '' && (
             <div>
-              Framework: <span className="font-mono">{data.metadata.framework}</span>
+              <span className="text-gray-400">Framework:</span>{' '}
+              <span className="font-mono">{data.metadata.framework}</span>
             </div>
           )}
         {data.version && data.version.trim() !== '' && (
           <div>
-            Version: <span className="font-mono">{data.version}</span>
+            <span className="text-gray-400">Version:</span>{' '}
+            <span className="font-mono">{data.version}</span>
           </div>
         )}
         {data.image && data.image.trim() !== '' && (
           <div>
-            Image: <span className="font-mono">{data.image}</span>
+            <span className="text-gray-400">Image:</span>{' '}
+            <span className="font-mono">{data.image}</span>
           </div>
         )}
         {data.ports && (
           <div>
-            Ports:{' '}
+            <span className="text-gray-400">Ports:</span>{' '}
             <span className="font-mono">
               {(() => {
                 if (Array.isArray(data.ports)) {
@@ -133,13 +137,6 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
             </span>
           </div>
         )}
-      </div>
-
-      {/* Component Type Badge */}
-      <div className="mt-2 relative">
-        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/20 text-white backdrop-blur-sm">
-          {componentType}
-        </span>
       </div>
     </div>
   );

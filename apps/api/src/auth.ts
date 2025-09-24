@@ -1,8 +1,8 @@
 /**
  * Authentication and authorization module
  */
-import type { AuthContext, ServerConfig } from './types.ts';
-import { logger, parseBearerToken } from './utils.ts';
+import type { AuthContext, ServerConfig } from './types';
+import { logger, parseBearerToken } from './utils';
 
 // OAuth-related interfaces
 export interface OAuthToken {
@@ -307,7 +307,7 @@ export class AuthService {
         requiredScopes: this.config.oauth.requiredScopes || [],
       });
     } catch (error) {
-      logger.error('Failed to start OAuth service', { error });
+      logger.error('Failed to start OAuth service', error instanceof Error ? error : undefined);
       throw new Error(
         `OAuth service startup failed: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -329,7 +329,7 @@ export class AuthService {
 
       logger.info('OAuth service stopped successfully');
     } catch (error) {
-      logger.error('Error stopping OAuth service', { error });
+      logger.error('Error stopping OAuth service', error instanceof Error ? error : undefined);
     }
   }
 
@@ -381,12 +381,35 @@ export class AuthService {
       return this.createAuthMiddleware();
     }
 
-    return async (req: any, res: any, next: any) => {
+    return async (
+      request: Request
+    ): Promise<{
+      authorized: boolean;
+      authContext?: AuthContext;
+      response?: Response;
+    }> => {
       try {
-        const token = parseBearerToken(req.headers.authorization || '');
+        const token = parseBearerToken(request.headers.get('authorization') || '');
 
         if (!token) {
-          return res.status(401).json({ error: 'Authorization token required' });
+          return {
+            authorized: false,
+            response: new Response(
+              JSON.stringify({
+                type: 'https://httpstatuses.com/401',
+                title: 'Unauthorized',
+                status: 401,
+                detail: 'Authorization token required',
+              }),
+              {
+                status: 401,
+                headers: {
+                  'Content-Type': 'application/problem+json',
+                  'WWW-Authenticate': 'Bearer',
+                },
+              }
+            ),
+          };
         }
 
         // Try OAuth validation first
@@ -394,22 +417,38 @@ export class AuthService {
           const oauthToken = await this.oauthService.validateToken(token);
           if (oauthToken) {
             // Set OAuth context
-            req.auth = {
+            const authContext: AuthContext = {
               token,
               user_id: oauthToken.user_id,
               project_access: this.extractProjectAccessFromScope(oauthToken.scope),
-              oauth_token: oauthToken,
-            } as AuthContext;
-            return next();
+            };
+            return { authorized: true, authContext };
           }
         }
 
         // Fall back to regular token validation
         const regularAuthMiddleware = this.createAuthMiddleware();
-        return regularAuthMiddleware(req, res, next);
+        return regularAuthMiddleware(request);
       } catch (error) {
-        logger.error('OAuth-aware auth middleware error', { error });
-        return res.status(500).json({ error: 'Authentication error' });
+        logger.error(
+          'OAuth-aware auth middleware error',
+          error instanceof Error ? error : undefined
+        );
+        return {
+          authorized: false,
+          response: new Response(
+            JSON.stringify({
+              type: 'https://httpstatuses.com/500',
+              title: 'Internal Server Error',
+              status: 500,
+              detail: 'Authentication error',
+            }),
+            {
+              status: 500,
+              headers: { 'Content-Type': 'application/problem+json' },
+            }
+          ),
+        };
       }
     };
   }
@@ -432,10 +471,9 @@ export class AuthService {
         token,
         user_id: oauthToken.user_id,
         project_access: this.extractProjectAccessFromScope(oauthToken.scope),
-        oauth_token: oauthToken,
       };
     } catch (error) {
-      logger.error('OAuth token validation failed', { error });
+      logger.error('OAuth token validation failed', error instanceof Error ? error : undefined);
       return null;
     }
   }

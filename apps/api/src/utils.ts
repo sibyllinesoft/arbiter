@@ -62,8 +62,8 @@ export async function executeCommand(
       success: exitCode === 0,
       stdout: stdout.trim(),
       stderr: stderr.trim(),
-      exit_code: exitCode,
-      duration_ms: duration,
+      exitCode,
+      durationMs: duration,
     };
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -71,8 +71,8 @@ export async function executeCommand(
       success: false,
       stdout: '',
       stderr: error instanceof Error ? error.message : 'Unknown error',
-      exit_code: -1,
-      duration_ms: duration,
+      exitCode: -1,
+      durationMs: duration,
     };
   }
 }

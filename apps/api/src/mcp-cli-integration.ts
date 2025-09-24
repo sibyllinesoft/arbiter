@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { HandlerResult } from './handlers/types.js';
-import { logger } from './utils.ts';
+import type { HandlerResult } from './handlers/types';
+import { logger } from './utils';
 
 export class McpCliIntegration {
   async triggerTool(_: string, __: Record<string, unknown>): Promise<HandlerResult> {

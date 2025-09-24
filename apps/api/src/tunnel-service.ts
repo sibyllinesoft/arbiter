@@ -36,6 +36,8 @@ export interface TunnelConfig {
 }
 
 class CloudflareTunnelService extends EventEmitter {
+  static defaultTunnelName = 'arbiter-tunnel';
+  static defaultDomain = 'trycloudflare.com';
   private tunnelProcess: ChildProcess | null = null;
   private status: TunnelStatus = {
     status: 'stopped',
@@ -387,7 +389,7 @@ class CloudflareTunnelService extends EventEmitter {
   /**
    * Create a new named tunnel
    */
-  async createTunnel(name: string = this.defaultTunnelName): Promise<string> {
+  async createTunnel(name: string = CloudflareTunnelService.defaultTunnelName): Promise<string> {
     return new Promise((resolve, reject) => {
       this.log(`Creating new tunnel: ${name}`);
 
@@ -465,7 +467,7 @@ class CloudflareTunnelService extends EventEmitter {
   /**
    * Get or create a tunnel for the given name
    */
-  async ensureTunnel(name: string = this.defaultTunnelName): Promise<string> {
+  async ensureTunnel(name: string = CloudflareTunnelService.defaultTunnelName): Promise<string> {
     try {
       const tunnels = await this.listTunnels();
       const existingTunnel = tunnels.find(t => t.name === name);
@@ -486,7 +488,7 @@ class CloudflareTunnelService extends EventEmitter {
 
   private async spawnTunnelProcess(): Promise<void> {
     // Ensure we have a tunnel and configuration
-    const tunnelName = this.config!.tunnelName || this.defaultTunnelName;
+    const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
     const tunnelId = await this.ensureTunnel(tunnelName);
 
     // Try to get existing tunnel hostname configuration
@@ -579,8 +581,8 @@ class CloudflareTunnelService extends EventEmitter {
   }
 
   private generateWebhookOnlyConfig(tunnelId: string, credentialsFile: string): string {
-    const domain = this.config!.domain || this.defaultDomain;
-    const tunnelName = this.config!.tunnelName || this.defaultTunnelName;
+    const domain = this.config!.domain || CloudflareTunnelService.defaultDomain;
+    const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
 
     this.log('Creating webhook-only configuration (secure mode)');
 
@@ -597,8 +599,8 @@ ingress:
   }
 
   private generateFullApiConfig(tunnelId: string, credentialsFile: string): string {
-    const domain = this.config!.domain || this.defaultDomain;
-    const tunnelName = this.config!.tunnelName || this.defaultTunnelName;
+    const domain = this.config!.domain || CloudflareTunnelService.defaultDomain;
+    const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
 
     this.log('Creating full API configuration - ALL endpoints will be exposed!');
     this.log('Use webhook-only mode for production environments');
@@ -614,8 +616,8 @@ ingress:
   }
 
   private generateCustomConfig(tunnelId: string, credentialsFile: string): string {
-    const domain = this.config!.domain || this.defaultDomain;
-    const tunnelName = this.config!.tunnelName || this.defaultTunnelName;
+    const domain = this.config!.domain || CloudflareTunnelService.defaultDomain;
+    const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
 
     this.log('Creating custom configuration...');
 

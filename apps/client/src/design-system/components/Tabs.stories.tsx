@@ -9,7 +9,6 @@ import {
   Activity,
   AlertTriangle,
   Bug,
-  CheckCircle,
   Code,
   Database,
   FileText,
@@ -173,12 +172,15 @@ export const Default: Story = {
 
 // All variants
 export const Variants: Story = {
-  render: () => {
-    const items = [
+  args: {
+    items: [
       { id: 'tab1', label: 'Overview', content: <div className="p-4">Overview content</div> },
       { id: 'tab2', label: 'Details', content: <div className="p-4">Details content</div> },
       { id: 'tab3', label: 'Settings', content: <div className="p-4">Settings content</div> },
-    ];
+    ],
+  },
+  render: args => {
+    const { items } = args;
 
     return (
       <div className="space-y-8">
@@ -216,8 +218,8 @@ export const Variants: Story = {
 
 // Different sizes
 export const Sizes: Story = {
-  render: () => {
-    const items = [
+  args: {
+    items: [
       {
         id: 'tab1',
         label: 'Small',
@@ -237,7 +239,10 @@ export const Sizes: Story = {
         icon: <Settings />,
         content: <div className="p-4">Large tab content</div>,
       },
-    ];
+    ],
+  },
+  render: args => {
+    const { items } = args;
 
     return (
       <div className="space-y-8">
@@ -269,8 +274,8 @@ export const Sizes: Story = {
 
 // With icons, badges, and states
 export const WithIconsAndBadges: Story = {
-  render: () => {
-    const items = [
+  args: {
+    items: [
       {
         id: 'files',
         label: 'Files',
@@ -306,9 +311,13 @@ export const WithIconsAndBadges: Story = {
         icon: <Activity />,
         content: <div className="p-4">Performance and quality metrics</div>,
       },
-    ];
+    ],
+    variant: 'pills',
+  },
+  render: args => {
+    const { items, variant } = args;
 
-    return <Tabs items={items} variant="pills" />;
+    return <Tabs items={items} variant={variant ?? 'underline'} />;
   },
   parameters: {
     docs: {
@@ -321,8 +330,8 @@ export const WithIconsAndBadges: Story = {
 
 // Closable tabs
 export const ClosableTabs: Story = {
-  render: () => {
-    const [tabs, setTabs] = useState([
+  args: {
+    items: [
       {
         id: 'main.ts',
         label: 'main.ts',
@@ -371,7 +380,12 @@ export const ClosableTabs: Story = {
           </div>
         ),
       },
-    ]);
+    ],
+    variant: 'bordered',
+  },
+  render: args => {
+    const { items, variant } = args;
+    const [tabs, setTabs] = useState(items);
 
     const handleTabClose = (tabId: string) => {
       setTabs(prevTabs => prevTabs.filter(tab => tab.id !== tabId));
@@ -401,7 +415,7 @@ export const ClosableTabs: Story = {
             New File
           </Button>
         </div>
-        <Tabs items={tabs} variant="bordered" onTabClose={handleTabClose} />
+        <Tabs items={tabs} variant={variant ?? 'bordered'} onTabClose={handleTabClose} />
         {tabs.length === 0 && (
           <div className="text-center py-8 text-graphite-500">
             No files open. Click "New File" to create a tab.
@@ -421,8 +435,8 @@ export const ClosableTabs: Story = {
 
 // Scrollable tabs
 export const ScrollableTabs: Story = {
-  render: () => {
-    const tabs = Array.from({ length: 15 }, (_, i) => ({
+  args: {
+    items: Array.from({ length: 15 }, (_, i) => ({
       id: `file-${i + 1}`,
       label: `very-long-filename-${i + 1}.tsx`,
       icon: <FileText />,
@@ -433,18 +447,21 @@ export const ScrollableTabs: Story = {
           <p className="text-graphite-600">Content for file {i + 1}</p>
         </div>
       ),
-    }));
+    })),
+  },
+  render: args => {
+    const { items } = args;
 
     return (
       <div className="space-y-6">
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Scrollable with Buttons</h4>
-          <Tabs items={tabs} variant="bordered" scrollable showScrollButtons />
+          <Tabs items={items} variant="bordered" scrollable showScrollButtons />
         </div>
 
         <div>
           <h4 className="text-sm font-medium text-graphite-700 mb-3">Scrollable without Buttons</h4>
-          <Tabs items={tabs} variant="pills" scrollable />
+          <Tabs items={items} variant="pills" scrollable />
         </div>
       </div>
     );
@@ -460,6 +477,9 @@ export const ScrollableTabs: Story = {
 
 // Professional developer tool examples
 export const DeveloperToolExamples: Story = {
+  args: {
+    items: [],
+  },
   render: () => {
     const [activeSection, setActiveSection] = useState('ide');
 

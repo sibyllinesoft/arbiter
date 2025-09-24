@@ -78,122 +78,119 @@ export function ProjectList({
             onClick={() => onSelectProject(project)}
           >
             {/* Project Header with Floating Badges */}
-            <div className="flex items-start justify-between p-6">
-              <div className="flex-1">
-                <h3 className="text-2xl font-semibold text-graphite-25 mb-3">{project.name}</h3>
-
-                {/* Entity Metrics - Floating with name */}
-                {projectStatus && (
-                  <div className="flex flex-wrap gap-2">
-                    {projectStatus.entities.services > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#3E82B6', borderColor: '#1E466B' }}
-                      >
-                        <Server className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Services: {projectStatus.entities.services}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.libraries > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#7666B9', borderColor: '#3A2A70' }}
-                      >
-                        <Component className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Libraries: {projectStatus.entities.libraries}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.clis > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#BA5956', borderColor: '#803131' }}
-                      >
-                        <Terminal className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          CLIs: {projectStatus.entities.clis}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.frontends > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#45A190', borderColor: '#1D6A5B' }}
-                      >
-                        <Layout className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Frontends: {projectStatus.entities.frontends}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.databases > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#A6842A', borderColor: '#725718' }}
-                      >
-                        <Database className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Databases: {projectStatus.entities.databases}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.routes > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
-                      >
-                        <Navigation className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Routes: {projectStatus.entities.routes}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.flows > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
-                      >
-                        <Workflow className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Flows: {projectStatus.entities.flows}
-                        </span>
-                      </div>
-                    )}
-
-                    {projectStatus.entities.capabilities > 0 && (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                        style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
-                      >
-                        <Shield className="w-3.5 h-3.5 text-white" />
-                        <span className="text-xs font-medium text-white">
-                          Capabilities: {projectStatus.entities.capabilities}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Delete Button */}
-              <div className="flex items-center gap-2 ml-4">
+            <div className="p-6">
+              {/* Project Header Row: Name and Delete Icon */}
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-2xl font-semibold text-graphite-25 flex-1">{project.name}</h3>
                 <button
                   onClick={e => onDeleteProject(e, project.id)}
-                  className="p-1 text-graphite-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                  className="p-1 text-graphite-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors ml-4"
                   title="Delete project"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Entity Metrics - Below the name */}
+              {projectStatus && (
+                <div className="flex flex-wrap gap-2">
+                  {projectStatus.entities.services > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#3E82B6', borderColor: '#1E466B' }}
+                    >
+                      <Server className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Services: {projectStatus.entities.services}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.libraries > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#7666B9', borderColor: '#3A2A70' }}
+                    >
+                      <Component className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Libraries: {projectStatus.entities.libraries}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.clis > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#BA5956', borderColor: '#803131' }}
+                    >
+                      <Terminal className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        CLIs: {projectStatus.entities.clis}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.frontends > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#45A190', borderColor: '#1D6A5B' }}
+                    >
+                      <Layout className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Frontends: {projectStatus.entities.frontends}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.databases > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#A6842A', borderColor: '#725718' }}
+                    >
+                      <Database className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Databases: {projectStatus.entities.databases}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.routes > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Routes: {projectStatus.entities.routes}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.flows > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                    >
+                      <Workflow className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Flows: {projectStatus.entities.flows}
+                      </span>
+                    </div>
+                  )}
+
+                  {projectStatus.entities.capabilities > 0 && (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
+                      style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                    >
+                      <Shield className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Capabilities: {projectStatus.entities.capabilities}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );

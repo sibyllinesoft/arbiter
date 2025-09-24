@@ -3,7 +3,6 @@
  */
 
 import { ArrowLeft } from 'lucide-react';
-import React from 'react';
 import { Button } from '../../../design-system';
 import type { Project } from '../../../types/api';
 

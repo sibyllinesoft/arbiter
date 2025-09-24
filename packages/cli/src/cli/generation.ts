@@ -38,7 +38,7 @@ export function createGenerationCommands(program: Command): void {
 
         // Auto-detect git repository information if needed
         config = await loadConfigWithGitDetection(config, {
-          includeGitRemote: options.includeGitRemote !== false,
+          useGitRemote: options.useConfig !== false,
         });
 
         const exitCode = await generateCommand(options, config, specName);
@@ -149,7 +149,7 @@ export function createGenerationCommands(program: Command): void {
           throw new Error('Configuration not loaded');
         }
 
-        const exitCode = await executeCommand(epic, options, config);
+        const exitCode = await executeCommand({ epic });
         process.exit(exitCode);
       } catch (error) {
         console.error(

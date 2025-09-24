@@ -27,19 +27,20 @@ import { createLogger } from '../utils/logger';
 const log = createLogger('API');
 
 export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public details?: ProblemDetails
-  ) {
+  status: number;
+  details?: ProblemDetails | undefined;
+
+  constructor(message: string, status: number, details?: ProblemDetails | undefined) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.details = details;
   }
 }
 
 class ApiService {
   private baseUrl = import.meta.env.VITE_API_URL || '';
-  private defaultHeaders: Record<string, string> = {
+  private defaultHeaders: Record<string, string | undefined> = {
     'Content-Type': 'application/json',
   };
 
@@ -55,9 +56,12 @@ class ApiService {
     const config: RequestInit = {
       ...options,
       headers: {
-        ...this.defaultHeaders,
-        ...options.headers,
-      },
+        ...Object.fromEntries(
+          Object.entries({ ...this.defaultHeaders, ...options.headers }).filter(
+            ([_, v]) => v !== undefined
+          )
+        ),
+      } as HeadersInit,
     };
     return { url, config };
   }
@@ -210,16 +214,18 @@ class ApiService {
 
   // IR (Intermediate Representation) endpoints
   async getIR(projectId: string, kind: IRKind): Promise<IRResponse> {
+    if (!kind) {
+      throw new Error('IRKind is required');
+    }
     return this.request<IRResponse>(`/api/ir/${kind}?projectId=${projectId}`);
   }
 
   async getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
     const kinds: IRKind[] = ['flow', 'fsm', 'view', 'site'];
-    const irs: Record<string, IRResponse> = {};
+    const irs: Record<IRKind, IRResponse> = {} as Record<IRKind, IRResponse>;
 
     // Sequential requests with small delays to avoid rate limiting
-    for (let i = 0; i < kinds.length; i++) {
-      const kind = kinds[i];
+    for (const kind of kinds) {
       try {
         const ir = await this.getIR(projectId, kind);
         irs[kind] = ir;
@@ -228,12 +234,10 @@ class ApiService {
       }
 
       // Add small delay between requests to avoid overwhelming rate limiter
-      if (i < kinds.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
 
-    return irs as Record<IRKind, IRResponse>;
+    return irs;
   }
 
   // Version freezing endpoints
@@ -414,7 +418,7 @@ class ApiService {
   }
 
   // Legacy startTunnel for backwards compatibility
-  async startTunnel(mode?: 'webhook-only' | 'full-api' | 'custom'): Promise<any> {
+  async startTunnel(): Promise<any> {
     return this.setupTunnel({
       zone: 'sibylline.dev',
       localPort: 5050,
@@ -593,7 +597,7 @@ class ApiService {
 
   // Remove authentication token
   clearAuthToken() {
-    this.defaultHeaders.Authorization = undefined;
+    delete this.defaultHeaders.Authorization;
   }
 }
 

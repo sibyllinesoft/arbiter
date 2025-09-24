@@ -29,7 +29,7 @@ tunnelRoutes.get('/status', async c => {
     return c.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       500
     );
@@ -49,7 +49,7 @@ tunnelRoutes.get('/preflight', async c => {
     return c.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       500
     );
@@ -95,7 +95,7 @@ tunnelRoutes.post('/setup', async c => {
     return c.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       500
     );
@@ -114,7 +114,7 @@ tunnelRoutes.post('/stop', async c => {
     return c.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       500
     );
@@ -133,7 +133,7 @@ tunnelRoutes.post('/teardown', async c => {
     return c.json(
       {
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       },
       500
     );
@@ -142,12 +142,23 @@ tunnelRoutes.post('/teardown', async c => {
 
 // Get logs (for debugging)
 tunnelRoutes.get('/logs', c => {
-  // For now, return a simple message
-  // In production, you'd implement proper log streaming
-  return c.json({
-    success: true,
-    message: 'Logs are output to console. Check server logs.',
-  });
+  try {
+    const logs = tunnelManager.getLogs();
+    return c.json({
+      success: true,
+      logs,
+      count: logs.length,
+    });
+  } catch (error) {
+    return c.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        logs: [],
+      },
+      500
+    );
+  }
 });
 
 // Health check endpoint (for the tunnel to call)

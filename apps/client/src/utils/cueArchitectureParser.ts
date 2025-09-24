@@ -8,8 +8,6 @@ import {
   type CueArchitectureData,
   type DiagramComponent,
   type DiagramConnection,
-  type DiagramLayer,
-  type ElementType,
   type FlowStep,
 } from '../types/architecture';
 
@@ -245,8 +243,8 @@ export class CueArchitectureParser {
 
     const flowSteps: FlowStep[] = flow.steps.map((step: any, index: number) => ({
       id: `${flow.id || flowIndex}_step_${index}`,
-      type: Object.keys(step)[0], // visit, click, fill, expect, expect_api
-      target: step.visit || step.click?.locator || step.fill?.locator,
+      type: Object.keys(step)[0]!, // visit, click, fill, expect, expect_api
+      target: step.visit || step.click?.locator || step.fill?.locator || '',
       value: step.fill?.value,
       expectation: step.expect || step.expect_api,
     }));
@@ -258,7 +256,9 @@ export class CueArchitectureParser {
 
       // Try to find corresponding components
       const fromComponent = CueArchitectureParser.findComponentForFlowStep(currentStep, components);
-      const toComponent = CueArchitectureParser.findComponentForFlowStep(nextStep, components);
+      const toComponent = nextStep
+        ? CueArchitectureParser.findComponentForFlowStep(nextStep, components)
+        : undefined;
 
       if (fromComponent && toComponent && fromComponent.id !== toComponent.id) {
         connections.push({
@@ -268,10 +268,8 @@ export class CueArchitectureParser {
           type: CueArchitectureParser.getConnectionTypeForStep(nextStep),
           label: CueArchitectureParser.getConnectionLabelForStep(nextStep),
           metadata: {
-            userAction: nextStep.type,
-            expectation: nextStep.expectation,
-            flowId: flow.id,
-            stepIndex: i + 1,
+            userAction: nextStep!.type,
+            expectation: nextStep!.expectation,
           },
         });
       }
@@ -282,13 +280,15 @@ export class CueArchitectureParser {
    * Find component that corresponds to a flow step
    */
   private static findComponentForFlowStep(
-    step: FlowStep,
+    step: FlowStep | undefined,
     components: DiagramComponent[]
   ): DiagramComponent | undefined {
+    if (!step) return undefined;
+
     // For visit steps, find route components
     if (step.type === 'visit' && step.target) {
       return components.find(
-        c => c.type === 'route' && (c.routePath === step.target || c.id.includes(step.target))
+        c => c.type === 'route' && (c.routePath === step.target || c.id.includes(step.target ?? ''))
       );
     }
 
@@ -312,7 +312,9 @@ export class CueArchitectureParser {
   /**
    * Determine connection type for flow step
    */
-  private static getConnectionTypeForStep(step: FlowStep): ConnectionType {
+  private static getConnectionTypeForStep(step: FlowStep | undefined): ConnectionType {
+    if (!step) return 'data_flow';
+
     switch (step.type) {
       case 'visit':
         return 'user_navigation';
@@ -329,16 +331,18 @@ export class CueArchitectureParser {
   /**
    * Generate connection label for flow step
    */
-  private static getConnectionLabelForStep(step: FlowStep): string {
+  private static getConnectionLabelForStep(step: FlowStep | undefined): string {
+    if (!step) return 'Unknown';
+
     switch (step.type) {
       case 'visit':
-        return `Navigate to ${step.target}`;
+        return `Navigate to ${step.target ?? ''}`;
       case 'click':
-        return `Click ${step.target}`;
+        return `Click ${step.target ?? ''}`;
       case 'fill':
-        return `Fill ${step.target}`;
+        return `Fill ${step.target ?? ''}`;
       case 'expect_api':
-        return `API: ${step.expectation?.method} ${step.expectation?.path}`;
+        return `API: ${step.expectation?.method ?? ''} ${step.expectation?.path ?? ''}`;
       default:
         return step.type;
     }
@@ -445,8 +449,10 @@ export class CueArchitectureParser {
                 from: { componentId: fromComponent.id },
                 to: { componentId: toComponent.id },
                 type: 'dependency',
-                label: `${envKey}`,
-                metadata: { envKey, envValue },
+                label: envKey || '',
+                metadata: {
+                  dependsOn: [referencedService],
+                },
               });
             }
           }

@@ -4,7 +4,6 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import React, { useState, useRef, useEffect, type ReactNode } from 'react';
 import { cn } from '../variants';
@@ -132,7 +131,6 @@ export function Tabs({
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   const currentActiveTab = activeTab || internalActiveTab;
-  const activeContent = items.find(item => item.id === currentActiveTab)?.content;
   const classes = variantClasses[variant];
   const sizes = sizeClasses[size];
 
@@ -176,7 +174,7 @@ export function Tabs({
     onTabClose?.(tabId);
   };
 
-  const handleKeyDown = (event: React.KeyboardEvent, tabId: string, index: number) => {
+  const handleKeyDown = (event: React.KeyboardEvent, tabId: string) => {
     const availableItems = items.filter(item => !item.disabled && !item.loading);
     const currentIndex = availableItems.findIndex(item => item.id === tabId);
 
@@ -290,7 +288,7 @@ export function Tabs({
                   tabClassName
                 )}
                 onClick={() => handleTabClick(item.id, isDisabled, isLoading)}
-                onKeyDown={e => handleKeyDown(e, item.id, index)}
+                onKeyDown={e => handleKeyDown(e, item.id)}
               >
                 {/* Loading state */}
                 {isLoading && (

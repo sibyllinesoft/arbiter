@@ -5,7 +5,6 @@
 import {
   AlertCircle,
   ArrowLeft,
-  CheckCircle,
   Code,
   Copy,
   ExternalLink,
@@ -20,7 +19,8 @@ import {
   Trash2,
   Webhook,
 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { TunnelManager } from '../components/TunnelManager';
 import { WebhookAutomation } from '../components/WebhookAutomation';
@@ -29,10 +29,6 @@ import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { useHandlers } from '../hooks/api-hooks';
 import { apiService } from '../services/api';
 
-interface ConfigScreenProps {
-  onNavigateBack: () => void;
-}
-
 interface WebhookConfig {
   url: string;
   secret: string;
@@ -40,19 +36,26 @@ interface WebhookConfig {
   events: string[];
 }
 
-export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
+export function ConfigScreen({
+  isModal = false,
+  onClose,
+}: {
+  isModal?: boolean;
+  onClose?: () => void;
+}) {
+  const navigate = useNavigate();
   const { data: handlers, isLoading: handlersLoading, refetch: refetchHandlers } = useHandlers();
   const { settings, updateSettings } = useAppSettings();
 
   const [webhookConfigs, setWebhookConfigs] = useState<Record<string, WebhookConfig>>({
     github: {
-      url: 'https://your-tunnel.cfargotunnel.com/webhooks/github',
+      url: 'http://localhost:3001/webhooks/github',
       secret: '',
       enabled: true,
       events: ['push', 'pull_request', 'issues'],
     },
     gitlab: {
-      url: 'https://your-tunnel.cfargotunnel.com/webhooks/gitlab',
+      url: 'http://localhost:3001/webhooks/gitlab',
       secret: '',
       enabled: false,
       events: ['push', 'merge_requests', 'issues'],
@@ -63,32 +66,43 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
 
-  // Load webhook configurations (in real app, from API)
+  // Load webhook configurations from localStorage or defaults
   useEffect(() => {
-    // This would typically load from API
-    // For now, we use environment-based defaults
+    const saved = localStorage.getItem('webhookConfigs');
+    if (saved) {
+      setWebhookConfigs(JSON.parse(saved));
+    }
   }, []);
 
   const handleWebhookConfigChange = (provider: string, field: string, value: any) => {
-    setWebhookConfigs(prev => ({
-      ...prev,
-      [provider]: {
-        ...prev[provider],
-        [field]: value,
-      },
-    }));
+    setWebhookConfigs(prev => {
+      const current = prev[provider] || { url: '', secret: '', enabled: false, events: [] };
+      return {
+        ...prev,
+        [provider]: {
+          ...current,
+          [field]: value,
+        },
+      };
+    });
   };
 
   const handleEventToggle = (provider: string, event: string) => {
-    setWebhookConfigs(prev => ({
-      ...prev,
-      [provider]: {
-        ...prev[provider],
-        events: prev[provider].events.includes(event)
-          ? prev[provider].events.filter(e => e !== event)
-          : [...prev[provider].events, event],
-      },
-    }));
+    setWebhookConfigs(prev => {
+      const currentConfig = prev[provider] || { url: '', secret: '', enabled: false, events: [] };
+      const currentEvents = currentConfig.events || [];
+      const newEvents = currentEvents.includes(event)
+        ? currentEvents.filter(e => e !== event)
+        : [...currentEvents, event];
+
+      return {
+        ...prev,
+        [provider]: {
+          ...currentConfig,
+          events: newEvents,
+        },
+      };
+    });
   };
 
   const copyToClipboard = (text: string) => {
@@ -97,6 +111,16 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
   };
 
   const testWebhook = async (provider: string) => {
+    const config = webhookConfigs[provider];
+    if (!config) {
+      toast.error(`No configuration found for ${provider}`);
+      return;
+    }
+    if (!config.url) {
+      toast.error(`No URL configured for ${provider}`);
+      return;
+    }
+
     try {
       const testPayload = {
         test: true,
@@ -104,12 +128,20 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
         timestamp: new Date().toISOString(),
       };
 
-      const response = await fetch(`/webhooks/${provider}`, {
+      // Provider-specific headers
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (provider === 'github') {
+        headers['X-GitHub-Event'] = 'ping';
+        headers['X-Hub-Signature-256'] = 'sha256=test';
+      } else if (provider === 'gitlab') {
+        headers['X-Gitlab-Event'] = 'System Hook';
+      }
+
+      const response = await fetch(config.url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Hub-Signature-256': 'sha256=test',
-        },
+        headers,
         body: JSON.stringify(testPayload),
       });
 
@@ -119,15 +151,17 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
         toast.error(`${provider} webhook test failed`);
       }
     } catch (error) {
-      toast.error(`Failed to test ${provider} webhook`);
+      toast.error(
+        `Failed to test ${provider} webhook: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   };
 
   const saveConfiguration = async () => {
     setIsSaving(true);
     try {
-      // In real app, save to API
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      // Persist to localStorage (in real app, save to API via apiService.updateWebhookConfigs)
+      localStorage.setItem('webhookConfigs', JSON.stringify(webhookConfigs));
       toast.success('Configuration saved successfully');
     } catch (error) {
       toast.error('Failed to save configuration');
@@ -159,47 +193,53 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<ArrowLeft className="w-4 h-4" />}
-                onClick={onNavigateBack}
-              >
-                Back to Dashboard
-              </Button>
+    <div className={!isModal ? 'min-h-screen bg-gradient-to-br from-gray-50 to-gray-100' : ''}>
+      {!isModal && (
+        <>
+          {/* Header */}
+          <header className="bg-white border-b border-gray-200 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leftIcon={<ArrowLeft className="w-4 h-4" />}
+                    onClick={() => navigate('/')}
+                  >
+                    Back to Dashboard
+                  </Button>
 
-              <div className="w-px h-6 bg-gray-300" />
+                  <div className="w-px h-6 bg-gray-300" />
 
-              <div className="flex items-center gap-3">
-                <Settings className="w-6 h-6 text-gray-600" />
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">Configuration</h1>
-                  <p className="text-sm text-gray-500">Webhook and handler settings</p>
+                  <div className="flex items-center gap-3">
+                    <Settings className="w-6 h-6 text-gray-600" />
+                    <div>
+                      <h1 className="text-xl font-semibold text-gray-900">Configuration</h1>
+                      <p className="text-sm text-gray-500">Webhook and handler settings</p>
+                    </div>
+                  </div>
                 </div>
+
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Save className="w-4 h-4" />}
+                  onClick={saveConfiguration}
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
               </div>
             </div>
-
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<Save className="w-4 h-4" />}
-              onClick={saveConfiguration}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </div>
-      </header>
+          </header>
+        </>
+      )}
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main
+        className={`max-w-${isModal ? '6' : '7'}xl mx-auto px-4 sm:px-6 lg:px-8 ${isModal ? 'py-0' : 'py-8'}`}
+      >
         <div className="space-y-8">
           {/* UI Settings */}
           <Card className="p-6">
@@ -235,7 +275,7 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
           <TunnelManager onTunnelUrlChange={setTunnelUrl} />
 
           {/* Webhook Automation */}
-          <WebhookAutomation tunnelUrl={tunnelUrl} />
+          <WebhookAutomation tunnelUrl={tunnelUrl || ''} />
 
           {/* Webhook Configuration */}
           <Card className="p-6">
@@ -351,7 +391,7 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
                             disabled={!config.enabled}
                             className={cn(
                               'px-3 py-1 text-sm rounded-full border transition-colors',
-                              config.events.includes(event)
+                              (config.events || []).includes(event)
                                 ? 'bg-blue-100 border-blue-300 text-blue-700'
                                 : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200',
                               !config.enabled && 'opacity-50 cursor-not-allowed'
@@ -406,7 +446,12 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
                   Refresh
                 </Button>
 
-                <Button variant="primary" size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  onClick={() => navigate('/handlers/new')}
+                >
                   New Handler
                 </Button>
               </div>
@@ -509,6 +554,22 @@ export function ConfigScreen({ onNavigateBack }: ConfigScreenProps) {
           </Card>
         </div>
       </main>
+      {isModal && (
+        <div className="bg-white border-t border-gray-200 p-6 flex justify-end gap-3">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            leftIcon={<Save className="w-4 h-4" />}
+            onClick={saveConfiguration}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

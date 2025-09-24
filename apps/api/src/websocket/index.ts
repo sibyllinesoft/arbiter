@@ -1,8 +1,8 @@
 import type { ServerWebSocket } from 'bun';
-import type { AuthService } from '../auth.ts';
-import type { EventService } from '../events.ts';
-import type { ServerConfig, WebSocketMessage } from '../types.ts';
-import { logger } from '../utils.ts';
+import type { AuthService } from '../auth';
+import type { EventService } from '../events';
+import type { ServerConfig, WebSocketMessage } from '../types';
+import { logger } from '../utils';
 
 export class WebSocketHandler {
   constructor(
@@ -32,7 +32,7 @@ export class WebSocketHandler {
       result: isUpgrade,
     });
 
-    return isUpgrade;
+    return !!isUpgrade;
   }
 
   /**
@@ -229,7 +229,8 @@ export class WebSocketHandler {
       );
 
       Promise.race([connectionPromise, timeoutPromise])
-        .then(registeredId => {
+        .then((value: unknown) => {
+          const registeredId = value as string;
           if (registeredId !== connectionId) {
             logger.info('[WS] Connection ID updated by events service', {
               original: connectionId,
@@ -424,12 +425,13 @@ export class WebSocketHandler {
       });
 
       if (connectionId) {
+        const safeConnectionId = connectionId;
         // Fire-and-forget disconnection handling - don't wait for completion
         setImmediate(() => {
           try {
-            this.events.handleDisconnection(connectionId);
+            this.events.handleDisconnection(safeConnectionId);
             logger.debug('[WS] WebSocket connection cleanup initiated', {
-              connectionId,
+              connectionId: safeConnectionId,
               code,
               reason,
               duration: Date.now() - startTime,
@@ -437,7 +439,7 @@ export class WebSocketHandler {
           } catch (error) {
             // Ignore disconnection errors - they're common during rapid reconnects
             logger.debug('[WS] Disconnection cleanup completed', {
-              connectionId,
+              connectionId: safeConnectionId,
               duration: Date.now() - startTime,
               note: 'Cleanup completed, any errors are expected during rapid cycles',
             });

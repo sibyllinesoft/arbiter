@@ -2,29 +2,21 @@
  * Top navigation bar with project controls - Enhanced with Graphite Design System
  */
 
-import { clsx } from 'clsx';
 import {
   AlertCircle,
   CheckCircle,
   ChevronDown,
-  Clock,
   GitBranch,
   Loader2,
   Lock,
   RefreshCw,
   Save,
   User,
-  Wifi,
-  WifiOff,
 } from 'lucide-react';
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import {
-  useApp,
-  useConnectionStatus,
-  useCueFileState,
-  useValidationState,
-} from '../../contexts/AppContext';
+import { useApp, useCueFileState, useValidationState } from '../../contexts/AppContext';
 import { useCurrentProject } from '../../contexts/ProjectContext';
 import { Button, StatusBadge, cn } from '../../design-system';
 import { apiService } from '../../services/api';
@@ -37,10 +29,10 @@ export interface TopBarProps {
 }
 
 export function TopBar({ className }: TopBarProps) {
+  const navigate = useNavigate();
   const { state, setLoading, setError, dispatch, setSelectedCueFile } = useApp();
 
   const currentProject = useCurrentProject();
-  const { isConnected, reconnectAttempts, lastSync } = useConnectionStatus();
   const { isValidating, errors, warnings, specHash } = useValidationState();
   const { selectedCueFile, availableCueFiles } = useCueFileState();
 
@@ -52,8 +44,8 @@ export function TopBar({ className }: TopBarProps) {
   // Initialize default CUE file selection
   useEffect(() => {
     if (!selectedCueFile && availableCueFiles.length > 0) {
-      setSelectedCueFile(availableCueFiles[0]);
-      log.debug('Auto-selected first CUE file:', availableCueFiles[0]);
+      setSelectedCueFile(availableCueFiles[0]!);
+      log.debug('Auto-selected first CUE file:', availableCueFiles[0]!);
     }
   }, [selectedCueFile, availableCueFiles, setSelectedCueFile]);
 
@@ -183,14 +175,17 @@ export function TopBar({ className }: TopBarProps) {
     const versionName = prompt('Enter version name:');
     if (!versionName) return;
 
-    const description = prompt('Enter description (optional):') || undefined;
+    const descriptionInput = prompt('Enter description (optional):');
+    const freezePayload: { version_name: string; description?: string } = {
+      version_name: versionName,
+    };
+    if (descriptionInput !== null && descriptionInput.trim() !== '') {
+      freezePayload.description = descriptionInput.trim();
+    }
 
     setIsFreezing(true);
     try {
-      const result = await apiService.freezeVersion(currentProject.id, {
-        version_name: versionName,
-        description,
-      });
+      const result = await apiService.freezeVersion(currentProject.id, freezePayload);
 
       toast.success(`Version "${versionName}" frozen successfully`, {
         position: 'top-right',
@@ -324,7 +319,7 @@ export function TopBar({ className }: TopBarProps) {
                       <button
                         key={project.id}
                         onClick={() => {
-                          dispatch({ type: 'SET_CURRENT_PROJECT', payload: project });
+                          navigate(`/project/${project.id}`);
                           setShowDropdown(false);
                           log.debug('Selected project:', project.name);
                         }}
@@ -486,9 +481,7 @@ export function TopBar({ className }: TopBarProps) {
 
         {/* User indicator */}
         <div className="flex items-center gap-2 pl-4 border-l border-graphite-200">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-graphite-300 to-graphite-400 flex items-center justify-center shadow-sm">
-            <User className="w-4 h-4 text-white" />
-          </div>
+          <User className="w-6 h-6 text-graphite-600" />
         </div>
       </div>
     </div>

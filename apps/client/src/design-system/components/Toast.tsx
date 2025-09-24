@@ -4,9 +4,8 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
 import { AlertCircle, CheckCircle, Info, Loader2, X, XCircle } from 'lucide-react';
-import React, { useState, useEffect, useRef, type ReactNode } from 'react';
+import React, { useState, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { cn, statusVariants } from '../variants';
 
@@ -257,7 +256,6 @@ function renderProgressBar(
 }
 
 export function Toast({
-  id,
   variant = 'info',
   title,
   description,

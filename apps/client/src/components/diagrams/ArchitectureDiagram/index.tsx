@@ -47,7 +47,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     }
   }, [projectId]);
 
-  // Group components by source file for rendering
+  // Group components by type for rendering
 
   const groupedComponents = computeGroupedComponents(projectData);
   console.log(groupedComponents);
@@ -72,10 +72,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
       {/* Header */}
       <div className="p-4 bg-white border-b border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900">Sources</h3>
+        <h3 className="text-lg font-medium text-gray-900">Components</h3>
         <p className="text-sm text-gray-600">
           {totalComponents > 0
-            ? `Showing ${totalComponents} imported components`
+            ? `Showing ${totalComponents} components grouped by type`
             : 'Import a project to see its components'}
         </p>
       </div>
@@ -85,10 +85,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         {Object.keys(groupedComponents).length === 0 ? (
           <EmptyState />
         ) : (
-          Object.entries(groupedComponents).map(([sourceFile, components]) => (
+          Object.entries(groupedComponents).map(([groupLabel, components]) => (
             <SourceGroup
-              key={sourceFile}
-              sourceFile={sourceFile}
+              key={groupLabel}
+              groupLabel={groupLabel}
               components={components}
               expandedSources={expandedSources}
               setExpandedSources={setExpandedSources}

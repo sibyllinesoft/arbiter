@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FileText, Settings, Users } from 'lucide-react';
-import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import Tabs, { type TabItem } from './Tabs';
 
 // Mock scrollTo since it's not available in jsdom
@@ -242,7 +242,6 @@ describe('Tabs', () => {
   // Keyboard Navigation Tests
   describe('keyboard navigation', () => {
     it('navigates with arrow keys', async () => {
-      const user = userEvent.setup();
       render(<Tabs items={mockTabItems} />);
 
       const firstTabButton = screen.getByText('First Tab').closest('button')!;
@@ -267,7 +266,6 @@ describe('Tabs', () => {
     });
 
     it('navigates with arrow left', async () => {
-      const user = userEvent.setup();
       render(<Tabs items={mockTabItems} />);
 
       const firstTabButton = screen.getByText('First Tab').closest('button')!;
@@ -307,7 +305,6 @@ describe('Tabs', () => {
     });
 
     it('skips disabled and loading tabs in keyboard navigation', async () => {
-      const user = userEvent.setup();
       render(<Tabs items={mockTabItemsWithFeatures} />);
 
       const firstTabButton = screen.getByText('Files').closest('button')!;
@@ -512,7 +509,7 @@ describe('Tabs', () => {
     });
 
     it('handles single tab', () => {
-      const singleTab = [mockTabItems[0]];
+      const singleTab: TabItem[] = [mockTabItems[0]!];
       render(<Tabs items={singleTab} />);
       expect(screen.getAllByRole('tab')).toHaveLength(1);
       expect(screen.getByText('First tab content')).toBeVisible();

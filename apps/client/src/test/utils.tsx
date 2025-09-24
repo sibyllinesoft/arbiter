@@ -1,5 +1,7 @@
-import { RenderOptions, render } from '@testing-library/react';
-import React, { ReactElement } from 'react';
+import type { RenderOptions } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { type ReactElement } from 'react';
+import { vi } from 'vitest';
 
 // Mock contexts that might be needed for component testing
 const MockAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -17,16 +19,25 @@ export { customRender as render };
 
 // Common test utilities
 export const mockWebSocket = () => {
-  const mockWs = {
-    send: vi.fn(),
-    close: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    readyState: WebSocket.OPEN,
-  };
+  class MockWebSocketClass {
+    static CONNECTING = 0;
+    static OPEN = 1;
+    static CLOSING = 2;
+    static CLOSED = 3;
 
-  global.WebSocket = vi.fn().mockImplementation(() => mockWs);
-  return mockWs;
+    constructor() {
+      return {
+        send: vi.fn(),
+        close: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        readyState: MockWebSocketClass.OPEN,
+      } as any;
+    }
+  }
+
+  global.WebSocket = MockWebSocketClass as any;
+  return new MockWebSocketClass();
 };
 
 export const mockMonacoEditor = () => {

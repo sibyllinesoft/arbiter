@@ -59,6 +59,8 @@ export class TunnelManager extends EventEmitter {
   private appUid: string;
   private configDir: string;
   private tunnelInfo: TunnelInfo | null = null;
+  private logs: string[] = [];
+  private readonly maxLogs = 1000;
 
   constructor() {
     super();
@@ -69,6 +71,8 @@ export class TunnelManager extends EventEmitter {
     // Setup config directory
     this.configDir = path.join(os.homedir(), '.config', 'arbiter', 'cloudflared');
     fs.ensureDirSync(this.configDir);
+
+    this.logs = [];
 
     // Handle cleanup on exit
     process.on('SIGINT', () => this.cleanup());
@@ -156,14 +160,20 @@ export class TunnelManager extends EventEmitter {
       const existing = tunnels.find(t => t.name === this.appUid);
       if (existing) {
         this.emit('log', `Using existing tunnel: ${this.appUid} (${existing.id})`);
+        this.logs.push(
+          `[${new Date().toISOString()}] Using existing tunnel: ${this.appUid} (${existing.id})`
+        );
         return existing;
       }
-    } catch (e) {
-      this.emit('log', `Error listing tunnels: ${e}`);
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.emit('log', `Error listing tunnels: ${errMsg}`);
+      this.logs.push(`[${new Date().toISOString()}] Error listing tunnels: ${errMsg}`);
     }
 
     // Create new tunnel
     this.emit('log', `Creating new tunnel: ${this.appUid}`);
+    this.logs.push(`[${new Date().toISOString()}] Creating new tunnel: ${this.appUid}`);
     try {
       const createOutput = execSync(`cloudflared tunnel create ${this.appUid}`, {
         encoding: 'utf8',
@@ -185,7 +195,10 @@ export class TunnelManager extends EventEmitter {
         created_at: new Date().toISOString(),
       };
     } catch (error) {
-      throw new Error(`Failed to create tunnel: ${error}`);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.emit('error', `Failed to create tunnel: ${errMsg}`);
+      this.logs.push(`[${new Date().toISOString()}] ERROR: Failed to create tunnel: ${errMsg}`);
+      throw new Error(`Failed to create tunnel: ${errMsg}`);
     }
   }
 
@@ -194,6 +207,7 @@ export class TunnelManager extends EventEmitter {
    */
   private async bindDnsRoute(tunnelId: string, hostname: string): Promise<void> {
     this.emit('log', `Binding DNS route: ${hostname} -> ${tunnelId}`);
+    this.logs.push(`[${new Date().toISOString()}] Binding DNS route: ${hostname} -> ${tunnelId}`);
 
     try {
       // Use --overwrite-dns to ensure proper CNAME creation
@@ -207,13 +221,20 @@ export class TunnelManager extends EventEmitter {
       );
 
       this.emit('log', `DNS route created: ${hostname}`);
+      this.logs.push(`[${new Date().toISOString()}] DNS route created: ${hostname}`);
     } catch (error) {
       // Route might already exist, which is fine
-      const errorStr = error.toString();
+      const errorStr = error instanceof Error ? error.message : String(error);
       if (errorStr.includes('already exists')) {
         this.emit('log', `DNS route already exists: ${hostname}`);
+        this.logs.push(`[${new Date().toISOString()}] DNS route already exists: ${hostname}`);
       } else {
-        throw new Error(`Failed to create DNS route: ${error}`);
+        const errMsg = errorStr;
+        this.emit('error', `Failed to create DNS route: ${errMsg}`);
+        this.logs.push(
+          `[${new Date().toISOString()}] ERROR: Failed to create DNS route: ${errMsg}`
+        );
+        throw new Error(`Failed to create DNS route: ${errMsg}`);
       }
     }
   }
@@ -245,6 +266,7 @@ export class TunnelManager extends EventEmitter {
 
     await fs.writeFile(configPath, yaml.dump(config), 'utf8');
     this.emit('log', `Configuration written to: ${configPath}`);
+    this.logs.push(`[${new Date().toISOString()}] Configuration written to: ${configPath}`);
 
     return configPath;
   }
@@ -258,7 +280,11 @@ export class TunnelManager extends EventEmitter {
       const args = ['tunnel', '--config', configPath, 'run'];
 
       this.emit('log', `Starting cloudflared: cloudflared ${args.join(' ')}`);
+      this.logs.push(
+        `[${new Date().toISOString()}] Starting cloudflared: cloudflared ${args.join(' ')}`
+      );
       this.emit('log', `Config path: ${configPath}`);
+      this.logs.push(`[${new Date().toISOString()}] Config path: ${configPath}`);
 
       this.tunnelProcess = spawn('cloudflared', args, {
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -273,6 +299,9 @@ export class TunnelManager extends EventEmitter {
 
       this.tunnelProcess.on('error', error => {
         this.emit('error', `Failed to start cloudflared: ${error.message}`);
+        this.logs.push(
+          `[${new Date().toISOString()}] ERROR: Failed to start cloudflared: ${error.message}`
+        );
         if (!resolved) {
           resolved = true;
           reject(error);
@@ -283,6 +312,7 @@ export class TunnelManager extends EventEmitter {
         const output = data.toString();
         outputBuffer += output;
         this.emit('log', `[cloudflared stdout] ${output.trim()}`);
+        this.logs.push(`[${new Date().toISOString()}] [cloudflared stdout] ${output.trim()}`);
 
         // Check for various successful connection messages
         if (
@@ -296,6 +326,7 @@ export class TunnelManager extends EventEmitter {
         ) {
           resolved = true;
           this.emit('log', 'Tunnel connection detected!');
+          this.logs.push(`[${new Date().toISOString()}] Tunnel connection detected!`);
           resolve();
         }
       });
@@ -304,6 +335,7 @@ export class TunnelManager extends EventEmitter {
         const output = data.toString();
         outputBuffer += output;
         this.emit('log', `[cloudflared stderr] ${output.trim()}`);
+        this.logs.push(`[${new Date().toISOString()}] [cloudflared stderr] ${output.trim()}`);
 
         // cloudflared often sends info to stderr
         if (
@@ -317,12 +349,14 @@ export class TunnelManager extends EventEmitter {
         ) {
           resolved = true;
           this.emit('log', 'Tunnel connection detected!');
+          this.logs.push(`[${new Date().toISOString()}] Tunnel connection detected!`);
           resolve();
         }
 
         // Check for errors
         if (output.includes('error') || output.includes('failed')) {
           this.emit('error', `Cloudflared error: ${output}`);
+          this.logs.push(`[${new Date().toISOString()}] ERROR: Cloudflared error: ${output}`);
         }
       });
 
@@ -331,6 +365,9 @@ export class TunnelManager extends EventEmitter {
       setTimeout(() => {
         if (!resolved && this.tunnelProcess && !this.tunnelProcess.killed) {
           this.emit('log', 'Tunnel process started, assuming connection successful');
+          this.logs.push(
+            `[${new Date().toISOString()}] Tunnel process started, assuming connection successful`
+          );
           resolved = true;
           resolve();
         }
@@ -339,10 +376,9 @@ export class TunnelManager extends EventEmitter {
       // Set a longer timeout for absolute failure
       setTimeout(() => {
         if (!resolved) {
-          this.emit(
-            'error',
-            `Timeout waiting for tunnel connection. Buffer: ${outputBuffer.substring(0, 500)}`
-          );
+          const timeoutMsg = `Timeout waiting for tunnel connection. Buffer: ${outputBuffer.substring(0, 500)}`;
+          this.emit('error', timeoutMsg);
+          this.logs.push(`[${new Date().toISOString()}] ERROR: ${timeoutMsg}`);
           if (this.tunnelProcess) {
             this.tunnelProcess.kill();
           }
@@ -391,6 +427,7 @@ export class TunnelManager extends EventEmitter {
 
         if (existing) {
           this.emit('log', `Webhook already exists: ${existing.id}`);
+          this.logs.push(`[${new Date().toISOString()}] Webhook already exists: ${existing.id}`);
           return existing.id;
         }
       }
@@ -422,9 +459,13 @@ export class TunnelManager extends EventEmitter {
 
       const webhook = await createResponse.json();
       this.emit('log', `GitHub webhook created: ${webhook.id}`);
+      this.logs.push(`[${new Date().toISOString()}] GitHub webhook created: ${webhook.id}`);
       return webhook.id;
     } catch (error) {
-      throw new Error(`Failed to register webhook: ${error}`);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.emit('error', `Failed to register webhook: ${errMsg}`);
+      this.logs.push(`[${new Date().toISOString()}] ERROR: Failed to register webhook: ${errMsg}`);
+      throw new Error(`Failed to register webhook: ${errMsg}`);
     }
   }
 
@@ -435,6 +476,7 @@ export class TunnelManager extends EventEmitter {
     // Stop any existing tunnel first
     if (this.tunnelProcess) {
       this.emit('log', 'Stopping existing tunnel process');
+      this.logs.push(`[${new Date().toISOString()}] Stopping existing tunnel process`);
       await this.stop();
     }
 
@@ -444,7 +486,10 @@ export class TunnelManager extends EventEmitter {
       // 1. Preflight checks
       const preflight = await this.preflight();
       if (!preflight.success) {
-        throw new Error(preflight.error);
+        const errMsg = preflight.error || 'Preflight failed';
+        this.emit('error', errMsg);
+        this.logs.push(`[${new Date().toISOString()}] ERROR: ${errMsg}`);
+        throw new Error(errMsg);
       }
 
       // 2. Ensure tunnel exists
@@ -488,6 +533,9 @@ export class TunnelManager extends EventEmitter {
 
       if (!healthy) {
         this.emit('log', 'Warning: Health check failed, but tunnel may still be working');
+        this.logs.push(
+          `[${new Date().toISOString()}] Warning: Health check failed, but tunnel may still be working`
+        );
       }
 
       // 9. Register GitHub webhook if configured
@@ -502,7 +550,11 @@ export class TunnelManager extends EventEmitter {
           );
           this.tunnelInfo.hookId = hookId;
         } catch (e) {
-          this.emit('log', `Warning: Failed to register webhook: ${e}`);
+          const errMsg = e instanceof Error ? e.message : String(e);
+          this.emit('log', `Warning: Failed to register webhook: ${errMsg}`);
+          this.logs.push(
+            `[${new Date().toISOString()}] Warning: Failed to register webhook: ${errMsg}`
+          );
         }
       }
 
@@ -519,7 +571,7 @@ export class TunnelManager extends EventEmitter {
         url: '',
         configPath: '',
         status: 'error',
-        error: error.toString(),
+        error: error instanceof Error ? error.message : String(error),
       };
 
       throw error;
@@ -569,6 +621,7 @@ export class TunnelManager extends EventEmitter {
     }
 
     this.emit('stopped');
+    this.logs.push(`[${new Date().toISOString()}] Tunnel stopped`);
   }
 
   /**
@@ -594,11 +647,15 @@ export class TunnelManager extends EventEmitter {
             }
           );
           this.emit('log', `Removed GitHub webhook: ${this.tunnelInfo.hookId}`);
+          this.logs.push(
+            `[${new Date().toISOString()}] Removed GitHub webhook: ${this.tunnelInfo.hookId}`
+          );
         }
 
         // Delete tunnel (this also removes DNS routes)
         execSync(`cloudflared tunnel delete ${this.appUid}`, { stdio: 'pipe' });
         this.emit('log', `Deleted tunnel: ${this.appUid}`);
+        this.logs.push(`[${new Date().toISOString()}] Deleted tunnel: ${this.appUid}`);
 
         // Clean up config file
         if (this.tunnelInfo.configPath && fs.existsSync(this.tunnelInfo.configPath)) {
@@ -611,7 +668,9 @@ export class TunnelManager extends EventEmitter {
           fs.unlinkSync(stateFile);
         }
       } catch (error) {
-        this.emit('log', `Warning during teardown: ${error}`);
+        const errMsg = error instanceof Error ? error.message : String(error);
+        this.emit('log', `Warning during teardown: ${errMsg}`);
+        this.logs.push(`[${new Date().toISOString()}] Warning during teardown: ${errMsg}`);
       }
     }
 
@@ -619,6 +678,7 @@ export class TunnelManager extends EventEmitter {
     this.config = null;
 
     this.emit('teardown-complete');
+    this.logs.push(`[${new Date().toISOString()}] Teardown complete`);
   }
 
   /**
@@ -674,7 +734,9 @@ export class TunnelManager extends EventEmitter {
 
       return this.tunnelInfo;
     } catch (error) {
-      this.emit('log', `Failed to load state: ${error}`);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      this.emit('log', `Failed to load state: ${errMsg}`);
+      this.logs.push(`[${new Date().toISOString()}] Failed to load state: ${errMsg}`);
       return null;
     }
   }
@@ -687,6 +749,21 @@ export class TunnelManager extends EventEmitter {
       this.tunnelProcess.kill('SIGKILL');
       this.tunnelProcess = null;
     }
+    this.logs.push(`[${new Date().toISOString()}] Cleanup performed`);
+  }
+
+  /**
+   * Get recent logs
+   */
+  getLogs(): string[] {
+    return this.logs.slice(-this.maxLogs);
+  }
+
+  /**
+   * Clear logs
+   */
+  clearLogs(): void {
+    this.logs = [];
   }
 }
 

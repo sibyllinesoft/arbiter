@@ -235,7 +235,9 @@ class WebSocketService {
       }
 
       // Skip project-specific events if we don't have a project_id (except connection_established)
-      if (!wsEvent.project_id && wsEvent.type !== 'connection_established') {
+      if (wsEvent.type === 'connection_established' || wsEvent.project_id) {
+        // Process the event
+      } else {
         log.debug('Skipping non-project event:', wsEvent.type);
         return;
       }

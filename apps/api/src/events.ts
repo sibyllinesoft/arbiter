@@ -2,9 +2,9 @@
  * Real-time events and WebSocket management
  */
 import type { ServerWebSocket } from 'bun';
-import { NatsService } from './nats.ts';
-import type { AuthContext, Event, ServerConfig, WebSocketMessage } from './types.ts';
-import { generateId, getCurrentTimestamp, logger } from './utils.ts';
+import { NatsService } from './nats';
+import type { AuthContext, Event, ServerConfig, WebSocketMessage } from './types';
+import { generateId, getCurrentTimestamp, logger } from './utils';
 
 interface WebSocketConnection {
   id: string;

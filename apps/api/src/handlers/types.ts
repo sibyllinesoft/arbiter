@@ -2,6 +2,10 @@
  * Custom webhook handler types and interfaces
  */
 
+import type { SpecWorkbenchDB } from '../db.ts';
+import type { EventService } from '../events.ts';
+import type { WebhookPayload, WebhookRequest } from '../types.ts';
+
 // Handler execution context
 export interface HandlerContext {
   projectId: string;
@@ -109,7 +113,7 @@ export interface EnhancedWebhookPayload extends WebhookPayload {
 // Handler function signature
 export type WebhookHandler = (
   payload: EnhancedWebhookPayload,
-  context: HandlerContext,
+  context: HandlerContext
 ) => Promise<HandlerResult>;
 
 // Handler module interface
@@ -158,7 +162,6 @@ export interface HttpResponse {
 // Notification service interface
 export interface NotificationService {
   sendSlack(webhook: string, message: SlackMessage): Promise<void>;
-  sendEmail(to: string, subject: string, body: string): Promise<void>;
   sendWebhook(url: string, payload: unknown): Promise<void>;
 }
 
@@ -181,7 +184,7 @@ export interface GitService {
 
 export interface FileDiff {
   path: string;
-  status: "added" | "modified" | "deleted" | "renamed";
+  status: 'added' | 'modified' | 'deleted' | 'renamed';
   additions: number;
   deletions: number;
   patch?: string;
@@ -190,7 +193,7 @@ export interface FileDiff {
 // Handler registry types
 export interface RegisteredHandler {
   id: string;
-  provider: "github" | "gitlab";
+  provider: 'github' | 'gitlab';
   event: string;
   handlerPath: string;
   enabled: boolean;
@@ -198,11 +201,11 @@ export interface RegisteredHandler {
   lastExecuted?: string;
   executionCount: number;
   errorCount: number;
-  metadata: HandlerModule["metadata"];
+  metadata: HandlerModule['metadata'];
 }
 
 export interface HandlerCreationOptions {
-  provider: "github" | "gitlab";
+  provider: 'github' | 'gitlab';
   event: string;
   code: string;
   config?: Partial<HandlerConfig>;
@@ -218,7 +221,7 @@ export interface HandlerExecution {
   id: string;
   handlerId: string;
   projectId: string;
-  provider: "github" | "gitlab";
+  provider: 'github' | 'gitlab';
   event: string;
   payload: EnhancedWebhookPayload;
   result: HandlerResult;
@@ -238,3 +241,5 @@ export interface HandlerDiscoveryConfig {
   allowedModules: string[];
   enableMetrics: boolean;
 }
+
+export { WebhookPayload, WebhookRequest } from '../types';

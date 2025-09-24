@@ -13,6 +13,7 @@ export interface KubernetesData {
   kind: string;
   apiVersion: string;
   namespace?: string;
+  fullParsed?: any;
   filePath: string;
   [key: string]: unknown;
 }
@@ -40,6 +41,7 @@ export class KubernetesPlugin implements ImporterPlugin {
 
     const evidence: Evidence[] = [];
     const basename = path.basename(filePath).toLowerCase();
+    const projectRoot = context?.projectRoot || process.cwd();
 
     try {
       const documents = yaml.parseAllDocuments(fileContent);
@@ -52,11 +54,7 @@ export class KubernetesPlugin implements ImporterPlugin {
       if (parsedItems.length === 0) {
         return evidence;
       }
-      const kubeEvidence = this.parseKubernetesManifest(
-        parsedItems,
-        filePath,
-        context?.projectRoot || '/'
-      );
+      const kubeEvidence = this.parseKubernetesManifest(parsedItems, filePath, projectRoot);
       evidence.push(...kubeEvidence);
     } catch (error) {
       console.warn(`Failed to parse Kubernetes file ${filePath}:`, error);
@@ -94,22 +92,23 @@ export class KubernetesPlugin implements ImporterPlugin {
     const apiVersion = parsed.apiVersion;
     const namespace = parsed.metadata?.namespace;
 
+    const relativePath = path.relative(projectRoot, filePath);
     const data: KubernetesData = {
       name,
       kind,
       apiVersion,
       namespace,
-      filePath,
+      fullParsed: parsed,
+      filePath: relativePath,
       index,
     };
 
-    const relativePath = path.relative(projectRoot, filePath);
     const evidenceId = `${relativePath}#${index}`;
     return {
       id: evidenceId,
       source: this.name(),
       type: 'infrastructure',
-      filePath,
+      filePath: relativePath,
       data,
       metadata: {
         timestamp: Date.now(),
@@ -129,43 +128,83 @@ export class KubernetesPlugin implements ImporterPlugin {
     if (kubeEvidence.length === 0) return artifacts;
 
     // Group by root directory (find common ancestor for all kube files)
-    const rootDir = this.findRootDirectory(kubeEvidence, context.projectRoot || '/');
+    const rootDir = this.findRootDirectory(kubeEvidence, context.projectRoot || process.cwd());
     if (!rootDir) return artifacts;
 
-    // Collect all unique files in this group
-    const files = [...new Set(kubeEvidence.map(e => e.filePath))];
-
-    // Extract resources from evidence
-    const resources = kubeEvidence.map(e => {
+    for (const e of kubeEvidence) {
       const data = e.data as KubernetesData;
-      return { kind: data.kind, name: data.name, apiVersion: data.apiVersion };
-    });
+      const safeName = (data.name || `resource-${data.index}`).replace(/[^a-zA-Z0-9-]/g, '-');
+      const artifactId = `${data.kind.toLowerCase()}-${safeName}`;
+      const artifactName = data.name || `Unnamed Resource`;
+      const fullParsed = (data as any).fullParsed;
+      let description: string;
+      if (!fullParsed) {
+        description = `Kubernetes ${data.kind} resource`;
+      } else {
+        switch (data.kind) {
+          case 'Deployment': {
+            const replicas = fullParsed.spec?.replicas || 1;
+            const containers = fullParsed.spec?.template?.spec?.containers || [];
+            const images = containers.map((c: any) => c.image).join(', ');
+            description = `Deploys ${data.name || 'unnamed'} with ${replicas} replicas using images: ${images}`;
+            if (data.namespace) description += ` in namespace ${data.namespace}`;
+            break;
+          }
+          case 'Service': {
+            const ports = fullParsed.spec?.ports?.map((p: any) => p.port).join(', ') || 'unknown';
+            const selector = JSON.stringify(fullParsed.spec?.selector || {});
+            description = `Exposes service ${data.name || 'unnamed'} on ports ${ports} selecting pods by ${selector}`;
+            if (data.namespace) description += ` in namespace ${data.namespace}`;
+            break;
+          }
+          case 'ConfigMap': {
+            const keys = Object.keys(fullParsed.data || {}).length;
+            description = `Provides configuration for ${data.name || 'unnamed'} with ${keys} key-value pairs`;
+            if (data.namespace) description += ` in namespace ${data.namespace}`;
+            break;
+          }
+          case 'Secret': {
+            const secretType = fullParsed.type || 'Opaque';
+            const dataKeys = Object.keys(fullParsed.data || {}).length;
+            description = `Stores ${secretType} secret ${data.name || 'unnamed'} with ${dataKeys} entries`;
+            if (data.namespace) description += ` in namespace ${data.namespace}`;
+            break;
+          }
+          default:
+            description = `Kubernetes ${data.kind} named ${data.name || 'unnamed'}`;
+            if (data.namespace) description += ` in namespace ${data.namespace}`;
+        }
+      }
 
-    const artifact = {
-      id: `kubernetes-infrastructure-${path.basename(rootDir)}`,
-      type: 'infrastructure' as const,
-      name: `Kubernetes Infrastructure (${path.basename(rootDir)})`,
-      description: `Kubernetes manifests in ${rootDir}`,
-      tags: ['kubernetes', 'infrastructure'],
-      metadata: {
-        root: rootDir,
-        files,
-        kind: 'kubernetes' as const,
-        resources,
-      },
-    };
+      const artifact = {
+        id: artifactId,
+        type: 'infrastructure' as const,
+        name: artifactName,
+        description,
+        tags: ['kubernetes', 'infrastructure'],
+        metadata: {
+          root: rootDir,
+          filePath: e.filePath,
+          kind: data.kind,
+          name: data.name,
+          apiVersion: data.apiVersion,
+          namespace: data.namespace,
+          index: data.index,
+        },
+      };
 
-    artifacts.push({
-      artifact,
-      provenance: {
-        evidence: kubeEvidence.map(e => e.id),
-        plugins: ['kubernetes'],
-        rules: ['kube-grouping', 'manifest-parsing'],
-        timestamp: Date.now(),
-        pipelineVersion: '1.0.0',
-      },
-      relationships: [],
-    });
+      artifacts.push({
+        artifact,
+        provenance: {
+          evidence: [e.id],
+          plugins: [this.name()],
+          rules: ['kube-parsing', 'resource-extraction'],
+          timestamp: Date.now(),
+          pipelineVersion: '1.0.0',
+        },
+        relationships: [],
+      });
+    }
 
     return artifacts;
   }
@@ -173,26 +212,38 @@ export class KubernetesPlugin implements ImporterPlugin {
   private findRootDirectory(evidence: Evidence[], projectRoot: string): string | null {
     if (evidence.length === 0) return null;
 
-    // Get all file paths relative to project root
-    const relativePaths = evidence.map(e => path.relative(projectRoot, e.filePath));
+    // Get all file paths (already relative)
+    const relativePaths = evidence.map(e => e.filePath);
 
-    // Find the longest common prefix (LCA for directories)
-    let commonPrefix = relativePaths[0].split(path.sep).slice(0, -1).join(path.sep); // remove filename
+    // Extract directory paths (remove filename and #index)
+    const dirPaths = relativePaths.map(relPath => {
+      const withoutIndex = relPath.split('#')[0];
+      return path.dirname(withoutIndex);
+    });
 
-    for (const relPath of relativePaths) {
-      const parts = relPath.split(path.sep).slice(0, -1); // remove filename
-      let currentPrefix = '';
-      for (let i = 0; i < Math.min(commonPrefix.split(path.sep).length, parts.length); i++) {
-        if (commonPrefix.split(path.sep)[i] !== parts[i]) {
-          commonPrefix = currentPrefix;
-          break;
-        }
-        currentPrefix = parts.slice(0, i + 1).join(path.sep);
+    if (dirPaths.length === 0) return null;
+
+    // Split all dir paths into parts
+    const dirPartsList = dirPaths.map(dir => dir.split(path.sep));
+
+    // Find the minimum length
+    const minLength = Math.min(...dirPartsList.map(parts => parts.length));
+
+    // Find the first index where not all parts match
+    let commonLength = 0;
+    for (let i = 0; i < minLength; i++) {
+      const part = dirPartsList[0][i];
+      if (!dirPartsList.every(parts => parts[i] === part)) {
+        break;
       }
+      commonLength = i + 1;
     }
 
-    if (commonPrefix === '') return projectRoot;
-    return path.join(projectRoot, commonPrefix);
+    // Join the common parts
+    const commonDir = dirPartsList[0].slice(0, commonLength).join(path.sep);
+
+    if (commonDir === '') return '.';
+    return commonDir;
   }
 }
 

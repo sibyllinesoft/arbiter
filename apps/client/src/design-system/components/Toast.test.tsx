@@ -1,6 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { CheckCircle } from 'lucide-react';
-import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '../../test/utils';
 import Toast, { ToastContainer, ToastManager, toast } from './Toast';
 
@@ -126,9 +126,7 @@ describe('Toast', () => {
   // Custom Styling Tests
   describe('custom styling', () => {
     it('applies custom className', () => {
-      const { container } = render(
-        <Toast title="Custom Class" className="custom-toast" visible={true} />
-      );
+      render(<Toast title="Custom Class" className="custom-toast" visible={true} />);
 
       // Since Toast uses createPortal, the className is applied to the portal element
       // In our test setup, let's check if the toast is rendered in document.body
@@ -219,11 +217,10 @@ describe('ToastManager', () => {
     });
 
     it('shows a toast', () => {
-      const id = manager.show({ title: 'Test Toast' });
+      manager.show({ title: 'Test Toast' });
 
-      expect(id).toBeDefined();
       expect(manager.getToasts()).toHaveLength(1);
-      expect(manager.getToasts()[0].title).toBe('Test Toast');
+      expect(manager.getToasts()[0]!.title).toBe('Test Toast');
     });
 
     it('hides a toast', () => {
@@ -269,8 +266,9 @@ describe('ToastManager', () => {
   // Convenience Methods Tests
   describe('convenience methods', () => {
     it('creates success toast', () => {
-      const id = manager.success('Success!', 'Operation completed');
-      const toast = manager.getToasts()[0];
+      manager.success('Success!', 'Operation completed');
+      expect(manager.getToasts()).toHaveLength(1);
+      const toast = manager.getToasts()[0]!;
 
       expect(toast.variant).toBe('success');
       expect(toast.title).toBe('Success!');
@@ -278,8 +276,9 @@ describe('ToastManager', () => {
     });
 
     it('creates error toast', () => {
-      const id = manager.error('Error!', 'Something went wrong');
-      const toast = manager.getToasts()[0];
+      manager.error('Error!', 'Something went wrong');
+      expect(manager.getToasts()).toHaveLength(1);
+      const toast = manager.getToasts()[0]!;
 
       expect(toast.variant).toBe('error');
       expect(toast.title).toBe('Error!');
@@ -287,8 +286,9 @@ describe('ToastManager', () => {
     });
 
     it('creates warning toast', () => {
-      const id = manager.warning('Warning!', 'Please be careful');
-      const toast = manager.getToasts()[0];
+      manager.warning('Warning!', 'Please be careful');
+      expect(manager.getToasts()).toHaveLength(1);
+      const toast = manager.getToasts()[0]!;
 
       expect(toast.variant).toBe('warning');
       expect(toast.title).toBe('Warning!');
@@ -296,17 +296,19 @@ describe('ToastManager', () => {
     });
 
     it('creates info toast', () => {
-      const id = manager.info('Info', 'Helpful information');
-      const toast = manager.getToasts()[0];
+      manager.info('Info', 'Helpful information');
+      expect(manager.getToasts()).toHaveLength(1);
+      const toastItem = manager.getToasts()[0]!;
 
-      expect(toast.variant).toBe('info');
-      expect(toast.title).toBe('Info');
-      expect(toast.description).toBe('Helpful information');
+      expect(toastItem.variant).toBe('info');
+      expect(toastItem.title).toBe('Info');
+      expect(toastItem.description).toBe('Helpful information');
     });
 
     it('creates loading toast with duration 0', () => {
-      const id = manager.loading('Loading...', 'Please wait');
-      const toast = manager.getToasts()[0];
+      manager.loading('Loading...', 'Please wait');
+      expect(manager.getToasts()).toHaveLength(1);
+      const toast = manager.getToasts()[0]!;
 
       expect(toast.variant).toBe('loading');
       expect(toast.title).toBe('Loading...');
@@ -342,26 +344,26 @@ describe('Global toast instance', () => {
   });
 
   it('provides global toast instance', () => {
-    expect(toast).toBeInstanceOf(ToastManager);
+    expect(toast!).toBeInstanceOf(ToastManager);
   });
 
   it('works with global instance', () => {
-    const id = toast.success('Global Success!');
-    expect(toast.getToasts()).toHaveLength(1);
-    expect(toast.getToasts()[0].title).toBe('Global Success!');
+    const id = toast!.success('Global Success!');
+    expect(toast!.getToasts()).toHaveLength(1);
+    expect(toast!.getToasts()[0]!.title).toBe('Global Success!');
 
-    toast.hide(id);
-    expect(toast.getToasts()).toHaveLength(0);
+    toast!.hide(id);
+    expect(toast!.getToasts()).toHaveLength(0);
   });
 
   it('convenience methods work on global instance', () => {
-    toast.error('Global Error');
-    toast.warning('Global Warning');
-    toast.info('Global Info');
+    toast!.error('Global Error');
+    toast!.warning('Global Warning');
+    toast!.info('Global Info');
 
-    expect(toast.getToasts()).toHaveLength(3);
+    expect(toast!.getToasts()).toHaveLength(3);
 
-    toast.clear();
-    expect(toast.getToasts()).toHaveLength(0);
+    toast!.clear();
+    expect(toast!.getToasts()).toHaveLength(0);
   });
 });

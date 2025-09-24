@@ -13,7 +13,13 @@ import { surfaceCommand } from '../commands/surface.js';
 import { watchCommand } from '../commands/watch.js';
 import { loadConfig } from '../config.js';
 import type { SurfaceLanguage } from '../surface-extraction/types.js';
-import type { CheckOptions, InitOptions, SurfaceOptions, WatchOptions } from '../types.js';
+import type {
+  CheckOptions,
+  HealthResponse,
+  InitOptions,
+  SurfaceOptions,
+  WatchOptions,
+} from '../types.js';
 
 export function createProjectCommands(program: Command): void {
   // Init command
@@ -34,7 +40,7 @@ export function createProjectCommands(program: Command): void {
           throw new Error('Configuration not loaded');
         }
 
-        const exitCode = await initCommand(displayName, options, config);
+        const exitCode = await initCommand(displayName, options);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -233,9 +239,10 @@ export function createProjectCommands(program: Command): void {
         }
 
         try {
-          const health = await apiClient.health(timeout);
+          const health = await apiClient.health();
+          const healthData = health.data as HealthResponse;
 
-          if (health.status === 'healthy') {
+          if (health.data.status === 'healthy') {
             console.log(chalk.green('✅ Server is healthy'));
             if (options.verbose) {
               console.log(chalk.dim('  - API endpoints responding'));
@@ -243,8 +250,8 @@ export function createProjectCommands(program: Command): void {
             }
           } else {
             console.log(chalk.yellow('⚠️  Server has issues'));
-            if (health.issues) {
-              for (const issue of health.issues) {
+            if (healthData.issues) {
+              for (const issue of healthData.issues) {
                 console.log(chalk.yellow(`  - ${issue}`));
               }
             }
@@ -253,7 +260,7 @@ export function createProjectCommands(program: Command): void {
           // Test basic validation
           if (options.verbose) {
             const validationResult = await apiClient.validate('test: "hello"');
-            if (validationResult.valid) {
+            if (validationResult.data.valid) {
               console.log(chalk.green('  ✅ CUE validation working'));
             } else {
               console.log(chalk.red('  ❌ CUE validation failed'));

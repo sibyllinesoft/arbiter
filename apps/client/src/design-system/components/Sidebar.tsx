@@ -3,8 +3,6 @@
  * Professional sidebar navigation with collapsible sections and elegant hierarchy
  * Designed for developer tools with sophisticated graphite theme
  */
-
-import { clsx } from 'clsx';
 import {
   ChevronDown,
   ChevronRight,
@@ -16,7 +14,7 @@ import {
   Settings,
   Users,
 } from 'lucide-react';
-import React, { useState, type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { cn } from '../variants';
 
 export interface SidebarNavItem {
@@ -56,15 +54,12 @@ export interface SidebarProps {
 
   /** Custom className */
   className?: string;
-
-  /** Whether to show tooltips when collapsed */
-  showTooltips?: boolean;
 }
 
 const widthClasses = {
   sm: 'w-48',
   md: 'w-64',
-  lg: 'w-80',
+  lg: 'w-72',
 } as const;
 
 const collapsedWidth = 'w-14';
@@ -190,8 +185,8 @@ function NavItemComponent({
               item={child}
               level={level + 1}
               collapsed={collapsed}
-              onItemClick={onItemClick}
-              onToggle={onToggle}
+              {...(onItemClick && { onItemClick })}
+              {...(onToggle && { onToggle })}
             />
           ))}
         </ul>
@@ -209,7 +204,6 @@ export function Sidebar({
   header,
   footer,
   className,
-  showTooltips = true,
 }: SidebarProps) {
   return (
     <aside
@@ -234,8 +228,8 @@ export function Sidebar({
               key={item.id}
               item={item}
               collapsed={collapsed}
-              onItemClick={onItemClick}
-              onToggle={onToggle}
+              {...(onItemClick && { onItemClick })}
+              {...(onToggle && { onToggle })}
             />
           ))}
         </ul>

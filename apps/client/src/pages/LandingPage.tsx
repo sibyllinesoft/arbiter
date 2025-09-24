@@ -3,38 +3,30 @@
  */
 
 import arbiterLogo from '@assets/arbiter.webp';
-// @ts-ignore
-import { ProjectList, useUnifiedTabs } from '@components';
-import Tabs from '@components/Layout/Tabs';
-import { ProjectCreationModal } from '@components/ProjectCreation';
-import { useAppSettings, useUIState } from '@contexts/AppContext';
+import { useUIState } from '@contexts/AppContext';
 import { useCurrentProject, useSetCurrentProject } from '@contexts/ProjectContext';
 import { Button } from '@design-system';
 import { useDeleteProject, useProjects } from '@hooks/api-hooks';
-import { useWebSocket } from '@hooks/useWebSocket';
 import { GitBranch, Plus, Settings } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { ProjectList, useUnifiedTabs } from '../components';
+// @ts-ignore
+import { ConfigModal } from '../components/ConfigModal';
+import Tabs from '../components/Layout/Tabs';
+import { ProjectCreationModal } from '../components/ProjectCreation';
 
-interface LandingPageProps {
-  onNavigateToConfig: () => void;
-  onNavigateToProject: (project: any) => void;
-}
-
-export function LandingPage({ onNavigateToConfig, onNavigateToProject }: LandingPageProps) {
+export function LandingPage() {
+  const navigate = useNavigate();
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const deleteProjectMutation = useDeleteProject();
   const currentProject = useCurrentProject();
   const setCurrentProject = useSetCurrentProject();
-  const { settings } = useAppSettings();
   const { activeTab, setActiveTab } = useUIState();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
-
-  const { isConnected } = useWebSocket(currentProject?.id || null, {
-    autoReconnect: true,
-    showToastNotifications: settings.showNotifications,
-  });
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
 
   const handleSelectProject = (project: any) => {
     setCurrentProject(project);
@@ -117,22 +109,20 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
             </div>
             <div className="flex items-center gap-4">
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="sm"
-                leftIcon={<Settings className="w-4 h-4" />}
-                onClick={onNavigateToConfig}
-              >
-                Config
-              </Button>
+                leftIcon={<Settings className="w-6 h-6" />}
+                onClick={() => setIsConfigModalOpen(true)}
+              />
             </div>
           </div>
         </div>
       </header>
 
       <main className="h-[calc(100vh-4rem)] flex overflow-hidden">
-        <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden">
+        <div className="w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden">
           <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <GitBranch className="w-5 h-5" />
                 Projects
@@ -172,9 +162,13 @@ export function LandingPage({ onNavigateToConfig, onNavigateToProject }: Landing
       {isProjectModalOpen && (
         <ProjectCreationModal
           onClose={() => setIsProjectModalOpen(false)}
-          onNavigateToProject={onNavigateToProject}
+          onNavigateToProject={project => {
+            setCurrentProject(project);
+            navigate(`/project/${project.id}`);
+          }}
         />
       )}
+      {isConfigModalOpen && <ConfigModal onClose={() => setIsConfigModalOpen(false)} />}
     </div>
   );
 }

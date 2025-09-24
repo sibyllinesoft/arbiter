@@ -7,7 +7,6 @@ import {
   type DiagramComponent,
   type DiagramConnection,
   type DiagramLayer,
-  type DiagramLayout,
   type LayoutAlgorithm,
 } from '../types/architecture';
 
@@ -155,6 +154,7 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
         for (let j = i + 1; j < positioned.length; j++) {
           const comp1 = positioned[i];
           const comp2 = positioned[j];
+          if (!comp1 || !comp2) continue;
           const vel1 = velocities.get(comp1.id)!;
           const vel2 = velocities.get(comp2.id)!;
 
@@ -339,7 +339,7 @@ export class DiagramLayoutEngine {
 
     if (!algorithm) {
       console.warn(`Unknown layout algorithm: ${layoutType}, falling back to layered`);
-      return this.algorithms.get('layered')?.calculate(components, connections);
+      return this.algorithms.get('layered')!.calculate(components, connections);
     }
 
     return algorithm.calculate(components, connections);

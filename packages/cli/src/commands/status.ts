@@ -1,6 +1,7 @@
 import chalk from 'chalk';
+import jsyaml from 'js-yaml'; // Add if not installed: bun add js-yaml
 import { ApiClient } from '../api-client.js';
-import type { CLIConfig } from '../config.js';
+import type { Config } from '../config.js';
 import { formatJson, formatStatusTable, formatYaml } from '../utils/formatting.js';
 import { withProgress } from '../utils/progress.js';
 
@@ -8,12 +9,39 @@ export interface StatusOptions {
   detailed?: boolean;
 }
 
-export async function statusCommand(options: StatusOptions, config: CLIConfig): Promise<number> {
+interface ProjectStatus {
+  health: 'healthy' | 'degraded' | 'error';
+  lastUpdated?: string;
+  components?: Array<{
+    type: string;
+    name: string;
+    status: 'active' | 'inactive' | 'error';
+    lastModified?: string;
+    dependencies?: string[];
+  }>;
+  validations?: {
+    total: number;
+    passed: number;
+    failed: number;
+    warnings: number;
+  };
+  specifications?: Array<{
+    path: string;
+    valid: boolean;
+    errors: number;
+    warnings: number;
+    lastValidated?: string;
+  }>;
+}
+
+export async function statusCommand(options: StatusOptions, config: Config): Promise<number> {
   try {
     const client = new ApiClient(config);
 
     // Get project status with progress indicator
-    const result = await withProgress('Getting project status...', () => client.getProjectStatus());
+    const result = await withProgress({ text: 'Getting project status...' }, () =>
+      client.getProjectStatus()
+    );
 
     if (!result.success) {
       console.error(chalk.red('Status check failed:'), result.error);
@@ -25,14 +53,14 @@ export async function statusCommand(options: StatusOptions, config: CLIConfig): 
     // Format and display results based on output format
     switch (config.format) {
       case 'json':
-        console.log(formatJson(status));
+        console.log(JSON.stringify(status, null, 2));
         break;
       case 'yaml':
-        console.log(formatYaml(status));
+        console.log(jsyaml.dump(status, { indent: 2 }));
         break;
       case 'table':
       default:
-        displayStatusTable(status, options.detailed || config.verbose);
+        displayStatusTable(status, options.detailed);
         break;
     }
 
@@ -50,7 +78,7 @@ export async function statusCommand(options: StatusOptions, config: CLIConfig): 
   }
 }
 
-function displayStatusTable(status: any, detailed: boolean): void {
+function displayStatusTable(status: ProjectStatus, detailed: boolean): void {
   // Project health header
   const healthColor = getHealthColor(status.health);
   const healthIcon = getHealthIcon(status.health);
@@ -63,10 +91,10 @@ function displayStatusTable(status: any, detailed: boolean): void {
   console.log(); // Empty line
 
   // Component summary
-  if (status.components && Array.isArray(status.components)) {
+  if (status.components?.length) {
     console.log(chalk.bold('Components Summary:'));
     const componentSummary = summarizeComponents(status.components);
-    console.log(formatStatusTable(componentSummary));
+    console.log(formatStatusSummaryTable(componentSummary));
     console.log();
   }
 
@@ -75,29 +103,29 @@ function displayStatusTable(status: any, detailed: boolean): void {
     console.log(chalk.bold('Validation Summary:'));
     const validationSummary = {
       'Total Validations': status.validations.total || 0,
-      Passed: chalk.green(status.validations.passed || 0),
+      Passed: chalk.green(`${status.validations.passed || 0}`),
       Failed:
         status.validations.failed > 0
-          ? chalk.red(status.validations.failed)
-          : status.validations.failed || 0,
+          ? chalk.red(`${status.validations.failed}`)
+          : `${status.validations.failed || 0}`,
       Warnings:
         status.validations.warnings > 0
-          ? chalk.yellow(status.validations.warnings)
-          : status.validations.warnings || 0,
+          ? chalk.yellow(`${status.validations.warnings}`)
+          : `${status.validations.warnings || 0}`,
     };
-    console.log(formatStatusTable(validationSummary));
+    console.log(formatStatusSummaryTable(validationSummary));
     console.log();
   }
 
   // Detailed view
   if (detailed) {
-    if (status.specifications && Array.isArray(status.specifications)) {
+    if (status.specifications?.length) {
       console.log(chalk.bold('Specifications:'));
-      const specRows = status.specifications.map((spec: any) => [
+      const specRows = status.specifications.map(spec => [
         spec.path || 'unknown',
         spec.valid ? chalk.green('✓') : chalk.red('✗'),
-        spec.errors || 0,
-        spec.warnings || 0,
+        `${spec.errors || 0}`,
+        `${spec.warnings || 0}`,
         spec.lastValidated ? new Date(spec.lastValidated).toLocaleDateString() : 'never',
       ]);
 
@@ -107,9 +135,9 @@ function displayStatusTable(status: any, detailed: boolean): void {
       console.log();
     }
 
-    if (status.components && Array.isArray(status.components)) {
+    if (status.components?.length) {
       console.log(chalk.bold('Component Details:'));
-      const componentRows = status.components.map((comp: any) => [
+      const componentRows = status.components.map(comp => [
         comp.type || 'unknown',
         comp.name || 'unknown',
         getStatusIndicator(comp.status),
@@ -124,7 +152,7 @@ function displayStatusTable(status: any, detailed: boolean): void {
   }
 }
 
-function summarizeComponents(components: any[]): Record<string, any> {
+function summarizeComponents(components: ProjectStatus['components']): Record<string, any> {
   const summary: Record<string, any> = {};
 
   // Count by type
@@ -147,9 +175,10 @@ function summarizeComponents(components: any[]): Record<string, any> {
   });
 
   summary['Total Components'] = components.length;
-  summary['Active'] = chalk.green(statusCounts.active);
-  summary['Inactive'] = chalk.yellow(statusCounts.inactive);
-  summary['Errors'] = statusCounts.error > 0 ? chalk.red(statusCounts.error) : statusCounts.error;
+  summary['Active'] = chalk.green(`${statusCounts.active}`);
+  summary['Inactive'] = chalk.yellow(`${statusCounts.inactive}`);
+  summary['Errors'] =
+    statusCounts.error > 0 ? chalk.red(`${statusCounts.error}`) : `${statusCounts.error}`;
 
   return summary;
 }
@@ -193,6 +222,40 @@ function getStatusIndicator(status: string): string {
   }
 }
 
+/**
+ * Format key-value summary object as a two-column table
+ */
+function formatStatusSummaryTable(summary: Record<string, any>): string {
+  const headerRow: string[] = ['Metric', 'Value'];
+  const dataRows: string[][] = Object.entries(summary).map(([key, value]) => [key, String(value)]);
+
+  // Calculate widths considering ANSI codes
+  const allRows = [headerRow, ...dataRows];
+  const widths = headerRow.map((_, i) =>
+    Math.max(...allRows.map(row => stripAnsi(row[i] || '').length))
+  );
+
+  let output = allRows
+    .map((row, idx) => {
+      const formattedRow = row
+        .map((cell, colIdx) => {
+          const content = cell || '';
+          const padding = widths[colIdx] - stripAnsi(content).length;
+          return content + ' '.repeat(Math.max(0, padding));
+        })
+        .join('  ');
+
+      if (idx === 0) {
+        const separator = widths.map(w => '─'.repeat(w)).join('  ');
+        return formattedRow + '\n' + separator;
+      }
+      return formattedRow;
+    })
+    .join('\n');
+
+  return output;
+}
+
 // Simple table formatter for status command
 function formatTable(rows: string[][]): string {
   if (rows.length === 0) return '';
@@ -227,3 +290,6 @@ function formatTable(rows: string[][]): string {
 function stripAnsi(text: string): string {
   return text.replace(/\u001b\[[0-9;]*m/g, '');
 }
+
+// Remove unused import once formatting.js is handled separately if needed
+// Note: If js-yaml not installed, remove yaml case or install via bun add js-yaml

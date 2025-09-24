@@ -10,6 +10,7 @@ export const ComponentTypeSchema = z.enum([
   'frontend',
   'database',
   'external',
+  'binary',
 ]);
 
 export type ComponentType = z.infer<typeof ComponentTypeSchema>;
@@ -95,9 +96,7 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
   };
 
   for (const component of components) {
-    // Normalize types - binary should be cli
     let type = component.type;
-    if (type === 'binary') type = 'cli';
 
     switch (type) {
       case 'service':
@@ -107,6 +106,9 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
         counts.libraries++;
         break;
       case 'cli':
+        counts.clis++;
+        break;
+      case 'binary':
         counts.clis++;
         break;
       case 'frontend':

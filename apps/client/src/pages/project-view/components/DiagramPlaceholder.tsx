@@ -2,8 +2,6 @@
  * DiagramPlaceholder - Loading placeholder for diagrams
  */
 
-import React from 'react';
-
 interface DiagramPlaceholderProps {
   type: string;
 }

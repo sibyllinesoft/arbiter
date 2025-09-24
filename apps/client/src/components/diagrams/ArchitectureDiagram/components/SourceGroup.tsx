@@ -2,7 +2,7 @@ import React from 'react';
 import { ComponentCard } from './ComponentCard';
 
 interface SourceGroupProps {
-  sourceFile: string;
+  groupLabel: string;
   components: Array<{ name: string; data: any }>;
   expandedSources: Record<string, boolean>;
   setExpandedSources: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -10,19 +10,19 @@ interface SourceGroupProps {
 }
 
 export const SourceGroup: React.FC<SourceGroupProps> = ({
-  sourceFile,
+  groupLabel,
   components,
   expandedSources,
   setExpandedSources,
   onComponentClick,
 }) => {
-  const isExpanded = expandedSources[sourceFile];
+  const isExpanded = expandedSources[groupLabel];
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Source File Header */}
+      {/* Group Header */}
       <button
-        onClick={() => setExpandedSources(prev => ({ ...prev, [sourceFile]: !prev[sourceFile] }))}
+        onClick={() => setExpandedSources(prev => ({ ...prev, [groupLabel]: !prev[groupLabel] }))}
         className="w-full px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
       >
         <div className="flex items-center gap-3">
@@ -42,8 +42,8 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
             </svg>
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <h3 className="font-medium text-gray-900 truncate" title={sourceFile}>
-              {sourceFile}
+            <h3 className="font-medium text-gray-900 truncate" title={groupLabel}>
+              {groupLabel}
             </h3>
             <p className="text-sm text-gray-600">
               {components.length} component{components.length !== 1 ? 's' : ''}
@@ -66,7 +66,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {components.map(({ name, data }) => (
               <ComponentCard
-                key={`${sourceFile}-${name}`}
+                key={`${groupLabel}-${name}`}
                 name={name}
                 data={data}
                 onClick={() => onComponentClick(name)}

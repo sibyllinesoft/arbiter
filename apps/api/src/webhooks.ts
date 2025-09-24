@@ -2,8 +2,8 @@
  * Webhook service for handling GitLab and GitHub webhooks
  */
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { SpecWorkbenchDB } from './db.ts';
-import type { EventService } from './events.ts';
+import type { SpecWorkbenchDB } from './db';
+import type { EventService } from './events';
 import { CustomHandlerManager } from './handlers/manager.js';
 import type {
   EventType,
@@ -13,8 +13,8 @@ import type {
   WebhookPayload,
   WebhookRequest,
   WebhookResponse,
-} from './types.ts';
-import { generateId, getCurrentTimestamp, logger } from './utils.ts';
+} from './types';
+import { generateId, getCurrentTimestamp, logger } from './utils';
 
 export class WebhookService {
   private handlerManager: CustomHandlerManager;

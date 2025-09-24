@@ -5,6 +5,5 @@
 export * from './migration';
 // Re-export all shared types and utilities
 export * from './types';
-export * from './types/entities';
 export * from './utils';
 export * from './version';

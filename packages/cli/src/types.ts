@@ -69,6 +69,8 @@ export interface CLIConfig {
   format: 'table' | 'json' | 'yaml';
   /** Enable colored output */
   color: boolean;
+  /** Verbose output flag */
+  verbose?: boolean;
   /** Default project directory */
   projectDir: string;
   /** Project ID for API requests */
@@ -166,6 +168,7 @@ export interface InitOptions {
   template?: string;
   name?: string;
   force?: boolean;
+  listTemplates?: boolean;
 }
 
 /**
@@ -289,7 +292,9 @@ export interface SurfaceOptions {
   output?: string;
   diff?: boolean;
   includePrivate?: boolean;
+  projectName?: string;
   verbose?: boolean;
+  format?: string;
 }
 
 /**
@@ -543,6 +548,8 @@ export interface GitHubTemplateField {
   default?: string;
   /** Validation pattern */
   pattern?: string;
+  /** Allowed values for select type */
+  enum?: string[];
   /** Help text */
   help?: string;
 }
@@ -687,6 +694,8 @@ export interface GenerateOptions {
   useConfig?: boolean;
   /** Use Git remote for repository detection */
   useGitRemote?: boolean;
+  /** Webhook URL */
+  url?: string;
 }
 
 /**
@@ -719,4 +728,10 @@ export interface RenameOptions {
   verbose?: boolean;
   /** Specific file types to rename */
   types?: string[];
+}
+
+export interface HealthResponse {
+  status: string;
+  timestamp: string;
+  issues?: string[];
 }

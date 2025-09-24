@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, expect } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, vi } from 'vitest';
 
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
@@ -42,7 +42,7 @@ beforeAll(() => {
   }));
 
   // Mock Monaco Editor globals that may not be available in test environment
-  global.MonacoEnvironment = {
+  (globalThis as any).MonacoEnvironment = {
     getWorkerUrl: () => '',
   };
 });

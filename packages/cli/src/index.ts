@@ -7,7 +7,7 @@
 
 export * from './api-client.js';
 // Main CLI program for programmatic use
-export { default as program } from './cli.js';
+export { default as program } from './cli/index.js';
 // Commands
 export { checkCommand } from './commands/check.js';
 export { initCommand, listTemplates } from './commands/init.js';

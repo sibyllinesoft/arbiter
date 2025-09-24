@@ -20,6 +20,12 @@ async function main() {
 
     const manifest = await scanner.scan();
 
+    console.log('\nAll Artifacts:');
+    for (const inferred of manifest.artifacts) {
+      console.log(
+        `Type: ${inferred.artifact.type}, Name: ${inferred.artifact.name}, Source: ${inferred.provenance.evidence.join(', ')}`
+      );
+    }
     console.log('\nDetected Artifacts per Config:');
     console.log('==============================');
 

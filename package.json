@@ -16,6 +16,7 @@
     "dev": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\"",
     "dev:workbench": "bun run --cwd apps/client dev",
     "dev:full": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",
+    "dev:full:auth": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=true bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",
     "start": "bun run --cwd apps/api start",
     "build": "bun run build:all",
     "ci": "bun scripts/local-ci.ts",

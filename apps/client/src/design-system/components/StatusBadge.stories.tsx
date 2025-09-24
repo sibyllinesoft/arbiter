@@ -12,13 +12,9 @@ import {
   Clock,
   Database,
   GitBranch,
-  Globe,
   Info,
   Pause,
-  Play,
-  Settings,
   Shield,
-  Square,
   Users,
   XCircle,
   Zap,
@@ -111,6 +107,9 @@ export const Variants: Story = {
       </StatusBadge>
     </div>
   ),
+  args: {
+    children: 'Status Badge',
+  },
   parameters: {
     docs: {
       description: {
@@ -189,6 +188,9 @@ export const Styles: Story = {
       </div>
     </div>
   ),
+  args: {
+    children: 'Status Badge',
+  },
   parameters: {
     docs: {
       description: {
@@ -217,6 +219,9 @@ export const Sizes: Story = {
       </StatusBadge>
     </div>
   ),
+  args: {
+    children: 'Status Badge',
+  },
   parameters: {
     docs: {
       description: {
@@ -250,6 +255,9 @@ export const WithIcons: Story = {
       </StatusBadge>
     </div>
   ),
+  args: {
+    children: 'Status Badge',
+  },
   parameters: {
     docs: {
       description: {
@@ -277,6 +285,9 @@ export const LoadingStates: Story = {
       </StatusBadge>
     </div>
   ),
+  args: {
+    children: 'Status Badge',
+  },
   parameters: {
     docs: {
       description: {
@@ -543,6 +554,9 @@ export const DeveloperToolExamples: Story = {
       </div>
     </div>
   ),
+  args: {
+    children: 'Status Badge',
+  },
   parameters: {
     docs: {
       description: {

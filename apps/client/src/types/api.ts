@@ -277,8 +277,10 @@ export interface WsIrUpdatedData {
 export interface WebhookHandler {
   id: string;
   name: string;
+  description?: string;
   provider: WebhookProvider;
   event_type: string;
+  events?: string[];
   enabled: boolean;
   code: string;
   created_at: string;
@@ -287,6 +289,9 @@ export interface WebhookHandler {
   execution_count: number;
   success_count: number;
   error_count: number;
+  timeout?: number;
+  retries?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export type WebhookProvider = 'github' | 'gitlab' | 'bitbucket' | 'slack' | 'discord' | 'custom';

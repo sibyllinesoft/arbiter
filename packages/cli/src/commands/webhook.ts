@@ -11,6 +11,7 @@ export interface WebhookOptions {
   projectId?: string;
   provider?: 'github' | 'gitlab';
   repository?: string;
+  url?: string;
   events?: string;
   enabled?: boolean;
   secret?: string;
