@@ -7,7 +7,6 @@
 import * as path from 'path';
 import { parse } from '@iarna/toml';
 import {
-  ConfidenceScore,
   Evidence,
   ImporterPlugin,
   InferenceContext,
@@ -77,7 +76,7 @@ export class RustPlugin implements ImporterPlugin {
     if (!fileContent || path.basename(filePath) !== 'Cargo.toml') return [];
 
     const evidence: Evidence[] = [];
-    const baseId = path.relative(context?.projectRoot || '', filePath);
+    const baseId = path.relative(context?.projectRoot ?? process.cwd(), filePath);
 
     try {
       return this.parseCargoToml(filePath, fileContent, baseId);
@@ -164,11 +163,6 @@ export class RustPlugin implements ImporterPlugin {
 
     artifacts.push({
       artifact,
-      confidence: {
-        overall: 0.9,
-        breakdown: { evidence: 0.95 },
-        factors: [{ description: 'Cargo.toml analysis', weight: 0.95, source: 'rust' }],
-      },
       provenance: {
         evidence: [cargoEvidence.id],
         plugins: ['rust'],

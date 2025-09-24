@@ -45,7 +45,6 @@ global.fetch = mockFetch;
 const mockProject: Project = {
   id: 'project-1',
   name: 'Test Project',
-  description: 'A test project',
   created_at: '2023-01-01T00:00:00Z',
   updated_at: '2023-01-01T00:00:00Z',
 };
@@ -53,7 +52,7 @@ const mockProject: Project = {
 const mockFragment: Fragment = {
   id: 'fragment-1',
   project_id: 'project-1',
-  name: 'test.cue',
+  path: 'test.cue',
   content: 'package test\n\nfoo: "bar"',
   created_at: '2023-01-01T00:00:00Z',
   updated_at: '2023-01-01T00:00:00Z',
@@ -171,7 +170,7 @@ describe('ApiService', () => {
         })
       );
 
-      const _result = await service.getProjects();
+      await service.getProjects();
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:4000/api/projects',
@@ -251,11 +250,12 @@ describe('ApiService', () => {
       try {
         await service.getProjects();
         expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect(error.message).toBe(mockErrorDetails.detail);
-        expect(error.status).toBe(400);
-        expect(error.details).toEqual(mockErrorDetails);
+      } catch (error: unknown) {
+        const apiError = error as ApiError;
+        expect(apiError).toBeInstanceOf(ApiError);
+        expect(apiError.message).toBe(mockErrorDetails.detail);
+        expect(apiError.status).toBe(400);
+        expect(apiError.details).toEqual(mockErrorDetails);
       }
     });
 
@@ -273,11 +273,12 @@ describe('ApiService', () => {
       try {
         await service.getProjects();
         expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect(error.message).toBe('HTTP 500: Internal Server Error');
-        expect(error.status).toBe(500);
-        expect(error.details).toBeUndefined();
+      } catch (error: unknown) {
+        const apiError = error as ApiError;
+        expect(apiError).toBeInstanceOf(ApiError);
+        expect(apiError.message).toBe('HTTP 500: Internal Server Error');
+        expect(apiError.status).toBe(500);
+        expect(apiError.details).toBeUndefined();
       }
     });
 
@@ -288,10 +289,11 @@ describe('ApiService', () => {
       try {
         await service.getProjects();
         expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect(error.message).toBe('Network error: Network connection failed');
-        expect(error.status).toBe(0);
+      } catch (error: unknown) {
+        const apiError = error as ApiError;
+        expect(apiError).toBeInstanceOf(ApiError);
+        expect(apiError.message).toBe('Network error: Network connection failed');
+        expect(apiError.status).toBe(0);
       }
     });
 
@@ -301,10 +303,11 @@ describe('ApiService', () => {
       try {
         await service.getProjects();
         expect.fail('Should have thrown an error');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ApiError);
-        expect(error.message).toBe('Network error: Unknown error');
-        expect(error.status).toBe(0);
+      } catch (error: unknown) {
+        const apiError = error as ApiError;
+        expect(apiError).toBeInstanceOf(ApiError);
+        expect(apiError.message).toBe('Network error: Unknown error');
+        expect(apiError.status).toBe(0);
       }
     });
 
@@ -437,7 +440,7 @@ describe('ApiService', () => {
 
     it('should create new fragment', async () => {
       const request: CreateFragmentRequest = {
-        name: 'test.cue',
+        path: 'test.cue',
         content: 'package test\n\nfoo: "bar"',
       };
       const mockResponse = { fragment: mockFragment };
@@ -536,10 +539,7 @@ describe('ApiService', () => {
     });
 
     it('should validate project with custom request', async () => {
-      const request: ValidationRequest = {
-        strict: true,
-        skip_warnings: false,
-      };
+      const request: ValidationRequest = {};
       const mockValidation = {
         valid: false,
         errors: [{ message: 'Test error', location: 'test.cue:1' }],
@@ -636,7 +636,7 @@ describe('ApiService', () => {
         })
       );
 
-      const result = await service.getIR('project-1', 'capabilities');
+      const result = await service.getIR('project-1', 'capabilities' as IRKind);
 
       expect(result).toEqual(mockIR);
       expect(mockFetch).toHaveBeenCalledWith(
@@ -744,7 +744,7 @@ describe('ApiService', () => {
   describe('version freezing endpoints', () => {
     it('should freeze version', async () => {
       const request: FreezeRequest = {
-        version: '1.0.0',
+        version_name: '1.0.0',
         description: 'Initial release',
       };
       const mockResponse = {
@@ -887,11 +887,12 @@ describe('ApiService', () => {
         try {
           await service.getProjects();
           expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error).toBeInstanceOf(ApiError);
-          expect(error.status).toBe(422);
-          expect(error.message).toBe('HTTP 422: Unprocessable Entity');
-          expect(error.details).toEqual({ malformed: 'not valid problem details' });
+        } catch (error: unknown) {
+          const apiError = error as ApiError;
+          expect(apiError).toBeInstanceOf(ApiError);
+          expect(apiError.status).toBe(422);
+          expect(apiError.message).toBe('HTTP 422: Unprocessable Entity');
+          expect(apiError.details).toEqual({ malformed: 'not valid problem details' });
         }
       });
 
@@ -909,11 +910,12 @@ describe('ApiService', () => {
         try {
           await service.getProjects();
           expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error).toBeInstanceOf(ApiError);
-          expect(error.status).toBe(503);
-          expect(error.message).toBe('HTTP 503: Service Unavailable');
-          expect(error.details).toEqual({});
+        } catch (error: unknown) {
+          const apiError = error as ApiError;
+          expect(apiError).toBeInstanceOf(ApiError);
+          expect(apiError.status).toBe(503);
+          expect(apiError.message).toBe('HTTP 503: Service Unavailable');
+          expect(apiError.details).toEqual({});
         }
       });
 
@@ -923,10 +925,11 @@ describe('ApiService', () => {
         try {
           await service.getProjects();
           expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error).toBeInstanceOf(ApiError);
-          expect(error.status).toBe(0);
-          expect(error.message).toBe('Network error: Failed to fetch');
+        } catch (error: unknown) {
+          const apiError = error as ApiError;
+          expect(apiError).toBeInstanceOf(ApiError);
+          expect(apiError.status).toBe(0);
+          expect(apiError.message).toBe('Network error: Failed to fetch');
         }
       });
 
@@ -936,10 +939,11 @@ describe('ApiService', () => {
         try {
           await service.getProjects();
           expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error).toBeInstanceOf(ApiError);
-          expect(error.status).toBe(0);
-          expect(error.message).toBe('Network error: Unknown error');
+        } catch (error: unknown) {
+          const apiError = error as ApiError;
+          expect(apiError).toBeInstanceOf(ApiError);
+          expect(apiError.status).toBe(0);
+          expect(apiError.message).toBe('Network error: Unknown error');
         }
       });
     });
@@ -985,10 +989,11 @@ describe('ApiService', () => {
         try {
           await (service as any).request('/test');
           expect.fail('Should have thrown an error');
-        } catch (error) {
-          expect(error).toBeInstanceOf(ApiError);
-          expect(error.status).toBe(0);
-          expect(error.message).toBe('Network error: Unexpected token');
+        } catch (error: unknown) {
+          const apiError = error as ApiError;
+          expect(apiError).toBeInstanceOf(ApiError);
+          expect(apiError.status).toBe(0);
+          expect(apiError.message).toBe('Network error: Unexpected token');
         }
       });
     });

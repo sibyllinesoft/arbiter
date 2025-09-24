@@ -1,222 +1,199 @@
-/**
- * Kubernetes Plugin for Brownfield Detection
- *
- * Comprehensive plugin for detecting Kubernetes artifacts including deployments,
- * services, ingresses, and other K8s resources. Analyzes YAML manifests to
- * infer application architecture and deployment patterns.
- */
-
 import * as path from 'path';
 import * as yaml from 'yaml';
-import {
+import type {
   Evidence,
   ImporterPlugin,
   InferenceContext,
   InferredArtifact,
   ParseContext,
-} from '../types.js';
+} from '../types';
 
-// ============================================================================
-// Kubernetes Resource Types and Patterns
-// ============================================================================
-
-// ============================================================================
-// Types for structured evidence data
-// ============================================================================
-
-export interface K8sData extends Record<string, unknown> {
+export interface KubernetesData {
   name: string;
-  description: string;
-  type: string;
+  kind: string;
+  apiVersion: string;
+  namespace?: string;
   filePath: string;
+  [key: string]: unknown;
 }
-
-// ============================================================================
-// Main Plugin Implementation
-// ============================================================================
 
 export class KubernetesPlugin implements ImporterPlugin {
   name(): string {
     return 'kubernetes';
   }
 
-  supports(filePath: string, fileContent?: string): boolean {
-    const fileName = path.basename(filePath);
-    const extension = path.extname(filePath).toLowerCase();
-
-    // Support YAML files in kubernetes directories
-    if (
-      (extension === '.yaml' || extension === '.yml') &&
-      (filePath.includes('kubernetes') ||
-        filePath.includes('k8s') ||
-        filePath.includes('manifests') ||
-        fileName.includes('k8s'))
-    ) {
-      return true;
-    }
-
-    // Support files with k8s in the name
-    if (
-      (extension === '.yaml' || extension === '.yml') &&
-      (fileName.includes('deployment') ||
-        fileName.includes('service') ||
-        fileName.includes('ingress') ||
-        fileName.includes('configmap'))
-    ) {
-      return true;
-    }
-
-    // Content-based detection - check for apiVersion and kind
-    if (fileContent && (extension === '.yaml' || extension === '.yml')) {
-      return /apiVersion:\s*[\w\/]+/.test(fileContent) && /kind:\s*\w+/.test(fileContent);
-    }
-
-    return false;
+  supports(filePath: string): boolean {
+    const basename = path.basename(filePath).toLowerCase();
+    const relative = path.relative(process.cwd(), filePath).toLowerCase();
+    return (
+      (basename.endsWith('.yaml') || basename.endsWith('.yml')) &&
+      (relative.includes('kubernetes') ||
+        relative.includes('k8s') ||
+        relative.includes('manifests'))
+    );
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
-    if (!fileContent) return [];
+    if (!fileContent) {
+      throw new Error('File content required for Kubernetes parsing');
+    }
 
     const evidence: Evidence[] = [];
-    const baseId = path.relative(context?.projectRoot || '', filePath);
+    const basename = path.basename(filePath).toLowerCase();
 
     try {
-      // Parse YAML content - may contain multiple documents
       const documents = yaml.parseAllDocuments(fileContent);
-
-      for (let i = 0; i < documents.length; i++) {
-        const doc = documents[i];
-        if (doc.errors.length > 0) continue;
-
-        const resource = doc.toJS();
-        if (!resource || !resource.apiVersion || !resource.kind) continue;
-
-        evidence.push(...(await this.parseK8sResource(filePath, resource, baseId)));
+      if (documents.length === 0) {
+        return evidence;
       }
+      const parsedItems = documents
+        .map(doc => doc.toJSON())
+        .filter(item => item && typeof item === 'object' && item !== null);
+      if (parsedItems.length === 0) {
+        return evidence;
+      }
+      const kubeEvidence = this.parseKubernetesManifest(
+        parsedItems,
+        filePath,
+        context?.projectRoot || '/'
+      );
+      evidence.push(...kubeEvidence);
     } catch (error) {
-      console.warn(`Kubernetes plugin failed to parse ${filePath}:`, error);
+      console.warn(`Failed to parse Kubernetes file ${filePath}:`, error);
     }
 
     return evidence;
+  }
+
+  private parseKubernetesManifest(parsed: any, filePath: string, projectRoot: string): Evidence[] {
+    const evidence: Evidence[] = [];
+
+    if (Array.isArray(parsed)) {
+      parsed.forEach((item, index) => {
+        if (typeof item === 'object' && item !== null) {
+          const itemEvidence = this.parseSingleItem(item, filePath, projectRoot, index);
+          evidence.push(itemEvidence);
+        }
+      });
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      const itemEvidence = this.parseSingleItem(parsed, filePath, projectRoot, 0);
+      evidence.push(itemEvidence);
+    }
+
+    return evidence;
+  }
+
+  private parseSingleItem(
+    parsed: any,
+    filePath: string,
+    projectRoot: string,
+    index: number
+  ): Evidence {
+    const name = parsed.metadata?.name;
+    const kind = parsed.kind;
+    const apiVersion = parsed.apiVersion;
+    const namespace = parsed.metadata?.namespace;
+
+    const data: KubernetesData = {
+      name,
+      kind,
+      apiVersion,
+      namespace,
+      filePath,
+      index,
+    };
+
+    const relativePath = path.relative(projectRoot, filePath);
+    const evidenceId = `${relativePath}#${index}`;
+    return {
+      id: evidenceId,
+      source: this.name(),
+      type: 'infrastructure',
+      filePath,
+      data,
+      metadata: {
+        timestamp: Date.now(),
+        fileSize: JSON.stringify(parsed).length,
+      },
+    };
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const k8sEvidence = evidence.filter(e => e.source === 'kubernetes');
-    if (k8sEvidence.length === 0) return [];
-
     const artifacts: InferredArtifact[] = [];
 
-    try {
-      for (const ev of k8sEvidence) {
-        artifacts.push(...(await this.inferFromK8sEvidence(ev, context)));
-      }
-    } catch (error) {
-      console.warn('Kubernetes plugin inference failed:', error);
-    }
+    // Filter Kubernetes evidence
+    const kubeEvidence = evidence.filter(
+      e => e.source === this.name() && e.type === 'infrastructure'
+    );
 
-    return artifacts;
-  }
+    if (kubeEvidence.length === 0) return artifacts;
 
-  // ============================================================================
-  // Private parsing methods
-  // ============================================================================
+    // Group by root directory (find common ancestor for all kube files)
+    const rootDir = this.findRootDirectory(kubeEvidence, context.projectRoot || '/');
+    if (!rootDir) return artifacts;
 
-  private async parseK8sResource(
-    filePath: string,
-    resource: any,
-    baseId: string
-  ): Promise<Evidence[]> {
-    const evidence: Evidence[] = [];
-    const { kind, metadata = {} } = resource;
-    const name = (metadata.name as string) || 'unnamed';
-    const description = `Kubernetes ${kind.toLowerCase()}`;
-    const type = this.determineK8sType(kind);
-    const k8sData: K8sData = {
-      name,
-      description,
-      type,
-      filePath,
-    };
-    evidence.push({
-      id: `${baseId}`,
-      source: 'kubernetes',
-      type: 'config',
-      filePath,
-      data: k8sData,
-      metadata: {
-        timestamp: Date.now(),
-        fileSize: JSON.stringify(resource).length,
-      },
+    // Collect all unique files in this group
+    const files = [...new Set(kubeEvidence.map(e => e.filePath))];
+
+    // Extract resources from evidence
+    const resources = kubeEvidence.map(e => {
+      const data = e.data as KubernetesData;
+      return { kind: data.kind, name: data.name, apiVersion: data.apiVersion };
     });
-    return evidence;
-  }
 
-  private determineK8sType(kind: string): string {
-    if (
-      kind === 'Deployment' ||
-      kind === 'StatefulSet' ||
-      kind === 'DaemonSet' ||
-      kind === 'Job' ||
-      kind === 'CronJob' ||
-      kind === 'ReplicaSet' ||
-      kind === 'Pod'
-    ) {
-      return 'deployment';
-    }
-    if (kind === 'Service' || kind === 'Ingress') {
-      return 'service';
-    }
-    if (
-      kind === 'ConfigMap' ||
-      kind === 'Secret' ||
-      kind === 'PersistentVolume' ||
-      kind === 'PersistentVolumeClaim' ||
-      kind === 'ServiceAccount'
-    ) {
-      return 'infrastructure';
-    }
-    return 'config';
-  }
-
-  // ============================================================================
-  // Private inference methods
-  // ============================================================================
-
-  private async inferFromK8sEvidence(
-    k8sEvidence: Evidence,
-    context: InferenceContext
-  ): Promise<InferredArtifact[]> {
-    const artifacts: InferredArtifact[] = [];
-    const k8sData = k8sEvidence.data as unknown as K8sData;
     const artifact = {
-      id: `k8s-${k8sData.type}-${k8sData.name}`,
-      type: k8sData.type as any,
-      name: k8sData.name,
-      description: k8sData.description,
-      tags: ['kubernetes', k8sData.type],
+      id: `kubernetes-infrastructure-${path.basename(rootDir)}`,
+      type: 'infrastructure' as const,
+      name: `Kubernetes Infrastructure (${path.basename(rootDir)})`,
+      description: `Kubernetes manifests in ${rootDir}`,
+      tags: ['kubernetes', 'infrastructure'],
       metadata: {
-        sourceFile: k8sData.filePath,
+        root: rootDir,
+        files,
+        kind: 'kubernetes' as const,
+        resources,
       },
     };
+
     artifacts.push({
       artifact,
-      confidence: {
-        overall: 0.9,
-        breakdown: { evidence: 0.9 },
-        factors: [{ description: 'K8s resource analysis', weight: 0.9, source: 'kubernetes' }],
-      },
       provenance: {
-        evidence: [k8sEvidence.id],
+        evidence: kubeEvidence.map(e => e.id),
         plugins: ['kubernetes'],
-        rules: ['k8s-simplification'],
+        rules: ['kube-grouping', 'manifest-parsing'],
         timestamp: Date.now(),
         pipelineVersion: '1.0.0',
       },
       relationships: [],
     });
+
     return artifacts;
+  }
+
+  private findRootDirectory(evidence: Evidence[], projectRoot: string): string | null {
+    if (evidence.length === 0) return null;
+
+    // Get all file paths relative to project root
+    const relativePaths = evidence.map(e => path.relative(projectRoot, e.filePath));
+
+    // Find the longest common prefix (LCA for directories)
+    let commonPrefix = relativePaths[0].split(path.sep).slice(0, -1).join(path.sep); // remove filename
+
+    for (const relPath of relativePaths) {
+      const parts = relPath.split(path.sep).slice(0, -1); // remove filename
+      let currentPrefix = '';
+      for (let i = 0; i < Math.min(commonPrefix.split(path.sep).length, parts.length); i++) {
+        if (commonPrefix.split(path.sep)[i] !== parts[i]) {
+          commonPrefix = currentPrefix;
+          break;
+        }
+        currentPrefix = parts.slice(0, i + 1).join(path.sep);
+      }
+    }
+
+    if (commonPrefix === '') return projectRoot;
+    return path.join(projectRoot, commonPrefix);
   }
 }
 
-// Export the plugin instance
 export const kubernetesPlugin = new KubernetesPlugin();

@@ -41,9 +41,9 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
               />
             </svg>
           </div>
-          <div className="text-left">
-            <h3 className="font-medium text-gray-900" title={sourceFile}>
-              {sourceFile.length > 30 ? `${sourceFile.substring(0, 27)}...` : sourceFile}
+          <div className="flex-1 min-w-0 text-left">
+            <h3 className="font-medium text-gray-900 truncate" title={sourceFile}>
+              {sourceFile}
             </h3>
             <p className="text-sm text-gray-600">
               {components.length} component{components.length !== 1 ? 's' : ''}

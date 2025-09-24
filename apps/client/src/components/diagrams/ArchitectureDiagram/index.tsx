@@ -48,9 +48,9 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   }, [projectId]);
 
   // Group components by source file for rendering
-  console.log(projectData);
-  const groupedComponents = computeGroupedComponents(projectData);
 
+  const groupedComponents = computeGroupedComponents(projectData);
+  console.log(groupedComponents);
   // Handle loading state
   if (loading) {
     return <LoadingState className={className} />;

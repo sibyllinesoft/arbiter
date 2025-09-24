@@ -126,7 +126,7 @@ export async function checkCompatibility(
     migration_required: migrationRequired,
     migration_path: migrationRequired
       ? {
-          fromVersion: versions.arbiter || 'unknown',
+          fromVersion: versions.arbiter || '',
           toVersion: CURRENT_VERSIONS.arbiter,
           steps: [
             'Update configuration files',

@@ -428,7 +428,7 @@ export async function showVersionInfo(): Promise<void> {
 
   console.log('\n🏗️  Build Information:');
   console.log(`  Timestamp: ${runtimeInfo.build_info.timestamp}`);
-  console.log(`  Commit: ${runtimeInfo.build_info.commit_hash || 'unknown'}`);
+  console.log(`  Commit: ${runtimeInfo.build_info.commit_hash || ''}`);
   console.log(`  Deterministic: ${runtimeInfo.build_info.deterministic ? '✅' : '❌'}`);
   console.log(`  Reproducible: ${runtimeInfo.build_info.reproducible ? '✅' : '❌'}`);
 

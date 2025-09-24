@@ -10,6 +10,121 @@ export function createProjectsRouter(deps: Dependencies) {
 
   const router = new Hono();
 
+  // GET single project with full resolved spec and artifacts
+  router.get('/projects/:id', async c => {
+    const projectId = c.req.param('id');
+
+    if (!projectId) {
+      return c.json({ error: 'Project ID is required' }, 400);
+    }
+
+    try {
+      const db = deps.db as any;
+
+      // Fetch project details
+      const projects = await db.listProjects();
+      const project = projects.find((p: any) => p.id === projectId);
+
+      if (!project) {
+        return c.json({ error: 'Project not found' }, 404);
+      }
+
+      // Fetch all artifacts for this project
+      const artifacts = await db.getArtifacts(projectId);
+
+      // Map artifacts to the expected spec structure for frontend rendering
+      const services: Record<string, any> = {};
+      const databases: Record<string, any> = {};
+      const components: Record<string, any> = {};
+
+      artifacts.forEach((artifact: any) => {
+        const cleanName = artifact.name.replace(/_/g, '-');
+        const baseData = {
+          name: artifact.name,
+          type: artifact.type,
+          description: artifact.description || artifact.metadata?.description || '',
+          metadata: {
+            ...artifact.metadata,
+            detected: true,
+            language: artifact.language,
+            framework: artifact.framework,
+          },
+        };
+
+        switch (artifact.type) {
+          case 'service':
+            services[cleanName] = baseData;
+            break;
+          case 'database':
+            databases[cleanName] = baseData;
+            break;
+          case 'module':
+          case 'library':
+          case 'cli':
+          case 'binary':
+          case 'frontend':
+          case 'job':
+          case 'infrastructure':
+          case 'deployment':
+            components[cleanName] = baseData;
+            break;
+          default:
+            // Handle other types as components
+            components[cleanName] = baseData;
+        }
+      });
+
+      // Generate routes from services (for UI consistency)
+      const routes = Object.keys(services).map(serviceName => ({
+        id: serviceName,
+        path: `/${serviceName}`,
+        name: services[serviceName].name,
+      }));
+
+      const resolvedSpec = {
+        version: '1.0',
+        services,
+        databases,
+        components,
+        routes,
+        // Add placeholder flows and capabilities based on services
+        flows:
+          Object.keys(services).length > 0
+            ? [{ id: 'main-flow', name: 'Main Application Flow' }]
+            : [],
+        capabilities:
+          Object.keys(services).length > 0 ? [{ id: 'api-capability', name: 'API Services' }] : [],
+        // Include raw artifacts for detailed rendering
+        artifacts,
+        project: {
+          id: project.id,
+          name: project.name,
+          entities: {
+            services: Object.keys(services).length,
+            databases: Object.keys(databases).length,
+            libraries: Object.keys(components).filter(
+              k => components[k].type === 'library' || components[k].type === 'module'
+            ).length,
+            clis: Object.keys(components).filter(
+              k => components[k].type === 'cli' || components[k].type === 'binary'
+            ).length,
+            frontends: Object.keys(components).filter(k => components[k].type === 'frontend')
+              .length,
+            external: 0,
+            routes: routes.length,
+            flows: Object.keys(services).length > 0 ? 1 : 0,
+            capabilities: Object.keys(services).length > 0 ? 1 : 0,
+          },
+        },
+      };
+
+      return c.json({ resolved: resolvedSpec });
+    } catch (error) {
+      console.error('Error fetching project details:', error);
+      return c.json({ error: 'Failed to fetch project details' }, 500);
+    }
+  });
+
   // Projects endpoint - using real database with entity counts
   router.get('/projects', async c => {
     console.log(
@@ -259,11 +374,12 @@ export function createProjectsRouter(deps: Dependencies) {
               id: artifact.id,
               name: getCleanArtifactName(artifact.name),
               type: artifact.type,
+              description: artifact.description || '',
               language: artifact.metadata?.language || null,
               framework: artifact.metadata?.framework || null,
               metadata: {
                 ...artifact.metadata,
-                confidence: inferredArtifact.confidence.overall,
+                description: artifact.description || '',
                 detected: true,
                 provenance: inferredArtifact.provenance,
               },

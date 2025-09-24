@@ -11,9 +11,9 @@ async function handlePushEvent(payload, context) {
   const { parsed } = payload;
 
   // Extract key information from the push event
-  const repository = parsed.repository?.full_name || 'unknown';
-  const branch = parsed.ref?.replace('refs/heads/', '') || 'unknown';
-  const pusher = parsed.pusher?.name || parsed.sender?.login || 'unknown';
+  const repository = parsed.repository?.full_name;
+  const branch = parsed.ref?.replace('refs/heads/', '');
+  const pusher = parsed.pusher?.name || parsed.sender?.login || '';
   const commits = parsed.commits || [];
   const commitCount = commits.length;
 

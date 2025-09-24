@@ -5,6 +5,7 @@
  */
 
 import * as path from 'path';
+import * as fs from 'fs-extra';
 
 import {
   Evidence,
@@ -160,7 +161,6 @@ export class NodeJSPlugin implements ImporterPlugin {
     const pkg = packageData.fullPackage;
 
     // Prepare detection context
-    const allDeps = Object.keys({ ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) });
     const scripts = pkg.scripts || {};
     const filePatterns = Array.from(context.fileIndex.files.values())
       .filter(f => f.relativePath.startsWith(path.dirname(packageData.filePath)))
@@ -168,7 +168,7 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     const detectionContext = {
       language: 'javascript',
-      dependencies: allDeps,
+      dependencies: [],
       scripts,
       filePatterns,
       packageConfig: pkg,
@@ -180,33 +180,23 @@ export class NodeJSPlugin implements ImporterPlugin {
     // Map category to artifact type
     const artifactType = this.mapCategoryToType(primaryType);
 
-    const artifact = {
-      id: `nodejs-${packageData.name}`,
+    const mainArtifact = {
+      id: `${packageData.name}`,
       type: artifactType,
       name: packageData.name,
       description: packageData.description || `Node.js ${artifactType}: ${packageData.name}`,
       tags: ['nodejs', artifactType],
       metadata: {
         sourceFile: packageData.filePath,
+        root: path.dirname(packageData.filePath),
         language: 'javascript',
         framework: this.inferFramework(pkg),
         detectedType: primaryType,
       },
     };
 
-    artifacts.push({
-      artifact,
-      confidence: {
-        overall: confidence,
-        breakdown: { detection: confidence },
-        factors: [
-          {
-            description: 'Advanced package.json analysis with dependency matrix',
-            weight: confidence,
-            source: 'nodejs',
-          },
-        ],
-      },
+    const mainInferredArtifact = {
+      artifact: mainArtifact,
       provenance: {
         evidence: [packageEvidence.id],
         plugins: ['nodejs'],
@@ -215,7 +205,9 @@ export class NodeJSPlugin implements ImporterPlugin {
         pipelineVersion: '1.0.0',
       },
       relationships: [],
-    });
+    };
+
+    artifacts.push(mainInferredArtifact);
 
     return artifacts;
   }
@@ -249,7 +241,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     if (NODE_WEB_FRAMEWORKS.some(fw => deps[fw])) return 'web';
     if (NODE_FRONTEND_FRAMEWORKS.some(fw => deps[fw])) return 'frontend';
     if (NODE_CLI_FRAMEWORKS.some(fw => deps[fw])) return 'cli';
-    return 'unknown';
+    return '';
   }
 }
 

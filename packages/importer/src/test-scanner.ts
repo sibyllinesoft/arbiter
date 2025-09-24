@@ -30,7 +30,7 @@ async function main() {
       // Group by type for this config
       const byType: Record<string, any[]> = {};
       for (const artifact of artifacts) {
-        const type = artifact.artifact?.type || 'unknown';
+        const type = artifact.artifact?.type || 'other';
         if (!byType[type]) byType[type] = [];
         byType[type].push(artifact);
       }
@@ -53,7 +53,7 @@ async function main() {
     // Overall type counts
     const typeCounts: Record<string, number> = {};
     for (const artifact of allArtifacts) {
-      const type = artifact.artifact?.type || 'unknown';
+      const type = artifact.artifact?.type;
       typeCounts[type] = (typeCounts[type] || 0) + 1;
     }
 

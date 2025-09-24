@@ -4,12 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/api';
-import type {
-  CreateHandlerRequest,
-  Project,
-  UpdateHandlerRequest,
-  WebhookHandler,
-} from '../types/api';
+import type { CreateHandlerRequest, UpdateHandlerRequest } from '../types/api';
 
 // Project hooks
 export function useProjects() {

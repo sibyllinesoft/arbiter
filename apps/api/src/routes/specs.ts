@@ -319,6 +319,7 @@ export function createSpecsRouter(deps: Dependencies) {
         components[componentName] = {
           name: artifact.name, // Use the original name
           type: artifact.type,
+          description: artifact.description || artifact.metadata?.description || '',
           language,
           framework,
           metadata: {

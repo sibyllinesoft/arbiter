@@ -11,15 +11,6 @@ import * as fs from 'fs-extra';
 import { glob } from 'glob';
 import { NodeJSPlugin } from './plugins/nodejs.js';
 import type { PackageJsonData } from './plugins/nodejs.js';
-// Mock InferenceContext for test script
-interface MockInferenceContext {
-  projectRoot: string;
-  fileIndex: any;
-  allEvidence: any[];
-  options: any;
-  cache: any;
-  projectMetadata: any;
-}
 import type { InferenceContext } from './types';
 
 interface DetectionData {
@@ -100,7 +91,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
           filePath: pkgPath,
           data: {
             name: packageJson.name,
-            description: packageJson.description || '',
+            description: packageJson.description,
             type: 'library',
             filePath: pkgPath,
           },
@@ -137,14 +128,14 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
       };
       // Run detection to get the type
       const artifacts = await plugin.infer(fullEvidence, inferenceContext);
-      const detectedType = artifacts[0]?.artifact?.type || 'unknown';
+      const detectedType = artifacts[0]?.artifact?.type;
 
       packages.push({
         name: packageJson.name || path.basename(packageDir),
         path: pkgPath,
         packageJson: {
           name: packageJson.name,
-          description: packageJson.description || '',
+          description: packageJson.description,
           type: 'library',
           filePath: pkgPath,
         },
@@ -192,8 +183,9 @@ async function main() {
     console.log(`\n${project.projectName}:`);
     const typeCounts: Record<string, number> = {};
     for (const pkg of project.packages) {
-      typeCounts[pkg.detectedType || 'unknown'] =
-        (typeCounts[pkg.detectedType || 'unknown'] || 0) + 1;
+      if (pkg.detectedType) {
+        typeCounts[pkg.detectedType] = (typeCounts[pkg.detectedType] || 0) + 1;
+      }
     }
     for (const [type, count] of Object.entries(typeCounts)) {
       console.log(`  ${type}: ${count}`);

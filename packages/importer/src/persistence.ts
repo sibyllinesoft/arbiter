@@ -51,7 +51,6 @@ export class SimpleJsonPersister implements IPersister {
       type: artifact.artifact.type,
       metadata: artifact.artifact.metadata,
       provenance: artifact.provenance,
-      confidence: artifact.confidence,
     });
     return crypto.createHash('sha256').update(data).digest('hex');
   }
@@ -91,7 +90,6 @@ export class SimpleJsonPersister implements IPersister {
       artifact_hash: this.computeArtifactHash(artifact),
       artifact_data: JSON.stringify(artifact.artifact),
       provenance_data: JSON.stringify(artifact.provenance),
-      confidence_data: JSON.stringify(artifact.confidence),
       action,
       timestamp: Date.now(),
     };
@@ -109,7 +107,6 @@ export class SimpleJsonPersister implements IPersister {
       artifact_hash: lastAddLog.artifact_hash,
       artifact_data: lastAddLog.artifact_data,
       provenance_data: lastAddLog.provenance_data,
-      confidence_data: lastAddLog.confidence_data,
       action: 'remove',
       timestamp: Date.now(),
     };
@@ -194,12 +191,8 @@ export class SimpleJsonPersister implements IPersister {
             timestamp: lastAdd.timestamp,
             pipelineVersion: '1.0',
           };
-      const confidenceData = lastAdd.confidence_data
-        ? JSON.parse(lastAdd.confidence_data)
-        : { overall: 1, breakdown: {}, factors: [] };
       const reconstructed: InferredArtifact = {
         artifact: artifactData,
-        confidence: confidenceData,
         provenance: provenanceData,
         relationships: [],
       };

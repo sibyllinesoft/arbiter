@@ -1,13 +1,13 @@
-import type { HandlerResponse, WebhookEvent } from "../../shared/utils.js";
-import { createResponse } from "../../shared/utils.js";
-import { GitHubPRAdapter } from "../adapters/github/GitHubPRAdapter.js";
-import { GitHubPushAdapter } from "../adapters/github/GitHubPushAdapter.js";
-import { GitLabMRAdapter } from "../adapters/gitlab/GitLabMRAdapter.js";
-import { AIAgentHandler } from "../base/AIAgentHandler.js";
-import type { AIAgentConfig, AICommand } from "../base/types.js";
-import { ClaudeProvider } from "../providers/ClaudeProvider.js";
-import { GeminiProvider } from "../providers/GeminiProvider.js";
-import { OpenAIProvider } from "../providers/OpenAIProvider.js";
+import type { HandlerResponse, WebhookEvent } from '../../shared/utils.js';
+import { createResponse } from '../../shared/utils.js';
+import { GitHubPRAdapter } from '../adapters/github/GitHubPRAdapter.js';
+import { GitHubPushAdapter } from '../adapters/github/GitHubPushAdapter.js';
+import { GitLabMRAdapter } from '../adapters/gitlab/GitLabMRAdapter.js';
+import { AIAgentHandler } from '../base/AIAgentHandler.js';
+import type { AIAgentConfig, AICommand } from '../base/types.js';
+import { ClaudeProvider } from '../providers/ClaudeProvider.js';
+import { GeminiProvider } from '../providers/GeminiProvider.js';
+import { OpenAIProvider } from '../providers/OpenAIProvider.js';
 
 /**
  * AI-powered Security Agent
@@ -33,13 +33,13 @@ export class SecurityAgent extends AIAgentHandler {
     // Initialize AI provider based on config
     let provider: ClaudeProvider | OpenAIProvider | GeminiProvider;
     switch (config.provider.type) {
-      case "claude":
+      case 'claude':
         provider = new ClaudeProvider(config.provider.config);
         break;
-      case "openai":
+      case 'openai':
         provider = new OpenAIProvider(config.provider.config);
         break;
-      case "gemini":
+      case 'gemini':
         provider = new GeminiProvider(config.provider.config);
         break;
       default: {
@@ -51,9 +51,9 @@ export class SecurityAgent extends AIAgentHandler {
     super(config, provider);
 
     // Register adapters for different platforms
-    this.registerAdapter("github", "pull_request", new GitHubPRAdapter());
-    this.registerAdapter("github", "push", new GitHubPushAdapter());
-    this.registerAdapter("gitlab", "merge_request", new GitLabMRAdapter());
+    this.registerAdapter('github', 'pull_request', new GitHubPRAdapter());
+    this.registerAdapter('github', 'push', new GitHubPushAdapter());
+    this.registerAdapter('gitlab', 'merge_request', new GitLabMRAdapter());
   }
 
   /**
@@ -61,15 +61,15 @@ export class SecurityAgent extends AIAgentHandler {
    */
   protected initializeCommands(): void {
     // Comprehensive security scan
-    this.registerCommand("security-scan", {
-      name: "security-scan",
-      description: "Comprehensive security analysis of code changes",
-      usage: "/security-scan [severity]",
+    this.registerCommand('security-scan', {
+      name: 'security-scan',
+      description: 'Comprehensive security analysis of code changes',
+      usage: '/security-scan [severity]',
       examples: [
-        "/security-scan",
-        "/security-scan critical",
-        "/security-scan all",
-        "/security-scan compliance",
+        '/security-scan',
+        '/security-scan critical',
+        '/security-scan all',
+        '/security-scan compliance',
       ],
       requiresArgs: false,
       prompt: `Perform a comprehensive security analysis of the code changes. Examine for:
@@ -130,15 +130,15 @@ Prioritize findings by risk and business impact.`,
     });
 
     // Specific vulnerability detection
-    this.registerCommand("vulnerability-check", {
-      name: "vulnerability-check",
-      description: "Targeted vulnerability detection for specific security issues",
-      usage: "/vulnerability-check [type]",
+    this.registerCommand('vulnerability-check', {
+      name: 'vulnerability-check',
+      description: 'Targeted vulnerability detection for specific security issues',
+      usage: '/vulnerability-check [type]',
       examples: [
-        "/vulnerability-check",
-        "/vulnerability-check injection",
-        "/vulnerability-check xss",
-        "/vulnerability-check auth",
+        '/vulnerability-check',
+        '/vulnerability-check injection',
+        '/vulnerability-check xss',
+        '/vulnerability-check auth',
       ],
       requiresArgs: false,
       prompt: `Focus on detecting specific vulnerabilities in the code changes. Analyze:
@@ -187,15 +187,15 @@ Provide detailed technical analysis with:
     });
 
     // Dependency security audit
-    this.registerCommand("dependency-audit", {
-      name: "dependency-audit",
-      description: "Security audit of third-party dependencies",
-      usage: "/dependency-audit [scope]",
+    this.registerCommand('dependency-audit', {
+      name: 'dependency-audit',
+      description: 'Security audit of third-party dependencies',
+      usage: '/dependency-audit [scope]',
       examples: [
-        "/dependency-audit",
-        "/dependency-audit direct",
-        "/dependency-audit transitive",
-        "/dependency-audit outdated",
+        '/dependency-audit',
+        '/dependency-audit direct',
+        '/dependency-audit transitive',
+        '/dependency-audit outdated',
       ],
       requiresArgs: false,
       prompt: `Perform a security audit of third-party dependencies in the code changes. Analyze:
@@ -245,11 +245,11 @@ For each dependency issue:
     });
 
     // Authentication and authorization review
-    this.registerCommand("auth-review", {
-      name: "auth-review",
-      description: "Authentication and authorization security review",
-      usage: "/auth-review [focus]",
-      examples: ["/auth-review", "/auth-review oauth", "/auth-review jwt", "/auth-review rbac"],
+    this.registerCommand('auth-review', {
+      name: 'auth-review',
+      description: 'Authentication and authorization security review',
+      usage: '/auth-review [focus]',
+      examples: ['/auth-review', '/auth-review oauth', '/auth-review jwt', '/auth-review rbac'],
       requiresArgs: false,
       prompt: `Review authentication and authorization mechanisms in the code changes. Focus on:
 
@@ -301,15 +301,15 @@ Analyze for common authentication/authorization anti-patterns:
     });
 
     // Data privacy and protection analysis
-    this.registerCommand("data-privacy", {
-      name: "data-privacy",
-      description: "Data protection and privacy compliance analysis",
-      usage: "/data-privacy [regulation]",
+    this.registerCommand('data-privacy', {
+      name: 'data-privacy',
+      description: 'Data protection and privacy compliance analysis',
+      usage: '/data-privacy [regulation]',
       examples: [
-        "/data-privacy",
-        "/data-privacy gdpr",
-        "/data-privacy ccpa",
-        "/data-privacy hipaa",
+        '/data-privacy',
+        '/data-privacy gdpr',
+        '/data-privacy ccpa',
+        '/data-privacy hipaa',
       ],
       requiresArgs: false,
       prompt: `Analyze data protection and privacy aspects of the code changes for compliance with regulations like GDPR, CCPA, HIPAA. Review:
@@ -358,15 +358,15 @@ Identify potential privacy violations and provide specific recommendations for r
     });
 
     // Security configuration review
-    this.registerCommand("config-security", {
-      name: "config-security",
-      description: "Security configuration and infrastructure review",
-      usage: "/config-security [component]",
+    this.registerCommand('config-security', {
+      name: 'config-security',
+      description: 'Security configuration and infrastructure review',
+      usage: '/config-security [component]',
       examples: [
-        "/config-security",
-        "/config-security headers",
-        "/config-security cors",
-        "/config-security tls",
+        '/config-security',
+        '/config-security headers',
+        '/config-security cors',
+        '/config-security tls',
       ],
       requiresArgs: false,
       prompt: `Review security configurations and infrastructure settings in the code changes. Analyze:
@@ -425,13 +425,13 @@ Provide specific configuration recommendations and potential security risks of c
    */
   protected async processEvent(
     eventData: any,
-    originalEvent: WebhookEvent,
+    originalEvent: WebhookEvent
   ): Promise<HandlerResponse> {
     // Check if automatic security scanning is enabled
     if (!this.config.behavior?.autoResponse) {
-      return createResponse(true, "Automatic security scanning disabled", {
+      return createResponse(true, 'Automatic security scanning disabled', {
         skipped: true,
-        reason: "auto_response_disabled",
+        reason: 'auto_response_disabled',
       });
     }
 
@@ -439,17 +439,17 @@ Provide specific configuration recommendations and potential security risks of c
     const shouldAutoScan = this.shouldPerformSecurityScan(eventData);
 
     if (!shouldAutoScan) {
-      return createResponse(true, "Event does not require automatic security scan", {
+      return createResponse(true, 'Event does not require automatic security scan', {
         skipped: true,
-        reason: "no_security_scan_needed",
+        reason: 'no_security_scan_needed',
       });
     }
 
     try {
       // Perform automatic security scan
-      const scanCommand = this.commands.get("security-scan")!;
+      const scanCommand = this.commands.get('security-scan')!;
       const aiContext = {
-        command: "security-scan",
+        command: 'security-scan',
         args: [],
         eventData,
         originalEvent,
@@ -468,12 +468,12 @@ Provide specific configuration recommendations and potential security risks of c
         actionResults = await this.executeActions(aiResponse.actions, eventData, originalEvent);
       }
 
-      return createResponse(true, "Automatic security scan completed", {
+      return createResponse(true, 'Automatic security scan completed', {
         securityScan: aiResponse.data,
         actions: actionResults,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return createResponse(false, `Automatic security scan error: ${errorMessage}`);
     }
   }
@@ -485,7 +485,7 @@ Provide specific configuration recommendations and potential security risks of c
     // Scan all PRs to protected branches
     if (
       eventData.pullRequest?.targetBranch &&
-      ["main", "master", "develop", "production"].includes(eventData.pullRequest.targetBranch)
+      ['main', 'master', 'develop', 'production'].includes(eventData.pullRequest.targetBranch)
     ) {
       return true;
     }
@@ -508,34 +508,34 @@ Provide specific configuration recommendations and potential security risks of c
    */
   private hasSecurityRelevantChanges(eventData: any): boolean {
     const securityKeywords = [
-      "auth",
-      "security",
-      "password",
-      "token",
-      "jwt",
-      "oauth",
-      "encrypt",
-      "decrypt",
-      "hash",
-      "crypto",
-      "ssl",
-      "tls",
-      "permission",
-      "role",
-      "access",
-      "privilege",
-      "cors",
-      "csrf",
-      "xss",
-      "injection",
-      "vulnerability",
-      "cve",
+      'auth',
+      'security',
+      'password',
+      'token',
+      'jwt',
+      'oauth',
+      'encrypt',
+      'decrypt',
+      'hash',
+      'crypto',
+      'ssl',
+      'tls',
+      'permission',
+      'role',
+      'access',
+      'privilege',
+      'cors',
+      'csrf',
+      'xss',
+      'injection',
+      'vulnerability',
+      'cve',
     ];
 
     const searchText =
-      `${eventData.pullRequest?.title} ${eventData.pullRequest?.body} ${eventData.push?.commits?.map((c: any) => c.message).join(" ") || ""}`.toLowerCase();
+      `${eventData.pullRequest?.title} ${eventData.pullRequest?.body} ${eventData.push?.commits?.map((c: any) => c.message).join(' ') || ''}`.toLowerCase();
 
-    return securityKeywords.some((keyword) => searchText.includes(keyword));
+    return securityKeywords.some(keyword => searchText.includes(keyword));
   }
 
   /**
@@ -544,19 +544,19 @@ Provide specific configuration recommendations and potential security risks of c
   protected async executeAction(
     action: any,
     eventData: any,
-    originalEvent: WebhookEvent,
+    originalEvent: WebhookEvent
   ): Promise<any> {
     switch (action.type) {
-      case "comment":
+      case 'comment':
         return await this.postSecurityComment(action.data, eventData, originalEvent);
 
-      case "label":
+      case 'label':
         return await this.addSecurityLabels(action.data, eventData, originalEvent);
 
-      case "issue":
+      case 'issue':
         return await this.createSecurityIssue(action.data, eventData, originalEvent);
 
-      case "webhook":
+      case 'webhook':
         return await this.triggerSecurityWebhook(action.data, eventData, originalEvent);
 
       default:
@@ -570,13 +570,13 @@ Provide specific configuration recommendations and potential security risks of c
   private async postSecurityComment(
     data: { body: string },
     eventData: any,
-    originalEvent: WebhookEvent,
+    originalEvent: WebhookEvent
   ): Promise<any> {
     await this.logActivity({
-      type: "ai.agent.action.comment",
+      type: 'ai.agent.action.comment',
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: "security_comment",
+      action: 'security_comment',
       target: eventData.pullRequest
         ? `PR #${eventData.pullRequest.number}`
         : `Push to ${eventData.push?.branch}`,
@@ -584,10 +584,10 @@ Provide specific configuration recommendations and potential security risks of c
     });
 
     return {
-      action: "comment",
-      status: "success",
-      type: "security_analysis",
-      message: "Security analysis comment posted successfully",
+      action: 'comment',
+      status: 'success',
+      type: 'security_analysis',
+      message: 'Security analysis comment posted successfully',
       preview: data.body.substring(0, 100),
     };
   }
@@ -598,12 +598,12 @@ Provide specific configuration recommendations and potential security risks of c
   private async addSecurityLabels(
     data: { labels: string[] },
     eventData: any,
-    originalEvent: WebhookEvent,
+    originalEvent: WebhookEvent
   ): Promise<any> {
     // Ensure security labels are prefixed appropriately
-    const securityLabels = data.labels.map((label) => {
-      if (!label.startsWith("security") && !label.startsWith("vulnerability")) {
-        return label.includes("critical") || label.includes("high")
+    const securityLabels = data.labels.map(label => {
+      if (!label.startsWith('security') && !label.startsWith('vulnerability')) {
+        return label.includes('critical') || label.includes('high')
           ? `security:${label}`
           : `security:${label}`;
       }
@@ -611,20 +611,20 @@ Provide specific configuration recommendations and potential security risks of c
     });
 
     await this.logActivity({
-      type: "ai.agent.action.label",
+      type: 'ai.agent.action.label',
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: "security_label",
-      target: eventData.pullRequest ? `PR #${eventData.pullRequest.number}` : "Repository",
+      action: 'security_label',
+      target: eventData.pullRequest ? `PR #${eventData.pullRequest.number}` : 'Repository',
       labels: securityLabels,
     });
 
     return {
-      action: "label",
-      status: "success",
-      type: "security_labels",
+      action: 'label',
+      status: 'success',
+      type: 'security_labels',
       labels: securityLabels,
-      message: `Added security labels: ${securityLabels.join(", ")}`,
+      message: `Added security labels: ${securityLabels.join(', ')}`,
     };
   }
 
@@ -634,32 +634,32 @@ Provide specific configuration recommendations and potential security risks of c
   private async createSecurityIssue(
     data: { title: string; body: string; labels?: string[]; severity?: string },
     eventData: any,
-    originalEvent: WebhookEvent,
+    originalEvent: WebhookEvent
   ): Promise<any> {
-    const securityLabels = ["security", ...(data.labels || [])];
+    const securityLabels = ['security', ...(data.labels || [])];
 
     if (data.severity) {
       securityLabels.push(`severity:${data.severity.toLowerCase()}`);
     }
 
     await this.logActivity({
-      type: "ai.agent.action.issue",
+      type: 'ai.agent.action.issue',
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: "security_issue",
+      action: 'security_issue',
       title: data.title,
-      severity: data.severity || "unknown",
+      severity: data.severity || '',
       labels: securityLabels,
     });
 
     return {
-      action: "create_issue",
-      status: "success",
-      type: "security_vulnerability",
+      action: 'create_issue',
+      status: 'success',
+      type: 'security_vulnerability',
       title: data.title,
       severity: data.severity,
       labels: securityLabels,
-      message: "Security vulnerability issue created successfully",
+      message: 'Security vulnerability issue created successfully',
     };
   }
 
@@ -669,24 +669,24 @@ Provide specific configuration recommendations and potential security risks of c
   private async triggerSecurityWebhook(
     data: { webhookUrl: string; severity?: string; [key: string]: any },
     eventData: any,
-    originalEvent: WebhookEvent,
+    originalEvent: WebhookEvent
   ): Promise<any> {
     await this.logActivity({
-      type: "ai.agent.action.webhook",
+      type: 'ai.agent.action.webhook',
       timestamp: new Date().toISOString(),
       agentId: this.config.id,
-      action: "security_webhook",
+      action: 'security_webhook',
       webhookUrl: data.webhookUrl,
-      severity: data.severity || "unknown",
+      severity: data.severity || '',
     });
 
     return {
-      action: "webhook",
-      status: "success",
-      type: "security_alert",
+      action: 'webhook',
+      status: 'success',
+      type: 'security_alert',
       url: data.webhookUrl,
       severity: data.severity,
-      message: "Security webhook triggered successfully",
+      message: 'Security webhook triggered successfully',
     };
   }
 }

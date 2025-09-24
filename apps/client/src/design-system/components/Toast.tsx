@@ -122,7 +122,7 @@ function createProgressUpdater(
 function setupAutoDismiss(
   duration: number,
   isVisible: boolean,
-  variant: ToastProps['variant'],
+  variant: NonNullable<ToastProps['variant']> = 'info',
   showProgress: boolean,
   setProgress: (progress: number) => void,
   handleClose: () => void
@@ -172,7 +172,7 @@ function createToastHandlers(dismissible: boolean, onClose?: () => void, onClick
  * Render toast icon based on variant and custom icon
  */
 function renderToastIcon(variant: ToastProps['variant'], icon?: ReactNode, statusClasses?: string) {
-  const IconComponent = icons[variant];
+  const IconComponent = icons[variant || 'info'];
 
   return (
     <div className={cn('flex-shrink-0 mt-0.5', statusClasses)}>
@@ -235,7 +235,7 @@ function renderCloseButton(closable: boolean, handleCloseClick: (e: React.MouseE
 function renderProgressBar(
   showProgress: boolean,
   duration: number,
-  variant: ToastProps['variant'],
+  variant: NonNullable<ToastProps['variant']> = 'info',
   progress: number,
   statusDot: string
 ) {
@@ -301,7 +301,7 @@ export function Toast({
 
   if (!isVisible) return null;
 
-  const status = extendedStatusVariants[variant];
+  const status = extendedStatusVariants[variant || 'info'];
 
   const toast = (
     <div
@@ -475,7 +475,7 @@ export class ToastManager {
       ...options,
       variant: 'success',
       title,
-      description,
+      ...(description !== undefined && { description }),
     });
   }
 
@@ -484,7 +484,7 @@ export class ToastManager {
       ...options,
       variant: 'error',
       title,
-      description,
+      ...(description !== undefined && { description }),
     });
   }
 
@@ -493,7 +493,7 @@ export class ToastManager {
       ...options,
       variant: 'warning',
       title,
-      description,
+      ...(description !== undefined && { description }),
     });
   }
 
@@ -502,7 +502,7 @@ export class ToastManager {
       ...options,
       variant: 'info',
       title,
-      description,
+      ...(description !== undefined && { description }),
     });
   }
 
@@ -511,7 +511,7 @@ export class ToastManager {
       ...options,
       variant: 'loading',
       title,
-      description,
+      ...(description !== undefined && { description }),
       duration: 0, // Loading toasts don't auto-dismiss
     });
   }

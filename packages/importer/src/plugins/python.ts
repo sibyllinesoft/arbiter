@@ -100,7 +100,7 @@ export class PythonPlugin implements ImporterPlugin {
 
     const evidence: Evidence[] = [];
     const fileName = path.basename(filePath);
-    const baseId = path.relative(context?.projectRoot || '', filePath);
+    const baseId = path.relative(context?.projectRoot ?? process.cwd(), filePath);
 
     try {
       if (fileName === 'setup.py') {
@@ -228,8 +228,8 @@ export class PythonPlugin implements ImporterPlugin {
       const projectMatch = content.match(/\[project\]([\s\S]*?)(?=\n\[|\n$)/);
       const poetryMatch = content.match(/\[tool\.poetry\]([\s\S]*?)(?=\n\[|\n$)/);
 
-      let projectSection = projectMatch?.[1] || '';
-      let poetrySection = poetryMatch?.[1] || '';
+      let projectSection = projectMatch?.[1];
+      let poetrySection = poetryMatch?.[1];
 
       // Extract from [project] section (PEP 621)
       const name =
@@ -340,8 +340,8 @@ export class PythonPlugin implements ImporterPlugin {
       const packagesMatch = content.match(/\[packages\]([\s\S]*?)(?=\n\[|\n$)/);
       const devPackagesMatch = content.match(/\[dev-packages\]([\s\S]*?)(?=\n\[|\n$)/);
 
-      const dependencies = this.extractTomlDependencies(packagesMatch?.[1] || '');
-      const devDependencies = this.extractTomlDependencies(devPackagesMatch?.[1] || '');
+      const dependencies = this.extractTomlDependencies(packagesMatch?.[1]);
+      const devDependencies = this.extractTomlDependencies(devPackagesMatch?.[1]);
 
       evidence.push({
         id: baseId,
@@ -447,7 +447,12 @@ export class PythonPlugin implements ImporterPlugin {
     const result = detectArtifactType(detectionContext);
 
     // Create artifacts based on detected type
-    return this.createArtifactFromDetection(result, packageData, allEvidence);
+    return this.createArtifactFromDetection(
+      result,
+      packageData,
+      allEvidence,
+      packageEvidence.filePath
+    );
   }
 
   private async inferFromSourceOnly(
@@ -476,7 +481,8 @@ export class PythonPlugin implements ImporterPlugin {
     const result = detectArtifactType(detectionContext);
 
     // Create a generic artifact
-    const projectName = path.basename(context.projectRoot);
+    const projectName = path.basename(context.projectRoot ?? process.cwd());
+    const sourceFilePath = sourceEvidence[0]?.filePath || context.projectRoot || process.cwd();
     return this.createArtifactFromDetection(
       result,
       {
@@ -486,26 +492,28 @@ export class PythonPlugin implements ImporterPlugin {
         devDependencies: [],
         scripts: {},
       } as PythonPackageData,
-      allEvidence
+      allEvidence,
+      sourceFilePath
     );
   }
 
   private createArtifactFromDetection(
     result: any,
     packageData: PythonPackageData,
-    allEvidence: Evidence[]
+    allEvidence: Evidence[],
+    filePath: string
   ): InferredArtifact[] {
     const artifactType = this.mapCategoryToArtifactType(result.primaryType);
 
     switch (artifactType) {
       case 'binary':
-        return this.createBinaryArtifact(packageData, allEvidence);
+        return this.createBinaryArtifact(packageData, allEvidence, filePath);
       case 'service':
-        return this.createServiceArtifact(packageData, allEvidence);
+        return this.createServiceArtifact(packageData, allEvidence, filePath);
       case 'frontend':
-        return this.createFrontendArtifact(packageData, allEvidence);
+        return this.createFrontendArtifact(packageData, allEvidence, filePath);
       default:
-        return this.createModuleArtifact(packageData, allEvidence);
+        return this.createModuleArtifact(packageData, allEvidence, filePath);
     }
   }
 
@@ -699,7 +707,8 @@ export class PythonPlugin implements ImporterPlugin {
   // Artifact creation methods (simplified for brevity)
   private createBinaryArtifact(
     packageData: PythonPackageData,
-    allEvidence: Evidence[]
+    allEvidence: Evidence[],
+    filePath: string
   ): InferredArtifact[] {
     const binaryArtifact: BinaryArtifact = {
       id: `python-binary-${packageData.name}`,
@@ -708,6 +717,8 @@ export class PythonPlugin implements ImporterPlugin {
       description: packageData.description || `Python CLI tool: ${packageData.name}`,
       tags: ['python', 'cli', 'binary'],
       metadata: {
+        sourceFile: filePath,
+        root: path.dirname(filePath),
         language: 'python',
         buildSystem: 'pip',
         entryPoint: 'main.py',
@@ -720,7 +731,6 @@ export class PythonPlugin implements ImporterPlugin {
     return [
       {
         artifact: binaryArtifact,
-        confidence: this.calculateConfidence(allEvidence, 0.9),
         provenance: this.createProvenance(allEvidence),
         relationships: [],
       },
@@ -729,7 +739,8 @@ export class PythonPlugin implements ImporterPlugin {
 
   private createServiceArtifact(
     packageData: PythonPackageData,
-    allEvidence: Evidence[]
+    allEvidence: Evidence[],
+    filePath: string
   ): InferredArtifact[] {
     const serviceArtifact: ServiceArtifact = {
       id: `python-service-${packageData.name}`,
@@ -738,6 +749,8 @@ export class PythonPlugin implements ImporterPlugin {
       description: packageData.description || `Python web service: ${packageData.name}`,
       tags: ['python', 'service', 'web'],
       metadata: {
+        sourceFile: filePath,
+        root: path.dirname(filePath),
         language: 'python',
         framework: this.detectPrimaryWebFramework(allEvidence),
         port: 8000,
@@ -757,7 +770,6 @@ export class PythonPlugin implements ImporterPlugin {
     return [
       {
         artifact: serviceArtifact,
-        confidence: this.calculateConfidence(allEvidence, 0.9),
         provenance: this.createProvenance(allEvidence),
         relationships: [],
       },
@@ -766,7 +778,8 @@ export class PythonPlugin implements ImporterPlugin {
 
   private createFrontendArtifact(
     packageData: PythonPackageData,
-    allEvidence: Evidence[]
+    allEvidence: Evidence[],
+    filePath: string
   ): InferredArtifact[] {
     const frontendArtifact: FrontendArtifact = {
       id: `python-frontend-${packageData.name}`,
@@ -775,7 +788,9 @@ export class PythonPlugin implements ImporterPlugin {
       description: packageData.description || `Python frontend app: ${packageData.name}`,
       tags: ['python', 'frontend', 'webapp'],
       metadata: {
-        framework: this.detectPrimaryFrontendFramework(allEvidence) || 'unknown',
+        sourceFile: filePath,
+        root: path.dirname(filePath),
+        framework: this.detectPrimaryFrontendFramework(allEvidence),
         buildSystem: 'python',
         routes: [],
         apiDependencies: [],
@@ -786,7 +801,6 @@ export class PythonPlugin implements ImporterPlugin {
     return [
       {
         artifact: frontendArtifact,
-        confidence: this.calculateConfidence(allEvidence, 0.8),
         provenance: this.createProvenance(allEvidence),
         relationships: [],
       },
@@ -795,7 +809,8 @@ export class PythonPlugin implements ImporterPlugin {
 
   private createModuleArtifact(
     packageData: PythonPackageData,
-    allEvidence: Evidence[]
+    allEvidence: Evidence[],
+    filePath: string
   ): InferredArtifact[] {
     const moduleArtifact: ModuleArtifact = {
       id: `python-module-${packageData.name}`,
@@ -804,6 +819,8 @@ export class PythonPlugin implements ImporterPlugin {
       description: packageData.description || `Python module: ${packageData.name}`,
       tags: ['python', 'module'],
       metadata: {
+        sourceFile: filePath,
+        root: path.dirname(filePath),
         language: 'python',
         packageManager: 'pip',
         publicApi: [],
@@ -815,7 +832,6 @@ export class PythonPlugin implements ImporterPlugin {
     return [
       {
         artifact: moduleArtifact,
-        confidence: this.calculateConfidence(allEvidence, 0.8),
         provenance: this.createProvenance(allEvidence),
         relationships: [],
       },
@@ -845,13 +861,15 @@ export class PythonPlugin implements ImporterPlugin {
     return {};
   }
 
-  private extractTomlField(content: string, field: string): string | undefined {
+  private extractTomlField(content: string | undefined, field: string): string | undefined {
+    if (!content) return undefined;
     const regex = new RegExp(`${field}\\s*=\\s*['"](.*?)['"]`);
     const match = content.match(regex);
     return match?.[1];
   }
 
-  private extractTomlArray(content: string, field: string): string[] {
+  private extractTomlArray(content: string | undefined, field: string): string[] {
+    if (!content) return [];
     const regex = new RegExp(`${field}\\s*=\\s*\\[(.*?)\\]`, 's');
     const match = content.match(regex);
     if (!match) return [];
@@ -862,12 +880,14 @@ export class PythonPlugin implements ImporterPlugin {
       .filter(item => item.length > 0);
   }
 
-  private extractTomlTable(content: string, field: string): Record<string, string> {
+  private extractTomlTable(content: string | undefined, field: string): Record<string, string> {
+    if (!content) return {};
     // Simplified table parsing
     return {};
   }
 
-  private extractTomlDependencies(content: string): string[] {
+  private extractTomlDependencies(content: string | undefined): string[] {
+    if (!content) return [];
     const dependencies: string[] = [];
     const lines = content.split('\n');
 

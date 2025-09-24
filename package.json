@@ -13,8 +13,9 @@
     "arbiter": "./arbiter-cli"
   },
   "scripts": {
-    "dev": "NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev",
+    "dev": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\"",
     "dev:workbench": "bun run --cwd apps/client dev",
+    "dev:full": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",
     "start": "bun run --cwd apps/api start",
     "build": "bun run build:all",
     "ci": "bun scripts/local-ci.ts",
@@ -64,6 +65,7 @@
     "@types/node": "^20.11.0",
     "@types/ws": "^8.5.10",
     "bun-types": "^1.2.21",
+    "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.6",
     "prettier": "^3.6.2",

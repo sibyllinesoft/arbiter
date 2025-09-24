@@ -8,18 +8,11 @@ import type { Meta, StoryObj } from '@storybook/react';
 import {
   Activity,
   AlertTriangle,
+  ArrowRight,
   CheckCircle,
-  Clock,
   Code,
   Database,
   FileText,
-  GitBranch,
-  Globe,
-  Info,
-  Shield,
-  Terminal,
-  Users,
-  XCircle,
 } from 'lucide-react';
 import { storybookData } from '../test/storybook-data';
 import { borderRadius, colors, shadows, spacing, typography } from './tokens';
@@ -353,7 +346,7 @@ export const ProfessionalUsageExample: Story = {
                   lineHeight: typography.fontSize.xl[1].lineHeight,
                 }}
               >
-                {storybookData.projects[0].name}
+                {storybookData.projects[0]?.name || 'Project Name'}
               </h1>
               <p
                 style={{

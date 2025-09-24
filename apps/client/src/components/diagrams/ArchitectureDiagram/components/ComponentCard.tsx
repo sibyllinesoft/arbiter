@@ -30,6 +30,7 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
             : componentType === 'database'
               ? LAYER_COLORS.data
               : LAYER_COLORS.external;
+  console.log(data);
 
   return (
     <div
@@ -44,6 +45,18 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       <h4 className="font-medium text-sm mb-1 relative" style={{ color: colors.text }}>
         {data.name || name}
       </h4>
+
+      {/* Component Description */}
+      {(data.description || data.metadata?.description) && (
+        <div
+          className="text-xs text-gray-600 mb-2 line-clamp-2"
+          style={{ color: colors.text, opacity: 0.8 }}
+        >
+          {(data.description || data.metadata?.description || '').length > 100
+            ? `${(data.description || data.metadata?.description).substring(0, 100)}...`
+            : data.description || data.metadata?.description}
+        </div>
+      )}
 
       {/* Component Metadata */}
       <div className="space-y-1 text-xs relative" style={{ color: colors.text, opacity: 0.9 }}>

@@ -81,11 +81,11 @@ export class DockerPlugin implements ImporterPlugin {
   private parseDockerfile(content: string, filePath: string, projectRoot: string): Evidence[] {
     const evidence: Evidence[] = [];
 
-    const name = path.basename(path.dirname(filePath)) || 'docker-service';
+    const name = path.basename(path.dirname(filePath)) || 'docker-build';
     const data: DockerData = {
       name,
-      description: 'Docker service',
-      type: 'service',
+      description: 'Docker build configuration',
+      type: 'dockerfile',
       filePath,
     };
 
@@ -149,26 +149,27 @@ export class DockerPlugin implements ImporterPlugin {
     // Filter Docker evidence
     const dockerEvidence = evidence.filter(e => e.source === this.name() && e.type === 'config');
 
+    const hasCompose = dockerEvidence.some(e => e.filePath.toLowerCase().includes('compose'));
+
     for (const ev of dockerEvidence) {
       const data = ev.data as unknown as DockerData;
+      if (data.type !== 'service' && (hasCompose || data.type !== 'dockerfile')) continue;
+
+      const artifactType = data.type === 'dockerfile' ? 'service' : data.type;
       const artifact = {
-        id: `docker-${data.type}-${data.name}`,
-        type: data.type as any,
+        id: `docker-${artifactType}-${data.name}`,
+        type: artifactType as any,
         name: data.name,
         description: data.description,
-        tags: ['docker', data.type],
+        tags: ['docker', artifactType],
         metadata: {
           sourceFile: data.filePath,
+          root: path.dirname(data.filePath),
         },
       };
 
       artifacts.push({
         artifact,
-        confidence: {
-          overall: 0.9,
-          breakdown: { evidence: 0.95 },
-          factors: [{ description: 'Docker config analysis', weight: 0.95, source: 'docker' }],
-        },
         provenance: {
           evidence: [ev.id],
           plugins: ['docker'],

@@ -33,6 +33,7 @@ export const colors = {
   semantic: {
     // Success - Professional green scale
     success: {
+      800: '#0C2E28',
       700: '#0F3B33',
       600: '#155246',
       500: '#1D6A5B',
@@ -40,10 +41,12 @@ export const colors = {
       300: '#45A190',
       200: '#79C0B0',
       100: '#B2DDD1',
+      50: '#E6F4F1',
     },
 
     // Warning - Professional gold scale
     warning: {
+      800: '#3D2E0C',
       700: '#4A3810',
       600: '#5D4614',
       500: '#725718',
@@ -51,6 +54,7 @@ export const colors = {
       300: '#A6842A',
       200: '#C8A656',
       100: '#E0C98D',
+      50: '#FEF8E6',
     },
 
     // Error - Professional red scale

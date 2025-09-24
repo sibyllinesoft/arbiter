@@ -168,7 +168,6 @@ volumes:
       console.log(`  Port: ${metadata.port}`);
     }
     console.log(`  Language: ${metadata.language}`);
-    console.log(`  Confidence: ${artifact.confidence.overall.toFixed(2)}`);
     console.log('');
   }
 }

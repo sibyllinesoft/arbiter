@@ -24,7 +24,7 @@ interface DetectionData {
 // Simplified detection logic for testing
 function detectPackageType(pkg: PackageDetectionData): string {
   const { packageJson } = pkg;
-  const name = packageJson.name || 'unknown';
+  const name = packageJson.name;
 
   // Merge all dependencies for checking
   const depsObj = packageJson as any;

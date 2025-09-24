@@ -58,7 +58,7 @@ export interface ImporterPlugin {
  */
 export interface ParseContext {
   /** Root directory of the project being analyzed */
-  projectRoot: string;
+  projectRoot?: string;
   /** File index containing information about all files in the project */
   fileIndex: FileIndex;
   /** Configuration options for parsing */
@@ -72,7 +72,7 @@ export interface ParseContext {
  */
 export interface InferenceContext {
   /** Root directory of the project being analyzed */
-  projectRoot: string;
+  projectRoot?: string;
   /** Complete file index of the project */
   fileIndex: FileIndex;
   /** All evidence collected from all plugins */
@@ -143,7 +143,8 @@ export type ArtifactType =
   | 'proxy' // Load balancers, reverse proxies
   | 'monitor' // Monitoring, logging, alerting
   | 'auth' // Authentication, authorization services
-  | 'docs'; // Documentation, specifications
+  | 'docs' // Documentation, specifications
+  | 'infrastructure'; // Infrastructure as code
 
 /**
  * Base artifact interface
@@ -172,6 +173,7 @@ export interface ServiceArtifact extends BaseArtifact {
   type: 'service';
   metadata: {
     sourceFile?: string;
+    root?: string;
     /** Programming language */
     language: string;
     /** Framework used (e.g., 'express', 'fastapi', 'spring') */
@@ -203,6 +205,8 @@ export interface ServiceArtifact extends BaseArtifact {
 export interface BinaryArtifact extends BaseArtifact {
   type: 'binary';
   metadata: {
+    sourceFile?: string;
+    root?: string;
     /** Programming language */
     language: string;
     /** Build system (e.g., 'maven', 'gradle', 'npm') */
@@ -249,6 +253,8 @@ export interface CliArtifact extends BaseArtifact {
 export interface ModuleArtifact extends BaseArtifact {
   type: 'module';
   metadata: {
+    sourceFile?: string;
+    root?: string;
     /** Programming language */
     language: string;
     /** Framework used (e.g., 'react', 'vue', 'lodash') */
@@ -312,8 +318,10 @@ export interface SchemaArtifact extends BaseArtifact {
 export interface FrontendArtifact extends BaseArtifact {
   type: 'frontend';
   metadata: {
+    sourceFile?: string;
+    root?: string;
     /** Frontend framework (e.g., 'react', 'vue', 'angular') */
-    framework: string;
+    framework?: string;
     /** Build system (e.g., 'webpack', 'vite', 'parcel') */
     buildSystem?: string;
     /** Routes defined in the application */
@@ -369,6 +377,23 @@ export interface DeploymentArtifact extends BaseArtifact {
       max?: number;
       targetCPU?: number;
     };
+  };
+}
+/**
+ * Infrastructure artifact representing IaC configurations (Kubernetes, Terraform)
+ */
+export interface InfrastructureArtifact extends BaseArtifact {
+  type: 'infrastructure';
+  metadata: {
+    sourceFile?: string;
+    /** Root directory containing the IaC files */
+    root: string;
+    /** List of all files in this infrastructure group */
+    files: string[];
+    /** Type of infrastructure: 'kubernetes' or 'terraform' */
+    kind: 'kubernetes' | 'terraform';
+    /** Detected resources/deployments */
+    resources?: Array<{ kind: string; name: string; apiVersion?: string }>;
   };
 }
 
@@ -654,8 +679,6 @@ export interface Provenance {
 export interface InferredArtifact {
   /** The inferred artifact */
   artifact: BaseArtifact;
-  /** Confidence in this inference */
-  confidence: ConfidenceScore;
   /** Provenance information */
   provenance: Provenance;
   /** Relationships to other artifacts */
