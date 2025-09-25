@@ -6,7 +6,7 @@ export interface ArchitectureDiagramProps {
 export interface Component {
   id: string;
   name: string;
-  type: 'frontend' | 'backend' | 'cli' | 'data' | 'external';
+  type: 'frontend' | 'backend' | 'tool' | 'data' | 'external';
   description: string;
   technologies: string[];
   position: { x: number; y: number };

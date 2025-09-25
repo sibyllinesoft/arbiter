@@ -5,6 +5,8 @@
 
 export type { BreadcrumbItem, BreadcrumbsProps } from './components/Breadcrumbs';
 export { breadcrumbIcons, default as Breadcrumbs } from './components/Breadcrumbs';
+export type { BadgeProps } from './components/Badge/Badge';
+export { default as Badge } from './components/Badge/Badge';
 export type { ButtonProps } from './components/Button';
 // Components
 export { default as Button } from './components/Button';

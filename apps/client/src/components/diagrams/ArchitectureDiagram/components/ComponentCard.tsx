@@ -13,9 +13,9 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
   let componentType =
     data.type || data.metadata?.type || (name.includes('@') ? 'module' : 'service');
 
-  // Standardize binary to cli
+  // Standardize binary to tool
   if (componentType === 'binary') {
-    componentType = 'cli';
+    componentType = 'tool';
   }
 
   const colors: (typeof LAYER_COLORS)[keyof typeof LAYER_COLORS] =
@@ -23,8 +23,8 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       ? LAYER_COLORS.service
       : componentType === 'frontend'
         ? LAYER_COLORS.frontend
-        : componentType === 'cli'
-          ? LAYER_COLORS.cli
+        : componentType === 'tool'
+          ? LAYER_COLORS.tool
           : componentType === 'module'
             ? LAYER_COLORS.library
             : componentType === 'database'

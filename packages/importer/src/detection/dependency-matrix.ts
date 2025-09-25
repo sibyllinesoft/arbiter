@@ -18,10 +18,10 @@ export interface DependencyPattern {
 }
 
 export interface CategoryMatrix {
-  cli: DependencyPattern[];
+  tool: DependencyPattern[];
   web_service: DependencyPattern[];
   frontend: DependencyPattern[];
-  module: DependencyPattern[];
+  library: DependencyPattern[];
   desktop_app: DependencyPattern[];
   data_processing: DependencyPattern[];
   testing: DependencyPattern[];
@@ -39,7 +39,7 @@ export interface LanguageMatrix {
  */
 export const DEPENDENCY_MATRIX: LanguageMatrix = {
   javascript: {
-    cli: [
+    tool: [
       { name: 'commander', weight: 0.9, context: 'Command-line argument parsing' },
       { name: 'yargs', weight: 0.9, context: 'Command-line argument parsing' },
       { name: 'inquirer', weight: 0.8, context: 'Interactive CLI prompts' },
@@ -109,7 +109,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'alpine.js', weight: 0.6, context: 'Lightweight JavaScript framework' },
       { name: 'next', weight: 0.8, context: 'React framework', aliases: ['next.js'] },
     ],
-    module: [
+    library: [
       { name: 'lodash', weight: 0.7, context: 'Utility library' },
       { name: 'axios', weight: 0.6, context: 'HTTP client' },
       { name: 'moment', weight: 0.6, context: 'Date manipulation' },
@@ -216,7 +216,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
   },
 
   typescript: {
-    cli: [
+    tool: [
       { name: 'commander', weight: 0.9, context: 'Command-line argument parsing' },
       { name: 'yargs', weight: 0.9, context: 'Command-line argument parsing' },
       { name: 'inquirer', weight: 0.8, context: 'Interactive CLI prompts' },
@@ -253,7 +253,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'gatsby', weight: 0.7, context: 'Static site generator' },
       { name: 'lit', weight: 0.7, context: 'Web components library' },
     ],
-    module: [
+    library: [
       { name: 'zod', weight: 0.8, context: 'Schema validation' },
       { name: 'joi', weight: 0.7, context: 'Schema validation' },
       { name: 'class-validator', weight: 0.7, context: 'Decorator-based validation' },
@@ -340,7 +340,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
   },
 
   python: {
-    cli: [
+    tool: [
       { name: 'click', weight: 0.9, context: 'Command-line interface creation kit' },
       { name: 'argparse', weight: 0.8, context: 'Argument parsing (built-in)' },
       { name: 'typer', weight: 0.9, context: 'Modern CLI framework' },
@@ -376,7 +376,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'nicegui', weight: 0.6, context: 'Modern web UI framework' },
       { name: 'reflex', weight: 0.7, context: 'Pure Python web framework' },
     ],
-    module: [
+    library: [
       { name: 'requests', weight: 0.7, context: 'HTTP library' },
       { name: 'numpy', weight: 0.7, context: 'Numerical computing' },
       { name: 'pandas', weight: 0.7, context: 'Data analysis' },
@@ -463,7 +463,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
   },
 
   rust: {
-    cli: [
+    tool: [
       { name: 'clap', weight: 0.9, context: 'Command line argument parser' },
       { name: 'structopt', weight: 0.8, context: 'Derive-based CLI (deprecated, use clap)' },
       { name: 'argh', weight: 0.7, context: 'Derive-based CLI' },
@@ -499,7 +499,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'stdweb', weight: 0.5, context: 'Web platform (deprecated)' },
       { name: 'gloo', weight: 0.6, context: 'Web development utilities' },
     ],
-    module: [
+    library: [
       { name: 'serde', weight: 0.8, context: 'Serialization framework' },
       { name: 'tokio', weight: 0.7, context: 'Async runtime' },
       { name: 'reqwest', weight: 0.7, context: 'HTTP client' },
@@ -586,7 +586,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
   },
 
   go: {
-    cli: [
+    tool: [
       { name: 'cobra', weight: 0.9, context: 'CLI library', aliases: ['github.com/spf13/cobra'] },
       { name: 'cli', weight: 0.8, context: 'CLI library', aliases: ['github.com/urfave/cli'] },
       { name: 'flag', weight: 0.7, context: 'Command-line flag parsing (built-in)' },
@@ -717,7 +717,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       },
       { name: 'tview', weight: 0.4, context: 'Terminal UI', aliases: ['github.com/rivo/tview'] },
     ],
-    module: [
+    library: [
       {
         name: 'logrus',
         weight: 0.7,
@@ -1024,7 +1024,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
   },
 
   csharp: {
-    cli: [
+    tool: [
       { name: 'CommandLineParser', weight: 0.8, context: 'Command line parsing' },
       { name: 'System.CommandLine', weight: 0.9, context: "Microsoft's CLI library" },
       { name: 'McMaster.Extensions.CommandLineUtils', weight: 0.7, context: 'CLI utilities' },
@@ -1065,7 +1065,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'ElectronNET', weight: 0.6, context: 'Electron wrapper for .NET' },
       { name: 'Photino', weight: 0.5, context: 'Lightweight desktop framework' },
     ],
-    module: [
+    library: [
       { name: 'Newtonsoft.Json', weight: 0.8, context: 'JSON serialization' },
       { name: 'System.Text.Json', weight: 0.7, context: 'JSON serialization (built-in)' },
       { name: 'RestSharp', weight: 0.6, context: 'REST client library' },
@@ -1189,8 +1189,8 @@ export function calculateCategoryConfidence(
     const isMatch = dependencies.some(dep => {
       if (dep === pattern.name) return true;
       if (pattern.aliases?.some(alias => dep === alias)) return true;
-      // Also check for partial matches (e.g., "@nestjs/core" contains "nestjs")
-      if (dep.includes(pattern.name) || pattern.name.includes(dep)) return true;
+      // Partial matches help with scoped packages like "@nestjs/core"
+      if (dep.includes(pattern.name)) return true;
       return false;
     });
 
@@ -1223,7 +1223,7 @@ export function determineMostLikelyCategory(
 ): { category: keyof CategoryMatrix; confidence: number } {
   const languageMatrix = DEPENDENCY_MATRIX[language];
   if (!languageMatrix) {
-    return { category: 'module', confidence: 0 };
+    return { category: 'library', confidence: 0 };
   }
 
   const scores: Array<{ category: keyof CategoryMatrix; confidence: number }> = [];
@@ -1238,9 +1238,9 @@ export function determineMostLikelyCategory(
 
   const best = scores[0];
 
-  // If no clear winner, default to module with low confidence
+  // If no clear winner, default to library with low confidence
   if (best.confidence === 0) {
-    return { category: 'module', confidence: 0.1 };
+    return { category: 'library', confidence: 0.1 };
   }
 
   return best;
@@ -1288,7 +1288,7 @@ export function getCategoryExplanation(
     const matchingDeps = dependencies.filter(dep => {
       if (dep === pattern.name) return true;
       if (pattern.aliases?.some(alias => dep === alias)) return true;
-      if (dep.includes(pattern.name) || pattern.name.includes(dep)) return true;
+      if (dep.includes(pattern.name)) return true;
       return false;
     });
 

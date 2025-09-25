@@ -47,14 +47,14 @@ describe('CLI Detection Improvements Demo', () => {
       const result = detectArtifactType(context);
 
       // With the new detection logic, this should be correctly identified as CLI
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.7);
 
       // Should have multiple factors contributing to CLI detection
-      expect(result.factors.dependencyFactors.some(f => f.category === 'cli')).toBe(true);
-      expect(result.factors.configFactors.some(f => f.category === 'cli')).toBe(true);
-      expect(result.factors.scriptFactors.some(f => f.category === 'cli')).toBe(true);
-      expect(result.factors.sourceFactors?.some(f => f.category === 'cli')).toBe(true);
+      expect(result.factors.dependencyFactors.some(f => f.category === 'tool')).toBe(true);
+      expect(result.factors.configFactors.some(f => f.category === 'tool')).toBe(true);
+      expect(result.factors.scriptFactors.some(f => f.category === 'tool')).toBe(true);
+      expect(result.factors.sourceFactors?.some(f => f.category === 'tool')).toBe(true);
     });
   });
 
@@ -71,7 +71,7 @@ describe('CLI Detection Improvements Demo', () => {
 
       languages.forEach(({ lang, deps }) => {
         const result = determineMostLikelyCategory(deps, lang);
-        expect(result.category).toBe('cli');
+        expect(result.category).toBe('tool');
         expect(result.confidence).toBeGreaterThan(0.5);
       });
     });
@@ -81,9 +81,9 @@ describe('CLI Detection Improvements Demo', () => {
     it('should distinguish between CLI, web service, and library accurately', () => {
       const testCases = [
         {
-          type: 'cli',
+          type: 'tool',
           deps: ['commander', 'chalk', 'inquirer'],
-          expectedType: 'cli',
+          expectedType: 'tool',
         },
         {
           type: 'web service',
@@ -126,11 +126,11 @@ describe('CLI Detection Improvements Demo', () => {
       const result = detectArtifactType(ambiguousContext);
 
       // Should detect one as primary and list the other as alternative
-      expect(['cli', 'web_service']).toContain(result.primaryType);
+      expect(['tool', 'web_service']).toContain(result.primaryType);
       expect(result.alternativeTypes.length).toBeGreaterThan(0);
 
       const allTypes = [result.primaryType, ...result.alternativeTypes.map(alt => alt.type)];
-      expect(allTypes).toContain('cli');
+      expect(allTypes).toContain('tool');
       expect(allTypes).toContain('web_service');
     });
   });
@@ -153,7 +153,7 @@ describe('CLI Detection Improvements Demo', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.explanation.length).toBeGreaterThan(1);
 
       // Should mention dependencies in explanation
@@ -194,7 +194,7 @@ describe('CLI Detection Improvements Demo', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
 
       // Should have evidence from multiple factor types
       expect(result.factors.dependencyFactors.length).toBeGreaterThan(0);

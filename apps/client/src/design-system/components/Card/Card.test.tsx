@@ -1,4 +1,4 @@
-import { render, screen } from '@/test/utils';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -418,7 +418,7 @@ describe('Card', () => {
 
       const card = screen.getByTestId('keyboard-card');
       card.focus();
-      await user.keyboard(' ');
+      await user.keyboard('{Space}');
 
       expect(handleClick).toHaveBeenCalledTimes(1);
     });

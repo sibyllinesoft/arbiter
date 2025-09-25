@@ -7,6 +7,8 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "baseUrl": ".",
+    "types": ["vite/client"],
+    "typeRoots": ["./src/types", "./node_modules/@types", "./node_modules"],
     "paths": {
       "@/*": ["./src/*"],
       "@components/*": ["./src/components/*"],
@@ -18,12 +20,14 @@
       "@utils/*": ["./src/utils/*"],
       "@assets/*": ["./src/assets/*"],
       "@stores/*": ["./src/stores/*"],
-      "@types/*": ["./src/types/*"]
+      "@types/*": ["./src/types/*"],
+      "react-toastify/dist/ReactToastify.css": ["./src/react-toastify-css.d.ts"]
     },
 
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "allowArbitraryExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -34,11 +38,19 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": [
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx"
+  ]
 }

@@ -1,1 +1,2 @@
-export { default } from './StatusBadge';
+export { default, StatusBadge } from './StatusBadge';
+export type { StatusBadgeProps, StatusVariant } from './StatusBadge';

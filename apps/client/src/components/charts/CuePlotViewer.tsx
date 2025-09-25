@@ -56,8 +56,11 @@ export const CuePlotViewer: React.FC<CuePlotViewerProps> = ({
 
   // Select first plot by default
   React.useEffect(() => {
-    if (parsedPlots.length > 0 && !selectedPlot) {
-      setSelectedPlot(parsedPlots[0].name);
+    if (selectedPlot) return;
+
+    const defaultPlot = parsedPlots[0];
+    if (defaultPlot) {
+      setSelectedPlot(defaultPlot.name);
     }
   }, [parsedPlots, selectedPlot]);
 

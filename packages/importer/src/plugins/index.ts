@@ -1,12 +1,12 @@
 // Plugin index and registry for the importer
 
-import { DockerPlugin } from './docker.js';
+import { DockerPlugin } from './docker';
 import { goPlugin } from './go';
-import { KubernetesPlugin } from './kubernetes.js';
-import { NodeJSPlugin } from './nodejs.js';
+import { KubernetesPlugin } from './kubernetes';
+import { NodeJSPlugin } from './nodejs';
 import { pythonPlugin } from './python';
 import { rustPlugin } from './rust';
-import { TerraformPlugin } from './terraform.js';
+import { TerraformPlugin } from './terraform';
 
 export function getAllPlugins() {
   return [

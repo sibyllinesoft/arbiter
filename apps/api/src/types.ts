@@ -8,6 +8,14 @@ export interface Project {
   name: string;
   created_at: string;
   updated_at: string;
+  description?: string | null | undefined;
+  status?: 'active' | 'draft' | 'archived' | 'error' | undefined;
+  lastModified?: string | undefined;
+  fragmentCount?: number | undefined;
+  collaborators?: string[] | undefined;
+  starred?: boolean | undefined;
+  validationStatus?: 'valid' | 'warnings' | 'errors' | 'pending' | undefined;
+  tags?: string[] | undefined;
 }
 
 export interface Fragment {

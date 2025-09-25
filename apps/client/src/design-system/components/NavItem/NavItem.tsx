@@ -6,7 +6,7 @@
 
 import { ChevronRight, ExternalLink } from 'lucide-react';
 import React, { forwardRef, type ReactNode } from 'react';
-import { cn } from '../variants';
+import { cn } from '../../variants';
 
 export interface NavItemProps {
   /** Item content/label */

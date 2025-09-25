@@ -72,47 +72,99 @@ type AppAction =
   | { type: 'SET_LOADING_GITHUB'; payload: boolean }
   | { type: 'SET_ACTIVE_FRAGMENT'; payload: string | null };
 
-const initialState: AppState = {
-  projects: [],
-  fragments: [],
-  activeFragmentId: null,
-  isConnected: true,
-  reconnectAttempts: 0,
-  lastSync: null,
-  isValidating: false,
-  errors: [],
-  warnings: [],
-  specHash: null,
-  lastValidation: null,
-  selectedCueFile: null,
-  availableCueFiles: [],
-  unsavedChanges: new Set(),
-  editorContent: {},
-  loading: false,
-  error: null,
-  settings: {
-    showNotifications: false,
-  },
-  // UI State - persist using localStorage
-  activeTab: localStorage.getItem('arbiter:activeTab') || 'source',
-  currentView: 'dashboard',
-  gitUrl: localStorage.getItem('arbiter:gitUrl') || '',
-  modalTab: (localStorage.getItem('arbiter:modalTab') as 'git' | 'github') || 'git',
-  // GitHub Integration State
-  gitHubRepos: JSON.parse(localStorage.getItem('arbiter:githubRepos') || '[]'),
-  gitHubOrgs: JSON.parse(localStorage.getItem('arbiter:githubOrgs') || '[]'),
-  selectedRepos: new Set<number>(),
-  reposByOwner: JSON.parse(localStorage.getItem('arbiter:reposByOwner') || '{}'),
-  isLoadingGitHub: false,
-};
+const isBrowser = typeof window !== 'undefined';
+const STORAGE_KEYS = {
+  activeTab: 'arbiter:activeTab',
+  gitUrl: 'arbiter:gitUrl',
+  modalTab: 'arbiter:modalTab',
+  gitHubRepos: 'arbiter:githubRepos',
+  gitHubOrgs: 'arbiter:githubOrgs',
+  reposByOwner: 'arbiter:reposByOwner',
+} as const;
+
+function readStoredString(key: string, fallback: string): string {
+  if (!isBrowser) return fallback;
+  try {
+    return window.localStorage.getItem(key) ?? fallback;
+  } catch (error) {
+    console.warn(`Failed to read ${key} from localStorage`, error);
+    return fallback;
+  }
+}
+
+function readStoredJson<T>(key: string, fallback: T): T {
+  if (!isBrowser) return fallback;
+
+  const raw = window.localStorage.getItem(key);
+  if (!raw) return fallback;
+
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.warn(`Failed to parse ${key} from localStorage`, error);
+    try {
+      window.localStorage.removeItem(key);
+    } catch (removeError) {
+      console.warn(`Failed to remove ${key} from localStorage`, removeError);
+    }
+    return fallback;
+  }
+}
+
+function createInitialState(): AppState {
+  const modalTabRaw = readStoredString(STORAGE_KEYS.modalTab, 'git');
+  const modalTab: 'git' | 'github' = modalTabRaw === 'github' ? 'github' : 'git';
+
+  return {
+    projects: [],
+    fragments: [],
+    activeFragmentId: null,
+    isConnected: true,
+    reconnectAttempts: 0,
+    lastSync: null,
+    isValidating: false,
+    errors: [],
+    warnings: [],
+    specHash: null,
+    lastValidation: null,
+    selectedCueFile: null,
+    availableCueFiles: [],
+    unsavedChanges: new Set(),
+    editorContent: {},
+    loading: false,
+    error: null,
+    settings: {
+      showNotifications: false,
+    },
+    // UI State - persist using localStorage
+    activeTab: readStoredString(STORAGE_KEYS.activeTab, 'source'),
+    currentView: 'dashboard',
+    gitUrl: readStoredString(STORAGE_KEYS.gitUrl, ''),
+    modalTab,
+    // GitHub Integration State
+    gitHubRepos: readStoredJson<any[]>(STORAGE_KEYS.gitHubRepos, []),
+    gitHubOrgs: readStoredJson<any[]>(STORAGE_KEYS.gitHubOrgs, []),
+    selectedRepos: new Set<number>(),
+    reposByOwner: readStoredJson<Record<string, any[]>>(STORAGE_KEYS.reposByOwner, {}),
+    isLoadingGitHub: false,
+  };
+}
 
 // Persistence middleware for GitHub state
 function persistGitHubState(state: AppState): void {
+  if (!isBrowser) return;
+
   const githubStateKeys = ['gitHubRepos', 'gitHubOrgs', 'reposByOwner'] as const;
 
   githubStateKeys.forEach(key => {
     try {
-      localStorage.setItem(`arbiter:${key.toLowerCase()}`, JSON.stringify(state[key]));
+      const storageKey =
+        key === 'gitHubRepos'
+          ? STORAGE_KEYS.gitHubRepos
+          : key === 'gitHubOrgs'
+            ? STORAGE_KEYS.gitHubOrgs
+            : STORAGE_KEYS.reposByOwner;
+      window.localStorage.setItem(storageKey, JSON.stringify(state[key]));
     } catch (error) {
       console.warn(`Failed to persist ${key} to localStorage:`, error);
     }
@@ -166,17 +218,23 @@ function appReducer(state: AppState, action: AppAction): AppState {
         return { ...state, settings: { ...state.settings, ...action.payload } };
       case 'SET_ACTIVE_TAB':
         // Persist tab selection to localStorage
-        localStorage.setItem('arbiter:activeTab', action.payload);
+        if (isBrowser) {
+          window.localStorage.setItem(STORAGE_KEYS.activeTab, action.payload);
+        }
         return { ...state, activeTab: action.payload };
       case 'SET_CURRENT_VIEW':
         return { ...state, currentView: action.payload };
       case 'SET_GIT_URL':
         // Persist git URL to localStorage for convenience
-        localStorage.setItem('arbiter:gitUrl', action.payload);
+        if (isBrowser) {
+          window.localStorage.setItem(STORAGE_KEYS.gitUrl, action.payload);
+        }
         return { ...state, gitUrl: action.payload };
       case 'SET_MODAL_TAB':
         // Persist modal tab to localStorage
-        localStorage.setItem('arbiter:modalTab', action.payload);
+        if (isBrowser) {
+          window.localStorage.setItem(STORAGE_KEYS.modalTab, action.payload);
+        }
         return { ...state, modalTab: action.payload };
       case 'SET_GITHUB_REPOS':
         return { ...state, gitHubRepos: action.payload };
@@ -248,7 +306,7 @@ interface AppProviderProps {
 }
 
 export function AppProvider({ children }: AppProviderProps) {
-  const [state, dispatch] = useReducer(appReducer, initialState);
+  const [state, dispatch] = useReducer(appReducer, undefined, createInitialState);
 
   const setLoading = (loading: boolean) => dispatch({ type: 'SET_LOADING', payload: loading });
   const setError = (error: string | null) => dispatch({ type: 'SET_ERROR', payload: error });
@@ -410,3 +468,6 @@ export function useEditorContent(fragmentId: string) {
   const { state } = useApp();
   return state.editorContent[fragmentId] || '';
 }
+
+// Backwards compatibility re-export for hooks moved to ProjectContext
+export { useCurrentProject } from './ProjectContext';

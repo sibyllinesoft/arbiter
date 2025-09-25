@@ -5,8 +5,8 @@
  */
 
 import React, { type ReactNode } from 'react';
-import Button from './Button';
-import Modal from './Modal';
+import Button from '../Button';
+import Modal from '../Modal';
 
 export interface DialogAction {
   label: string;
@@ -138,7 +138,7 @@ export function Dialog({
           variant={action.variant || 'secondary'}
           onClick={action.onClick}
           disabled={action.disabled}
-          loading={action.loading}
+          loading={action.loading ?? false}
         >
           {action.label}
         </Button>
@@ -151,14 +151,14 @@ export function Dialog({
       open={open}
       onClose={onClose}
       title={title}
-      description={description}
+      {...(description !== undefined ? { description } : {})}
       variant={modalVariant}
       size="sm"
       footer={footer}
       closeOnBackdropClick={closeOnBackdropClick}
       closeOnEscape={closeOnEscape}
       showCloseButton={false}
-      className={className}
+      {...(className !== undefined ? { className } : {})}
       initialFocus="button"
     >
       {children}

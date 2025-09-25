@@ -94,13 +94,15 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       const sortedFragments = [...fragments].sort((a, b) => a.path.localeCompare(b.path));
 
       for (const fragment of sortedFragments) {
-        const parts = fragment.path.split('/').filter(Boolean);
-        let currentPath = '';
+        const parts = fragment.path
+          .split('/')
+          .filter((segment): segment is string => Boolean(segment));
+        let currentPath: string = '';
         let currentLevel = tree;
 
         for (let i = 0; i < parts.length; i++) {
-          const part = parts[i];
-          currentPath = currentPath ? `${currentPath}/${part}` : part;
+          const part = parts[i]!;
+          currentPath = currentPath !== '' ? `${currentPath}/${part}` : part;
           const isFile = i === parts.length - 1;
 
           // Check if item already exists at this level
@@ -111,9 +113,13 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
               id: isFile ? fragment.id : currentPath,
               path: currentPath,
               type: isFile ? 'file' : 'directory',
-              children: isFile ? undefined : [],
-              hasUnsavedChanges: isFile ? state.unsavedChanges.has(fragment.id) : undefined,
             };
+
+            if (!isFile) {
+              newItem.children = [];
+            } else {
+              newItem.hasUnsavedChanges = state.unsavedChanges.has(fragment.id);
+            }
 
             currentLevel.push(newItem);
             pathMap.set(currentPath, newItem);
@@ -173,7 +179,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
           });
         } else if (event.shiftKey && selectedFiles.size > 0) {
           // Range selection for shift+click
-          const fragments = state.fragments.filter(f => f.type === 'file');
+          const fragments = state.fragments;
           const currentIndex = fragments.findIndex(f => f.id === fragmentId);
           const lastSelectedId = Array.from(selectedFiles).pop();
           const lastIndex = fragments.findIndex(f => f.id === lastSelectedId);

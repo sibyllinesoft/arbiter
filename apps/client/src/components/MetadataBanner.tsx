@@ -13,12 +13,21 @@ interface MetadataBannerProps {
 }
 
 export function MetadataBanner({ data, className = '' }: MetadataBannerProps) {
-  const apiVersion = data.apiVersion as string;
-  const kind = data.kind as string;
-  const metadata = data.metadata as Record<string, unknown>;
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+  const apiVersion = typeof data.apiVersion === 'string' ? data.apiVersion : undefined;
+  const kind = typeof data.kind === 'string' ? data.kind : undefined;
+  const metadata = isRecord(data.metadata) ? data.metadata : undefined;
+  const metadataKeys = metadata ? Object.keys(metadata) : [];
+  const metadataName = metadata && typeof metadata.name === 'string' ? metadata.name : undefined;
+  const metadataNamespace =
+    metadata && typeof metadata.namespace === 'string' ? metadata.namespace : undefined;
+  const metadataVersion =
+    metadata && typeof metadata.version === 'string' ? metadata.version : undefined;
 
   // If no metadata fields are present, don't render the banner
-  if (!apiVersion && !kind && !metadata) {
+  if (!apiVersion && !kind && (!metadata || metadataKeys.length === 0)) {
     return null;
   }
 
@@ -47,12 +56,11 @@ export function MetadataBanner({ data, className = '' }: MetadataBannerProps) {
           )}
 
           {/* Metadata info */}
-          {metadata && Object.keys(metadata).length > 0 && (
+          {metadata && metadataKeys.length > 0 && (
             <div className="flex items-center space-x-2">
               <Info className="w-4 h-4 text-blue-600" />
               <span className="text-sm text-blue-900">
-                <span className="font-medium">Metadata:</span> {Object.keys(metadata).length}{' '}
-                properties
+                <span className="font-medium">Metadata:</span> {metadataKeys.length} properties
               </span>
             </div>
           )}
@@ -61,19 +69,19 @@ export function MetadataBanner({ data, className = '' }: MetadataBannerProps) {
         {/* Metadata properties (condensed) */}
         {metadata && (
           <div className="flex items-center space-x-3">
-            {metadata.name && (
+            {metadataName && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-medium">
-                {metadata.name}
+                {metadataName}
               </span>
             )}
-            {metadata.namespace && (
+            {metadataNamespace && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                ns: {metadata.namespace}
+                ns: {metadataNamespace}
               </span>
             )}
-            {metadata.version && (
+            {metadataVersion && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                v{metadata.version}
+                v{metadataVersion}
               </span>
             )}
           </div>

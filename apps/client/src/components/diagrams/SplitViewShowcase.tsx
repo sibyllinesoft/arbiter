@@ -1,17 +1,17 @@
-import React from 'react';
-import { Card } from '../../design-system/components/Card';
+import { type ReactNode } from 'react';
+import Card from '../../design-system/components/Card';
 
 interface SplitViewShowcaseProps {
   title: string;
   description?: string;
-  dataPanel: React.ReactNode;
-  diagramPanel: React.ReactNode;
+  dataPanel: ReactNode;
+  diagramPanel: ReactNode;
   dataPanelTitle?: string;
   diagramPanelTitle?: string;
   className?: string;
 }
 
-export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
+export function SplitViewShowcase({
   title,
   description,
   dataPanel,
@@ -19,7 +19,7 @@ export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
   dataPanelTitle = 'Specification Data',
   diagramPanelTitle = 'Generated Diagram',
   className = '',
-}) => {
+}: SplitViewShowcaseProps) {
   return (
     <div className={`w-full h-full ${className}`}>
       {/* Header */}
@@ -54,6 +54,6 @@ export const SplitViewShowcase: React.FC<SplitViewShowcaseProps> = ({
       </div>
     </div>
   );
-};
+}
 
 export default SplitViewShowcase;

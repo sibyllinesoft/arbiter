@@ -5,20 +5,25 @@
  */
 
 import { type ReactNode } from 'react';
-import { cn, statusVariants } from '../variants';
+import { cn, statusVariants } from '../../variants';
+
+export type StatusVariant =
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'info'
+  | 'neutral'
+  | 'pending'
+  | 'active'
+  | 'inactive'
+  | 'secondary';
 
 export interface StatusBadgeProps {
   /** Status variant determines the color scheme */
-  variant?:
-    | 'success'
-    | 'warning'
-    | 'error'
-    | 'info'
-    | 'neutral'
-    | 'pending'
-    | 'active'
-    | 'inactive'
-    | 'secondary';
+  variant?: StatusVariant;
+
+  /** Legacy alias for variant */
+  status?: StatusVariant;
 
   /** Badge style appearance */
   style?: 'solid' | 'outlined' | 'subtle';
@@ -107,6 +112,7 @@ const extendedStatusVariants = {
 
 export function StatusBadge({
   variant = 'neutral',
+  status,
   style = 'solid',
   size = 'sm',
   showDot = false,
@@ -116,26 +122,27 @@ export function StatusBadge({
   children,
   className,
 }: StatusBadgeProps) {
-  const status = extendedStatusVariants[variant];
+  const resolvedVariant = status ?? variant;
+  const statusStyles = extendedStatusVariants[resolvedVariant];
   const sizeClass = sizeClasses[size];
 
   // Style variants
   const getStyleClasses = () => {
     switch (style) {
       case 'solid':
-        return cn(status.bg, status.border, status.text);
+        return cn(statusStyles.bg, statusStyles.border, statusStyles.text);
       case 'outlined':
-        return cn('bg-transparent border-2', status.border, status.text);
+        return cn('bg-transparent border-2', statusStyles.border, statusStyles.text);
       case 'subtle':
-        return cn(status.bg, 'border-transparent', status.text);
+        return cn(statusStyles.bg, 'border-transparent', statusStyles.text);
       default:
-        return cn(status.bg, status.border, status.text);
+        return cn(statusStyles.bg, statusStyles.border, statusStyles.text);
     }
   };
 
   const badgeClasses = cn(
     // Base styles
-    'inline-flex items-center font-medium rounded-full border transition-all duration-150',
+    'inline-flex items-center font-medium rounded-md border transition-all duration-150',
 
     // Size styles
     sizeClass.badge,
@@ -164,7 +171,7 @@ export function StatusBadge({
     }
 
     if (icon) {
-      return <span className={cn('flex-shrink-0', status.icon, sizeClass.icon)}>{icon}</span>;
+      return <span className={cn('flex-shrink-0', statusStyles.icon, sizeClass.icon)}>{icon}</span>;
     }
 
     if (showDot) {
@@ -172,7 +179,7 @@ export function StatusBadge({
         <span
           className={cn(
             'flex-shrink-0 rounded-full',
-            status.dot,
+            statusStyles.dot,
             sizeClass.dot,
             pulse && 'animate-pulse'
           )}

@@ -1,9 +1,17 @@
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Search, User } from 'lucide-react';
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '../../test/utils';
 import Input from './Input';
+
+function createMockFn() {
+  const calls: any[][] = [];
+  const fn = (...args: any[]) => {
+    calls.push(args);
+  };
+  (fn as any).mock = { calls };
+  return fn as any;
+}
 
 describe('Input', () => {
   describe('rendering', () => {
@@ -383,7 +391,7 @@ describe('Input', () => {
     });
 
     it('calls onChange when value changes', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<Input onChange={handleChange} />);
@@ -391,11 +399,11 @@ describe('Input', () => {
       const input = screen.getByRole('textbox');
       await user.type(input, 'a');
 
-      expect(handleChange).toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(1);
     });
 
     it('calls onFocus when input is focused', async () => {
-      const handleFocus = vi.fn();
+      const handleFocus = createMockFn();
       const user = userEvent.setup();
 
       render(<Input onFocus={handleFocus} />);
@@ -403,11 +411,11 @@ describe('Input', () => {
       const input = screen.getByRole('textbox');
       await user.click(input);
 
-      expect(handleFocus).toHaveBeenCalled();
+      expect(handleFocus.mock.calls.length).toBe(1);
     });
 
     it('calls onBlur when input loses focus', async () => {
-      const handleBlur = vi.fn();
+      const handleBlur = createMockFn();
       const user = userEvent.setup();
 
       render(<Input onBlur={handleBlur} />);
@@ -416,7 +424,7 @@ describe('Input', () => {
       await user.click(input);
       await user.tab();
 
-      expect(handleBlur).toHaveBeenCalled();
+      expect(handleBlur.mock.calls.length).toBe(1);
     });
 
     it('does not allow typing when disabled', async () => {
@@ -455,7 +463,7 @@ describe('Input', () => {
       render(<Input />);
 
       const input = screen.getByRole('textbox');
-      expect(input).toHaveAttribute('aria-invalid', 'false');
+      expect(input.getAttribute('aria-invalid')).toBeNull();
     });
 
     it('connects error message with aria-describedby', () => {

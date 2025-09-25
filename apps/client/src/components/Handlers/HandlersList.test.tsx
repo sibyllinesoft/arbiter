@@ -17,7 +17,7 @@ const mockApiService = apiService as jest.Mocked<typeof apiService>;
 const mockToast = toast as jest.Mocked<typeof toast>;
 
 // Sample test data
-const mockHandlers: WebhookHandler[] = [
+const mockHandlers = [
   {
     id: '1',
     name: 'GitHub Push Handler',
@@ -46,7 +46,7 @@ const mockHandlers: WebhookHandler[] = [
     error_count: 0,
     last_execution: '2024-01-01T10:00:00Z',
   },
-];
+] as const satisfies readonly [WebhookHandler, ...WebhookHandler[]];
 
 // Mock props
 const mockProps = {
@@ -58,7 +58,7 @@ const mockProps = {
 describe('HandlersList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockApiService.getHandlers.mockResolvedValue(mockHandlers);
+    mockApiService.getHandlers.mockResolvedValue([...mockHandlers]);
   });
 
   it('renders loading state initially', async () => {
@@ -138,7 +138,9 @@ describe('HandlersList', () => {
     });
 
     const editButtons = screen.getAllByText('Edit');
-    fireEvent.click(editButtons[0]);
+    const editButton = editButtons.at(0);
+    expect(editButton).toBeDefined();
+    fireEvent.click(editButton!);
 
     expect(mockProps.onEditHandler).toHaveBeenCalledWith(mockHandlers[0]);
   });
@@ -151,7 +153,9 @@ describe('HandlersList', () => {
     });
 
     const statsButtons = screen.getAllByText('Stats');
-    fireEvent.click(statsButtons[0]);
+    const statsButton = statsButtons.at(0);
+    expect(statsButton).toBeDefined();
+    fireEvent.click(statsButton!);
 
     expect(mockProps.onViewStats).toHaveBeenCalledWith(mockHandlers[0]);
   });
@@ -168,7 +172,9 @@ describe('HandlersList', () => {
 
     // Find and click the power button for the first handler
     const powerButtons = screen.getAllByTitle(/enable|disable/i);
-    fireEvent.click(powerButtons[0]);
+    const powerButton = powerButtons.at(0);
+    expect(powerButton).toBeDefined();
+    fireEvent.click(powerButton!);
 
     await waitFor(() => {
       expect(mockApiService.toggleHandler).toHaveBeenCalledWith('1', false);
@@ -191,7 +197,9 @@ describe('HandlersList', () => {
 
     // Find and click delete button
     const deleteButtons = screen.getAllByTitle('Delete handler');
-    fireEvent.click(deleteButtons[0]);
+    const deleteButton = deleteButtons.at(0);
+    expect(deleteButton).toBeDefined();
+    fireEvent.click(deleteButton!);
 
     await waitFor(() => {
       expect(mockApiService.deleteHandler).toHaveBeenCalledWith('1');
@@ -218,7 +226,9 @@ describe('HandlersList', () => {
 
     // Find and click test button
     const testButtons = screen.getAllByTitle('Test handler');
-    fireEvent.click(testButtons[0]); // Click on enabled handler
+    const testButton = testButtons.at(0);
+    expect(testButton).toBeDefined();
+    fireEvent.click(testButton!); // Click on enabled handler
 
     await waitFor(() => {
       expect(mockApiService.testHandler).toHaveBeenCalledWith('1', expect.any(Object));

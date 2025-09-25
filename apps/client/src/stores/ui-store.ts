@@ -26,11 +26,20 @@ interface UiState {
 }
 
 const THEME_KEY = 'arbiter:theme';
+const isBrowser = typeof window !== 'undefined';
 
 export const useUiStore = zukeeper(
   create<UiState>((set, get) => {
     // Load initial theme from localStorage
-    const savedTheme = localStorage.getItem(THEME_KEY);
+    let savedTheme: string | null = null;
+
+    if (isBrowser) {
+      try {
+        savedTheme = window.localStorage.getItem(THEME_KEY);
+      } catch (error) {
+        console.warn('Failed to read theme from localStorage', error);
+      }
+    }
     const initialDark = savedTheme ? savedTheme === 'dark' : true;
 
     return {
@@ -43,7 +52,13 @@ export const useUiStore = zukeeper(
         const current = get().isDark;
         const newTheme = !current;
         set({ isDark: newTheme });
-        localStorage.setItem(THEME_KEY, newTheme ? 'dark' : 'light');
+        if (isBrowser) {
+          try {
+            window.localStorage.setItem(THEME_KEY, newTheme ? 'dark' : 'light');
+          } catch (error) {
+            console.warn('Failed to persist theme to localStorage', error);
+          }
+        }
       },
     };
   })

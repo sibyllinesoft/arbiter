@@ -106,7 +106,7 @@ const mockProject = {
 };
 
 // Mock fragments data
-const mockFragments: Fragment[] = [
+const mockFragments = [
   {
     id: 'fragment-1',
     project_id: 'project-1',
@@ -139,11 +139,11 @@ const mockFragments: Fragment[] = [
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-01T00:00:00Z',
   },
-];
+] as const satisfies readonly [Fragment, ...Fragment[]];
 
 // Mock app state
 const mockAppState = {
-  fragments: mockFragments,
+  fragments: [...mockFragments],
   unsavedChanges: new Set(['fragment-1']),
   activeFragmentId: 'fragment-1',
 };
@@ -651,7 +651,10 @@ describe('FileTree', () => {
     it('supports keyboard navigation', async () => {
       render(<FileTree />);
 
-      const routesFile = screen.getByText('routes.cue').closest('[role="button"]');
+      const routesFile = screen
+        .getByText('routes.cue')
+        .closest('[role="button"]') as HTMLElement | null;
+      expect(routesFile).not.toBeNull();
       routesFile!.focus();
       expect(routesFile).toHaveFocus();
 

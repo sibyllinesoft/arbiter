@@ -14,7 +14,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import React from 'react';
-import { Card, cn } from '../design-system';
+import { Badge, Card, cn } from '../design-system';
 
 interface ProjectListProps {
   projects: any[];
@@ -38,10 +38,10 @@ export function ProjectList({
       <div className="space-y-4">
         {[1, 2, 3].map(i => (
           <Card key={i} className="p-6 animate-pulse">
-            <div className="h-6 bg-gray-200 rounded mb-4"></div>
+            <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[1, 2, 3, 4, 5, 6].map(j => (
-                <div key={j} className="h-8 bg-gray-200 rounded"></div>
+                <div key={j} className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
               ))}
             </div>
           </Card>
@@ -53,11 +53,11 @@ export function ProjectList({
   if (!projects || projects.length === 0) {
     return (
       <div className="p-12 text-center">
-        <div className="text-gray-400 mb-4">
+        <div className="text-gray-400 dark:text-gray-500 mb-4">
           <Server className="w-12 h-12 mx-auto" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Projects</h3>
-        <p className="text-gray-600">Create your first project to get started</p>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Projects</h3>
+        <p className="text-gray-600 dark:text-gray-400">Create your first project to get started</p>
       </div>
     );
   }
@@ -98,87 +98,87 @@ export function ProjectList({
               {projectStatus && (
                 <div className="flex flex-wrap gap-2">
                   {projectStatus.entities.services > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#3E82B6', borderColor: '#1E466B' }}
+                    <Badge
+                      variant="default"
+                      className="bg-blue-500 dark:bg-blue-600 text-white border-blue-700 dark:border-blue-800"
                     >
                       <Server className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Services: {projectStatus.entities.services}
                       </span>
-                    </div>
+                    </Badge>
                   )}
 
                   {projectStatus.entities.libraries > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#7666B9', borderColor: '#3A2A70' }}
+                    <Badge
+                      variant="default"
+                      className="bg-purple-500 dark:bg-purple-600 text-white border-purple-700 dark:border-purple-800"
                     >
                       <Component className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Libraries: {projectStatus.entities.libraries}
                       </span>
-                    </div>
+                    </Badge>
                   )}
 
-                  {projectStatus.entities.clis > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#BA5956', borderColor: '#803131' }}
+                  {projectStatus.entities.tools > 0 && (
+                    <Badge
+                      variant="default"
+                      className="bg-red-500 dark:bg-red-600 text-white border-red-700 dark:border-red-800"
                     >
                       <Terminal className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
-                        CLI: {projectStatus.entities.clis}
+                        Tools: {projectStatus.entities.tools}
                       </span>
-                    </div>
+                    </Badge>
                   )}
 
                   {projectStatus.entities.frontends > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#45A190', borderColor: '#1D6A5B' }}
+                    <Badge
+                      variant="default"
+                      className="bg-teal-500 dark:bg-teal-600 text-white border-teal-700 dark:border-teal-800"
                     >
                       <Layout className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Frontends: {projectStatus.entities.frontends}
                       </span>
-                    </div>
+                    </Badge>
                   )}
 
                   {projectStatus.entities.databases > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#A6842A', borderColor: '#725718' }}
+                    <Badge
+                      variant="default"
+                      className="bg-amber-500 dark:bg-amber-600 text-white border-amber-700 dark:border-amber-800"
                     >
                       <Database className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Databases: {projectStatus.entities.databases}
                       </span>
-                    </div>
+                    </Badge>
                   )}
 
                   {projectStatus.entities.modules > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#6B7280', borderColor: '#374151' }}
+                    <Badge
+                      variant="default"
+                      className="bg-gray-500 dark:bg-gray-600 text-white border-gray-700 dark:border-gray-800"
                     >
                       <Component className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Modules: {projectStatus.entities.modules}
                       </span>
-                    </div>
+                    </Badge>
                   )}
 
                   {projectStatus.entities.infrastructure > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#059669', borderColor: '#047857' }}
+                    <Badge
+                      variant="default"
+                      className="bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-700 dark:border-emerald-800"
                     >
                       <Server className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Infrastructure: {projectStatus.entities.infrastructure}
                       </span>
-                    </div>
+                    </Badge>
                   )}
                 </div>
               )}

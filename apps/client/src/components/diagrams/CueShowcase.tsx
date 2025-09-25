@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card } from '../../design-system/components/Card';
-import { StatusBadge } from '../../design-system/components/StatusBadge';
+import { StatusBadge, type StatusVariant } from '../../design-system/components/StatusBadge';
 import { Tabs } from '../../design-system/components/Tabs';
 import {
   assemblySpecCue,
@@ -170,12 +170,12 @@ const CUE_EXAMPLES: CueExample[] = [
 ];
 
 export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
-  const [selectedExample, setSelectedExample] = useState<CueExample>(CUE_EXAMPLES[0]);
+  const [selectedExample, setSelectedExample] = useState<CueExample>(() => CUE_EXAMPLES[0]!);
   const [viewMode, setViewMode] = useState<'overview' | 'source' | 'resolved' | 'split'>(
     'overview'
   );
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: CueExample['status']): StatusVariant => {
     switch (status) {
       case 'implemented':
         return 'success';
@@ -186,7 +186,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
       case 'error':
         return 'error';
       default:
-        return 'info';
+        return 'neutral';
     }
   };
 
@@ -228,7 +228,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
                   <span className="text-lg">{getTypeIcon(example.type)}</span>
                   <span className="font-medium text-sm text-gray-900">{example.title}</span>
                 </div>
-                <StatusBadge status={getStatusColor(example.status) as any} size="sm">
+                <StatusBadge variant={getStatusColor(example.status)} size="sm">
                   {example.status}
                 </StatusBadge>
               </div>
@@ -246,7 +246,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <StatusBadge status={getStatusColor(selectedExample.status) as any}>
+              <StatusBadge variant={getStatusColor(selectedExample.status)}>
                 {selectedExample.status}
               </StatusBadge>
               <span className="text-xs text-gray-500 uppercase font-medium tracking-wide">
@@ -284,7 +284,9 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
         <Card className="h-96">
           <CueViewer
             cueSource={selectedExample.cueSource}
-            validationErrors={selectedExample.validationErrors}
+            {...(selectedExample.validationErrors
+              ? { validationErrors: selectedExample.validationErrors }
+              : {})}
             resolvedData={selectedExample.resolvedData}
             mode="view"
             className="h-full"
@@ -298,7 +300,9 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
     <CueViewer
       title={`${selectedExample.title} - CUE Source`}
       cueSource={selectedExample.cueSource}
-      validationErrors={selectedExample.validationErrors}
+      {...(selectedExample.validationErrors
+        ? { validationErrors: selectedExample.validationErrors }
+        : {})}
       mode="view"
       className="h-full"
     />
@@ -325,7 +329,9 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
     <CueViewer
       title={`${selectedExample.title} - Split View`}
       cueSource={selectedExample.cueSource}
-      validationErrors={selectedExample.validationErrors}
+      {...(selectedExample.validationErrors
+        ? { validationErrors: selectedExample.validationErrors }
+        : {})}
       resolvedData={selectedExample.resolvedData}
       mode="split"
       className="h-full"
@@ -352,7 +358,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
       <Tabs
         items={tabItems}
         activeTab={viewMode}
-        onTabChange={tab => setViewMode(tab as any)}
+        onChange={tab => setViewMode(tab as typeof viewMode)}
         className="h-full"
       />
     </div>

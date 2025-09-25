@@ -1,3 +1,5 @@
+import '@testing-library/jest-dom';
+
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { File, Folder, Home, Settings } from 'lucide-react';
@@ -170,8 +172,10 @@ describe('Breadcrumbs', () => {
         return rest;
       });
       render(<Breadcrumbs items={itemsWithoutCurrent} />);
-      // All items should be rendered normally without special current styling
-      expect(screen.getByText('Current Page')).toBeInTheDocument();
+      // Verify that the last item is treated as current by default
+      const lastItem = screen.getByText('Current Page').parentElement;
+      expect(lastItem).toHaveClass('text-graphite-900', 'font-semibold');
+      expect(lastItem).toHaveAttribute('aria-current', 'page');
     });
   });
 

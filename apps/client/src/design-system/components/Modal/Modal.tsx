@@ -4,12 +4,11 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
 import { AlertTriangle, CheckCircle, Info, Loader2, X, XCircle } from 'lucide-react';
 import { type KeyboardEvent, type MouseEvent, type ReactNode, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { cn } from '../variants';
-import Button from './Button';
+import { cn } from '../../variants';
+import Button from '../Button';
 
 export interface ModalProps {
   /** Whether the modal is open */

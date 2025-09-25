@@ -1,7 +1,10 @@
 import { Excalidraw } from '@excalidraw/excalidraw';
-import type { ExcalidrawElement } from '@excalidraw/excalidraw/types/element/types';
+import type {
+  ExcalidrawElement,
+  ExcalidrawTextElement,
+} from '@excalidraw/excalidraw/types/element/types';
 import type { AppState } from '@excalidraw/excalidraw/types/types';
-import React, { useEffect, useState } from 'react';
+import { type FC, useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
 import type { IRResponse } from '../../types/api';
 
@@ -10,23 +13,114 @@ interface ViewDiagramProps {
   className?: string;
 }
 
+type WidgetType = 'button' | 'input' | 'table';
+
 interface Widget {
-  type: 'button' | 'input' | 'table';
+  type: WidgetType;
   token: string;
   text?: string;
   label?: string;
   columns?: string[];
 }
 
-interface ViewIRData {
-  specHash: string;
-  views: {
-    id: string;
-    widgets: Widget[];
-  }[];
+interface ViewNode {
+  id: string;
+  widgets: Widget[];
 }
 
-const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
+interface ViewIRData {
+  specHash?: string;
+  views: ViewNode[];
+}
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null;
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+const toStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter(isString) : [];
+
+const widgetTypes: readonly WidgetType[] = ['button', 'input', 'table'] as const;
+
+const normalizeWidget = (value: unknown, index: number): Widget | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const typeValue =
+    isString(value.type) && widgetTypes.includes(value.type as WidgetType)
+      ? (value.type as WidgetType)
+      : 'button';
+  const token = isString(value.token) ? value.token : `widget_${index}`;
+  const widget: Widget = {
+    type: typeValue,
+    token,
+  };
+
+  const text = isString(value.text) ? value.text : undefined;
+  if (text !== undefined) {
+    widget.text = text;
+  }
+
+  const label = isString(value.label) ? value.label : undefined;
+  if (label !== undefined) {
+    widget.label = label;
+  }
+
+  const columns = toStringArray(value.columns);
+  if (columns.length > 0) {
+    widget.columns = columns;
+  }
+
+  return widget;
+};
+
+const normalizeView = (value: unknown, index: number): ViewNode | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const idSource = value.id ?? value.name ?? `view_${index}`;
+  const id = isString(idSource) ? idSource : `view_${index}`;
+  const widgetsSource = value.widgets;
+  const widgets = Array.isArray(widgetsSource)
+    ? widgetsSource
+        .map((widget, widgetIndex) => normalizeWidget(widget, widgetIndex))
+        .filter((widget): widget is Widget => widget !== null)
+    : [];
+
+  const view: ViewNode = {
+    id,
+    widgets,
+  };
+
+  return view;
+};
+
+const normalizeViewData = (raw: UnknownRecord): ViewIRData => {
+  const viewsSource = raw.views;
+  const views = Array.isArray(viewsSource)
+    ? viewsSource
+        .map((view, index) => normalizeView(view, index))
+        .filter((view): view is ViewNode => view !== null)
+    : [];
+
+  const viewData: ViewIRData = {
+    views,
+  };
+
+  const specHash = isString(raw.specHash) ? raw.specHash : undefined;
+  if (specHash !== undefined) {
+    viewData.specHash = specHash;
+  }
+
+  return viewData;
+};
+
+const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
   const [viewData, setViewData] = useState<ViewIRData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +135,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
         setError(null);
 
         const response: IRResponse = await apiService.getIR(projectId, 'view');
-        setViewData(response.data as ViewIRData);
+        setViewData(normalizeViewData(response.data));
       } catch (err) {
         console.error('Failed to load view data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load view diagram');
@@ -57,13 +151,32 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
     return Math.random().toString(36).substr(2, 9);
   };
 
+  const randomSeed = () => Math.floor(Math.random() * 1_000_000);
+
+  const createCommonElementProps = () => ({
+    id: generateElementId(),
+    seed: randomSeed(),
+    version: 1,
+    versionNonce: randomSeed(),
+    isDeleted: false,
+    groupIds: [] as string[],
+    frameId: null,
+    updated: Date.now(),
+    link: null,
+    locked: false,
+  });
+
+  const DEFAULT_LINE_HEIGHT = 1.25 as ExcalidrawTextElement['lineHeight'];
+
   const createButtonElement = (widget: Widget, x: number, y: number): ExcalidrawElement => {
     const text = widget.text || widget.token;
     const width = Math.max(100, text.length * 8 + 20);
     const height = 40;
 
+    const base = createCommonElementProps();
+
     return {
-      id: generateElementId(),
+      ...base,
       type: 'rectangle',
       x,
       y,
@@ -80,19 +193,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       groupIds: [],
       frameId: null,
       roundness: { type: 3, value: 8 },
-      seed: Math.floor(Math.random() * 1000000),
-      versionNonce: Math.floor(Math.random() * 1000000),
-      isDeleted: false,
-      boundElements: [
-        {
-          type: 'text',
-          id: generateElementId(),
-        },
-      ],
-      updated: 1,
-      link: null,
-      locked: false,
-    };
+      boundElements: null,
+    } as unknown as ExcalidrawElement;
   };
 
   const createTextElement = (
@@ -103,8 +205,10 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
     height: number,
     color = '#ffffff'
   ): ExcalidrawElement => {
+    const base = createCommonElementProps();
+
     return {
-      id: generateElementId(),
+      ...base,
       type: 'text',
       x: x + width / 2,
       y: y + height / 2,
@@ -121,14 +225,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       groupIds: [],
       frameId: null,
       roundness: null,
-      seed: Math.floor(Math.random() * 1000000),
-      versionNonce: Math.floor(Math.random() * 1000000),
-      isDeleted: false,
       boundElements: null,
-      updated: 1,
-      link: null,
-      locked: false,
-      text: text,
+      text,
       fontSize: 14,
       fontFamily: 1,
       textAlign: 'center',
@@ -136,8 +234,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       baseline: 14,
       containerId: null,
       originalText: text,
-      lineHeight: 1.25,
-    };
+      lineHeight: DEFAULT_LINE_HEIGHT,
+    } as unknown as ExcalidrawElement;
   };
 
   const createInputElement = (widget: Widget, x: number, y: number): ExcalidrawElement[] => {
@@ -145,8 +243,10 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
     const width = 200;
     const height = 40;
 
-    const inputRect: ExcalidrawElement = {
-      id: generateElementId(),
+    const rectBase = createCommonElementProps();
+
+    const inputRect = {
+      ...rectBase,
       type: 'rectangle',
       x,
       y,
@@ -163,14 +263,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       groupIds: [],
       frameId: null,
       roundness: { type: 3, value: 4 },
-      seed: Math.floor(Math.random() * 1000000),
-      versionNonce: Math.floor(Math.random() * 1000000),
-      isDeleted: false,
       boundElements: null,
-      updated: 1,
-      link: null,
-      locked: false,
-    };
+    } as unknown as ExcalidrawElement;
 
     const labelText = createTextElement(label, x - 120, y, 100, height, '#374151');
 
@@ -188,8 +282,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
     const elements: ExcalidrawElement[] = [];
 
     // Table container
-    const tableContainer: ExcalidrawElement = {
-      id: generateElementId(),
+    const tableContainer = {
+      ...createCommonElementProps(),
       type: 'rectangle',
       x,
       y,
@@ -206,19 +300,13 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       groupIds: [],
       frameId: null,
       roundness: { type: 3, value: 4 },
-      seed: Math.floor(Math.random() * 1000000),
-      versionNonce: Math.floor(Math.random() * 1000000),
-      isDeleted: false,
       boundElements: null,
-      updated: 1,
-      link: null,
-      locked: false,
-    };
+    } as unknown as ExcalidrawElement;
     elements.push(tableContainer);
 
     // Header row background
-    const headerBg: ExcalidrawElement = {
-      id: generateElementId(),
+    const headerBg = {
+      ...createCommonElementProps(),
       type: 'rectangle',
       x: x + 2,
       y: y + 2,
@@ -235,14 +323,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       groupIds: [],
       frameId: null,
       roundness: { type: 3, value: 2 },
-      seed: Math.floor(Math.random() * 1000000),
-      versionNonce: Math.floor(Math.random() * 1000000),
-      isDeleted: false,
       boundElements: null,
-      updated: 1,
-      link: null,
-      locked: false,
-    };
+    } as unknown as ExcalidrawElement;
     elements.push(headerBg);
 
     // Column headers
@@ -260,8 +342,8 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
 
     // Column dividers
     for (let i = 1; i < columns.length; i++) {
-      const divider: ExcalidrawElement = {
-        id: generateElementId(),
+      const divider = {
+        ...createCommonElementProps(),
         type: 'line',
         x: x + i * columnWidth,
         y: y + 2,
@@ -278,13 +360,6 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
         groupIds: [],
         frameId: null,
         roundness: null,
-        seed: Math.floor(Math.random() * 1000000),
-        versionNonce: Math.floor(Math.random() * 1000000),
-        isDeleted: false,
-        boundElements: null,
-        updated: 1,
-        link: null,
-        locked: false,
         points: [
           [0, 0],
           [0, tableHeight - 4],
@@ -294,13 +369,13 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
         endBinding: null,
         startArrowhead: null,
         endArrowhead: null,
-      };
+      } as unknown as ExcalidrawElement;
       elements.push(divider);
     }
 
     // Row divider
-    const rowDivider: ExcalidrawElement = {
-      id: generateElementId(),
+    const rowDivider = {
+      ...createCommonElementProps(),
       type: 'line',
       x: x + 2,
       y: y + headerHeight,
@@ -317,13 +392,6 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       groupIds: [],
       frameId: null,
       roundness: null,
-      seed: Math.floor(Math.random() * 1000000),
-      versionNonce: Math.floor(Math.random() * 1000000),
-      isDeleted: false,
-      boundElements: null,
-      updated: 1,
-      link: null,
-      locked: false,
       points: [
         [0, 0],
         [tableWidth - 4, 0],
@@ -333,7 +401,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       endBinding: null,
       startArrowhead: null,
       endArrowhead: null,
-    };
+    } as unknown as ExcalidrawElement;
     elements.push(rowDivider);
 
     return elements;
@@ -345,7 +413,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
     const elements: ExcalidrawElement[] = [];
     let currentY = 50;
 
-    views.forEach((view, viewIndex) => {
+    views.forEach(view => {
       // Add view title
       const viewTitle = createTextElement(`View: ${view.id}`, 50, currentY, 200, 30, '#111827');
       elements.push(viewTitle);
@@ -354,7 +422,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
       let currentX = 50;
       const rowHeight = 80;
 
-      view.widgets.forEach((widget, widgetIndex) => {
+      view.widgets.forEach(widget => {
         let widgetElements: ExcalidrawElement[] = [];
 
         switch (widget.type) {
@@ -379,11 +447,16 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
 
           case 'table':
             widgetElements = createTableElement(widget, currentX, currentY);
-            currentX += widgetElements[0].width + 20;
+            if (widgetElements.length > 0) {
+              const firstElement = widgetElements[0];
+              currentX += (firstElement as ExcalidrawElement).width + 20;
+            }
             break;
         }
 
-        elements.push(...widgetElements);
+        if (widgetElements.length > 0) {
+          elements.push(...widgetElements);
+        }
 
         // Move to next row if needed
         if (currentX > 800) {
@@ -482,7 +555,7 @@ const ViewDiagram: React.FC<ViewDiagramProps> = ({ projectId, className = '' }) 
               currentItemRoundness: 'round',
               gridSize: null,
               colorPalette: {},
-            } as Partial<AppState>,
+            } as unknown as Partial<AppState>,
           }}
           viewModeEnabled={false}
           zenModeEnabled={false}

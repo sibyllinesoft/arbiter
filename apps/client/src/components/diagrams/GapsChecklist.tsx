@@ -7,11 +7,13 @@ interface GapsChecklistProps {
   className?: string;
 }
 
+type GapSeverity = 'high' | 'medium' | 'low';
+
 interface GapWithSeverity {
   type: string;
   message: string;
   location?: string;
-  severity: 'high' | 'medium' | 'low';
+  severity: GapSeverity;
   icon: React.ReactNode;
 }
 
@@ -19,7 +21,7 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
   const [gapData, setGapData] = useState<GapSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['high']));
+  const [expandedSections, setExpandedSections] = useState<Set<GapSeverity>>(new Set(['high']));
 
   useEffect(() => {
     if (!projectId) return;
@@ -42,7 +44,7 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
     loadGapData();
   }, [projectId]);
 
-  const getGapSeverity = (gapType: string): 'high' | 'medium' | 'low' => {
+  const getGapSeverity = (gapType: string): GapSeverity => {
     switch (gapType) {
       case 'missing_capabilities':
         return 'high';
@@ -57,7 +59,7 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
     }
   };
 
-  const getGapIcon = (severity: 'high' | 'medium' | 'low'): React.ReactNode => {
+  const getGapIcon = (severity: GapSeverity): React.ReactNode => {
     switch (severity) {
       case 'high':
         return (
@@ -92,8 +94,8 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
     }
   };
 
-  const processGaps = (gaps: GapSet): Record<string, GapWithSeverity[]> => {
-    const processedGaps: Record<string, GapWithSeverity[]> = {
+  const processGaps = (gaps: GapSet): Record<GapSeverity, GapWithSeverity[]> => {
+    const processedGaps: Record<GapSeverity, GapWithSeverity[]> = {
       high: [],
       medium: [],
       low: [],
@@ -149,7 +151,7 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
     return processedGaps;
   };
 
-  const toggleSection = (severity: string) => {
+  const toggleSection = (severity: GapSeverity) => {
     const newExpanded = new Set(expandedSections);
     if (newExpanded.has(severity)) {
       newExpanded.delete(severity);
@@ -159,7 +161,7 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
     setExpandedSections(newExpanded);
   };
 
-  const getSeverityColor = (severity: string): string => {
+  const getSeverityColor = (severity: GapSeverity): string => {
     switch (severity) {
       case 'high':
         return 'border-red-200 bg-red-50';
@@ -172,7 +174,7 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
     }
   };
 
-  const getSeverityHeaderColor = (severity: string): string => {
+  const getSeverityHeaderColor = (severity: GapSeverity): string => {
     switch (severity) {
       case 'high':
         return 'text-red-800 bg-red-100';
@@ -292,70 +294,72 @@ const GapsChecklist: React.FC<GapsChecklistProps> = ({ projectId, className = ''
           </div>
         ) : (
           <div className="space-y-4">
-            {Object.entries(processedGaps).map(([severity, gaps]) => {
-              if (gaps.length === 0) return null;
+            {(Object.entries(processedGaps) as Array<[GapSeverity, GapWithSeverity[]]>).map(
+              ([severity, gaps]) => {
+                if (gaps.length === 0) return null;
 
-              return (
-                <div key={severity} className={`border rounded-lg ${getSeverityColor(severity)}`}>
-                  <button
-                    onClick={() => toggleSection(severity)}
-                    className={`w-full px-4 py-3 text-left rounded-t-lg ${getSeverityHeaderColor(severity)} hover:opacity-80 transition-opacity`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium capitalize">{severity} Priority</span>
-                        <span className="px-2 py-1 text-xs rounded-full bg-white/50">
-                          {gaps.length}
-                        </span>
+                return (
+                  <div key={severity} className={`border rounded-lg ${getSeverityColor(severity)}`}>
+                    <button
+                      onClick={() => toggleSection(severity)}
+                      className={`w-full px-4 py-3 text-left rounded-t-lg ${getSeverityHeaderColor(severity)} hover:opacity-80 transition-opacity`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium capitalize">{severity} Priority</span>
+                          <span className="px-2 py-1 text-xs rounded-full bg-white/50">
+                            {gaps.length}
+                          </span>
+                        </div>
+                        <svg
+                          className={`w-5 h-5 transform transition-transform ${
+                            expandedSections.has(severity) ? 'rotate-90' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
                       </div>
-                      <svg
-                        className={`w-5 h-5 transform transition-transform ${
-                          expandedSections.has(severity) ? 'rotate-90' : ''
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M9 5l7 7-7 7"
-                        />
-                      </svg>
-                    </div>
-                  </button>
+                    </button>
 
-                  {expandedSections.has(severity) && (
-                    <div className="px-4 pb-4">
-                      <div className="space-y-3">
-                        {gaps.map((gap, index) => (
-                          <div
-                            key={index}
-                            className="bg-white rounded-md p-3 border border-gray-200"
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5">{gap.icon}</div>
-                              <div className="flex-grow">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                    {gap.type}
-                                  </span>
+                    {expandedSections.has(severity) && (
+                      <div className="px-4 pb-4">
+                        <div className="space-y-3">
+                          {gaps.map((gap, index) => (
+                            <div
+                              key={index}
+                              className="bg-white rounded-md p-3 border border-gray-200"
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 mt-0.5">{gap.icon}</div>
+                                <div className="flex-grow">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                      {gap.type}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-gray-900 font-medium">{gap.message}</p>
+                                  {gap.location && (
+                                    <p className="text-xs text-gray-600 mt-1">{gap.location}</p>
+                                  )}
                                 </div>
-                                <p className="text-sm text-gray-900 font-medium">{gap.message}</p>
-                                {gap.location && (
-                                  <p className="text-xs text-gray-600 mt-1">{gap.location}</p>
-                                )}
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              }
+            )}
           </div>
         )}
       </div>

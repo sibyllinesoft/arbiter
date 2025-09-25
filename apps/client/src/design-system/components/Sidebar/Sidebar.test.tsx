@@ -1,8 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { File, Folder, Home, Settings, Users } from 'lucide-react';
-import { vi } from 'vitest';
 import Sidebar, { type SidebarNavItem } from './Sidebar';
+
+function createMockFn() {
+  const calls: any[][] = [];
+  const fn = (...args: any[]) => {
+    calls.push(args);
+  };
+  (fn as any).mock = { calls };
+  return fn as any;
+}
 
 const mockNavItems: SidebarNavItem[] = [
   {
@@ -176,13 +184,14 @@ describe('Sidebar', () => {
 
     it('calls onToggle when collapsible item is toggled', async () => {
       const user = userEvent.setup();
-      const handleToggle = vi.fn();
+      const handleToggle = createMockFn();
       render(<Sidebar items={mockNavItems} onToggle={handleToggle} />);
 
       const filesItem = screen.getByText('Files').parentElement!;
       await user.click(filesItem);
 
-      expect(handleToggle).toHaveBeenCalledWith('files', true);
+      expect(handleToggle.mock.calls[0][0]).toBe('files');
+      expect(handleToggle.mock.calls[0][1]).toBe(true);
     });
 
     it('handles initially collapsed items', () => {
@@ -211,43 +220,44 @@ describe('Sidebar', () => {
   describe('item clicks', () => {
     it('calls onItemClick when item is clicked', async () => {
       const user = userEvent.setup();
-      const handleItemClick = vi.fn();
+      const handleItemClick = createMockFn();
       render(<Sidebar items={mockNavItems} onItemClick={handleItemClick} />);
 
       const homeItem = screen.getByText('Home').parentElement!;
       await user.click(homeItem);
 
-      expect(handleItemClick).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'home', label: 'Home' })
-      );
+      expect(handleItemClick.mock.calls[0][0].id).toBe('home');
+      expect(handleItemClick.mock.calls[0][0].label).toBe('Home');
     });
 
     it('calls custom onClick when item has one', async () => {
       const user = userEvent.setup();
-      const customClick = vi.fn();
+      const customClick = createMockFn();
       const itemsWithCustomClick: SidebarNavItem[] = [
-        { ...mockFlatItems[0], onClick: customClick },
+        { ...mockFlatItems[0], id: 'test', label: 'First Item', onClick: customClick },
       ];
       render(<Sidebar items={itemsWithCustomClick} />);
 
       const firstItem = screen.getByText('First Item').parentElement!;
       await user.click(firstItem);
 
-      expect(customClick).toHaveBeenCalled();
+      expect(customClick.mock.calls.length).toBe(1);
     });
 
     it('handles both onItemClick and custom onClick', async () => {
       const user = userEvent.setup();
-      const handleItemClick = vi.fn();
-      const customClick = vi.fn();
-      const itemsWithBoth: SidebarNavItem[] = [{ ...mockFlatItems[0], onClick: customClick }];
+      const handleItemClick = createMockFn();
+      const customClick = createMockFn();
+      const itemsWithBoth: SidebarNavItem[] = [
+        { ...mockFlatItems[0], id: 'test', label: 'First Item', onClick: customClick },
+      ];
       render(<Sidebar items={itemsWithBoth} onItemClick={handleItemClick} />);
 
       const firstItem = screen.getByText('First Item').parentElement!;
       await user.click(firstItem);
 
-      expect(customClick).toHaveBeenCalled();
-      expect(handleItemClick).toHaveBeenCalled();
+      expect(customClick.mock.calls.length).toBe(1);
+      expect(handleItemClick.mock.calls.length).toBe(1);
     });
   });
 
@@ -255,31 +265,31 @@ describe('Sidebar', () => {
   describe('keyboard navigation', () => {
     it('handles Enter key press on items', async () => {
       const user = userEvent.setup();
-      const handleItemClick = vi.fn();
+      const handleItemClick = createMockFn();
       render(<Sidebar items={mockFlatItems} onItemClick={handleItemClick} />);
 
       const firstItem = screen.getByText('First Item').parentElement!;
       firstItem.focus();
       await user.keyboard('{Enter}');
 
-      expect(handleItemClick).toHaveBeenCalled();
+      expect(handleItemClick.mock.calls.length).toBe(1);
     });
 
     it('handles Space key press on items', async () => {
       const user = userEvent.setup();
-      const handleItemClick = vi.fn();
+      const handleItemClick = createMockFn();
       render(<Sidebar items={mockFlatItems} onItemClick={handleItemClick} />);
 
       const firstItem = screen.getByText('First Item').parentElement!;
       firstItem.focus();
       await user.keyboard(' ');
 
-      expect(handleItemClick).toHaveBeenCalled();
+      expect(handleItemClick.mock.calls.length).toBe(1);
     });
 
     it('handles Enter key on collapsible items', async () => {
       const user = userEvent.setup();
-      render(<Sidebar items={mockNavItems} />);
+      render(<Sidebar items={mockNavItems.map(item => ({ ...item, id: item.id || 'test' }))} />);
 
       const filesItem = screen.getByText('Files').parentElement!;
       filesItem.focus();
@@ -429,15 +439,14 @@ describe('Sidebar', () => {
 
     it('handles nested item clicks', async () => {
       const user = userEvent.setup();
-      const handleItemClick = vi.fn();
+      const handleItemClick = createMockFn();
       render(<Sidebar items={mockNavItems} onItemClick={handleItemClick} />);
 
       const documentsItem = screen.getByText('Documents').parentElement!;
       await user.click(documentsItem);
 
-      expect(handleItemClick).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'documents', label: 'Documents' })
-      );
+      expect(handleItemClick.mock.calls[0][0].id).toBe('documents');
+      expect(handleItemClick.mock.calls[0][0].label).toBe('Documents');
     });
 
     it('shows badges on nested items', () => {
@@ -577,8 +586,8 @@ describe('Sidebar', () => {
   describe('integration', () => {
     it('works with complex navigation scenario', async () => {
       const user = userEvent.setup();
-      const handleItemClick = vi.fn();
-      const handleToggle = vi.fn();
+      const handleItemClick = createMockFn();
+      const handleToggle = createMockFn();
 
       render(
         <Sidebar items={mockNavItems} onItemClick={handleItemClick} onToggle={handleToggle} />
@@ -587,12 +596,13 @@ describe('Sidebar', () => {
       // Click on a regular item
       const homeItem = screen.getByText('Home').parentElement!;
       await user.click(homeItem);
-      expect(handleItemClick).toHaveBeenCalledTimes(1);
+      expect(handleItemClick.mock.calls.length).toBe(1);
 
       // Toggle a collapsible item
       const filesItem = screen.getByText('Files').parentElement!;
       await user.click(filesItem);
-      expect(handleToggle).toHaveBeenCalledWith('files', true);
+      expect(handleToggle.mock.calls[0][0]).toBe('files');
+      expect(handleToggle.mock.calls[0][1]).toBe(true);
 
       // Click on a nested item
       await user.click(filesItem); // Expand again
@@ -601,7 +611,7 @@ describe('Sidebar', () => {
         user.click(documentsItem!);
       });
 
-      expect(handleItemClick).toHaveBeenCalledTimes(3); // home + files + documents
+      expect(handleItemClick.mock.calls.length).toBe(3);
     });
 
     it('maintains state across prop changes', () => {

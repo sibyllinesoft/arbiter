@@ -5,7 +5,7 @@
  */
 
 import * as fs from 'fs-extra';
-import type { PackageJsonData } from './plugins/nodejs.js';
+import type { PackageJsonData } from './plugins/nodejs';
 
 interface PackageDetectionData {
   name: string;
@@ -32,7 +32,7 @@ function detectPackageType(pkg: PackageDetectionData): string {
 
   // 1. CLI - Has bin field or CLI framework
   if (packageJson.bin) {
-    return 'cli';
+    return 'tool';
   }
 
   // Check for CLI frameworks even without bin field
@@ -51,7 +51,7 @@ function detectPackageType(pkg: PackageDetectionData): string {
   );
 
   if (hasCliFramework && !packageJson.private) {
-    return 'cli';
+    return 'tool';
   }
 
   // 2. Types packages - Special case for type definition packages
@@ -138,7 +138,7 @@ function detectPackageType(pkg: PackageDetectionData): string {
   // Check if it's primarily a build tool (not a frontend app using vite)
   const isBuildTool = hasBuildTool && !packageJson.private && !packageJson.browserslist;
   if (isBuildTool) {
-    return 'cli';
+    return 'tool';
   }
 
   // 5. Frontend - Has frontend framework AND is private or has browserslist
@@ -180,7 +180,7 @@ function detectPackageType(pkg: PackageDetectionData): string {
 // Define expected types for key packages
 const expectedTypes: Record<string, string> = {
   // Arbiter packages
-  '@arbiter/cli': 'cli',
+  '@arbiter/cli': 'tool',
   '@arbiter/api': 'service',
   '@arbiter/shared': 'module',
   '@arbiter/shared-types': 'module',
@@ -189,7 +189,7 @@ const expectedTypes: Record<string, string> = {
   '@arbiter/cue-runner': 'module',
   '@arbiter/core': 'module',
   'spec-workbench-frontend': 'frontend',
-  arbiter: 'cli', // Root has bin field
+  arbiter: 'tool', // Root has bin field
 
   // Smith packages
   'smith-agent-visualizer': 'frontend',

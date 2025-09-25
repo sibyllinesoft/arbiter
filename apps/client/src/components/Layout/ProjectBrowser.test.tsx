@@ -73,7 +73,7 @@ vi.mock('lucide-react', () => ({
 }));
 
 // Mock test data
-const mockProjects: Project[] = [
+const mockProjectsSource = [
   {
     id: 'project-1',
     name: 'E-commerce API',
@@ -122,7 +122,11 @@ const mockProjects: Project[] = [
     validationStatus: 'valid',
     tags: ['legacy'],
   },
-];
+] as const satisfies readonly [Project, ...Project[]];
+
+const mockProjects: Project[] = [...mockProjectsSource];
+
+const projectAt = (index: number): Project => mockProjects[index]!;
 
 describe('ProjectBrowser', () => {
   const user = userEvent.setup();
@@ -288,7 +292,7 @@ describe('ProjectBrowser', () => {
 
     it('shows truncated tags with +more indicator', () => {
       const projectWithManyTags = {
-        ...mockProjects[0],
+        ...projectAt(0),
         tags: ['tag1', 'tag2', 'tag3', 'tag4', 'tag5'],
       };
 
@@ -429,9 +433,11 @@ describe('ProjectBrowser', () => {
       render(<ProjectBrowser projects={mockProjects} onSelectProject={mockOnSelectProject} />);
 
       const projectCards = screen.getAllByTestId('project-card');
-      await user.click(projectCards[0]);
+      const firstProjectCard = projectCards.at(0);
+      expect(firstProjectCard).toBeDefined();
+      await user.click(firstProjectCard!);
 
-      expect(mockOnSelectProject).toHaveBeenCalledWith(mockProjects[0]);
+      expect(mockOnSelectProject).toHaveBeenCalledWith(projectAt(0));
     });
 
     it('calls onToggleStar when star button is clicked', async () => {
@@ -446,7 +452,7 @@ describe('ProjectBrowser', () => {
       const starButton = screen.getByTestId('star-icon').closest('button');
       await user.click(starButton!);
 
-      expect(mockOnToggleStar).toHaveBeenCalledWith(mockProjects[0]);
+      expect(mockOnToggleStar).toHaveBeenCalledWith(projectAt(0));
       expect(mockOnSelectProject).not.toHaveBeenCalled(); // Should not trigger project selection
     });
 
@@ -497,7 +503,7 @@ describe('ProjectBrowser', () => {
       render(
         <ProjectBrowser
           projects={mockProjects}
-          selectedProject={mockProjects[1]}
+          selectedProject={projectAt(1)}
           onSelectProject={mockOnSelectProject}
         />
       );
@@ -560,7 +566,7 @@ describe('ProjectBrowser', () => {
   describe('Performance', () => {
     it('handles large number of projects efficiently', () => {
       const manyProjects = Array.from({ length: 100 }, (_, i) => ({
-        ...mockProjects[0],
+        ...projectAt(0),
         id: `project-${i}`,
         name: `Project ${i}`,
       }));
@@ -575,7 +581,7 @@ describe('ProjectBrowser', () => {
 
     it('efficiently filters large datasets', async () => {
       const manyProjects = Array.from({ length: 1000 }, (_, i) => ({
-        ...mockProjects[0],
+        ...projectAt(0),
         id: `project-${i}`,
         name: `Project ${i}`,
       }));
@@ -624,7 +630,7 @@ describe('ProjectBrowser', () => {
 
     it('handles empty collaborators array', () => {
       const projectWithNoCollaborators = {
-        ...mockProjects[0],
+        ...projectAt(0),
         collaborators: [],
       };
 
@@ -641,7 +647,7 @@ describe('ProjectBrowser', () => {
 
     it('handles invalid date strings gracefully', () => {
       const projectWithInvalidDate = {
-        ...mockProjects[0],
+        ...projectAt(0),
         lastModified: 'invalid-date',
       };
 

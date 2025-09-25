@@ -13,12 +13,12 @@ import {
   InferenceContext,
   InferredArtifact,
   ParseContext,
-} from '../types.js';
+} from '../types';
 
-import type { DetectionContext } from '../detection/artifact-detector.js';
-import { detectArtifactType } from '../detection/artifact-detector.js';
-import type { CategoryMatrix } from '../detection/dependency-matrix.js';
-import type { ArtifactType } from '../types.js';
+import type { DetectionContext } from '../detection/artifact-detector';
+import { detectArtifactType } from '../detection/artifact-detector';
+import type { CategoryMatrix } from '../detection/dependency-matrix';
+import type { ArtifactType } from '../types';
 
 const NODE_WEB_FRAMEWORKS = [
   'express',
@@ -222,10 +222,10 @@ export class NodeJSPlugin implements ImporterPlugin {
 
   private mapCategoryToType(category: keyof CategoryMatrix): ArtifactType {
     const mapping: Record<keyof CategoryMatrix, ArtifactType> = {
-      cli: 'cli',
+      tool: 'tool',
       web_service: 'service',
       frontend: 'frontend',
-      module: 'module',
+      library: 'module',
       desktop_app: 'binary', // or 'module' depending on context
       data_processing: 'module',
       testing: 'test',
@@ -240,7 +240,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
     if (NODE_WEB_FRAMEWORKS.some(fw => deps[fw])) return 'web';
     if (NODE_FRONTEND_FRAMEWORKS.some(fw => deps[fw])) return 'frontend';
-    if (NODE_CLI_FRAMEWORKS.some(fw => deps[fw])) return 'cli';
+    if (NODE_CLI_FRAMEWORKS.some(fw => deps[fw])) return 'tool';
     return '';
   }
 }

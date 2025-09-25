@@ -1,24 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import {
-  Bell,
-  Code,
-  Database,
-  Download,
-  Edit,
-  FileText,
-  Plus,
-  Settings,
-  Shield,
-  Trash,
-  Upload,
-  User,
-} from 'lucide-react';
+import { Bell, Code, Database, Download, FileText, Settings, Shield, User } from 'lucide-react';
 import { useState } from 'react';
-import Button from './Button';
-import Checkbox from './Checkbox';
-import Input from './Input';
+import Button from '../Button';
+import Checkbox from '../Checkbox';
+import Input from '../Input';
+import Select from '../Select';
 import { Modal } from './Modal';
-import Select from './Select';
 
 const meta: Meta<typeof Modal> = {
   title: 'Design System/Overlays/Modal',
@@ -317,7 +304,7 @@ export const SettingsModal: Story = {
 
     return (
       <div className="p-8">
-        <Button onClick={() => setOpen(true)} icon={<Settings className="h-4 w-4" />}>
+        <Button onClick={() => setOpen(true)} leftIcon={<Settings className="h-4 w-4" />}>
           Open Settings
         </Button>
 
@@ -426,14 +413,14 @@ export const DataExportModal: Story = {
           <Button variant="secondary" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button icon={<Download className="h-4 w-4" />}>Start Export</Button>
+          <Button leftIcon={<Download className="h-4 w-4" />}>Start Export</Button>
         </div>
       </div>
     );
 
     return (
       <div className="p-8">
-        <Button onClick={() => setOpen(true)} icon={<Database className="h-4 w-4" />}>
+        <Button onClick={() => setOpen(true)} leftIcon={<Database className="h-4 w-4" />}>
           Export Data
         </Button>
 

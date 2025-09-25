@@ -4,8 +4,22 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import Dialog, { ConfirmDialog, AlertDialog, useDialog, type DialogAction } from './Dialog';
 
+// Bun test globals declaration for TypeScript
+declare const mock: {
+  module: (path: string, factory: () => any) => void;
+};
+
+function createMockFn() {
+  const calls: any[][] = [];
+  const fn = (...args: any[]) => {
+    calls.push(args);
+  };
+  (fn as any).mock = { calls };
+  return fn as any;
+}
+
 // Mock the Button component to ensure it renders as proper button elements
-vi.mock('./Button', () => ({
+mock.module('./Button', () => ({
   default: ({ children, onClick, disabled, loading, variant, ...props }: any) => (
     <button onClick={onClick} disabled={disabled || loading} data-variant={variant} {...props}>
       {children}
@@ -14,7 +28,7 @@ vi.mock('./Button', () => ({
 }));
 
 // Mock the Modal component since we're testing Dialog's specific behavior
-vi.mock('./Modal', () => ({
+mock.module('./Modal', () => ({
   default: ({
     open,
     title,
@@ -45,25 +59,28 @@ const mockActions: DialogAction[] = [
   {
     label: 'Cancel',
     variant: 'secondary',
-    onClick: vi.fn(),
+    onClick: createMockFn(),
   },
   {
     label: 'Confirm',
     variant: 'primary',
-    onClick: vi.fn(),
+    onClick: createMockFn(),
   },
 ];
 
 describe('Dialog', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => {});
 
   // Basic Rendering Tests
   describe('rendering', () => {
     it('renders when open', () => {
       render(
-        <Dialog open={true} onClose={vi.fn()} title="Test Dialog" description="Test description" />
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test Dialog"
+          description="Test description"
+        />
       );
 
       expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
@@ -72,13 +89,13 @@ describe('Dialog', () => {
     });
 
     it('does not render when closed', () => {
-      render(<Dialog open={false} onClose={vi.fn()} title="Test Dialog" />);
+      render(<Dialog open={false} onClose={createMockFn()} title="Test Dialog" description="" />);
 
       expect(screen.queryByTestId('mock-modal')).not.toBeInTheDocument();
     });
 
     it('renders without description', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Test Dialog" />);
+      render(<Dialog open={true} onClose={createMockFn()} title="Test Dialog" description="" />);
 
       expect(screen.getByTestId('modal-title')).toHaveTextContent('Test Dialog');
       expect(screen.queryByTestId('modal-description')).not.toBeInTheDocument();
@@ -86,7 +103,7 @@ describe('Dialog', () => {
 
     it('renders with custom content', () => {
       render(
-        <Dialog open={true} onClose={vi.fn()} title="Test Dialog">
+        <Dialog open={true} onClose={createMockFn()} title="Test Dialog" description="">
           <div data-testid="custom-content">Custom content</div>
         </Dialog>
       );
@@ -98,44 +115,100 @@ describe('Dialog', () => {
   // Dialog Types Tests
   describe('dialog types', () => {
     it('renders default type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Default Dialog" type="default" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Default Dialog"
+          type="default"
+          description=""
+        />
+      );
 
       expect(screen.getByText('OK')).toBeInTheDocument();
       expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
 
     it('renders confirmation type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Confirm Dialog" type="confirmation" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Confirm Dialog"
+          type="confirmation"
+          description=""
+        />
+      );
 
       expect(screen.getByText('Confirm')).toBeInTheDocument();
     });
 
     it('renders destructive type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Delete Dialog" type="destructive" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Delete Dialog"
+          type="destructive"
+          description=""
+        />
+      );
 
       expect(screen.getByText('Delete')).toBeInTheDocument();
     });
 
     it('renders success type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Success Dialog" type="success" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Success Dialog"
+          type="success"
+          description=""
+        />
+      );
 
       expect(screen.getByText('Continue')).toBeInTheDocument();
     });
 
     it('renders warning type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Warning Dialog" type="warning" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Warning Dialog"
+          type="warning"
+          description=""
+        />
+      );
 
       expect(screen.getByText('Proceed')).toBeInTheDocument();
     });
 
     it('renders error type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Error Dialog" type="error" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Error Dialog"
+          type="error"
+          description=""
+        />
+      );
 
       expect(screen.getByText('OK')).toBeInTheDocument();
     });
 
     it('renders info type correctly', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Info Dialog" type="info" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Info Dialog"
+          type="info"
+          description=""
+        />
+      );
 
       expect(screen.getByText('OK')).toBeInTheDocument();
     });
@@ -144,7 +217,15 @@ describe('Dialog', () => {
   // Custom Actions Tests
   describe('custom actions', () => {
     it('renders custom actions', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Custom Actions" actions={mockActions} />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Custom Actions"
+          actions={mockActions}
+          description=""
+        />
+      );
 
       expect(screen.getByText('Cancel')).toBeInTheDocument();
       expect(screen.getByText('Confirm')).toBeInTheDocument();
@@ -152,7 +233,7 @@ describe('Dialog', () => {
 
     it('calls action onClick when clicked', async () => {
       const user = userEvent.setup();
-      const handleClick = vi.fn();
+      const handleClick = createMockFn();
       const actions = [
         {
           label: 'Test Action',
@@ -161,10 +242,18 @@ describe('Dialog', () => {
         },
       ];
 
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" actions={actions} />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          actions={actions}
+          description=""
+        />
+      );
 
       await user.click(screen.getByText('Test Action'));
-      expect(handleClick).toHaveBeenCalled();
+      expect(handleClick.mock.calls.length).toBe(1);
     });
 
     it('renders disabled actions', () => {
@@ -172,12 +261,20 @@ describe('Dialog', () => {
         {
           label: 'Disabled Action',
           variant: 'primary' as const,
-          onClick: vi.fn(),
+          onClick: createMockFn(),
           disabled: true,
         },
       ];
 
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" actions={disabledActions} />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          actions={disabledActions}
+          description=""
+        />
+      );
 
       const button = screen.getByRole('button', { name: 'Disabled Action' });
       expect(button).toBeDisabled();
@@ -188,12 +285,20 @@ describe('Dialog', () => {
         {
           label: 'Loading Action',
           variant: 'primary' as const,
-          onClick: vi.fn(),
+          onClick: createMockFn(),
           loading: true,
         },
       ];
 
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" actions={loadingActions} />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          actions={loadingActions}
+          description=""
+        />
+      );
 
       const button = screen.getByText('Loading Action');
       expect(button).toBeInTheDocument();
@@ -204,38 +309,62 @@ describe('Dialog', () => {
   // Cancel Button Tests
   describe('cancel button', () => {
     it('shows cancel button by default', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" />);
+      render(<Dialog open={true} onClose={createMockFn()} title="Test" description="" />);
 
       expect(screen.getByText('Cancel')).toBeInTheDocument();
     });
 
     it('hides cancel button when showCancel is false', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" showCancel={false} />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          showCancel={false}
+          description=""
+        />
+      );
 
       expect(screen.queryByText('Cancel')).not.toBeInTheDocument();
     });
 
     it('uses custom cancel label', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" cancelLabel="Custom Cancel" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          cancelLabel="Custom Cancel"
+          description=""
+        />
+      );
 
       expect(screen.getByText('Custom Cancel')).toBeInTheDocument();
     });
 
     it('calls onClose when cancel is clicked', async () => {
       const user = userEvent.setup();
-      const handleClose = vi.fn();
+      const handleClose = createMockFn();
 
-      render(<Dialog open={true} onClose={handleClose} title="Test" />);
+      render(<Dialog open={true} onClose={handleClose} title="Test" description="" />);
 
       await user.click(screen.getByText('Cancel'));
-      expect(handleClose).toHaveBeenCalled();
+      expect(handleClose.mock.calls.length).toBe(1);
     });
   });
 
   // Custom Styling Tests
   describe('custom styling', () => {
     it('applies custom className', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" className="custom-dialog" />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          className="custom-dialog"
+          description=""
+        />
+      );
 
       expect(screen.getByTestId('mock-modal')).toHaveClass('custom-dialog');
     });
@@ -245,19 +374,41 @@ describe('Dialog', () => {
   describe('backdrop and escape', () => {
     it('passes closeOnBackdropClick to Modal', () => {
       const { rerender } = render(
-        <Dialog open={true} onClose={vi.fn()} title="Test" closeOnBackdropClick={true} />
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          closeOnBackdropClick={true}
+          description=""
+        />
       );
 
       // Test that prop is passed through (Mock Modal will receive it)
       expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
 
-      rerender(<Dialog open={true} onClose={vi.fn()} title="Test" closeOnBackdropClick={false} />);
+      rerender(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          closeOnBackdropClick={false}
+          description=""
+        />
+      );
 
       expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
     });
 
     it('passes closeOnEscape to Modal', () => {
-      render(<Dialog open={true} onClose={vi.fn()} title="Test" closeOnEscape={false} />);
+      render(
+        <Dialog
+          open={true}
+          onClose={createMockFn()}
+          title="Test"
+          closeOnEscape={false}
+          description=""
+        />
+      );
 
       expect(screen.getByTestId('mock-modal')).toBeInTheDocument();
     });
@@ -265,9 +416,7 @@ describe('Dialog', () => {
 });
 
 describe('ConfirmDialog', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => {});
 
   // Basic Rendering Tests
   describe('rendering', () => {
@@ -275,8 +424,8 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Confirm Action"
           description="Are you sure?"
         />
@@ -292,10 +441,11 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Delete Item"
           type="destructive"
+          description=""
         />
       );
 
@@ -307,27 +457,39 @@ describe('ConfirmDialog', () => {
   describe('actions', () => {
     it('calls onConfirm when confirm button is clicked', async () => {
       const user = userEvent.setup();
-      const handleConfirm = vi.fn();
+      const handleConfirm = createMockFn();
 
       render(
-        <ConfirmDialog open={true} onClose={vi.fn()} onConfirm={handleConfirm} title="Confirm" />
+        <ConfirmDialog
+          open={true}
+          onClose={createMockFn()}
+          onConfirm={handleConfirm}
+          title="Confirm"
+          description=""
+        />
       );
 
       const confirmButton = screen.getByRole('button', { name: 'Confirm' });
       await user.click(confirmButton);
-      expect(handleConfirm).toHaveBeenCalled();
+      expect(handleConfirm.mock.calls.length).toBe(1);
     });
 
     it('calls onClose when cancel button is clicked', async () => {
       const user = userEvent.setup();
-      const handleClose = vi.fn();
+      const handleClose = createMockFn();
 
       render(
-        <ConfirmDialog open={true} onClose={handleClose} onConfirm={vi.fn()} title="Confirm" />
+        <ConfirmDialog
+          open={true}
+          onClose={handleClose}
+          onConfirm={createMockFn()}
+          title="Confirm"
+          description=""
+        />
       );
 
       await user.click(screen.getByText('Cancel'));
-      expect(handleClose).toHaveBeenCalled();
+      expect(handleClose.mock.calls.length).toBe(1);
     });
   });
 
@@ -337,10 +499,11 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Custom Confirm"
           confirmLabel="Yes, Do It"
+          description=""
         />
       );
 
@@ -351,10 +514,11 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Custom Cancel"
           cancelLabel="No, Don't"
+          description=""
         />
       );
 
@@ -368,10 +532,11 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Loading Confirm"
           loading={true}
+          description=""
         />
       );
 
@@ -383,10 +548,11 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Loading Confirm"
           loading={true}
+          description=""
         />
       );
 
@@ -398,10 +564,11 @@ describe('ConfirmDialog', () => {
       render(
         <ConfirmDialog
           open={true}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
+          onClose={createMockFn()}
+          onConfirm={createMockFn()}
           title="Loading Confirm"
           loading={true}
+          description=""
         />
       );
 
@@ -412,9 +579,7 @@ describe('ConfirmDialog', () => {
 });
 
 describe('AlertDialog', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => {});
 
   // Basic Rendering Tests
   describe('rendering', () => {
@@ -422,7 +587,7 @@ describe('AlertDialog', () => {
       render(
         <AlertDialog
           open={true}
-          onClose={vi.fn()}
+          onClose={createMockFn()}
           title="Alert Title"
           description="Alert description"
         />
@@ -439,7 +604,13 @@ describe('AlertDialog', () => {
 
       types.forEach(type => {
         const { unmount } = render(
-          <AlertDialog open={true} onClose={vi.fn()} title={`${type} Alert`} type={type} />
+          <AlertDialog
+            open={true}
+            onClose={createMockFn()}
+            title={`${type} Alert`}
+            type={type}
+            description=""
+          />
         );
 
         expect(screen.getByText('OK')).toBeInTheDocument();
@@ -449,7 +620,7 @@ describe('AlertDialog', () => {
 
     it('renders with custom content', () => {
       render(
-        <AlertDialog open={true} onClose={vi.fn()} title="Alert with Content">
+        <AlertDialog open={true} onClose={createMockFn()} title="Alert with Content" description="">
           <div data-testid="alert-content">Custom alert content</div>
         </AlertDialog>
       );
@@ -462,16 +633,24 @@ describe('AlertDialog', () => {
   describe('actions', () => {
     it('calls onClose when OK button is clicked', async () => {
       const user = userEvent.setup();
-      const handleClose = vi.fn();
+      const handleClose = createMockFn();
 
-      render(<AlertDialog open={true} onClose={handleClose} title="Test Alert" />);
+      render(<AlertDialog open={true} onClose={handleClose} title="Test Alert" description="" />);
 
       await user.click(screen.getByText('OK'));
-      expect(handleClose).toHaveBeenCalled();
+      expect(handleClose.mock.calls.length).toBe(1);
     });
 
     it('uses custom OK label', () => {
-      render(<AlertDialog open={true} onClose={vi.fn()} title="Custom OK" okLabel="Got It" />);
+      render(
+        <AlertDialog
+          open={true}
+          onClose={createMockFn()}
+          title="Custom OK"
+          okLabel="Got It"
+          description=""
+        />
+      );
 
       expect(screen.getByText('Got It')).toBeInTheDocument();
     });
@@ -481,9 +660,7 @@ describe('AlertDialog', () => {
 // Simplified useDialog hook tests - the hook implementation is complex
 // and requires more sophisticated mocking to test properly in isolation
 describe('useDialog hook', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => {});
 
   // Basic Hook Tests
   describe('hook basics', () => {

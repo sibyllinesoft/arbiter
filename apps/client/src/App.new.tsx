@@ -69,7 +69,7 @@ function AppContent() {
   return (
     <>
       {currentView === 'dashboard' && <LandingPage onNavigateToConfig={navigateToConfig} />}
-      {currentView === 'config' && <ConfigScreen onNavigateBack={navigateToDashboard} />}
+      {currentView === 'config' && <ConfigScreen isModal onClose={navigateToDashboard} />}
     </>
   );
 }

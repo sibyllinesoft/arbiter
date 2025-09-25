@@ -38,7 +38,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8);
       expect(result.explanation).toContain('Dependencies:');
       expect(result.explanation.some(line => line.includes('commander'))).toBe(true);
@@ -76,7 +76,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8);
     });
 
@@ -109,7 +109,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8);
     });
   });
@@ -171,7 +171,7 @@ describe('ArtifactDetector', () => {
       const cliResult = detectArtifactType(cliContext);
 
       expect(webResult.primaryType).toBe('web_service');
-      expect(cliResult.primaryType).toBe('cli');
+      expect(cliResult.primaryType).toBe('tool');
     });
   });
 
@@ -203,7 +203,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.9); // High confidence due to multiple factors
       expect(result.factors.dependencyFactors.length).toBeGreaterThan(0);
       expect(result.factors.scriptFactors.length).toBeGreaterThan(0);
@@ -254,10 +254,10 @@ describe('ArtifactDetector', () => {
       expect(result.alternativeTypes.length).toBeGreaterThan(0);
       expect(result.alternativeTypes[0].confidence).toBeLessThanOrEqual(result.confidence);
 
-      // Should contain both web_service and cli as possibilities
+      // Should contain both web_service and tool as possibilities
       const typeNames = [result.primaryType, ...result.alternativeTypes.map(alt => alt.type)];
       expect(typeNames).toContain('web_service');
-      expect(typeNames).toContain('cli');
+      expect(typeNames).toContain('tool');
     });
   });
 
@@ -278,7 +278,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.7);
     });
 
@@ -298,7 +298,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.7);
     });
   });

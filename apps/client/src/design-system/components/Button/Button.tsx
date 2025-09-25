@@ -3,8 +3,7 @@
  * Professional button with comprehensive variants and states
  */
 
-import { clsx } from 'clsx';
-import React, { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { type ButtonHTMLAttributes, type ReactNode, forwardRef } from 'react';
 import { buttonVariants, cn, sizeVariants } from '../../variants';
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> {
@@ -13,6 +12,12 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
   /** Button size affects padding and font size */
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+
+  /** Legacy shorthand icon prop (defaults to left side) */
+  icon?: ReactNode;
+
+  /** Position for legacy icon prop */
+  iconPosition?: 'left' | 'right';
 
   /** Whether the button should take full width of container */
   fullWidth?: boolean;
@@ -38,6 +43,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     {
       variant = 'primary',
       size = 'md',
+      icon,
+      iconPosition = 'left',
       fullWidth = false,
       leftIcon,
       rightIcon,
@@ -49,17 +56,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    const resolvedLeftIcon = leftIcon ?? (icon && iconPosition !== 'right' ? icon : undefined);
+    const resolvedRightIcon = rightIcon ?? (icon && iconPosition === 'right' ? icon : undefined);
+
+    const variantKey =
+      variant === 'primary' ? 'default' : variant === 'danger' ? 'destructive' : variant;
+
     const buttonClasses = cn(
       // Base styles
       'inline-flex items-center justify-center gap-2',
-      'font-medium text-sm',
+      'font-medium',
       'border rounded-md',
       'transition-all duration-150 ease-in-out',
       'focus:outline-none focus:ring-2 focus:ring-offset-2',
       'disabled:pointer-events-none disabled:opacity-60',
 
       // Variant styles
-      buttonVariants[variant],
+      buttonVariants[variantKey],
 
       // Size styles
       sizeVariants.button[size],
@@ -84,16 +97,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
 
         {/* Left icon */}
-        {!loading && leftIcon && (
-          <span className={cn('flex-shrink-0', sizeVariants.icon[size])}>{leftIcon}</span>
+        {!loading && resolvedLeftIcon && (
+          <span className={cn('flex-shrink-0', sizeVariants.icon[size])}>{resolvedLeftIcon}</span>
         )}
 
         {/* Button text */}
         {children && <span>{children}</span>}
 
         {/* Right icon */}
-        {!loading && rightIcon && (
-          <span className={cn('flex-shrink-0', sizeVariants.icon[size])}>{rightIcon}</span>
+        {!loading && resolvedRightIcon && (
+          <span className={cn('flex-shrink-0', sizeVariants.icon[size])}>{resolvedRightIcon}</span>
         )}
       </button>
     );

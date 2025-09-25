@@ -58,7 +58,7 @@ export function createProjectsRouter(deps: Dependencies) {
             break;
           case 'module':
           case 'library':
-          case 'cli':
+          case 'tool':
           case 'binary':
           case 'frontend':
           case 'job':
@@ -78,7 +78,7 @@ export function createProjectsRouter(deps: Dependencies) {
       for (const [key, comp] of Object.entries(components)) {
         if (comp.type === 'infrastructure') {
           infrastructureCount++;
-        } else if (!['library', 'module', 'cli', 'binary', 'frontend'].includes(comp.type)) {
+        } else if (!['library', 'module', 'tool', 'binary', 'frontend'].includes(comp.type)) {
           externalCount++;
         }
       }
@@ -114,8 +114,8 @@ export function createProjectsRouter(deps: Dependencies) {
             libraries: Object.keys(components).filter(
               k => components[k].type === 'library' || components[k].type === 'module'
             ).length,
-            clis: Object.keys(components).filter(
-              k => components[k].type === 'cli' || components[k].type === 'binary'
+            tools: Object.keys(components).filter(
+              k => components[k].type === 'tool' || components[k].type === 'binary'
             ).length,
             frontends: Object.keys(components).filter(k => components[k].type === 'frontend')
               .length,
@@ -153,7 +153,7 @@ export function createProjectsRouter(deps: Dependencies) {
             services: 0,
             databases: 0,
             libraries: 0,
-            clis: 0,
+            tools: 0,
             frontends: 0,
             infrastructure: 0,
             external: 0,
@@ -223,7 +223,7 @@ export function createProjectsRouter(deps: Dependencies) {
             console.log(`[DEBUG] Artifact types for project ${project.name}:`, typeGroups);
 
             let libraryCount = 0;
-            let cliCount = 0;
+            let toolCount = 0;
             let frontendCount = 0;
             let infrastructureCount = 0;
             let externalCount = 0;
@@ -231,15 +231,15 @@ export function createProjectsRouter(deps: Dependencies) {
             for (const artifact of otherArtifacts) {
               // Normalize types
               let type = artifact.type;
-              if (type === 'binary') type = 'cli';
+              if (type === 'binary') type = 'tool';
 
               switch (type) {
                 case 'library':
                 case 'module':
                   libraryCount++;
                   break;
-                case 'cli':
-                  cliCount++;
+                case 'tool':
+                  toolCount++;
                   break;
                 case 'frontend':
                   frontendCount++;
@@ -267,7 +267,7 @@ export function createProjectsRouter(deps: Dependencies) {
               services: Object.keys(services).length,
               databases: Object.keys(databases).length,
               libraries: libraryCount,
-              clis: cliCount,
+              tools: toolCount,
               frontends: frontendCount,
               infrastructure: infrastructureCount,
               external: externalCount,
@@ -282,7 +282,7 @@ export function createProjectsRouter(deps: Dependencies) {
               services: project.service_count || 0,
               databases: project.database_count || 0,
               libraries: 0,
-              clis: 0,
+              tools: 0,
               frontends: 0,
               infrastructure: 0,
               external: 0,

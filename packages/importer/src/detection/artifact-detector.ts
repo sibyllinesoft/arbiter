@@ -11,7 +11,7 @@ import {
   determineMostLikelyCategory,
   getAllCategoriesByConfidence,
   getCategoryExplanation,
-} from './dependency-matrix.js';
+} from './dependency-matrix';
 
 export interface DetectionContext {
   /** Primary language detected */
@@ -106,6 +106,25 @@ export class ArtifactDetector {
    */
   detect(context: DetectionContext): DetectionResult {
     const factors = this.analyzeAllFactors(context);
+    const hasEvidence =
+      factors.dependencyFactors.length > 0 ||
+      factors.scriptFactors.length > 0 ||
+      factors.filePatternFactors.length > 0 ||
+      factors.configFactors.length > 0 ||
+      (factors.sourceFactors?.length ?? 0) > 0;
+
+    if (!hasEvidence) {
+      const explanation = ['Detected as library based on:', 'no strong detection signals'];
+      const confidence = DEPENDENCY_MATRIX[context.language] ? 0.2 : 0;
+      return {
+        primaryType: 'library',
+        confidence,
+        alternativeTypes: [],
+        explanation,
+        factors,
+      };
+    }
+
     const aggregatedScores = this.aggregateScores(factors);
 
     // Sort by confidence
@@ -116,7 +135,7 @@ export class ArtifactDetector {
       }))
       .sort((a, b) => b.confidence - a.confidence);
 
-    const primaryType = sortedTypes[0]?.type || 'module';
+    const primaryType = sortedTypes[0]?.type || 'library';
     const confidence = sortedTypes[0]?.confidence || 0.1;
     const alternativeTypes = sortedTypes.slice(1);
 
@@ -188,10 +207,12 @@ export class ArtifactDetector {
       /command/i, // Command mentions
       /--help/, // Help flags
       /--version/, // Version flags
+      /go\s+run/i, // Go CLI entry point
+      /dotnet\s+run/i, // .NET CLI entry point
     ]);
     if (cliScripts.length > 0) {
       factors.push({
-        category: 'cli',
+        category: 'tool',
         confidence: Math.min(0.8, cliScripts.length * 0.3),
         scripts: cliScripts,
       });
@@ -215,12 +236,15 @@ export class ArtifactDetector {
 
     // Frontend indicators
     const frontendScripts = this.findScriptsMatching(context.scripts, [
-      /build/i, // Build process
-      /webpack/, // Bundler
-      /vite/, // Build tool
-      /rollup/, // Bundler
-      /start.*dev/i, // Development mode
-      /preview/i, // Preview mode
+      /webpack/i,
+      /vite/i,
+      /rollup/i,
+      /parcel/i,
+      /react-scripts/i,
+      /next\s+dev/i,
+      /nuxt\s+dev/i,
+      /start.*dev/i,
+      /preview/i,
     ]);
     if (frontendScripts.length > 0) {
       factors.push({
@@ -285,11 +309,12 @@ export class ArtifactDetector {
         /bin\//.test(pattern) ||
         /cli\./.test(pattern) ||
         /command\./.test(pattern) ||
-        /main\./.test(pattern)
+        /main\./.test(pattern) ||
+        /cmd\//i.test(pattern)
     );
     if (cliPatterns.length > 0) {
       factors.push({
-        category: 'cli',
+        category: 'tool',
         confidence: Math.min(0.6, cliPatterns.length * 0.2),
         patterns: cliPatterns,
       });
@@ -330,14 +355,14 @@ export class ArtifactDetector {
       });
     }
 
-    // Module patterns
+    // Library/module patterns
     const modulePatterns = context.filePatterns.filter(
       pattern =>
         /lib\//.test(pattern) || /src\/.*index\.(ts|js)$/.test(pattern) || /dist\//.test(pattern)
     );
     if (modulePatterns.length > 0) {
       factors.push({
-        category: 'module',
+        category: 'library',
         confidence: Math.min(0.4, modulePatterns.length * 0.1),
         patterns: modulePatterns,
       });
@@ -414,6 +439,10 @@ export class ArtifactDetector {
     const cliIndicators: string[] = [];
     if (config.bin) {
       cliIndicators.push('has bin field');
+      if (typeof config.bin === 'object') {
+        cliIndicators.push('binary command definitions');
+        cliIndicators.push('explicit CLI entry point');
+      }
     }
     if (config.main && typeof config.main === 'string' && config.main.includes('bin')) {
       cliIndicators.push('main points to bin');
@@ -421,9 +450,13 @@ export class ArtifactDetector {
     if (config.preferGlobal) {
       cliIndicators.push('preferGlobal flag');
     }
+    if (config.entry_points?.console_scripts) {
+      cliIndicators.push('console script entry points');
+      cliIndicators.push('exposed console commands');
+    }
     if (cliIndicators.length > 0) {
       factors.push({
-        category: 'cli',
+        category: 'tool',
         confidence: Math.min(0.9, cliIndicators.length * 0.4),
         indicators: cliIndicators,
       });
@@ -440,7 +473,7 @@ export class ArtifactDetector {
     if (config.types || config.typings) {
       moduleIndicators.push('provides TypeScript types');
     }
-    if (!config.private && !config.bin) {
+    if ('private' in config && !config.private && !config.bin) {
       moduleIndicators.push('public package without CLI');
     }
     // Check for module-specific fields
@@ -455,7 +488,7 @@ export class ArtifactDetector {
     }
     if (moduleIndicators.length > 0) {
       factors.push({
-        category: 'module',
+        category: 'library',
         confidence: Math.min(0.8, moduleIndicators.length * 0.2),
         indicators: moduleIndicators,
       });
@@ -527,7 +560,7 @@ export class ArtifactDetector {
       if (analysis.hasCliPatterns) patterns.push('CLI interaction patterns');
 
       factors.push({
-        category: 'cli',
+        category: 'tool',
         confidence: 0.8,
         patterns,
       });
@@ -590,14 +623,27 @@ export class ArtifactDetector {
   private aggregateScores(factors: DetectionFactors): Record<string, number> {
     const scores: Record<string, number> = {};
 
-    // Weights for different factor types - adjusted for better detection
-    const weights = {
-      dependency: 0.35, // Dependencies are strong indicators
-      source: 0.25, // Source code analysis is very reliable
-      config: 0.25, // Package config is highly reliable for CLI/library detection
-      script: 0.1, // Scripts provide some indication
-      filePattern: 0.05, // File patterns are weak indicators
-    };
+    const hasSource = (factors.sourceFactors?.length ?? 0) > 0;
+    const hasConfig = factors.configFactors.length > 0;
+
+    // When we only have lightweight signals (e.g., Go or C# binaries) lean on
+    // dependencies more heavily so obvious CLI frameworks still rank highly.
+    const weights =
+      hasSource || hasConfig
+        ? {
+            dependency: 0.5,
+            source: 0.25,
+            config: 0.25,
+            script: 0.08,
+            filePattern: 0.05,
+          }
+        : {
+            dependency: 0.7,
+            source: 0,
+            config: 0,
+            script: 0.2,
+            filePattern: 0.1,
+          };
 
     // Aggregate dependency factors
     factors.dependencyFactors.forEach(factor => {
@@ -631,12 +677,12 @@ export class ArtifactDetector {
       // Try to make a more intelligent guess based on available evidence
 
       // Strong CLI indicators
-      if (factors.configFactors.some(f => f.category === 'cli' && f.confidence > 0.5)) {
-        scores['cli'] = 0.7;
+      if (factors.configFactors.some(f => f.category === 'tool' && f.confidence > 0.5)) {
+        scores['tool'] = 0.7;
       }
       // Strong module indicators
-      else if (factors.configFactors.some(f => f.category === 'module' && f.confidence > 0.3)) {
-        scores['module'] = 0.5;
+      else if (factors.configFactors.some(f => f.category === 'library' && f.confidence > 0.3)) {
+        scores['library'] = 0.5;
       }
       // Check for web service patterns
       else if (
@@ -650,9 +696,9 @@ export class ArtifactDetector {
       ) {
         scores['frontend'] = 0.5;
       }
-      // Default to module with low confidence
+      // Default to library with low confidence
       else {
-        scores['module'] = 0.2;
+        scores['library'] = 0.2;
       }
     }
 
@@ -679,25 +725,29 @@ export class ArtifactDetector {
     // Add dependency explanations
     const depFactor = factors.dependencyFactors.find(f => f.category === primaryType);
     if (depFactor && depFactor.matches.length > 0) {
-      explanation.push(`Dependencies: ${depFactor.matches.slice(0, 3).join(', ')}`);
+      explanation.push('Dependencies:');
+      explanation.push(...depFactor.matches.slice(0, 3));
     }
 
     // Add source code explanations
     const sourceFactor = factors.sourceFactors?.find(f => f.category === primaryType);
     if (sourceFactor && sourceFactor.patterns.length > 0) {
-      explanation.push(`Source code: ${sourceFactor.patterns.join(', ')}`);
+      explanation.push('Source code:');
+      explanation.push(...sourceFactor.patterns);
     }
 
     // Add config explanations
     const configFactor = factors.configFactors.find(f => f.category === primaryType);
     if (configFactor && configFactor.indicators.length > 0) {
-      explanation.push(`Configuration: ${configFactor.indicators.join(', ')}`);
+      explanation.push('Configuration:');
+      explanation.push(...configFactor.indicators);
     }
 
     // Add script explanations
     const scriptFactor = factors.scriptFactors.find(f => f.category === primaryType);
     if (scriptFactor && scriptFactor.scripts.length > 0) {
-      explanation.push(`Scripts: ${scriptFactor.scripts.slice(0, 2).join(', ')}`);
+      explanation.push('Scripts:');
+      explanation.push(...scriptFactor.scripts.slice(0, 2));
     }
 
     return explanation;

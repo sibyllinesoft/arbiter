@@ -2,9 +2,9 @@ export const getComponentType = (data: any, name: string): string => {
   let componentType =
     data.type || data.metadata?.type || (name.includes('@') ? 'library' : 'service');
 
-  // Standardize binary to cli
+  // Standardize binary to tool
   if (componentType === 'binary') {
-    componentType = 'cli';
+    componentType = 'tool';
   }
 
   // Standardize database to data
@@ -53,7 +53,7 @@ export const computeGroupedComponents = (projectData: any): Record<string, any[]
       const groupLabel =
         type.charAt(0).toUpperCase() +
         type.slice(1) +
-        (type === 'cli' || type === 'data' ? 's' : 's');
+        (type === 'tool' || type === 'data' ? 's' : 's');
       if (!tempGroups[groupLabel]) {
         tempGroups[groupLabel] = [];
       }

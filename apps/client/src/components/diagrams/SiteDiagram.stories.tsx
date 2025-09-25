@@ -669,8 +669,8 @@ lambda_functions:
     memory: 256
     timeout: 30
     environment:
-      USER_POOL_ID: "${cognito_user_pool_id}"
-      JWT_SECRET: "${jwt_secret}"
+      USER_POOL_ID: "\${cognito_user_pool_id}"
+      JWT_SECRET: "\${jwt_secret}"
     events:
       - api_gateway: "/auth/{proxy+}"
     layers:
@@ -682,8 +682,8 @@ lambda_functions:
     memory: 512
     timeout: 15
     environment:
-      DYNAMODB_TABLE: "${user_table}"
-      S3_BUCKET: "${user_uploads_bucket}"
+      DYNAMODB_TABLE: "\${user_table}"
+      S3_BUCKET: "\${user_uploads_bucket}"
     events:
       - api_gateway: "/users/{proxy+}"
     layers:
@@ -695,9 +695,9 @@ lambda_functions:
     memory: 1024
     timeout: 30
     environment:
-      DYNAMODB_TABLE: "${product_table}"
-      OPENSEARCH_ENDPOINT: "${search_endpoint}"
-      REDIS_ENDPOINT: "${cache_endpoint}"
+      DYNAMODB_TABLE: "\${product_table}"
+      OPENSEARCH_ENDPOINT: "\${search_endpoint}"
+      REDIS_ENDPOINT: "\${cache_endpoint}"
     events:
       - api_gateway: "/products/{proxy+}"
       - schedule: "rate(1 hour)"  # Cache refresh
@@ -709,12 +709,12 @@ lambda_functions:
     memory: 512
     timeout: 45
     environment:
-      DYNAMODB_TABLE: "${order_table}"
-      SQS_QUEUE: "${order_queue}"
-      SNS_TOPIC: "${notification_topic}"
+      DYNAMODB_TABLE: "\${order_table}"
+      SQS_QUEUE: "\${order_queue}"
+      SNS_TOPIC: "\${notification_topic}"
     events:
       - api_gateway: "/orders/{proxy+}"
-      - sqs: "${order_processing_queue}"
+      - sqs: "\${order_processing_queue}"
     layers:
       - "aws-sdk-java"
       

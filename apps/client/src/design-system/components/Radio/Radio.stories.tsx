@@ -433,7 +433,7 @@ export const DeveloperToolExamples: Story = {
                 icon: <Code className="h-4 w-4 text-purple-500" />,
               },
               {
-                value: 'cli',
+                value: 'tool',
                 label: 'Command Line Tool',
                 description: 'Terminal-based application',
                 icon: <Terminal className="h-4 w-4 text-gray-600" />,

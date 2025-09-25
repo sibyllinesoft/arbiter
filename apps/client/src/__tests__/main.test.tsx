@@ -127,10 +127,8 @@ describe('React StrictMode', () => {
 
 describe('CSS imports', () => {
   it('should import minimal.css', async () => {
-    // The import should not throw an error
-    expect(async () => {
-      await import('../minimal.css');
-    }).not.toThrow();
+    // The import should resolve without throwing
+    await expect(import('../minimal.css')).resolves.toBeDefined();
   });
 });
 
@@ -184,7 +182,7 @@ describe('module structure', () => {
     // Should have no exports or only Symbol.toStringTag
     expect(exports.length).toBeLessThanOrEqual(1);
     if (exports.length === 1) {
-      expect(exports[0]).toBe('Symbol(Symbol.toStringTag)' || '__esModule');
+      expect(['Symbol(Symbol.toStringTag)', '__esModule']).toContain(exports[0]);
     }
   });
 });

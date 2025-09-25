@@ -11,7 +11,7 @@ import {
   type DetectionContext,
   type SourceAnalysis,
   detectArtifactType,
-} from '../detection/artifact-detector.js';
+} from '../detection/artifact-detector';
 import {
   BinaryArtifact,
   ConfidenceScore,
@@ -24,7 +24,7 @@ import {
   ParseContext,
   Provenance,
   ServiceArtifact,
-} from '../types.js';
+} from '../types';
 
 // ============================================================================
 // Python Configuration Data Types
@@ -519,10 +519,10 @@ export class PythonPlugin implements ImporterPlugin {
 
   private mapCategoryToArtifactType(category: string): string {
     const categoryMap: Record<string, string> = {
-      cli: 'binary',
+      tool: 'binary',
       web_service: 'service',
       frontend: 'module',
-      module: 'module',
+      library: 'module',
       desktop_app: 'binary',
       data_processing: 'module',
       testing: 'test',
@@ -715,7 +715,7 @@ export class PythonPlugin implements ImporterPlugin {
       type: 'binary',
       name: packageData.name,
       description: packageData.description || `Python CLI tool: ${packageData.name}`,
-      tags: ['python', 'cli', 'binary'],
+      tags: ['python', 'tool', 'binary'],
       metadata: {
         sourceFile: filePath,
         root: path.dirname(filePath),

@@ -3,8 +3,8 @@
  * Test scanner to verify package type detection
  */
 
-import { getAllPlugins } from './plugins/index.js';
-import { ScannerRunner } from './scanner.js';
+import { getAllPlugins } from './plugins/index';
+import { ScannerRunner } from './scanner';
 
 async function main() {
   const projectPath = process.argv[2] || '/home/nathan/Projects/arbiter';

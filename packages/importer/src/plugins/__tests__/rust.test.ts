@@ -237,7 +237,7 @@ async fn main() {
       expect(artifacts).toHaveLength(1);
       expect(artifacts[0].artifact.type).toBe('binary');
       expect(artifacts[0].artifact.name).toBe('cli-tool');
-      expect(artifacts[0].artifact.tags).toContain('cli');
+      expect(artifacts[0].artifact.tags).toContain('tool');
       expect(artifacts[0].artifact.metadata.language).toBe('rust');
     });
 

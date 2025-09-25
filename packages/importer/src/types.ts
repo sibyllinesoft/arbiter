@@ -128,7 +128,7 @@ export interface InferenceOptions {
 export type ArtifactType =
   | 'service' // HTTP services, APIs, microservices
   | 'binary' // Executable binaries
-  | 'cli' // Command-line interface tools
+  | 'tool' // Command-line interface tools
   | 'module' // Reusable modules, components, libraries
   | 'job' // Background jobs, cron jobs, workers
   | 'schema' // Database schemas, API schemas
@@ -222,14 +222,14 @@ export interface BinaryArtifact extends BaseArtifact {
 }
 
 /**
- * CLI artifact representing a command-line interface tool
+ * Tool artifact representing a command-line interface tool
  */
-export interface CliArtifact extends BaseArtifact {
-  type: 'cli';
+export interface ToolArtifact extends BaseArtifact {
+  type: 'tool';
   metadata: {
     /** Programming language */
     language: string;
-    /** CLI framework used (e.g., 'commander', 'click', 'clap') */
+    /** Command-line framework used (e.g., 'commander', 'click', 'clap') */
     framework?: string;
     /** Build system (e.g., 'maven', 'gradle', 'npm') */
     buildSystem?: string;

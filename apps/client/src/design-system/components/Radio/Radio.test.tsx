@@ -1,9 +1,17 @@
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Star } from 'lucide-react';
 import React from 'react';
-import { vi } from 'vitest';
-import { render, screen } from '../../test/utils';
 import { Radio, RadioGroup, type RadioOption } from './Radio';
+
+function createMockFn() {
+  const calls: any[][] = [];
+  const fn = (...args: any[]) => {
+    calls.push(args);
+  };
+  (fn as any).mock = { calls };
+  return fn as any;
+}
 
 describe('Radio', () => {
   // Basic Rendering Tests
@@ -262,51 +270,51 @@ describe('Radio', () => {
   // User Interaction Tests
   describe('user interactions', () => {
     it('handles click events', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<Radio label="Test" onChange={handleChange} />);
       const radio = screen.getByRole('radio');
 
       await user.click(radio);
-      expect(handleChange).toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(1);
     });
 
     it('handles label click to select radio', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<Radio label="Test Label" onChange={handleChange} />);
       const label = screen.getByText('Test Label');
 
       await user.click(label);
-      expect(handleChange).toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(1);
     });
 
     it('prevents interaction when disabled', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<Radio label="Test" disabled onChange={handleChange} />);
       const radio = screen.getByRole('radio');
 
       await user.click(radio);
-      expect(handleChange).not.toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(0);
     });
 
     it('prevents interaction when loading', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<Radio label="Test" loading onChange={handleChange} />);
       const radio = screen.getByRole('radio');
 
       await user.click(radio);
-      expect(handleChange).not.toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(0);
     });
 
     it('supports keyboard navigation', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<Radio label="Test" onChange={handleChange} />);
@@ -314,22 +322,22 @@ describe('Radio', () => {
 
       radio.focus();
       await user.keyboard('[Space]');
-      expect(handleChange).toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(1);
     });
 
     it('handles focus and blur events', async () => {
-      const handleFocus = vi.fn();
-      const handleBlur = vi.fn();
+      const handleFocus = createMockFn();
+      const handleBlur = createMockFn();
       const user = userEvent.setup();
 
       render(<Radio label="Test" onFocus={handleFocus} onBlur={handleBlur} />);
       const radio = screen.getByRole('radio');
 
       await user.click(radio);
-      expect(handleFocus).toHaveBeenCalled();
+      expect(handleFocus.mock.calls.length).toBe(1);
 
       await user.tab();
-      expect(handleBlur).toHaveBeenCalled();
+      expect(handleBlur.mock.calls.length).toBe(1);
     });
   });
 
@@ -357,7 +365,7 @@ describe('Radio', () => {
     it('sets aria-describedby when description is present', () => {
       render(<Radio label="Test" description="Description" id="test-radio" />);
       const radio = screen.getByRole('radio');
-      expect(radio).toHaveAttribute('aria-describedby', expect.stringContaining('test-radio-desc'));
+      expect(radio.getAttribute('aria-describedby')).toContain('test-radio-desc');
     });
 
     it('sets aria-describedby for both description and helper text', () => {
@@ -523,14 +531,14 @@ describe('RadioGroup', () => {
     });
 
     it('calls onChange when selection changes', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<RadioGroup name="test" options={mockOptions} onChange={handleChange} />);
       const radio = screen.getByDisplayValue('option2');
 
       await user.click(radio);
-      expect(handleChange).toHaveBeenCalledWith('option2');
+      expect(handleChange.mock.calls[0][0]).toBe('option2');
     });
 
     it('updates selection on click', async () => {
@@ -550,14 +558,14 @@ describe('RadioGroup', () => {
     });
 
     it('does not change selection for disabled options', async () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       const user = userEvent.setup();
 
       render(<RadioGroup name="test" options={mockOptions} onChange={handleChange} />);
       const disabledRadio = screen.getByDisplayValue('option3');
 
       await user.click(disabledRadio);
-      expect(handleChange).not.toHaveBeenCalled();
+      expect(handleChange.mock.calls.length).toBe(0);
       expect(disabledRadio).not.toBeChecked();
     });
   });
@@ -581,7 +589,7 @@ describe('RadioGroup', () => {
     it('disables all options when group is disabled', () => {
       render(<RadioGroup name="test" options={mockOptions} disabled />);
       const radios = screen.getAllByRole('radio');
-      radios.forEach(radio => {
+      radios.forEach((radio: HTMLElement) => {
         expect(radio).toBeDisabled();
       });
     });
@@ -627,7 +635,7 @@ describe('RadioGroup', () => {
     it('groups radios with same name attribute', () => {
       render(<RadioGroup name="test-group" options={mockOptions} />);
       const radios = screen.getAllByRole('radio');
-      radios.forEach(radio => {
+      radios.forEach((radio: HTMLElement) => {
         expect(radio).toHaveAttribute('name', 'test-group');
       });
     });
@@ -703,7 +711,7 @@ describe('RadioGroup', () => {
     // Note: There's a bug in RadioGroup - it doesn't properly handle controlled state
     // The component always uses internal state instead of controlled value prop
     it('initializes with controlled value prop', () => {
-      const handleChange = vi.fn();
+      const handleChange = createMockFn();
       render(
         <RadioGroup name="test" options={mockOptions} value="option2" onChange={handleChange} />
       );

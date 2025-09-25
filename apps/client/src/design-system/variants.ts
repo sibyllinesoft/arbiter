@@ -23,14 +23,18 @@ export const sizeVariants = {
     lg: 'h-12 px-4 py-3 text-base',
   },
   icon: {
+    xs: 'h-3 w-3',
     sm: 'h-4 w-4',
     md: 'h-5 w-5',
     lg: 'h-6 w-6',
+    xl: 'h-7 w-7',
   },
   button: {
-    sm: 'h-9 px-3',
-    md: 'h-10 px-4',
-    lg: 'h-11 px-8',
+    xs: 'h-8 px-2 text-xs',
+    sm: 'h-9 px-3 text-sm',
+    md: 'h-10 px-4 text-sm',
+    lg: 'h-11 px-8 text-base',
+    xl: 'h-12 px-10 text-lg',
   },
 } as const;
 

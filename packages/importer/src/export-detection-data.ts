@@ -9,8 +9,8 @@
 import * as path from 'path';
 import * as fs from 'fs-extra';
 import { glob } from 'glob';
-import { NodeJSPlugin } from './plugins/nodejs.js';
-import type { PackageJsonData } from './plugins/nodejs.js';
+import { NodeJSPlugin } from './plugins/nodejs';
+import type { PackageJsonData } from './plugins/nodejs';
 import type { InferenceContext } from './types';
 
 interface DetectionData {

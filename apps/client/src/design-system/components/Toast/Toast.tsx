@@ -7,7 +7,7 @@
 import { AlertCircle, CheckCircle, Info, Loader2, X, XCircle } from 'lucide-react';
 import React, { useState, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { cn, statusVariants } from '../variants';
+import { cn, statusVariants } from '../../variants';
 
 export interface ToastProps {
   /** Unique identifier for the toast */

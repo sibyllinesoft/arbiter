@@ -12,7 +12,7 @@ import {
   InferredArtifact,
   ParseContext,
   Provenance,
-} from '../types.js';
+} from '../types';
 
 // Go framework detection lists
 const GO_WEB_FRAMEWORKS = ['gin', 'echo', 'fiber', 'chi', 'mux', 'goji', 'iris', 'revel'];

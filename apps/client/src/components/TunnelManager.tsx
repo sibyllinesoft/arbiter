@@ -50,13 +50,26 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 1000;
 
+  const refreshStatus = useCallback(async () => {
+    try {
+      const response = await apiService.getTunnelStatus();
+      if (response.success) {
+        setTunnelInfo(response.tunnel || null);
+      }
+    } catch (error) {
+      console.error('Failed to refresh tunnel status:', error);
+    }
+  }, []);
+
   // Poll tunnel status every 5 seconds when running
   useEffect(() => {
-    if (isPolling) {
-      const interval = setInterval(refreshStatus, 5000);
-      return () => clearInterval(interval);
+    if (!isPolling) {
+      return;
     }
-  }, [isPolling]);
+
+    const interval = setInterval(refreshStatus, 5000);
+    return () => clearInterval(interval);
+  }, [isPolling, refreshStatus]);
 
   // Start polling when tunnel is running
   useEffect(() => {
@@ -73,17 +86,6 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       onTunnelUrlChange(tunnelInfo?.status === 'running' ? tunnelInfo.url : null);
     }
   }, [tunnelInfo?.status, tunnelInfo?.url, onTunnelUrlChange]);
-
-  const refreshStatus = useCallback(async () => {
-    try {
-      const response = await apiService.getTunnelStatus();
-      if (response.success) {
-        setTunnelInfo(response.tunnel || null);
-      }
-    } catch (error) {
-      console.error('Failed to refresh tunnel status:', error);
-    }
-  }, []);
 
   const loadInitialStatus = useCallback(async () => {
     setIsLoading(true);

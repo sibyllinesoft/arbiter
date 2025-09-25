@@ -2,7 +2,7 @@
  * Project context for managing current project state
  */
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { type ReactNode, createContext, useContext, useState } from 'react';
 import type { Project } from '../types/api';
 
 interface ProjectContextValue {

@@ -6,7 +6,7 @@
 
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import React, { useState, useRef, useEffect, type ReactNode } from 'react';
-import { cn } from '../variants';
+import { cn } from '../../variants';
 
 export interface TabItem {
   id: string;
@@ -29,6 +29,9 @@ export interface TabsProps {
 
   /** Callback when tab changes */
   onChange?: (tabId: string) => void;
+
+  /** Legacy alias for onChange */
+  onTabChange?: (tabId: string) => void;
 
   /** Callback when tab is closed */
   onTabClose?: (tabId: string) => void;
@@ -114,6 +117,7 @@ export function Tabs({
   items,
   activeTab,
   onChange,
+  onTabChange,
   onTabClose,
   variant = 'underline',
   size = 'md',
@@ -164,7 +168,13 @@ export function Tabs({
 
     if (onChange) {
       onChange(tabId);
-    } else {
+    }
+
+    if (onTabChange) {
+      onTabChange(tabId);
+    }
+
+    if (!onChange && !onTabChange) {
       setInternalActiveTab(tabId);
     }
   };
@@ -306,7 +316,7 @@ export function Tabs({
                 {item.badge && (
                   <span
                     className={cn(
-                      'inline-flex items-center justify-center font-medium bg-graphite-200 text-graphite-700 rounded-full',
+                      'inline-flex items-center justify-center font-medium bg-graphite-200 text-graphite-700 rounded-md',
                       sizes.badge
                     )}
                   >

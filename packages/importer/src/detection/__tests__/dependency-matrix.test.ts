@@ -17,7 +17,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(cliDependencies, 'javascript');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.5);
     });
 
@@ -28,14 +28,14 @@ describe('Dependency Matrix', () => {
       const cliResult = determineMostLikelyCategory(cliDeps, 'javascript');
       const webResult = determineMostLikelyCategory(webDeps, 'javascript');
 
-      expect(cliResult.category).toBe('cli');
+      expect(cliResult.category).toBe('tool');
       expect(webResult.category).toBe('web_service');
     });
 
     it('should provide explanations for CLI detection', () => {
       const dependencies = ['commander', 'chalk'];
 
-      const explanation = getCategoryExplanation(dependencies, 'javascript', 'cli');
+      const explanation = getCategoryExplanation(dependencies, 'javascript', 'tool');
 
       expect(explanation).toContain('commander → Command-line argument parsing (weight: 0.9)');
       expect(explanation).toContain('chalk → Terminal text styling (weight: 0.7)');
@@ -46,7 +46,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(typescriptCliDeps, 'typescript');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.3);
     });
   });
@@ -57,7 +57,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(pythonCliDeps, 'python');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.5);
     });
 
@@ -68,7 +68,7 @@ describe('Dependency Matrix', () => {
       const cliResult = determineMostLikelyCategory(pythonCliDeps, 'python');
       const webResult = determineMostLikelyCategory(pythonWebDeps, 'python');
 
-      expect(cliResult.category).toBe('cli');
+      expect(cliResult.category).toBe('tool');
       expect(webResult.category).toBe('web_service');
     });
   });
@@ -79,7 +79,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(rustCliDeps, 'rust');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8);
     });
 
@@ -90,7 +90,7 @@ describe('Dependency Matrix', () => {
       const cliResult = determineMostLikelyCategory(rustCliDeps, 'rust');
       const webResult = determineMostLikelyCategory(rustWebDeps, 'rust');
 
-      expect(cliResult.category).toBe('cli');
+      expect(cliResult.category).toBe('tool');
       expect(webResult.category).toBe('web_service');
     });
   });
@@ -101,7 +101,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(goCliDeps, 'go');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.7);
     });
 
@@ -110,7 +110,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(goDepsWithAliases, 'go');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
     });
   });
 
@@ -120,7 +120,7 @@ describe('Dependency Matrix', () => {
 
       const result = determineMostLikelyCategory(csharpCliDeps, 'csharp');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.7);
     });
 
@@ -131,7 +131,7 @@ describe('Dependency Matrix', () => {
       const cliResult = determineMostLikelyCategory(csharpCliDeps, 'csharp');
       const webResult = determineMostLikelyCategory(csharpWebDeps, 'csharp');
 
-      expect(cliResult.category).toBe('cli');
+      expect(cliResult.category).toBe('tool');
       expect(webResult.category).toBe('web_service');
     });
   });
@@ -175,8 +175,8 @@ describe('Dependency Matrix', () => {
       const highWeightCli = ['commander']; // weight 0.9
       const lowWeightCli = ['minimist']; // weight 0.5
 
-      const highResult = calculateCategoryConfidence(highWeightCli, 'javascript', 'cli');
-      const lowResult = calculateCategoryConfidence(lowWeightCli, 'javascript', 'cli');
+      const highResult = calculateCategoryConfidence(highWeightCli, 'javascript', 'tool');
+      const lowResult = calculateCategoryConfidence(lowWeightCli, 'javascript', 'tool');
 
       expect(highResult).toBeGreaterThan(lowResult);
     });
@@ -185,8 +185,8 @@ describe('Dependency Matrix', () => {
       const singleDep = ['commander'];
       const multipleDeps = ['commander', 'chalk', 'inquirer'];
 
-      const singleResult = calculateCategoryConfidence(singleDep, 'javascript', 'cli');
-      const multipleResult = calculateCategoryConfidence(multipleDeps, 'javascript', 'cli');
+      const singleResult = calculateCategoryConfidence(singleDep, 'javascript', 'tool');
+      const multipleResult = calculateCategoryConfidence(multipleDeps, 'javascript', 'tool');
 
       expect(multipleResult).toBeGreaterThan(singleResult);
     });
@@ -199,8 +199,8 @@ describe('Dependency Matrix', () => {
       languages.forEach(lang => {
         const matrix = DEPENDENCY_MATRIX[lang];
         expect(matrix).toBeDefined();
-        expect(matrix.cli).toBeDefined();
-        expect(matrix.cli.length).toBeGreaterThanOrEqual(5); // At least 5 CLI indicators
+        expect(matrix.tool).toBeDefined();
+        expect(matrix.tool.length).toBeGreaterThanOrEqual(5); // At least 5 CLI indicators
       });
     });
 

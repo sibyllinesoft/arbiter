@@ -6,7 +6,7 @@
 
 import { AlertCircle, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn } from '../variants';
+import { cn } from '../../variants';
 
 export interface RadioOption {
   /** Value for the radio option */

@@ -1,5 +1,5 @@
 import { Graphviz } from '@hpcc-js/wasm';
-import React, { useEffect, useRef, useState } from 'react';
+import { type FC, useEffect, useRef, useState } from 'react';
 import { apiService } from '../../services/api';
 import type { IRResponse } from '../../types/api';
 
@@ -8,21 +8,138 @@ interface SiteDiagramProps {
   className?: string;
 }
 
-interface SiteIRData {
-  specHash: string;
-  routes: {
-    id: string;
-    path: string;
-    capabilities: string[];
-  }[];
-  dependencies?: {
-    from: string;
-    to: string;
-    type: string;
-  }[];
+interface SiteRouteNode {
+  id: string;
+  path: string;
+  label?: string;
+  capabilities: string[];
 }
 
-const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
+interface SiteDependencyEdge {
+  from: string;
+  to: string;
+  type?: string;
+  label?: string;
+}
+
+interface SiteIRData {
+  specHash?: string;
+  routes: SiteRouteNode[];
+  dependencies: SiteDependencyEdge[];
+}
+
+type UnknownRecord = Record<string, unknown>;
+
+const isRecord = (value: unknown): value is UnknownRecord =>
+  typeof value === 'object' && value !== null;
+
+const isString = (value: unknown): value is string => typeof value === 'string';
+
+const toStringArray = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter(isString) : [];
+
+const normalizeRoute = (value: unknown, index: number): SiteRouteNode | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const pathSource = value.path ?? value.route ?? value.url ?? '';
+  const path = isString(pathSource) ? pathSource : '';
+  const rawId = value.id ?? value.label ?? path ?? `route_${index}`;
+  const id = isString(rawId) ? rawId : `route_${index}`;
+  const capabilities = toStringArray(value.capabilities ?? value.methods ?? value.actions);
+  const label = isString(value.label) ? value.label : undefined;
+
+  const route: SiteRouteNode = {
+    id,
+    path,
+    capabilities,
+  };
+
+  if (label !== undefined) {
+    route.label = label;
+  }
+
+  return route;
+};
+
+const extractRoutes = (value: unknown): SiteRouteNode[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((entry, index) => normalizeRoute(entry, index))
+      .filter((entry): entry is SiteRouteNode => entry !== null);
+  }
+
+  if (isRecord(value) && Array.isArray(value.nodes)) {
+    return extractRoutes(value.nodes);
+  }
+
+  return [];
+};
+
+const normalizeDependency = (value: unknown): SiteDependencyEdge | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const fromSource = value.from ?? value.source;
+  const toSource = value.to ?? value.target;
+
+  if (!isString(fromSource) || !isString(toSource)) {
+    return null;
+  }
+
+  const type = isString(value.type) ? value.type : undefined;
+  const label = isString(value.label) ? value.label : type;
+
+  const edge: SiteDependencyEdge = {
+    from: fromSource,
+    to: toSource,
+  };
+
+  if (type !== undefined) {
+    edge.type = type;
+  }
+
+  if (label !== undefined) {
+    edge.label = label;
+  }
+
+  return edge;
+};
+
+const extractDependencies = (value: unknown, routesSource: unknown): SiteDependencyEdge[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map(normalizeDependency)
+      .filter((entry): entry is SiteDependencyEdge => entry !== null);
+  }
+
+  if (isRecord(routesSource) && Array.isArray(routesSource.edges)) {
+    return extractDependencies(routesSource.edges, undefined);
+  }
+
+  return [];
+};
+
+const normalizeSiteData = (raw: UnknownRecord): SiteIRData => {
+  const routesSource = raw.routes;
+  const dependenciesSource = raw.dependencies;
+
+  const siteData: SiteIRData = {
+    routes: extractRoutes(routesSource),
+    dependencies: extractDependencies(dependenciesSource, routesSource),
+  };
+
+  const specHash = isString(raw.specHash) ? raw.specHash : undefined;
+  if (specHash !== undefined) {
+    siteData.specHash = specHash;
+  }
+
+  return siteData;
+};
+
+const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [siteData, setSiteData] = useState<SiteIRData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +170,7 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
         setError(null);
 
         const response: IRResponse = await apiService.getIR(projectId, 'site');
-        setSiteData(response.data as SiteIRData);
+        setSiteData(normalizeSiteData(response.data));
       } catch (err) {
         console.error('Failed to load site data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load site diagram');
@@ -86,9 +203,9 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
     `;
 
     // Add route nodes
-    const routes = Array.isArray(data.routes) ? data.routes : data.routes?.nodes || [];
+    const routes = data.routes;
     routes.forEach(route => {
-      const capabilities = route.capabilities || [];
+      const capabilities = Array.isArray(route.capabilities) ? route.capabilities : [];
       const capabilityText =
         capabilities.length > 0 ? `\\nCapabilities: ${capabilities.join(', ')}` : '';
 
@@ -110,8 +227,8 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
         borderColor = '#2563eb';
       }
 
-      const routeId =
-        route.id || route.label || route.path || `route_${Math.random().toString(36).substr(2, 9)}`;
+      const fallbackId = `route_${Math.random().toString(36).slice(2, 11)}`;
+      const routeId = route.id || route.label || route.path || fallbackId;
       const nodeId = routeId.replace(/[^a-zA-Z0-9]/g, '_');
       dot += `
         ${nodeId} [
@@ -122,21 +239,22 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
     });
 
     // Add dependencies if available
-    const edges = data.routes?.edges || data.dependencies || [];
-    if (edges && edges.length > 0) {
+    const edges = data.dependencies;
+    if (edges.length > 0) {
       dot += `\n      // Dependencies\n`;
       edges.forEach(dep => {
-        const fromId = (dep.from || dep.source || '').replace(/[^a-zA-Z0-9]/g, '_');
-        const toId = (dep.to || dep.target || '').replace(/[^a-zA-Z0-9]/g, '_');
-        const label = dep.type || dep.label ? ` [label="${dep.type || dep.label}"]` : '';
+        const fromId = dep.from.replace(/[^a-zA-Z0-9]/g, '_');
+        const toId = dep.to.replace(/[^a-zA-Z0-9]/g, '_');
+        const label = dep.type || dep.label;
         if (fromId && toId) {
-          dot += `      ${fromId} -> ${toId}${label};\n`;
+          const labelAttr = label ? ` [label="${label}"]` : '';
+          dot += `      ${fromId} -> ${toId}${labelAttr};\n`;
         }
       });
     } else {
       // Create implicit dependencies based on route hierarchy
       const sortedRoutes = [...routes].sort(
-        (a, b) => (a.path || '').length - (b.path || '').length
+        (a, b) => (a.path?.length ?? 0) - (b.path?.length ?? 0)
       );
 
       sortedRoutes.forEach(route => {
@@ -144,7 +262,7 @@ const SiteDiagram: React.FC<SiteDiagramProps> = ({ projectId, className = '' }) 
           const parentPath = route.path.split('/').slice(0, -1).join('/') || '/';
           const parentRoute = sortedRoutes.find(r => r.path === parentPath && r.id !== route.id);
 
-          if (parentRoute && route.id && parentRoute.id) {
+          if (parentRoute && parentRoute.id && route.id) {
             const fromId = parentRoute.id.replace(/[^a-zA-Z0-9]/g, '_');
             const toId = route.id.replace(/[^a-zA-Z0-9]/g, '_');
             dot += `      ${fromId} -> ${toId} [style=dashed, color="#9ca3af"];\n`;

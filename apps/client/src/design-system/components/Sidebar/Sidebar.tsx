@@ -15,7 +15,7 @@ import {
   Users,
 } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
-import { cn } from '../variants';
+import { cn } from '../../variants';
 
 export interface SidebarNavItem {
   id: string;
@@ -152,7 +152,7 @@ function NavItemComponent({
           {item.badge && (
             <span
               className={cn(
-                'inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium',
+                'inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium',
                 isActive
                   ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                   : 'bg-graphite-100 dark:bg-graphite-800 text-graphite-600 dark:text-graphite-300 group-hover:bg-graphite-200 dark:group-hover:bg-graphite-700'

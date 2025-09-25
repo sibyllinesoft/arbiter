@@ -4,7 +4,7 @@
  */
 
 import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
-import React, { Component, ReactNode } from 'react';
+import React, { Component, type ReactNode } from 'react';
 import { Button, Card } from '../../design-system';
 
 interface Props {

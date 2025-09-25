@@ -15,7 +15,7 @@ describe('CLI Detection Improvements', () => {
       const deps = ['commander'];
       const result = determineMostLikelyCategory(deps, 'javascript');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8); // commander has weight 0.9
     });
 
@@ -23,7 +23,7 @@ describe('CLI Detection Improvements', () => {
       const deps = ['click'];
       const result = determineMostLikelyCategory(deps, 'python');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8); // click has weight 0.9
     });
 
@@ -31,7 +31,7 @@ describe('CLI Detection Improvements', () => {
       const deps = ['clap'];
       const result = determineMostLikelyCategory(deps, 'rust');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.8); // clap has weight 0.9
     });
   });
@@ -41,8 +41,8 @@ describe('CLI Detection Improvements', () => {
       const singleDep = ['commander'];
       const multiDeps = ['commander', 'chalk', 'inquirer'];
 
-      const singleScore = calculateCategoryConfidence(singleDep, 'javascript', 'cli');
-      const multiScore = calculateCategoryConfidence(multiDeps, 'javascript', 'cli');
+      const singleScore = calculateCategoryConfidence(singleDep, 'javascript', 'tool');
+      const multiScore = calculateCategoryConfidence(multiDeps, 'javascript', 'tool');
 
       expect(multiScore).toBeGreaterThan(singleScore);
       expect(multiScore).toBe(1); // Capped at 1.0 but should be higher than single
@@ -78,7 +78,7 @@ describe('CLI Detection Improvements', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('cli');
+      expect(result.primaryType).toBe('tool');
       expect(result.confidence).toBeGreaterThan(0.7);
       expect(result.explanation.length).toBeGreaterThan(0);
     });
@@ -103,7 +103,7 @@ describe('CLI Detection Improvements', () => {
       const cliResult = detectArtifactType(cliContext);
       const webResult = detectArtifactType(webContext);
 
-      expect(cliResult.primaryType).toBe('cli');
+      expect(cliResult.primaryType).toBe('tool');
       expect(webResult.primaryType).toBe('web_service');
     });
   });
@@ -113,19 +113,19 @@ describe('CLI Detection Improvements', () => {
       const deps = ['github.com/spf13/cobra'];
       const result = determineMostLikelyCategory(deps, 'go');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
     });
 
     it('should handle TypeScript CLI with type definitions', () => {
       const deps = ['commander', '@types/node'];
       const result = determineMostLikelyCategory(deps, 'typescript');
 
-      expect(result.category).toBe('cli');
+      expect(result.category).toBe('tool');
     });
 
     it('should explain CLI detection reasoning', () => {
       const deps = ['commander', 'chalk'];
-      const explanation = getCategoryExplanation(deps, 'javascript', 'cli');
+      const explanation = getCategoryExplanation(deps, 'javascript', 'tool');
 
       expect(explanation.length).toBeGreaterThan(0);
       expect(explanation.some(line => line.includes('commander'))).toBe(true);
@@ -146,7 +146,7 @@ describe('CLI Detection Improvements', () => {
       const result = determineMostLikelyCategory(mixedDeps, 'javascript');
 
       // Should pick one but not be overly confident
-      expect(['cli', 'web_service']).toContain(result.category);
+      expect(['tool', 'web_service']).toContain(result.category);
       expect(result.confidence).toBeLessThan(1.0);
     });
 

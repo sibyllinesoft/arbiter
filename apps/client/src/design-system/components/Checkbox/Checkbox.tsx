@@ -6,8 +6,7 @@
 
 import { clsx } from 'clsx';
 import { AlertCircle, AlertTriangle, Check, CheckCircle, Loader2, Minus } from 'lucide-react';
-import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn } from '../variants';
+import { type InputHTMLAttributes, type ReactNode, forwardRef, useEffect, useId } from 'react';
 
 export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   /** Checkbox variant determines the visual style */
@@ -86,7 +85,16 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const actualHelperText = error || warning || success || helperText;
 
     // Generate unique ID
-    const checkboxId = id || `checkbox-${Math.random().toString(36).substr(2, 9)}`;
+    const checkboxId = id || useId();
+
+    useEffect(() => {
+      if (ref && typeof ref !== 'function' && 'current' in ref) {
+        const input = (ref as React.MutableRefObject<HTMLInputElement | null>).current;
+        if (input) {
+          input.indeterminate = indeterminate && !checked;
+        }
+      }
+    }, [indeterminate, checked, ref]);
 
     // Get validation icon
     const getValidationIcon = () => {
@@ -127,25 +135,25 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
 
     // Checkbox variant classes
     const variantClasses = {
-      default: cn(
+      default: clsx(
         'border-graphite-300 text-blue-600 focus:ring-blue-500',
         'checked:bg-blue-600 checked:border-blue-600',
         'hover:border-graphite-400',
         'disabled:bg-graphite-50 disabled:border-graphite-200 disabled:text-graphite-400'
       ),
-      error: cn(
+      error: clsx(
         'border-red-300 text-red-600 focus:ring-red-500',
         'checked:bg-red-600 checked:border-red-600',
         'hover:border-red-400',
         'disabled:bg-red-50 disabled:border-red-200 disabled:text-red-300'
       ),
-      warning: cn(
+      warning: clsx(
         'border-amber-300 text-amber-600 focus:ring-amber-500',
         'checked:bg-amber-600 checked:border-amber-600',
         'hover:border-amber-400',
         'disabled:bg-amber-50 disabled:border-amber-200 disabled:text-amber-300'
       ),
-      success: cn(
+      success: clsx(
         'border-emerald-300 text-emerald-600 focus:ring-emerald-500',
         'checked:bg-emerald-600 checked:border-emerald-600',
         'hover:border-emerald-400',
@@ -153,7 +161,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       ),
     };
 
-    const checkboxClasses = cn(
+    const checkboxClasses = clsx(
       // Base styles
       'relative rounded border-2 transition-all duration-150 ease-in-out',
       'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50',
@@ -171,28 +179,24 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       className
     );
 
-    const wrapperClasses = cn(
-      'flex items-start',
-      sizeClass.gap,
-      disabled && 'opacity-60 cursor-not-allowed',
-      wrapperClassName
-    );
+    const wrapperClasses = clsx(wrapperClassName, disabled && 'opacity-60');
 
-    const labelClasses = cn(
+    const labelClasses = clsx('cursor-pointer select-none', labelClassName);
+
+    const contentClasses = clsx(
       'flex-1',
       sizeClass.text,
-      'text-graphite-900 font-medium cursor-pointer select-none',
+      'text-graphite-900 font-medium',
       actualVariant === 'error' && 'text-red-900',
       actualVariant === 'warning' && 'text-amber-900',
       actualVariant === 'success' && 'text-emerald-900',
-      disabled && 'cursor-not-allowed text-graphite-500',
+      disabled && 'text-graphite-500',
       labelClassName
     );
 
     return (
       <div className="space-y-1">
         <div className={wrapperClasses}>
-          {/* Hidden input */}
           <input
             ref={ref}
             type="checkbox"
@@ -200,73 +204,66 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             checked={checked}
             disabled={disabled || loading}
             className="sr-only"
-            aria-describedby={cn(
+            aria-describedby={clsx(
               actualHelperText && `${checkboxId}-description`,
               description && `${checkboxId}-desc`
             )}
             {...props}
           />
+          <label htmlFor={checkboxId} className={labelClasses}>
+            <div className={clsx('flex items-start', sizeClass.gap)}>
+              <div className="relative flex-shrink-0">
+                <div className={checkboxClasses}>
+                  {/* Loading spinner */}
+                  {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className={clsx(sizeClass.icon, 'animate-spin text-graphite-400')} />
+                    </div>
+                  )}
 
-          {/* Custom checkbox */}
-          <div className="relative flex-shrink-0">
-            <div className={checkboxClasses}>
-              {/* Loading spinner */}
-              {loading && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Loader2 className={cn(sizeClass.icon, 'animate-spin text-graphite-400')} />
+                  {/* Check/indeterminate icon */}
+                  {!loading && (checked || indeterminate) && (
+                    <div className="absolute inset-0 flex items-center justify-center text-white">
+                      {indeterminate ? (
+                        <Minus className={sizeClass.icon} strokeWidth={3} />
+                      ) : (
+                        <Check className={sizeClass.icon} strokeWidth={3} />
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-
-              {/* Check/indeterminate icon */}
-              {!loading && (checked || indeterminate) && (
-                <div className="absolute inset-0 flex items-center justify-center text-white">
-                  {indeterminate ? (
-                    <Minus className={sizeClass.icon} strokeWidth={3} />
-                  ) : (
-                    <Check className={sizeClass.icon} strokeWidth={3} />
+              </div>
+              {(label || children) && (
+                <div className={contentClasses}>
+                  <>{children || label}</>
+                  {/* Description */}
+                  {description && (
+                    <p
+                      id={`${checkboxId}-desc`}
+                      className={clsx('text-sm text-graphite-600', disabled && 'text-graphite-400')}
+                    >
+                      {description}
+                    </p>
                   )}
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Label and content */}
-          {(label || children) && (
-            <div className="flex-1 space-y-1">
-              <label htmlFor={checkboxId} className={labelClasses}>
-                <div className="flex items-start justify-between gap-2">
-                  <span>{children || label}</span>
-
-                  {/* Validation icon */}
-                  {validationIcon && <div className="flex-shrink-0">{validationIcon}</div>}
-                </div>
-              </label>
-
-              {/* Description */}
-              {description && (
-                <p
-                  id={`${checkboxId}-desc`}
-                  className={cn('text-sm text-graphite-600', disabled && 'text-graphite-400')}
-                >
-                  {description}
-                </p>
-              )}
-            </div>
-          )}
+          </label>
         </div>
 
         {/* Helper text / Validation messages */}
         {actualHelperText && (
           <p
             id={`${checkboxId}-description`}
-            className={cn(
-              'text-sm ml-7 flex items-start gap-1',
+            className={clsx(
+              'text-sm ml-7 flex items-center gap-1',
               actualVariant === 'error' && 'text-red-600',
               actualVariant === 'warning' && 'text-amber-600',
               actualVariant === 'success' && 'text-green-600',
               actualVariant === 'default' && 'text-graphite-600'
             )}
           >
+            {validationIcon}
             {actualHelperText}
           </p>
         )}

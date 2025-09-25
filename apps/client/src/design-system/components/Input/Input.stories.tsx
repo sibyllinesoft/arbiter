@@ -6,8 +6,6 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import {
-  AlertCircle,
-  AlertTriangle,
   Calendar,
   CheckCircle,
   Clock,
@@ -15,7 +13,6 @@ import {
   Database,
   DollarSign,
   Eye,
-  EyeOff,
   FileText,
   Folder,
   GitBranch,
@@ -29,7 +26,6 @@ import {
   Terminal,
   User,
 } from 'lucide-react';
-import { storybookData } from '../../test/storybook-data';
 import Input from './Input';
 
 const meta = {
@@ -464,7 +460,7 @@ export const DeveloperToolPatterns: Story = {
           <Input
             label="Project Name"
             placeholder="e.g., ecommerce-api"
-            value={storybookData.projects[0]?.name || 'E-commerce API Platform'}
+            value="E-commerce API Platform"
             leftIcon={<Code />}
             description="This name will be used in URLs and git repositories"
           />

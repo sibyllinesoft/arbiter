@@ -16,7 +16,7 @@ import { LandingPage } from './pages/LandingPage';
 import { ProjectView } from './pages/project-view';
 
 // Error boundary component
-class ErrorBoundary extends React.Component<
+export class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
 > {

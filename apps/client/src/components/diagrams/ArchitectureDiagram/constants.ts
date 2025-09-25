@@ -14,7 +14,7 @@ export const LAYER_COLORS = {
     border: '#1E466B', // Primary blue-600 border
     text: '#ffffff', // White text for contrast
   },
-  cli: {
+  tool: {
     bg: '#BA5956', // Design token red-300 (flat color)
     border: '#803131', // Design token red-500 border
     text: '#ffffff', // White text for contrast

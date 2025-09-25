@@ -4,10 +4,9 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
 import { AlertCircle, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn, inputVariants, sizeVariants } from '../variants';
+import { type InputHTMLAttributes, type ReactNode, forwardRef } from 'react';
+import { cn, inputVariants, sizeVariants } from '../../variants';
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   /** Input variant determines the visual style */

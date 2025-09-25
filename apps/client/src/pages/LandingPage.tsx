@@ -17,7 +17,11 @@ import { ConfigModal } from '../components/ConfigModal';
 import Tabs from '../components/Layout/Tabs';
 import { ProjectCreationModal } from '../components/ProjectCreation';
 
-export function LandingPage() {
+interface LandingPageProps {
+  onNavigateToConfig?: () => void;
+}
+
+export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
   const navigate = useNavigate();
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const deleteProjectMutation = useDeleteProject();
@@ -30,6 +34,7 @@ export function LandingPage() {
 
   const handleSelectProject = (project: any) => {
     setCurrentProject(project);
+    navigate(`/project/${project.id}`);
   };
 
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
@@ -77,7 +82,7 @@ export function LandingPage() {
       modules: 0,
       infrastructure: 0,
       libraries: 0,
-      clis: 0,
+      tools: 0,
       frontends: 0,
       external: 0,
       routes: 0,
@@ -118,7 +123,10 @@ export function LandingPage() {
                 variant="ghost"
                 size="md"
                 leftIcon={<Settings className="w-6 h-6" />}
-                onClick={() => setIsConfigModalOpen(true)}
+                onClick={() => {
+                  setIsConfigModalOpen(true);
+                  onNavigateToConfig?.();
+                }}
                 className="focus:outline-none"
               />
             </div>

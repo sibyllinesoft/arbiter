@@ -1,24 +1,24 @@
 /**
- * Simplified Rust Plugin for Package Detection
+ * Rust plugin with lightweight heuristics.
  *
- * Detects Rust packages via Cargo.toml and guesses artifact type based on structure and dependencies.
+ * Focused on a handful of strong signals that are simple to understand and
+ * maintain: Cargo manifests, obvious CLI/web frameworks, and basic source
+ * patterns. The goal is to surface useful artifacts without deep AST analysis.
  */
 
 import * as path from 'path';
 import { parse } from '@iarna/toml';
 import {
-  Evidence,
-  ImporterPlugin,
-  InferenceContext,
-  InferredArtifact,
-  ParseContext,
-} from '../types.js';
+  type ArtifactType,
+  type Evidence,
+  type ImporterPlugin,
+  type InferenceContext,
+  type InferredArtifact,
+  type ParseContext,
+  type Provenance,
+} from '../types';
 
-import type { DetectionContext, DetectionResult } from '../detection/artifact-detector.js';
-import { detectArtifactType } from '../detection/artifact-detector.js';
-import type { CategoryMatrix } from '../detection/dependency-matrix.js';
-
-// Rust framework detection lists
+// Heuristic dependency buckets ------------------------------------------------
 const RUST_WEB_FRAMEWORKS = [
   'axum',
   'warp',
@@ -34,9 +34,7 @@ const RUST_WEB_FRAMEWORKS = [
 ];
 
 const RUST_CLI_FRAMEWORKS = ['clap', 'structopt', 'argh', 'gumdrop'];
-
 const RUST_JOB_FRAMEWORKS = ['tokio-cron-scheduler', 'cron', 'job-scheduler'];
-
 const RUST_DATABASE_DRIVERS = [
   'sqlx',
   'diesel',
@@ -47,11 +45,36 @@ const RUST_DATABASE_DRIVERS = [
   'redis',
 ];
 
-export interface RustData extends Record<string, unknown> {
+interface CargoDependency {
   name: string;
-  description: string;
-  type: string;
-  filePath: string;
+  version: string;
+  kind: 'runtime' | 'dev' | 'build';
+}
+
+interface CargoBinaryDefinition {
+  name: string;
+  path?: string;
+}
+
+interface CargoEvidenceData extends Record<string, unknown> {
+  configType: 'cargo-toml';
+  package?: {
+    name?: string;
+    version?: string;
+    description?: string;
+  };
+  dependencies: Record<string, string>;
+  devDependencies: Record<string, string>;
+  buildDependencies: Record<string, string>;
+  hasBinaries: boolean;
+  hasLibrary: boolean;
+  binaries: CargoBinaryDefinition[];
+  fullCargo: Record<string, unknown>;
+}
+
+function isCargoEvidenceData(data: Record<string, unknown>): data is CargoEvidenceData {
+  const configType = data['configType'];
+  return typeof configType === 'string' && configType === 'cargo-toml';
 }
 
 export class RustPlugin implements ImporterPlugin {
@@ -59,203 +82,362 @@ export class RustPlugin implements ImporterPlugin {
     return 'rust';
   }
 
-  supports(filePath: string, fileContent?: string): boolean {
-    const fileName = path.basename(filePath);
-    const extension = path.extname(filePath);
+  supports(filePath: string): boolean {
+    const normalized = filePath.replace(/\\/g, '/');
+    const fileName = path.basename(normalized);
 
-    // Focus on Cargo.toml and basic Rust sources
-    if (fileName === 'Cargo.toml') {
+    if (fileName === 'Cargo.toml' || fileName === 'Cargo.lock') {
       return true;
     }
 
-    if (extension === '.rs') {
-      return fileName === 'main.rs' || fileName === 'lib.rs' || fileName === 'build.rs';
+    if (fileName.endsWith('.rs') && normalized.includes('/src/')) {
+      return true;
     }
 
     return false;
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
-    if (!fileContent || path.basename(filePath) !== 'Cargo.toml') return [];
+    if (!fileContent) return [];
 
-    const evidence: Evidence[] = [];
-    const baseId = path.relative(context?.projectRoot ?? process.cwd(), filePath);
+    const normalized = filePath.replace(/\\/g, '/');
+    const fileName = path.basename(normalized);
 
-    try {
-      return this.parseCargoToml(filePath, fileContent, baseId);
-    } catch (error) {
-      console.warn(`Rust plugin failed to parse ${filePath}:`, error);
+    if (fileName === 'Cargo.toml') {
+      return this.parseCargoToml(normalized, fileContent, context);
     }
 
-    return evidence;
+    if (fileName === 'Cargo.lock') {
+      return [
+        {
+          id: this.createEvidenceId(normalized, context),
+          source: 'rust',
+          type: 'config',
+          filePath: normalized,
+          data: { configType: 'cargo-lock' },
+          metadata: this.createMetadata(fileContent.length),
+        },
+      ];
+    }
+
+    if (normalized.includes('/src/') && fileName.endsWith('.rs')) {
+      return this.parseRustSource(normalized, fileContent, context);
+    }
+
+    return [];
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const rustEvidence = evidence.filter(e => e.source === 'rust');
-    if (rustEvidence.length === 0) return [];
+    const rustConfigs = evidence.filter(
+      e => e.source === 'rust' && e.type === 'config' && (e.data as any).configType === 'cargo-toml'
+    );
+
+    if (rustConfigs.length === 0) {
+      return [];
+    }
+
+    const binaryDefinitions = evidence.filter(
+      e =>
+        e.source === 'rust' &&
+        e.type === 'config' &&
+        (e.data as any).configType === 'binary-definition'
+    );
 
     const artifacts: InferredArtifact[] = [];
-    const cargoEvidence = rustEvidence.filter(e => e.type === 'config');
 
-    for (const cargo of cargoEvidence) {
-      artifacts.push(...this.inferFromCargoToml(cargo, evidence, context));
+    for (const cargoEvidence of rustConfigs) {
+      artifacts.push(...this.inferFromCargoToml(cargoEvidence, binaryDefinitions, context));
     }
 
     return artifacts;
   }
 
-  // Parse Cargo.toml using library
-  private parseCargoToml(filePath: string, content: string, baseId: string): Evidence[] {
-    const evidence: Evidence[] = [];
-    let cargo;
+  // ---------------------------------------------------------------------------
+  // Parsing helpers
+  // ---------------------------------------------------------------------------
+  private parseCargoToml(filePath: string, content: string, context?: ParseContext): Evidence[] {
+    let cargo: Record<string, any>;
 
     try {
-      cargo = parse(content) as any;
+      cargo = parse(content) as Record<string, any>;
     } catch (error) {
-      console.warn('Failed to parse Cargo.toml:', error);
-      return evidence;
+      console.warn('Rust plugin: failed to parse Cargo.toml', error);
+      return [];
     }
 
-    const allDeps = {
-      ...cargo.dependencies,
-      ...cargo['dev-dependencies'],
-      ...cargo['build-dependencies'],
-    };
-    const inferredType = this.determineRustType(allDeps);
+    const runtimeDeps = this.extractDependencies(cargo.dependencies, 'runtime');
+    const devDeps = this.extractDependencies(cargo['dev-dependencies'], 'dev');
+    const buildDeps = this.extractDependencies(cargo['build-dependencies'], 'build');
+    const binaries = this.extractBinaries(cargo.bin ?? cargo.binaries ?? cargo['bin']);
 
-    const rustData: RustData = {
-      name: cargo.package?.name || path.basename(path.dirname(filePath)),
-      description: cargo.package?.description || 'Rust package',
-      type: inferredType,
-      filePath,
+    const data: CargoEvidenceData = {
+      configType: 'cargo-toml',
+      package: cargo.package ?? {},
+      dependencies: this.dependenciesRecord(runtimeDeps),
+      devDependencies: this.dependenciesRecord(devDeps),
+      buildDependencies: this.dependenciesRecord(buildDeps),
+      hasBinaries: binaries.length > 0,
+      hasLibrary: Boolean(cargo.lib),
+      binaries,
       fullCargo: cargo,
     };
 
-    evidence.push({
-      id: baseId,
-      source: 'rust',
-      type: 'config',
-      filePath,
-      data: rustData,
-      metadata: { timestamp: Date.now(), fileSize: content.length },
-    });
+    const evidence: Evidence[] = [
+      {
+        id: this.createEvidenceId(filePath, context),
+        source: 'rust',
+        type: 'config',
+        filePath,
+        data,
+        metadata: this.createMetadata(content.length),
+      },
+    ];
+
+    for (const dep of [...runtimeDeps, ...devDeps, ...buildDeps]) {
+      evidence.push({
+        id: `${this.createEvidenceId(filePath, context)}#${dep.kind}-${dep.name}`,
+        source: 'rust',
+        type: 'dependency',
+        filePath,
+        data: {
+          dependencyType: dep.kind,
+          name: dep.name,
+          version: dep.version,
+        },
+        metadata: this.createMetadata(0),
+      });
+    }
+
+    for (const bin of binaries) {
+      evidence.push({
+        id: `${this.createEvidenceId(filePath, context)}#bin-${bin.name}`,
+        source: 'rust',
+        type: 'config',
+        filePath,
+        data: {
+          configType: 'binary-definition',
+          binaryName: bin.name,
+          binaryPath: bin.path,
+        },
+        metadata: this.createMetadata(0),
+      });
+    }
 
     return evidence;
   }
 
-  // Simplified inference
-  private inferFromCargoToml(
-    cargoEvidence: Evidence,
-    allEvidence: Evidence[],
-    context: InferenceContext
-  ): InferredArtifact[] {
-    const cargoData = cargoEvidence.data as any;
-    const fullCargo = cargoData.fullCargo;
-    const name = cargoData.name;
-    const description = cargoData.description;
-    const artifacts: InferredArtifact[] = [];
+  private parseRustSource(filePath: string, content: string, context?: ParseContext): Evidence[] {
+    const evidence: Evidence[] = [];
+    const baseId = this.createEvidenceId(filePath, context);
+    const metadata = this.createMetadata(content.length);
 
-    const allDepsObj = {
-      ...(fullCargo.dependencies || {}),
-      ...(fullCargo['dev-dependencies'] || {}),
-      ...(fullCargo['build-dependencies'] || {}),
-    };
-    const deps = Object.keys(allDepsObj);
-
-    const filePatterns = Array.from(context.fileIndex?.files?.values() || [])
-      .filter((f: any) => f.relativePath.startsWith(path.dirname(cargoData.filePath)))
-      .map((f: any) => f.relativePath);
-
-    const detectionContext: DetectionContext = {
-      language: 'rust',
-      dependencies: deps,
-      scripts: {},
-      filePatterns,
-      packageConfig: fullCargo,
-    };
-
-    const result: DetectionResult = detectArtifactType(detectionContext);
-    let category = result.primaryType;
-    let artifactType = this.mapCategoryToRustType(category);
-
-    // Fallback to simple logic if low confidence
-    if (result.confidence < 0.3) {
-      const simpleType = this.determineRustType(allDepsObj);
-      if (simpleType !== 'module') {
-        artifactType = simpleType;
-      }
+    if (/fn\s+main\s*\(/.test(content)) {
+      evidence.push({
+        id: `${baseId}#main`,
+        source: 'rust',
+        type: 'function',
+        filePath,
+        data: {
+          functionType: 'main',
+          isEntryPoint: true,
+        },
+        metadata,
+      });
     }
 
-    // Special handling for jobs
-    if (artifactType === 'module' && this.hasJobFrameworks(deps)) {
+    if (/#\s*\[\s*tokio::main/.test(content)) {
+      evidence.push({
+        id: `${baseId}#async-main`,
+        source: 'rust',
+        type: 'function',
+        filePath,
+        data: {
+          functionType: 'async-main',
+          runtime: 'tokio',
+        },
+        metadata,
+      });
+    }
+
+    const frameworkMatch = this.findFirstMatch(content, RUST_WEB_FRAMEWORKS);
+    if (frameworkMatch) {
+      evidence.push({
+        id: `${baseId}#framework-${frameworkMatch}`,
+        source: 'rust',
+        type: 'config',
+        filePath,
+        data: {
+          configType: 'source-framework',
+          framework: frameworkMatch,
+        },
+        metadata,
+      });
+    }
+
+    return evidence;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Inference helpers
+  // ---------------------------------------------------------------------------
+  private inferFromCargoToml(
+    cargoEvidence: Evidence,
+    binaryEvidence: Evidence[],
+    context: InferenceContext
+  ): InferredArtifact[] {
+    const cargoData = cargoEvidence.data;
+    if (!isCargoEvidenceData(cargoData)) {
+      return [];
+    }
+    const data = cargoData;
+    const packageName = data.package?.name || path.basename(path.dirname(cargoEvidence.filePath));
+    const description = data.package?.description || 'Rust project';
+
+    const mergedDeps: Record<string, string> = {
+      ...data.dependencies,
+      ...data.devDependencies,
+      ...data.buildDependencies,
+    };
+    const dependencyNames = Object.keys(mergedDeps);
+
+    const framework = this.findFirstMatch(dependencyNames, RUST_WEB_FRAMEWORKS);
+    const cliFramework = this.findFirstMatch(dependencyNames, RUST_CLI_FRAMEWORKS);
+    const jobFramework = this.findFirstMatch(dependencyNames, RUST_JOB_FRAMEWORKS);
+    const databaseDriver = this.findFirstMatch(dependencyNames, RUST_DATABASE_DRIVERS);
+
+    let artifactType: ArtifactType = 'module';
+    if (framework) {
+      artifactType = 'service';
+    } else if (cliFramework || data.hasBinaries) {
+      artifactType = 'binary';
+    } else if (jobFramework) {
       artifactType = 'job';
     }
 
-    // Override to service if web frameworks detected (prioritize service over binary/CLI for HTTP-enabled crates)
-    if (RUST_WEB_FRAMEWORKS.some(framework => deps.includes(framework))) {
-      artifactType = 'service';
-      category = 'web_service';
+    // Prefer binary names when available to avoid generic package titles.
+    const binaryMatch = binaryEvidence.find(e => {
+      if (e.filePath !== cargoEvidence.filePath) return false;
+      const data = e.data as Record<string, unknown>;
+      return typeof data['binaryName'] === 'string';
+    });
+    const binaryData = binaryMatch?.data as Record<string, unknown> | undefined;
+    const binaryNameValue = binaryData?.binaryName;
+    const artifactName = typeof binaryNameValue === 'string' ? binaryNameValue : packageName;
+
+    const metadata: Record<string, unknown> = {
+      language: 'rust',
+      packageManager: 'cargo',
+      dependencies: dependencyNames,
+    };
+
+    if (framework) metadata.framework = framework;
+    if (cliFramework) metadata.cliFramework = cliFramework;
+    if (jobFramework) metadata.jobFramework = jobFramework;
+    if (databaseDriver) metadata.databaseDriver = databaseDriver;
+    if (data.package?.version) metadata.version = data.package.version;
+    const binaryPath = binaryData?.binaryPath;
+    if (typeof binaryPath === 'string') {
+      metadata.entryPoint = binaryPath;
     }
 
+    const tags = new Set<string>(['rust']);
+    if (artifactType === 'binary') tags.add('tool');
+    if (artifactType === 'service') tags.add('service');
+    if (data.hasLibrary) tags.add('library');
+
+    const provenance: Provenance = {
+      evidence: [cargoEvidence.id],
+      plugins: ['rust'],
+      rules: ['cargo-heuristics'],
+      timestamp: Date.now(),
+      pipelineVersion: '1.0.0',
+    };
+
     const artifact = {
-      id: `rust-${artifactType}-${name}`,
-      type: artifactType as any,
-      name,
+      id: `rust-${artifactType}-${artifactName}`,
+      type: artifactType,
+      name: artifactName,
       description,
-      tags: ['rust', artifactType],
-      metadata: {
-        sourceFile: cargoData.filePath,
-        language: 'rust',
-        detectedCategory: category,
-        detectionConfidence: result.confidence,
-      },
+      tags: Array.from(tags),
+      metadata,
     };
 
-    artifacts.push({
-      artifact,
-      provenance: {
-        evidence: [cargoEvidence.id],
-        plugins: ['rust'],
-        rules: ['cargo-detection'],
-        timestamp: Date.now(),
-        pipelineVersion: '1.0.0',
+    return [
+      {
+        artifact,
+        provenance,
+        relationships: [],
       },
-      relationships: [],
+    ];
+  }
+
+  private extractDependencies(
+    deps: Record<string, any> | undefined,
+    kind: CargoDependency['kind']
+  ): CargoDependency[] {
+    if (!deps) return [];
+
+    return Object.entries(deps).map(([name, value]) => {
+      if (typeof value === 'string') {
+        return { name, version: value, kind };
+      }
+      if (value && typeof value === 'object' && typeof value.version === 'string') {
+        return { name, version: value.version, kind };
+      }
+      return { name, version: 'workspace', kind };
     });
-
-    return artifacts;
   }
 
-  private determineRustType(allDeps: Record<string, any>): string {
-    const deps = Object.keys(allDeps);
-    const hasWeb = deps.some(d => RUST_WEB_FRAMEWORKS.includes(d));
-    const hasCli = deps.some(d => RUST_CLI_FRAMEWORKS.includes(d));
-    const hasJob = deps.some(d => RUST_JOB_FRAMEWORKS.includes(d));
-
-    if (hasWeb) return 'service';
-    if (hasCli) return 'binary';
-    if (hasJob) return 'job';
-    return 'module';
+  private extractBinaries(binSection: unknown): CargoBinaryDefinition[] {
+    if (!binSection) return [];
+    if (Array.isArray(binSection)) {
+      // [[bin]] tables are common but resolving them accurately requires
+      // more context (workspace membership, globbing, etc.). We opt out to
+      // keep the plugin predictable.
+      return [];
+    }
+    if (typeof binSection === 'object') {
+      const name = (binSection as Record<string, any>).name;
+      if (typeof name === 'string') {
+        return [
+          {
+            name,
+            path: (binSection as Record<string, any>).path as string | undefined,
+          },
+        ];
+      }
+    }
+    return [];
   }
 
-  private mapCategoryToRustType(category: keyof CategoryMatrix): string {
-    const mapping: Record<keyof CategoryMatrix, string> = {
-      cli: 'binary',
-      web_service: 'service',
-      frontend: 'module',
-      module: 'module',
-      desktop_app: 'binary',
-      data_processing: 'job',
-      testing: 'test',
-      build_tool: 'module',
-      game: 'binary',
-      mobile: 'binary',
+  private dependenciesRecord(deps: CargoDependency[]): Record<string, string> {
+    return deps.reduce<Record<string, string>>((acc, dep) => {
+      acc[dep.name] = dep.version;
+      return acc;
+    }, {});
+  }
+
+  private findFirstMatch(source: string | string[], candidates: string[]): string | undefined {
+    const haystack = Array.isArray(source) ? source : [source];
+    for (const item of haystack) {
+      const lower = item.toLowerCase();
+      const match = candidates.find(candidate => lower.includes(candidate.toLowerCase()));
+      if (match) return match;
+    }
+    return undefined;
+  }
+
+  private createEvidenceId(filePath: string, context?: { projectRoot?: string }): string {
+    const root = context?.projectRoot ?? process.cwd();
+    const relative = path.relative(root, filePath);
+    return relative === '' ? filePath : relative;
+  }
+
+  private createMetadata(size: number) {
+    return {
+      timestamp: Date.now(),
+      fileSize: size,
     };
-    return mapping[category] || 'module';
-  }
-
-  private hasJobFrameworks(deps: string[]): boolean {
-    return deps.some(d => RUST_JOB_FRAMEWORKS.includes(d));
   }
 }
 

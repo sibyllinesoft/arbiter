@@ -1,12 +1,25 @@
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '../../test/utils';
 import Modal from './Modal';
 
+// Bun test globals declaration for TypeScript
+declare const mock: {
+  module: (path: string, factory: () => any) => void;
+};
+
+function createMockFn() {
+  const calls: any[][] = [];
+  const fn = (...args: any[]) => {
+    calls.push(args);
+  };
+  (fn as any).mock = { calls };
+  return fn as any;
+}
+
 // Mock createPortal to render in the same container for testing
-vi.mock('react-dom', async () => {
-  const actual = await vi.importActual('react-dom');
+mock.module('react-dom', async () => {
+  const actual = await import('react-dom');
   return {
     ...actual,
     createPortal: (element: React.ReactNode) => element,
@@ -191,7 +204,7 @@ describe('Modal', () => {
     });
 
     it('calls onClose when close button is clicked', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -203,13 +216,13 @@ describe('Modal', () => {
       const closeButton = screen.getByLabelText('Close modal');
       await user.click(closeButton);
 
-      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onClose.mock.calls.length).toBe(1);
     });
   });
 
   describe('backdrop interactions', () => {
     it('calls onClose when backdrop is clicked by default', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -223,11 +236,11 @@ describe('Modal', () => {
       expect(backdrop).toBeInTheDocument();
 
       await user.click(backdrop!);
-      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onClose.mock.calls.length).toBe(1);
     });
 
     it('does not close when backdrop is clicked and closeOnBackdropClick is false', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -239,11 +252,11 @@ describe('Modal', () => {
       const backdrop = document.querySelector('.bg-graphite-900\\/50');
       await user.click(backdrop!);
 
-      expect(onClose).not.toHaveBeenCalled();
+      expect(onClose.mock.calls.length).toBe(0);
     });
 
     it('does not close when clicking inside modal content', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -253,13 +266,13 @@ describe('Modal', () => {
       );
 
       await user.click(screen.getByText('Content'));
-      expect(onClose).not.toHaveBeenCalled();
+      expect(onClose.mock.calls.length).toBe(0);
     });
   });
 
   describe('keyboard interactions', () => {
     it('calls onClose when Escape key is pressed by default', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -269,11 +282,11 @@ describe('Modal', () => {
       );
 
       await user.keyboard('{Escape}');
-      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onClose.mock.calls.length).toBe(1);
     });
 
     it('does not close when Escape is pressed and closeOnEscape is false', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -283,7 +296,7 @@ describe('Modal', () => {
       );
 
       await user.keyboard('{Escape}');
-      expect(onClose).not.toHaveBeenCalled();
+      expect(onClose.mock.calls.length).toBe(0);
     });
 
     it('traps focus within modal', async () => {
@@ -364,7 +377,7 @@ describe('Modal', () => {
     });
 
     it('default footer close button calls onClose', async () => {
-      const onClose = vi.fn();
+      const onClose = createMockFn();
       const user = userEvent.setup();
 
       render(
@@ -376,7 +389,7 @@ describe('Modal', () => {
       const closeButton = screen.getByText('Close');
       await user.click(closeButton);
 
-      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(onClose.mock.calls.length).toBe(1);
     });
 
     it('prioritizes custom footer over default footer', () => {

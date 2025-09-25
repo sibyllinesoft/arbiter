@@ -4,9 +4,7 @@
  */
 
 import {
-  AlertTriangle,
   BarChart3,
-  CheckCircle,
   Clock,
   Filter,
   Play,
@@ -22,7 +20,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { Button, Card, Input, Select, StatusBadge, cn } from '../../design-system';
 import { apiService } from '../../services/api';
-import type { CreateHandlerRequest, WebhookHandler, WebhookProvider } from '../../types/api';
+import type { WebhookHandler, WebhookProvider } from '../../types/api';
 import { createLogger } from '../../utils/logger';
 
 const log = createLogger('HandlersList');

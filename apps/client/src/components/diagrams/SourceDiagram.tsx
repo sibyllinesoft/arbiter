@@ -1,5 +1,5 @@
 import { AlertTriangle, Clipboard, Download, FileText, Hash, Loader2 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { type FC, useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
 import type { ResolvedSpecResponse } from '../../types/api';
 import MonacoEditor from '../Editor/MonacoEditor';
@@ -13,17 +13,16 @@ interface SourceDiagramProps {
   title?: string;
 }
 
-export const SourceDiagram: React.FC<SourceDiagramProps> = ({
+export const SourceDiagram: FC<SourceDiagramProps> = ({
   projectId,
   className = '',
   title = 'CUE Specification - Source View',
 }) => {
-  const [resolvedData, setResolvedData] = useState<Record<string, unknown> | null>(null);
   const [sourceContent, setSourceContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [specHash, setSpecHash] = useState<string>('');
-  const [lastSync, setLastSync] = useState<string>('');
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
   // Convert resolved data back to CUE-like syntax for source display
@@ -119,7 +118,6 @@ ${indentStr}}`;
           return;
         }
 
-        setResolvedData(response.resolved);
         setSpecHash(response.spec_hash);
         setLastSync(new Date().toISOString());
 
@@ -159,7 +157,6 @@ ${indentStr}}`;
       // Clear state when no project is selected
       setLoading(false);
       setError(null);
-      setResolvedData(null);
       setSpecHash('');
       setSourceContent(
         '// No project selected\n// Please select a project to view its specification'
@@ -206,7 +203,6 @@ ${indentStr}}`;
           try {
             const response: ResolvedSpecResponse =
               await apiService.getResolvedSpec(currentProjectId);
-            setResolvedData(response.resolved);
             setSpecHash(response.spec_hash);
             setLastSync(new Date().toISOString());
             const cueSource = convertToCueSource(response.resolved);

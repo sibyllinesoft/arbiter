@@ -232,7 +232,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
 
     try {
       // Create a sample payload based on provider
-      let samplePayload = {
+      let samplePayload: Record<string, unknown> = {
         test: true,
         timestamp: new Date().toISOString(),
         source: 'editor-test',

@@ -1,6 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { createMachine, interpret } from 'xstate';
-import { createActor } from 'xstate';
 import { apiService } from '../../services/api';
 import type { IRResponse } from '../../types/api';
 
@@ -9,20 +7,106 @@ interface FsmDiagramProps {
   className?: string;
 }
 
+interface NormalizedStateConfig {
+  on?: Record<string, string>;
+  type?: 'final' | 'compound' | 'parallel';
+}
+
+interface NormalizedFsm {
+  id: string;
+  initial?: string;
+  states: Record<string, NormalizedStateConfig>;
+}
+
 interface FsmIRData {
   specHash: string;
-  fsms: {
-    id: string;
-    initial: string;
-    states: Record<
-      string,
-      {
-        on?: Record<string, string>;
-        type?: 'final' | 'compound' | 'parallel';
-      }
-    >;
-  }[];
+  fsms: NormalizedFsm[];
 }
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const normalizeTransitions = (value: unknown): Record<string, string> | undefined => {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const transitions: Record<string, string> = {};
+  for (const [event, target] of Object.entries(value)) {
+    if (typeof event === 'string' && typeof target === 'string') {
+      transitions[event] = target;
+    }
+  }
+  return Object.keys(transitions).length > 0 ? transitions : undefined;
+};
+
+const normalizeStateConfig = (value: unknown): NormalizedStateConfig => {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const state: NormalizedStateConfig = {};
+  const transitions = normalizeTransitions(value.on ?? value.transitions);
+  if (transitions) {
+    state.on = transitions;
+  }
+
+  if (value.type === 'final' || value.type === 'compound' || value.type === 'parallel') {
+    state.type = value.type;
+  }
+
+  return state;
+};
+
+const normalizeFsm = (value: unknown, fallbackId: string): NormalizedFsm | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const id = typeof value.id === 'string' ? value.id : fallbackId;
+  const initial = typeof value.initial === 'string' ? value.initial : undefined;
+  const statesSource = value.states;
+
+  const states: Record<string, NormalizedStateConfig> = {};
+  if (isRecord(statesSource)) {
+    for (const [stateId, stateConfig] of Object.entries(statesSource)) {
+      states[stateId] = normalizeStateConfig(stateConfig);
+    }
+  }
+
+  if (Object.keys(states).length === 0) {
+    return null;
+  }
+
+  const normalized: NormalizedFsm = {
+    id,
+    states,
+  };
+
+  if (initial !== undefined) {
+    normalized.initial = initial;
+  }
+
+  return normalized;
+};
+
+const normalizeFsmData = (raw: unknown): FsmIRData => {
+  const source = isRecord(raw) ? raw : {};
+  const fsmsSource = Array.isArray(source.fsms) ? source.fsms : [];
+  const fsms: NormalizedFsm[] = [];
+
+  fsmsSource.forEach((fsm, index) => {
+    const normalized = normalizeFsm(fsm, `fsm_${index}`);
+    if (normalized) {
+      fsms.push(normalized);
+    }
+  });
+
+  return {
+    specHash: typeof source.specHash === 'string' ? source.specHash : '',
+    fsms,
+  };
+};
 
 const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -39,7 +123,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
         setError(null);
 
         const response: IRResponse = await apiService.getIR(projectId, 'fsm');
-        setFsmData(response.data as FsmIRData);
+        setFsmData(normalizeFsmData(response.data));
       } catch (err) {
         console.error('Failed to load FSM data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load FSM diagram');
@@ -52,7 +136,7 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
   }, [projectId]);
 
   const renderFsmAsSvg = (fsm: FsmIRData['fsms'][0]): string => {
-    if (!fsm.states || Object.keys(fsm.states).length === 0) {
+    if (!fsm || Object.keys(fsm.states).length === 0) {
       return createEmptyFsmSvg();
     }
 
@@ -92,57 +176,70 @@ const FsmDiagram: React.FC<FsmDiagramProps> = ({ projectId, className = '' }) =>
     // Draw transitions first (so they appear behind states)
     states.forEach(state => {
       const stateConfig = fsm.states[state];
-      if (stateConfig.on) {
-        Object.entries(stateConfig.on).forEach(([event, targetState]) => {
-          if (statePositions[targetState]) {
-            const from = statePositions[state];
-            const to = statePositions[targetState];
+      if (!stateConfig) {
+        return;
+      }
 
-            // Calculate edge points (not center-to-center)
-            const dx = to.x - from.x;
-            const dy = to.y - from.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            const unitX = dx / distance;
-            const unitY = dy / distance;
+      if (!stateConfig.on) {
+        return;
+      }
 
-            const startX = from.x + unitX * 40;
-            const startY = from.y + unitY * 40;
-            const endX = to.x - unitX * 40;
-            const endY = to.y - unitY * 40;
+      Object.entries(stateConfig.on).forEach(([event, targetState]) => {
+        const from = statePositions[state];
+        const to = statePositions[targetState];
+        if (!from || !to) {
+          return;
+        }
 
-            // Draw curved line for self-loops
-            if (state === targetState) {
-              svg += `<path d="M ${from.x + 25} ${from.y - 25} Q ${from.x + 60} ${from.y - 60} ${from.x + 25} ${from.y + 25}" 
+        // Calculate edge points (not center-to-center)
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const unitX = dx / distance;
+        const unitY = dy / distance;
+
+        const startX = from.x + unitX * 40;
+        const startY = from.y + unitY * 40;
+        const endX = to.x - unitX * 40;
+        const endY = to.y - unitY * 40;
+
+        // Draw curved line for self-loops
+        if (state === targetState) {
+          svg += `<path d="M ${from.x + 25} ${from.y - 25} Q ${from.x + 60} ${from.y - 60} ${from.x + 25} ${from.y + 25}" 
                       stroke="#374151" stroke-width="2" fill="none" marker-end="url(#arrowhead)" />`;
-              svg += `<text x="${from.x + 45}" y="${from.y - 35}" fill="#374151" font-size="12" font-family="Inter, sans-serif">${event}</text>`;
-            } else {
-              svg += `<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" 
+          svg += `<text x="${from.x + 45}" y="${from.y - 35}" fill="#374151" font-size="12" font-family="Inter, sans-serif">${event}</text>`;
+        } else {
+          svg += `<line x1="${startX}" y1="${startY}" x2="${endX}" y2="${endY}" 
                       stroke="#374151" stroke-width="2" marker-end="url(#arrowhead)" />`;
 
-              // Add event label at midpoint
-              const midX = (startX + endX) / 2;
-              const midY = (startY + endY) / 2;
-              svg += `<text x="${midX}" y="${midY - 5}" fill="#374151" font-size="12" 
+          // Add event label at midpoint
+          const midX = (startX + endX) / 2;
+          const midY = (startY + endY) / 2;
+          svg += `<text x="${midX}" y="${midY - 5}" fill="#374151" font-size="12" 
                       font-family="Inter, sans-serif" text-anchor="middle">${event}</text>`;
-            }
-          }
-        });
-      }
+        }
+      });
     });
 
     // Draw initial state indicator
-    if (fsm.initial && statePositions[fsm.initial]) {
+    if (fsm.initial) {
       const initial = statePositions[fsm.initial];
-      svg += `<line x1="${initial.x - 60}" y1="${initial.y}" x2="${initial.x - 40}" y2="${initial.y}" 
+      if (initial) {
+        svg += `<line x1="${initial.x - 60}" y1="${initial.y}" x2="${initial.x - 40}" y2="${initial.y}" 
               stroke="#059669" stroke-width="3" marker-end="url(#startarrow)" />`;
-      svg += `<text x="${initial.x - 80}" y="${initial.y + 5}" fill="#059669" font-size="12" 
+        svg += `<text x="${initial.x - 80}" y="${initial.y + 5}" fill="#059669" font-size="12" 
               font-family="Inter, sans-serif" text-anchor="middle">start</text>`;
+      }
     }
 
     // Draw states
     states.forEach(state => {
       const pos = statePositions[state];
+      if (!pos) return;
       const stateConfig = fsm.states[state];
+      if (!stateConfig) {
+        return;
+      }
       const isInitial = state === fsm.initial;
       const isFinal = stateConfig.type === 'final';
 

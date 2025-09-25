@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
  */
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import App from '../App';
+import App, { ErrorBoundary } from '../App';
 import { apiService } from '../services/api';
 import type { Project } from '../types/api';
 
@@ -350,18 +350,18 @@ describe('ErrorBoundary', () => {
     };
 
     const { rerender } = render(
-      <App>
+      <ErrorBoundary>
         <ThrowError shouldThrow={false} />
-      </App>
+      </ErrorBoundary>
     );
 
     expect(screen.getByText('No error')).toBeInTheDocument();
 
     // This would trigger the error boundary
     rerender(
-      <App>
+      <ErrorBoundary>
         <ThrowError shouldThrow={true} />
-      </App>
+      </ErrorBoundary>
     );
 
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
@@ -374,54 +374,32 @@ describe('ErrorBoundary', () => {
       throw new Error('Test error message');
     };
 
-    // Create a test wrapper that includes the ErrorBoundary
-    const TestWrapper = () => {
-      try {
-        return <ErrorComponent />;
-      } catch {
-        // Simulate error boundary catch
-        return (
-          <div className="error-boundary">
-            <h2>Something went wrong</h2>
-            <p className="text-gray-600 mb-4">The application encountered an unexpected error.</p>
-            <details className="text-left">
-              <summary className="cursor-pointer text-blue-600 hover:text-blue-700">
-                Error Details
-              </summary>
-              <pre className="mt-2">Test error message</pre>
-            </details>
-          </div>
-        );
-      }
-    };
-
-    render(<TestWrapper />);
+    render(
+      <ErrorBoundary>
+        <ErrorComponent />
+      </ErrorBoundary>
+    );
 
     expect(screen.getByText('Error Details')).toBeInTheDocument();
-    expect(screen.getByText('Test error message')).toBeInTheDocument();
+    expect(screen.getByText(/Test error message/)).toBeInTheDocument();
   });
 
   it('should provide reload button', () => {
-    const TestWrapper = () => (
-      <div className="error-boundary">
-        <h2>Something went wrong</h2>
-        <button
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          onClick={() => window.location.reload()}
-        >
-          Reload Page
-        </button>
-      </div>
-    );
+    const ThrowingComponent = () => {
+      throw new Error('Reload Page');
+    };
 
     // Mock window.location.reload
     const mockReload = vi.fn();
     Object.defineProperty(window, 'location', {
       value: { reload: mockReload },
-      writable: true,
     });
 
-    render(<TestWrapper />);
+    render(
+      <ErrorBoundary>
+        <ThrowingComponent />
+      </ErrorBoundary>
+    );
 
     const reloadButton = screen.getByText('Reload Page');
     expect(reloadButton).toBeInTheDocument();

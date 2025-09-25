@@ -1,1 +1,2 @@
-export { default } from './Sidebar';
+export { default, sidebarIcons } from './Sidebar';
+export type { SidebarNavItem, SidebarProps } from './Sidebar';

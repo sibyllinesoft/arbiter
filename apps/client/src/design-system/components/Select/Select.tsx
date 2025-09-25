@@ -15,15 +15,8 @@ import {
   Search,
   X,
 } from 'lucide-react';
-import React, {
-  forwardRef,
-  useState,
-  useRef,
-  useEffect,
-  type ReactNode,
-  type KeyboardEvent,
-} from 'react';
-import { cn } from '../variants';
+import { type KeyboardEvent, type ReactNode, forwardRef, useEffect, useRef, useState } from 'react';
+import { cn } from '../../variants';
 
 export interface SelectOption {
   /** Unique value for the option */
