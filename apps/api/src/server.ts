@@ -16,10 +16,10 @@ import { loadConfig } from './config';
 import { SpecWorkbenchDB } from './db';
 import { EventService } from './events';
 import { HandlerAPIController } from './handlers/api.js';
-import { IRGenerator } from './ir';
 import { SpecEngine } from './specEngine';
+import { tunnelManager } from './tunnel-manager';
 import type { ServerConfig } from './types.ts';
-import { createProblemDetails, logger } from './utils';
+import { createProblemDetails, getCurrentTimestamp, logger } from './utils';
 import { WebhookService } from './webhooks';
 
 import { createMcpApp } from './mcp';
@@ -51,6 +51,37 @@ export class SpecWorkbenchServer {
     this.events = new EventService(config);
     this.webhooks = new WebhookService(config, this.events, this.db);
     this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
+
+    // Listen to tunnel manager logs and broadcast to global subscribers
+    tunnelManager.on('log', (message: string) => {
+      this.events
+        .broadcastGlobal({
+          type: 'event',
+          data: {
+            event_type: 'tunnel_log',
+            log: message,
+            timestamp: getCurrentTimestamp(),
+          },
+        })
+        .catch(error => {
+          logger.error('Failed to broadcast tunnel log', error);
+        });
+    });
+
+    tunnelManager.on('error', (error: string) => {
+      this.events
+        .broadcastGlobal({
+          type: 'event',
+          data: {
+            event_type: 'tunnel_error',
+            log: `ERROR: ${error}`,
+            timestamp: getCurrentTimestamp(),
+          },
+        })
+        .catch(error => {
+          logger.error('Failed to broadcast tunnel error', error);
+        });
+    });
 
     // Initialize modular components
     const dependencies: Dependencies = {
@@ -414,12 +445,12 @@ class ProcessMonitor {
   }
 
   private setupProcessMonitoring() {
-    // Log process health every 30 seconds
+    // Log process health every 10 seconds
     this.healthInterval = setInterval(() => {
       if (!this.isShuttingDown) {
         this.logProcessHealth();
       }
-    }, 30000);
+    }, 10000);
   }
 
   private setupMemoryMonitoring() {

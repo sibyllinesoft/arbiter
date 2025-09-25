@@ -17,6 +17,7 @@ interface WebSocketConnection {
 export class EventService {
   private connections = new Map<string, WebSocketConnection>();
   private projectSubscriptions = new Map<string, Set<string>>(); // projectId -> Set<connectionId>
+  private globalSubscribers = new Set<string>(); // for global channels like tunnel-logs
   private pingInterval?: Timer;
   private nats: NatsService;
 
@@ -168,17 +169,22 @@ export class EventService {
     const { data } = message;
     const action = data.action as string;
     const projectId = data.project_id as string;
+    const channel = data.channel as string;
 
     switch (action) {
       case 'subscribe':
         if (projectId) {
           await this.subscribeToProject(connectionId, projectId);
+        } else if (channel === 'tunnel-logs') {
+          this.subscribeGlobal(connectionId);
         }
         break;
 
       case 'unsubscribe':
         if (projectId) {
           this.unsubscribeFromProject(connectionId, projectId);
+        } else if (channel === 'tunnel-logs') {
+          this.unsubscribeGlobal(connectionId);
         }
         break;
 
@@ -259,6 +265,62 @@ export class EventService {
     }
 
     logger.debug('Unsubscribed from project', { connectionId, projectId });
+  }
+
+  /**
+   * Subscribe to global events (e.g., tunnel logs)
+   */
+  private subscribeGlobal(connectionId: string): void {
+    this.globalSubscribers.add(connectionId);
+
+    this.sendToConnection(connectionId, {
+      type: 'event',
+      data: {
+        event_type: 'global_subscription_confirmed',
+        channel: 'tunnel-logs',
+        timestamp: getCurrentTimestamp(),
+      },
+    }).catch(error => {
+      logger.error('Failed to confirm global subscription', error);
+      this.globalSubscribers.delete(connectionId);
+    });
+
+    logger.info('Subscribed to global tunnel logs', { connectionId });
+  }
+
+  /**
+   * Unsubscribe from global events
+   */
+  private unsubscribeGlobal(connectionId: string): void {
+    this.globalSubscribers.delete(connectionId);
+    logger.debug('Unsubscribed from global tunnel logs', { connectionId });
+  }
+
+  /**
+   * Broadcast to global subscribers
+   */
+  public async broadcastGlobal(
+    message: WebSocketMessage
+  ): Promise<{ successCount: number; errorCount: number }> {
+    if (this.globalSubscribers.size === 0) {
+      logger.debug('No global subscribers for broadcast');
+      return { successCount: 0, errorCount: 0 };
+    }
+
+    const { successCount, errorCount } = await this.broadcastToSubscribers(
+      this.globalSubscribers,
+      message,
+      'global'
+    );
+
+    logger.info('Broadcasted global event', {
+      channel: 'tunnel-logs',
+      subscriberCount: this.globalSubscribers.size,
+      successCount,
+      errorCount,
+    });
+
+    return { successCount, errorCount };
   }
 
   /**

@@ -2,8 +2,8 @@
  * EditorTabs - Left pane tabs for source and friendly editor
  */
 
-import { FriendlyEditor, SourceEditor } from '../../../components/index';
-import type { Project } from '../../../types/api';
+import { FriendlyEditor, SourceEditor } from '@/components/index';
+import type { Project } from '@/types/api';
 import { DiagramPlaceholder } from './DiagramPlaceholder';
 
 interface EditorTabsProps {

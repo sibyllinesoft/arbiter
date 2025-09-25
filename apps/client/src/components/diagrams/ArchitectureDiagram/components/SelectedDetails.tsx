@@ -1,5 +1,5 @@
+import { Modal } from '@/components/Modal';
 import React from 'react';
-import { Modal } from '../../../Modal';
 
 interface SelectedDetailsProps {
   selectedComponent: string | null;
@@ -34,21 +34,8 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
       maxWidth="2xl"
       maxHeight="90vh"
     >
-      <p className="text-sm text-gray-600 mb-4">Source: {selectedData.sourceFile}</p>
-
       {/* Type/Language/Framework row */}
       <div className="flex flex-wrap gap-6 mb-4">
-        {/* Type */}
-        <div className="flex flex-col min-w-0">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-            Type
-          </span>
-          <p className="text-sm text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded whitespace-pre-wrap break-words">
-            {selectedData.data.type ||
-              selectedData.data.metadata?.type ||
-              (selectedData.name.includes('@') ? 'library' : 'service')}
-          </p>
-        </div>
         {/* Language */}
         {selectedData.data.metadata?.language &&
           selectedData.data.metadata.language !== 'unknown' &&
@@ -81,9 +68,6 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
       <div className="space-y-4">
         {selectedData.data.description && (
           <div>
-            <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-              Description
-            </h5>
             <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">
               {selectedData.data.description}
             </p>

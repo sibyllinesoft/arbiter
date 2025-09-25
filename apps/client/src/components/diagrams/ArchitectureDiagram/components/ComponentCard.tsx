@@ -11,7 +11,7 @@ interface ComponentCardProps {
 export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClick }) => {
   // Standardize component types
   let componentType =
-    data.type || data.metadata?.type || (name.includes('@') ? 'library' : 'service');
+    data.type || data.metadata?.type || (name.includes('@') ? 'module' : 'service');
 
   // Standardize binary to cli
   if (componentType === 'binary') {
@@ -25,7 +25,7 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
         ? LAYER_COLORS.frontend
         : componentType === 'cli'
           ? LAYER_COLORS.cli
-          : componentType === 'library'
+          : componentType === 'module'
             ? LAYER_COLORS.library
             : componentType === 'database'
               ? LAYER_COLORS.data

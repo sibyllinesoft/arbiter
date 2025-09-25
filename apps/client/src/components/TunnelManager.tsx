@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Terminal,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
@@ -43,6 +43,12 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 5;
+  const baseReconnectDelay = 1000;
 
   // Poll tunnel status every 5 seconds when running
   useEffect(() => {
@@ -96,6 +102,103 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     loadInitialStatus();
   }, [loadInitialStatus]);
 
+  // WebSocket for real-time tunnel logs
+  useEffect(() => {
+    if (!tunnelInfo || tunnelInfo.status !== 'running' || !showLogs) {
+      // Close WS if not needed
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setWs(null);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      reconnectAttemptsRef.current = 0;
+      return;
+    }
+
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    const wsUrl = `${protocol}//${host}/events`;
+
+    const connect = () => {
+      const socket = new WebSocket(wsUrl);
+      wsRef.current = socket;
+      setWs(socket);
+
+      socket.onopen = () => {
+        console.log('Tunnel logs WS connected');
+        reconnectAttemptsRef.current = 0;
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+
+        // Subscribe to tunnel logs
+        const subscriptionMessage = {
+          type: 'event',
+          data: {
+            action: 'subscribe',
+            channel: 'tunnel-logs',
+          },
+        };
+        socket.send(JSON.stringify(subscriptionMessage));
+      };
+
+      socket.onmessage = event => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.type === 'event' && message.data.event_type === 'tunnel_log') {
+            setLogs(prev => [...prev, message.data.log]);
+          } else if (message.type === 'event' && message.data.event_type === 'tunnel_error') {
+            setLogs(prev => [...prev, message.data.log]);
+          }
+        } catch (e) {
+          console.error('Failed to parse WS message', e);
+        }
+      };
+
+      socket.onclose = event => {
+        console.log('Tunnel logs WS closed', event.code, event.reason);
+        wsRef.current = null;
+        setWs(null);
+
+        if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          const delay = baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
+          reconnectAttemptsRef.current++;
+          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+          reconnectTimeoutRef.current = setTimeout(connect, delay);
+        }
+      };
+
+      socket.onerror = error => {
+        console.error('Tunnel logs WS error', error);
+        socket.close();
+      };
+    };
+
+    connect();
+
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, [tunnelInfo?.status, showLogs]);
+
+  // Auto-scroll logs when new log added and visible
+  const logsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (showLogs && logsRef.current) {
+      logsRef.current.scrollTop = logsRef.current.scrollHeight;
+    }
+  }, [logs, showLogs]);
+
   const startTunnel = async () => {
     setIsLoading(true);
     try {
@@ -141,8 +244,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     try {
       const response = await apiService.getTunnelLogs();
       if (response.success && response.logs) {
-        setLogs(response.logs.split('\n'));
-        if (!showLogs) setShowLogs(true);
+        setLogs(response.logs.split('\n').filter(line => line.trim()));
       } else {
         toast.error(response.error || 'Failed to load logs');
       }
@@ -151,6 +253,13 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       console.error('Logs error:', error);
     }
   };
+
+  // Load initial logs when showLogs becomes true
+  useEffect(() => {
+    if (showLogs) {
+      loadLogs();
+    }
+  }, [showLogs]);
 
   const copyTunnelUrl = () => {
     if (tunnelInfo?.url) {
@@ -231,6 +340,16 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
             >
               {showLogs ? 'Hide Logs' : 'Show Logs'}
             </Button>
+            {showLogs && (
+              <Button
+                variant="ghost"
+                size="sm"
+                leftIcon={<RefreshCw className="w-4 h-4" />}
+                onClick={loadLogs}
+              >
+                Reload Logs
+              </Button>
+            )}
           </div>
         </div>
 
@@ -399,11 +518,13 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         {showLogs && (
           <div className="p-4 max-h-96 overflow-auto">
             {logs.length > 0 ? (
-              <pre className="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded-lg whitespace-pre-wrap">
-                {logs.join('\n')}
-              </pre>
+              <div ref={logsRef} className="max-h-96 overflow-auto">
+                <pre className="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded-lg whitespace-pre-wrap">
+                  {logs.join('\n')}
+                </pre>
+              </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">Click refresh to load logs</p>
+              <p className="text-sm text-gray-500 italic">Loading logs...</p>
             )}
           </div>
         )}

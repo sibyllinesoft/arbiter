@@ -63,7 +63,7 @@ export function ProjectList({
   }
 
   return (
-    <div className="divide-y divide-graphite-600">
+    <div className="divide-y divide-gray-600 dark:divide-gray-700">
       {projects.map(project => {
         const projectStatus = getProjectStatus(project);
         const isSelected = currentProject?.id === project.id;
@@ -72,8 +72,9 @@ export function ProjectList({
           <div
             key={project.id}
             className={cn(
-              'relative cursor-pointer transition-all duration-200 hover:bg-graphite-800',
-              isSelected && 'bg-blue-600/10 border-l-4 border-l-blue-500'
+              'relative cursor-pointer transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700',
+              isSelected &&
+                'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500 dark:border-l-blue-400'
             )}
             onClick={() => onSelectProject(project)}
           >
@@ -81,10 +82,12 @@ export function ProjectList({
             <div className="p-6">
               {/* Project Header Row: Name and Delete Icon */}
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-2xl font-semibold text-graphite-25 flex-1">{project.name}</h3>
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 flex-1">
+                  {project.name}
+                </h3>
                 <button
                   onClick={e => onDeleteProject(e, project.id)}
-                  className="p-1 text-graphite-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors ml-4"
+                  className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-900/20 rounded transition-colors ml-4"
                   title="Delete project"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -154,38 +157,26 @@ export function ProjectList({
                     </div>
                   )}
 
-                  {projectStatus.entities.routes > 0 && (
+                  {projectStatus.entities.modules > 0 && (
                     <div
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                      style={{ backgroundColor: '#6B7280', borderColor: '#374151' }}
                     >
-                      <Navigation className="w-3.5 h-3.5 text-white" />
+                      <Component className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
-                        Routes: {projectStatus.entities.routes}
+                        Modules: {projectStatus.entities.modules}
                       </span>
                     </div>
                   )}
 
-                  {projectStatus.entities.flows > 0 && (
+                  {projectStatus.entities.infrastructure > 0 && (
                     <div
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
+                      style={{ backgroundColor: '#059669', borderColor: '#047857' }}
                     >
-                      <Workflow className="w-3.5 h-3.5 text-white" />
+                      <Server className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
-                        Flows: {projectStatus.entities.flows}
-                      </span>
-                    </div>
-                  )}
-
-                  {projectStatus.entities.capabilities > 0 && (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md shadow-sm"
-                      style={{ backgroundColor: '#8C97AA', borderColor: '#50617A' }}
-                    >
-                      <Shield className="w-3.5 h-3.5 text-white" />
-                      <span className="text-xs font-medium text-white">
-                        Capabilities: {projectStatus.entities.capabilities}
+                        Infrastructure: {projectStatus.entities.infrastructure}
                       </span>
                     </div>
                   )}

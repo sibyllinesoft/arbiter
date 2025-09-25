@@ -21,7 +21,7 @@ export interface CategoryMatrix {
   cli: DependencyPattern[];
   web_service: DependencyPattern[];
   frontend: DependencyPattern[];
-  library: DependencyPattern[];
+  module: DependencyPattern[];
   desktop_app: DependencyPattern[];
   data_processing: DependencyPattern[];
   testing: DependencyPattern[];
@@ -109,7 +109,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'alpine.js', weight: 0.6, context: 'Lightweight JavaScript framework' },
       { name: 'next', weight: 0.8, context: 'React framework', aliases: ['next.js'] },
     ],
-    library: [
+    module: [
       { name: 'lodash', weight: 0.7, context: 'Utility library' },
       { name: 'axios', weight: 0.6, context: 'HTTP client' },
       { name: 'moment', weight: 0.6, context: 'Date manipulation' },
@@ -253,7 +253,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'gatsby', weight: 0.7, context: 'Static site generator' },
       { name: 'lit', weight: 0.7, context: 'Web components library' },
     ],
-    library: [
+    module: [
       { name: 'zod', weight: 0.8, context: 'Schema validation' },
       { name: 'joi', weight: 0.7, context: 'Schema validation' },
       { name: 'class-validator', weight: 0.7, context: 'Decorator-based validation' },
@@ -376,7 +376,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'nicegui', weight: 0.6, context: 'Modern web UI framework' },
       { name: 'reflex', weight: 0.7, context: 'Pure Python web framework' },
     ],
-    library: [
+    module: [
       { name: 'requests', weight: 0.7, context: 'HTTP library' },
       { name: 'numpy', weight: 0.7, context: 'Numerical computing' },
       { name: 'pandas', weight: 0.7, context: 'Data analysis' },
@@ -499,7 +499,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'stdweb', weight: 0.5, context: 'Web platform (deprecated)' },
       { name: 'gloo', weight: 0.6, context: 'Web development utilities' },
     ],
-    library: [
+    module: [
       { name: 'serde', weight: 0.8, context: 'Serialization framework' },
       { name: 'tokio', weight: 0.7, context: 'Async runtime' },
       { name: 'reqwest', weight: 0.7, context: 'HTTP client' },
@@ -717,7 +717,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       },
       { name: 'tview', weight: 0.4, context: 'Terminal UI', aliases: ['github.com/rivo/tview'] },
     ],
-    library: [
+    module: [
       {
         name: 'logrus',
         weight: 0.7,
@@ -1065,7 +1065,7 @@ export const DEPENDENCY_MATRIX: LanguageMatrix = {
       { name: 'ElectronNET', weight: 0.6, context: 'Electron wrapper for .NET' },
       { name: 'Photino', weight: 0.5, context: 'Lightweight desktop framework' },
     ],
-    library: [
+    module: [
       { name: 'Newtonsoft.Json', weight: 0.8, context: 'JSON serialization' },
       { name: 'System.Text.Json', weight: 0.7, context: 'JSON serialization (built-in)' },
       { name: 'RestSharp', weight: 0.6, context: 'REST client library' },
@@ -1223,7 +1223,7 @@ export function determineMostLikelyCategory(
 ): { category: keyof CategoryMatrix; confidence: number } {
   const languageMatrix = DEPENDENCY_MATRIX[language];
   if (!languageMatrix) {
-    return { category: 'library', confidence: 0 };
+    return { category: 'module', confidence: 0 };
   }
 
   const scores: Array<{ category: keyof CategoryMatrix; confidence: number }> = [];
@@ -1238,9 +1238,9 @@ export function determineMostLikelyCategory(
 
   const best = scores[0];
 
-  // If no clear winner, default to library with low confidence
+  // If no clear winner, default to module with low confidence
   if (best.confidence === 0) {
-    return { category: 'library', confidence: 0.1 };
+    return { category: 'module', confidence: 0.1 };
   }
 
   return best;

@@ -522,7 +522,7 @@ export class PythonPlugin implements ImporterPlugin {
       cli: 'binary',
       web_service: 'service',
       frontend: 'module',
-      library: 'module',
+      module: 'module',
       desktop_app: 'binary',
       data_processing: 'module',
       testing: 'test',

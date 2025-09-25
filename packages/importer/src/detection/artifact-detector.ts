@@ -116,7 +116,7 @@ export class ArtifactDetector {
       }))
       .sort((a, b) => b.confidence - a.confidence);
 
-    const primaryType = sortedTypes[0]?.type || 'library';
+    const primaryType = sortedTypes[0]?.type || 'module';
     const confidence = sortedTypes[0]?.confidence || 0.1;
     const alternativeTypes = sortedTypes.slice(1);
 
@@ -330,16 +330,16 @@ export class ArtifactDetector {
       });
     }
 
-    // Library patterns
-    const libraryPatterns = context.filePatterns.filter(
+    // Module patterns
+    const modulePatterns = context.filePatterns.filter(
       pattern =>
         /lib\//.test(pattern) || /src\/.*index\.(ts|js)$/.test(pattern) || /dist\//.test(pattern)
     );
-    if (libraryPatterns.length > 0) {
+    if (modulePatterns.length > 0) {
       factors.push({
-        category: 'library',
-        confidence: Math.min(0.4, libraryPatterns.length * 0.1),
-        patterns: libraryPatterns,
+        category: 'module',
+        confidence: Math.min(0.4, modulePatterns.length * 0.1),
+        patterns: modulePatterns,
       });
     }
 
@@ -429,35 +429,35 @@ export class ArtifactDetector {
       });
     }
 
-    // Library indicators - enhanced detection
-    const libraryIndicators: string[] = [];
+    // Module indicators - enhanced detection
+    const moduleIndicators: string[] = [];
     if (config.main && !config.bin) {
-      libraryIndicators.push('has main without bin');
+      moduleIndicators.push('has main without bin');
     }
     if (config.exports) {
-      libraryIndicators.push('has exports field');
+      moduleIndicators.push('has exports field');
     }
     if (config.types || config.typings) {
-      libraryIndicators.push('provides TypeScript types');
+      moduleIndicators.push('provides TypeScript types');
     }
     if (!config.private && !config.bin) {
-      libraryIndicators.push('public package without CLI');
+      moduleIndicators.push('public package without CLI');
     }
-    // Check for library-specific fields
+    // Check for module-specific fields
     if (config.module) {
-      libraryIndicators.push('has ESM module field');
+      moduleIndicators.push('has ESM module field');
     }
     if (config.peerDependencies && Object.keys(config.peerDependencies).length > 0) {
-      libraryIndicators.push('has peer dependencies');
+      moduleIndicators.push('has peer dependencies');
     }
     if (config.keywords?.some((k: string) => /library|util|helper|plugin|middleware/i.test(k))) {
-      libraryIndicators.push('library-related keywords');
+      moduleIndicators.push('module-related keywords');
     }
-    if (libraryIndicators.length > 0) {
+    if (moduleIndicators.length > 0) {
       factors.push({
-        category: 'library',
-        confidence: Math.min(0.8, libraryIndicators.length * 0.2),
-        indicators: libraryIndicators,
+        category: 'module',
+        confidence: Math.min(0.8, moduleIndicators.length * 0.2),
+        indicators: moduleIndicators,
       });
     }
 
@@ -634,9 +634,9 @@ export class ArtifactDetector {
       if (factors.configFactors.some(f => f.category === 'cli' && f.confidence > 0.5)) {
         scores['cli'] = 0.7;
       }
-      // Strong library indicators
-      else if (factors.configFactors.some(f => f.category === 'library' && f.confidence > 0.3)) {
-        scores['library'] = 0.5;
+      // Strong module indicators
+      else if (factors.configFactors.some(f => f.category === 'module' && f.confidence > 0.3)) {
+        scores['module'] = 0.5;
       }
       // Check for web service patterns
       else if (
@@ -650,9 +650,9 @@ export class ArtifactDetector {
       ) {
         scores['frontend'] = 0.5;
       }
-      // Default to library with low confidence
+      // Default to module with low confidence
       else {
-        scores['library'] = 0.2;
+        scores['module'] = 0.2;
       }
     }
 

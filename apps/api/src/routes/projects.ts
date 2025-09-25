@@ -1,13 +1,11 @@
 import path from 'path';
 import { getAllPlugins } from '@arbiter/importer/plugins';
 import { ScannerRunner } from '@arbiter/importer/scanner';
-import fs from 'fs-extra';
+import { ProjectEntities } from '@arbiter/shared/types/entities';
 import { Hono } from 'hono';
 type Dependencies = Record<string, unknown>;
 
 export function createProjectsRouter(deps: Dependencies) {
-  const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
-
   const router = new Hono();
 
   // GET single project with full resolved spec and artifacts
@@ -74,6 +72,17 @@ export function createProjectsRouter(deps: Dependencies) {
         }
       });
 
+      // Calculate infrastructure and external counts for consistency
+      let infrastructureCount = 0;
+      let externalCount = 0;
+      for (const [key, comp] of Object.entries(components)) {
+        if (comp.type === 'infrastructure') {
+          infrastructureCount++;
+        } else if (!['library', 'module', 'cli', 'binary', 'frontend'].includes(comp.type)) {
+          externalCount++;
+        }
+      }
+
       // Generate routes from services (for UI consistency)
       const routes = Object.keys(services).map(serviceName => ({
         id: serviceName,
@@ -110,7 +119,8 @@ export function createProjectsRouter(deps: Dependencies) {
             ).length,
             frontends: Object.keys(components).filter(k => components[k].type === 'frontend')
               .length,
-            external: 0,
+            infrastructure: infrastructureCount,
+            external: externalCount,
             routes: routes.length,
             flows: Object.keys(services).length > 0 ? 1 : 0,
             capabilities: Object.keys(services).length > 0 ? 1 : 0,
@@ -139,12 +149,13 @@ export function createProjectsRouter(deps: Dependencies) {
       // Transform database projects and calculate entity counts from specs
       const formattedProjects = await Promise.all(
         projects.map(async (project: any) => {
-          let entities = {
+          let entities: ProjectEntities = {
             services: 0,
             databases: 0,
             libraries: 0,
             clis: 0,
             frontends: 0,
+            infrastructure: 0,
             external: 0,
             // CUE spec entities
             routes: 0,
@@ -214,6 +225,7 @@ export function createProjectsRouter(deps: Dependencies) {
             let libraryCount = 0;
             let cliCount = 0;
             let frontendCount = 0;
+            let infrastructureCount = 0;
             let externalCount = 0;
 
             for (const artifact of otherArtifacts) {
@@ -223,6 +235,7 @@ export function createProjectsRouter(deps: Dependencies) {
 
               switch (type) {
                 case 'library':
+                case 'module':
                   libraryCount++;
                   break;
                 case 'cli':
@@ -230,6 +243,9 @@ export function createProjectsRouter(deps: Dependencies) {
                   break;
                 case 'frontend':
                   frontendCount++;
+                  break;
+                case 'infrastructure':
+                  infrastructureCount++;
                   break;
                 default:
                   externalCount++;
@@ -253,11 +269,12 @@ export function createProjectsRouter(deps: Dependencies) {
               libraries: libraryCount,
               clis: cliCount,
               frontends: frontendCount,
+              infrastructure: infrastructureCount,
               external: externalCount,
               routes: routes.length,
               flows: routes.length > 0 ? 1 : 0, // Generate one flow if we have routes
               capabilities: routes.length > 0 ? 1 : 0, // Generate one capability if we have routes
-            };
+            } as ProjectEntities;
           } catch (error) {
             console.warn(`Failed to calculate entities for project ${project.id}:`, error);
             // Fall back to basic database counts
@@ -267,11 +284,12 @@ export function createProjectsRouter(deps: Dependencies) {
               libraries: 0,
               clis: 0,
               frontends: 0,
+              infrastructure: 0,
               external: 0,
               routes: 0,
               flows: 0,
               capabilities: 0,
-            };
+            } as ProjectEntities;
           }
 
           return {

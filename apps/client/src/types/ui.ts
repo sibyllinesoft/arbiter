@@ -105,6 +105,7 @@ export interface SplitPaneProps {
   allowResize?: boolean;
   split?: 'vertical' | 'horizontal';
   className?: string;
+  resizerStyle?: React.CSSProperties;
 }
 
 export interface TabsProps {

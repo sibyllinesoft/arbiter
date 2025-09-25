@@ -9,8 +9,10 @@ import {
   GitBranch,
   Loader2,
   Lock,
+  Moon,
   RefreshCw,
   Save,
+  Sun,
   User,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -30,7 +32,8 @@ export interface TopBarProps {
 
 export function TopBar({ className }: TopBarProps) {
   const navigate = useNavigate();
-  const { state, setLoading, setError, dispatch, setSelectedCueFile } = useApp();
+  const { state, setLoading, setError, dispatch, setSelectedCueFile, isDark, toggleTheme } =
+    useApp();
 
   const currentProject = useCurrentProject();
   const { isValidating, errors, warnings, specHash } = useValidationState();
@@ -267,8 +270,8 @@ export function TopBar({ className }: TopBarProps) {
     <div
       className={cn(
         'flex items-center justify-between h-16 px-6',
-        'bg-gradient-to-r from-white via-graphite-25 to-white',
-        'border-b border-graphite-200 shadow-sm',
+        'bg-white dark:bg-graphite-950',
+        'border-b border-graphite-200 dark:border-graphite-700 shadow-sm',
         'backdrop-blur-sm relative z-30',
         className
       )}
@@ -482,6 +485,18 @@ export function TopBar({ className }: TopBarProps) {
         {/* User indicator */}
         <div className="flex items-center gap-2 pl-4 border-l border-graphite-200">
           <User className="w-6 h-6 text-graphite-600" />
+          <button
+            onClick={() => toggleTheme()}
+            className="p-1 rounded-lg hover:bg-graphite-100 dark:hover:bg-graphite-700 transition-colors"
+            title="Toggle theme"
+            aria-label="Toggle dark mode"
+          >
+            {isDark ? (
+              <Sun className="w-5 h-5 text-graphite-600" />
+            ) : (
+              <Moon className="w-5 h-5 text-graphite-600" />
+            )}
+          </button>
         </div>
       </div>
     </div>

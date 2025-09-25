@@ -74,6 +74,8 @@ export function LandingPage() {
     const entities = project.entities || {
       services: 0,
       databases: 0,
+      modules: 0,
+      infrastructure: 0,
       libraries: 0,
       clis: 0,
       frontends: 0,
@@ -90,8 +92,8 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <header className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-graphite-950 dark:to-graphite-900">
+      <header className="bg-white dark:bg-graphite-950 border-b border-gray-200 dark:border-graphite-700 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
@@ -103,16 +105,21 @@ export function LandingPage() {
                 />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-gray-900">Arbiter</h1>
-                <p className="text-sm text-gray-500">Infrastructure Management Dashboard</p>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
+                  Arbiter
+                </h1>
+                <p className="text-sm text-gray-500 dark:text-graphite-400">
+                  Infrastructure Management Dashboard
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 leftIcon={<Settings className="w-6 h-6" />}
                 onClick={() => setIsConfigModalOpen(true)}
+                className="focus:outline-none"
               />
             </div>
           </div>
@@ -120,10 +127,10 @@ export function LandingPage() {
       </header>
 
       <main className="h-[calc(100vh-4rem)] flex overflow-hidden">
-        <div className="w-72 flex-shrink-0 bg-white border-r border-gray-200 overflow-hidden">
-          <div className="p-4 border-b border-gray-200">
+        <div className="w-72 flex-shrink-0 bg-white dark:bg-graphite-900 border-r border-gray-200 dark:border-graphite-700 overflow-hidden">
+          <div className="p-4 border-b border-gray-200 dark:border-graphite-700">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-graphite-25 flex items-center gap-2">
                 <GitBranch className="w-5 h-5" />
                 Projects
               </h2>
@@ -149,7 +156,7 @@ export function LandingPage() {
           </div>
         </div>
 
-        <div className="flex-1 bg-white overflow-hidden">
+        <div className="flex-1 bg-white dark:bg-graphite-950 overflow-hidden">
           <Tabs
             activeTab={activeTab}
             onTabChange={setActiveTab}

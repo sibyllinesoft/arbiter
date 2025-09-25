@@ -222,7 +222,7 @@ class WebSocketService {
 
       // Handle different event formats from server
       const wsEvent: WsEvent = {
-        type: rawEvent.type || rawEvent.event_type,
+        type: (rawEvent.type || rawEvent.event_type) as WsEvent['type'],
         project_id: rawEvent.project_id,
         timestamp: rawEvent.timestamp,
         data: rawEvent.data,
@@ -236,25 +236,23 @@ class WebSocketService {
 
       // Skip project-specific events if we don't have a project_id (except connection_established)
       if (wsEvent.type === 'connection_established' || wsEvent.project_id) {
-        // Process the event
+        log.debug('Processing WebSocket event:', {
+          type: wsEvent.type,
+          project_id: wsEvent.project_id,
+        });
+
+        // Notify all subscribers
+        this.eventHandlers.forEach(handler => {
+          try {
+            handler(wsEvent);
+          } catch (error) {
+            log.error('Error in WebSocket event handler:', error);
+          }
+        });
       } else {
         log.debug('Skipping non-project event:', wsEvent.type);
         return;
       }
-
-      log.debug('Processing WebSocket event:', {
-        type: wsEvent.type,
-        project_id: wsEvent.project_id,
-      });
-
-      // Notify all subscribers
-      this.eventHandlers.forEach(handler => {
-        try {
-          handler(wsEvent);
-        } catch (error) {
-          log.error('Error in WebSocket event handler:', error);
-        }
-      });
     } catch (error) {
       log.error('Failed to handle WebSocket event:', error);
     }

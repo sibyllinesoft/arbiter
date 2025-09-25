@@ -2,9 +2,9 @@
  * ProjectHeader - Navigation header for project view
  */
 
+import { Button } from '@/design-system';
+import type { Project } from '@/types/api';
 import { ArrowLeft } from 'lucide-react';
-import { Button } from '../../../design-system';
-import type { Project } from '../../../types/api';
 
 interface ProjectHeaderProps {
   project: Project;

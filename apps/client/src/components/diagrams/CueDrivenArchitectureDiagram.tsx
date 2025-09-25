@@ -3,8 +3,6 @@
  * Automatically generates architecture diagrams from CUE specifications
  */
 
-import { clsx } from 'clsx';
-import React, { useState, useEffect, useMemo } from 'react';
 import {
   type ConnectionType,
   type CueArchitectureData,
@@ -12,9 +10,11 @@ import {
   type DiagramConnection,
   type DiagramTheme,
   type DiagramType,
-} from '../../types/architecture';
-import { CueArchitectureParser } from '../../utils/cueArchitectureParser';
-import { DiagramLayoutEngine } from '../../utils/diagramLayout';
+} from '@/types/architecture';
+import { CueArchitectureParser } from '@/utils/cueArchitectureParser';
+import { DiagramLayoutEngine } from '@/utils/diagramLayout';
+import { clsx } from 'clsx';
+import React, { useState, useEffect, useMemo } from 'react';
 
 interface CueDrivenArchitectureDiagramProps {
   /** CUE specification data */
@@ -290,6 +290,9 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
       state_machine: 'M4 12a8 8 0 018-8V0l4 4-4 4V4a6 6 0 100 12 6 6 0 000-12z',
       external_system:
         'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z',
+      flow: 'M9 5v2h6V5H9zm0 4v2h6V9H9zm0 4v2h6v-2H9zm0 4v2h6v-2H9z',
+      component: 'M3 3h18v18H3V3z',
+      data_store: 'M4 4h16v2H4V4zm0 4h16v2H4V8zm0 4h16v2H4v-2zm0 4h16v2H4v-2z',
     };
 
     const path = iconPaths[component.type] || iconPaths.service;

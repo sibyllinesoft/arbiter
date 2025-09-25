@@ -129,7 +129,6 @@ export type ArtifactType =
   | 'service' // HTTP services, APIs, microservices
   | 'binary' // Executable binaries
   | 'cli' // Command-line interface tools
-  | 'library' // Shared libraries, packages, modules
   | 'module' // Reusable modules, components, libraries
   | 'job' // Background jobs, cron jobs, workers
   | 'schema' // Database schemas, API schemas

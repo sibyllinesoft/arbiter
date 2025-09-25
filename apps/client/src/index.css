@@ -69,8 +69,16 @@ body {
   background-color: #fafafa !important;
 }
 
+.dark .monaco-editor .monaco-editor-background {
+  background-color: #0f1115 !important;
+}
+
 .monaco-editor .margin {
   background-color: #f5f5f5 !important;
+}
+
+.dark .monaco-editor .margin {
+  background-color: #141821 !important;
 }
 
 /* File tree styles */
@@ -88,9 +96,18 @@ body {
   background: #f3f4f6;
 }
 
+.dark .file-tree-item:hover {
+  background: #1b2130;
+}
+
 .file-tree-item.active {
   background: #dbeafe;
   color: #1e40af;
+}
+
+.dark .file-tree-item.active {
+  background: #1e466b;
+  color: #a9c7df;
 }
 
 .file-tree-item.unsaved::after {
@@ -98,6 +115,10 @@ body {
   color: #f59e0b;
   font-weight: bold;
   margin-left: 4px;
+}
+
+.dark .file-tree-item.unsaved::after {
+  color: #a6842a;
 }
 
 /* Tab styles */
@@ -112,6 +133,10 @@ body {
   width: 100%;
   overflow: auto;
   background: white;
+}
+
+.dark .diagram-container {
+  background: #0f1115;
 }
 
 .diagram-loading {
@@ -177,15 +202,15 @@ body {
 
 /* Gap item styles */
 .gap-item {
-  @apply border border-gray-200 rounded-lg p-4 mb-3 hover:bg-gray-50 transition-colors;
+  @apply border border-gray-200 dark:border-graphite-600 rounded-lg p-4 mb-3 hover:bg-gray-50 dark:hover:bg-graphite-800 transition-colors;
 }
 
 .gap-item.resolved {
-  @apply bg-green-50 border-green-200;
+  @apply bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-600;
 }
 
 .gap-item.high-priority {
-  @apply border-red-200 bg-red-50;
+  @apply border-red-200 dark:border-red-600 bg-red-50 dark:bg-red-900/20;
 }
 
 /* Toast notification styles */
@@ -208,7 +233,7 @@ body {
 }
 
 .error-boundary pre {
-  @apply bg-gray-100 p-4 rounded text-sm text-left max-w-full overflow-auto;
+  @apply bg-gray-100 dark:bg-graphite-800 p-4 rounded text-sm text-left max-w-full overflow-auto;
 }
 
 /* Accessibility improvements */

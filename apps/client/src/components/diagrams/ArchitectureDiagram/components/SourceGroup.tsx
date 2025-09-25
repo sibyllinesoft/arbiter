@@ -1,5 +1,5 @@
+import StatusBadge from '@/design-system/components/StatusBadge';
 import React from 'react';
-import StatusBadge from '../../../../design-system/components/StatusBadge';
 import { ComponentCard } from './ComponentCard';
 
 interface SourceGroupProps {
@@ -51,10 +51,10 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
         <div className="flex items-center gap-2">
           {components.length > 0 && (
             <StatusBadge
-              variant="info"
+              variant="secondary"
               style="solid"
               size="xs"
-              className="border-0 rounded-full text-[10px] text-gray-300"
+              className="border-0 rounded-full text-[10px] text-white"
             >
               {components.length}
             </StatusBadge>

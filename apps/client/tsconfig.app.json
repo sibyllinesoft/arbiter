@@ -16,7 +16,9 @@
       "@design-system/*": ["./src/design-system/*"],
       "@design-system": ["./src/design-system"],
       "@utils/*": ["./src/utils/*"],
-      "@assets/*": ["./src/assets/*"]
+      "@assets/*": ["./src/assets/*"],
+      "@stores/*": ["./src/stores/*"],
+      "@types/*": ["./src/types/*"]
     },
 
     /* Bundler mode */

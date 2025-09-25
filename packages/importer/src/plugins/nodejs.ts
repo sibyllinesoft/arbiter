@@ -225,8 +225,8 @@ export class NodeJSPlugin implements ImporterPlugin {
       cli: 'cli',
       web_service: 'service',
       frontend: 'frontend',
-      library: 'module',
-      desktop_app: 'binary', // or 'library' depending on context
+      module: 'module',
+      desktop_app: 'binary', // or 'module' depending on context
       data_processing: 'module',
       testing: 'test',
       build_tool: 'module',

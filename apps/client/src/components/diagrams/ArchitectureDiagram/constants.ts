@@ -21,7 +21,7 @@ export const LAYER_COLORS = {
   },
   library: {
     bg: '#7666B9', // Design token purple-300 (flat color)
-    border: '#3A2A70', // Purple-600 border
+    border: '#3A2A70', // Design token purple-600 border
     text: '#ffffff', // White text for contrast
   },
   data: {

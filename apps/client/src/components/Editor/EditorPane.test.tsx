@@ -69,12 +69,8 @@ vi.mock('../../contexts/AppContext', () => ({
 }));
 
 // Import mocked hooks
-import {
-  useActiveFragment,
-  useApp,
-  useCurrentProject,
-  useEditorContent,
-} from '../../contexts/AppContext';
+import { useActiveFragment, useApp, useEditorContent } from '../../contexts/AppContext';
+import { useCurrentProject } from '../../contexts/ProjectContext';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({

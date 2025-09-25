@@ -12,8 +12,11 @@ import {
   InferenceContext,
   InferredArtifact,
   ParseContext,
-  Provenance,
 } from '../types.js';
+
+import type { DetectionContext, DetectionResult } from '../detection/artifact-detector.js';
+import { detectArtifactType } from '../detection/artifact-detector.js';
+import type { CategoryMatrix } from '../detection/dependency-matrix.js';
 
 // Rust framework detection lists
 const RUST_WEB_FRAMEWORKS = [
@@ -125,6 +128,7 @@ export class RustPlugin implements ImporterPlugin {
       description: cargo.package?.description || 'Rust package',
       type: inferredType,
       filePath,
+      fullCargo: cargo,
     };
 
     evidence.push({
@@ -145,19 +149,65 @@ export class RustPlugin implements ImporterPlugin {
     allEvidence: Evidence[],
     context: InferenceContext
   ): InferredArtifact[] {
-    const cargoData = cargoEvidence.data as unknown as RustData;
+    const cargoData = cargoEvidence.data as any;
+    const fullCargo = cargoData.fullCargo;
     const name = cargoData.name;
+    const description = cargoData.description;
     const artifacts: InferredArtifact[] = [];
 
+    const allDepsObj = {
+      ...(fullCargo.dependencies || {}),
+      ...(fullCargo['dev-dependencies'] || {}),
+      ...(fullCargo['build-dependencies'] || {}),
+    };
+    const deps = Object.keys(allDepsObj);
+
+    const filePatterns = Array.from(context.fileIndex?.files?.values() || [])
+      .filter((f: any) => f.relativePath.startsWith(path.dirname(cargoData.filePath)))
+      .map((f: any) => f.relativePath);
+
+    const detectionContext: DetectionContext = {
+      language: 'rust',
+      dependencies: deps,
+      scripts: {},
+      filePatterns,
+      packageConfig: fullCargo,
+    };
+
+    const result: DetectionResult = detectArtifactType(detectionContext);
+    let category = result.primaryType;
+    let artifactType = this.mapCategoryToRustType(category);
+
+    // Fallback to simple logic if low confidence
+    if (result.confidence < 0.3) {
+      const simpleType = this.determineRustType(allDepsObj);
+      if (simpleType !== 'module') {
+        artifactType = simpleType;
+      }
+    }
+
+    // Special handling for jobs
+    if (artifactType === 'module' && this.hasJobFrameworks(deps)) {
+      artifactType = 'job';
+    }
+
+    // Override to service if web frameworks detected (prioritize service over binary/CLI for HTTP-enabled crates)
+    if (RUST_WEB_FRAMEWORKS.some(framework => deps.includes(framework))) {
+      artifactType = 'service';
+      category = 'web_service';
+    }
+
     const artifact = {
-      id: `rust-${cargoData.type}-${name}`,
-      type: cargoData.type as any,
+      id: `rust-${artifactType}-${name}`,
+      type: artifactType as any,
       name,
-      description: cargoData.description,
-      tags: ['rust', cargoData.type],
+      description,
+      tags: ['rust', artifactType],
       metadata: {
         sourceFile: cargoData.filePath,
         language: 'rust',
+        detectedCategory: category,
+        detectionConfidence: result.confidence,
       },
     };
 
@@ -166,7 +216,7 @@ export class RustPlugin implements ImporterPlugin {
       provenance: {
         evidence: [cargoEvidence.id],
         plugins: ['rust'],
-        rules: ['cargo-simplification'],
+        rules: ['cargo-detection'],
         timestamp: Date.now(),
         pipelineVersion: '1.0.0',
       },
@@ -185,7 +235,27 @@ export class RustPlugin implements ImporterPlugin {
     if (hasWeb) return 'service';
     if (hasCli) return 'binary';
     if (hasJob) return 'job';
-    return 'library';
+    return 'module';
+  }
+
+  private mapCategoryToRustType(category: keyof CategoryMatrix): string {
+    const mapping: Record<keyof CategoryMatrix, string> = {
+      cli: 'binary',
+      web_service: 'service',
+      frontend: 'module',
+      module: 'module',
+      desktop_app: 'binary',
+      data_processing: 'job',
+      testing: 'test',
+      build_tool: 'module',
+      game: 'binary',
+      mobile: 'binary',
+    };
+    return mapping[category] || 'module';
+  }
+
+  private hasJobFrameworks(deps: string[]): boolean {
+    return deps.some(d => RUST_JOB_FRAMEWORKS.includes(d));
   }
 }
 

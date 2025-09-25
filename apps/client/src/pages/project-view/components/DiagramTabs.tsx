@@ -11,8 +11,8 @@ import {
   ResolvedReport,
   SiteReport,
   ViewReport,
-} from '../../../components/index';
-import type { Project } from '../../../types/api';
+} from '@/components/index';
+import type { Project } from '@/types/api';
 import { DiagramPlaceholder } from './DiagramPlaceholder';
 
 interface DiagramTabsProps {

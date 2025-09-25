@@ -1,7 +1,7 @@
+import StatusBadge from '@/design-system/components/StatusBadge';
+import { apiService } from '@/services/api';
 import { clsx } from 'clsx';
 import React, { useState, useEffect } from 'react';
-import StatusBadge from '../../../design-system/components/StatusBadge';
-import { apiService } from '../../../services/api';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
 import { LoadingState } from './components/LoadingState';
@@ -76,10 +76,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         <h3 className="text-lg font-medium text-gray-900">Components</h3>
         {totalComponents > 0 && (
           <StatusBadge
-            variant="info"
+            variant="secondary"
             style="solid"
             size="xs"
-            className="border-0 rounded-full text-[10px] text-gray-300"
+            className="border-0 rounded-full text-[10px] text-white"
           >
             {totalComponents}
           </StatusBadge>

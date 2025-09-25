@@ -9,6 +9,18 @@ export interface Project {
   name: string;
   created_at: string;
   updated_at: string;
+  entities?: {
+    services: number;
+    databases: number;
+    libraries: number;
+    clis: number;
+    frontends: number;
+    infrastructure: number;
+    external: number;
+    routes: number;
+    flows: number;
+    capabilities: number;
+  };
 }
 
 export interface Fragment {
@@ -239,14 +251,20 @@ export interface WebSocketMessage {
 
 // WebSocket events for real-time collaboration
 export interface WsEvent {
-  type: 'fragment_updated' | 'resolved_updated' | 'gaps_updated' | 'ir_updated';
-  project_id: string;
-  data: WsEventData;
+  type:
+    | 'connection_established'
+    | 'fragment_updated'
+    | 'resolved_updated'
+    | 'gaps_updated'
+    | 'ir_updated';
+  project_id?: string;
+  data: WsEventData | { connection_id: string; user_id?: string };
   timestamp: string;
   user?: string;
 }
 
 export type WsEventData =
+  | { connection_id: string; user_id?: string }
   | WsFragmentUpdatedData
   | WsResolvedUpdatedData
   | WsGapsUpdatedData

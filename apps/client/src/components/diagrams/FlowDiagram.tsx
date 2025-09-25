@@ -55,7 +55,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
         setError(null);
 
         const response: IRResponse = await apiService.getIR(projectId, 'flow');
-        setFlowData(response.data as FlowIRData);
+        setFlowData(response.data as unknown as FlowIRData);
       } catch (err) {
         console.error('Failed to load flow data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load flow diagram');
@@ -71,7 +71,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
     if (!flows || flows.length === 0) {
       return `graph TD
         A[No flows defined]
-        style A fill:#f9f9f9,stroke:#ccc,stroke-dasharray: 5 5`;
+        style A fill:#2F394B,stroke:#6B7A92,stroke-dasharray: 5 5,color:#B3BBC8`;
     }
 
     let mermaidCode = 'graph TD\n';
@@ -89,26 +89,27 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
         switch (node.kind) {
           case 'visit':
             mermaidCode += `    ${nodeId}[${label}]\n`;
-            mermaidCode += `    style ${nodeId} fill:#e1f5fe,stroke:#01579b\n`;
+            mermaidCode += `    style ${nodeId} fill:#1E466B,stroke:#25557E,color:#A9C7DF\n`;
             break;
           case 'click':
             mermaidCode += `    ${nodeId}{${label}}\n`;
-            mermaidCode += `    style ${nodeId} fill:#f3e5f5,stroke:#4a148c\n`;
+            mermaidCode += `    style ${nodeId} fill:#3A2A70,stroke:#4A378B,color:#A19BD2\n`;
             break;
           case 'fill':
             mermaidCode += `    ${nodeId}[/${label}/]\n`;
-            mermaidCode += `    style ${nodeId} fill:#e8f5e8,stroke:#1b5e20\n`;
+            mermaidCode += `    style ${nodeId} fill:#1D6A5B,stroke:#45A190,color:#79C0B0\n`;
             break;
           case 'expect':
             mermaidCode += `    ${nodeId}((${label}))\n`;
-            mermaidCode += `    style ${nodeId} fill:#fff3e0,stroke:#e65100\n`;
+            mermaidCode += `    style ${nodeId} fill:#803131,stroke:#BA5956,color:#D98A86\n`;
             break;
           case 'expect_api':
             mermaidCode += `    ${nodeId}{{${label}}}\n`;
-            mermaidCode += `    style ${nodeId} fill:#fce4ec,stroke:#880e4f\n`;
+            mermaidCode += `    style ${nodeId} fill:#725718,stroke:#A6842A,color:#C8A656\n`;
             break;
           default:
             mermaidCode += `    ${nodeId}[${label}]\n`;
+            mermaidCode += `    style ${nodeId} fill:#3B475C,stroke:#50617A,color:#8C97AA\n`;
         }
       });
 
@@ -212,8 +213,10 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
       <div className="p-4">
         {flowData?.flows && flowData.flows.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Flow Diagrams</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-100">
+              Flow Diagrams
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-graphite-400">
               Showing {flowData.flows.length} flow{flowData.flows.length !== 1 ? 's' : ''}
             </p>
           </div>

@@ -2,11 +2,14 @@
  * Main application context for state management
  */
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import type { Project } from '../types/api';
+import React, { createContext, useContext, useReducer } from 'react';
+import type { ReactNode } from 'react';
+import type { Fragment, Project } from '../types/api';
 
 interface AppState {
   projects: Project[];
+  fragments: Fragment[];
+  activeFragmentId: string | null;
   isConnected: boolean;
   reconnectAttempts: number;
   lastSync: string | null;
@@ -39,6 +42,9 @@ interface AppState {
 
 type AppAction =
   | { type: 'SET_PROJECTS'; payload: Project[] }
+  | { type: 'SET_FRAGMENTS'; payload: Fragment[] }
+  | { type: 'UPDATE_FRAGMENT'; payload: Fragment }
+  | { type: 'DELETE_FRAGMENT'; payload: string }
   | { type: 'SET_CONNECTION_STATUS'; payload: boolean }
   | {
       type: 'SET_VALIDATION_STATE';
@@ -63,10 +69,13 @@ type AppAction =
   | { type: 'SET_SELECTED_REPOS'; payload: Set<number> }
   | { type: 'TOGGLE_REPO_SELECTION'; payload: number }
   | { type: 'SET_REPOS_BY_OWNER'; payload: Record<string, any[]> }
-  | { type: 'SET_LOADING_GITHUB'; payload: boolean };
+  | { type: 'SET_LOADING_GITHUB'; payload: boolean }
+  | { type: 'SET_ACTIVE_FRAGMENT'; payload: string | null };
 
 const initialState: AppState = {
   projects: [],
+  fragments: [],
+  activeFragmentId: null,
   isConnected: true,
   reconnectAttempts: 0,
   lastSync: null,
@@ -115,6 +124,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
     switch (action.type) {
       case 'SET_PROJECTS':
         return { ...state, projects: action.payload };
+      case 'SET_FRAGMENTS':
+        return { ...state, fragments: action.payload };
+      case 'UPDATE_FRAGMENT':
+        return {
+          ...state,
+          fragments: state.fragments.map(f => (f.id === action.payload.id ? action.payload : f)),
+        };
+      case 'DELETE_FRAGMENT':
+        return {
+          ...state,
+          fragments: state.fragments.filter(f => f.id !== action.payload),
+        };
       case 'SET_CONNECTION_STATUS':
         return { ...state, isConnected: action.payload };
       case 'SET_VALIDATION_STATE':
@@ -175,6 +196,8 @@ function appReducer(state: AppState, action: AppAction): AppState {
         return { ...state, reposByOwner: action.payload };
       case 'SET_LOADING_GITHUB':
         return { ...state, isLoadingGitHub: action.payload };
+      case 'SET_ACTIVE_FRAGMENT':
+        return { ...state, activeFragmentId: action.payload };
       default:
         return state;
     }
@@ -208,7 +231,15 @@ interface AppContextValue {
     reposByOwner: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>)
   ) => void;
   setLoadingGitHub: (loading: boolean) => void;
+  updateEditorContent: (fragmentId: string, content: string) => void;
+  markUnsaved: (id: string) => void;
+  markSaved: (id: string) => void;
+  setActiveFragment: (id: string | null) => void;
+  isDark: boolean;
+  toggleTheme: () => void;
 }
+
+import { useTheme } from '../stores/ui-store';
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
@@ -248,6 +279,15 @@ export function AppProvider({ children }: AppProviderProps) {
   const setLoadingGitHub = (loading: boolean) =>
     dispatch({ type: 'SET_LOADING_GITHUB', payload: loading });
 
+  const updateEditorContent = (fragmentId: string, content: string) =>
+    dispatch({ type: 'SET_EDITOR_CONTENT', payload: { fragmentId, content } });
+  const markUnsaved = (id: string) => dispatch({ type: 'MARK_UNSAVED', payload: id });
+  const markSaved = (id: string) => dispatch({ type: 'MARK_SAVED', payload: id });
+  const setActiveFragment = (id: string | null) =>
+    dispatch({ type: 'SET_ACTIVE_FRAGMENT', payload: id });
+
+  const { isDark, toggleTheme } = useTheme();
+
   const value: AppContextValue = {
     state,
     dispatch,
@@ -265,6 +305,12 @@ export function AppProvider({ children }: AppProviderProps) {
     toggleRepoSelection,
     setReposByOwner,
     setLoadingGitHub,
+    updateEditorContent,
+    markUnsaved,
+    markSaved,
+    setActiveFragment,
+    isDark,
+    toggleTheme,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -353,4 +399,14 @@ export function useGitHubState() {
     setReposByOwner,
     setLoadingGitHub,
   };
+}
+
+export function useActiveFragment() {
+  const { state } = useApp();
+  return state.fragments.find(f => f.id === state.activeFragmentId) || null;
+}
+
+export function useEditorContent(fragmentId: string) {
+  const { state } = useApp();
+  return state.editorContent[fragmentId] || '';
 }

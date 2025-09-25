@@ -14,6 +14,7 @@ export function SplitPane({
   allowResize = true,
   split = 'vertical',
   className,
+  resizerStyle,
 }: SplitPaneProps) {
   const [size, setSize] = useState<string>(
     typeof defaultSize === 'string' ? defaultSize : `${defaultSize}px`
@@ -122,6 +123,7 @@ export function SplitPane({
             isVertical ? 'w-1 cursor-col-resize hover:w-2' : 'h-1 cursor-row-resize hover:h-2',
             isDragging && (isVertical ? 'w-2 bg-blue-500' : 'h-2 bg-blue-500')
           )}
+          style={resizerStyle}
           onMouseDown={handleMouseDown}
         />
       )}

@@ -10,7 +10,7 @@ export function loadConfig(): ServerConfig {
   } catch {
     return {
       port: parseInt(process.env.PORT || '5050', 10),
-      host: 'localhost',
+      host: '0.0.0.0',
       database_path: 'arbiter.db',
       spec_workdir: path.join(process.cwd(), '.spec-workdir'),
       cue_binary_path: 'cue',

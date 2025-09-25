@@ -11,6 +11,7 @@ export const ComponentTypeSchema = z.enum([
   'database',
   'external',
   'binary',
+  'infrastructure',
 ]);
 
 export type ComponentType = z.infer<typeof ComponentTypeSchema>;
@@ -25,6 +26,7 @@ export const ProjectEntityCountsSchema = z.object({
   clis: z.number().int().min(0),
   frontends: z.number().int().min(0),
   databases: z.number().int().min(0),
+  infrastructure: z.number().int().min(0).optional(),
   external: z.number().int().min(0).optional(),
 });
 
@@ -92,6 +94,7 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
     clis: 0,
     frontends: 0,
     databases: 0,
+    infrastructure: 0,
     external: 0,
   };
 
@@ -116,6 +119,9 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
         break;
       case 'database':
         counts.databases++;
+        break;
+      case 'infrastructure':
+        counts.infrastructure = (counts.infrastructure || 0) + 1;
         break;
       default:
         counts.external = (counts.external || 0) + 1;

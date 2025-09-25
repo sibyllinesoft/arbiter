@@ -1,176 +1,55 @@
-/**
- * Component Variant Patterns
- * Consistent styling patterns for different component states and variants
- */
-
 import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-// Base component classes
-export const baseClasses = {
-  // Focus ring for interactive elements
-  focusRing: 'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+export function cn(...inputs: any[]) {
+  return twMerge(clsx(inputs));
+}
 
-  // Transitions
-  transition: 'transition-all duration-150 ease-in-out',
-
-  // Typography
-  text: {
-    xs: 'text-xs',
-    sm: 'text-sm',
-    base: 'text-base',
-    lg: 'text-lg',
-    xl: 'text-xl',
-  },
-
-  // Spacing
-  spacing: {
-    xs: 'px-2 py-1',
-    sm: 'px-3 py-1.5',
-    md: 'px-4 py-2',
-    lg: 'px-6 py-3',
-    xl: 'px-8 py-4',
-  },
-
-  // Border radius
-  rounded: {
-    none: 'rounded-none',
-    sm: 'rounded-sm',
-    md: 'rounded',
-    lg: 'rounded-lg',
-    xl: 'rounded-xl',
-    full: 'rounded-full',
-  },
-} as const;
-
-// Button variants
-export const buttonVariants = {
-  // Primary button - main actions
-  primary: clsx(
-    'bg-blue-600 hover:bg-blue-700 active:bg-blue-800',
-    'text-white font-medium',
-    'border border-transparent',
-    'disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed',
-    baseClasses.transition,
-    baseClasses.focusRing
-  ),
-
-  // Secondary button - secondary actions
-  secondary: clsx(
-    'bg-graphite-100 hover:bg-graphite-200 active:bg-graphite-300',
-    'text-graphite-700 font-medium',
-    'border border-graphite-300',
-    'disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed',
-    baseClasses.transition,
-    baseClasses.focusRing
-  ),
-
-  // Ghost button - subtle actions
-  ghost: clsx(
-    'bg-transparent hover:bg-graphite-100 active:bg-graphite-200',
-    'text-graphite-600 hover:text-graphite-700',
-    'border border-transparent',
-    'disabled:text-gray-400 disabled:cursor-not-allowed',
-    baseClasses.transition,
-    baseClasses.focusRing
-  ),
-
-  // Danger button - destructive actions
-  danger: clsx(
-    'bg-red-600 hover:bg-red-700 active:bg-red-800',
-    'text-white font-medium',
-    'border border-transparent',
-    'disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed',
-    baseClasses.transition,
-    baseClasses.focusRing
-  ),
-} as const;
-
-// Input variants
 export const inputVariants = {
-  // Default input
-  default: clsx(
-    'bg-white border border-graphite-300',
-    'text-graphite-900 placeholder:text-graphite-400',
-    'hover:border-graphite-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-    'disabled:bg-graphite-50 disabled:text-graphite-500 disabled:cursor-not-allowed disabled:border-graphite-200',
-    'outline-none transition-all duration-150'
-  ),
-
-  // Error state
-  error: clsx(
-    'bg-white border border-red-300',
-    'text-graphite-900 placeholder:text-graphite-400',
-    'hover:border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500',
-    'disabled:bg-red-50 disabled:text-red-300 disabled:cursor-not-allowed disabled:border-red-200',
-    'outline-none transition-all duration-150'
-  ),
-
-  // Warning state
-  warning: clsx(
-    'bg-white border border-amber-300',
-    'text-graphite-900 placeholder:text-graphite-400',
-    'hover:border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500',
-    'disabled:bg-amber-50 disabled:text-amber-300 disabled:cursor-not-allowed disabled:border-amber-200',
-    'outline-none transition-all duration-150'
-  ),
-
-  // Success state
-  success: clsx(
-    'bg-white border border-emerald-300',
-    'text-graphite-900 placeholder:text-graphite-400',
-    'hover:border-emerald-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500',
-    'disabled:bg-emerald-50 disabled:text-emerald-300 disabled:cursor-not-allowed disabled:border-emerald-200',
-    'outline-none transition-all duration-150'
-  ),
+  default:
+    'border border-graphite-300 bg-white text-graphite-900 focus:border-graphite-500 focus:ring-2 focus:ring-graphite-200',
+  error:
+    'border-red-500 bg-red-50/50 text-red-900 focus:border-red-500 focus:ring-2 focus:ring-red-200',
+  success:
+    'border-green-500 bg-green-50/50 text-green-900 focus:border-green-500 focus:ring-2 focus:ring-green-200',
+  warning:
+    'border-amber-500 bg-amber-50/50 text-amber-900 focus:border-amber-500 focus:ring-2 focus:ring-amber-200',
 } as const;
 
-// Card variants
-export const cardVariants = {
-  // Default card
-  default: clsx(
-    'bg-white border border-graphite-200',
-    'shadow-sm hover:shadow-md',
-    'transition-shadow duration-150'
-  ),
-
-  // Interactive card (clickable)
-  interactive: clsx(
-    'bg-white border border-graphite-200',
-    'shadow-sm hover:shadow-md hover:border-graphite-300',
-    'cursor-pointer transition-all duration-150',
-    baseClasses.focusRing
-  ),
-
-  // Elevated card
-  elevated: clsx(
-    'bg-white border border-graphite-200',
-    'shadow-md hover:shadow-lg',
-    'transition-shadow duration-150'
-  ),
-
-  // Outlined card
-  outlined: clsx(
-    'bg-transparent border-2 border-graphite-300',
-    'hover:border-graphite-400 hover:bg-graphite-50',
-    'transition-all duration-150'
-  ),
-
-  // Ghost card
-  ghost: clsx(
-    'bg-transparent border-0 shadow-none',
-    'hover:bg-graphite-50',
-    'transition-colors duration-150'
-  ),
+export const sizeVariants = {
+  input: {
+    sm: 'h-9 px-3 py-2 text-sm',
+    md: 'h-10 px-4 py-2',
+    lg: 'h-12 px-4 py-3 text-base',
+  },
+  icon: {
+    sm: 'h-4 w-4',
+    md: 'h-5 w-5',
+    lg: 'h-6 w-6',
+  },
+  button: {
+    sm: 'h-9 px-3',
+    md: 'h-10 px-4',
+    lg: 'h-11 px-8',
+  },
 } as const;
 
-// Status indicator variants
+// Add more variants as needed for other components
+export const modalVariants = {
+  default: '',
+  success: 'border-l-4 border-green-500',
+  warning: 'border-l-4 border-amber-500',
+  error: 'border-l-4 border-red-500',
+  info: 'border-l-4 border-blue-500',
+} as const;
+
 export const statusVariants = {
   success: {
-    bg: 'bg-emerald-50',
-    border: 'border-emerald-200',
-    text: 'text-emerald-700',
-    icon: 'text-emerald-500',
-    dot: 'bg-emerald-500',
+    bg: 'bg-green-50',
+    border: 'border-green-200',
+    text: 'text-green-700',
+    icon: 'text-green-500',
+    dot: 'bg-green-500',
   },
   warning: {
     bg: 'bg-amber-50',
@@ -202,53 +81,11 @@ export const statusVariants = {
   },
 } as const;
 
-// Size variants
-export const sizeVariants = {
-  button: {
-    xs: clsx(baseClasses.spacing.xs, baseClasses.text.xs, baseClasses.rounded.sm),
-    sm: clsx(baseClasses.spacing.sm, baseClasses.text.sm, baseClasses.rounded.md),
-    md: clsx(baseClasses.spacing.md, baseClasses.text.base, baseClasses.rounded.md),
-    lg: clsx(baseClasses.spacing.lg, baseClasses.text.lg, baseClasses.rounded.lg),
-    xl: clsx(baseClasses.spacing.xl, baseClasses.text.xl, baseClasses.rounded.lg),
-  },
-
-  input: {
-    sm: clsx('px-3 py-1.5', baseClasses.text.sm, baseClasses.rounded.md),
-    md: clsx('px-3 py-2', baseClasses.text.base, baseClasses.rounded.md),
-    lg: clsx('px-4 py-3', baseClasses.text.lg, baseClasses.rounded.lg),
-  },
-
-  icon: {
-    xs: 'h-3 w-3',
-    sm: 'h-4 w-4',
-    md: 'h-5 w-5',
-    lg: 'h-6 w-6',
-    xl: 'h-8 w-8',
-  },
+export const buttonVariants = {
+  default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
+  secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+  ghost: 'hover:bg-accent hover:text-accent-foreground',
+  link: 'text-primary underline-offset-4 hover:underline',
 } as const;
-
-// Animation variants
-export const animationVariants = {
-  fadeIn: 'animate-in fade-in duration-200',
-  fadeOut: 'animate-out fade-out duration-200',
-  slideInFromTop: 'animate-in slide-in-from-top-2 duration-200',
-  slideInFromBottom: 'animate-in slide-in-from-bottom-2 duration-200',
-  slideInFromLeft: 'animate-in slide-in-from-left-2 duration-200',
-  slideInFromRight: 'animate-in slide-in-from-right-2 duration-200',
-  scaleIn: 'animate-in zoom-in-95 duration-200',
-  scaleOut: 'animate-out zoom-out-95 duration-200',
-} as const;
-
-// Utility function to create variant classes
-export function createVariant(
-  base: string,
-  variants: Record<string, string>,
-  defaultVariant = 'default'
-) {
-  return (variant?: string) => clsx(base, variants[variant || defaultVariant]);
-}
-
-// Utility function to merge classes with variants
-export function cn(...classes: (string | undefined | null | false)[]): string {
-  return clsx(...classes);
-}

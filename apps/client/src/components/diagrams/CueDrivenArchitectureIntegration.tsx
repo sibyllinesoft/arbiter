@@ -3,9 +3,10 @@
  * Example of integrating the CUE-driven diagram with real API data
  */
 
+import { apiService } from '@/services/api';
+import type { ResolvedSpecResponse } from '@/types/api';
+import { type CueArchitectureData, type DiagramType } from '@/types/architecture';
 import React, { useState, useEffect } from 'react';
-import { apiService } from '../../services/api';
-import { type CueArchitectureData, type DiagramType } from '../../types/architecture';
 import { CueDrivenArchitectureDiagram } from './CueDrivenArchitectureDiagram';
 
 interface CueDrivenArchitectureIntegrationProps {
@@ -41,39 +42,41 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
         }
 
         // Use the fixed API service to get resolved spec
-        const result = await apiService.getResolvedSpec(projectId);
+        const result: ResolvedSpecResponse = await apiService.getResolvedSpec(projectId);
 
         if (!result.resolved) {
           throw new Error('No resolved CUE data available');
         }
 
+        const resolved = result.resolved as any; // Type assertion to access dynamic CUE-resolved properties safely
+
         const architectureData: CueArchitectureData = {
           // Extract metadata
           metadata: {
-            name: result.resolved.metadata?.name || projectId,
-            version: result.resolved.metadata?.version || '1.0.0',
-            apiVersion: result.resolved.apiVersion || 'v2',
-            kind: result.resolved.kind || 'Application',
+            name: resolved.metadata?.name || projectId,
+            version: resolved.metadata?.version || '1.0.0',
+            apiVersion: resolved.apiVersion || 'v2',
+            kind: resolved.kind || 'Application',
           },
 
           // v2 schema elements from resolved spec
-          product: result.resolved.product,
-          ui: result.resolved.ui || result.resolved.spec?.ui,
-          flows: result.resolved.flows || result.resolved.spec?.flows,
-          capabilities: result.resolved.capabilities || result.resolved.spec?.capabilities,
-          paths: result.resolved.paths,
-          stateModels: result.resolved.stateModels || result.resolved.states,
-          locators: result.resolved.locators,
+          product: resolved.product,
+          ui: resolved.ui || resolved.spec?.ui,
+          flows: resolved.flows || resolved.spec?.flows,
+          capabilities: resolved.capabilities || resolved.spec?.capabilities,
+          paths: resolved.paths,
+          stateModels: resolved.stateModels || resolved.states,
+          locators: resolved.locators,
 
           // v1 schema elements (services from spec)
-          services: result.resolved.services || result.resolved.spec?.services,
-          deployment: result.resolved.deployment,
+          services: resolved.services || resolved.spec?.services,
+          deployment: resolved.deployment,
         };
 
         setCueData(architectureData);
 
         // Import parser dynamically to get suggestions
-        const { CueArchitectureParser } = await import('../../utils/cueArchitectureParser');
+        const { CueArchitectureParser } = await import('@/utils/cueArchitectureParser');
         const suggestions = CueArchitectureParser.suggestDiagramTypes(architectureData);
         setSuggestedTypes(suggestions);
 
