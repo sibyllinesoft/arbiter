@@ -160,26 +160,26 @@ export function ProjectList({
                     </Badge>
                   )}
 
-                  {projectStatus.entities.modules > 0 && (
-                    <Badge
-                      variant="default"
-                      className="bg-gray-500 dark:bg-gray-600 text-white border-gray-700 dark:border-gray-800"
-                    >
-                      <Component className="w-3.5 h-3.5 text-white" />
-                      <span className="text-xs font-medium text-white">
-                        Modules: {projectStatus.entities.modules}
-                      </span>
-                    </Badge>
-                  )}
-
                   {projectStatus.entities.infrastructure > 0 && (
                     <Badge
                       variant="default"
                       className="bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-700 dark:border-emerald-800"
                     >
-                      <Server className="w-3.5 h-3.5 text-white" />
+                      <Shield className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
                         Infrastructure: {projectStatus.entities.infrastructure}
+                      </span>
+                    </Badge>
+                  )}
+
+                  {projectStatus.entities.routes > 0 && (
+                    <Badge
+                      variant="default"
+                      className="bg-indigo-500 dark:bg-indigo-600 text-white border-indigo-700 dark:border-indigo-800"
+                    >
+                      <Navigation className="w-3.5 h-3.5 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Endpoints: {projectStatus.entities.routes}
                       </span>
                     </Badge>
                   )}

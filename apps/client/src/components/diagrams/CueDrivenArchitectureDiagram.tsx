@@ -82,6 +82,52 @@ const DEFAULT_THEME: DiagramTheme = {
   },
 };
 
+const DARK_THEME: DiagramTheme = {
+  name: 'dark',
+  layers: {
+    presentation: {
+      background: '#334155',
+      border: '#60a5fa',
+      text: '#bfdbfe',
+    },
+    application: {
+      background: '#166534',
+      border: '#4ade80',
+      text: '#dcfce7',
+    },
+    service: {
+      background: '#713f12',
+      border: '#f59e0b',
+      text: '#fcd34d',
+    },
+    data: {
+      background: '#581c87',
+      border: '#c084fc',
+      text: '#e9d5ff',
+    },
+    external: {
+      background: '#991b1b',
+      border: '#f87171',
+      text: '#fecaca',
+    },
+  },
+  connections: {
+    user_navigation: { color: '#60a5fa', width: 2, style: 'solid' },
+    user_interaction: { color: '#4ade80', width: 2, style: 'dashed' },
+    api_call: { color: '#f59e0b', width: 2, style: 'solid' },
+    capability_usage: { color: '#c084fc', width: 1.5, style: 'dotted' },
+    state_transition: { color: '#f87171', width: 2, style: 'solid' },
+    data_flow: { color: '#9ca3af', width: 1, style: 'solid' },
+    dependency: { color: '#6b7280', width: 1, style: 'dashed' },
+  },
+  components: {
+    defaultSize: { width: 150, height: 80 },
+    minSize: { width: 100, height: 60 },
+    padding: 8,
+    borderRadius: 8,
+  },
+};
+
 export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagramProps> = ({
   cueData,
   diagramType = 'system_overview',
@@ -95,18 +141,36 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
   const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
+  const [isDark, setIsDark] = useState(false);
+
+  // Detect dark mode
+  useEffect(() => {
+    const updateTheme = () => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    };
+
+    updateTheme();
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   // Merge theme with defaults
-  const effectiveTheme: DiagramTheme = useMemo(
-    () => ({
-      ...DEFAULT_THEME,
+  const baseTheme = useMemo(() => {
+    const selectedTheme = isDark ? DARK_THEME : DEFAULT_THEME;
+    return {
+      ...selectedTheme,
       ...theme,
-      layers: { ...DEFAULT_THEME.layers, ...theme.layers },
-      connections: { ...DEFAULT_THEME.connections, ...theme.connections },
-      components: { ...DEFAULT_THEME.components, ...theme.components },
-    }),
-    [theme]
-  );
+      layers: { ...selectedTheme.layers, ...theme.layers },
+      connections: { ...selectedTheme.connections, ...theme.connections },
+      components: { ...selectedTheme.components, ...theme.components },
+    };
+  }, [theme, isDark]);
+
+  const effectiveTheme: DiagramTheme = baseTheme;
 
   // Parse CUE data into diagram components
   const { components, connections } = useMemo(() => {
@@ -204,6 +268,10 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     const isSelected = selectedComponent === component.id;
     const isHovered = hoveredElement === component.id;
 
+    // Dynamic hover detail colors
+    const hoverFill = isDark ? '#1f2937' : 'white';
+    const hoverText = isDark ? '#d1d5db' : '#374151';
+
     return (
       <g
         key={component.id}
@@ -250,7 +318,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
           width={component.size.width - effectiveTheme.components.padding * 2}
           height={component.size.height - 45}
         >
-          <div className="text-xs text-gray-600 leading-tight overflow-hidden">
+          <div className="text-xs text-gray-600 dark:text-gray-400 leading-tight overflow-hidden">
             {component.description}
           </div>
         </foreignObject>
@@ -263,13 +331,13 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
             cy={port.position.y}
             r={3}
             fill={layerStyle.border}
-            stroke="white"
+            stroke={isDark ? '#374151' : 'white'}
             strokeWidth={1}
           />
         ))}
 
         {/* Hover details */}
-        {isHovered && renderComponentDetails(component, layerStyle)}
+        {isHovered && renderComponentDetails(component, layerStyle, hoverFill, hoverText)}
       </g>
     );
   };
@@ -307,7 +375,12 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
   };
 
   // Render component hover details
-  const renderComponentDetails = (component: DiagramComponent, layerStyle: any) => {
+  const renderComponentDetails = (
+    component: DiagramComponent,
+    layerStyle: any,
+    hoverFill: string,
+    hoverText: string
+  ) => {
     const details = [];
 
     if (component.technology) {
@@ -335,7 +408,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
           height={detailHeight}
           rx={4}
           ry={4}
-          fill="white"
+          fill={hoverFill}
           stroke={layerStyle.border}
           strokeWidth={1}
           className="drop-shadow-md"
@@ -347,7 +420,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
             y={component.size.height + 20 + index * 12}
             textAnchor="middle"
             className="text-xs"
-            fill="#374151"
+            fill={hoverText}
           >
             {detail}
           </text>
@@ -432,12 +505,12 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     return (
       <div
         className={clsx(
-          'flex items-center justify-center h-64 bg-gray-50 border border-gray-200 rounded-lg',
+          'flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg',
           className
         )}
       >
         <div className="text-center">
-          <div className="text-gray-400 mb-2">
+          <div className="text-gray-400 dark:text-gray-500 mb-2">
             <svg
               className="w-12 h-12 mx-auto"
               fill="none"
@@ -452,8 +525,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
               />
             </svg>
           </div>
-          <p className="text-gray-600">No CUE data provided</p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-gray-600 dark:text-gray-300">No CUE data provided</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Upload or paste CUE specification to generate diagram
           </p>
         </div>
@@ -465,12 +538,12 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     return (
       <div
         className={clsx(
-          'flex items-center justify-center h-64 bg-gray-50 border border-gray-200 rounded-lg',
+          'flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg',
           className
         )}
       >
         <div className="text-center">
-          <div className="text-gray-400 mb-2">
+          <div className="text-gray-400 dark:text-gray-500 mb-2">
             <svg
               className="w-12 h-12 mx-auto"
               fill="none"
@@ -485,8 +558,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
               />
             </svg>
           </div>
-          <p className="text-gray-600">No architectural components found</p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-gray-600 dark:text-gray-300">No architectural components found</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             The CUE specification doesn't contain recognizable architectural elements
           </p>
         </div>
@@ -495,13 +568,15 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
   }
 
   return (
-    <div className={clsx('h-full flex flex-col bg-gray-50', className)}>
+    <div className={clsx('h-full flex flex-col bg-gray-50 dark:bg-gray-900', className)}>
       {/* Header */}
-      <div className="p-4 bg-white border-b border-gray-200">
+      <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">CUE-Driven Architecture Diagram</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              CUE-Driven Architecture Diagram
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Generated from {cueData.metadata?.name || 'CUE specification'} •{' '}
               {layoutedComponents.length} components • {connections.length} connections
             </p>
@@ -510,13 +585,13 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
           {/* Diagram type selector */}
           {suggestedTypes.length > 1 && (
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">View:</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">View:</label>
               <select
                 value={diagramType}
                 onChange={e => {
                   /* Handle diagram type change */
                 }}
-                className="text-sm border border-gray-300 rounded px-2 py-1"
+                className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-2 py-1"
               >
                 {suggestedTypes.map(type => (
                   <option key={type} value={type}>
@@ -540,7 +615,9 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
                   className="w-3 h-3 rounded border"
                   style={{ backgroundColor: style.background, borderColor: style.border }}
                 />
-                <span className="capitalize font-medium">{layer.replace('_', ' ')}</span>
+                <span className="capitalize font-medium text-gray-700 dark:text-gray-300">
+                  {layer.replace('_', ' ')}
+                </span>
               </div>
             );
           })}
@@ -548,10 +625,10 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
       </div>
 
       {/* Diagram */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-4 scrollbar-transparent">
         <svg
           viewBox={`0 0 ${viewport.width} ${viewport.height}`}
-          className="w-full bg-white border border-gray-200 rounded-lg"
+          className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
           style={{ minHeight: '400px' }}
         >
           {/* Arrow marker definition */}
@@ -564,7 +641,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
               refY="3.5"
               orient="auto"
             >
-              <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280" />
+              <polygon points="0 0, 10 3.5, 0 7" fill={isDark ? '#9ca3af' : '#6b7280'} />
             </marker>
           </defs>
 
@@ -578,7 +655,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
 
       {/* Details panel */}
       {selectedComponent && (
-        <div className="border-t border-gray-200 bg-white p-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           {(() => {
             const component = layoutedComponents.find(c => c.id === selectedComponent);
             if (!component) return null;
@@ -586,10 +663,12 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
             return (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-semibold text-gray-900">{component.name}</h4>
+                  <h4 className="font-semibold text-gray-900 dark:text-gray-100">
+                    {component.name}
+                  </h4>
                   <button
                     onClick={() => setSelectedComponent(null)}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
@@ -601,39 +680,55 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
                     </svg>
                   </button>
                 </div>
-                <p className="text-sm text-gray-600 mb-3">{component.description}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                  {component.description}
+                </p>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium text-gray-700">Type:</span>
-                    <span className="ml-2 text-gray-600">{component.type.replace('_', ' ')}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Type:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">
+                      {component.type.replace('_', ' ')}
+                    </span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Layer:</span>
-                    <span className="ml-2 text-gray-600">{component.layer.replace('_', ' ')}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Layer:</span>
+                    <span className="ml-2 text-gray-600 dark:text-gray-400">
+                      {component.layer.replace('_', ' ')}
+                    </span>
                   </div>
                   {component.technology && (
                     <div>
-                      <span className="font-medium text-gray-700">Technology:</span>
-                      <span className="ml-2 text-gray-600">{component.technology}</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        Technology:
+                      </span>
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">
+                        {component.technology}
+                      </span>
                     </div>
                   )}
                   {component.language && (
                     <div>
-                      <span className="font-medium text-gray-700">Language:</span>
-                      <span className="ml-2 text-gray-600">{component.language}</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">
+                        Language:
+                      </span>
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">
+                        {component.language}
+                      </span>
                     </div>
                   )}
                 </div>
 
                 {component.capabilities && component.capabilities.length > 0 && (
                   <div className="mt-3">
-                    <span className="font-medium text-gray-700">Capabilities:</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                      Capabilities:
+                    </span>
                     <div className="mt-1 flex flex-wrap gap-1">
                       {component.capabilities.map(cap => (
                         <span
                           key={cap}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-md"
+                          className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md"
                         >
                           {cap}
                         </span>

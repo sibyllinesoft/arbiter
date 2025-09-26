@@ -13,12 +13,6 @@ export function ConfigModal({ onClose }: ConfigModalProps) {
         {/* Modal Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-graphite-900 border-b border-gray-200 dark:border-graphite-700 p-6 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-graphite-700 rounded-lg transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 Configuration
@@ -29,6 +23,12 @@ export function ConfigModal({ onClose }: ConfigModalProps) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-graphite-700 rounded-lg transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
             {/* Save button will be inside ConfigScreen, but if needed, can move */}
           </div>
         </div>

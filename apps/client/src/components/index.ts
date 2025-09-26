@@ -4,7 +4,6 @@
 
 // Editor Components
 export { SourceEditor } from './SourceEditor';
-export { FriendlyEditor } from './FriendlyEditor';
 
 // Report Components
 export { FlowReport } from './FlowReport';
@@ -16,6 +15,7 @@ export { ResolvedReport } from './ResolvedReport';
 export { ArchitectureReport } from './ArchitectureReport';
 export { HandlersReport } from './HandlersReport';
 export { EventsReport } from './EventsReport';
+export { WebhooksReport } from './WebhooksReport';
 
 // Other Components
 export { ProjectList } from './ProjectList';

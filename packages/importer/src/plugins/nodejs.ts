@@ -6,6 +6,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs-extra';
+import { glob } from 'glob';
 import type { ComponentDoc, PropItem } from 'react-docgen-typescript';
 
 import {
@@ -197,8 +198,9 @@ export class NodeJSPlugin implements ImporterPlugin {
     const packageData = packageEvidence.data as any;
     const pkg = packageData.fullPackage;
 
-    // Prepare detection context
     const scripts = pkg.scripts || {};
+    const dependenciesMap = this.collectDependencies(pkg);
+    const dependencyNames = Object.keys(dependenciesMap);
     const packageRoot = this.getPackageRelativeRoot(packageEvidence, context);
     const normalizedPackageRoot =
       packageRoot === '.' ? '' : this.normalizeRelativePath(packageRoot);
@@ -210,29 +212,62 @@ export class NodeJSPlugin implements ImporterPlugin {
         }
         return rel === normalizedPackageRoot || rel.startsWith(`${normalizedPackageRoot}/`);
       })
-      .map(f => f.relativePath);
+      .map(f => this.normalizeRelativePath(f.relativePath));
 
-    const detectionContext = {
-      language: 'javascript',
-      dependencies: [],
-      scripts,
-      filePatterns,
-      packageConfig: pkg,
-    };
+    const detectionLanguage = this.usesTypeScript(pkg, scripts) ? 'typescript' : 'javascript';
 
-    // Use artifact detector
-    const { primaryType, confidence } = this.detectArtifactType(detectionContext);
+    const manifestClassification = this.determineManifestClassification(
+      pkg,
+      dependenciesMap,
+      scripts
+    );
 
-    // Map category to artifact type
-    const artifactType = this.mapCategoryToType(primaryType);
+    let artifactType: ArtifactType;
+    let detectedType: string;
+    let classificationSource = 'manifest';
+    let classificationReason = manifestClassification?.reason || 'manifest-default';
+
+    if (manifestClassification) {
+      artifactType = manifestClassification.artifactType;
+      detectedType = manifestClassification.detectedType;
+    } else {
+      classificationSource = 'detector';
+      const detectionContext = {
+        language: detectionLanguage,
+        dependencies: dependencyNames,
+        scripts,
+        filePatterns,
+        packageConfig: pkg,
+      };
+      const { primaryType } = this.detectArtifactType(detectionContext);
+      artifactType = this.mapCategoryToType(primaryType);
+      detectedType = primaryType;
+      classificationReason = 'detector';
+    }
 
     const metadata: Record<string, unknown> = {
       sourceFile: packageData.filePath,
       root: path.dirname(packageData.filePath),
       language: 'javascript',
       framework: this.inferFramework(pkg),
-      detectedType: primaryType,
+      detectedType,
+      classification: {
+        source: classificationSource,
+        reason: classificationReason,
+      },
     };
+
+    if (artifactType === 'tool') {
+      metadata.framework = metadata.framework || 'cli';
+    }
+
+    console.log('[nodejs-plugin] inferred package', {
+      name: packageData.name,
+      type: artifactType,
+      detectedType,
+      source: classificationSource,
+      reason: classificationReason,
+    });
 
     const mainArtifact = {
       id: `${packageData.name}`,
@@ -243,7 +278,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       metadata,
     };
 
-    const tsoaAnalysis = this.buildTsoaAnalysis(pkg, packageRoot, filePatterns, scripts);
+    const tsoaAnalysis = await this.buildTsoaAnalysis(pkg, packageRoot, context, scripts);
     if (tsoaAnalysis) {
       if (!mainArtifact.tags.includes('tsoa-candidate')) {
         mainArtifact.tags.push('tsoa-candidate');
@@ -835,6 +870,57 @@ export class NodeJSPlugin implements ImporterPlugin {
     return NODE_WEB_FRAMEWORKS.filter(dep => deps[dep]);
   }
 
+  private determineManifestClassification(
+    pkg: any,
+    dependencies: Record<string, string>,
+    scripts: Record<string, string>
+  ): {
+    artifactType: ArtifactType;
+    detectedType: string;
+    reason: string;
+  } | null {
+    const depsLower = new Set(Object.keys(dependencies).map(dep => dep.toLowerCase()));
+    const hasAnyDependency = (candidates: string[]) =>
+      candidates.some(candidate => depsLower.has(candidate));
+
+    const hasWebFramework = hasAnyDependency(NODE_WEB_FRAMEWORKS);
+    if (hasWebFramework) {
+      return {
+        artifactType: 'service',
+        detectedType: 'web_service',
+        reason: 'web-framework',
+      };
+    }
+
+    const hasFrontendFramework =
+      hasAnyDependency(NODE_FRONTEND_FRAMEWORKS) || Boolean(pkg.browserslist);
+    if (hasFrontendFramework) {
+      return {
+        artifactType: 'frontend',
+        detectedType: 'frontend',
+        reason: 'frontend-framework',
+      };
+    }
+
+    const hasBin = Boolean(
+      typeof pkg.bin === 'string' || (pkg.bin && Object.keys(pkg.bin).length > 0)
+    );
+    const hasCliDependency = hasAnyDependency(NODE_CLI_FRAMEWORKS);
+    if (hasBin || hasCliDependency) {
+      return {
+        artifactType: 'tool',
+        detectedType: 'tool',
+        reason: hasBin ? 'manifest-bin' : 'cli-dependency',
+      };
+    }
+
+    return {
+      artifactType: 'module',
+      detectedType: 'module',
+      reason: 'default-module',
+    };
+  }
+
   private usesTypeScript(pkg: any, scripts: Record<string, string>): boolean {
     const deps = this.collectDependencies(pkg);
     const signals = ['typescript', 'ts-node', 'ts-node-dev', 'tsx', 'tsup', '@swc/core'];
@@ -853,12 +939,12 @@ export class NodeJSPlugin implements ImporterPlugin {
       .some(command => scriptSignals.some(signal => command.includes(signal)));
   }
 
-  private buildTsoaAnalysis(
+  private async buildTsoaAnalysis(
     pkg: any,
     packageRoot: string,
-    filePatterns: string[],
+    context: InferenceContext,
     scripts: Record<string, string>
-  ): Record<string, unknown> | null {
+  ): Promise<Record<string, unknown> | null> {
     const frameworks = this.detectFrameworkDependencies(pkg);
     if (frameworks.length === 0) {
       return null;
@@ -870,19 +956,58 @@ export class NodeJSPlugin implements ImporterPlugin {
 
     const deps = this.collectDependencies(pkg);
     const hasTsoaDependency = Boolean(deps.tsoa);
-    const normalizedRoot = packageRoot === '.' ? '' : this.normalizeRelativePath(packageRoot);
-    const normalizedFiles = filePatterns.map(pattern => this.normalizeRelativePath(pattern));
-    const relevantFiles = normalizedRoot
-      ? normalizedFiles.filter(
-          rel => rel === normalizedRoot || rel.startsWith(`${normalizedRoot}/`)
-        )
-      : normalizedFiles;
+    const projectRoot = context.projectRoot ?? context.fileIndex.root ?? '';
+    if (!projectRoot) {
+      return null;
+    }
 
-    const tsFiles = relevantFiles.filter(rel => rel.endsWith('.ts') || rel.endsWith('.tsx'));
+    const normalizedRoot = packageRoot === '.' ? '' : this.normalizeRelativePath(packageRoot);
+    const packageAbsoluteRoot = normalizedRoot
+      ? path.resolve(projectRoot, normalizedRoot)
+      : projectRoot;
+
+    let tsFiles: string[] = [];
+    let configFiles: string[] = [];
+
+    try {
+      tsFiles = (
+        await glob('**/*.{ts,tsx}', {
+          cwd: packageAbsoluteRoot,
+          ignore: [
+            '**/node_modules/**',
+            '**/.next/**',
+            '**/dist/**',
+            '**/build/**',
+            '**/.turbo/**',
+          ],
+          absolute: false,
+          nodir: true,
+        })
+      ).map(rel => this.normalizeRelativePath(rel));
+
+      configFiles = (
+        await glob('**/tsoa*.json', {
+          cwd: packageAbsoluteRoot,
+          ignore: [
+            '**/node_modules/**',
+            '**/.next/**',
+            '**/dist/**',
+            '**/build/**',
+            '**/.turbo/**',
+          ],
+          absolute: false,
+          nodir: true,
+        })
+      ).map(rel => this.normalizeRelativePath(rel));
+    } catch {
+      return null;
+    }
+
     const controllerCandidates = tsFiles
       .filter(rel => /controller|route|api/i.test(rel))
-      .slice(0, 20);
-    const configFiles = relevantFiles.filter(rel => /tsoa\.json$/i.test(rel)).slice(0, 5);
+      .filter(rel => !/\.d\.ts$/i.test(rel))
+      .filter(rel => !/\btests?\//i.test(rel) && !/__tests__\//i.test(rel))
+      .slice(0, 50);
     const scriptsUsingTsoa = Object.entries(scripts)
       .filter(([, command]) => typeof command === 'string' && command.includes('tsoa'))
       .map(([name]) => name);
@@ -894,7 +1019,7 @@ export class NodeJSPlugin implements ImporterPlugin {
       hasTsoaDependency,
       totalTypeScriptFiles: tsFiles.length,
       controllerCandidates,
-      configFiles,
+      configFiles: configFiles.slice(0, 10),
       scriptsUsingTsoa,
       recommendedCommands: hasTsoaDependency
         ? ['npx tsoa spec', 'npx tsoa routes']

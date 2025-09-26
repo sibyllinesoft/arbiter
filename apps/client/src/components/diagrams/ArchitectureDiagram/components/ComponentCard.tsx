@@ -9,31 +9,32 @@ interface ComponentCardProps {
 }
 
 export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClick }) => {
-  // Standardize component types
-  let componentType =
-    data.type || data.metadata?.type || (name.includes('@') ? 'module' : 'service');
+  const normalizedType = (data.type || data.metadata?.type || '').toLowerCase();
 
-  // Standardize binary to tool
-  if (componentType === 'binary') {
-    componentType = 'tool';
-  }
-  if (componentType === 'library') {
-    componentType = 'module';
-  }
+  const colorKey = (() => {
+    switch (normalizedType) {
+      case 'service':
+      case 'route':
+        return 'service';
+      case 'view':
+        return 'frontend';
+      case 'module':
+        return 'module';
+      case 'tool':
+        return 'tool';
+      case 'infrastructure':
+      case 'database':
+        return 'data';
+      case 'frontend':
+        return 'frontend';
+      case 'backend':
+        return 'backend';
+      default:
+        return 'external';
+    }
+  })();
 
-  const colors: (typeof LAYER_COLORS)[keyof typeof LAYER_COLORS] =
-    componentType === 'service'
-      ? LAYER_COLORS.service
-      : componentType === 'frontend'
-        ? LAYER_COLORS.frontend
-        : componentType === 'tool'
-          ? LAYER_COLORS.tool
-          : componentType === 'module'
-            ? LAYER_COLORS.module
-            : componentType === 'database'
-              ? LAYER_COLORS.data
-              : LAYER_COLORS.external;
-  console.log(data);
+  const colors = LAYER_COLORS[colorKey as keyof typeof LAYER_COLORS] || LAYER_COLORS.external;
 
   return (
     <div

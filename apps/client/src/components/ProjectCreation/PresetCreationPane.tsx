@@ -84,44 +84,50 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
   };
 
   return (
-    <div className="p-6 border-r border-gray-200">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+    <div className="border-r border-gray-200 p-6 dark:border-graphite-700">
+      <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100">
         <FileText className="w-5 h-5" />
         Create from Preset
       </h3>
 
-      <div className="space-y-3 mb-6">
+      <div className="mb-6 space-y-3">
         {presets.map(preset => (
           <div
             key={preset.id}
             onClick={() => handlePresetSelect(preset)}
             className={cn(
-              'p-4 border rounded-lg cursor-pointer transition-all',
+              'cursor-pointer rounded-lg border p-4 transition-all',
               selectedPreset?.id === preset.id
-                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-400 dark:bg-blue-500/10 dark:ring-blue-400'
+                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800'
             )}
           >
             <div className="flex items-start gap-3">
               <div
                 className={cn(
-                  'p-2 rounded-lg',
-                  preset.color === 'blue' && 'bg-blue-100 text-blue-600',
-                  preset.color === 'green' && 'bg-green-100 text-green-600',
-                  preset.color === 'purple' && 'bg-purple-100 text-purple-600',
-                  preset.color === 'orange' && 'bg-orange-100 text-orange-600'
+                  'rounded-lg p-2',
+                  preset.color === 'blue' &&
+                    'bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300',
+                  preset.color === 'green' &&
+                    'bg-green-100 text-green-600 dark:bg-green-500/10 dark:text-green-300',
+                  preset.color === 'purple' &&
+                    'bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300',
+                  preset.color === 'orange' &&
+                    'bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300'
                 )}
               >
                 <preset.icon className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <h4 className="font-medium text-gray-900">{preset.name}</h4>
-                <p className="text-sm text-gray-600 mt-1">{preset.description}</p>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">{preset.name}</h4>
+                <p className="mt-1 text-sm text-gray-600 dark:text-graphite-300">
+                  {preset.description}
+                </p>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {preset.features.map(feature => (
                     <span
                       key={feature}
-                      className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded"
+                      className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-graphite-800 dark:text-graphite-300"
                     >
                       {feature}
                     </span>
@@ -136,12 +142,14 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
       {selectedPreset && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Project Name</label>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-graphite-200">
+              Project Name
+            </label>
             <input
               type="text"
               value={projectName}
               onChange={e => setProjectName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-gray-100 dark:placeholder:text-graphite-400 dark:focus:ring-blue-400"
               placeholder="Enter project name..."
             />
           </div>

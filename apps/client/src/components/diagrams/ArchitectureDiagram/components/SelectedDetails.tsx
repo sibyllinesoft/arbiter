@@ -1,9 +1,10 @@
 import { Modal } from '@/components/Modal';
 import React from 'react';
+import type { GroupedComponentGroup } from '../utils';
 
 interface SelectedDetailsProps {
   selectedComponent: string | null;
-  groupedComponents: Record<string, any[]>;
+  groupedComponents: GroupedComponentGroup[];
   onClose: () => void;
 }
 
@@ -15,14 +16,15 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
   if (!selectedComponent) return null;
 
   // Find the selected component in the grouped data
-  let selectedData = null;
-  for (const [sourceFile, components] of Object.entries(groupedComponents)) {
-    const found = components.find(({ name }) => name === selectedComponent);
-    if (found) {
-      selectedData = { ...found, sourceFile };
-      break;
+  const selectedData = (() => {
+    for (const group of groupedComponents) {
+      const found = group.items.find(({ name }) => name === selectedComponent);
+      if (found) {
+        return { ...found, groupLabel: group.label };
+      }
     }
-  }
+    return null;
+  })();
 
   if (!selectedData) return null;
 

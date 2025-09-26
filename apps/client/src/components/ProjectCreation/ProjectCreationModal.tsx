@@ -15,11 +15,13 @@ interface ProjectCreationModalProps {
 
 export function ProjectCreationModal({ onClose, onNavigateToProject }: ProjectCreationModalProps) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full h-[70vh] flex flex-col">
-        <div className="p-6 border-b border-gray-200 flex-shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm dark:bg-black/60">
+      <div className="flex h-[70vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl dark:bg-graphite-900">
+        <div className="flex-shrink-0 border-b border-gray-200 bg-white p-6 dark:border-graphite-700 dark:bg-graphite-900">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Create New Project</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              Create New Project
+            </h2>
             <Button
               variant="ghost"
               size="sm"

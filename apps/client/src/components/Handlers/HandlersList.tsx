@@ -66,8 +66,9 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
       setIsLoading(true);
       setError(null);
       const handlersData = await apiService.getHandlers();
-      setHandlers(handlersData);
-      log.debug('Loaded handlers:', handlersData);
+      const safeHandlers = Array.isArray(handlersData) ? handlersData : [];
+      setHandlers(safeHandlers);
+      log.debug('Loaded handlers:', safeHandlers);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load handlers';
       setError(message);

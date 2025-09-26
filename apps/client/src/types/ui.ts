@@ -48,7 +48,7 @@ export interface AppState {
 }
 
 // Tab types - separate left and right tab groups
-export type LeftTab = 'source' | 'friendly';
+export type LeftTab = 'source';
 export type RightTab =
   | 'flow'
   | 'site'
@@ -57,6 +57,7 @@ export type RightTab =
   | 'gaps'
   | 'resolved'
   | 'architecture'
+  | 'webhooks'
   | 'events'
   | 'handlers';
 

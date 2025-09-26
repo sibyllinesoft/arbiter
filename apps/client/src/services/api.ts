@@ -328,6 +328,9 @@ export class ApiService {
       handlers: WebhookHandler[];
       total: number;
     }>('/api/handlers');
+    if (!response.success || !Array.isArray(response.handlers)) {
+      return [];
+    }
     return response.handlers;
   }
 

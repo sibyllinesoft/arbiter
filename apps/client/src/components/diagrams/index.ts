@@ -9,7 +9,6 @@ export { default as PrettyCueDiagram } from './PrettyCueDiagram';
 
 // Diagram Components
 export { default as FlowDiagram } from './FlowDiagram';
-export { default as FriendlyDiagram } from './FriendlyDiagram';
 export { default as SourceDiagram } from './SourceDiagram';
 export { default as FsmDiagram } from './FsmDiagram';
 export { default as GapsChecklist } from './GapsChecklist';

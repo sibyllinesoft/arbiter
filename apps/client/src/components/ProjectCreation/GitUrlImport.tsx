@@ -83,13 +83,15 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
   };
 
   return (
-    <div className="space-y-4 h-full overflow-y-auto">
-      <div className="border-2 border-dashed rounded-lg p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <GitIcon className="w-8 h-8 text-gray-400" />
+    <div className="h-full space-y-4 overflow-y-auto">
+      <div className="rounded-lg border-2 border-dashed border-gray-300 p-6 dark:border-graphite-600 dark:bg-graphite-900/40">
+        <div className="mb-4 flex items-center gap-3">
+          <GitIcon className="h-8 w-8 text-gray-400 dark:text-graphite-300" />
           <div>
-            <h4 className="text-lg font-medium text-gray-900">Clone from Git Repository</h4>
-            <p className="text-sm text-gray-600">
+            <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Clone from Git Repository
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-graphite-300">
               Enter a GitHub, GitLab, or other Git repository URL
             </p>
           </div>
@@ -101,7 +103,7 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
             value={gitUrl}
             onChange={e => setGitUrl(e.target.value)}
             placeholder="https://github.com/user/repo.git"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-gray-100 dark:placeholder:text-graphite-400 dark:focus:ring-blue-400"
           />
           <Button
             variant="secondary"
@@ -123,14 +125,16 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
 
       {/* Scan Results */}
       {scanResult && (
-        <div className="border border-green-200 bg-green-50 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <h4 className="font-medium text-green-900">Repository Scanned Successfully</h4>
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-500/40 dark:bg-green-500/10">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+            <h4 className="font-medium text-green-900 dark:text-green-200">
+              Repository Scanned Successfully
+            </h4>
           </div>
 
           <div className="space-y-2 text-sm">
-            <p className="text-green-800">
+            <p className="text-green-800 dark:text-green-200">
               <strong>Detected Files:</strong>{' '}
               {(() => {
                 const types = [];
@@ -143,15 +147,15 @@ export function GitUrlImport({ onClose }: GitUrlImportProps) {
                 return types.length > 0 ? types.join(', ') : 'Various configuration files';
               })()}
             </p>
-            <p className="text-green-800">
+            <p className="text-green-800 dark:text-green-200">
               <strong>Files Found:</strong> {scanResult.files?.length || 0}
             </p>
-            <p className="text-green-800">
+            <p className="text-green-800 dark:text-green-200">
               <strong>Importable Files:</strong>{' '}
               {scanResult.projectStructure?.importableFiles?.length || 0}
             </p>
             {scanResult.projectStructure?.performanceMetrics && (
-              <p className="text-green-800">
+              <p className="text-green-800 dark:text-green-200">
                 <strong>Scan Method:</strong>{' '}
                 {scanResult.projectStructure.performanceMetrics.usedGitLsFiles
                   ? 'Git ls-files (fast)'

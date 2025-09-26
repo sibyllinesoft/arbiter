@@ -28,7 +28,7 @@ export function ProjectView() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const setCurrentProject = useSetCurrentProject();
-  const { data: project, isLoading } = useProject(projectId || '');
+  const { data: project, isLoading, isError } = useProject(projectId || '');
   const { leftTab, rightTab, setLeftTab, setRightTab } = useTabs();
   const { settings } = useAppSettings();
 
@@ -46,12 +46,18 @@ export function ProjectView() {
     showToastNotifications: settings.showNotifications,
   });
 
-  if (isLoading) {
-    return <div className="h-full flex items-center justify-center">Loading project...</div>;
-  }
+  useEffect(() => {
+    if (!projectId) return;
+    if (isLoading) return;
 
-  if (!project) {
-    return <div className="h-full flex items-center justify-center">Project not found</div>;
+    if (isError || !project) {
+      setCurrentProject(null);
+      navigate('/', { replace: true });
+    }
+  }, [isError, isLoading, navigate, project, projectId, setCurrentProject]);
+
+  if (isLoading || !project) {
+    return <div className="h-full flex items-center justify-center">Loading project...</div>;
   }
 
   // Get tab configurations
@@ -69,7 +75,7 @@ export function ProjectView() {
       {/* Main content area */}
       <div className="flex-1 overflow-hidden">
         <SplitPane defaultSize="40%" minSize="300px" maxSize="70%" split="vertical">
-          {/* Left pane - Editor with tabs (Source & Friendly) */}
+          {/* Left pane - Editor tabs */}
           <div className="h-full bg-white dark:bg-graphite-950 border-r border-gray-200 dark:border-graphite-700">
             <Tabs
               activeTab={leftTab}

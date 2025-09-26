@@ -1,8 +1,8 @@
 /**
- * EditorTabs - Left pane tabs for source and friendly editor
+ * EditorTabs - Left pane tabs for source editor
  */
 
-import { FriendlyEditor, SourceEditor } from '@/components/index';
+import { SourceEditor } from '@/components/index';
 import type { Project } from '@/types/api';
 import { DiagramPlaceholder } from './DiagramPlaceholder';
 
@@ -19,15 +19,6 @@ export function useEditorTabs({ project }: EditorTabsProps) {
         <SourceEditor projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Source Code" />
-      ),
-    },
-    {
-      id: 'friendly',
-      label: 'Friendly',
-      content: project ? (
-        <FriendlyEditor projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Friendly Diagram" />
       ),
     },
   ];

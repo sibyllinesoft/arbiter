@@ -285,17 +285,11 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       setShowCreateForm(false);
       setNewFragmentPath('');
 
-      toast.success(`Created fragment: ${response.path}`, {
-        position: 'top-right',
-        autoClose: 2000,
-      });
+      toast.success(`Created fragment: ${response.path}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create fragment';
       setError(message);
-      toast.error(message, {
-        position: 'top-right',
-        autoClose: 5000,
-      });
+      toast.error(message);
     }
   }, [currentProject, newFragmentPath, dispatch, setActiveFragment, setError]);
 
@@ -312,17 +306,11 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
         await apiService.deleteFragment(currentProject.id, fragmentId);
         dispatch({ type: 'DELETE_FRAGMENT', payload: fragmentId });
 
-        toast.success(`Deleted fragment: ${fragmentPath}`, {
-          position: 'top-right',
-          autoClose: 2000,
-        });
+        toast.success(`Deleted fragment: ${fragmentPath}`);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to delete fragment';
         setError(message);
-        toast.error(message, {
-          position: 'top-right',
-          autoClose: 5000,
-        });
+        toast.error(message);
       }
     },
     [currentProject, dispatch, setError]

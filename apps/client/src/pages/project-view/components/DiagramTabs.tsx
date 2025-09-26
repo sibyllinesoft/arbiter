@@ -12,6 +12,7 @@ import {
   ResolvedReport,
   SiteReport,
   ViewReport,
+  WebhooksReport,
 } from '@/components/index';
 import type { Project } from '@/types/api';
 import { DiagramPlaceholder } from './DiagramPlaceholder';
@@ -92,6 +93,15 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
         <EventsReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Event Log" />
+      ),
+    },
+    {
+      id: 'webhooks',
+      label: 'Webhooks',
+      content: project ? (
+        <WebhooksReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Webhook Configuration" />
       ),
     },
     {

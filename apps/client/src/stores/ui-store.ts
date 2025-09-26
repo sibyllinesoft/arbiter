@@ -5,7 +5,7 @@
 import zukeeper from 'zukeeper';
 import { create } from 'zustand';
 
-type LeftTab = 'source' | 'friendly';
+type LeftTab = 'source';
 type RightTab =
   | 'flow'
   | 'site'
@@ -14,6 +14,7 @@ type RightTab =
   | 'gaps'
   | 'resolved'
   | 'architecture'
+  | 'webhooks'
   | 'events'
   | 'handlers';
 

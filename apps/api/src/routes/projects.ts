@@ -169,6 +169,13 @@ export function createProjectsRouter(deps: Dependencies) {
             // Build services from real artifacts
             const services: Record<string, any> = {};
             const serviceArtifacts = artifacts.filter((a: any) => a.type === 'service');
+            const routeSet = new Set<string>();
+
+            const toSlug = (value: string) =>
+              String(value || '')
+                .replace(/[^a-z0-9]+/gi, '-')
+                .replace(/^-+|-+$/g, '')
+                .toLowerCase();
 
             for (const artifact of serviceArtifacts) {
               const serviceName = artifact.name.replace(/_/g, '-');
@@ -177,6 +184,36 @@ export function createProjectsRouter(deps: Dependencies) {
                 type: 'service',
                 metadata: { detected: true },
               };
+
+              const analysis = artifact.metadata?.tsoaAnalysis;
+              if (analysis) {
+                const rawServiceName = artifact.name.replace(/^@[^/]+\//, '') || artifact.name;
+                const slugRoot = toSlug(artifact.name) || 'service';
+                const serviceSlug = toSlug(rawServiceName) || slugRoot;
+                const baseRoutePath = `/${serviceSlug}`.replace(/\/+/g, '/');
+                if (baseRoutePath) {
+                  routeSet.add(baseRoutePath);
+                }
+
+                const controllerCandidates = Array.isArray(analysis.controllerCandidates)
+                  ? analysis.controllerCandidates
+                  : [];
+
+                controllerCandidates.forEach((candidate: string) => {
+                  const normalized = candidate.split('\\').join('/');
+                  const fileName = normalized.split('/').pop() || normalized;
+                  const baseSegment = toSlug(
+                    fileName
+                      .replace(/\.[tj]sx?$/i, '')
+                      .replace(/controller$/i, '')
+                      .replace(/route$/i, '')
+                  );
+                  const routePath = baseSegment
+                    ? `${baseRoutePath}/${baseSegment}`.replace(/\/+/g, '/')
+                    : baseRoutePath;
+                  routeSet.add(routePath);
+                });
+              }
             }
 
             // Build databases from real artifacts
@@ -246,19 +283,45 @@ export function createProjectsRouter(deps: Dependencies) {
                   infrastructureCount++;
                   break;
                 default:
-                  externalCount++;
+                  {
+                    const detectedType = String(
+                      artifact.metadata?.detectedType || artifact.metadata?.type || ''
+                    ).toLowerCase();
+                    if (detectedType === 'tool' || detectedType === 'build_tool') {
+                      toolCount++;
+                    } else if (detectedType === 'frontend') {
+                      frontendCount++;
+                    } else if (detectedType === 'infrastructure') {
+                      infrastructureCount++;
+                    } else {
+                      externalCount++;
+                    }
+                  }
                   break;
               }
             }
 
-            // Generate UI routes based on detected services (limit to 3)
-            const routes = Object.keys(services)
-              .slice(0, 3)
-              .map((serviceName, index) => ({
-                id: serviceName.replace('-service', '').replace('service-', ''),
-                path: `/${serviceName.replace('-service', '').replace('service-', '')}`,
-                name: services[serviceName].name,
-              }));
+            // Include frontend-detected routes
+            const frontendRoutes: string[] = artifacts
+              .filter((artifact: any) => artifact.metadata?.frontendAnalysis)
+              .flatMap((artifact: any) => {
+                const analysis = artifact.metadata?.frontendAnalysis;
+                if (!analysis) return [] as string[];
+                const packageRoutes = (analysis.routers || []).flatMap((router: any) =>
+                  (router.routes || []).map((route: any) => String(route.path || ''))
+                );
+                return packageRoutes;
+              });
+
+            frontendRoutes
+              .map((path: string) => String(path || '').trim())
+              .filter(Boolean)
+              .forEach((path: string) => {
+                const normalized = path.startsWith('/') ? path : `/${path}`;
+                routeSet.add(normalized.replace(/\/+/g, '/'));
+              });
+
+            const routes = Array.from(routeSet);
 
             // Calculate entity counts
             entities = {
@@ -392,6 +455,13 @@ export function createProjectsRouter(deps: Dependencies) {
       // Now create all the artifacts for the project
       for (const artifact of artifacts) {
         try {
+          console.debug('[projects.create] storing artifact', {
+            projectId,
+            name: artifact.name,
+            type: artifact.type,
+            language: artifact.language,
+            classification: artifact.metadata?.classification,
+          });
           await db.createArtifact(
             artifact.id,
             projectId,

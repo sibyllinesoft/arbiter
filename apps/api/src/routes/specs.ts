@@ -318,9 +318,24 @@ export function createSpecsRouter(deps: Dependencies) {
         const language = artifact.language || 'unknown';
         const framework = artifact.framework || 'unknown';
 
+        let componentType = artifact.type;
+        const detectedType = String(
+          artifact.metadata?.detectedType || artifact.metadata?.classification?.detectedType || ''
+        ).toLowerCase();
+        const classificationReason = artifact.metadata?.classification?.reason;
+        const packageData = artifact.metadata?.package || {};
+        const hasCliBin = Boolean(
+          typeof packageData.bin === 'string' ||
+            (packageData.bin && Object.keys(packageData.bin).length > 0)
+        );
+
+        if (detectedType === 'tool' || classificationReason === 'manifest-bin' || hasCliBin) {
+          componentType = 'tool';
+        }
+
         components[componentName] = {
           name: artifact.name, // Use the original name
-          type: artifact.type,
+          type: componentType,
           description: artifact.description || artifact.metadata?.description || '',
           language,
           framework,
@@ -332,6 +347,26 @@ export function createSpecsRouter(deps: Dependencies) {
           },
         };
       }
+
+      const typeGroups = Object.values(components).reduce(
+        (acc: Record<string, { count: number; names: string[] }>, component: any) => {
+          const key = component.type || 'unknown';
+          if (!acc[key]) {
+            acc[key] = { count: 0, names: [] };
+          }
+          acc[key].count += 1;
+          if (acc[key].names.length < 5) {
+            acc[key].names.push(component.name);
+          }
+          return acc;
+        },
+        {}
+      );
+
+      console.log('[specs.resolved] aggregated components', {
+        total: Object.keys(components).length,
+        types: typeGroups,
+      });
 
       // Aggregate frontend analysis from node packages
       const frontendPackages = artifacts
@@ -394,16 +429,161 @@ export function createSpecsRouter(deps: Dependencies) {
         })
       );
 
+      const backendRoutes = serviceArtifacts.flatMap((artifact: any) => {
+        const analysis = artifact.metadata?.tsoaAnalysis;
+        if (!analysis) {
+          console.debug('[specs.resolved] No TSOA analysis for service', {
+            service: artifact.name,
+          });
+          return [] as any[];
+        }
+
+        const toSlug = (value: string) =>
+          value
+            .replace(/[^a-z0-9]+/gi, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase();
+
+        const rawServiceName = artifact.name.replace(/^@[^/]+\//, '') || artifact.name;
+        const slugRoot = toSlug(artifact.name) || 'service';
+        const serviceSlug = toSlug(rawServiceName) || slugRoot;
+        const baseRoutePath = `/${serviceSlug}`.replace(/\/+/g, '/');
+
+        const baseMetadata = {
+          source: 'tsoa',
+          serviceName: artifact.name,
+          serviceDisplayName: rawServiceName,
+          packageName: rawServiceName,
+          packageRoot: artifact.metadata?.root || '.',
+          routerType: 'tsoa',
+          routeBasePath: baseRoutePath,
+        };
+
+        const routesForService: any[] = [
+          {
+            id: `backend-${slugRoot}-root`,
+            path: baseRoutePath,
+            name: baseRoutePath,
+            component: `${rawServiceName} service`,
+            capabilities: [],
+            type: 'route',
+            metadata: {
+              ...baseMetadata,
+              displayName: baseRoutePath,
+              routePath: baseRoutePath,
+            },
+            displayLabel: baseRoutePath,
+          },
+        ];
+
+        const controllerCandidates = Array.isArray(analysis.controllerCandidates)
+          ? analysis.controllerCandidates
+          : [];
+
+        if (controllerCandidates.length === 0) {
+          console.debug('[specs.resolved] TSOA analysis missing controller candidates', {
+            service: artifact.name,
+            hasAnalysis: true,
+            totalTypeScriptFiles: analysis.totalTypeScriptFiles,
+            configFiles: analysis.configFiles,
+            scriptsUsingTsoa: analysis.scriptsUsingTsoa,
+          });
+          return routesForService;
+        }
+
+        console.debug('[specs.resolved] TSOA controller candidates detected', {
+          service: artifact.name,
+          count: controllerCandidates.length,
+        });
+
+        controllerCandidates.forEach((candidate: string, index: number) => {
+          const normalized = candidate.split('\\').join('/');
+          const fileName = normalized.split('/').pop() || normalized;
+          const baseSegment = toSlug(
+            fileName
+              .replace(/\.[tj]sx?$/i, '')
+              .replace(/controller$/i, '')
+              .replace(/route$/i, '')
+          );
+          const safeId = `${slugRoot}-${baseSegment || 'controller'}-${index}`;
+          const routePath = baseSegment
+            ? `${baseRoutePath}/${baseSegment}`.replace(/\/+/g, '/')
+            : baseRoutePath;
+          const displayNameBase = fileName
+            .replace(/\.[tj]sx?$/i, '')
+            .replace(/controller$/i, '')
+            .replace(/route$/i, '')
+            .replace(/[-_]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          const formatLabel = (value: string) =>
+            value
+              .split(/[-_\s]+/)
+              .filter(Boolean)
+              .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+              .join(' ');
+          const displayName = displayNameBase
+            ? formatLabel(displayNameBase)
+            : formatLabel(rawServiceName);
+
+          const route = {
+            id: `backend-${safeId}`,
+            path: routePath,
+            name: displayName,
+            component: normalized,
+            capabilities: [],
+            type: 'route',
+            metadata: {
+              ...baseMetadata,
+              controllerPath: normalized,
+              filePath: normalized,
+              displayName,
+              routePath,
+            },
+            displayLabel: routePath,
+          };
+          console.debug('[specs.resolved] emitting backend route', {
+            service: artifact.name,
+            id: route.id,
+            path: route.path,
+            packageName: route.metadata.packageName,
+            filePath: route.metadata.filePath,
+          });
+          routesForService.push(route);
+        });
+
+        return routesForService;
+      });
+
+      const servicesWithBackendRoutes = new Set(
+        backendRoutes.flatMap((route: any) => {
+          const meta = route.metadata || {};
+          const rawName = meta.serviceName as string | undefined;
+          const displayName = meta.packageName as string | undefined;
+          return [rawName, displayName].filter(
+            (name): name is string => typeof name === 'string' && name.trim().length > 0
+          );
+        })
+      );
+
       // Fallback: derive a small set of sample routes from components if no frontend analysis is available
       const allComponents = { ...services, ...components };
       const fallbackRoutes = Object.keys(allComponents)
         .slice(0, 5)
         .map(compName => {
           const comp = allComponents[compName];
+          if (!comp) return null;
           const baseId = compName
             .replace('-service', '')
             .replace('service-', '')
             .replace('@arbiter/', '');
+          if (
+            servicesWithBackendRoutes.has(comp.name) ||
+            servicesWithBackendRoutes.has(compName) ||
+            servicesWithBackendRoutes.has(baseId)
+          ) {
+            return null;
+          }
           const safeIdSegment = baseId.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           return {
             id: `fallback-${safeIdSegment}`,
@@ -417,10 +597,14 @@ export function createSpecsRouter(deps: Dependencies) {
               source: 'fallback',
             },
           };
-        });
+        })
+        .filter((route): route is any => Boolean(route));
 
       const routeMap = new Map<string, any>();
       derivedRoutes.forEach((route: any) => {
+        routeMap.set(route.id, route);
+      });
+      backendRoutes.forEach((route: any) => {
         routeMap.set(route.id, route);
       });
       fallbackRoutes.forEach((route: any) => {

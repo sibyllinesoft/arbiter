@@ -14,7 +14,7 @@ export interface ArtifactLink {
 export interface AnalyzedArtifact {
   id: string;
   name: string;
-  type: 'service' | 'database' | 'infrastructure' | 'config' | 'summary';
+  type: 'service' | 'database' | 'infrastructure' | 'config' | 'tool' | 'module' | 'frontend';
   description: string;
   language: string | null;
   framework: string | null;
@@ -54,6 +54,215 @@ const KUBERNETES_KEYWORDS = [
   'ingress',
   'namespace',
 ];
+
+const NODE_WEB_FRAMEWORKS = [
+  'express',
+  'fastify',
+  'koa',
+  'hapi',
+  'nest',
+  'adonis',
+  'meteor',
+  'sails',
+  'loopback',
+  'restify',
+  'hono',
+];
+
+const NODE_FRONTEND_FRAMEWORKS = [
+  'react',
+  'react-dom',
+  'next',
+  'vue',
+  'angular',
+  'svelte',
+  'solid-js',
+  'preact',
+  'nuxt',
+  'gatsby',
+];
+
+const NODE_CLI_FRAMEWORKS = ['commander', 'yargs', 'inquirer', 'oclif', 'meow', 'cac', 'clipanion'];
+
+const TYPESCRIPT_SIGNALS = ['typescript', 'ts-node', 'ts-node-dev', 'tsx', 'tsup', '@swc/core'];
+
+const TSOA_ROUTE_PATTERN = /controller|route|api/i;
+
+function normalizeSlashes(value: string): string {
+  return value.replace(/\\+/g, '/');
+}
+
+function collectPackageDependencies(pkg: any): Record<string, string> {
+  return {
+    ...(pkg.dependencies || {}),
+    ...(pkg.devDependencies || {}),
+    ...(pkg.optionalDependencies || {}),
+    ...(pkg.peerDependencies || {}),
+  };
+}
+
+function detectPackageFrameworks(pkg: any): string[] {
+  const deps = collectPackageDependencies(pkg);
+  return NODE_WEB_FRAMEWORKS.filter(dep => Boolean(deps[dep]));
+}
+
+function packageUsesTypeScript(pkg: any): boolean {
+  const deps = collectPackageDependencies(pkg);
+  if (TYPESCRIPT_SIGNALS.some(signal => Boolean(deps[signal]))) {
+    return true;
+  }
+
+  if (typeof pkg.types === 'string' || typeof pkg.typings === 'string') {
+    return true;
+  }
+
+  const scripts = pkg.scripts || {};
+  const scriptSignals = ['ts-node', 'tsx', 'ts-node-dev', 'tsup', 'tsc'];
+  return Object.values(scripts)
+    .filter((command): command is string => typeof command === 'string')
+    .some(command => scriptSignals.some(signal => command.includes(signal)));
+}
+
+function classifyPackageManifest(pkg: any): {
+  type: 'service' | 'frontend' | 'tool' | 'module';
+  detectedType: string;
+  reason: string;
+} {
+  const deps = collectPackageDependencies(pkg);
+  const depNames = Object.keys(deps).map(dep => dep.toLowerCase());
+  const hasDependency = (candidates: string[]) =>
+    candidates.some(candidate => depNames.includes(candidate));
+
+  if (hasDependency(NODE_WEB_FRAMEWORKS)) {
+    return {
+      type: 'service',
+      detectedType: 'web_service',
+      reason: 'web-framework',
+    };
+  }
+
+  const hasFrontendFramework = hasDependency(NODE_FRONTEND_FRAMEWORKS) || Boolean(pkg.browserslist);
+  if (hasFrontendFramework) {
+    return {
+      type: 'frontend',
+      detectedType: 'frontend',
+      reason: 'frontend-framework',
+    };
+  }
+
+  const hasBin = Boolean(
+    typeof pkg.bin === 'string' || (pkg.bin && Object.keys(pkg.bin).length > 0)
+  );
+  const hasCliDependency = hasDependency(NODE_CLI_FRAMEWORKS);
+  if (hasBin || hasCliDependency) {
+    return {
+      type: 'tool',
+      detectedType: 'tool',
+      reason: hasBin ? 'manifest-bin' : 'cli-dependency',
+    };
+  }
+
+  return {
+    type: 'module',
+    detectedType: 'module',
+    reason: 'default-module',
+  };
+}
+
+function stripPackageRoot(filePath: string, packageRoot: string): string {
+  if (!packageRoot) {
+    return filePath;
+  }
+  if (filePath === packageRoot) {
+    return '';
+  }
+  if (filePath.startsWith(`${packageRoot}/`)) {
+    return filePath.slice(packageRoot.length + 1);
+  }
+  return filePath;
+}
+
+function buildTsoaAnalysisFromPackage(
+  packageJsonPath: string,
+  pkg: any,
+  allFiles: string[]
+): {
+  root: string;
+  frameworks: string[];
+  usesTypeScript: true;
+  hasTsoaDependency: boolean;
+  totalTypeScriptFiles: number;
+  controllerCandidates: string[];
+  configFiles: string[];
+  scriptsUsingTsoa: string[];
+  recommendedCommands: string[];
+} | null {
+  const frameworks = detectPackageFrameworks(pkg);
+  if (frameworks.length === 0) {
+    return null;
+  }
+
+  if (!packageUsesTypeScript(pkg)) {
+    return null;
+  }
+
+  const packageDir = normalizeSlashes(path.dirname(packageJsonPath));
+  const normalizedRoot = packageDir === '.' ? '' : packageDir;
+  const deps = collectPackageDependencies(pkg);
+  const hasTsoaDependency = Boolean(deps.tsoa);
+  const scripts = pkg.scripts || {};
+
+  const relevantFiles = allFiles
+    .map(normalizeSlashes)
+    .filter(file => {
+      if (file.endsWith('.d.ts')) return false;
+      if (!normalizedRoot) {
+        return !file.startsWith('node_modules/');
+      }
+      return file === normalizedRoot || file.startsWith(`${normalizedRoot}/`);
+    })
+    .map(file => stripPackageRoot(file, normalizedRoot))
+    .filter(rel => rel && !rel.startsWith('node_modules/'));
+
+  if (relevantFiles.length === 0) {
+    return null;
+  }
+
+  const tsFiles = relevantFiles.filter(rel => /\.(ts|tsx)$/i.test(rel));
+  if (tsFiles.length === 0) {
+    return null;
+  }
+
+  const controllerCandidates = tsFiles
+    .filter(rel => TSOA_ROUTE_PATTERN.test(rel))
+    .filter(rel => !/\.d\.ts$/i.test(rel))
+    .filter(rel => !/\btests?\//i.test(rel) && !/__tests__\//i.test(rel))
+    .slice(0, 50);
+
+  const configFiles = relevantFiles.filter(rel => /tsoa\.json$/i.test(rel)).slice(0, 10);
+
+  const scriptsUsingTsoa = Object.entries(scripts)
+    .filter(([, command]) => typeof command === 'string' && command.includes('tsoa'))
+    .map(([name]) => name);
+
+  if (controllerCandidates.length === 0 && configFiles.length === 0 && !hasTsoaDependency) {
+    return null;
+  }
+
+  return {
+    root: normalizedRoot || '.',
+    frameworks,
+    usesTypeScript: true,
+    hasTsoaDependency,
+    totalTypeScriptFiles: tsFiles.length,
+    controllerCandidates,
+    configFiles,
+    scriptsUsingTsoa,
+    recommendedCommands: hasTsoaDependency
+      ? ['npx tsoa spec', 'npx tsoa routes']
+      : ['npm install --save-dev tsoa', 'npx tsoa spec', 'npx tsoa routes'],
+  };
+}
 
 export function buildProjectStructure(
   files: string[],
@@ -131,26 +340,6 @@ export async function analyzeProjectFiles(
   const artifacts: AnalyzedArtifact[] = [];
   const artifactsByPath = new Map<string, AnalyzedArtifact>();
 
-  const summaryArtifact: AnalyzedArtifact = {
-    id: `${projectId}-summary`,
-    name: `${projectName}-summary`,
-    type: 'summary',
-    description: 'Summary generated from repository tree analysis.',
-    language: null,
-    framework: null,
-    metadata: {
-      detectedBy: 'tree-analysis',
-      gitUrl: options.gitUrl,
-      branch: options.branch,
-      structure,
-      importableFiles: structure.importableFiles,
-    },
-    filePath: null,
-    links: [],
-  };
-
-  artifacts.push(summaryArtifact);
-
   for (const file of files) {
     const classified = classifyFile(projectId, file);
     if (!classified) continue;
@@ -188,6 +377,7 @@ export async function analyzeProjectFiles(
             }
           },
           structure,
+          allFiles: files,
         });
       })
     );
@@ -274,11 +464,12 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
   }
 
   if (DOCKER_COMPOSE_FILES.has(base)) {
+    const displayName = path.basename(filePath);
     return {
       id,
-      name: `${name}-compose`,
+      name: displayName,
       type: 'infrastructure',
-      description: 'Docker Compose configuration detected.',
+      description: `Docker Compose configuration detected in ${displayName}.`,
       language: null,
       framework: null,
       metadata: {
@@ -396,6 +587,7 @@ interface ParserContext {
   artifact?: AnalyzedArtifact;
   addArtifact: (artifact: AnalyzedArtifact) => void;
   structure: ProjectStructure;
+  allFiles: string[];
 }
 
 interface ParserDefinition {
@@ -526,6 +718,44 @@ const PARSERS: ParserDefinition[] = [
           if (pkg.dependencies.express) artifact.framework = 'express';
           if (pkg.dependencies.fastify) artifact.framework = 'fastify';
           if (pkg.dependencies.nestjs) artifact.framework = 'nestjs';
+        }
+
+        console.log('[project-analysis] parsed package manifest', {
+          path: context.filePath,
+          originalType: artifact.type,
+        });
+
+        const classification = classifyPackageManifest(pkg);
+        if (classification) {
+          const previousType = artifact.type;
+          artifact.type = classification.type;
+          artifact.metadata = {
+            ...artifact.metadata,
+            detectedType: classification.detectedType,
+            classification: {
+              source: 'manifest',
+              reason: classification.reason,
+              previousType,
+            },
+          };
+          if (classification.type === 'tool' && !artifact.framework) {
+            artifact.framework = 'cli';
+          }
+          console.log('[project-analysis] classified package', {
+            path: context.filePath,
+            name: pkg.name,
+            type: artifact.type,
+            detectedType: classification.detectedType,
+            reason: classification.reason,
+          });
+        }
+
+        const tsoaAnalysis = buildTsoaAnalysisFromPackage(context.filePath, pkg, context.allFiles);
+        if (tsoaAnalysis) {
+          artifact.metadata = {
+            ...artifact.metadata,
+            tsoaAnalysis,
+          };
         }
       } catch {
         // ignore parse errors

@@ -9,7 +9,7 @@ import { Button } from '@design-system';
 import { useDeleteProject, useProjects } from '@hooks/api-hooks';
 import { GitBranch, Plus, Settings } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { ProjectList, useUnifiedTabs } from '../components';
 // @ts-ignore
@@ -28,6 +28,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
   const currentProject = useCurrentProject();
   const setCurrentProject = useSetCurrentProject();
   const { activeTab, setActiveTab } = useUIState();
+  const location = useLocation();
 
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -43,8 +44,21 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
     ) {
       try {
         await deleteProjectMutation.mutateAsync(projectId);
+        const updatedProjects = (projects || []).filter(project => project.id !== projectId);
+
         if (currentProject?.id === projectId) {
-          setCurrentProject(null);
+          if (updatedProjects.length > 0) {
+            const nextProject = updatedProjects[0];
+            setCurrentProject(nextProject ?? null);
+            if (nextProject && location.pathname.startsWith('/project')) {
+              navigate(`/project/${nextProject.id}`, { replace: true });
+            }
+          } else {
+            setCurrentProject(null);
+            if (location.pathname.startsWith('/project')) {
+              navigate('/', { replace: true });
+            }
+          }
         }
         toast.success('Project deleted successfully');
       } catch (error) {
@@ -57,21 +71,32 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
   const allTabs = useUnifiedTabs({ project: currentProject });
 
   useEffect(() => {
-    if (projects) {
-      if (projects.length === 0) {
-        if (currentProject) setCurrentProject(null);
-      } else if (!currentProject && projects?.[0]) {
-        setCurrentProject(projects[0]);
-      } else {
-        const currentProjectExists = currentProject
-          ? projects.some(p => p.id === currentProject.id)
-          : false;
-        if (!currentProjectExists) {
-          setCurrentProject(projects?.[0] ?? null);
+    if (!projects) return;
+
+    if (projects.length === 0) {
+      if (currentProject) {
+        setCurrentProject(null);
+        if (location.pathname.startsWith('/project')) {
+          navigate('/', { replace: true });
+        }
+      }
+      return;
+    }
+
+    const currentProjectExists = currentProject
+      ? projects.some(project => project.id === currentProject.id)
+      : false;
+
+    if (!currentProjectExists) {
+      const nextProject = projects[0];
+      if (nextProject) {
+        setCurrentProject(nextProject);
+        if (location.pathname.startsWith('/project')) {
+          navigate(`/project/${nextProject.id}`, { replace: true });
         }
       }
     }
-  }, [currentProject, projects, setCurrentProject]);
+  }, [currentProject, location.pathname, navigate, projects, setCurrentProject]);
 
   const getProjectStatus = (project?: any) => {
     if (!project) return null;

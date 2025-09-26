@@ -125,9 +125,11 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
   };
 
   return (
-    <div className="flex flex-col h-full space-y-4">
+    <div className="flex h-full flex-col space-y-4">
       <div className="flex items-center justify-between flex-shrink-0">
-        <h4 className="text-lg font-medium text-gray-900">Your GitHub Projects</h4>
+        <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+          Your GitHub Projects
+        </h4>
         <Button
           variant="secondary"
           size="sm"
@@ -149,8 +151,10 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       {isLoadingGitHub && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-gray-400" />
-            <p className="text-sm text-gray-600">Loading your GitHub projects...</p>
+            <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-gray-400 dark:text-graphite-300" />
+            <p className="text-sm text-gray-600 dark:text-graphite-300">
+              Loading your GitHub projects...
+            </p>
           </div>
         </div>
       )}
@@ -158,18 +162,23 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       {Object.keys(reposByOwner).length > 0 && !isLoadingGitHub && (
         <>
           <div className="flex-1 min-h-0 flex flex-col">
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 scrollbar-transparent">
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 scrollbar-transparent">
               {Object.entries(reposByOwner).map(([owner, repos]) => (
-                <div key={owner} className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm font-medium text-gray-600">
+                <div
+                  key={owner}
+                  className="rounded-lg border border-gray-200 p-3 dark:border-graphite-700 dark:bg-graphite-900"
+                >
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 dark:bg-graphite-800">
+                      <span className="text-sm font-medium text-gray-600 dark:text-graphite-200">
                         {owner.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <h5 className="font-medium text-gray-900">{owner}</h5>
-                      <p className="text-xs text-gray-500">{repos.length} repositories</p>
+                      <h5 className="font-medium text-gray-900 dark:text-gray-100">{owner}</h5>
+                      <p className="text-xs text-gray-500 dark:text-graphite-300">
+                        {repos.length} repositories
+                      </p>
                     </div>
                   </div>
 
@@ -178,10 +187,10 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
                       <div
                         key={repo.id}
                         className={cn(
-                          'flex items-center gap-3 p-2 rounded border cursor-pointer transition-colors',
+                          'flex cursor-pointer items-center gap-3 rounded border p-2 transition-colors',
                           selectedRepos.has(repo.id)
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800'
                         )}
                         onClick={() => handleSelectRepo(repo.id)}
                       >
@@ -190,30 +199,30 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
                           checked={selectedRepos.has(repo.id)}
                           onChange={e => e.stopPropagation()}
                           onClick={e => e.stopPropagation()}
-                          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 pointer-events-none"
+                          className="pointer-events-none h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-blue-300 dark:focus:ring-blue-400"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <h6 className="text-sm font-medium text-gray-900 truncate">
+                            <h6 className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
                               {repo.name}
                             </h6>
                             {repo.language && (
-                              <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+                              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-graphite-800 dark:text-graphite-300">
                                 {repo.language}
                               </span>
                             )}
                             {repo.private && (
-                              <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 rounded">
+                              <span className="rounded px-2 py-0.5 text-xs bg-yellow-100 text-yellow-600 dark:bg-yellow-500/10 dark:text-yellow-300">
                                 Private
                               </span>
                             )}
                           </div>
                           {repo.description && (
-                            <p className="text-xs text-gray-500 truncate mt-1">
+                            <p className="mt-1 truncate text-xs text-gray-500 dark:text-graphite-300">
                               {repo.description}
                             </p>
                           )}
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                          <div className="mt-1 flex items-center gap-3 text-xs text-gray-400 dark:text-graphite-400">
                             <span>★ {repo.stargazers_count}</span>
                             <span>⑂ {repo.forks_count}</span>
                             <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
@@ -228,7 +237,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
           </div>
 
           {selectedRepos.size > 0 && (
-            <div className="border-t border-gray-200 pt-4 flex-shrink-0">
+            <div className="flex-shrink-0 border-t border-gray-200 pt-4 dark:border-graphite-700">
               <Button
                 variant="primary"
                 onClick={handleImportSelectedRepos}
@@ -254,9 +263,11 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       {!isLoadingGitHub && Object.keys(reposByOwner).length === 0 && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <GitIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No Projects Loaded</h4>
-            <p className="text-sm text-gray-600 mb-4">
+            <GitIcon className="mx-auto mb-4 h-12 w-12 text-gray-300 dark:text-graphite-500" />
+            <h4 className="mb-2 text-lg font-medium text-gray-900 dark:text-gray-100">
+              No Projects Loaded
+            </h4>
+            <p className="mb-4 text-sm text-gray-600 dark:text-graphite-300">
               Click "Load Projects" to fetch your GitHub repositories and organizations
             </p>
           </div>

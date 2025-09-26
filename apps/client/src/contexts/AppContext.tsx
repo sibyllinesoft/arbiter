@@ -115,6 +115,9 @@ function createInitialState(): AppState {
   const modalTabRaw = readStoredString(STORAGE_KEYS.modalTab, 'git');
   const modalTab: 'git' | 'github' = modalTabRaw === 'github' ? 'github' : 'git';
 
+  const storedActiveTab = readStoredString(STORAGE_KEYS.activeTab, 'source');
+  const activeTab = storedActiveTab === 'friendly' ? 'source' : storedActiveTab;
+
   return {
     projects: [],
     fragments: [],
@@ -137,7 +140,7 @@ function createInitialState(): AppState {
       showNotifications: false,
     },
     // UI State - persist using localStorage
-    activeTab: readStoredString(STORAGE_KEYS.activeTab, 'source'),
+    activeTab,
     currentView: 'dashboard',
     gitUrl: readStoredString(STORAGE_KEYS.gitUrl, ''),
     modalTab,
@@ -216,12 +219,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
         return { ...state, error: action.payload };
       case 'UPDATE_SETTINGS':
         return { ...state, settings: { ...state.settings, ...action.payload } };
-      case 'SET_ACTIVE_TAB':
-        // Persist tab selection to localStorage
+      case 'SET_ACTIVE_TAB': {
+        const nextActiveTab = action.payload === 'friendly' ? 'source' : action.payload;
         if (isBrowser) {
-          window.localStorage.setItem(STORAGE_KEYS.activeTab, action.payload);
+          window.localStorage.setItem(STORAGE_KEYS.activeTab, nextActiveTab);
         }
-        return { ...state, activeTab: action.payload };
+        return { ...state, activeTab: nextActiveTab };
+      }
       case 'SET_CURRENT_VIEW':
         return { ...state, currentView: action.payload };
       case 'SET_GIT_URL':

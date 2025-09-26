@@ -6,8 +6,8 @@ import React from 'react';
 import type { Project } from '../types/api';
 import {
   ArchitectureReport,
+  EventsReport,
   FlowReport,
-  FriendlyEditor,
   FsmReport,
   GapsReport,
   HandlersReport,
@@ -15,6 +15,7 @@ import {
   SiteReport,
   SourceEditor,
   ViewReport,
+  WebhooksReport,
 } from './';
 
 interface DiagramPlaceholderProps {
@@ -51,15 +52,6 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
         <SourceEditor projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Source Code" />
-      ),
-    },
-    {
-      id: 'friendly',
-      label: 'Friendly',
-      content: project ? (
-        <FriendlyEditor projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Friendly Diagram" />
       ),
     },
     // Diagram tabs
@@ -124,6 +116,24 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
         <ArchitectureReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="System Architecture" />
+      ),
+    },
+    {
+      id: 'events',
+      label: 'Events',
+      content: project ? (
+        <EventsReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Event Log" />
+      ),
+    },
+    {
+      id: 'webhooks',
+      label: 'Webhooks',
+      content: project ? (
+        <WebhooksReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Webhook Configuration" />
       ),
     },
     {

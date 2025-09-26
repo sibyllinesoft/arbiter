@@ -344,4 +344,69 @@ export default {
 
     await fs.remove(projectRoot);
   });
+
+  it('classifies CLI packages as tools when CLI dependencies are present', async () => {
+    const projectRoot = await createTempDir('nodejs-cli-');
+
+    const pkgJson = {
+      name: 'cli-runner',
+      version: '1.0.0',
+      bin: './bin/cli.js',
+      dependencies: {
+        commander: '^12.0.0',
+        chalk: '^5.0.0',
+      },
+      scripts: {
+        start: 'node bin/cli.js',
+      },
+    };
+
+    await writeFile(projectRoot, 'package.json', JSON.stringify(pkgJson, null, 2));
+    await writeFile(
+      projectRoot,
+      'bin/cli.js',
+      `#!/usr/bin/env node
+import { program } from 'commander';
+
+program
+  .name('cli-runner')
+  .description('Example CLI for tests')
+  .action(() => {
+    console.log('running');
+  });
+
+program.parse(process.argv);
+`
+    );
+
+    const fileInfos = await Promise.all([
+      createFileInfo(projectRoot, 'package.json'),
+      createFileInfo(projectRoot, 'bin/cli.js'),
+    ]);
+
+    const fileIndex: FileIndex = {
+      root: projectRoot,
+      files: new Map(fileInfos.map(info => [info.path, info])),
+      directories: new Map(),
+      timestamp: Date.now(),
+    };
+
+    const plugin = new NodeJSPlugin();
+    const parseContext = createParseContext(projectRoot, fileIndex);
+    const pkgContent = await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8');
+    const evidence = await plugin.parse(
+      path.join(projectRoot, 'package.json'),
+      pkgContent,
+      parseContext
+    );
+    const inferenceContext = createInferenceContext(projectRoot, fileIndex, evidence, pkgJson.name);
+    const artifacts = await plugin.infer(evidence, inferenceContext);
+
+    expect(artifacts.length).toBeGreaterThan(0);
+    const cliArtifact = artifacts.find(artifact => artifact.artifact.name === pkgJson.name);
+    expect(cliArtifact?.artifact.type).toBe('tool');
+    expect((cliArtifact?.artifact.metadata as any)?.detectedType).toBe('tool');
+
+    await fs.remove(projectRoot);
+  });
 });

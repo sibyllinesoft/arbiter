@@ -609,16 +609,13 @@ export class ScannerRunner {
     const projectMetadata = await this.generateProjectMetadata(fileIndex);
     const statistics = this.generateStatistics(artifacts, evidence, startTime);
     const configuration = this.generateConfiguration();
-
-    // Simple provenance
-    const provenance: Record<string, string[]> = {
-      aggregated: artifacts.map(a => a.artifact.id),
-    };
+    const perConfig = this.groupArtifactsByConfig(artifacts);
+    const provenance = this.buildProvenanceMap(artifacts);
 
     return {
       version: '1.0.0',
       project: projectMetadata,
-      perConfig: {},
+      perConfig,
       artifacts,
       provenance,
       statistics,
@@ -675,6 +672,70 @@ export class ScannerRunner {
       enabledPlugins: this.pluginRegistry.getEnabled().map(p => p.name()),
       pluginConfiguration: {},
     };
+  }
+
+  private groupArtifactsByConfig(
+    artifacts: InferredArtifact[]
+  ): Record<string, InferredArtifact[]> {
+    const grouped: Record<string, InferredArtifact[]> = {};
+
+    for (const artifact of artifacts) {
+      const evidenceKey = this.getPrimaryEvidenceKey(artifact.provenance?.evidence ?? []);
+      if (!evidenceKey) continue;
+      if (!grouped[evidenceKey]) {
+        grouped[evidenceKey] = [];
+      }
+      grouped[evidenceKey].push(artifact);
+    }
+
+    return grouped;
+  }
+
+  private buildProvenanceMap(artifacts: InferredArtifact[]): Record<string, string[]> {
+    const provenance = new Map<string, Set<string>>();
+
+    for (const artifact of artifacts) {
+      const artifactId = artifact.artifact.id;
+      const evidenceIds = artifact.provenance?.evidence ?? [];
+
+      for (const rawId of evidenceIds) {
+        const evidenceKey = this.normalizeEvidenceId(rawId);
+        if (!evidenceKey) continue;
+
+        if (!provenance.has(evidenceKey)) {
+          provenance.set(evidenceKey, new Set());
+        }
+        provenance.get(evidenceKey)!.add(artifactId);
+      }
+    }
+
+    const entries: [string, string[]][] = Array.from(provenance.entries()).map(([key, value]) => [
+      key,
+      Array.from(value),
+    ]);
+
+    return Object.fromEntries(entries);
+  }
+
+  private getPrimaryEvidenceKey(evidence: string[]): string | null {
+    if (!evidence.length) return null;
+    for (const id of evidence) {
+      const normalized = this.normalizeEvidenceId(id);
+      if (normalized) {
+        return normalized;
+      }
+    }
+    return null;
+  }
+
+  private normalizeEvidenceId(id: string | undefined): string | null {
+    if (!id) return null;
+    const trimmed = id.trim();
+    if (!trimmed) return null;
+
+    // Remove leading ./ or / for consistency
+    const withoutLeading = trimmed.replace(/^\.?\/+/, '');
+    return withoutLeading || null;
   }
 
   registerPlugin(plugin: ImporterPlugin): void {
