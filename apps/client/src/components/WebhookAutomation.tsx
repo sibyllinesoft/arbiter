@@ -15,9 +15,10 @@ import {
   Trash2,
   Zap,
 } from 'lucide-react';
-import React, { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import CreatableSelect from 'react-select/creatable';
 import { toast } from 'react-toastify';
+import { useApp } from '../contexts/AppContext';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
 
@@ -55,6 +56,7 @@ interface WebhookAutomationProps {
 }
 
 export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationProps) {
+  const { isDark } = useApp();
   const [repoOwner, setRepoOwner] = useState('');
   const [repoName, setRepoName] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
@@ -246,7 +248,9 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Zap className="w-6 h-6 text-gray-600" />
-          <h2 className="text-xl font-semibold text-gray-900">Webhook Automation</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Webhook Automation
+          </h2>
           <StatusBadge variant={tunnelUrl ? 'success' : 'neutral'} size="sm">
             {tunnelUrl ? 'Ready' : 'Waiting for tunnel'}
           </StatusBadge>
@@ -256,6 +260,7 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
           disabled={isLoadingGitHub}
           size="sm"
           variant="secondary"
+          className="whitespace-nowrap flex items-center"
         >
           {isLoadingGitHub ? (
             <>
@@ -275,7 +280,9 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
       <div className="space-y-4 mb-6">
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Repository Owner</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Repository Owner
+            </label>
             <CreatableSelect
               value={repoOwner ? { value: repoOwner, label: repoOwner } : null}
               onChange={option => {
@@ -296,32 +303,83 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
               className="react-select-container"
               classNamePrefix="react-select"
               styles={{
-                control: base => ({
+                control: (base, state) => ({
                   ...base,
-                  minHeight: '36px',
-                  backgroundColor: 'white',
-                  borderColor: '#e5e7eb',
+                  height: '40px',
+                  minHeight: '40px',
+                  backgroundColor: isDark ? '#111827' : 'white',
+                  borderColor: isDark ? '#374151' : '#d1d5db',
+                  borderRadius: '0.5rem',
+                  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+                  fontSize: '1rem',
+                  color: isDark ? '#f9fafb' : '#111827',
+                  padding: '0 1rem',
+                  transition: 'all 150ms ease-in-out',
+                  boxShadow: 'none',
                   '&:hover': {
-                    borderColor: '#d1d5db',
+                    borderColor: isDark ? '#4b5563' : '#9ca3af',
                   },
+                  '&:focus-within': {
+                    borderColor: isDark ? '#3b82f6' : '#6b7280',
+                    boxShadow: `0 0 0 2px ${isDark ? '#3b82f6' : '#e5e7eb'}`,
+                  },
+                  opacity: state.isDisabled ? 0.5 : 1,
                 }),
                 menu: base => ({
                   ...base,
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: isDark ? '#111827' : 'white',
+                  border: `1px solid ${isDark ? '#374151' : '#d1d5db'}`,
+                  borderRadius: '0.5rem',
+                  marginTop: '0.25rem',
+                  boxShadow:
+                    '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                 }),
                 option: (base, state) => ({
                   ...base,
-                  backgroundColor: state.isFocused ? '#f3f4f6' : 'transparent',
+                  backgroundColor: state.isFocused
+                    ? isDark
+                      ? '#374151'
+                      : '#f9fafb'
+                    : isDark
+                      ? '#111827'
+                      : 'white',
+                  color: isDark ? '#f9fafb' : '#111827',
+                  padding: '0.75rem 1rem',
+                  fontSize: '1rem',
                   '&:hover': {
-                    backgroundColor: '#f3f4f6',
+                    backgroundColor: isDark ? '#374151' : '#f9fafb',
                   },
+                }),
+                singleValue: base => ({
+                  ...base,
+                  color: isDark ? '#f9fafb' : '#111827',
+                  fontSize: '1rem',
+                }),
+                placeholder: base => ({
+                  ...base,
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                  fontSize: '1rem',
+                }),
+                input: base => ({
+                  ...base,
+                  color: isDark ? '#f9fafb' : '#111827',
+                  fontSize: '1rem',
+                }),
+                dropdownIndicator: base => ({
+                  ...base,
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                }),
+                indicatorSeparator: base => ({
+                  ...base,
+                  backgroundColor: isDark ? '#374151' : '#d1d5db',
                 }),
               }}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Repository Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Repository Name
+            </label>
             <CreatableSelect
               value={repoName ? { value: repoName, label: repoName } : null}
               onChange={option => {
@@ -342,25 +400,73 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
               styles={{
                 control: (base, state) => ({
                   ...base,
-                  minHeight: '36px',
-                  backgroundColor: 'white',
-                  borderColor: '#e5e7eb',
-                  opacity: state.isDisabled ? 0.5 : 1,
+                  height: '40px',
+                  minHeight: '40px',
+                  backgroundColor: isDark ? '#111827' : 'white',
+                  borderColor: isDark ? '#374151' : '#d1d5db',
+                  borderRadius: '0.5rem',
+                  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+                  fontSize: '1rem',
+                  color: isDark ? '#f9fafb' : '#111827',
+                  padding: '0 1rem',
+                  transition: 'all 150ms ease-in-out',
+                  boxShadow: 'none',
                   '&:hover': {
-                    borderColor: '#d1d5db',
+                    borderColor: isDark ? '#4b5563' : '#9ca3af',
                   },
+                  '&:focus-within': {
+                    borderColor: isDark ? '#3b82f6' : '#6b7280',
+                    boxShadow: `0 0 0 2px ${isDark ? '#3b82f6' : '#e5e7eb'}`,
+                  },
+                  opacity: state.isDisabled ? 0.5 : 1,
                 }),
                 menu: base => ({
                   ...base,
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: isDark ? '#111827' : 'white',
+                  border: `1px solid ${isDark ? '#374151' : '#d1d5db'}`,
+                  borderRadius: '0.5rem',
+                  marginTop: '0.25rem',
+                  boxShadow:
+                    '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
                 }),
                 option: (base, state) => ({
                   ...base,
-                  backgroundColor: state.isFocused ? '#f3f4f6' : 'transparent',
+                  backgroundColor: state.isFocused
+                    ? isDark
+                      ? '#374151'
+                      : '#f9fafb'
+                    : isDark
+                      ? '#111827'
+                      : 'white',
+                  color: isDark ? '#f9fafb' : '#111827',
+                  padding: '0.75rem 1rem',
+                  fontSize: '1rem',
                   '&:hover': {
-                    backgroundColor: '#f3f4f6',
+                    backgroundColor: isDark ? '#374151' : '#f9fafb',
                   },
+                }),
+                singleValue: base => ({
+                  ...base,
+                  color: isDark ? '#f9fafb' : '#111827',
+                  fontSize: '1rem',
+                }),
+                placeholder: base => ({
+                  ...base,
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                  fontSize: '1rem',
+                }),
+                input: base => ({
+                  ...base,
+                  color: isDark ? '#f9fafb' : '#111827',
+                  fontSize: '1rem',
+                }),
+                dropdownIndicator: base => ({
+                  ...base,
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                }),
+                indicatorSeparator: base => ({
+                  ...base,
+                  backgroundColor: isDark ? '#374151' : '#d1d5db',
                 }),
               }}
             />
@@ -374,7 +480,9 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
 
         {/* Webhook Secret */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Webhook Secret</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Webhook Secret
+          </label>
           <div className="flex gap-2">
             <Input
               type={showSecret ? 'text' : 'password'}
@@ -400,15 +508,11 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
         {/* Webhook URL Preview */}
         {tunnelUrl && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Webhook URL (auto-generated)
             </label>
             <div className="flex gap-2">
-              <Input
-                value={`${tunnelUrl}/webhooks/github`}
-                readOnly
-                className="flex-1 bg-gray-50"
-              />
+              <Input value={`${tunnelUrl}/webhooks/github`} readOnly className="flex-1" />
               <Button
                 variant="ghost"
                 size="sm"
@@ -424,7 +528,9 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
 
       {/* Event Selection */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-3">Events to Monitor</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          Events to Monitor
+        </label>
         <div className="grid md:grid-cols-2 gap-2">
           {availableEvents.map(event => (
             <button
@@ -433,8 +539,8 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
               className={cn(
                 'p-3 text-left border rounded-lg transition-colors',
                 selectedEvents.includes(event.value)
-                  ? 'border-blue-300 bg-blue-50 text-blue-900'
-                  : 'border-gray-200 hover:border-gray-300 text-gray-900'
+                  ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
+                  : 'border-gray-200 dark:border-graphite-700 hover:border-gray-300 dark:hover:border-graphite-600 text-gray-900 dark:text-gray-100'
               )}
             >
               <div className="font-medium text-sm">{event.label}</div>
@@ -445,7 +551,7 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
       </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center justify-between mb-6 pt-4 border-t border-gray-200">
+      <div className="flex items-center justify-between mb-6 pt-4 border-t border-gray-200 dark:border-graphite-700">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"
@@ -471,8 +577,8 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
 
       {/* Existing Webhooks */}
       {showExisting && existingWebhooks.length > 0 && (
-        <div className="border border-gray-200 rounded-lg">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div className="border border-gray-200 dark:border-graphite-700 rounded-lg">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-graphite-700">
             <h3 className="font-medium text-gray-900">Existing Webhooks</h3>
             <StatusBadge variant="info" size="sm">
               {existingWebhooks.length} found
@@ -484,7 +590,8 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
                 key={webhook.id}
                 className={cn(
                   'p-4 flex items-center justify-between',
-                  index < existingWebhooks.length - 1 && 'border-b border-gray-200'
+                  index < existingWebhooks.length - 1 &&
+                    'border-b border-gray-200 dark:border-graphite-700'
                 )}
               >
                 <div className="flex items-center gap-3">
@@ -528,14 +635,14 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
       )}
 
       {showExisting && existingWebhooks.length === 0 && (
-        <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg">
+        <div className="text-center py-8 text-gray-500 border border-gray-200 dark:border-graphite-700 rounded-lg">
           <Github className="w-8 h-8 mx-auto mb-2 text-gray-300" />
           <p className="text-sm">No existing webhooks found for this repository</p>
         </div>
       )}
 
       {/* Information Panel */}
-      <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-600 rounded-lg">
         <div className="flex gap-3">
           <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-blue-800">

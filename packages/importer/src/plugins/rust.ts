@@ -312,6 +312,8 @@ export class RustPlugin implements ImporterPlugin {
       artifactType = 'binary';
     } else if (jobFramework) {
       artifactType = 'job';
+    } else if (data.hasLibrary) {
+      artifactType = 'module';
     }
 
     // Prefer binary names when available to avoid generic package titles.
@@ -343,7 +345,8 @@ export class RustPlugin implements ImporterPlugin {
     const tags = new Set<string>(['rust']);
     if (artifactType === 'binary') tags.add('tool');
     if (artifactType === 'service') tags.add('service');
-    if (data.hasLibrary) tags.add('library');
+    if (artifactType === 'module') tags.add('module');
+    if (data.hasLibrary) tags.add('module');
 
     const provenance: Provenance = {
       evidence: [cargoEvidence.id],

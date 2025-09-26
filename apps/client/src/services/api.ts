@@ -38,7 +38,12 @@ export class ApiError extends Error {
   }
 }
 
-class ApiService {
+export interface EnvironmentInfo {
+  runtime: 'cloudflare' | 'node';
+  cloudflareTunnelSupported: boolean;
+}
+
+export class ApiService {
   private baseUrl = import.meta.env.VITE_API_URL || '';
   private defaultHeaders: Record<string, string | undefined> = {
     'Content-Type': 'application/json',
@@ -133,6 +138,10 @@ class ApiService {
 
   async getProject(projectId: string): Promise<Project> {
     return this.request<Project>(`/api/projects/${projectId}`);
+  }
+
+  async getEnvironmentInfo(): Promise<EnvironmentInfo> {
+    return this.request<EnvironmentInfo>('/api/environment');
   }
 
   async createProject(name: string, path?: string): Promise<Project> {
@@ -605,4 +614,3 @@ class ApiService {
 export const apiService = new ApiService();
 
 // Export utilities
-export { ApiService };

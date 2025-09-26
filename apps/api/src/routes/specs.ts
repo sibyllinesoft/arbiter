@@ -218,6 +218,7 @@ export function createSpecsRouter(deps: Dependencies) {
           image: imageToUse,
           ports: [{ port, targetPort: port }],
           metadata: {
+            ...artifact.metadata,
             language,
             framework,
             workspaceMember: artifact.metadata?.workspaceMember,
@@ -295,6 +296,7 @@ export function createSpecsRouter(deps: Dependencies) {
           type: dbType,
           version,
           metadata: {
+            ...artifact.metadata,
             configFile: artifact.metadata?.configFile,
             detected: true,
             language: artifact.language || 'sql',
@@ -303,7 +305,7 @@ export function createSpecsRouter(deps: Dependencies) {
         };
       }
 
-      // Build other artifacts (clients, tools, libraries), excluding those merged into services
+      // Build other artifacts (clients, tools, modules), excluding those merged into services
       const components: Record<string, any> = {};
       const otherArtifacts = artifacts.filter(
         (a: any) =>
@@ -323,6 +325,7 @@ export function createSpecsRouter(deps: Dependencies) {
           language,
           framework,
           metadata: {
+            ...artifact.metadata,
             workspaceMember: artifact.metadata?.workspaceMember,
             filePath: artifact.file_path,
             detected: true,
@@ -330,26 +333,103 @@ export function createSpecsRouter(deps: Dependencies) {
         };
       }
 
-      // Generate UI routes based on detected services and packages
+      // Aggregate frontend analysis from node packages
+      const frontendPackages = artifacts
+        .filter((artifact: any) => artifact.metadata?.frontendAnalysis)
+        .map((artifact: any) => {
+          const analysis = artifact.metadata.frontendAnalysis as any;
+          const packageRoot = artifact.metadata?.root ?? '.';
+          const packageJsonPath = artifact.metadata?.sourceFile ?? 'package.json';
+
+          const componentEntries = (analysis.components || []).map((component: any) => ({
+            name: component.name,
+            filePath: component.filePath || '',
+            framework: component.framework,
+            description: component.description,
+            props: component.props,
+          }));
+
+          const routeEntries = (analysis.routers || []).flatMap((router: any) =>
+            (router.routes || []).map((route: any) => ({
+              path: route.path,
+              filePath: route.filePath || '',
+              routerType:
+                router.type || router.routerType || analysis.frameworks?.[0] || 'react-router',
+            }))
+          );
+
+          return {
+            packageName: artifact.name,
+            packageRoot,
+            packageJsonPath,
+            frameworks: analysis.frameworks || [],
+            components: componentEntries,
+            routes: routeEntries,
+          };
+        });
+
+      // Generate UI routes from detected frontend packages as primary source
+      const derivedRoutes = frontendPackages.flatMap((pkg: any) =>
+        (pkg.routes || []).map((route: any, idx: number) => {
+          const safeIdSegment = (route.path || route.filePath || 'route')
+            .replace(/[^a-zA-Z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .toLowerCase();
+          const id = `${pkg.packageName.replace(/[^a-zA-Z0-9]+/g, '-')}-${safeIdSegment || idx}`;
+          const displayName = route.path || route.filePath || `${pkg.packageName} route`;
+          return {
+            id,
+            path: route.path || '/',
+            name: displayName,
+            component: route.filePath || displayName,
+            capabilities: [],
+            type: 'route',
+            metadata: {
+              packageName: pkg.packageName,
+              packageRoot: pkg.packageRoot,
+              routerType: route.routerType,
+              filePath: route.filePath || null,
+            },
+          };
+        })
+      );
+
+      // Fallback: derive a small set of sample routes from components if no frontend analysis is available
       const allComponents = { ...services, ...components };
-      const routes = Object.keys(allComponents)
-        .slice(0, 5) // Include some packages
-        .map((compName, index) => {
+      const fallbackRoutes = Object.keys(allComponents)
+        .slice(0, 5)
+        .map(compName => {
           const comp = allComponents[compName];
           const baseId = compName
             .replace('-service', '')
             .replace('service-', '')
             .replace('@arbiter/', '');
+          const safeIdSegment = baseId.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
           return {
-            id: baseId,
+            id: `fallback-${safeIdSegment}`,
             path: `/${baseId}`,
             name: comp.name,
             component: `${baseId.charAt(0).toUpperCase() + baseId.slice(1)}Page`,
             capabilities:
               comp.metadata?.scope === 'arbiter-package' ? ['api-access'] : ['read-data'],
             type: comp.type || 'route',
+            metadata: {
+              source: 'fallback',
+            },
           };
         });
+
+      const routeMap = new Map<string, any>();
+      derivedRoutes.forEach((route: any) => {
+        routeMap.set(route.id, route);
+      });
+      fallbackRoutes.forEach((route: any) => {
+        if (!routeMap.has(route.id)) {
+          routeMap.set(route.id, route);
+        }
+      });
+
+      const routes = Array.from(routeMap.values());
 
       return c.json({
         success: true,
@@ -369,6 +449,9 @@ export function createSpecsRouter(deps: Dependencies) {
             services,
             databases,
             components,
+            frontend: {
+              packages: frontendPackages,
+            },
             ui: {
               routes,
             },

@@ -11,9 +11,9 @@ import { determineMostLikelyCategory } from '../dependency-matrix';
 
 describe('CLI Detection Improvements Demo', () => {
   describe('Before vs After: CLI with chalk dependency', () => {
-    it('should now correctly identify CLI tools with chalk (originally misclassified as library)', () => {
+    it('should now correctly identify CLI tools with chalk (originally misclassified as module)', () => {
       // This is the scenario mentioned in the original request:
-      // A CLI tool using chalk was being identified as a library
+      // A CLI tool using chalk was being identified as a module
 
       const context: DetectionContext = {
         language: 'javascript',
@@ -78,7 +78,7 @@ describe('CLI Detection Improvements Demo', () => {
   });
 
   describe('Distinction Capabilities', () => {
-    it('should distinguish between CLI, web service, and library accurately', () => {
+    it('should distinguish between CLI, web service, and module accurately', () => {
       const testCases = [
         {
           type: 'tool',
@@ -96,9 +96,9 @@ describe('CLI Detection Improvements Demo', () => {
           expectedType: 'frontend',
         },
         {
-          type: 'library',
+          type: 'module',
           deps: ['lodash', 'axios', 'uuid'],
-          expectedType: 'library',
+          expectedType: 'module',
         },
       ];
 

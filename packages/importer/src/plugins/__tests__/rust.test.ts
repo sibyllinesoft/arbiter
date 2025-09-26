@@ -132,7 +132,7 @@ async fn main() {
           configType: 'cargo-toml',
           package: { name: 'web-service', version: '0.1.0' },
           hasBinaries: true,
-          hasLibrary: false,
+          hasModule: false,
           dependencies: { axum: '0.7', tokio: '1.0' },
           devDependencies: {},
           buildDependencies: {},
@@ -192,7 +192,7 @@ async fn main() {
           configType: 'cargo-toml',
           package: { name: 'cli-tool', version: '0.1.0' },
           hasBinaries: false,
-          hasLibrary: false,
+          hasModule: false,
           dependencies: { clap: '4.0' },
           devDependencies: {},
           buildDependencies: {},
@@ -241,7 +241,7 @@ async fn main() {
       expect(artifacts[0].artifact.metadata.language).toBe('rust');
     });
 
-    it('should infer a library from Cargo.toml with lib section', async () => {
+    it('should infer a module from Cargo.toml with lib section', async () => {
       const cargoEvidence: Evidence = {
         id: 'test-package',
         source: 'rust',
@@ -249,9 +249,9 @@ async fn main() {
         filePath: '/test/Cargo.toml',
         data: {
           configType: 'cargo-toml',
-          package: { name: 'my-lib', version: '0.1.0', description: 'A useful library' },
+          package: { name: 'my-lib', version: '0.1.0', description: 'A useful module' },
           hasBinaries: false,
-          hasLibrary: true,
+          hasModule: true,
           dependencies: { serde: '1.0' },
           devDependencies: {},
           buildDependencies: {},
@@ -281,9 +281,9 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe('library');
+      expect(artifacts[0].artifact.type).toBe('module');
       expect(artifacts[0].artifact.name).toBe('my-lib');
-      expect(artifacts[0].artifact.description).toBe('A useful library');
+      expect(artifacts[0].artifact.description).toBe('A useful module');
       expect(artifacts[0].artifact.metadata.language).toBe('rust');
       expect(artifacts[0].artifact.metadata.packageManager).toBe('cargo');
     });

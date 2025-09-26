@@ -86,7 +86,10 @@ export function ProjectList({
                   {project.name}
                 </h3>
                 <button
-                  onClick={e => onDeleteProject(e, project.id)}
+                  onClick={e => {
+                    e.stopPropagation();
+                    onDeleteProject(e, project.id);
+                  }}
                   className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-500/10 dark:hover:bg-red-900/20 rounded transition-colors ml-4"
                   title="Delete project"
                 >
@@ -109,14 +112,14 @@ export function ProjectList({
                     </Badge>
                   )}
 
-                  {projectStatus.entities.libraries > 0 && (
+                  {projectStatus.entities.modules > 0 && (
                     <Badge
                       variant="default"
                       className="bg-purple-500 dark:bg-purple-600 text-white border-purple-700 dark:border-purple-800"
                     >
                       <Component className="w-3.5 h-3.5 text-white" />
                       <span className="text-xs font-medium text-white">
-                        Libraries: {projectStatus.entities.libraries}
+                        Modules: {projectStatus.entities.modules}
                       </span>
                     </Badge>
                   )}

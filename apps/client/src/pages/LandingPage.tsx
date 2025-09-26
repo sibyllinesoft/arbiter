@@ -34,7 +34,6 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
 
   const handleSelectProject = (project: any) => {
     setCurrentProject(project);
-    navigate(`/project/${project.id}`);
   };
 
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
@@ -81,7 +80,6 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
       databases: 0,
       modules: 0,
       infrastructure: 0,
-      libraries: 0,
       tools: 0,
       frontends: 0,
       external: 0,
@@ -122,12 +120,14 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
               <Button
                 variant="ghost"
                 size="md"
-                leftIcon={<Settings className="w-6 h-6" />}
+                leftIcon={
+                  <Settings className="w-4 h-4 text-[rgb(80_97_122/var(--tw-text-opacity,1))]" />
+                }
                 onClick={() => {
                   setIsConfigModalOpen(true);
                   onNavigateToConfig?.();
                 }}
-                className="focus:outline-none"
+                className="w-6 h-6 p-1 border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               />
             </div>
           </div>

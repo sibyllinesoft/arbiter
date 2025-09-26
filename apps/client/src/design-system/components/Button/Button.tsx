@@ -62,11 +62,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const variantKey =
       variant === 'primary' ? 'default' : variant === 'danger' ? 'destructive' : variant;
 
+    const isIconOnly = !children && (resolvedLeftIcon || resolvedRightIcon);
     const buttonClasses = cn(
       // Base styles
-      'inline-flex items-center justify-center gap-2',
+      'inline-flex items-center justify-center',
+      isIconOnly ? 'gap-0 px-2' : 'gap-2',
       'font-medium',
-      'border rounded-md',
+      'rounded-md',
       'transition-all duration-150 ease-in-out',
       'focus:outline-none focus:ring-2 focus:ring-offset-2',
       'disabled:pointer-events-none disabled:opacity-60',
@@ -98,7 +100,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
         {/* Left icon */}
         {!loading && resolvedLeftIcon && (
-          <span className={cn('flex-shrink-0', sizeVariants.icon[size])}>{resolvedLeftIcon}</span>
+          <span
+            className={cn('flex-shrink-0', sizeVariants.icon[size], isIconOnly && 'text-inherit')}
+          >
+            {resolvedLeftIcon}
+          </span>
         )}
 
         {/* Button text */}
@@ -106,7 +112,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
         {/* Right icon */}
         {!loading && resolvedRightIcon && (
-          <span className={cn('flex-shrink-0', sizeVariants.icon[size])}>{resolvedRightIcon}</span>
+          <span
+            className={cn('flex-shrink-0', sizeVariants.icon[size], isIconOnly && 'text-inherit')}
+          >
+            {resolvedRightIcon}
+          </span>
         )}
       </button>
     );

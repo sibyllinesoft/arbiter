@@ -295,7 +295,7 @@ export function MonacoEditor({
         inherit: true,
         rules: [
           // Comments
-          { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+          { token: 'comment', foreground: '7F7F7F', fontStyle: 'italic' },
 
           // Keywords and control flow
           { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
@@ -311,7 +311,7 @@ export function MonacoEditor({
           // Types and constants
           { token: 'type', foreground: '4EC9B0', fontStyle: 'bold' },
           { token: 'constant.language.boolean', foreground: '569CD6' },
-          { token: 'constant.language.null', foreground: '808080' },
+          { token: 'constant.language.null', foreground: '9CDCFE' },
           { token: 'support.function', foreground: 'DCDCAA' },
 
           // Strings and literals
@@ -334,7 +334,7 @@ export function MonacoEditor({
           { token: 'variable.other.constant', foreground: '795548', fontStyle: 'italic' },
           { token: 'decorator', foreground: 'C586C0' },
           { token: 'namespace', foreground: '4EC9B0', fontStyle: 'bold' },
-          { token: 'identifier', foreground: 'D4D4D4' },
+          { token: 'identifier', foreground: 'CCCCCC' },
 
           // Delimiters and operators
           { token: 'delimiter', foreground: 'D4D4D4' },
@@ -344,14 +344,20 @@ export function MonacoEditor({
           'editor.background': '#1E1E1E',
           'editor.foreground': '#D4D4D4',
           'editor.lineHighlightBackground': '#2D2D30',
+          'editorGutter.background': '#1E1E1E',
           'editorLineNumber.foreground': '#858585',
-          'editorLineNumber.activeForeground': '#C6C6C6',
+          'editorLineNumber.activeForeground': '#C6A0F6',
           'editorIndentGuide.background': '#404040',
           'editorIndentGuide.activeBackground': '#707070',
           'editor.selectionBackground': '#264F78',
           'editor.selectionHighlightBackground': '#264F7840',
           'editorBracketMatch.background': '#0064001A',
           'editorBracketMatch.border': '#888888',
+          'minimap.background': '#1E1E1E',
+          'minimapGutter.background': '#1E1E1E',
+          'minimap.selectionHighlightBackground': '#264F78',
+          'minimap.errorBackground': '#F44747',
+          'minimap.warningBackground': '#FFCC00',
         },
       });
 

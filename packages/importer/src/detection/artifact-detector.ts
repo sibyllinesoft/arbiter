@@ -114,10 +114,10 @@ export class ArtifactDetector {
       (factors.sourceFactors?.length ?? 0) > 0;
 
     if (!hasEvidence) {
-      const explanation = ['Detected as library based on:', 'no strong detection signals'];
+      const explanation = ['Detected as module based on:', 'no strong detection signals'];
       const confidence = DEPENDENCY_MATRIX[context.language] ? 0.2 : 0;
       return {
-        primaryType: 'library',
+        primaryType: 'module',
         confidence,
         alternativeTypes: [],
         explanation,
@@ -135,7 +135,7 @@ export class ArtifactDetector {
       }))
       .sort((a, b) => b.confidence - a.confidence);
 
-    const primaryType = sortedTypes[0]?.type || 'library';
+    const primaryType = sortedTypes[0]?.type || 'module';
     const confidence = sortedTypes[0]?.confidence || 0.1;
     const alternativeTypes = sortedTypes.slice(1);
 
@@ -362,7 +362,7 @@ export class ArtifactDetector {
     );
     if (modulePatterns.length > 0) {
       factors.push({
-        category: 'library',
+        category: 'module',
         confidence: Math.min(0.4, modulePatterns.length * 0.1),
         patterns: modulePatterns,
       });
@@ -483,12 +483,12 @@ export class ArtifactDetector {
     if (config.peerDependencies && Object.keys(config.peerDependencies).length > 0) {
       moduleIndicators.push('has peer dependencies');
     }
-    if (config.keywords?.some((k: string) => /library|util|helper|plugin|middleware/i.test(k))) {
+    if (config.keywords?.some((k: string) => /module|util|helper|plugin|middleware/i.test(k))) {
       moduleIndicators.push('module-related keywords');
     }
     if (moduleIndicators.length > 0) {
       factors.push({
-        category: 'library',
+        category: 'module',
         confidence: Math.min(0.8, moduleIndicators.length * 0.2),
         indicators: moduleIndicators,
       });
@@ -681,8 +681,8 @@ export class ArtifactDetector {
         scores['tool'] = 0.7;
       }
       // Strong module indicators
-      else if (factors.configFactors.some(f => f.category === 'library' && f.confidence > 0.3)) {
-        scores['library'] = 0.5;
+      else if (factors.configFactors.some(f => f.category === 'module' && f.confidence > 0.3)) {
+        scores['module'] = 0.5;
       }
       // Check for web service patterns
       else if (
@@ -696,9 +696,9 @@ export class ArtifactDetector {
       ) {
         scores['frontend'] = 0.5;
       }
-      // Default to library with low confidence
+      // Default to module with low confidence
       else {
-        scores['library'] = 0.2;
+        scores['module'] = 0.2;
       }
     }
 

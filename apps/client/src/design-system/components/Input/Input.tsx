@@ -115,7 +115,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       // Base styles
       'block w-full font-sans',
       'transition-all duration-150 ease-in-out',
-      'placeholder:text-graphite-400',
+      'placeholder:text-gray-500 dark:placeholder:text-graphite-400',
       'focus:outline-none focus:ring-2 focus:ring-offset-0',
 
       // Variant styles
@@ -206,7 +206,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
               actualHelperText && `${inputId}-description`,
               description && `${inputId}-desc`
             )}
-            aria-invalid={!!error}
+            aria-invalid={error ? 'true' : undefined}
             {...props}
           />
 

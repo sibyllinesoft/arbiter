@@ -186,11 +186,11 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const contentClasses = clsx(
       'flex-1',
       sizeClass.text,
-      'text-graphite-900 font-medium',
-      actualVariant === 'error' && 'text-red-900',
-      actualVariant === 'warning' && 'text-amber-900',
-      actualVariant === 'success' && 'text-emerald-900',
-      disabled && 'text-graphite-500',
+      'text-graphite-900 dark:text-gray-100 font-medium',
+      actualVariant === 'error' && 'text-red-900 dark:text-red-300',
+      actualVariant === 'warning' && 'text-amber-900 dark:text-amber-300',
+      actualVariant === 'success' && 'text-emerald-900 dark:text-emerald-300',
+      disabled && 'text-graphite-500 dark:text-gray-400',
       labelClassName
     );
 
@@ -217,7 +217,12 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                   {/* Loading spinner */}
                   {loading && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className={clsx(sizeClass.icon, 'animate-spin text-graphite-400')} />
+                      <Loader2
+                        className={clsx(
+                          sizeClass.icon,
+                          'animate-spin text-graphite-400 dark:text-gray-500'
+                        )}
+                      />
                     </div>
                   )}
 
@@ -240,7 +245,10 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                   {description && (
                     <p
                       id={`${checkboxId}-desc`}
-                      className={clsx('text-sm text-graphite-600', disabled && 'text-graphite-400')}
+                      className={clsx(
+                        'text-sm text-graphite-600 dark:text-gray-400',
+                        disabled && 'text-graphite-400 dark:text-gray-500'
+                      )}
                     >
                       {description}
                     </p>
@@ -257,10 +265,10 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             id={`${checkboxId}-description`}
             className={clsx(
               'text-sm ml-7 flex items-center gap-1',
-              actualVariant === 'error' && 'text-red-600',
-              actualVariant === 'warning' && 'text-amber-600',
-              actualVariant === 'success' && 'text-green-600',
-              actualVariant === 'default' && 'text-graphite-600'
+              actualVariant === 'error' && 'text-red-600 dark:text-red-400',
+              actualVariant === 'warning' && 'text-amber-600 dark:text-amber-400',
+              actualVariant === 'success' && 'text-green-600 dark:text-green-400',
+              actualVariant === 'default' && 'text-graphite-600 dark:text-gray-400'
             )}
           >
             {validationIcon}

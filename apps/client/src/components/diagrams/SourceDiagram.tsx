@@ -1,6 +1,7 @@
 import { AlertTriangle, Clipboard, Download, FileText, Hash, Loader2 } from 'lucide-react';
 import { type FC, useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
+import { useTheme } from '../../stores/ui-store';
 import type { ResolvedSpecResponse } from '../../types/api';
 import MonacoEditor from '../Editor/MonacoEditor';
 
@@ -18,6 +19,7 @@ export const SourceDiagram: FC<SourceDiagramProps> = ({
   className = '',
   title = 'CUE Specification - Source View',
 }) => {
+  const { isDark } = useTheme();
   const [sourceContent, setSourceContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -266,11 +268,11 @@ ${indentStr}}`;
   return (
     <div className={`h-full flex flex-col min-h-0 ${className}`}>
       {/* Header - Fixed */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
+      <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-graphite-700 bg-white dark:bg-graphite-900">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-25">{title}</h3>
+            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-graphite-400 mt-1">
               <span className="flex items-center space-x-1">
                 <FileText className="w-3 h-3" />
                 <span>
@@ -281,7 +283,7 @@ ${indentStr}}`;
               {specHash && (
                 <span className="flex items-center space-x-1">
                   <Hash className="w-3 h-3" />
-                  <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
+                  <code className="bg-gray-100 dark:bg-graphite-800 px-2 py-1 rounded text-xs font-mono">
                     {specHash.substring(0, 8)}...
                   </code>
                 </span>
@@ -292,7 +294,7 @@ ${indentStr}}`;
           <div className="flex items-center space-x-2">
             <button
               onClick={handleRefresh}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+              className="px-3 py-1 text-sm text-gray-600 dark:text-graphite-400 hover:text-gray-900 dark:hover:text-graphite-25 hover:bg-gray-100 dark:hover:bg-graphite-800 rounded transition-colors"
             >
               Refresh
             </button>
@@ -300,8 +302,8 @@ ${indentStr}}`;
               onClick={handleCopy}
               className={`px-3 py-1 text-sm rounded transition-colors flex items-center space-x-1 ${
                 copySuccess
-                  ? 'text-green-700 bg-green-100'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/20'
+                  : 'text-gray-600 dark:text-graphite-400 hover:text-gray-900 dark:hover:text-graphite-25 hover:bg-gray-100 dark:hover:bg-graphite-800'
               }`}
             >
               <Clipboard className="w-3 h-3" />
@@ -309,7 +311,7 @@ ${indentStr}}`;
             </button>
             <button
               onClick={handleDownload}
-              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex items-center space-x-1"
+              className="px-3 py-1 text-sm text-gray-600 dark:text-graphite-400 hover:text-gray-900 dark:hover:text-graphite-25 hover:bg-gray-100 dark:hover:bg-graphite-800 rounded transition-colors flex items-center space-x-1"
             >
               <Download className="w-3 h-3" />
               <span>Download</span>
@@ -319,12 +321,12 @@ ${indentStr}}`;
       </div>
 
       {/* Editor Content - Scrollable */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden bg-white dark:bg-graphite-950">
         <MonacoEditor
           value={sourceContent}
           onChange={() => {}} // Read-only for now
           language="cue"
-          theme="cue-light"
+          theme={isDark ? 'cue-dark' : 'cue-light'}
           options={{
             automaticLayout: true,
             wordWrap: 'on',

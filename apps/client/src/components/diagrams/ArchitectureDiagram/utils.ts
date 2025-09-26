@@ -1,10 +1,14 @@
 export const getComponentType = (data: any, name: string): string => {
   let componentType =
-    data.type || data.metadata?.type || (name.includes('@') ? 'library' : 'service');
+    data.type || data.metadata?.type || (name.includes('@') ? 'module' : 'service');
 
   // Standardize binary to tool
   if (componentType === 'binary') {
     componentType = 'tool';
+  }
+
+  if (componentType === 'library') {
+    componentType = 'module';
   }
 
   // Standardize database to data
@@ -63,7 +67,7 @@ export const computeGroupedComponents = (projectData: any): Record<string, any[]
     // Dedup per type group by display name
     Object.entries(tempGroups).forEach(([groupLabel, groupEntries]) => {
       const seenDisplayNames = new Set<string>();
-      const uniqueGroup = groupEntries.filter(({ data }) => {
+      const uniqueGroup = groupEntries.filter(({ name, data }) => {
         const displayName = data.name || name;
         if (seenDisplayNames.has(displayName)) {
           return false;
@@ -74,6 +78,5 @@ export const computeGroupedComponents = (projectData: any): Record<string, any[]
       groupedComponents[groupLabel] = uniqueGroup;
     });
   }
-  console.log(groupedComponents);
   return groupedComponents;
 };

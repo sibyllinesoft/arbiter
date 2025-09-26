@@ -28,6 +28,7 @@
     "@monaco-editor/react": "^4.6.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@tanstack/react-query": "^5.89.0",
+    "@tanstack/react-virtual": "^3.0.0",
     "@tanstack/react-query-devtools": "^5.89.0",
     "@types/react-select": "^5.0.1",
     "@types/react-virtualized": "^9.21.29",

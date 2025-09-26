@@ -4,6 +4,8 @@ import { clsx } from 'clsx';
 import React, { useState, useEffect } from 'react';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
+import { FrontendTreeSection } from './components/FrontendTree';
+import type { FrontendPackage } from './components/FrontendTree';
 import { LoadingState } from './components/LoadingState';
 import { SelectedDetails } from './components/SelectedDetails';
 import { SourceGroup } from './components/SourceGroup';
@@ -51,7 +53,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   // Group components by type for rendering
 
   const groupedComponents = computeGroupedComponents(projectData);
-  console.log(groupedComponents);
+  const frontendPackages = (projectData?.spec?.frontend?.packages || []) as FrontendPackage[];
   // Handle loading state
   if (loading) {
     return <LoadingState className={className} />;
@@ -70,10 +72,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   );
 
   return (
-    <div className={clsx('h-full overflow-auto bg-gray-50', className)}>
+    <div className={clsx('h-full overflow-auto bg-gray-50 dark:bg-graphite-950', className)}>
       {/* Header */}
-      <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900">Components</h3>
+      <div className="p-4 bg-white dark:bg-graphite-900 border-b border-gray-200 dark:border-graphite-700 flex items-center justify-between">
+        <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-25">Components</h3>
         {totalComponents > 0 && (
           <StatusBadge
             variant="secondary"
@@ -87,7 +89,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       </div>
 
       {/* Components by Source File */}
-      <div className="p-4">
+      <div className="p-4 space-y-6">
         {Object.keys(groupedComponents).length === 0 ? (
           <EmptyState />
         ) : (
@@ -102,6 +104,13 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                 onComponentClick={setSelectedComponent}
               />
             ))}
+          </div>
+        )}
+
+        {frontendPackages.length > 0 && (
+          <div className="space-y-4">
+            <FrontendTreeSection title="Views" packages={frontendPackages} mode="components" />
+            <FrontendTreeSection title="Routes" packages={frontendPackages} mode="routes" />
           </div>
         )}
 

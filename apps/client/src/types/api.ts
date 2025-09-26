@@ -20,7 +20,7 @@ export interface Project {
   entities?: {
     services: number;
     databases: number;
-    libraries: number;
+    modules: number;
     tools: number;
     frontends: number;
     infrastructure: number;

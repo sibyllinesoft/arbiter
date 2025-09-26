@@ -65,8 +65,13 @@ export function ConfigScreen({
   });
 
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-  const [isSaving, setIsSaving] = useState(false);
   const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
+  const [environment, setEnvironment] = useState<'unknown' | 'cloudflare' | 'node'>('unknown');
+
+  interface LocalEnvironmentInfo {
+    runtime: 'cloudflare' | 'node';
+    cloudflareTunnelSupported: boolean;
+  }
 
   // Load webhook configurations from localStorage or defaults
   useEffect(() => {
@@ -87,16 +92,43 @@ export function ConfigScreen({
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    apiService
+      .getEnvironmentInfo()
+      .then((info: LocalEnvironmentInfo) => {
+        if (!cancelled) {
+          setEnvironment(info.runtime);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setEnvironment('node');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isCloudflare = environment === 'cloudflare';
+
   const handleWebhookConfigChange = (provider: string, field: string, value: any) => {
     setWebhookConfigs(prev => {
       const current = prev[provider] || { url: '', secret: '', enabled: false, events: [] };
-      return {
+      const newState = {
         ...prev,
         [provider]: {
           ...current,
           [field]: value,
         },
       };
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('webhookConfigs', JSON.stringify(newState));
+      }
+      return newState;
     });
   };
 
@@ -108,13 +140,17 @@ export function ConfigScreen({
         ? currentEvents.filter(e => e !== event)
         : [...currentEvents, event];
 
-      return {
+      const newState = {
         ...prev,
         [provider]: {
           ...currentConfig,
           events: newEvents,
         },
       };
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('webhookConfigs', JSON.stringify(newState));
+      }
+      return newState;
     });
   };
 
@@ -167,21 +203,6 @@ export function ConfigScreen({
       toast.error(
         `Failed to test ${provider} webhook: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
-    }
-  };
-
-  const saveConfiguration = async () => {
-    setIsSaving(true);
-    try {
-      // Persist to localStorage (in real app, save to API via apiService.updateWebhookConfigs)
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('webhookConfigs', JSON.stringify(webhookConfigs));
-      }
-      toast.success('Configuration saved successfully');
-    } catch (error) {
-      toast.error('Failed to save configuration');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -245,16 +266,6 @@ export function ConfigScreen({
                     </div>
                   </div>
                 </div>
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  leftIcon={<Save className="w-4 h-4" />}
-                  onClick={saveConfiguration}
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
               </div>
             </div>
           </header>
@@ -263,7 +274,7 @@ export function ConfigScreen({
 
       {/* Main Content */}
       <main
-        className={`max-w-${isModal ? '6' : '7'}xl mx-auto px-4 sm:px-6 lg:px-8 ${isModal ? 'py-0' : 'py-8'}`}
+        className={`max-w-${isModal ? '6' : '7'}xl mx-auto px-4 sm:px-6 lg:px-8 ${isModal ? 'py-0' : 'py-8'} scrollbar-transparent`}
       >
         <div className="space-y-8">
           {/* UI Settings */}
@@ -305,7 +316,7 @@ export function ConfigScreen({
           </Card>
 
           {/* Tunnel Management */}
-          <TunnelManager onTunnelUrlChange={setTunnelUrl} />
+          {!isCloudflare && <TunnelManager onTunnelUrlChange={setTunnelUrl} />}
 
           {/* Webhook Automation */}
           <WebhookAutomation tunnelUrl={tunnelUrl || ''} />
@@ -373,8 +384,9 @@ export function ConfigScreen({
                         <Input
                           value={config.url}
                           onChange={e => handleWebhookConfigChange(provider, 'url', e.target.value)}
-                          className="flex-1"
+                          className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-graphite-900 text-gray-900 dark:text-graphite-100 placeholder:text-gray-500 dark:placeholder:text-graphite-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 rounded-md px-3 py-2"
                           disabled={!config.enabled}
+                          placeholder="https://your-domain.com/webhook"
                         />
                         <Button
                           variant="ghost"
@@ -399,7 +411,7 @@ export function ConfigScreen({
                             handleWebhookConfigChange(provider, 'secret', e.target.value)
                           }
                           placeholder="Enter webhook secret..."
-                          className="flex-1"
+                          className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-graphite-900 text-gray-900 dark:text-graphite-100 placeholder:text-gray-500 dark:placeholder:text-graphite-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 rounded-md px-3 py-2"
                           disabled={!config.enabled}
                         />
                         <Button
@@ -438,7 +450,8 @@ export function ConfigScreen({
                               (config.events || []).includes(event)
                                 ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
                                 : 'bg-gray-100 dark:bg-graphite-700 border-gray-300 dark:border-graphite-600 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-graphite-600',
-                              !config.enabled && 'opacity-50 cursor-not-allowed'
+                              !config.enabled && 'opacity-50 cursor-not-allowed',
+                              'cursor-pointer rounded-md px-2 py-1 text-sm font-medium transition-colors'
                             )}
                           >
                             {event.replace('_', ' ')}
@@ -597,8 +610,12 @@ export function ConfigScreen({
             ) : (
               <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                 <Code className="w-12 h-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-                <p className="text-lg font-medium mb-2">No Handlers Configured</p>
-                <p className="text-sm mb-4">Create your first webhook handler to get started</p>
+                <p className="text-lg font-medium mb-2 text-gray-900 dark:text-gray-100">
+                  No Handlers Configured
+                </p>
+                <p className="text-sm mb-4 text-gray-500 dark:text-gray-400">
+                  Create your first webhook handler to get started
+                </p>
                 <Button variant="primary" leftIcon={<Plus className="w-4 h-4" />}>
                   Create Handler
                 </Button>
@@ -607,22 +624,6 @@ export function ConfigScreen({
           </Card>
         </div>
       </main>
-      {isModal && (
-        <div className="bg-white dark:bg-graphite-900 border-t border-gray-200 dark:border-graphite-700 p-6 flex justify-end gap-3">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            leftIcon={<Save className="w-4 h-4" />}
-            onClick={saveConfiguration}
-            disabled={isSaving}
-          >
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { glob } from 'glob';
 import { Hono } from 'hono';
+import { isCloudflareRuntime } from '../runtime-env';
 
 type Dependencies = Record<string, unknown>;
 
@@ -140,6 +141,14 @@ export function createCoreRouter(deps: Dependencies) {
         500
       );
     }
+  });
+
+  router.get('/environment', c => {
+    const runtime = isCloudflareRuntime() ? 'cloudflare' : 'node';
+    return c.json({
+      runtime,
+      cloudflareTunnelSupported: runtime !== 'cloudflare',
+    });
   });
 
   // Fetch endpoint for MCP

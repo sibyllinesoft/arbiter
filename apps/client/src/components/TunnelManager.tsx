@@ -5,8 +5,9 @@
 import {
   AlertCircle,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Copy,
-  ExternalLink,
   Globe,
   Power,
   PowerOff,
@@ -50,6 +51,8 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 1000;
 
+  const isTunnelRunning = tunnelInfo?.status === 'running';
+
   const refreshStatus = useCallback(async () => {
     try {
       const response = await apiService.getTunnelStatus();
@@ -73,19 +76,19 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
 
   // Start polling when tunnel is running
   useEffect(() => {
-    if (tunnelInfo?.status === 'running') {
+    if (isTunnelRunning) {
       setIsPolling(true);
     } else {
       setIsPolling(false);
     }
-  }, [tunnelInfo?.status]);
+  }, [isTunnelRunning]);
 
   // Notify parent component when tunnel URL changes
   useEffect(() => {
     if (onTunnelUrlChange) {
-      onTunnelUrlChange(tunnelInfo?.status === 'running' ? tunnelInfo.url : null);
+      onTunnelUrlChange(isTunnelRunning ? (tunnelInfo?.url ?? null) : null);
     }
-  }, [tunnelInfo?.status, tunnelInfo?.url, onTunnelUrlChange]);
+  }, [isTunnelRunning, tunnelInfo?.url, onTunnelUrlChange]);
 
   const loadInitialStatus = useCallback(async () => {
     setIsLoading(true);
@@ -106,7 +109,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
 
   // WebSocket for real-time tunnel logs
   useEffect(() => {
-    if (!tunnelInfo || tunnelInfo.status !== 'running' || !showLogs) {
+    if (!tunnelInfo || tunnelInfo.status !== 'running') {
       // Close WS if not needed
       if (wsRef.current) {
         wsRef.current.close();
@@ -191,7 +194,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [tunnelInfo?.status, showLogs]);
+  }, [tunnelInfo?.status]);
 
   // Auto-scroll logs when new log added and visible
   const logsRef = useRef<HTMLDivElement>(null);
@@ -245,23 +248,34 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const loadLogs = async () => {
     try {
       const response = await apiService.getTunnelLogs();
-      if (response.success && response.logs) {
-        setLogs(response.logs.split('\n').filter(line => line.trim()));
-      } else {
-        toast.error(response.error || 'Failed to load logs');
+      if (response.success) {
+        const rawLogs = Array.isArray(response.logs)
+          ? response.logs
+          : typeof response.logs === 'string'
+            ? response.logs.split('\n')
+            : [];
+        setLogs(rawLogs.filter(line => line.trim().length > 0));
+      } else if (response.error) {
+        console.warn('Failed to load tunnel logs:', response.error);
       }
     } catch (error) {
-      toast.error('Failed to load tunnel logs');
-      console.error('Logs error:', error);
+      console.error('Failed to load tunnel logs:', error);
     }
   };
 
-  // Load initial logs when showLogs becomes true
+  // Load initial logs whenever the tunnel transitions to running
   useEffect(() => {
-    if (showLogs) {
+    if (isTunnelRunning) {
       loadLogs();
     }
-  }, [showLogs]);
+  }, [isTunnelRunning]);
+
+  // Refresh logs when the panel is expanded while the tunnel is running
+  useEffect(() => {
+    if (showLogs && isTunnelRunning) {
+      loadLogs();
+    }
+  }, [showLogs, isTunnelRunning]);
 
   const copyTunnelUrl = () => {
     if (tunnelInfo?.url) {
@@ -272,7 +286,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
 
   const getStatusIcon = () => {
     if (isLoading) {
-      return <RefreshCw className="w-5 h-5 animate-spin" />;
+      return <RefreshCw className="w-5 h-5 animate-spin text-gray-500 dark:text-graphite-300" />;
     }
 
     switch (tunnelInfo?.status) {
@@ -284,102 +298,70 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     }
   };
 
-  const getStatusColor = () => {
-    switch (tunnelInfo?.status) {
-      case 'running':
-        return 'success';
-      case 'stopped':
-      default:
-        return 'neutral';
-    }
-  };
-
   return (
     <Card className={cn('p-6', className)}>
-      <div className="flex items-center gap-3 mb-6">
-        <Globe className="w-6 h-6 text-gray-600" />
-        <h2 className="text-xl font-semibold text-gray-900">Cloudflare Tunnel</h2>
-        {tunnelInfo && (
-          <StatusBadge variant={getStatusColor()} size="sm">
-            {tunnelInfo.status.charAt(0).toUpperCase() + tunnelInfo.status.slice(1)}
-          </StatusBadge>
-        )}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Globe className="w-6 h-6 text-gray-600" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Cloudflare Tunnel
+          </h2>
+        </div>
+        <Button
+          variant={isTunnelRunning ? 'secondary' : 'primary'}
+          leftIcon={
+            isTunnelRunning ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />
+          }
+          onClick={isTunnelRunning ? stopTunnel : startTunnel}
+          disabled={isLoading}
+        >
+          {isLoading
+            ? isTunnelRunning
+              ? 'Stopping...'
+              : 'Starting...'
+            : isTunnelRunning
+              ? 'Stop Tunnel'
+              : 'Start Tunnel'}
+        </Button>
       </div>
 
       {/* Tunnel Status Section */}
-      <div className="border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
+      <div className="border border-gray-200 dark:border-graphite-700 rounded-lg p-4 mb-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start">
+          <div className="flex items-center gap-3 flex-1">
             {getStatusIcon()}
             <div>
-              <h3 className="font-medium text-gray-900">
-                {tunnelInfo?.status === 'running' ? 'Tunnel Active' : 'Tunnel Inactive'}
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                {isTunnelRunning ? 'Tunnel Active' : 'Tunnel Inactive'}
               </h3>
               <p className="text-sm text-gray-500">
-                {tunnelInfo?.status === 'running'
+                {isTunnelRunning
                   ? 'Your tunnel is running and accepting connections'
                   : 'Start a tunnel to enable webhook connectivity'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={<RefreshCw className="w-4 h-4" />}
-              onClick={refreshStatus}
-              disabled={isLoading}
-            >
-              Refresh
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={<Terminal className="w-4 h-4" />}
-              onClick={() => setShowLogs(!showLogs)}
-            >
-              {showLogs ? 'Hide Logs' : 'Show Logs'}
-            </Button>
-            {showLogs && (
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<RefreshCw className="w-4 h-4" />}
-                onClick={loadLogs}
-              >
-                Reload Logs
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Tunnel URL Display */}
-        {tunnelInfo?.url && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Tunnel URL</label>
-            <div className="flex gap-2">
-              <Input value={tunnelInfo.url} readOnly className="flex-1 bg-gray-50" />
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<Copy className="w-4 h-4" />}
-                onClick={copyTunnelUrl}
-              >
-                Copy
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<ExternalLink className="w-4 h-4" />}
-                onClick={() => window.open(tunnelInfo.url, '_blank')}
-              >
-                Open
-              </Button>
+          {tunnelInfo?.url && (
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Tunnel URL
+              </label>
+              <div className="flex gap-2">
+                <Input value={tunnelInfo.url} readOnly className="flex-1" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="px-2"
+                  onClick={copyTunnelUrl}
+                  aria-label="Copy tunnel URL"
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Error Display */}
         {false && (
@@ -421,14 +403,14 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
               <button
                 key={mode.value}
                 onClick={() => setSelectedMode(mode.value as any)}
-                disabled={tunnelInfo?.status === 'running'}
+                disabled={isTunnelRunning}
                 title={mode.title}
                 className={cn(
                   'p-3 text-left border rounded-lg transition-colors',
                   selectedMode === mode.value
-                    ? 'border-blue-300 bg-blue-50 text-blue-900'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-900',
-                  tunnelInfo?.status === 'running' && 'opacity-50 cursor-not-allowed'
+                    ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
+                    : 'border-gray-200 dark:border-graphite-700 hover:border-gray-300 dark:hover:border-graphite-600 text-gray-900 dark:text-gray-100',
+                  isTunnelRunning && 'opacity-50 cursor-not-allowed'
                 )}
               >
                 <div className="font-medium text-sm">{mode.label}</div>
@@ -448,85 +430,50 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
               onChange={e => setCustomConfig(e.target.value)}
               placeholder="Enter custom tunnel configuration..."
               className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
-              disabled={tunnelInfo?.status === 'running'}
+              disabled={isTunnelRunning}
             />
           </div>
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-start pt-4 border-t border-gray-200 dark:border-graphite-700">
           <div className="text-sm text-gray-500">
-            {tunnelInfo?.status === 'running' ? (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Tunnel is active and monitoring for connections
-              </div>
-            ) : (
-              'Configure and start your tunnel to enable webhook connectivity'
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {tunnelInfo?.status === 'running' ? (
-              <Button
-                variant="secondary"
-                leftIcon={<PowerOff className="w-4 h-4" />}
-                onClick={stopTunnel}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Stopping...' : 'Stop Tunnel'}
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                leftIcon={<Power className="w-4 h-4" />}
-                onClick={startTunnel}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Starting...' : 'Start Tunnel'}
-              </Button>
-            )}
+            Configure the tunnel mode and options above as needed before starting.
           </div>
         </div>
       </div>
 
       {/* Logs Section - Collapsible */}
-      <div className="mt-6 border border-gray-200 rounded-lg">
+      <div className="mt-6 border border-gray-200 dark:border-graphite-700 rounded-lg">
         <div
-          className="flex items-center justify-between p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50"
+          className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-graphite-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-graphite-800"
           onClick={() => setShowLogs(!showLogs)}
         >
           <div className="flex items-center gap-2">
             <Terminal className="w-5 h-5 text-gray-600" />
-            <h3 className="font-medium text-gray-900">Tunnel Logs</h3>
-            {logs.length > 0 && (
-              <StatusBadge variant="info" size="xs">
-                {logs.length} entries
-              </StatusBadge>
-            )}
+            <h3 className="font-medium text-gray-900 dark:text-gray-100">Tunnel Logs</h3>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={e => {
-              e.stopPropagation();
-              loadLogs();
-            }}
-            className="mr-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-2 text-gray-400 dark:text-graphite-300">
+            <StatusBadge
+              variant="neutral"
+              size="xs"
+              className="bg-graphite-200 dark:bg-graphite-700 text-graphite-700 dark:text-graphite-100 border-transparent"
+            >
+              {logs.length}
+            </StatusBadge>
+            {showLogs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </div>
         </div>
         {showLogs && (
-          <div className="p-4 max-h-96 overflow-auto">
+          <div className="max-h-96 overflow-auto">
             {logs.length > 0 ? (
               <div ref={logsRef} className="max-h-96 overflow-auto">
-                <pre className="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded-lg whitespace-pre-wrap">
+                <pre className="text-xs font-mono bg-gray-900 text-green-400 rounded-lg whitespace-pre-wrap px-4 py-3">
                   {logs.join('\n')}
                 </pre>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic">Loading logs...</p>
+              <p className="text-sm text-gray-500 italic">No logs yet.</p>
             )}
           </div>
         )}

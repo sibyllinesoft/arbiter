@@ -6,7 +6,6 @@
 
 import type { Meta, StoryObj } from '@storybook/react';
 import {
-  Activity,
   AlertTriangle,
   ArrowRight,
   Bell,
@@ -110,11 +109,13 @@ export const ApplicationShowcase: Story = {
             </div>
 
             <nav className="flex items-center gap-1">
-              <NavItem icon={<Home />} label="Dashboard" active />
-              <NavItem icon={<Folder />} label="Projects" />
-              <NavItem icon={<Monitor />} label="Deployments" />
-              <NavItem icon={<Terminal />} label="Logs" />
-              <NavItem icon={<Settings />} label="Settings" />
+              <NavItem icon={<Home />} active>
+                Dashboard
+              </NavItem>
+              <NavItem icon={<Folder />}>Projects</NavItem>
+              <NavItem icon={<Monitor />}>Deployments</NavItem>
+              <NavItem icon={<Terminal />}>Logs</NavItem>
+              <NavItem icon={<Settings />}>Settings</NavItem>
             </nav>
           </div>
 
@@ -148,9 +149,9 @@ export const ApplicationShowcase: Story = {
         <div className="mb-6">
           <Breadcrumbs
             items={[
-              { label: 'Projects', href: '#' },
-              { label: 'E-commerce Platform', href: '#' },
-              { label: 'Dashboard', href: '#', current: true },
+              { id: 'projects', label: 'Projects', href: '#' },
+              { id: 'ecommerce-platform', label: 'E-commerce Platform', href: '#' },
+              { id: 'dashboard', label: 'Dashboard', href: '#', current: true },
             ]}
           />
         </div>

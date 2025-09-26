@@ -1,8 +1,10 @@
-import path from 'path';
-import { getAllPlugins } from '@arbiter/importer/plugins';
-import { ScannerRunner } from '@arbiter/importer/scanner';
 import { ProjectEntities } from '@arbiter/shared/types/entities';
 import { Hono } from 'hono';
+import type { ContentFetcher } from '../content-fetcher';
+import { createGithubContentFetcher, createLocalContentFetcher } from '../content-fetcher';
+import { gitScanner } from '../git-scanner';
+import { parseGitUrl } from '../git-url';
+import { analyzeProjectFiles } from '../project-analysis';
 type Dependencies = Record<string, unknown>;
 
 export function createProjectsRouter(deps: Dependencies) {
@@ -57,7 +59,6 @@ export function createProjectsRouter(deps: Dependencies) {
             databases[cleanName] = baseData;
             break;
           case 'module':
-          case 'library':
           case 'tool':
           case 'binary':
           case 'frontend':
@@ -78,7 +79,7 @@ export function createProjectsRouter(deps: Dependencies) {
       for (const [key, comp] of Object.entries(components)) {
         if (comp.type === 'infrastructure') {
           infrastructureCount++;
-        } else if (!['library', 'module', 'tool', 'binary', 'frontend'].includes(comp.type)) {
+        } else if (!['module', 'tool', 'binary', 'frontend'].includes(comp.type)) {
           externalCount++;
         }
       }
@@ -111,9 +112,7 @@ export function createProjectsRouter(deps: Dependencies) {
           entities: {
             services: Object.keys(services).length,
             databases: Object.keys(databases).length,
-            libraries: Object.keys(components).filter(
-              k => components[k].type === 'library' || components[k].type === 'module'
-            ).length,
+            modules: Object.keys(components).filter(k => components[k].type === 'module').length,
             tools: Object.keys(components).filter(
               k => components[k].type === 'tool' || components[k].type === 'binary'
             ).length,
@@ -152,7 +151,7 @@ export function createProjectsRouter(deps: Dependencies) {
           let entities: ProjectEntities = {
             services: 0,
             databases: 0,
-            libraries: 0,
+            modules: 0,
             tools: 0,
             frontends: 0,
             infrastructure: 0,
@@ -222,7 +221,7 @@ export function createProjectsRouter(deps: Dependencies) {
             }
             console.log(`[DEBUG] Artifact types for project ${project.name}:`, typeGroups);
 
-            let libraryCount = 0;
+            let moduleCount = 0;
             let toolCount = 0;
             let frontendCount = 0;
             let infrastructureCount = 0;
@@ -234,9 +233,8 @@ export function createProjectsRouter(deps: Dependencies) {
               if (type === 'binary') type = 'tool';
 
               switch (type) {
-                case 'library':
                 case 'module':
-                  libraryCount++;
+                  moduleCount++;
                   break;
                 case 'tool':
                   toolCount++;
@@ -266,7 +264,7 @@ export function createProjectsRouter(deps: Dependencies) {
             entities = {
               services: Object.keys(services).length,
               databases: Object.keys(databases).length,
-              libraries: libraryCount,
+              modules: moduleCount,
               tools: toolCount,
               frontends: frontendCount,
               infrastructure: infrastructureCount,
@@ -281,7 +279,7 @@ export function createProjectsRouter(deps: Dependencies) {
             entities = {
               services: project.service_count || 0,
               databases: project.database_count || 0,
-              libraries: 0,
+              modules: 0,
               tools: 0,
               frontends: 0,
               infrastructure: 0,
@@ -326,99 +324,65 @@ export function createProjectsRouter(deps: Dependencies) {
       // Use the provided name (which should be extracted from git URL on frontend)
       let actualProjectName = name;
 
-      // Helper function to clean artifact names from temp directory patterns
-      const getCleanArtifactName = (originalName: string): string => {
-        // Detect temp directory patterns and replace with project name
-        if (
-          originalName.includes('arbiter-git-scan') ||
-          originalName.includes('Arbiter Git Scan') ||
-          /arbiter.*git.*scan.*\d+.*[a-z0-9]+/i.test(originalName) ||
-          /^[a-zA-Z0-9_-]*\d{13}[a-zA-Z0-9_-]*$/i.test(originalName)
-        ) {
-          return actualProjectName;
-        }
-        return originalName;
-      };
-
-      // If path is provided, run proper brownfield detection using importer
       let services = 0;
       let databases = 0;
       let artifacts: any[] = [];
+      let detectedStructure: any;
 
       if (projectPath) {
-        try {
-          // Use regular imports for HMR to work properly
-          const plugins = getAllPlugins();
-          console.log(
-            '[SCANNER] Available plugins:',
-            plugins.map(p => p.name())
-          );
-          console.log('[SCANNER] Project path:', projectPath);
+        let files: string[] = [];
+        let structure = undefined;
+        let gitUrl: string | undefined;
+        let branch: string | undefined;
+        let contentFetcher: ContentFetcher | undefined;
 
-          // Configure the scanner
-          const scanner = new ScannerRunner({
-            projectRoot: projectPath,
-            projectName: actualProjectName, // Use the extracted project name instead of temp directory name
-            ignorePatterns: [
-              '**/target/**',
-              '**/node_modules/**',
-              '**/.git/**',
-              '**/dist/**',
-              '**/build/**',
-            ],
-            plugins,
-            parseOptions: {
-              deepAnalysis: false,
-              targetLanguages: [],
-              includeBinaries: false,
-              patterns: {
-                include: ['**/*'],
-                exclude: [],
-              },
-              maxFileSize: 1024 * 1024, // 1MB
-            },
-          });
+        const resolved = gitScanner.resolveTempPath
+          ? await gitScanner.resolveTempPath(projectPath)
+          : null;
 
-          // Run the scanner
-          console.log('[SCANNER] Starting scan...');
-          const result = await scanner.scan();
-          console.log('[SCANNER] Scan complete, found', result.artifacts.length, 'artifacts');
+        if (resolved?.success) {
+          files = resolved.files ?? [];
+          structure = resolved.projectStructure;
+          gitUrl = resolved.gitUrl;
+          branch = resolved.branch;
 
-          // Convert importer results to our artifact format
-          for (const inferredArtifact of result.artifacts) {
-            const artifact = inferredArtifact.artifact;
-
-            artifacts.push({
-              id: artifact.id,
-              name: getCleanArtifactName(artifact.name),
-              type: artifact.type,
-              description: artifact.description || '',
-              language: artifact.metadata?.language || null,
-              framework: artifact.metadata?.framework || null,
-              metadata: {
-                ...artifact.metadata,
-                description: artifact.description || '',
-                detected: true,
-                provenance: inferredArtifact.provenance,
-              },
-              filePath: inferredArtifact.provenance.evidence[0] || '', // Use first evidence file
-            });
-
-            // Count services and databases
-            if (artifact.type === 'service') {
-              services++;
-            } else if (artifact.type === 'database') {
-              databases++;
+          if (gitUrl) {
+            const parsedGit = parseGitUrl(gitUrl);
+            if (parsedGit) {
+              const ref = branch ?? parsedGit.ref ?? 'main';
+              const token = typeof process !== 'undefined' ? process.env.GITHUB_TOKEN : undefined;
+              contentFetcher = createGithubContentFetcher({
+                owner: parsedGit.owner,
+                repo: parsedGit.repo,
+                ref,
+                token,
+              });
             }
           }
+        }
 
-          console.log(
-            `[SCAN] Processed ${result.artifacts.length} artifacts: ${services} services, ${databases} databases`
-          );
-        } catch (error) {
-          console.error('[ERROR] Enhanced brownfield detection failed:', error);
-          console.error('[ERROR] Stack trace:', (error as any).stack);
-          // Continue with empty project if brownfield detection fails
+        if (!files.length) {
+          const scanResult = await gitScanner.scanLocalPath(projectPath);
+          if (scanResult.success) {
+            files = scanResult.files ?? [];
+            structure = scanResult.projectStructure;
+            contentFetcher = createLocalContentFetcher(projectPath);
+            branch = scanResult.branch;
+          }
+        }
+
+        if (files.length > 0) {
+          const analysis = await analyzeProjectFiles(projectId, actualProjectName, files, {
+            gitUrl,
+            structure,
+            branch,
+            fetcher: contentFetcher,
+          });
+
+          artifacts = analysis.artifacts;
+          services = analysis.serviceCount;
+          databases = analysis.databaseCount;
+          detectedStructure = analysis.structure;
         }
       }
 
@@ -451,6 +415,7 @@ export function createProjectsRouter(deps: Dependencies) {
         databases,
         artifacts: artifacts.length,
         lastActivity: project.created_at,
+        structure: detectedStructure,
       });
     } catch (error) {
       console.error('Error creating project:', error);

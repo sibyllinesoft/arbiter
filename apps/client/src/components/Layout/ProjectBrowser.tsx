@@ -158,7 +158,7 @@ export function ProjectBrowser({
             variant="primary"
             leftIcon={<Plus className="w-4 h-4" />}
             onClick={onCreateProject}
-            className="shadow-sm"
+            className="shadow-sm border-none"
           >
             New Project
           </Button>
@@ -192,7 +192,7 @@ export function ProjectBrowser({
             <Button
               variant="ghost"
               size="sm"
-              icon={<Filter className="w-4 h-4" />}
+              leftIcon={<Filter className="w-4 h-4" />}
               className="px-2"
             />
           </div>

@@ -137,7 +137,7 @@ describe('CLI Detection Improvements', () => {
     it('should handle empty dependencies gracefully', () => {
       const result = determineMostLikelyCategory([], 'javascript');
 
-      expect(result.category).toBe('library');
+      expect(result.category).toBe('module');
       expect(result.confidence).toBe(0.1);
     });
 

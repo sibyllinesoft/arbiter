@@ -20,16 +20,16 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
   const isExpanded = expandedSources[groupLabel];
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div className="bg-white dark:bg-graphite-900 border border-gray-200 dark:border-graphite-700 rounded-lg overflow-hidden">
       {/* Group Header */}
       <button
         onClick={() => setExpandedSources(prev => ({ ...prev, [groupLabel]: !prev[groupLabel] }))}
-        className="w-full px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors"
+        className="w-full px-4 py-3 bg-gray-50 dark:bg-graphite-800 border-b border-gray-200 dark:border-graphite-700 flex items-center justify-between hover:bg-gray-100 dark:hover:bg-graphite-700 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
+          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
             <svg
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-blue-600 dark:text-blue-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -43,7 +43,10 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
             </svg>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-gray-900 truncate mr-4" title={groupLabel}>
+            <h3
+              className="font-medium text-gray-900 dark:text-graphite-25 truncate mr-4"
+              title={groupLabel}
+            >
               {groupLabel}
             </h3>
           </div>
@@ -60,7 +63,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
             </StatusBadge>
           )}
           <svg
-            className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-gray-400 dark:text-graphite-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
