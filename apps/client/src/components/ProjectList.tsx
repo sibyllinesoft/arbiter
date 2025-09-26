@@ -105,7 +105,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-blue-500 dark:bg-blue-600 text-white border-blue-700 dark:border-blue-800"
                     >
-                      <Server className="w-3.5 h-3.5 text-white" />
+                      <Server className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Services: {projectStatus.entities.services}
                       </span>
@@ -117,7 +117,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-purple-500 dark:bg-purple-600 text-white border-purple-700 dark:border-purple-800"
                     >
-                      <Component className="w-3.5 h-3.5 text-white" />
+                      <Component className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Modules: {projectStatus.entities.modules}
                       </span>
@@ -129,7 +129,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-red-500 dark:bg-red-600 text-white border-red-700 dark:border-red-800"
                     >
-                      <Terminal className="w-3.5 h-3.5 text-white" />
+                      <Terminal className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Tools: {projectStatus.entities.tools}
                       </span>
@@ -141,7 +141,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-teal-500 dark:bg-teal-600 text-white border-teal-700 dark:border-teal-800"
                     >
-                      <Layout className="w-3.5 h-3.5 text-white" />
+                      <Layout className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Frontends: {projectStatus.entities.frontends}
                       </span>
@@ -153,7 +153,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-amber-500 dark:bg-amber-600 text-white border-amber-700 dark:border-amber-800"
                     >
-                      <Database className="w-3.5 h-3.5 text-white" />
+                      <Database className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Databases: {projectStatus.entities.databases}
                       </span>
@@ -165,7 +165,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-emerald-500 dark:bg-emerald-600 text-white border-emerald-700 dark:border-emerald-800"
                     >
-                      <Shield className="w-3.5 h-3.5 text-white" />
+                      <Shield className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Infrastructure: {projectStatus.entities.infrastructure}
                       </span>
@@ -177,7 +177,7 @@ export function ProjectList({
                       variant="default"
                       className="bg-indigo-500 dark:bg-indigo-600 text-white border-indigo-700 dark:border-indigo-800"
                     >
-                      <Navigation className="w-3.5 h-3.5 text-white" />
+                      <Navigation className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
                         Endpoints: {projectStatus.entities.routes}
                       </span>

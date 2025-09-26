@@ -466,6 +466,7 @@ export function createProjectsRouter(deps: Dependencies) {
             artifact.id,
             projectId,
             artifact.name,
+            typeof artifact.description === 'string' ? artifact.description?.trim() || null : null,
             artifact.type,
             artifact.language,
             artifact.framework,

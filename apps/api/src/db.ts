@@ -75,6 +75,149 @@ export class SpecWorkbenchDB {
     } catch (error) {
       // Column already exists or table doesn't exist yet, ignore
     }
+
+    try {
+      this.db.exec('ALTER TABLE artifacts ADD COLUMN description TEXT');
+    } catch (error) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
+    this.backfillArtifactDescriptions();
+  }
+
+  private tryNormalizeDescription(value: unknown): string | null {
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.length === 0) {
+        return null;
+      }
+      return trimmed.length > 512 ? `${trimmed.slice(0, 509)}...` : trimmed;
+    }
+
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+      if ('description' in record) {
+        return this.tryNormalizeDescription(record.description);
+      }
+      if ('summary' in record) {
+        return this.tryNormalizeDescription(record.summary);
+      }
+    }
+
+    return null;
+  }
+
+  private extractDescriptionFromMetadata(metadata: unknown): string | null {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return null;
+    }
+
+    const meta = metadata as Record<string, unknown>;
+    const prioritizedKeys = [
+      'description',
+      'summary',
+      'details',
+      'info',
+      'package',
+      'documentation',
+      'doc',
+      'metadata',
+    ];
+
+    for (const key of Object.keys(meta)) {
+      const value = meta[key];
+      const normalizedKey = key.toLowerCase();
+
+      if (normalizedKey.includes('description') || normalizedKey === 'summary') {
+        const normalized = this.tryNormalizeDescription(value);
+        if (normalized) {
+          return normalized;
+        }
+      }
+
+      if (
+        value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        prioritizedKeys.includes(normalizedKey)
+      ) {
+        const nested = this.extractDescriptionFromMetadata(value);
+        if (nested) {
+          return nested;
+        }
+      }
+    }
+
+    for (const key of Object.keys(meta)) {
+      const value = meta[key];
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        continue;
+      }
+
+      const nested = this.extractDescriptionFromMetadata(value);
+      if (nested) {
+        return nested;
+      }
+    }
+
+    return null;
+  }
+
+  private backfillArtifactDescriptions(): void {
+    try {
+      const tableExists = this.db
+        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'artifacts'")
+        .get() as { name?: string } | undefined;
+
+      if (!tableExists) {
+        return;
+      }
+
+      const rows = this.db
+        .prepare(
+          `SELECT id, metadata FROM artifacts
+           WHERE (description IS NULL OR TRIM(description) = '')
+             AND metadata IS NOT NULL AND TRIM(metadata) != ''`
+        )
+        .all() as { id: string; metadata: string | null }[];
+
+      if (!rows || rows.length === 0) {
+        return;
+      }
+
+      const updates: { id: string; description: string }[] = [];
+
+      for (const row of rows) {
+        if (!row.metadata) {
+          continue;
+        }
+
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(row.metadata);
+        } catch (error) {
+          continue;
+        }
+
+        const description = this.extractDescriptionFromMetadata(parsed);
+        if (description) {
+          updates.push({ id: row.id, description });
+        }
+      }
+
+      if (updates.length === 0) {
+        return;
+      }
+
+      const updateStmt = this.db.prepare('UPDATE artifacts SET description = ? WHERE id = ?');
+      this.transaction(() => {
+        for (const update of updates) {
+          updateStmt.run(update.description, update.id);
+        }
+      });
+    } catch (error) {
+      console.warn('[database] Failed to backfill artifact descriptions', error);
+    }
   }
 
   /**
@@ -177,6 +320,7 @@ export class SpecWorkbenchDB {
         id TEXT PRIMARY KEY,
         project_id TEXT NOT NULL,
         name TEXT NOT NULL,
+        description TEXT,
         type TEXT NOT NULL,
         language TEXT,
         framework TEXT,
@@ -918,6 +1062,7 @@ export class SpecWorkbenchDB {
     id: string,
     projectId: string,
     name: string,
+    description: string | null,
     type: string,
     language?: string,
     framework?: string,
@@ -926,15 +1071,16 @@ export class SpecWorkbenchDB {
     confidence = 1.0
   ): Promise<any> {
     const stmt = this.db.prepare(`
-      INSERT INTO artifacts (id, project_id, name, type, language, framework, metadata, file_path, confidence)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING id, project_id, name, type, language, framework, metadata, file_path, confidence, created_at
+      INSERT INTO artifacts (id, project_id, name, description, type, language, framework, metadata, file_path, confidence)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING id, project_id, name, description, type, language, framework, metadata, file_path, confidence, created_at
     `);
 
     const result = stmt.get(
       id,
       projectId,
       name,
+      description,
       type,
       language ?? null,
       framework ?? null,

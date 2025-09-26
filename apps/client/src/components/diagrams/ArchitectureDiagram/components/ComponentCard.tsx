@@ -35,6 +35,14 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
   })();
 
   const colors = LAYER_COLORS[colorKey as keyof typeof LAYER_COLORS] || LAYER_COLORS.external;
+  const isModuleOrTool = normalizedType === 'module' || normalizedType === 'tool';
+  const rawDescription =
+    data.description ?? data.metadata?.description ?? data.metadata?.summary ?? null;
+  const descriptionText = typeof rawDescription === 'string' ? rawDescription.trim() : null;
+  const truncatedDescription =
+    descriptionText && descriptionText.length > 100
+      ? `${descriptionText.substring(0, 100)}...`
+      : descriptionText;
 
   return (
     <div
@@ -51,14 +59,22 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       </h4>
 
       {/* Component Description */}
-      {(data.description || data.metadata?.description) && (
+      {truncatedDescription && (
         <div
-          className="text-xs text-gray-600 mb-2 line-clamp-2"
-          style={{ color: colors.text, opacity: 0.8 }}
+          className={clsx(
+            'text-xs mb-2 line-clamp-2',
+            isModuleOrTool ? 'text-gray-200' : 'text-gray-600'
+          )}
+          style={
+            isModuleOrTool
+              ? undefined
+              : {
+                  color: colors.text,
+                  opacity: 0.8,
+                }
+          }
         >
-          {(data.description || data.metadata?.description || '').length > 100
-            ? `${(data.description || data.metadata?.description).substring(0, 100)}...`
-            : data.description || data.metadata?.description}
+          {truncatedDescription}
         </div>
       )}
 

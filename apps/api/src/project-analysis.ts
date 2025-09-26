@@ -701,10 +701,15 @@ const PARSERS: ParserDefinition[] = [
 
       try {
         const pkg = JSON.parse(content);
+        const manifestDescription =
+          typeof pkg.description === 'string' ? pkg.description.trim() : '';
+        const manifestVersion = typeof pkg.version === 'string' ? pkg.version.trim() : '';
         artifact.metadata = {
           ...artifact.metadata,
           package: {
             name: pkg.name,
+            version: manifestVersion || undefined,
+            description: manifestDescription || undefined,
             scripts: pkg.scripts ? Object.keys(pkg.scripts) : [],
             dependencies: pkg.dependencies ? Object.keys(pkg.dependencies) : [],
             devDependencies: pkg.devDependencies ? Object.keys(pkg.devDependencies) : [],
@@ -713,6 +718,9 @@ const PARSERS: ParserDefinition[] = [
 
         if (typeof pkg.name === 'string') {
           artifact.name = pkg.name;
+        }
+        if (manifestDescription) {
+          artifact.description = manifestDescription;
         }
         if (pkg.dependencies) {
           if (pkg.dependencies.express) artifact.framework = 'express';

@@ -4,7 +4,6 @@
  */
 
 import {
-  type ConnectionType,
   type CueArchitectureData,
   type DiagramComponent,
   type DiagramConnection,
