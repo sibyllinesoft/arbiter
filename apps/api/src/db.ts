@@ -57,6 +57,24 @@ export class SpecWorkbenchDB {
     } catch (error) {
       // Column already exists or table doesn't exist yet, ignore
     }
+
+    try {
+      this.db.exec('ALTER TABLE projects ADD COLUMN event_head_id TEXT');
+    } catch (error) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
+    try {
+      this.db.exec('ALTER TABLE events ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1');
+    } catch (error) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
+
+    try {
+      this.db.exec('ALTER TABLE events ADD COLUMN reverted_at TEXT');
+    } catch (error) {
+      // Column already exists or table doesn't exist yet, ignore
+    }
   }
 
   /**
@@ -69,6 +87,7 @@ export class SpecWorkbenchDB {
         name TEXT NOT NULL,
         service_count INTEGER DEFAULT 0,
         database_count INTEGER DEFAULT 0,
+        event_head_id TEXT,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now'))
       )
@@ -141,6 +160,8 @@ export class SpecWorkbenchDB {
         project_id TEXT NOT NULL,
         event_type TEXT NOT NULL,
         data TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        reverted_at TEXT,
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
       )
@@ -206,6 +227,9 @@ export class SpecWorkbenchDB {
     // Event indices
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_events_project_id ON events (project_id)');
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC)');
+    this.db.exec(
+      'CREATE INDEX IF NOT EXISTS idx_events_project_active ON events (project_id, is_active)'
+    );
 
     // Artifact indices
     this.db.exec('CREATE INDEX IF NOT EXISTS idx_artifacts_project_id ON artifacts (project_id)');
@@ -528,6 +552,98 @@ export class SpecWorkbenchDB {
   }
 
   // Event operations
+  private mapEventRow(row: any): Event | null {
+    if (!row) {
+      return null;
+    }
+
+    const data =
+      typeof row.data === 'string'
+        ? JSON.parse(row.data)
+        : ((row.data as Record<string, unknown> | undefined) ?? {});
+
+    return {
+      id: row.id as string,
+      project_id: row.project_id as string,
+      event_type: row.event_type as EventType,
+      data,
+      is_active: row.is_active === 1 || row.is_active === true,
+      reverted_at: row.reverted_at ?? null,
+      created_at: row.created_at as string,
+    };
+  }
+
+  private finalizeEventCreation(projectId: string, event: Event): Event {
+    return this.transaction(() => {
+      const projectRow = this.db
+        .prepare('SELECT event_head_id FROM projects WHERE id = ?')
+        .get(projectId) as { event_head_id?: string | null } | undefined;
+
+      if (!projectRow) {
+        throw new Error(`Project ${projectId} not found`);
+      }
+
+      const headEventId = projectRow.event_head_id ?? null;
+
+      // helper closures reuse to avoid duplication
+      const activateEvent = () => {
+        this.db
+          .prepare(`UPDATE events SET is_active = 1, reverted_at = NULL WHERE id = ?`)
+          .run(event.id);
+      };
+
+      const deactivateEvent = () => {
+        this.db
+          .prepare(
+            `UPDATE events SET is_active = 0, reverted_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE id = ?`
+          )
+          .run(event.id);
+      };
+
+      if (!headEventId) {
+        // No head yet - set this event as the head and mark active
+        this.db
+          .prepare('UPDATE projects SET event_head_id = ? WHERE id = ?')
+          .run(event.id, projectId);
+        activateEvent();
+      } else if (headEventId === event.id) {
+        activateEvent();
+      } else {
+        const headRow = this.db
+          .prepare('SELECT created_at FROM events WHERE id = ?')
+          .get(headEventId) as { created_at: string } | undefined;
+
+        if (!headRow) {
+          // Head reference invalid - treat as no head and promote new event
+          this.db
+            .prepare('UPDATE projects SET event_head_id = ? WHERE id = ?')
+            .run(event.id, projectId);
+          activateEvent();
+        } else if (event.created_at <= headRow.created_at) {
+          activateEvent();
+        } else {
+          // Event is beyond current head - mark as dangling
+          deactivateEvent();
+        }
+      }
+
+      const updatedRow = this.db.prepare('SELECT * FROM events WHERE id = ?').get(event.id);
+      const updatedEvent = this.mapEventRow(updatedRow);
+
+      if (!updatedEvent) {
+        throw new Error('Failed to fetch event after creation');
+      }
+
+      return updatedEvent;
+    });
+  }
+
+  getEventById(eventId: string): Event | null {
+    const stmt = this.db.prepare('SELECT * FROM events WHERE id = ?');
+    const row = stmt.get(eventId);
+    return this.mapEventRow(row);
+  }
+
   async createEvent(
     id: string,
     projectId: string,
@@ -537,24 +653,29 @@ export class SpecWorkbenchDB {
     const stmt = this.db.prepare(`
       INSERT INTO events (id, project_id, event_type, data)
       VALUES (?, ?, ?, ?)
-      RETURNING id, project_id, event_type, data, created_at
+      RETURNING id, project_id, event_type, data, is_active, reverted_at, created_at
     `);
 
-    const result = stmt.get(id, projectId, eventType, JSON.stringify(data)) as Event & {
-      data: string;
-    };
+    const result = stmt.get(id, projectId, eventType, JSON.stringify(data));
 
     if (!result) {
       throw new Error('Failed to create event');
     }
 
-    return {
-      ...result,
-      data: JSON.parse(result.data),
-    };
+    const mapped = this.mapEventRow(result);
+    if (!mapped) {
+      throw new Error('Failed to map created event');
+    }
+
+    return this.finalizeEventCreation(projectId, mapped);
   }
 
-  async getEvents(projectId: string, limit = 100, since?: string): Promise<Event[]> {
+  async getEvents(
+    projectId: string,
+    limit = 100,
+    since?: string,
+    includeDangling = true
+  ): Promise<Event[]> {
     let query = `
       SELECT * FROM events 
       WHERE project_id = ?
@@ -572,16 +693,19 @@ export class SpecWorkbenchDB {
       params.push(sqliteTimestamp);
     }
 
+    if (!includeDangling) {
+      query += ' AND is_active = 1';
+    }
+
     query += ' ORDER BY created_at DESC LIMIT ?';
     params.push(limit);
 
     const stmt = this.db.prepare(query);
-    const results = stmt.all(...params) as (Event & { data: string })[];
+    const results = stmt.all(...params);
 
-    return results.map(event => ({
-      ...event,
-      data: JSON.parse(event.data),
-    }));
+    return results
+      .map(row => this.mapEventRow(row))
+      .filter((event): event is Event => event !== null);
   }
 
   // Alias method for compatibility with tests
@@ -595,12 +719,198 @@ export class SpecWorkbenchDB {
       WHERE project_id = ? AND event_type = ?
       ORDER BY created_at DESC
     `);
-    const results = stmt.all(projectId, eventType) as (Event & { data: string })[];
+    const results = stmt.all(projectId, eventType);
 
-    return results.map(event => ({
-      ...event,
-      data: JSON.parse(event.data),
-    }));
+    return results
+      .map(row => this.mapEventRow(row))
+      .filter((event): event is Event => event !== null);
+  }
+
+  getProjectEventHead(projectId: string): Event | null {
+    const projectRow = this.db
+      .prepare('SELECT event_head_id FROM projects WHERE id = ?')
+      .get(projectId) as { event_head_id?: string | null } | undefined;
+
+    if (!projectRow) {
+      throw new Error(`Project ${projectId} not found`);
+    }
+
+    const headEventId = projectRow.event_head_id ?? null;
+
+    if (!headEventId) {
+      const latestActive = this.db
+        .prepare(
+          `SELECT * FROM events WHERE project_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1`
+        )
+        .get(projectId);
+      return this.mapEventRow(latestActive);
+    }
+
+    return this.getEventById(headEventId);
+  }
+
+  setEventHead(
+    projectId: string,
+    headEventId: string | null
+  ): {
+    head: Event | null;
+    reactivatedEventIds: string[];
+    deactivatedEventIds: string[];
+  } {
+    return this.transaction(() => {
+      const projectRow = this.db.prepare('SELECT id FROM projects WHERE id = ?').get(projectId);
+      if (!projectRow) {
+        throw new Error(`Project ${projectId} not found`);
+      }
+
+      let targetHeadId: string | null = null;
+      let headTimestamp: string | null = null;
+
+      if (headEventId) {
+        const headRow = this.db
+          .prepare('SELECT id, created_at FROM events WHERE id = ? AND project_id = ?')
+          .get(headEventId, projectId) as { id: string; created_at: string } | undefined;
+
+        if (!headRow) {
+          throw new Error('Head event not found for project');
+        }
+
+        targetHeadId = headRow.id;
+        headTimestamp = headRow.created_at;
+      }
+
+      let reactivatedEventIds: string[] = [];
+      let deactivatedEventIds: string[] = [];
+
+      if (headTimestamp) {
+        const toReactivate = this.db
+          .prepare(
+            `SELECT id FROM events WHERE project_id = ? AND created_at <= ? AND is_active = 0`
+          )
+          .all(projectId, headTimestamp) as { id: string }[];
+
+        const toDeactivate = this.db
+          .prepare(
+            `SELECT id FROM events WHERE project_id = ? AND created_at > ? AND is_active = 1`
+          )
+          .all(projectId, headTimestamp) as { id: string }[];
+
+        reactivatedEventIds = toReactivate.map(row => row.id);
+        deactivatedEventIds = toDeactivate.map(row => row.id);
+
+        this.db
+          .prepare(
+            `UPDATE events SET is_active = 1, reverted_at = NULL WHERE project_id = ? AND created_at <= ?`
+          )
+          .run(projectId, headTimestamp);
+
+        this.db
+          .prepare(
+            `UPDATE events SET is_active = 0, reverted_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE project_id = ? AND created_at > ?`
+          )
+          .run(projectId, headTimestamp);
+      } else {
+        const toReactivate = this.db
+          .prepare(`SELECT id FROM events WHERE project_id = ? AND is_active = 0`)
+          .all(projectId) as { id: string }[];
+
+        reactivatedEventIds = toReactivate.map(row => row.id);
+
+        this.db
+          .prepare(`UPDATE events SET is_active = 1, reverted_at = NULL WHERE project_id = ?`)
+          .run(projectId);
+
+        const latestRow = this.db
+          .prepare(`SELECT id FROM events WHERE project_id = ? ORDER BY created_at DESC LIMIT 1`)
+          .get(projectId) as { id: string } | undefined;
+
+        targetHeadId = latestRow?.id ?? null;
+      }
+
+      this.db
+        .prepare('UPDATE projects SET event_head_id = ? WHERE id = ?')
+        .run(targetHeadId, projectId);
+
+      const headEventRow = targetHeadId
+        ? this.db.prepare('SELECT * FROM events WHERE id = ?').get(targetHeadId)
+        : undefined;
+      const headEvent = this.mapEventRow(headEventRow);
+
+      return {
+        head: headEvent,
+        reactivatedEventIds,
+        deactivatedEventIds,
+      };
+    });
+  }
+
+  revertEvents(
+    projectId: string,
+    eventIds: string[]
+  ): {
+    head: Event | null;
+    revertedEventIds: string[];
+  } {
+    if (eventIds.length === 0) {
+      return {
+        head: this.getProjectEventHead(projectId),
+        revertedEventIds: [],
+      };
+    }
+
+    const uniqueIds = Array.from(new Set(eventIds));
+
+    return this.transaction(() => {
+      const placeholders = uniqueIds.map(() => '?').join(',');
+
+      const events = this.db
+        .prepare(`SELECT id, project_id FROM events WHERE id IN (${placeholders})`)
+        .all(...uniqueIds) as { id: string; project_id: string }[];
+
+      if (events.length !== uniqueIds.length) {
+        throw new Error('One or more events not found');
+      }
+
+      const invalid = events.filter(event => event.project_id !== projectId);
+      if (invalid.length > 0) {
+        throw new Error('One or more events do not belong to the specified project');
+      }
+
+      const activeEvents = this.db
+        .prepare(
+          `SELECT id FROM events WHERE project_id = ? AND id IN (${placeholders}) AND is_active = 1`
+        )
+        .all(projectId, ...uniqueIds) as { id: string }[];
+
+      const toDeactivateIds = activeEvents.map(event => event.id);
+
+      if (toDeactivateIds.length > 0) {
+        const deactivatePlaceholders = toDeactivateIds.map(() => '?').join(',');
+        this.db
+          .prepare(
+            `UPDATE events SET is_active = 0, reverted_at = strftime('%Y-%m-%d %H:%M:%f', 'now') WHERE project_id = ? AND id IN (${deactivatePlaceholders})`
+          )
+          .run(projectId, ...toDeactivateIds);
+      }
+
+      const headRow = this.db
+        .prepare(
+          `SELECT * FROM events WHERE project_id = ? AND is_active = 1 ORDER BY created_at DESC LIMIT 1`
+        )
+        .get(projectId);
+
+      const headEvent = this.mapEventRow(headRow);
+      const headEventId = headEvent?.id ?? null;
+
+      this.db
+        .prepare('UPDATE projects SET event_head_id = ? WHERE id = ?')
+        .run(headEventId, projectId);
+
+      return {
+        head: headEvent,
+        revertedEventIds: toDeactivateIds,
+      };
+    });
   }
 
   // Artifact operations

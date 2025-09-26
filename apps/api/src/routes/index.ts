@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { createCliRouter } from './cli';
 import { createCoreRouter } from './core';
+import { createEventsRouter } from './events';
 import { createGapsRouter } from './gaps';
 import { createGithubRouter } from './github';
 import { createHandlersRouter } from './handlers';
@@ -24,6 +25,7 @@ export { createHandlersRouter } from './handlers';
 export { createWebhooksRouter } from './webhooks';
 export { createImportRouter } from './import';
 export { createGithubRouter } from './github';
+export { createEventsRouter } from './events';
 
 export function createApiRouter(deps: Dependencies) {
   const app = new Hono();
@@ -45,6 +47,7 @@ export function createApiRouter(deps: Dependencies) {
   app.route('/api', createGapsRouter(deps));
   app.route('/api', createHandlersRouter(deps));
   app.route('/api', createWebhooksRouter(deps));
+  app.route('/api', createEventsRouter(deps));
   app.route('/api/import', createImportRouter(deps));
   app.route('/api/github', createGithubRouter(deps));
 

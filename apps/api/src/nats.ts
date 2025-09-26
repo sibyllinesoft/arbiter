@@ -131,7 +131,7 @@ export class NatsService {
    */
   async publishEvent(
     projectId: string,
-    event: Omit<Event, 'id' | 'created_at'>,
+    event: Omit<Event, 'id' | 'created_at' | 'is_active' | 'reverted_at'>,
     specHash?: string
   ): Promise<void> {
     // Always return early if NATS is disabled - no impact on core functionality

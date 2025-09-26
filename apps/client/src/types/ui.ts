@@ -57,6 +57,7 @@ export type RightTab =
   | 'gaps'
   | 'resolved'
   | 'architecture'
+  | 'events'
   | 'handlers';
 
 // Legacy type for backwards compatibility

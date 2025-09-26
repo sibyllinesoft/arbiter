@@ -4,6 +4,7 @@
 
 import {
   ArchitectureReport,
+  EventsReport,
   FlowReport,
   FsmReport,
   GapsReport,
@@ -82,6 +83,15 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
         <ArchitectureReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="System Architecture" />
+      ),
+    },
+    {
+      id: 'events',
+      label: 'Events',
+      content: project ? (
+        <EventsReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Event Log" />
       ),
     },
     {

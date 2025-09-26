@@ -23,6 +23,33 @@ export function useProject(projectId: string) {
   });
 }
 
+export function useProjectEvents(
+  projectId: string,
+  options: { limit?: number; includeDangling?: boolean } = {}
+) {
+  const requestOptions: { limit?: number; includeDangling?: boolean } = {};
+
+  if (options.limit !== undefined) {
+    requestOptions.limit = options.limit;
+  }
+
+  if (options.includeDangling !== undefined) {
+    requestOptions.includeDangling = options.includeDangling;
+  }
+
+  return useQuery({
+    queryKey: [
+      'project-events',
+      projectId,
+      requestOptions.limit ?? null,
+      requestOptions.includeDangling ?? null,
+    ],
+    queryFn: () => apiService.getProjectEvents(projectId, requestOptions),
+    enabled: !!projectId,
+    refetchInterval: 5000,
+  });
+}
+
 export function useCreateProject() {
   const queryClient = useQueryClient();
 
@@ -41,6 +68,31 @@ export function useDeleteProject() {
     mutationFn: (projectId: string) => apiService.deleteProject(projectId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useSetEventHead(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (headEventId: string | null) =>
+      apiService.setProjectEventHead(projectId, headEventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+    },
+  });
+}
+
+export function useRevertProjectEvents(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (eventIds: string[]) => apiService.revertProjectEvents(projectId, eventIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
     },
   });
 }

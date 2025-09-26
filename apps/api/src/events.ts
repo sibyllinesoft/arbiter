@@ -2,8 +2,9 @@
  * Real-time events and WebSocket management
  */
 import type { ServerWebSocket } from 'bun';
+import type { SpecWorkbenchDB } from './db';
 import { NatsService } from './nats';
-import type { AuthContext, Event, ServerConfig, WebSocketMessage } from './types';
+import type { AuthContext, Event, EventType, ServerConfig, WebSocketMessage } from './types';
 import { generateId, getCurrentTimestamp, logger } from './utils';
 
 interface WebSocketConnection {
@@ -21,7 +22,10 @@ export class EventService {
   private pingInterval?: Timer;
   private nats: NatsService;
 
-  constructor(private config: ServerConfig) {
+  constructor(
+    private config: ServerConfig,
+    private db?: SpecWorkbenchDB
+  ) {
     this.nats = new NatsService(config.nats);
     this.startPingInterval();
   }
@@ -329,19 +333,60 @@ export class EventService {
   /**
    * Create WebSocket message from event
    */
-  private createWebSocketMessage(
-    projectId: string,
-    event: Omit<Event, 'id' | 'created_at'>
-  ): WebSocketMessage {
+  private createWebSocketMessage(projectId: string, event: Event): WebSocketMessage {
     return {
       type: 'event',
       project_id: projectId,
       data: {
         ...event,
-        id: generateId(),
-        created_at: getCurrentTimestamp(),
+        timestamp: event.created_at,
       },
     };
+  }
+
+  private async persistEvent(
+    projectId: string,
+    event: Omit<Event, 'id' | 'created_at' | 'is_active' | 'reverted_at'>
+  ): Promise<Event> {
+    if (!this.db) {
+      return {
+        id: generateId(),
+        project_id: projectId,
+        event_type: event.event_type as EventType,
+        data: event.data,
+        is_active: true,
+        reverted_at: null,
+        created_at: getCurrentTimestamp(),
+      };
+    }
+
+    try {
+      return await this.db.createEvent(
+        generateId(),
+        projectId,
+        event.event_type as EventType,
+        event.data
+      );
+    } catch (error) {
+      logger.error(
+        'Failed to persist event to database',
+        error instanceof Error ? error : undefined,
+        {
+          projectId,
+          eventType: event.event_type,
+        }
+      );
+
+      return {
+        id: generateId(),
+        project_id: projectId,
+        event_type: event.event_type as EventType,
+        data: event.data,
+        is_active: true,
+        reverted_at: null,
+        created_at: getCurrentTimestamp(),
+      };
+    }
   }
 
   /**
@@ -349,7 +394,7 @@ export class EventService {
    */
   private async publishToNats(
     projectId: string,
-    event: Omit<Event, 'id' | 'created_at'>,
+    event: Omit<Event, 'id' | 'created_at' | 'is_active' | 'reverted_at'>,
     specHash?: string
   ): Promise<void> {
     this.nats.publishEvent(projectId, event, specHash).catch(_error => {
@@ -424,7 +469,7 @@ export class EventService {
    */
   private logBroadcastResults(
     projectId: string,
-    event: Omit<Event, 'id' | 'created_at'>,
+    event: Event,
     subscriberCount: number,
     successCount: number,
     errorCount: number,
@@ -455,13 +500,16 @@ export class EventService {
 
   async broadcastToProject(
     projectId: string,
-    event: Omit<Event, 'id' | 'created_at'>,
+    event: Omit<Event, 'id' | 'created_at' | 'is_active' | 'reverted_at'>,
     specHash?: string
-  ): Promise<void> {
+  ): Promise<Event> {
     const startTime = Date.now();
 
+    // Persist event if database available
+    const persistedEvent = await this.persistEvent(projectId, event);
+
     // Create WebSocket message
-    const message = this.createWebSocketMessage(projectId, event);
+    const message = this.createWebSocketMessage(projectId, persistedEvent);
 
     // Publish to NATS (async, non-blocking)
     await this.publishToNats(projectId, event, specHash);
@@ -469,7 +517,7 @@ export class EventService {
     // Check for WebSocket subscribers
     if (!this.hasProjectSubscribers(projectId)) {
       logger.debug('No WebSocket subscribers for project', { projectId });
-      return;
+      return persistedEvent;
     }
 
     const subscribers = this.getProjectSubscribers(projectId)!;
@@ -485,13 +533,14 @@ export class EventService {
     const duration = Date.now() - startTime;
     this.logBroadcastResults(
       projectId,
-      event,
+      persistedEvent,
       subscribers.size,
       successCount,
       errorCount,
       duration
     );
     this.checkBroadcastPerformance(projectId, duration);
+    return persistedEvent;
   }
 
   /**

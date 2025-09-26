@@ -14,6 +14,7 @@ type RightTab =
   | 'gaps'
   | 'resolved'
   | 'architecture'
+  | 'events'
   | 'handlers';
 
 interface UiState {

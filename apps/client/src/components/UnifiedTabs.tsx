@@ -23,15 +23,15 @@ interface DiagramPlaceholderProps {
 
 function DiagramPlaceholder({ type }: DiagramPlaceholderProps) {
   return (
-    <div className="flex items-center justify-center h-full bg-gray-50">
-      <div className="text-center">
-        <div className="text-gray-400 mb-2">
-          <div className="w-16 h-16 mx-auto bg-gray-200 rounded-lg flex items-center justify-center">
+    <div className="flex h-full items-center justify-center bg-white transition-colors dark:bg-graphite-950">
+      <div className="text-center text-gray-600 dark:text-graphite-300">
+        <div className="mb-3 text-gray-400 dark:text-graphite-400">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-gray-100 shadow-sm dark:bg-graphite-900">
             <span className="text-2xl">📊</span>
           </div>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-1">{type}</h3>
-        <p className="text-gray-600">Select a project to view this content</p>
+        <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-graphite-50">{type}</h3>
+        <p>Select a project to view this content</p>
       </div>
     </div>
   );

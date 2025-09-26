@@ -15,6 +15,7 @@ export { GapsReport } from './GapsReport';
 export { ResolvedReport } from './ResolvedReport';
 export { ArchitectureReport } from './ArchitectureReport';
 export { HandlersReport } from './HandlersReport';
+export { EventsReport } from './EventsReport';
 
 // Other Components
 export { ProjectList } from './ProjectList';

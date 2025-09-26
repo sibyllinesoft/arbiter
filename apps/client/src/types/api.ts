@@ -17,6 +17,7 @@ export interface Project {
   starred?: boolean | undefined;
   validationStatus?: 'valid' | 'warnings' | 'errors' | 'pending' | undefined;
   tags?: string[] | undefined;
+  event_head_id?: string | null;
   entities?: {
     services: number;
     databases: number;
@@ -53,18 +54,27 @@ export interface Event {
   project_id: string;
   event_type: EventType;
   data: Record<string, unknown>;
+  is_active: boolean;
+  reverted_at?: string | null;
   created_at: string;
 }
 
 // Event types for real-time collaboration
 export type EventType =
+  | 'fragment_revision_created'
   | 'fragment_created'
   | 'fragment_updated'
   | 'fragment_deleted'
   | 'validation_started'
   | 'validation_completed'
   | 'validation_failed'
-  | 'version_frozen';
+  | 'version_frozen'
+  | 'webhook_received'
+  | 'git_push_processed'
+  | 'git_merge_processed'
+  | 'event_head_updated'
+  | 'events_reverted'
+  | 'events_reapplied';
 
 // API request/response types
 export interface CreateFragmentRequest {

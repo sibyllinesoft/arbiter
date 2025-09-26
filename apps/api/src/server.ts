@@ -48,7 +48,7 @@ export class SpecWorkbenchServer {
     this.db = new SpecWorkbenchDB(config);
     this.auth = new AuthService(config);
     this.specEngine = new SpecEngine(config);
-    this.events = new EventService(config);
+    this.events = new EventService(config, this.db);
     this.webhooks = new WebhookService(config, this.events, this.db);
     this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
 

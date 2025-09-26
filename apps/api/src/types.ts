@@ -52,6 +52,8 @@ export interface Event {
   project_id: string;
   event_type: EventType;
   data: Record<string, unknown>;
+  is_active: boolean;
+  reverted_at?: string | null;
   created_at: string;
 }
 
@@ -67,7 +69,10 @@ export type EventType =
   | 'version_frozen'
   | 'webhook_received'
   | 'git_push_processed'
-  | 'git_merge_processed';
+  | 'git_merge_processed'
+  | 'event_head_updated'
+  | 'events_reverted'
+  | 'events_reapplied';
 
 // API request/response types
 export interface CreateFragmentRequest {
@@ -203,7 +208,7 @@ export interface WebSocketMessage {
 export interface NatsSpecEvent {
   topic: string;
   projectId: string;
-  event: Omit<Event, 'id' | 'created_at'>;
+  event: Omit<Event, 'id' | 'created_at' | 'is_active' | 'reverted_at'>;
   metadata: {
     timestamp: string;
     specHash?: string;

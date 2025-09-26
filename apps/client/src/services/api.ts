@@ -6,6 +6,7 @@ import type {
   CreateFragmentRequest,
   CreateFragmentResponse,
   CreateHandlerRequest,
+  Event,
   Fragment,
   FreezeRequest,
   FreezeResponse,
@@ -41,6 +42,29 @@ export class ApiError extends Error {
 export interface EnvironmentInfo {
   runtime: 'cloudflare' | 'node';
   cloudflareTunnelSupported: boolean;
+}
+
+interface ProjectEventsResponse {
+  success: boolean;
+  events: Event[];
+  head_event: Event | null;
+  head_event_id: string | null;
+  dangling_event_ids: string[];
+}
+
+interface SetEventHeadResponse {
+  success: boolean;
+  head_event: Event | null;
+  head_event_id: string | null;
+  reactivated_event_ids: string[];
+  deactivated_event_ids: string[];
+}
+
+interface RevertEventsResponse {
+  success: boolean;
+  head_event: Event | null;
+  head_event_id: string | null;
+  reverted_event_ids: string[];
 }
 
 export class ApiService {
@@ -138,6 +162,46 @@ export class ApiService {
 
   async getProject(projectId: string): Promise<Project> {
     return this.request<Project>(`/api/projects/${projectId}`);
+  }
+
+  async getProjectEvents(
+    projectId: string,
+    options: { limit?: number; includeDangling?: boolean; since?: string } = {}
+  ): Promise<ProjectEventsResponse> {
+    const params = new URLSearchParams();
+
+    if (options.limit) {
+      params.set('limit', String(options.limit));
+    }
+
+    if (options.since) {
+      params.set('since', options.since);
+    }
+
+    if (options.includeDangling === false) {
+      params.set('includeDangling', 'false');
+    }
+
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+
+    return this.request<ProjectEventsResponse>(`/api/projects/${projectId}/events${queryString}`);
+  }
+
+  async setProjectEventHead(
+    projectId: string,
+    headEventId: string | null
+  ): Promise<SetEventHeadResponse> {
+    return this.request<SetEventHeadResponse>(`/api/projects/${projectId}/events/head`, {
+      method: 'POST',
+      body: JSON.stringify({ head_event_id: headEventId }),
+    });
+  }
+
+  async revertProjectEvents(projectId: string, eventIds: string[]): Promise<RevertEventsResponse> {
+    return this.request<RevertEventsResponse>(`/api/projects/${projectId}/events/revert`, {
+      method: 'POST',
+      body: JSON.stringify({ event_ids: eventIds }),
+    });
   }
 
   async getEnvironmentInfo(): Promise<EnvironmentInfo> {
