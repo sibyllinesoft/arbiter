@@ -34,7 +34,7 @@ export function ConfigModal({ onClose }: ConfigModalProps) {
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 scrollbar-transparent">
           <ConfigScreen isModal onClose={onClose} />
         </div>
       </div>

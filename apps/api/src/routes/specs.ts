@@ -1,6 +1,19 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { Hono } from 'hono';
+import ts from 'typescript';
+
+const HTTP_METHOD_DECORATORS = new Map<string, string>([
+  ['Get', 'GET'],
+  ['Post', 'POST'],
+  ['Put', 'PUT'],
+  ['Patch', 'PATCH'],
+  ['Delete', 'DELETE'],
+  ['Head', 'HEAD'],
+  ['Options', 'OPTIONS'],
+]);
+
+const HTTP_METHOD_ORDER = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
 
 type Dependencies = Record<string, unknown>;
 
@@ -429,20 +442,505 @@ export function createSpecsRouter(deps: Dependencies) {
         })
       );
 
-      const backendRoutes = serviceArtifacts.flatMap((artifact: any) => {
+      const backendRoutes: any[] = [];
+
+      const toSlug = (value: string) =>
+        value
+          .replace(/[^a-z0-9]+/gi, '-')
+          .replace(/^-+|-+$/g, '')
+          .toLowerCase();
+
+      const resolveControllerPath = async (
+        relatives: string[],
+        normalized: string
+      ): Promise<string | null> => {
+        for (const relative of relatives) {
+          if (!relative) continue;
+          const absoluteRoot = path.isAbsolute(relative) ? relative : path.resolve(relative);
+          const attempt = path.resolve(absoluteRoot, normalized);
+          if (await fs.pathExists(attempt)) {
+            return attempt;
+          }
+        }
+
+        const fallback = path.resolve(normalized);
+        if (await fs.pathExists(fallback)) {
+          return fallback;
+        }
+
+        return null;
+      };
+
+      const extractControllerDetails = async (
+        controllerAbsolute: string
+      ): Promise<{
+        httpMethods: string[];
+        endpoints: Array<{
+          method: string;
+          path?: string;
+          fullPath?: string;
+          handler?: string;
+          signature: string;
+          returnType?: string;
+          documentation?: {
+            summary?: string;
+            description?: string;
+            returns?: string;
+            remarks?: string[];
+            examples?: string[];
+            deprecated?: string | boolean;
+          };
+          parameters: Array<{
+            name: string;
+            type?: string;
+            optional: boolean;
+            description?: string;
+            decorators?: string[];
+          }>;
+          responses: Array<{
+            status?: string;
+            description?: string;
+            decorator: 'SuccessResponse' | 'Response';
+          }>;
+          tags?: string[];
+          source?: { line: number };
+        }>;
+        routeDecorator?: string;
+        tags: string[];
+        className?: string;
+      }> => {
+        try {
+          const content = await fs.readFile(controllerAbsolute, 'utf-8');
+          const sourceFile = ts.createSourceFile(
+            controllerAbsolute,
+            content,
+            ts.ScriptTarget.Latest,
+            true,
+            ts.ScriptKind.TS
+          );
+
+          const methodSet = new Set<string>();
+          const endpoints: Array<{
+            method: string;
+            path?: string;
+            fullPath?: string;
+            handler?: string;
+            signature: string;
+            returnType?: string;
+            documentation?: {
+              summary?: string;
+              description?: string;
+              returns?: string;
+              remarks?: string[];
+              examples?: string[];
+              deprecated?: string | boolean;
+            };
+            parameters: Array<{
+              name: string;
+              type?: string;
+              optional: boolean;
+              description?: string;
+              decorators?: string[];
+            }>;
+            responses: Array<{
+              status?: string;
+              description?: string;
+              decorator: 'SuccessResponse' | 'Response';
+            }>;
+            tags?: string[];
+            source?: { line: number };
+          }> = [];
+          const tagsSet = new Set<string>();
+          let routeDecorator: string | undefined;
+          let className: string | undefined;
+
+          const normalizeComment = (
+            comment?: string | ts.NodeArray<ts.JSDocComment>
+          ): string | undefined => {
+            if (!comment) {
+              return undefined;
+            }
+            if (typeof comment === 'string') {
+              return comment.trim();
+            }
+            const text = comment
+              .map(part => {
+                if (typeof part === 'string') {
+                  return part;
+                }
+                if ('text' in part && typeof (part as { text?: unknown }).text === 'string') {
+                  return String(part.text);
+                }
+                return part.getText(sourceFile);
+              })
+              .join('');
+            return text.trim();
+          };
+
+          const getDecorators = (node: ts.Node): readonly ts.Decorator[] => {
+            const direct = (node as { decorators?: readonly ts.Decorator[] }).decorators;
+            if (direct && direct.length > 0) {
+              return direct;
+            }
+            if (
+              typeof (ts as any).canHaveDecorators === 'function' &&
+              (ts as any).canHaveDecorators(node)
+            ) {
+              const resolved = (ts as any).getDecorators?.(node);
+              if (resolved && resolved.length > 0) {
+                return resolved;
+              }
+            }
+            return [];
+          };
+
+          const parseDecorator = (
+            decorator: ts.Decorator
+          ): { name: string; arguments: readonly ts.Expression[] } | null => {
+            const expression = decorator.expression;
+            if (ts.isCallExpression(expression)) {
+              const callee = expression.expression;
+              const name = ts.isIdentifier(callee)
+                ? callee.text
+                : ts.isPropertyAccessExpression(callee)
+                  ? callee.name.text
+                  : callee.getText(sourceFile);
+              return { name, arguments: expression.arguments };
+            }
+            if (ts.isIdentifier(expression)) {
+              return { name: expression.text, arguments: [] };
+            }
+            if (ts.isPropertyAccessExpression(expression)) {
+              return { name: expression.name.text, arguments: [] };
+            }
+            return { name: expression.getText(sourceFile), arguments: [] };
+          };
+
+          const combinePaths = (base?: string, sub?: string): string | undefined => {
+            if (!base && !sub) return undefined;
+            if (!base) return sub;
+            if (!sub) return base;
+            const trimmedBase = base.endsWith('/') ? base.slice(0, -1) : base;
+            const trimmedSub = sub.startsWith('/') ? sub : `/${sub}`;
+            return `${trimmedBase}${trimmedSub}`.replace(/\/+/g, '/');
+          };
+
+          const recordHttpMethod = (method: string) => {
+            if (!method) return;
+            methodSet.add(method);
+          };
+
+          const httpOrderSort = (values: Iterable<string>) => {
+            return Array.from(values).sort((a, b) => {
+              const aIndex = HTTP_METHOD_ORDER.indexOf(a);
+              const bIndex = HTTP_METHOD_ORDER.indexOf(b);
+              if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+              if (aIndex === -1) return 1;
+              if (bIndex === -1) return -1;
+              return aIndex - bIndex;
+            });
+          };
+
+          const controllers: ts.ClassDeclaration[] = [];
+          sourceFile.forEachChild(node => {
+            if (ts.isClassDeclaration(node)) {
+              controllers.push(node);
+            }
+          });
+
+          for (const controller of controllers) {
+            if (!className && controller.name) {
+              className = controller.name.text;
+            }
+
+            for (const decorator of getDecorators(controller)) {
+              const parsed = parseDecorator(decorator);
+              if (!parsed) continue;
+              const decoratorName = parsed.name;
+              if (decoratorName === 'Route' && parsed.arguments[0]) {
+                const arg = parsed.arguments[0];
+                if (ts.isStringLiteralLike(arg)) {
+                  routeDecorator = arg.text;
+                } else {
+                  routeDecorator = arg.getText(sourceFile);
+                }
+              }
+              if (decoratorName === 'Tags') {
+                parsed.arguments.forEach(arg => {
+                  if (ts.isStringLiteralLike(arg)) {
+                    tagsSet.add(arg.text);
+                  } else {
+                    const text = arg.getText(sourceFile);
+                    if (text) {
+                      tagsSet.add(text);
+                    }
+                  }
+                });
+              }
+            }
+
+            controller.members.forEach(member => {
+              if (!ts.isMethodDeclaration(member)) {
+                return;
+              }
+
+              const methodDecorators = getDecorators(member);
+              if (!methodDecorators.length) {
+                return;
+              }
+
+              let httpMethodName: string | undefined;
+              let subPath: string | undefined;
+              const endpointTags = new Set<string>();
+              const responses: Array<{
+                status?: string;
+                description?: string;
+                decorator: 'SuccessResponse' | 'Response';
+              }> = [];
+              let deprecatedViaDecorator: string | boolean | undefined;
+
+              for (const decorator of methodDecorators) {
+                const parsed = parseDecorator(decorator);
+                if (!parsed) continue;
+                const decoratorName = parsed.name;
+                const normalizedMethod =
+                  HTTP_METHOD_DECORATORS.get(decoratorName) || decoratorName.toUpperCase();
+                if (
+                  HTTP_METHOD_DECORATORS.has(decoratorName) ||
+                  HTTP_METHOD_DECORATORS.has(normalizedMethod)
+                ) {
+                  httpMethodName = HTTP_METHOD_DECORATORS.get(decoratorName) || normalizedMethod;
+                  const firstArg = parsed.arguments[0];
+                  if (firstArg) {
+                    if (ts.isStringLiteralLike(firstArg)) {
+                      subPath = firstArg.text || undefined;
+                    } else {
+                      const text = firstArg.getText(sourceFile).trim();
+                      subPath = text || undefined;
+                    }
+                  }
+                  continue;
+                }
+
+                if (decoratorName === 'Tags') {
+                  parsed.arguments.forEach(arg => {
+                    if (ts.isStringLiteralLike(arg)) {
+                      endpointTags.add(arg.text);
+                      tagsSet.add(arg.text);
+                    } else {
+                      const text = arg.getText(sourceFile);
+                      if (text) {
+                        endpointTags.add(text);
+                        tagsSet.add(text);
+                      }
+                    }
+                  });
+                  continue;
+                }
+
+                if (decoratorName === 'SuccessResponse' || decoratorName === 'Response') {
+                  const statusArg = parsed.arguments[0];
+                  const descriptionArg = parsed.arguments[1];
+                  const status = statusArg
+                    ? ts.isStringLiteralLike(statusArg)
+                      ? statusArg.text
+                      : statusArg.getText(sourceFile)
+                    : undefined;
+                  const description = descriptionArg
+                    ? ts.isStringLiteralLike(descriptionArg)
+                      ? descriptionArg.text
+                      : descriptionArg.getText(sourceFile)
+                    : undefined;
+                  responses.push({
+                    status,
+                    description,
+                    decorator: decoratorName as 'SuccessResponse' | 'Response',
+                  });
+                  continue;
+                }
+
+                if (decoratorName === 'Deprecated') {
+                  const reasonArg = parsed.arguments[0];
+                  deprecatedViaDecorator = reasonArg
+                    ? ts.isStringLiteralLike(reasonArg)
+                      ? reasonArg.text
+                      : reasonArg.getText(sourceFile)
+                    : true;
+                }
+              }
+
+              if (!httpMethodName) {
+                return;
+              }
+
+              recordHttpMethod(httpMethodName);
+
+              const docsAccumulator = {
+                summary: undefined as string | undefined,
+                description: undefined as string | undefined,
+                returns: undefined as string | undefined,
+                remarks: [] as string[],
+                examples: [] as string[],
+                deprecated: deprecatedViaDecorator as string | boolean | undefined,
+                paramComments: new Map<string, string>(),
+              };
+
+              const jsDocs = (member as { jsDoc?: readonly ts.JSDoc[] }).jsDoc ?? [];
+              for (const jsDoc of jsDocs) {
+                const comment = normalizeComment(jsDoc.comment);
+                if (comment) {
+                  if (!docsAccumulator.summary) {
+                    const [firstLine, ...rest] = comment.split(/\r?\n/);
+                    docsAccumulator.summary = firstLine?.trim() || undefined;
+                    const remainder = rest.join('\n').trim();
+                    if (remainder) {
+                      docsAccumulator.description = remainder;
+                    }
+                  } else {
+                    const joined = docsAccumulator.description
+                      ? `${docsAccumulator.description}\n${comment}`
+                      : comment;
+                    docsAccumulator.description = joined.trim();
+                  }
+                }
+
+                (jsDoc.tags ?? []).forEach(tag => {
+                  const tagName = tag.tagName.text.toLowerCase();
+                  const tagComment = normalizeComment(tag.comment);
+
+                  if (ts.isJSDocParameterTag(tag)) {
+                    const paramName = tag.name.getText(sourceFile);
+                    if (paramName && tagComment) {
+                      docsAccumulator.paramComments.set(paramName, tagComment);
+                    }
+                    return;
+                  }
+
+                  if (tagName === 'returns' || tagName === 'return') {
+                    if (tagComment) {
+                      docsAccumulator.returns = docsAccumulator.returns
+                        ? `${docsAccumulator.returns}\n${tagComment}`
+                        : tagComment;
+                    }
+                    return;
+                  }
+
+                  if (tagName === 'example' && tagComment) {
+                    docsAccumulator.examples.push(tagComment);
+                    return;
+                  }
+
+                  if (tagName === 'remarks' && tagComment) {
+                    docsAccumulator.remarks.push(tagComment);
+                    return;
+                  }
+
+                  if (tagName === 'deprecated') {
+                    docsAccumulator.deprecated = tagComment || true;
+                  }
+                });
+              }
+
+              const parameterDetails = member.parameters.map(param => {
+                const name = param.name.getText(sourceFile);
+                const type = param.type ? param.type.getText(sourceFile) : undefined;
+                const optional = Boolean(param.questionToken || param.initializer);
+                const parameterDecorators = getDecorators(param).map(decorator => {
+                  const parsed = parseDecorator(decorator);
+                  return parsed?.name;
+                });
+                const decoratorsCleaned = parameterDecorators.filter((value): value is string =>
+                  Boolean(value)
+                );
+
+                return {
+                  name,
+                  type,
+                  optional,
+                  description: docsAccumulator.paramComments.get(name),
+                  decorators: decoratorsCleaned.length > 0 ? decoratorsCleaned : undefined,
+                };
+              });
+
+              const handlerName = member.name?.getText(sourceFile) ?? 'handler';
+              const returnType = member.type ? member.type.getText(sourceFile) : undefined;
+              const signatureParameters = parameterDetails
+                .map(param => {
+                  const optionalMark = param.optional ? '?' : '';
+                  const typePart = param.type ? `: ${param.type}` : '';
+                  return `${param.name}${optionalMark}${typePart}`;
+                })
+                .join(', ');
+              const signature = `${handlerName}(${signatureParameters})${returnType ? `: ${returnType}` : ''}`;
+
+              const documentationPayload = {
+                summary: docsAccumulator.summary,
+                description: docsAccumulator.description,
+                returns: docsAccumulator.returns,
+                remarks: docsAccumulator.remarks.length ? docsAccumulator.remarks : undefined,
+                examples: docsAccumulator.examples.length ? docsAccumulator.examples : undefined,
+                deprecated: docsAccumulator.deprecated,
+              };
+              const hasDocumentation = Boolean(
+                documentationPayload.summary ||
+                  documentationPayload.description ||
+                  documentationPayload.returns ||
+                  (documentationPayload.remarks && documentationPayload.remarks.length > 0) ||
+                  (documentationPayload.examples && documentationPayload.examples.length > 0) ||
+                  documentationPayload.deprecated
+              );
+
+              const position = sourceFile.getLineAndCharacterOfPosition(member.getStart());
+              const endpoint = {
+                method: httpMethodName,
+                path: subPath,
+                fullPath: combinePaths(routeDecorator, subPath),
+                handler: handlerName,
+                signature,
+                returnType,
+                documentation: hasDocumentation ? documentationPayload : undefined,
+                parameters: parameterDetails.map(param => ({
+                  name: param.name,
+                  type: param.type,
+                  optional: param.optional,
+                  description: param.description,
+                  decorators: param.decorators,
+                })),
+                responses,
+                tags: endpointTags.size ? Array.from(endpointTags) : undefined,
+                source: { line: position.line + 1 },
+              };
+
+              endpoints.push(endpoint);
+            });
+          }
+
+          const httpMethods = httpOrderSort(methodSet);
+
+          return {
+            httpMethods,
+            endpoints,
+            routeDecorator,
+            tags: Array.from(tagsSet),
+            className,
+          };
+        } catch (error) {
+          console.warn('[specs.resolved] Failed to analyze TSOA controller via TypeScript API', {
+            controller: controllerAbsolute,
+            error,
+          });
+          return { httpMethods: [], endpoints: [], routeDecorator: undefined, tags: [] };
+        }
+      };
+
+      for (const artifact of serviceArtifacts) {
         const analysis = artifact.metadata?.tsoaAnalysis;
         if (!analysis) {
           console.debug('[specs.resolved] No TSOA analysis for service', {
             service: artifact.name,
           });
-          return [] as any[];
+          continue;
         }
-
-        const toSlug = (value: string) =>
-          value
-            .replace(/[^a-z0-9]+/gi, '-')
-            .replace(/^-+|-+$/g, '')
-            .toLowerCase();
 
         const rawServiceName = artifact.name.replace(/^@[^/]+\//, '') || artifact.name;
         const slugRoot = toSlug(artifact.name) || 'service';
@@ -459,23 +957,6 @@ export function createSpecsRouter(deps: Dependencies) {
           routeBasePath: baseRoutePath,
         };
 
-        const routesForService: any[] = [
-          {
-            id: `backend-${slugRoot}-root`,
-            path: baseRoutePath,
-            name: baseRoutePath,
-            component: `${rawServiceName} service`,
-            capabilities: [],
-            type: 'route',
-            metadata: {
-              ...baseMetadata,
-              displayName: baseRoutePath,
-              routePath: baseRoutePath,
-            },
-            displayLabel: baseRoutePath,
-          },
-        ];
-
         const controllerCandidates = Array.isArray(analysis.controllerCandidates)
           ? analysis.controllerCandidates
           : [];
@@ -488,7 +969,7 @@ export function createSpecsRouter(deps: Dependencies) {
             configFiles: analysis.configFiles,
             scriptsUsingTsoa: analysis.scriptsUsingTsoa,
           });
-          return routesForService;
+          continue;
         }
 
         console.debug('[specs.resolved] TSOA controller candidates detected', {
@@ -496,7 +977,49 @@ export function createSpecsRouter(deps: Dependencies) {
           count: controllerCandidates.length,
         });
 
-        controllerCandidates.forEach((candidate: string, index: number) => {
+        const tsoaSummary = {
+          hasTsoaDependency: Boolean(analysis.hasTsoaDependency),
+          recommendedCommands: Array.isArray(analysis.recommendedCommands)
+            ? analysis.recommendedCommands
+            : [],
+          configFiles: Array.isArray(analysis.configFiles) ? analysis.configFiles.slice(0, 5) : [],
+          scriptsUsingTsoa: Array.isArray(analysis.scriptsUsingTsoa)
+            ? analysis.scriptsUsingTsoa
+            : [],
+          totalTypeScriptFiles: analysis.totalTypeScriptFiles ?? 0,
+        };
+
+        const rootDisplayLabel = '/';
+        const aggregatedEndpoints: Array<{ method: string; path?: string; controller?: string }> =
+          [];
+        const aggregatedMethods = new Set<string>();
+
+        const routesForService: any[] = [
+          {
+            id: `backend-${slugRoot}-root`,
+            path: baseRoutePath,
+            name: baseRoutePath,
+            component: `${rawServiceName} service`,
+            capabilities: [],
+            type: 'route',
+            metadata: {
+              ...baseMetadata,
+              displayName: rootDisplayLabel,
+              routePath: baseRoutePath,
+              isBaseRoute: true,
+              httpMethods: [],
+              endpoints: [],
+              tsoa: tsoaSummary,
+            },
+            displayLabel: rootDisplayLabel,
+            httpMethods: [],
+            endpoints: [],
+          },
+        ];
+
+        let anyControllerSourceAvailable = false;
+
+        for (const [index, candidate] of controllerCandidates.entries()) {
           const normalized = candidate.split('\\').join('/');
           const fileName = normalized.split('/').pop() || normalized;
           const baseSegment = toSlug(
@@ -526,6 +1049,40 @@ export function createSpecsRouter(deps: Dependencies) {
             ? formatLabel(displayNameBase)
             : formatLabel(rawServiceName);
 
+          const candidateRoots = [
+            analysis.root,
+            artifact.metadata?.root,
+            artifact.metadata?.packageRoot,
+            path.dirname(artifact.file_path || ''),
+          ].filter(
+            (value): value is string => typeof value === 'string' && value.trim().length > 0
+          );
+
+          const controllerAbsolute = await resolveControllerPath(candidateRoots, normalized);
+          const controllerSourceAvailable = Boolean(controllerAbsolute);
+          const controllerDetails = controllerAbsolute
+            ? await extractControllerDetails(controllerAbsolute)
+            : {
+                httpMethods: [],
+                endpoints: [],
+                routeDecorator: undefined,
+                tags: [],
+                className: undefined,
+              };
+
+          if (controllerSourceAvailable) {
+            anyControllerSourceAvailable = true;
+          }
+
+          controllerDetails.httpMethods.forEach(method => aggregatedMethods.add(method));
+          const enrichedEndpoints = controllerDetails.endpoints.map(endpoint => ({
+            ...endpoint,
+            controller: displayName,
+          }));
+          enrichedEndpoints.forEach(endpoint => {
+            aggregatedEndpoints.push(endpoint);
+          });
+
           const route = {
             id: `backend-${safeId}`,
             path: routePath,
@@ -539,8 +1096,22 @@ export function createSpecsRouter(deps: Dependencies) {
               filePath: normalized,
               displayName,
               routePath,
+              httpMethods: controllerDetails.httpMethods,
+              endpoints: enrichedEndpoints,
+              routeDecorator: controllerDetails.routeDecorator,
+              tags: controllerDetails.tags,
+              controllerClass: controllerDetails.className,
+              controllerSourceAvailable,
+              tsoa: {
+                ...tsoaSummary,
+                controllerTags: controllerDetails.tags,
+                controllerClass: controllerDetails.className,
+                controllerSourceAvailable,
+              },
             },
-            displayLabel: routePath,
+            displayLabel: displayName,
+            httpMethods: controllerDetails.httpMethods,
+            endpoints: enrichedEndpoints,
           };
           console.debug('[specs.resolved] emitting backend route', {
             service: artifact.name,
@@ -548,12 +1119,23 @@ export function createSpecsRouter(deps: Dependencies) {
             path: route.path,
             packageName: route.metadata.packageName,
             filePath: route.metadata.filePath,
+            httpMethods: route.httpMethods,
           });
           routesForService.push(route);
-        });
+        }
 
-        return routesForService;
-      });
+        routesForService[0].metadata.httpMethods = Array.from(aggregatedMethods);
+        routesForService[0].metadata.endpoints = aggregatedEndpoints;
+        routesForService[0].httpMethods = Array.from(aggregatedMethods);
+        routesForService[0].endpoints = aggregatedEndpoints;
+        routesForService[0].metadata.tsoa = {
+          ...routesForService[0].metadata.tsoa,
+          controllerSourceAvailable: anyControllerSourceAvailable,
+        };
+        routesForService[0].metadata.controllerSourceAvailable = anyControllerSourceAvailable;
+
+        backendRoutes.push(...routesForService);
+      }
 
       const servicesWithBackendRoutes = new Set(
         backendRoutes.flatMap((route: any) => {
@@ -566,7 +1148,6 @@ export function createSpecsRouter(deps: Dependencies) {
         })
       );
 
-      // Fallback: derive a small set of sample routes from components if no frontend analysis is available
       const allComponents = { ...services, ...components };
       const fallbackRoutes = Object.keys(allComponents)
         .slice(0, 5)

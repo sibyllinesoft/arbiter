@@ -2,24 +2,13 @@
  * Config Screen - Global configuration for UI preferences and handler management
  */
 
-import {
-  ArrowLeft,
-  Code,
-  ExternalLink,
-  Pause,
-  Play,
-  Plus,
-  RefreshCw,
-  Settings,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, Code, Settings } from 'lucide-react';
 import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
 import { TunnelManager } from '../components/TunnelManager';
 import { useApp, useAppSettings } from '../contexts/AppContext';
-import { Button, Card, Checkbox } from '../design-system';
+import { Button, Card, Checkbox, Input } from '../design-system';
 import { apiService } from '../services/api';
 
 interface LocalEnvironmentInfo {
@@ -38,6 +27,8 @@ export function ConfigScreen({
   const { settings, updateSettings } = useAppSettings();
   const { isDark, toggleTheme } = useApp();
   const [environment, setEnvironment] = useState<'unknown' | 'cloudflare' | 'node'>('unknown');
+
+  void _onClose;
 
   useEffect(() => {
     let cancelled = false;
@@ -144,6 +135,67 @@ export function ConfigScreen({
                   </button>
                 </div>
               </div>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-start justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <Code className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                    Default Project Structure
+                  </h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Configure the directories Arbiter should use when generating code and assets.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Input
+                label="Apps directory"
+                placeholder="apps"
+                value={settings.appsDirectory}
+                onChange={event => updateSettings({ appsDirectory: event.target.value })}
+                helperText="Location for frontends or operational apps."
+              />
+              <Input
+                label="Packages directory"
+                placeholder="packages"
+                value={settings.packagesDirectory}
+                onChange={event => updateSettings({ packagesDirectory: event.target.value })}
+                helperText="Primary workspace for shared libraries and reusable modules."
+              />
+              <Input
+                label="Services directory"
+                placeholder="services"
+                value={settings.servicesDirectory}
+                onChange={event => updateSettings({ servicesDirectory: event.target.value })}
+                helperText="Default location for backend or API services."
+              />
+              <Input
+                label="Tests directory"
+                placeholder="tests"
+                value={settings.testsDirectory}
+                onChange={event => updateSettings({ testsDirectory: event.target.value })}
+                helperText="Where generated integration and scenario tests should live."
+              />
+              <Input
+                label="Infrastructure directory"
+                placeholder="infra"
+                value={settings.infraDirectory}
+                onChange={event => updateSettings({ infraDirectory: event.target.value })}
+                helperText="Folder containing Terraform, Pulumi, or other infrastructure code."
+              />
+              <Input
+                label="Default endpoint folder"
+                placeholder="apps/api/src/endpoints"
+                value={settings.endpointDirectory ?? ''}
+                onChange={event => updateSettings({ endpointDirectory: event.target.value })}
+                helperText="Base folder where generated API endpoint fragments should be written."
+              />
             </div>
           </Card>
 

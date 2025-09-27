@@ -8,22 +8,13 @@
 
 import * as path from 'path';
 import {
-  type DetectionContext,
-  type SourceAnalysis,
-  detectArtifactType,
-} from '../detection/artifact-detector';
-import {
-  BinaryArtifact,
-  ConfidenceScore,
-  Evidence,
-  FrontendArtifact,
-  ImporterPlugin,
-  InferenceContext,
-  InferredArtifact,
-  ModuleArtifact,
-  ParseContext,
-  Provenance,
-  ServiceArtifact,
+  type ArtifactType,
+  type Evidence,
+  type ImporterPlugin,
+  type InferenceContext,
+  type InferredArtifact,
+  type ParseContext,
+  type Provenance,
 } from '../types';
 
 // ============================================================================
@@ -56,6 +47,141 @@ interface PythonSourceData extends Record<string, unknown> {
   webFrameworks: string[];
   cliPatterns: string[];
   dataProcessingPatterns: string[];
+}
+
+// Simplified heuristics to align with Node and Rust manifest classification
+const PYTHON_WEB_FRAMEWORKS = [
+  'django',
+  'flask',
+  'fastapi',
+  'tornado',
+  'sanic',
+  'starlette',
+  'bottle',
+  'falcon',
+  'pyramid',
+];
+
+const PYTHON_CLI_LIBRARIES = ['click', 'typer', 'argparse', 'fire', 'docopt'];
+
+const PYTHON_FRONTEND_LIBRARIES = ['streamlit', 'dash', 'gradio', 'panel'];
+
+function normalizeDependencyName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9_.-].*$/i, '')
+    .replace(/_/g, '-');
+}
+
+function collectNormalizedDependencies(values: string[] | undefined): Set<string> {
+  const set = new Set<string>();
+  if (!values) return set;
+  for (const value of values) {
+    if (!value) continue;
+    const normalized = normalizeDependencyName(String(value));
+    if (normalized) {
+      set.add(normalized);
+    }
+  }
+  return set;
+}
+
+interface PythonClassification {
+  artifactType: ArtifactType;
+  detectedType: string;
+  reason: string;
+  framework?: string;
+}
+
+function classifyPythonPackage(packageData: PythonPackageData): PythonClassification {
+  const dependencySet = collectNormalizedDependencies(packageData.dependencies);
+  const devDependencySet = collectNormalizedDependencies(packageData.devDependencies);
+  const combinedDeps = new Set<string>([...dependencySet, ...devDependencySet]);
+
+  const findDependency = (candidates: string[]): string | undefined => {
+    return candidates.find(candidate => combinedDeps.has(candidate));
+  };
+
+  const matchedWebFramework = findDependency(PYTHON_WEB_FRAMEWORKS);
+  if (matchedWebFramework) {
+    return {
+      artifactType: 'service',
+      detectedType: 'service',
+      reason: 'web-framework',
+      framework: matchedWebFramework,
+    };
+  }
+
+  const hasScripts = Object.keys(packageData.scripts || {}).length > 0;
+  const hasConsoleEntry = Boolean(
+    packageData.entryPoints &&
+      typeof packageData.entryPoints === 'object' &&
+      Object.keys((packageData.entryPoints as Record<string, unknown>).console_scripts ?? {})
+        .length > 0
+  );
+  const matchedCliLibrary = findDependency(PYTHON_CLI_LIBRARIES);
+
+  if (matchedCliLibrary || hasScripts || hasConsoleEntry) {
+    return {
+      artifactType: 'binary',
+      detectedType: 'cli',
+      reason: matchedCliLibrary ? 'cli-library' : 'console-script',
+      framework: matchedCliLibrary,
+    };
+  }
+
+  const matchedFrontendLibrary = findDependency(PYTHON_FRONTEND_LIBRARIES);
+  if (matchedFrontendLibrary) {
+    return {
+      artifactType: 'frontend',
+      detectedType: 'frontend',
+      reason: 'frontend-library',
+      framework: matchedFrontendLibrary,
+    };
+  }
+
+  return {
+    artifactType: 'module',
+    detectedType: 'module',
+    reason: 'default-module',
+  };
+}
+
+function classifyPythonSource(evidence: PythonSourceData[]): PythonClassification {
+  let matchedFramework: string | undefined;
+  let hasCli = false;
+
+  for (const item of evidence) {
+    if (!matchedFramework && item.webFrameworks?.length) {
+      matchedFramework = item.webFrameworks[0];
+    }
+    if (item.cliPatterns?.length || item.hasIfMain) {
+      hasCli = true;
+    }
+  }
+
+  if (matchedFramework) {
+    return {
+      artifactType: 'service',
+      detectedType: 'service',
+      reason: 'source-web-framework',
+      framework: matchedFramework,
+    };
+  }
+
+  if (hasCli) {
+    return {
+      artifactType: 'binary',
+      detectedType: 'cli',
+      reason: 'source-cli-pattern',
+    };
+  }
+
+  return {
+    artifactType: 'module',
+    detectedType: 'module',
+    reason: 'source-default',
+  };
 }
 
 // ============================================================================
@@ -129,12 +255,11 @@ export class PythonPlugin implements ImporterPlugin {
 
     try {
       // Infer from package configuration evidence
-      const packageEvidence = pythonEvidence.filter(
-        e =>
-          e.type === 'config' &&
-          typeof e.data.configType === 'string' &&
-          e.data.configType.includes('package')
-      );
+      const packageEvidence = pythonEvidence.filter(e => {
+        if (e.type !== 'config') return false;
+        const configType = typeof e.data?.configType === 'string' ? e.data.configType : '';
+        return ['setup', 'pyproject', 'package'].some(token => configType.includes(token));
+      });
 
       for (const pkg of packageEvidence) {
         artifacts.push(...(await this.inferFromPackageConfig(pkg, pythonEvidence, context)));
@@ -432,106 +557,151 @@ export class PythonPlugin implements ImporterPlugin {
     context: InferenceContext
   ): Promise<InferredArtifact[]> {
     const packageData = packageEvidence.data as unknown as PythonPackageData;
+    const classification = classifyPythonPackage(packageData);
+    const artifactName = packageData.name || this.deriveNameFromPath(packageEvidence.filePath);
+    const artifact = this.buildArtifactFromClassification({
+      artifactName,
+      artifactType: classification.artifactType,
+      detectedType: classification.detectedType,
+      reason: classification.reason,
+      framework: classification.framework,
+      description: packageData.description,
+      filePath: packageEvidence.filePath,
+      metadataExtras: {
+        dependencies: packageData.dependencies,
+        devDependencies: packageData.devDependencies,
+        scripts: packageData.scripts,
+        entryPoints: packageData.entryPoints,
+      },
+    });
 
-    // Create detection context
-    const detectionContext: DetectionContext = {
-      language: 'python',
-      dependencies: [...packageData.dependencies, ...packageData.devDependencies],
-      scripts: packageData.scripts,
-      filePatterns: this.extractFilePatterns(allEvidence),
-      packageConfig: packageData,
-      sourceAnalysis: this.createSourceAnalysis(allEvidence),
-    };
-
-    // Use the detection engine
-    const result = detectArtifactType(detectionContext);
-
-    // Create artifacts based on detected type
-    return this.createArtifactFromDetection(
-      result,
-      packageData,
-      allEvidence,
-      packageEvidence.filePath
-    );
+    return [
+      {
+        artifact,
+        provenance: this.createProvenance([packageEvidence]),
+        relationships: [],
+      },
+    ];
   }
 
   private async inferFromSourceOnly(
     allEvidence: Evidence[],
     context: InferenceContext
   ): Promise<InferredArtifact[]> {
-    // When no package config, infer from source files only
     const sourceEvidence = allEvidence.filter(e => e.data?.configType === 'source-file');
 
     if (sourceEvidence.length === 0) return [];
 
-    // Aggregate all dependencies from source analysis
-    const allImports = sourceEvidence.flatMap(
-      e => (e.data as unknown as PythonSourceData).imports || []
-    );
-
-    const detectionContext: DetectionContext = {
-      language: 'python',
-      dependencies: allImports,
-      scripts: {},
-      filePatterns: this.extractFilePatterns(allEvidence),
-      packageConfig: {},
-      sourceAnalysis: this.createSourceAnalysis(allEvidence),
-    };
-
-    const result = detectArtifactType(detectionContext);
-
-    // Create a generic artifact
+    const sourceData = sourceEvidence.map(e => e.data as unknown as PythonSourceData);
+    const classification = classifyPythonSource(sourceData);
     const projectName = path.basename(context.projectRoot ?? process.cwd());
-    const sourceFilePath = sourceEvidence[0]?.filePath || context.projectRoot || process.cwd();
-    return this.createArtifactFromDetection(
-      result,
+    const sourceFilePath = sourceEvidence[0]?.filePath ?? context.projectRoot ?? process.cwd();
+
+    const artifact = this.buildArtifactFromClassification({
+      artifactName: projectName,
+      artifactType: classification.artifactType,
+      detectedType: classification.detectedType,
+      reason: classification.reason,
+      framework: classification.framework,
+      description: undefined,
+      filePath: sourceFilePath,
+      metadataExtras: {},
+    });
+
+    return [
       {
-        configType: 'inferred',
-        name: projectName,
-        dependencies: allImports,
-        devDependencies: [],
-        scripts: {},
-      } as PythonPackageData,
-      allEvidence,
-      sourceFilePath
-    );
+        artifact,
+        provenance: this.createProvenance(sourceEvidence),
+        relationships: [],
+      },
+    ];
   }
 
-  private createArtifactFromDetection(
-    result: any,
-    packageData: PythonPackageData,
-    allEvidence: Evidence[],
-    filePath: string
-  ): InferredArtifact[] {
-    const artifactType = this.mapCategoryToArtifactType(result.primaryType);
+  private deriveNameFromPath(filePath: string): string {
+    const basename = path.basename(path.dirname(filePath));
+    return basename || 'python-project';
+  }
 
-    switch (artifactType) {
-      case 'binary':
-        return this.createBinaryArtifact(packageData, allEvidence, filePath);
-      case 'service':
-        return this.createServiceArtifact(packageData, allEvidence, filePath);
-      case 'frontend':
-        return this.createFrontendArtifact(packageData, allEvidence, filePath);
-      default:
-        return this.createModuleArtifact(packageData, allEvidence, filePath);
+  private buildArtifactFromClassification(params: {
+    artifactName: string;
+    artifactType: ArtifactType;
+    detectedType: string;
+    reason: string;
+    framework?: string;
+    description?: string;
+    filePath: string;
+    metadataExtras: Record<string, unknown>;
+  }) {
+    const {
+      artifactName,
+      artifactType,
+      detectedType,
+      reason,
+      framework,
+      description,
+      filePath,
+      metadataExtras,
+    } = params;
+
+    const tags = new Set<string>(['python']);
+    if (artifactType === 'binary') {
+      tags.add('tool');
+    } else if (artifactType === 'service') {
+      tags.add('service');
+    } else if (artifactType === 'frontend') {
+      tags.add('frontend');
+    } else {
+      tags.add('module');
     }
-  }
 
-  private mapCategoryToArtifactType(category: string): string {
-    const categoryMap: Record<string, string> = {
-      tool: 'binary',
-      web_service: 'service',
-      frontend: 'module',
-      library: 'module',
-      desktop_app: 'binary',
-      data_processing: 'module',
-      testing: 'test',
-      build_tool: 'module',
-      game: 'module',
-      mobile: 'module',
+    if (framework) {
+      tags.add(framework);
+    }
+
+    const fallbackDescriptions: Record<ArtifactType, string> = {
+      service: `Python web service: ${artifactName}`,
+      binary: `Python CLI tool: ${artifactName}`,
+      tool: `Python tool: ${artifactName}`,
+      module: `Python module: ${artifactName}`,
+      job: `Python job: ${artifactName}`,
+      schema: `Python schema: ${artifactName}`,
+      config: `Python config: ${artifactName}`,
+      deployment: `Python deployment: ${artifactName}`,
+      test: `Python tests: ${artifactName}`,
+      frontend: `Python frontend app: ${artifactName}`,
+      database: `Python database service: ${artifactName}`,
+      cache: `Python cache service: ${artifactName}`,
+      queue: `Python queue service: ${artifactName}`,
+      proxy: `Python proxy: ${artifactName}`,
+      monitor: `Python monitor: ${artifactName}`,
+      auth: `Python auth service: ${artifactName}`,
+      docs: `Python docs: ${artifactName}`,
+      infrastructure: `Python infrastructure: ${artifactName}`,
     };
 
-    return categoryMap[category] || 'module';
+    const artifactDescription =
+      description?.trim() ||
+      fallbackDescriptions[artifactType] ||
+      `Python component: ${artifactName}`;
+
+    return {
+      id: `python-${artifactType}-${artifactName}`,
+      type: artifactType,
+      name: artifactName,
+      description: artifactDescription,
+      tags: Array.from(tags),
+      metadata: {
+        sourceFile: filePath,
+        language: 'python',
+        framework,
+        detectedType,
+        classification: {
+          source: 'python-analysis',
+          reason,
+        },
+        ...metadataExtras,
+      },
+    };
   }
 
   // ============================================================================
@@ -612,230 +782,6 @@ export class PythonPlugin implements ImporterPlugin {
       'polars',
     ];
     return imports.filter(imp => dataLibraries.includes(imp));
-  }
-
-  private createSourceAnalysis(allEvidence: Evidence[]): SourceAnalysis {
-    const sourceEvidence = allEvidence.filter(e => e.data?.configType === 'source-file');
-
-    let hasBinaryExecution = false;
-    let hasServerPatterns = false;
-    let hasFrontendPatterns = false;
-    let hasCliPatterns = false;
-    let hasDataProcessingPatterns = false;
-    let hasTestPatterns = false;
-    let hasBuildPatterns = false;
-    let hasGamePatterns = false;
-    let hasMobilePatterns = false;
-    let hasDesktopPatterns = false;
-
-    sourceEvidence.forEach(evidence => {
-      const sourceData = evidence.data as unknown as PythonSourceData;
-
-      // Check for CLI patterns
-      if (sourceData.hasIfMain || sourceData.cliPatterns?.length > 0) {
-        hasCliPatterns = true;
-        hasBinaryExecution = true;
-      }
-
-      // Check for web frameworks
-      if (sourceData.webFrameworks?.length > 0) {
-        hasServerPatterns = true;
-      }
-
-      // Check for data processing
-      if (sourceData.dataProcessingPatterns?.length > 0) {
-        hasDataProcessingPatterns = true;
-      }
-
-      // Check for test patterns
-      if (evidence.filePath?.includes('test') || sourceData.imports?.includes('pytest')) {
-        hasTestPatterns = true;
-      }
-
-      // Check for frontend patterns (Streamlit, Dash, etc.)
-      if (sourceData.imports?.some(imp => ['streamlit', 'dash', 'gradio', 'panel'].includes(imp))) {
-        hasFrontendPatterns = true;
-      }
-
-      // Check for desktop patterns
-      if (
-        sourceData.imports?.some(imp => ['tkinter', 'pyqt5', 'pyqt6', 'kivy', 'toga'].includes(imp))
-      ) {
-        hasDesktopPatterns = true;
-      }
-
-      // Check for game patterns
-      if (sourceData.imports?.some(imp => ['pygame', 'arcade', 'panda3d'].includes(imp))) {
-        hasGamePatterns = true;
-      }
-
-      // Check for mobile patterns
-      if (sourceData.imports?.some(imp => ['kivy', 'beeware', 'toga'].includes(imp))) {
-        hasMobilePatterns = true;
-      }
-    });
-
-    return {
-      hasBinaryExecution,
-      hasServerPatterns,
-      hasFrontendPatterns,
-      hasCliPatterns,
-      hasDataProcessingPatterns,
-      hasTestPatterns,
-      hasBuildPatterns,
-      hasGamePatterns,
-      hasMobilePatterns,
-      hasDesktopPatterns,
-    };
-  }
-
-  private extractFilePatterns(allEvidence: Evidence[]): string[] {
-    const patterns: string[] = [];
-
-    allEvidence.forEach(evidence => {
-      if (evidence.filePath) {
-        patterns.push(evidence.filePath);
-      }
-      if (evidence.data?.filePath) {
-        patterns.push(evidence.data.filePath as string);
-      }
-    });
-
-    return patterns;
-  }
-
-  // Artifact creation methods (simplified for brevity)
-  private createBinaryArtifact(
-    packageData: PythonPackageData,
-    allEvidence: Evidence[],
-    filePath: string
-  ): InferredArtifact[] {
-    const binaryArtifact: BinaryArtifact = {
-      id: `python-binary-${packageData.name}`,
-      type: 'binary',
-      name: packageData.name,
-      description: packageData.description || `Python CLI tool: ${packageData.name}`,
-      tags: ['python', 'tool', 'binary'],
-      metadata: {
-        sourceFile: filePath,
-        root: path.dirname(filePath),
-        language: 'python',
-        buildSystem: 'pip',
-        entryPoint: 'main.py',
-        arguments: [],
-        environmentVariables: [],
-        dependencies: packageData.dependencies,
-      },
-    };
-
-    return [
-      {
-        artifact: binaryArtifact,
-        provenance: this.createProvenance(allEvidence),
-        relationships: [],
-      },
-    ];
-  }
-
-  private createServiceArtifact(
-    packageData: PythonPackageData,
-    allEvidence: Evidence[],
-    filePath: string
-  ): InferredArtifact[] {
-    const serviceArtifact: ServiceArtifact = {
-      id: `python-service-${packageData.name}`,
-      type: 'service',
-      name: packageData.name,
-      description: packageData.description || `Python web service: ${packageData.name}`,
-      tags: ['python', 'service', 'web'],
-      metadata: {
-        sourceFile: filePath,
-        root: path.dirname(filePath),
-        language: 'python',
-        framework: this.detectPrimaryWebFramework(allEvidence),
-        port: 8000,
-        basePath: '/',
-        environmentVariables: [],
-        dependencies: [],
-        endpoints: [],
-        healthCheck: {
-          path: '/health',
-          expectedStatusCode: 200,
-          timeoutMs: 5000,
-          intervalSeconds: 30,
-        },
-      },
-    };
-
-    return [
-      {
-        artifact: serviceArtifact,
-        provenance: this.createProvenance(allEvidence),
-        relationships: [],
-      },
-    ];
-  }
-
-  private createFrontendArtifact(
-    packageData: PythonPackageData,
-    allEvidence: Evidence[],
-    filePath: string
-  ): InferredArtifact[] {
-    const frontendArtifact: FrontendArtifact = {
-      id: `python-frontend-${packageData.name}`,
-      type: 'frontend',
-      name: packageData.name,
-      description: packageData.description || `Python frontend app: ${packageData.name}`,
-      tags: ['python', 'frontend', 'webapp'],
-      metadata: {
-        sourceFile: filePath,
-        root: path.dirname(filePath),
-        framework: this.detectPrimaryFrontendFramework(allEvidence),
-        buildSystem: 'python',
-        routes: [],
-        apiDependencies: [],
-        environmentVariables: [],
-      },
-    };
-
-    return [
-      {
-        artifact: frontendArtifact,
-        provenance: this.createProvenance(allEvidence),
-        relationships: [],
-      },
-    ];
-  }
-
-  private createModuleArtifact(
-    packageData: PythonPackageData,
-    allEvidence: Evidence[],
-    filePath: string
-  ): InferredArtifact[] {
-    const moduleArtifact: ModuleArtifact = {
-      id: `python-module-${packageData.name}`,
-      type: 'module',
-      name: packageData.name,
-      description: packageData.description || `Python module: ${packageData.name}`,
-      tags: ['python', 'module'],
-      metadata: {
-        sourceFile: filePath,
-        root: path.dirname(filePath),
-        language: 'python',
-        packageManager: 'pip',
-        publicApi: [],
-        dependencies: packageData.dependencies,
-        version: packageData.version,
-      },
-    };
-
-    return [
-      {
-        artifact: moduleArtifact,
-        provenance: this.createProvenance(allEvidence),
-        relationships: [],
-      },
-    ];
   }
 
   // Utility methods for parsing Python/TOML content
@@ -937,50 +883,6 @@ export class PythonPlugin implements ImporterPlugin {
     });
 
     return result;
-  }
-
-  private detectPrimaryWebFramework(allEvidence: Evidence[]): string | undefined {
-    const sourceEvidence = allEvidence.filter(e => e.data?.configType === 'source-file');
-
-    for (const evidence of sourceEvidence) {
-      const sourceData = evidence.data as unknown as PythonSourceData;
-      if (sourceData.webFrameworks?.length > 0) {
-        return sourceData.webFrameworks[0];
-      }
-    }
-
-    return undefined;
-  }
-
-  private detectPrimaryFrontendFramework(allEvidence: Evidence[]): string | undefined {
-    const sourceEvidence = allEvidence.filter(e => e.data?.configType === 'source-file');
-
-    for (const evidence of sourceEvidence) {
-      const sourceData = evidence.data as unknown as PythonSourceData;
-      const frontendFrameworks = ['streamlit', 'dash', 'gradio', 'panel'];
-      const detected = sourceData.imports?.find(imp => frontendFrameworks.includes(imp));
-      if (detected) return detected;
-    }
-
-    return undefined;
-  }
-
-  private calculateConfidence(evidence: Evidence[], baseConfidence: number): ConfidenceScore {
-    const avgEvidence = 1.0;
-    const overall = Math.min(0.95, baseConfidence * avgEvidence);
-
-    return {
-      overall,
-      breakdown: {
-        evidence: avgEvidence,
-        base: baseConfidence,
-      },
-      factors: evidence.map(e => ({
-        description: `Evidence from ${e.type}`,
-        weight: 1.0,
-        source: e.source,
-      })),
-    };
   }
 
   private createProvenance(evidence: Evidence[]): Provenance {

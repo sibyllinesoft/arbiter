@@ -44,6 +44,20 @@ export interface EnvironmentInfo {
   cloudflareTunnelSupported: boolean;
 }
 
+export interface ProjectStructureSettings {
+  appsDirectory: string;
+  packagesDirectory: string;
+  servicesDirectory: string;
+  testsDirectory: string;
+  infraDirectory: string;
+  endpointDirectory: string;
+}
+
+interface ProjectStructureResponse {
+  success: boolean;
+  projectStructure: ProjectStructureSettings;
+}
+
 interface ProjectEventsResponse {
   success: boolean;
   events: Event[];
@@ -67,6 +81,21 @@ interface RevertEventsResponse {
   reverted_event_ids: string[];
 }
 
+type TunnelSetupResponse = {
+  success: boolean;
+  tunnel?: {
+    tunnelId: string;
+    tunnelName: string;
+    hostname: string;
+    url: string;
+    configPath: string;
+    status: 'running' | 'stopped';
+    hookId?: string;
+  };
+  logs?: string[];
+  error?: string;
+};
+
 export class ApiService {
   private baseUrl = import.meta.env.VITE_API_URL || '';
   private defaultHeaders: Record<string, string | undefined> = {
@@ -87,7 +116,7 @@ export class ApiService {
       headers: {
         ...Object.fromEntries(
           Object.entries({ ...this.defaultHeaders, ...options.headers }).filter(
-            ([_, v]) => v !== undefined
+            ([, v]) => v !== undefined
           )
         ),
       } as HeadersInit,
@@ -206,6 +235,19 @@ export class ApiService {
 
   async getEnvironmentInfo(): Promise<EnvironmentInfo> {
     return this.request<EnvironmentInfo>('/api/environment');
+  }
+
+  async getProjectStructureSettings(): Promise<ProjectStructureResponse> {
+    return this.request<ProjectStructureResponse>('/api/config/project-structure');
+  }
+
+  async updateProjectStructureSettings(
+    settings: Partial<ProjectStructureSettings>
+  ): Promise<ProjectStructureResponse> {
+    return this.request<ProjectStructureResponse>('/api/config/project-structure', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
   }
 
   async createProject(name: string, path?: string): Promise<Project> {
@@ -472,20 +514,7 @@ export class ApiService {
     githubToken?: string;
     repository?: string;
     webhookSecret?: string;
-  }): Promise<{
-    success: boolean;
-    tunnel?: {
-      tunnelId: string;
-      tunnelName: string;
-      hostname: string;
-      url: string;
-      configPath: string;
-      status: 'running' | 'stopped';
-      hookId?: string;
-    };
-    logs?: string[];
-    error?: string;
-  }> {
+  }): Promise<TunnelSetupResponse> {
     return this.request('/api/tunnel/setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -494,7 +523,7 @@ export class ApiService {
   }
 
   // Legacy startTunnel for backwards compatibility
-  async startTunnel(): Promise<any> {
+  async startTunnel(): Promise<TunnelSetupResponse> {
     return this.setupTunnel({
       zone: 'sibylline.dev',
       localPort: 5050,

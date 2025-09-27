@@ -2,12 +2,13 @@
  * GitHubProjectsImport - Component for importing projects from GitHub repositories
  */
 
+import type { GitHubOrganization, GitHubReposByOwner, GitHubRepository } from '@/types/github';
 import { useGitHubState } from '@contexts/AppContext';
 import { Button, cn } from '@design-system';
 import { useProjects } from '@hooks/api-hooks';
 import { apiService } from '@services/api';
 import { GitBranch as GitIcon, RefreshCw, Upload } from 'lucide-react';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { toast } from 'react-toastify';
 
 interface GitHubProjectsImportProps {
@@ -20,7 +21,6 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
 
   const {
     gitHubRepos,
-    gitHubOrgs,
     selectedRepos,
     reposByOwner,
     isLoadingGitHub,
@@ -40,27 +40,28 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
         apiService.getGitHubUserOrgs(),
       ]);
 
-      let allRepos: any[] = [];
-      const allGrouped: Record<string, any[]> = {};
+      const aggregatedRepos: GitHubRepository[] = [];
+      const groupedRepos: GitHubReposByOwner = {};
 
       if (reposResult.success && reposResult.repositories) {
-        allRepos = [...reposResult.repositories];
+        aggregatedRepos.push(...reposResult.repositories);
         reposResult.repositories.forEach(repo => {
           const owner = repo.owner.login;
-          if (!allGrouped[owner]) allGrouped[owner] = [];
-          allGrouped[owner].push(repo);
+          if (!groupedRepos[owner]) groupedRepos[owner] = [];
+          groupedRepos[owner].push(repo);
         });
       }
 
-      if (orgsResult.success && orgsResult.organizations) {
-        setGitHubOrgs(orgsResult.organizations);
-        for (const org of orgsResult.organizations) {
+      if (orgsResult.success) {
+        const organizations: GitHubOrganization[] = orgsResult.organizations ?? [];
+        setGitHubOrgs(organizations);
+        for (const org of organizations) {
           try {
             const orgReposResult = await apiService.getGitHubOrgRepos(org.login);
             if (orgReposResult.success && orgReposResult.repositories) {
               // Add org repos to the collections
-              allRepos = [...allRepos, ...orgReposResult.repositories];
-              allGrouped[org.login] = orgReposResult.repositories;
+              aggregatedRepos.push(...orgReposResult.repositories);
+              groupedRepos[org.login] = orgReposResult.repositories;
             }
           } catch (error) {
             console.warn(`Failed to load repos for org ${org.login}:`, error);
@@ -69,8 +70,8 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       }
 
       // Set all repos and grouped repos at once
-      setGitHubRepos(allRepos);
-      setReposByOwner(allGrouped);
+      setGitHubRepos(aggregatedRepos);
+      setReposByOwner(groupedRepos);
 
       if (!reposResult.success) {
         toast.error(reposResult.error || 'Failed to load GitHub repositories');

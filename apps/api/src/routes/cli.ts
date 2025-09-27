@@ -35,6 +35,14 @@ export function createCliRouter(deps: Dependencies) {
         format: 'json' as const,
         color: false,
         projectDir: process.cwd(),
+        projectStructure: {
+          appsDirectory: 'apps',
+          packagesDirectory: 'packages',
+          servicesDirectory: 'services',
+          testsDirectory: 'tests',
+          infraDirectory: 'infra',
+          endpointDirectory: 'apps/api/src/endpoints',
+        },
       };
 
       // Call the add command
@@ -182,6 +190,14 @@ export function createCliRouter(deps: Dependencies) {
         format: 'json' as const,
         color: false,
         projectDir: targets[0],
+        projectStructure: {
+          appsDirectory: 'apps',
+          packagesDirectory: 'packages',
+          servicesDirectory: 'services',
+          testsDirectory: 'tests',
+          infraDirectory: 'infra',
+          endpointDirectory: 'apps/api/src/endpoints',
+        },
       };
 
       // Map API options to CLI surface options

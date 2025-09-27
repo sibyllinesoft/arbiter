@@ -2,9 +2,23 @@
  * Main application context for state management
  */
 
-import React, { createContext, useContext, useReducer } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+
+import React, { createContext, useContext, useEffect, useReducer } from 'react';
 import type { ReactNode } from 'react';
+import { type ProjectStructureSettings, apiService } from '../services/api';
 import type { Fragment, Project } from '../types/api';
+import type { GitHubOrganization, GitHubReposByOwner, GitHubRepository } from '../types/github';
+
+export interface AppSettings {
+  showNotifications: boolean;
+  appsDirectory: string;
+  packagesDirectory: string;
+  servicesDirectory: string;
+  testsDirectory: string;
+  infraDirectory: string;
+  endpointDirectory: string;
+}
 
 interface AppState {
   projects: Project[];
@@ -24,19 +38,17 @@ interface AppState {
   editorContent: Record<string, string>;
   loading: boolean;
   error: string | null;
-  settings: {
-    showNotifications: boolean;
-  };
+  settings: AppSettings;
   // UI State
   activeTab: string;
   currentView: 'dashboard' | 'config' | 'project';
   gitUrl: string;
   modalTab: 'git' | 'github';
   // GitHub Integration State
-  gitHubRepos: any[];
-  gitHubOrgs: any[];
+  gitHubRepos: GitHubRepository[];
+  gitHubOrgs: GitHubOrganization[];
   selectedRepos: Set<number>;
-  reposByOwner: Record<string, any[]>;
+  reposByOwner: GitHubReposByOwner;
   isLoadingGitHub: boolean;
 }
 
@@ -64,11 +76,11 @@ type AppAction =
   | { type: 'SET_CURRENT_VIEW'; payload: 'dashboard' | 'config' | 'project' }
   | { type: 'SET_GIT_URL'; payload: string }
   | { type: 'SET_MODAL_TAB'; payload: 'git' | 'github' }
-  | { type: 'SET_GITHUB_REPOS'; payload: any[] }
-  | { type: 'SET_GITHUB_ORGS'; payload: any[] }
+  | { type: 'SET_GITHUB_REPOS'; payload: GitHubRepository[] }
+  | { type: 'SET_GITHUB_ORGS'; payload: GitHubOrganization[] }
   | { type: 'SET_SELECTED_REPOS'; payload: Set<number> }
   | { type: 'TOGGLE_REPO_SELECTION'; payload: number }
-  | { type: 'SET_REPOS_BY_OWNER'; payload: Record<string, any[]> }
+  | { type: 'SET_REPOS_BY_OWNER'; payload: GitHubReposByOwner }
   | { type: 'SET_LOADING_GITHUB'; payload: boolean }
   | { type: 'SET_ACTIVE_FRAGMENT'; payload: string | null };
 
@@ -80,7 +92,27 @@ const STORAGE_KEYS = {
   gitHubRepos: 'arbiter:githubRepos',
   gitHubOrgs: 'arbiter:githubOrgs',
   reposByOwner: 'arbiter:reposByOwner',
+  settings: 'arbiter:settings',
 } as const;
+
+const DEFAULT_APP_SETTINGS: AppSettings = {
+  showNotifications: false,
+  appsDirectory: 'apps',
+  packagesDirectory: 'packages',
+  servicesDirectory: 'services',
+  testsDirectory: 'tests',
+  infraDirectory: 'infra',
+  endpointDirectory: 'apps/api/src/endpoints',
+};
+
+const PROJECT_STRUCTURE_FIELDS = [
+  'appsDirectory',
+  'packagesDirectory',
+  'servicesDirectory',
+  'testsDirectory',
+  'infraDirectory',
+  'endpointDirectory',
+] as const;
 
 function readStoredString(key: string, fallback: string): string {
   if (!isBrowser) return fallback;
@@ -118,6 +150,9 @@ function createInitialState(): AppState {
   const storedActiveTab = readStoredString(STORAGE_KEYS.activeTab, 'source');
   const activeTab = storedActiveTab === 'friendly' ? 'source' : storedActiveTab;
 
+  const storedSettings = readStoredJson<AppSettings>(STORAGE_KEYS.settings, DEFAULT_APP_SETTINGS);
+  const settings = { ...DEFAULT_APP_SETTINGS, ...storedSettings };
+
   return {
     projects: [],
     fragments: [],
@@ -136,19 +171,17 @@ function createInitialState(): AppState {
     editorContent: {},
     loading: false,
     error: null,
-    settings: {
-      showNotifications: false,
-    },
+    settings,
     // UI State - persist using localStorage
     activeTab,
     currentView: 'dashboard',
     gitUrl: readStoredString(STORAGE_KEYS.gitUrl, ''),
     modalTab,
     // GitHub Integration State
-    gitHubRepos: readStoredJson<any[]>(STORAGE_KEYS.gitHubRepos, []),
-    gitHubOrgs: readStoredJson<any[]>(STORAGE_KEYS.gitHubOrgs, []),
+    gitHubRepos: readStoredJson<GitHubRepository[]>(STORAGE_KEYS.gitHubRepos, []),
+    gitHubOrgs: readStoredJson<GitHubOrganization[]>(STORAGE_KEYS.gitHubOrgs, []),
     selectedRepos: new Set<number>(),
-    reposByOwner: readStoredJson<Record<string, any[]>>(STORAGE_KEYS.reposByOwner, {}),
+    reposByOwner: readStoredJson<GitHubReposByOwner>(STORAGE_KEYS.reposByOwner, {}),
     isLoadingGitHub: false,
   };
 }
@@ -161,13 +194,9 @@ function persistGitHubState(state: AppState): void {
 
   githubStateKeys.forEach(key => {
     try {
-      const storageKey =
-        key === 'gitHubRepos'
-          ? STORAGE_KEYS.gitHubRepos
-          : key === 'gitHubOrgs'
-            ? STORAGE_KEYS.gitHubOrgs
-            : STORAGE_KEYS.reposByOwner;
-      window.localStorage.setItem(storageKey, JSON.stringify(state[key]));
+      const storageKey = STORAGE_KEYS[key];
+      const value = state[key];
+      window.localStorage.setItem(storageKey, JSON.stringify(value));
     } catch (error) {
       console.warn(`Failed to persist ${key} to localStorage:`, error);
     }
@@ -201,10 +230,11 @@ function appReducer(state: AppState, action: AppAction): AppState {
         return { ...state, availableCueFiles: action.payload };
       case 'MARK_UNSAVED':
         return { ...state, unsavedChanges: new Set([...state.unsavedChanges, action.payload]) };
-      case 'MARK_SAVED':
+      case 'MARK_SAVED': {
         const newUnsavedChanges = new Set(state.unsavedChanges);
         newUnsavedChanges.delete(action.payload);
         return { ...state, unsavedChanges: newUnsavedChanges };
+      }
       case 'SET_EDITOR_CONTENT':
         return {
           ...state,
@@ -217,8 +247,17 @@ function appReducer(state: AppState, action: AppAction): AppState {
         return { ...state, loading: action.payload };
       case 'SET_ERROR':
         return { ...state, error: action.payload };
-      case 'UPDATE_SETTINGS':
-        return { ...state, settings: { ...state.settings, ...action.payload } };
+      case 'UPDATE_SETTINGS': {
+        const nextSettings = { ...state.settings, ...action.payload };
+        if (isBrowser) {
+          try {
+            window.localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(nextSettings));
+          } catch (error) {
+            console.warn('Failed to persist settings to localStorage', error);
+          }
+        }
+        return { ...state, settings: nextSettings };
+      }
       case 'SET_ACTIVE_TAB': {
         const nextActiveTab = action.payload === 'friendly' ? 'source' : action.payload;
         if (isBrowser) {
@@ -246,7 +285,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         return { ...state, gitHubOrgs: action.payload };
       case 'SET_SELECTED_REPOS':
         return { ...state, selectedRepos: action.payload };
-      case 'TOGGLE_REPO_SELECTION':
+      case 'TOGGLE_REPO_SELECTION': {
         const newSelectedRepos = new Set(state.selectedRepos);
         if (newSelectedRepos.has(action.payload)) {
           newSelectedRepos.delete(action.payload);
@@ -254,6 +293,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
           newSelectedRepos.add(action.payload);
         }
         return { ...state, selectedRepos: newSelectedRepos };
+      }
       case 'SET_REPOS_BY_OWNER':
         return { ...state, reposByOwner: action.payload };
       case 'SET_LOADING_GITHUB':
@@ -285,12 +325,12 @@ interface AppContextValue {
   setCurrentView: (view: 'dashboard' | 'config' | 'project') => void;
   setGitUrl: (url: string) => void;
   setModalTab: (tab: 'git' | 'github') => void;
-  setGitHubRepos: (repos: any[]) => void;
-  setGitHubOrgs: (orgs: any[]) => void;
+  setGitHubRepos: (repos: GitHubRepository[]) => void;
+  setGitHubOrgs: (orgs: GitHubOrganization[]) => void;
   setSelectedRepos: (repos: Set<number>) => void;
   toggleRepoSelection: (repoId: number) => void;
   setReposByOwner: (
-    reposByOwner: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>)
+    reposByOwner: GitHubReposByOwner | ((prev: GitHubReposByOwner) => GitHubReposByOwner)
   ) => void;
   setLoadingGitHub: (loading: boolean) => void;
   updateEditorContent: (fragmentId: string, content: string) => void;
@@ -312,25 +352,64 @@ interface AppProviderProps {
 export function AppProvider({ children }: AppProviderProps) {
   const [state, dispatch] = useReducer(appReducer, undefined, createInitialState);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    apiService
+      .getProjectStructureSettings()
+      .then(response => {
+        if (cancelled) return;
+        const structure = response?.projectStructure;
+        if (!structure) return;
+
+        dispatch({ type: 'UPDATE_SETTINGS', payload: structure });
+      })
+      .catch(error => {
+        console.warn('Failed to load project structure settings', error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const setLoading = (loading: boolean) => dispatch({ type: 'SET_LOADING', payload: loading });
   const setError = (error: string | null) => dispatch({ type: 'SET_ERROR', payload: error });
   const setSelectedCueFile = (file: string | null) =>
     dispatch({ type: 'SET_SELECTED_CUE_FILE', payload: file });
-  const updateSettings = (settings: Partial<AppState['settings']>) =>
+  const updateSettings = (settings: Partial<AppState['settings']>) => {
     dispatch({ type: 'UPDATE_SETTINGS', payload: settings });
+
+    const structureUpdates: Partial<ProjectStructureSettings> = {};
+
+    PROJECT_STRUCTURE_FIELDS.forEach(field => {
+      const value = settings[field];
+      if (typeof value === 'string' && value.trim().length > 0) {
+        structureUpdates[field] = value;
+      }
+    });
+
+    if (Object.keys(structureUpdates).length > 0) {
+      void apiService.updateProjectStructureSettings(structureUpdates).catch(error => {
+        console.warn('Failed to persist project structure settings', error);
+      });
+    }
+  };
   const setActiveTab = (tab: string) => dispatch({ type: 'SET_ACTIVE_TAB', payload: tab });
   const setCurrentView = (view: 'dashboard' | 'config' | 'project') =>
     dispatch({ type: 'SET_CURRENT_VIEW', payload: view });
   const setGitUrl = (url: string) => dispatch({ type: 'SET_GIT_URL', payload: url });
   const setModalTab = (tab: 'git' | 'github') => dispatch({ type: 'SET_MODAL_TAB', payload: tab });
-  const setGitHubRepos = (repos: any[]) => dispatch({ type: 'SET_GITHUB_REPOS', payload: repos });
-  const setGitHubOrgs = (orgs: any[]) => dispatch({ type: 'SET_GITHUB_ORGS', payload: orgs });
+  const setGitHubRepos = (repos: GitHubRepository[]) =>
+    dispatch({ type: 'SET_GITHUB_REPOS', payload: repos });
+  const setGitHubOrgs = (orgs: GitHubOrganization[]) =>
+    dispatch({ type: 'SET_GITHUB_ORGS', payload: orgs });
   const setSelectedRepos = (repos: Set<number>) =>
     dispatch({ type: 'SET_SELECTED_REPOS', payload: repos });
   const toggleRepoSelection = (repoId: number) =>
     dispatch({ type: 'TOGGLE_REPO_SELECTION', payload: repoId });
   const setReposByOwner = (
-    reposByOwner: Record<string, any[]> | ((prev: Record<string, any[]>) => Record<string, any[]>)
+    reposByOwner: GitHubReposByOwner | ((prev: GitHubReposByOwner) => GitHubReposByOwner)
   ) => {
     if (typeof reposByOwner === 'function') {
       dispatch({ type: 'SET_REPOS_BY_OWNER', payload: reposByOwner(state.reposByOwner) });

@@ -57,7 +57,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
               variant="secondary"
               style="solid"
               size="xs"
-              className="border-0 rounded-full text-[10px] text-white"
+              className="rounded-full text-[10px] px-2 py-0.5 !bg-graphite-900 !text-graphite-200 !border-graphite-600"
             >
               {components.length}
             </StatusBadge>

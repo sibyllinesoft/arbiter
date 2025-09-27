@@ -88,6 +88,22 @@ const TYPESCRIPT_SIGNALS = ['typescript', 'ts-node', 'ts-node-dev', 'tsx', 'tsup
 
 const TSOA_ROUTE_PATTERN = /controller|route|api/i;
 
+const RUST_WEB_FRAMEWORKS = [
+  'axum',
+  'warp',
+  'actix-web',
+  'rocket',
+  'tide',
+  'gotham',
+  'nickel',
+  'hyper',
+  'poem',
+  'salvo',
+  'tower-web',
+];
+
+const RUST_CLI_FRAMEWORKS = ['clap', 'structopt', 'argh', 'gumdrop'];
+
 function normalizeSlashes(value: string): string {
   return value.replace(/\\+/g, '/');
 }
@@ -166,6 +182,94 @@ function classifyPackageManifest(pkg: any): {
     type: 'module',
     detectedType: 'module',
     reason: 'default-module',
+  };
+}
+
+function normalizeCargoDependencyName(name: string): string {
+  return name.toLowerCase().replace(/_/g, '-');
+}
+
+function collectCargoDependencyNames(cargo: any): string[] {
+  const sections = ['dependencies', 'dev-dependencies', 'build-dependencies'];
+  const names = new Set<string>();
+
+  for (const section of sections) {
+    const deps = cargo?.[section];
+    if (!deps || typeof deps !== 'object') continue;
+    for (const key of Object.keys(deps)) {
+      names.add(normalizeCargoDependencyName(key));
+    }
+  }
+
+  return Array.from(names);
+}
+
+function extractCargoBinaryNames(binSection: unknown): string[] {
+  if (!binSection) return [];
+
+  if (Array.isArray(binSection)) {
+    return binSection
+      .map(entry => {
+        if (typeof entry === 'string') return entry;
+        if (entry && typeof entry === 'object' && typeof (entry as any).name === 'string') {
+          return (entry as any).name as string;
+        }
+        return null;
+      })
+      .filter((value): value is string => Boolean(value));
+  }
+
+  if (typeof binSection === 'object') {
+    const name = (binSection as Record<string, unknown>).name;
+    if (typeof name === 'string') {
+      return [name];
+    }
+  }
+
+  return [];
+}
+
+function classifyCargoManifest(options: {
+  dependencyNames: string[];
+  hasBinaries: boolean;
+  hasLibrary: boolean;
+}): {
+  type: 'service' | 'module' | 'tool';
+  detectedType: 'service' | 'module' | 'binary';
+  reason: string;
+  framework?: string;
+} {
+  const { dependencyNames, hasBinaries } = options;
+  const normalizedDeps = dependencyNames.map(normalizeCargoDependencyName);
+
+  const findMatch = (candidates: string[]): string | undefined => {
+    return candidates.find(candidate => normalizedDeps.includes(candidate));
+  };
+
+  const webFramework = findMatch(RUST_WEB_FRAMEWORKS);
+  if (webFramework) {
+    return {
+      type: 'service',
+      detectedType: 'service',
+      reason: 'web-framework',
+      framework: webFramework,
+    };
+  }
+
+  if (hasBinaries) {
+    const cliFramework = findMatch(RUST_CLI_FRAMEWORKS);
+    return {
+      type: 'tool',
+      detectedType: 'binary',
+      reason: cliFramework ? 'cli-binary' : 'binary-target',
+      framework: cliFramework,
+    };
+  }
+
+  return {
+    type: 'module',
+    detectedType: 'module',
+    reason: options.hasLibrary ? 'library-target' : 'default-module',
   };
 }
 
@@ -432,9 +536,9 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
   if (base === 'cargo.toml') {
     return {
       id,
-      name: `${name}-service`,
-      type: 'service',
-      description: 'Rust service detected from Cargo manifest.',
+      name: `${name}-module`,
+      type: 'module',
+      description: 'Rust crate detected from Cargo manifest.',
       language: 'rust',
       framework: null,
       metadata: {
@@ -767,6 +871,108 @@ const PARSERS: ParserDefinition[] = [
         }
       } catch {
         // ignore parse errors
+      }
+    },
+  },
+  {
+    name: 'cargo-toml',
+    matches: filePath => path.basename(filePath).toLowerCase() === 'cargo.toml',
+    priority: 8,
+    parse: (content, context) => {
+      const artifact = context.artifact;
+      if (!artifact) return;
+
+      const tomlParser = (globalThis as unknown as { Bun?: typeof Bun }).Bun?.TOML;
+      if (!tomlParser || typeof tomlParser.parse !== 'function') {
+        console.warn('[project-analysis] TOML parser not available in runtime');
+        return;
+      }
+
+      let cargo: Record<string, any>;
+      try {
+        cargo = tomlParser.parse(content) as Record<string, any>;
+      } catch (error) {
+        console.warn('[project-analysis] failed to parse Cargo manifest', {
+          path: context.filePath,
+          error,
+        });
+        return;
+      }
+
+      if (!cargo || typeof cargo !== 'object') {
+        return;
+      }
+
+      const packageSection = cargo.package ?? {};
+      const manifestName =
+        typeof packageSection.name === 'string' ? packageSection.name.trim() : '';
+      const manifestDescription =
+        typeof packageSection.description === 'string' ? packageSection.description.trim() : '';
+      const manifestVersion =
+        typeof packageSection.version === 'string' ? packageSection.version.trim() : '';
+
+      if (manifestName) {
+        artifact.name = manifestName;
+      }
+      if (manifestDescription) {
+        artifact.description = manifestDescription;
+      }
+
+      artifact.language = 'rust';
+
+      const runtimeDeps = Object.keys((cargo.dependencies as Record<string, unknown>) ?? {});
+      const devDeps = Object.keys((cargo['dev-dependencies'] as Record<string, unknown>) ?? {});
+      const buildDeps = Object.keys((cargo['build-dependencies'] as Record<string, unknown>) ?? {});
+      const dependencyNames = collectCargoDependencyNames(cargo);
+
+      const rawBin = cargo.bin ?? cargo.binaries ?? cargo['bin'];
+      const cargoBinaries = extractCargoBinaryNames(rawBin);
+      const hasBinaries =
+        cargoBinaries.length > 0 ||
+        Boolean(packageSection['default-run']) ||
+        Boolean(packageSection['default_bin']);
+      const hasLibrary = Boolean(cargo.lib);
+
+      const classification = classifyCargoManifest({
+        dependencyNames,
+        hasBinaries,
+        hasLibrary,
+      });
+
+      const previousType = artifact.type;
+      if (classification.framework) {
+        artifact.framework = classification.framework;
+      }
+
+      artifact.type = classification.type;
+
+      if (classification.type === 'tool' && cargoBinaries.length > 0) {
+        artifact.name = cargoBinaries[0];
+      }
+
+      artifact.metadata = {
+        ...artifact.metadata,
+        detectedType: classification.detectedType,
+        classification: {
+          source: 'cargo-manifest',
+          reason: classification.reason,
+          previousType,
+        },
+        cargo: {
+          name: manifestName || artifact.name,
+          version: manifestVersion || undefined,
+          description: manifestDescription || undefined,
+          dependencies: runtimeDeps,
+          devDependencies: devDeps,
+          buildDependencies: buildDeps,
+          hasLibrary,
+          hasBinaries,
+          binaries: cargoBinaries,
+        },
+      };
+
+      if (manifestVersion) {
+        artifact.metadata.version = manifestVersion;
       }
     },
   },

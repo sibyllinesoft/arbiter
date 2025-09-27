@@ -77,6 +77,17 @@ export interface CLIConfig {
   projectId?: string;
   /** GitHub sync configuration */
   github?: GitHubSyncConfig;
+  /** Default project structure directories */
+  projectStructure: ProjectStructureConfig;
+}
+
+export interface ProjectStructureConfig {
+  appsDirectory: string;
+  packagesDirectory: string;
+  servicesDirectory: string;
+  testsDirectory: string;
+  infraDirectory: string;
+  endpointDirectory: string;
 }
 
 /**

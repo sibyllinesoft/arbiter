@@ -21,6 +21,7 @@ import { toast } from 'react-toastify';
 import { useApp } from '../contexts/AppContext';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
+import type { GitHubOrganization, GitHubRepository } from '../types/github';
 
 interface GitHubWebhook {
   id: number;
@@ -30,24 +31,6 @@ interface GitHubWebhook {
   active: boolean;
   created_at: string;
   updated_at: string;
-}
-
-interface GitHubRepo {
-  id: number;
-  name: string;
-  full_name: string;
-  owner: {
-    login: string;
-  };
-  clone_url: string;
-  description: string | null;
-  private: boolean;
-}
-
-interface GitHubOrg {
-  login: string;
-  id: number;
-  description: string | null;
 }
 
 interface WebhookAutomationProps {
@@ -67,8 +50,8 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
   const [showExisting, setShowExisting] = useState(false);
 
   // GitHub projects state
-  const [gitHubRepos, setGitHubRepos] = useState<GitHubRepo[]>([]);
-  const [gitHubOrgs, setGitHubOrgs] = useState<GitHubOrg[]>([]);
+  const [gitHubRepos, setGitHubRepos] = useState<GitHubRepository[]>([]);
+  const [, setGitHubOrgs] = useState<GitHubOrganization[]>([]);
   const [isLoadingGitHub, setIsLoadingGitHub] = useState(false);
 
   const availableEvents = [
@@ -206,21 +189,22 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
         apiService.getGitHubUserOrgs(),
       ]);
 
-      let allRepos: GitHubRepo[] = [];
+      const aggregatedRepos: GitHubRepository[] = [];
 
       if (reposResult.success && reposResult.repositories) {
-        allRepos = [...(reposResult.repositories as GitHubRepo[])];
+        aggregatedRepos.push(...reposResult.repositories);
       }
 
-      if (orgsResult.success && orgsResult.organizations) {
-        setGitHubOrgs(orgsResult.organizations as GitHubOrg[]);
+      if (orgsResult.success) {
+        const organizations: GitHubOrganization[] = orgsResult.organizations ?? [];
+        setGitHubOrgs(organizations);
 
         // Load repos for each org
-        for (const org of orgsResult.organizations) {
+        for (const org of organizations) {
           try {
             const orgReposResult = await apiService.getGitHubOrgRepos(org.login);
             if (orgReposResult.success && orgReposResult.repositories) {
-              allRepos = [...allRepos, ...(orgReposResult.repositories as GitHubRepo[])];
+              aggregatedRepos.push(...orgReposResult.repositories);
             }
           } catch (error) {
             console.warn(`Failed to load repos for org ${org.login}:`, error);
@@ -228,12 +212,12 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
         }
       }
 
-      setGitHubRepos(allRepos);
+      setGitHubRepos(aggregatedRepos);
 
       if (!reposResult.success) {
         toast.error(reposResult.error || 'Failed to load GitHub repositories');
       } else {
-        toast.success(`Loaded ${allRepos.length} repositories`);
+        toast.success(`Loaded ${aggregatedRepos.length} repositories`);
       }
     } catch (error) {
       console.error('Failed to load GitHub projects:', error);

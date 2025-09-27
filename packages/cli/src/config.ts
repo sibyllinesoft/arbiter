@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import yaml from 'yaml';
 import { z } from 'zod';
-import type { CLIConfig } from './types.js';
+import type { CLIConfig, ProjectStructureConfig } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +37,15 @@ function generateProjectId(): string {
   return `${projectName.toLowerCase()}-${hash}`;
 }
 
+export const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
+  appsDirectory: 'apps',
+  packagesDirectory: 'packages',
+  servicesDirectory: 'services',
+  testsDirectory: 'tests',
+  infraDirectory: 'infra',
+  endpointDirectory: 'apps/api/src/endpoints',
+};
+
 /**
  * Default CLI configuration
  * Updated to match Arbiter specification constraints
@@ -48,6 +57,7 @@ export const DEFAULT_CONFIG: CLIConfig = {
   color: true,
   projectDir: process.cwd(),
   projectId: generateProjectId(), // Auto-generate project ID
+  projectStructure: { ...DEFAULT_PROJECT_STRUCTURE },
 };
 
 /**
@@ -187,6 +197,17 @@ const gitHubSyncSchema = z.object({
   templates: gitHubTemplatesConfigSchema.optional(),
 });
 
+const projectStructureSchema = z
+  .object({
+    appsDirectory: z.string().optional(),
+    packagesDirectory: z.string().optional(),
+    servicesDirectory: z.string().optional(),
+    testsDirectory: z.string().optional(),
+    infraDirectory: z.string().optional(),
+    endpointDirectory: z.string().optional(),
+  })
+  .optional();
+
 const configSchema = z.object({
   apiUrl: z.string().url().optional(),
   timeout: z.number().min(100).max(750).optional(), // Enforce spec maximum (≤750ms)
@@ -195,6 +216,7 @@ const configSchema = z.object({
   projectDir: z.string().optional(),
   projectId: z.string().optional(),
   github: gitHubSyncSchema.optional(),
+  projectStructure: projectStructureSchema,
 });
 
 /**
@@ -216,8 +238,58 @@ const CONFIG_FILES = [
 /**
  * Load CLI configuration from file or use defaults
  */
+function cloneConfig(config: CLIConfig): CLIConfig {
+  return {
+    ...config,
+    projectStructure: { ...config.projectStructure },
+    github: config.github
+      ? {
+          ...config.github,
+          repository: config.github.repository ? { ...config.github.repository } : undefined,
+          mapping: config.github.mapping ? { ...config.github.mapping } : undefined,
+          behavior: config.github.behavior ? { ...config.github.behavior } : undefined,
+          templates: config.github.templates ? { ...config.github.templates } : undefined,
+        }
+      : undefined,
+  };
+}
+
+function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig {
+  const mergedGithub = overrides.github
+    ? {
+        ...base.github,
+        ...overrides.github,
+        repository: overrides.github.repository
+          ? { ...base.github?.repository, ...overrides.github.repository }
+          : base.github?.repository,
+        mapping: overrides.github.mapping
+          ? { ...base.github?.mapping, ...overrides.github.mapping }
+          : base.github?.mapping,
+        behavior: overrides.github.behavior
+          ? { ...base.github?.behavior, ...overrides.github.behavior }
+          : base.github?.behavior,
+        templates: overrides.github.templates
+          ? { ...base.github?.templates, ...overrides.github.templates }
+          : base.github?.templates,
+      }
+    : base.github;
+
+  const merged: CLIConfig = {
+    ...base,
+    ...overrides,
+    github: mergedGithub,
+    projectStructure: {
+      ...DEFAULT_PROJECT_STRUCTURE,
+      ...base.projectStructure,
+      ...(overrides.projectStructure ?? {}),
+    },
+  };
+
+  return merged;
+}
+
 export async function loadConfig(configPath?: string): Promise<CLIConfig> {
-  const baseConfig = { ...DEFAULT_CONFIG };
+  const baseConfig = cloneConfig(DEFAULT_CONFIG);
 
   if (configPath) {
     return await loadSpecificConfigFile(configPath, baseConfig);
@@ -245,8 +317,7 @@ export async function loadConfigWithGitDetection(
 
   if (smartRepoConfig) {
     // Merge detected repository info into config
-    const enhancedConfig: CLIConfig = {
-      ...baseConfig,
+    const enhancedConfig = mergeConfigs(baseConfig, {
       github: {
         ...baseConfig.github,
         repository: {
@@ -255,7 +326,7 @@ export async function loadConfigWithGitDetection(
           repo: smartRepoConfig.repo.repo,
         },
       },
-    };
+    });
 
     if (options.verbose) {
       console.log(
@@ -284,7 +355,7 @@ async function loadSpecificConfigFile(
   }
 
   const userConfig = await loadConfigFile(configPath);
-  return { ...baseConfig, ...userConfig };
+  return mergeConfigs(baseConfig, userConfig);
 }
 
 /**
@@ -297,7 +368,7 @@ async function searchForConfigFile(baseConfig: CLIConfig): Promise<CLIConfig> {
   while (currentDir !== root) {
     const foundConfig = await findConfigInDirectory(currentDir);
     if (foundConfig) {
-      return { ...baseConfig, ...foundConfig };
+      return mergeConfigs(baseConfig, foundConfig);
     }
     currentDir = path.dirname(currentDir);
   }

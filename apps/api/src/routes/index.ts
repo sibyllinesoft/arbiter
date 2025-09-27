@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { createCliRouter } from './cli';
+import { createConfigRouter } from './config';
 import { createCoreRouter } from './core';
 import { createEventsRouter } from './events';
 import { createGapsRouter } from './gaps';
@@ -16,6 +17,7 @@ export type Dependencies = Record<string, unknown>;
 
 export { tunnelRoutes } from './tunnel';
 export { createCoreRouter } from './core';
+export { createConfigRouter } from './config';
 export { createCliRouter } from './cli';
 export { createProjectsRouter } from './projects';
 export { createSpecsRouter } from './specs';
@@ -40,6 +42,7 @@ export function createApiRouter(deps: Dependencies) {
 
   // Mount other routers under /api
   app.route('/api', createCoreRouter(deps));
+  app.route('/api', createConfigRouter(deps));
   app.route('/api', createCliRouter(deps));
   app.route('/api', createProjectsRouter(deps));
   app.route('/api', createSpecsRouter(deps));

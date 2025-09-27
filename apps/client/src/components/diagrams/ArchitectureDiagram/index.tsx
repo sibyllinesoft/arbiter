@@ -5,7 +5,15 @@ import React, { useState, useEffect } from 'react';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
 import { FrontendTreeSection } from './components/FrontendTree';
+import type {
+  FrontendPackage,
+  RouteEndpoint,
+  RouteEndpointDocumentation,
+  RouteEndpointParameter,
+  RouteEndpointResponse,
+} from './components/FrontendTree';
 import { LoadingState } from './components/LoadingState';
+import RouteCardsSection from './components/RouteCardsSection';
 import { SelectedDetails } from './components/SelectedDetails';
 import { SourceGroup } from './components/SourceGroup';
 import type { ArchitectureDiagramProps } from './types';
@@ -79,34 +87,157 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
 
   const totalComponents = groupedComponents.reduce((sum, group) => sum + group.items.length, 0);
 
-  const buildPackagesFromGroup = (group: GroupedComponentGroup) => {
-    type FrontendPackage = {
-      packageName: string;
-      packageRoot: string;
-      packageJsonPath?: string;
-      frameworks: string[];
-      components?: Array<{
-        name: string;
-        filePath: string;
-        framework: string;
-        description?: string;
-        props?: Array<{
-          name: string;
-          type: string;
-          required: boolean;
-          description?: string;
-        }>;
-      }>;
-      routes?: Array<{
-        path: string;
-        filePath?: string;
-        treePath?: string;
-        routerType?: string;
-        displayLabel?: string;
-      }>;
-    };
-
+  const buildPackagesFromGroup = (group: GroupedComponentGroup): FrontendPackage[] => {
     const packages = new Map<string, FrontendPackage>();
+
+    const normalizeEndpoint = (value: unknown): RouteEndpoint => {
+      const base = (value ?? {}) as Partial<RouteEndpoint> & {
+        method?: string;
+        path?: string;
+        controller?: string;
+        fullPath?: string;
+        handler?: string;
+        returnType?: string;
+        signature?: string;
+        documentation?: Partial<RouteEndpoint['documentation']>;
+        parameters?: unknown;
+        responses?: unknown;
+        tags?: unknown;
+        source?: unknown;
+      };
+
+      const normalizeParameters = (): RouteEndpoint['parameters'] => {
+        if (!Array.isArray(base.parameters)) {
+          return [];
+        }
+        return base.parameters.map(parameter => {
+          const param = parameter as Partial<RouteEndpointParameter> & { name?: string };
+          const normalized: RouteEndpointParameter = {
+            name: String(param.name ?? '').trim() || 'param',
+            optional: Boolean(param.optional),
+          };
+          if (param.type !== undefined && param.type !== null) {
+            normalized.type = String(param.type);
+          }
+          if (param.description !== undefined && param.description !== null) {
+            normalized.description = String(param.description);
+          }
+          if (Array.isArray(param.decorators) && param.decorators.length > 0) {
+            normalized.decorators = param.decorators.map(dec => String(dec));
+          }
+          return normalized;
+        });
+      };
+
+      const normalizeResponses = (): RouteEndpoint['responses'] => {
+        if (!Array.isArray(base.responses)) {
+          return [];
+        }
+        return base.responses.map(response => {
+          const res = response as Partial<RouteEndpointResponse>;
+          const decorator: RouteEndpointResponse['decorator'] =
+            res.decorator === 'SuccessResponse' ? 'SuccessResponse' : 'Response';
+          const normalized: RouteEndpointResponse = { decorator };
+          if (res.status !== undefined && res.status !== null) {
+            normalized.status = String(res.status);
+          }
+          if (res.description !== undefined && res.description !== null) {
+            normalized.description = String(res.description);
+          }
+          return normalized;
+        });
+      };
+
+      const documentation = (() => {
+        const raw = base.documentation;
+        if (!raw || typeof raw !== 'object') {
+          return undefined;
+        }
+        const payload: RouteEndpointDocumentation = {};
+        if ((raw as any).summary !== undefined) {
+          payload.summary = String((raw as any).summary);
+        }
+        if ((raw as any).description !== undefined) {
+          payload.description = String((raw as any).description);
+        }
+        if ((raw as any).returns !== undefined) {
+          payload.returns = String((raw as any).returns);
+        }
+        const remarks = Array.isArray((raw as any).remarks)
+          ? (raw as any).remarks.map((entry: unknown) => String(entry))
+          : [];
+        if (remarks.length > 0) {
+          payload.remarks = remarks;
+        }
+        const examples = Array.isArray((raw as any).examples)
+          ? (raw as any).examples.map((entry: unknown) => String(entry))
+          : [];
+        if (examples.length > 0) {
+          payload.examples = examples;
+        }
+        const deprecatedRaw = (raw as any).deprecated;
+        if (typeof deprecatedRaw === 'string') {
+          payload.deprecated = deprecatedRaw;
+        } else if (deprecatedRaw === true) {
+          payload.deprecated = true;
+        }
+        return Object.keys(payload).length > 0 ? payload : undefined;
+      })();
+
+      const handler = base.handler ? String(base.handler) : undefined;
+      const returnType = base.returnType ? String(base.returnType) : undefined;
+      const defaultSignature = `${handler ?? 'handler'}()${returnType ? `: ${returnType}` : ''}`;
+
+      const tags = Array.isArray(base.tags) ? base.tags.map(tag => String(tag)) : [];
+
+      const source = (() => {
+        const raw = base.source as { line?: unknown } | undefined;
+        if (raw && typeof raw.line === 'number') {
+          return { line: raw.line };
+        }
+        if (raw && typeof raw.line === 'string' && raw.line.trim().length > 0) {
+          const parsed = Number.parseInt(raw.line, 10);
+          if (!Number.isNaN(parsed)) {
+            return { line: parsed };
+          }
+        }
+        return undefined;
+      })();
+
+      const endpoint: RouteEndpoint = {
+        method: String(base.method ?? 'GET').toUpperCase(),
+        signature: base.signature ? String(base.signature) : defaultSignature,
+        parameters: normalizeParameters(),
+        responses: normalizeResponses(),
+      };
+
+      if (base.path !== undefined && base.path !== null) {
+        endpoint.path = String(base.path);
+      }
+      if (base.fullPath !== undefined && base.fullPath !== null) {
+        endpoint.fullPath = String(base.fullPath);
+      }
+      if (base.controller !== undefined && base.controller !== null) {
+        endpoint.controller = String(base.controller);
+      }
+      if (handler) {
+        endpoint.handler = handler;
+      }
+      if (returnType) {
+        endpoint.returnType = returnType;
+      }
+      if (documentation) {
+        endpoint.documentation = documentation;
+      }
+      if (tags.length > 0) {
+        endpoint.tags = tags;
+      }
+      if (source) {
+        endpoint.source = source;
+      }
+
+      return endpoint;
+    };
 
     const formatLabel = (value: string): string =>
       value
@@ -138,6 +269,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       routeSegments: string[];
       baseSegments: string[];
       displayLabel: string;
+      isBaseRoute: boolean;
     };
 
     const getRouteIdentifier = (item: GroupedComponentItem): string | undefined => {
@@ -169,12 +301,19 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       const fullRoutePath = normalizedRoutePath || routeBasePath || '/';
       const routeSegments = splitSegments(fullRoutePath);
       const baseSegments = routeBasePath ? splitSegments(routeBasePath) : [];
+      const isBaseRoute =
+        Boolean(metadata.isBaseRoute) ||
+        (baseSegments.length > 0 &&
+          routeSegments.length === baseSegments.length &&
+          baseSegments.every((segment, index) => routeSegments[index] === segment));
       const metadataDisplayLabel =
         typeof metadata.displayLabel === 'string' ? metadata.displayLabel : null;
       const displayLabel =
         metadataDisplayLabel && metadataDisplayLabel.trim().length > 0
           ? metadataDisplayLabel
-          : fullRoutePath;
+          : isBaseRoute
+            ? '/'
+            : fullRoutePath || '/';
       return {
         routerType,
         controllerRelativePath,
@@ -183,6 +322,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         routeSegments,
         baseSegments,
         displayLabel,
+        isBaseRoute,
       };
     };
 
@@ -196,24 +336,31 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       const routeIdentifier = getRouteIdentifier(item);
       const normalizedServiceName = rawServiceName.trim();
 
-      let packageKey: string;
+      const metadataPackageName = String(
+        metadata.packageName || metadata.serviceDisplayName || metadata.serviceName || ''
+      ).trim();
+
+      let packageKey: string | undefined;
 
       if (group.treeMode === 'routes') {
-        if (routeInfo?.baseRoutePath) {
-          packageKey = routeInfo.baseRoutePath;
-        } else if (routeInfo?.routeSegments.length) {
-          packageKey = `/${routeInfo.routeSegments[0]}`;
+        if (metadataPackageName) {
+          packageKey = metadataPackageName;
         } else if (normalizedServiceName) {
-          packageKey = normalizedServiceName.startsWith('/')
-            ? normalizedServiceName
-            : `/${normalizedServiceName}`;
+          packageKey = normalizedServiceName;
+        } else if (routeInfo?.baseRoutePath && routeInfo.baseRoutePath !== '/') {
+          packageKey = routeInfo.baseRoutePath;
+        } else if (metadata.packageRoot) {
+          packageKey = String(metadata.packageRoot);
+        } else if (routeInfo?.routeSegments.length) {
+          packageKey = routeInfo.routeSegments[0];
         } else if (routeIdentifier) {
-          packageKey = routeIdentifier.startsWith('/') ? routeIdentifier : `/${routeIdentifier}`;
+          packageKey = routeIdentifier;
         } else {
           packageKey = '/';
         }
       } else {
         packageKey =
+          metadataPackageName ||
           normalizedServiceName ||
           metadata.packageName ||
           metadata.root ||
@@ -225,7 +372,26 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
           group.treeMode === 'routes' ? routeIdentifier || item.name || '/routes' : group.label;
       }
 
-      const normalizedPackageKey = String(packageKey || 'Routes');
+      const normalizeRoutesPackageKey = (value: string): string => {
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return '/';
+        }
+        if (trimmed === '/') {
+          return '/';
+        }
+        return trimmed.replace(/^\/+/, '').replace(/\/+$/, '') || trimmed;
+      };
+
+      let normalizedPackageKey = String(packageKey || 'Routes').trim();
+      if (group.treeMode === 'routes') {
+        normalizedPackageKey = normalizeRoutesPackageKey(normalizedPackageKey);
+      }
+      if (!normalizedPackageKey) {
+        normalizedPackageKey =
+          group.treeMode === 'routes' ? '/' : formatLabel(group.label || 'Group');
+      }
+
       const packageDisplayName =
         group.treeMode === 'routes' ? normalizedPackageKey : formatLabel(normalizedPackageKey);
 
@@ -259,6 +425,9 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       if (group.treeMode === 'routes' && routeInfo) {
         const info = routeInfo;
         const treeSegments = (() => {
+          if (info.isBaseRoute) {
+            return [] as string[];
+          }
           if (info.routerType === 'tsoa' && info.baseSegments.length > 0) {
             const matchesBase = info.baseSegments.every(
               (segment, index) => info.routeSegments[index] === segment
@@ -276,12 +445,56 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
           info.routerType === 'tsoa' && treeSegments.length > 0
             ? `/${treeSegments.join('/')}`
             : info.displayLabel;
+        const routePathForDisplay = info.isBaseRoute ? '/' : info.fullRoutePath;
+        const httpMethods = Array.isArray(metadata.httpMethods)
+          ? metadata.httpMethods.map((method: unknown) => String(method).toUpperCase())
+          : Array.isArray((item.data as any)?.httpMethods)
+            ? (item.data as any).httpMethods.map((method: unknown) => String(method).toUpperCase())
+            : [];
+        const rawEndpoints = Array.isArray(metadata.endpoints) ? metadata.endpoints : [];
+        const endpoints = rawEndpoints.map(normalizeEndpoint);
+        const routerTypeNormalized = ((metadata.routerType as string) || info.routerType || '')
+          .toString()
+          .toLowerCase();
+        const noiseKeywords = [
+          'dockerfile-container',
+          'nats-compose',
+          'spec-workbench-compose',
+          'api-types',
+        ];
+        const lowerPackageName = pkg.packageName.toLowerCase();
+        const lowerDisplayLabel = (displayLabel || '').toLowerCase();
+        const lowerRoutePath = (info.fullRoutePath || '').toLowerCase();
+        const isNoise =
+          !info.isBaseRoute &&
+          noiseKeywords.some(keyword => {
+            const lower = keyword.toLowerCase();
+            return (
+              lowerPackageName.includes(lower) ||
+              lowerDisplayLabel.includes(lower) ||
+              lowerRoutePath.includes(lower)
+            );
+          });
+
+        if (isNoise) {
+          return;
+        }
+
+        const routeMetadata = {
+          ...metadata,
+          httpMethods,
+          endpoints,
+        };
         pkg.routes.push({
-          path: info.fullRoutePath,
+          path: routePathForDisplay,
           filePath: info.controllerRelativePath,
           treePath,
           routerType: (metadata.routerType as string | undefined) || info.routerType,
-          displayLabel: displayLabel || info.fullRoutePath,
+          displayLabel: displayLabel || routePathForDisplay,
+          httpMethods,
+          endpoints,
+          metadata: routeMetadata,
+          isBaseRoute: info.isBaseRoute,
         });
       } else {
         const filePath = normalizeRelativePath(
@@ -325,7 +538,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
             variant="secondary"
             style="solid"
             size="xs"
-            className="border-0 rounded-full text-[10px] text-white"
+            className="rounded-full text-[10px] px-2 py-0.5 !bg-graphite-900 !text-graphite-200 !border-graphite-600"
           >
             {totalComponents}
           </StatusBadge>
@@ -339,6 +552,16 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         ) : (
           <div className="space-y-4">
             {groupedComponents.map(group => {
+              if (group.type === 'route') {
+                const packages = buildPackagesFromGroup(group);
+                if (packages.length === 0) {
+                  return null;
+                }
+                return (
+                  <RouteCardsSection key={group.label} title={group.label} packages={packages} />
+                );
+              }
+
               if (group.layout === 'tree') {
                 const packages = buildPackagesFromGroup(group);
                 if (packages.length === 0) {

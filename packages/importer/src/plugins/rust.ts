@@ -168,7 +168,11 @@ export class RustPlugin implements ImporterPlugin {
     const runtimeDeps = this.extractDependencies(cargo.dependencies, 'runtime');
     const devDeps = this.extractDependencies(cargo['dev-dependencies'], 'dev');
     const buildDeps = this.extractDependencies(cargo['build-dependencies'], 'build');
-    const binaries = this.extractBinaries(cargo.bin ?? cargo.binaries ?? cargo['bin']);
+    const rawBin = cargo.bin ?? cargo.binaries ?? cargo['bin'];
+    const binaries = this.extractBinaries(rawBin);
+    const hasBinaries = Array.isArray(rawBin)
+      ? rawBin.length > 0
+      : Boolean(rawBin) || binaries.length > 0;
 
     const data: CargoEvidenceData = {
       configType: 'cargo-toml',
@@ -176,7 +180,7 @@ export class RustPlugin implements ImporterPlugin {
       dependencies: this.dependenciesRecord(runtimeDeps),
       devDependencies: this.dependenciesRecord(devDeps),
       buildDependencies: this.dependenciesRecord(buildDeps),
-      hasBinaries: binaries.length > 0,
+      hasBinaries,
       hasLibrary: Boolean(cargo.lib),
       binaries,
       fullCargo: cargo,
@@ -305,20 +309,20 @@ export class RustPlugin implements ImporterPlugin {
     const jobFramework = this.findFirstMatch(dependencyNames, RUST_JOB_FRAMEWORKS);
     const databaseDriver = this.findFirstMatch(dependencyNames, RUST_DATABASE_DRIVERS);
 
+    const binariesForCrate = binaryEvidence.filter(e => e.filePath === cargoEvidence.filePath);
+    const hasExplicitBinary = data.hasBinaries || binariesForCrate.length > 0;
+
     let artifactType: ArtifactType = 'module';
     if (framework) {
       artifactType = 'service';
-    } else if (cliFramework || data.hasBinaries) {
-      artifactType = 'binary';
     } else if (jobFramework) {
       artifactType = 'job';
-    } else if (data.hasLibrary) {
-      artifactType = 'module';
+    } else if (hasExplicitBinary) {
+      artifactType = 'binary';
     }
 
     // Prefer binary names when available to avoid generic package titles.
-    const binaryMatch = binaryEvidence.find(e => {
-      if (e.filePath !== cargoEvidence.filePath) return false;
+    const binaryMatch = binariesForCrate.find(e => {
       const data = e.data as Record<string, unknown>;
       return typeof data['binaryName'] === 'string';
     });
@@ -333,7 +337,7 @@ export class RustPlugin implements ImporterPlugin {
     };
 
     if (framework) metadata.framework = framework;
-    if (cliFramework) metadata.cliFramework = cliFramework;
+    if (artifactType === 'binary' && cliFramework) metadata.cliFramework = cliFramework;
     if (jobFramework) metadata.jobFramework = jobFramework;
     if (databaseDriver) metadata.databaseDriver = databaseDriver;
     if (data.package?.version) metadata.version = data.package.version;
@@ -345,8 +349,8 @@ export class RustPlugin implements ImporterPlugin {
     const tags = new Set<string>(['rust']);
     if (artifactType === 'binary') tags.add('tool');
     if (artifactType === 'service') tags.add('service');
-    if (artifactType === 'module') tags.add('module');
-    if (data.hasLibrary) tags.add('module');
+    if (artifactType === 'module' || data.hasLibrary) tags.add('module');
+    if (artifactType === 'job') tags.add('job');
 
     const provenance: Provenance = {
       evidence: [cargoEvidence.id],
@@ -394,10 +398,23 @@ export class RustPlugin implements ImporterPlugin {
   private extractBinaries(binSection: unknown): CargoBinaryDefinition[] {
     if (!binSection) return [];
     if (Array.isArray(binSection)) {
-      // [[bin]] tables are common but resolving them accurately requires
-      // more context (workspace membership, globbing, etc.). We opt out to
-      // keep the plugin predictable.
-      return [];
+      return binSection
+        .map(entry => {
+          if (typeof entry === 'string') {
+            return { name: entry };
+          }
+          if (entry && typeof entry === 'object') {
+            const record = entry as Record<string, unknown>;
+            if (typeof record.name === 'string') {
+              return {
+                name: record.name,
+                path: typeof record.path === 'string' ? record.path : undefined,
+              };
+            }
+          }
+          return null;
+        })
+        .filter((value): value is CargoBinaryDefinition => value !== null);
     }
     if (typeof binSection === 'object') {
       const name = (binSection as Record<string, any>).name;

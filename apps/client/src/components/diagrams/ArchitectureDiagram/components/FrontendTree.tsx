@@ -2,6 +2,44 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { clsx } from 'clsx';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+interface RouteEndpointDocumentation {
+  summary?: string;
+  description?: string;
+  returns?: string;
+  remarks?: string[];
+  examples?: string[];
+  deprecated?: string | boolean;
+}
+
+interface RouteEndpointParameter {
+  name: string;
+  type?: string;
+  optional: boolean;
+  description?: string;
+  decorators?: string[];
+}
+
+interface RouteEndpointResponse {
+  status?: string;
+  description?: string;
+  decorator: 'SuccessResponse' | 'Response';
+}
+
+interface RouteEndpoint {
+  method: string;
+  path?: string;
+  fullPath?: string;
+  controller?: string;
+  handler?: string;
+  signature: string;
+  returnType?: string;
+  documentation?: RouteEndpointDocumentation;
+  parameters: RouteEndpointParameter[];
+  responses: RouteEndpointResponse[];
+  tags?: string[];
+  source?: { line: number };
+}
+
 interface FrontendPackage {
   packageName: string;
   packageRoot: string;
@@ -25,6 +63,10 @@ interface FrontendPackage {
     treePath?: string;
     routerType?: string;
     displayLabel?: string;
+    httpMethods?: string[];
+    endpoints?: RouteEndpoint[];
+    metadata?: Record<string, any>;
+    isBaseRoute?: boolean;
   }>;
 }
 
@@ -191,6 +233,10 @@ const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'route
           routerType: route.routerType,
           displayLabel,
           controllerPath: route.filePath,
+          httpMethods: route.httpMethods,
+          endpoints: route.endpoints,
+          isBaseRoute: route.isBaseRoute,
+          metadata: route.metadata,
         });
       });
     }
@@ -385,4 +431,10 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
   );
 };
 
-export type { FrontendPackage };
+export type {
+  FrontendPackage,
+  RouteEndpoint,
+  RouteEndpointDocumentation,
+  RouteEndpointParameter,
+  RouteEndpointResponse,
+};

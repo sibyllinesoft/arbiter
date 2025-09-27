@@ -85,13 +85,12 @@ path = "src/bin/server.rs"
       const packageEvidence = evidence.find(e => e.data.configType === 'cargo-toml');
       expect(packageEvidence).toBeDefined();
       expect(packageEvidence?.data.package.name).toBe('my-rust-app');
-      expect(packageEvidence?.data.hasBinaries).toBe(false); // Simple TOML parser doesn't parse [[bin]] arrays
+      expect(packageEvidence?.data.hasBinaries).toBe(true);
 
       // Check binary evidence (might not be parsed due to [[bin]] array handling)
       const binaryEvidence = evidence.find(e => e.data.configType === 'binary-definition');
-      if (binaryEvidence) {
-        expect(binaryEvidence.data.binaryName).toBe('server');
-      }
+      expect(binaryEvidence).toBeDefined();
+      expect(binaryEvidence?.data.binaryName).toBe('server');
     });
 
     it('should parse Rust source with main function', async () => {
@@ -191,7 +190,7 @@ async fn main() {
         data: {
           configType: 'cargo-toml',
           package: { name: 'cli-tool', version: '0.1.0' },
-          hasBinaries: false,
+          hasBinaries: true,
           hasModule: false,
           dependencies: { clap: '4.0' },
           devDependencies: {},
@@ -286,6 +285,54 @@ async fn main() {
       expect(artifacts[0].artifact.description).toBe('A useful module');
       expect(artifacts[0].artifact.metadata.language).toBe('rust');
       expect(artifacts[0].artifact.metadata.packageManager).toBe('cargo');
+    });
+
+    it('should treat library crates with CLI dependencies as modules when no binaries are present', async () => {
+      const cargoEvidence: Evidence = {
+        id: 'test-package',
+        source: 'rust',
+        type: 'config',
+        filePath: '/workspace/smith/shared/Cargo.toml',
+        data: {
+          configType: 'cargo-toml',
+          package: {
+            name: 'smith-protocol',
+            version: '0.1.0',
+            description: 'Protocol definitions',
+          },
+          hasBinaries: false,
+          hasModule: false,
+          dependencies: { clap: '4.0', serde: '1.0' },
+          devDependencies: {},
+          buildDependencies: {},
+        },
+        confidence: 0.95,
+        metadata: { timestamp: Date.now(), fileSize: 100 },
+      };
+
+      const context: InferenceContext = {
+        projectRoot: '/workspace/smith',
+        fileIndex: {
+          root: '/workspace/smith',
+          files: new Map(),
+          directories: new Map(),
+          timestamp: Date.now(),
+        },
+        allEvidence: [cargoEvidence],
+        options: {
+          minConfidence: 0.3,
+          inferRelationships: true,
+          maxDependencyDepth: 5,
+          useHeuristics: true,
+        },
+        cache: new Map(),
+      };
+
+      const artifacts = await plugin.infer([cargoEvidence], context);
+
+      expect(artifacts).toHaveLength(1);
+      expect(artifacts[0].artifact.type).toBe('module');
+      expect(artifacts[0].artifact.name).toBe('smith-protocol');
     });
   });
 

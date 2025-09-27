@@ -1,37 +1,19 @@
-export const LAYER_COLORS = {
-  frontend: {
-    bg: '#45A190', // Design token green-300 (flat color)
-    border: '#1D6A5B', // Design token green-500 border
-    text: '#ffffff', // White text for contrast
-  },
-  backend: {
-    bg: '#3E82B6', // Design token blue-300 (flat color)
-    border: '#1E466B', // Primary blue-600 border
-    text: '#ffffff', // White text for contrast
-  },
-  service: {
-    bg: '#3E82B6', // Design token blue-300 (flat color)
-    border: '#1E466B', // Primary blue-600 border
-    text: '#ffffff', // White text for contrast
-  },
-  tool: {
-    bg: '#BA5956', // Design token red-300 (flat color)
-    border: '#803131', // Design token red-500 border
-    text: '#ffffff', // White text for contrast
-  },
-  module: {
-    bg: '#7666B9', // Design token purple-300 (flat color)
-    border: '#3A2A70', // Design token purple-600 border
-    text: '#ffffff', // White text for contrast
-  },
-  data: {
-    bg: '#A6842A', // Design token gold-300 (flat color)
-    border: '#725718', // Design token gold-500 border
-    text: '#ffffff', // White text for contrast
-  },
-  external: {
-    bg: '#8C97AA', // Design token graphite-200 (flat color)
-    border: '#50617A', // Design token graphite-400 border
-    text: '#ffffff', // White text for contrast
-  },
+export const LAYER_STYLE_CLASSES: Record<string, string> = {
+  frontend:
+    'bg-teal-500 border-teal-700 text-white dark:bg-teal-600 dark:border-teal-800 dark:text-white',
+  backend:
+    'bg-blue-500 border-blue-700 text-white dark:bg-blue-600 dark:border-blue-800 dark:text-white',
+  service:
+    'bg-blue-500 border-blue-700 text-white dark:bg-blue-600 dark:border-blue-800 dark:text-white',
+  module:
+    'bg-purple-500 border-purple-700 text-white dark:bg-purple-600 dark:border-purple-800 dark:text-white',
+  tool: 'bg-red-500 border-red-700 text-white dark:bg-red-600 dark:border-red-800 dark:text-white',
+  database:
+    'bg-amber-500 border-amber-700 text-white dark:bg-amber-600 dark:border-amber-800 dark:text-white',
+  infrastructure:
+    'bg-emerald-500 border-emerald-700 text-white dark:bg-emerald-600 dark:border-emerald-800 dark:text-white',
+  route:
+    'bg-indigo-500 border-indigo-700 text-white dark:bg-indigo-600 dark:border-indigo-800 dark:text-white',
+  external:
+    'bg-slate-300 border-slate-500 text-slate-900 dark:bg-slate-600 dark:border-slate-700 dark:text-white',
 };

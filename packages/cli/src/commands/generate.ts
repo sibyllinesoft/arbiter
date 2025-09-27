@@ -25,6 +25,7 @@ import type {
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import { ApiClient } from '../api-client.js';
+import { DEFAULT_PROJECT_STRUCTURE } from '../config.js';
 import {
   generateComponent,
   generateService,
@@ -36,7 +37,7 @@ import type {
   ServiceConfig as LanguageServiceConfig,
 } from '../language-plugins/index.js';
 import { extractVariablesFromCue, templateManager } from '../templates/index.js';
-import type { CLIConfig } from '../types.js';
+import type { CLIConfig, ProjectStructureConfig } from '../types.js';
 import {
   createRepositoryConfig,
   getSmartRepositoryConfig,
@@ -59,6 +60,19 @@ export interface GenerateOptions {
   githubDryRun?: boolean; // New: preview GitHub sync without changes
   useConfig?: boolean; // New: use config repository in case of conflicts
   useGitRemote?: boolean; // New: use Git remote repository in case of conflicts
+}
+
+const PATH_SEPARATOR_REGEX = /[\\/]+/;
+
+function toPathSegments(value: string): string[] {
+  return value.split(PATH_SEPARATOR_REGEX).filter(Boolean);
+}
+
+function joinRelativePath(...parts: string[]): string {
+  return parts
+    .flatMap(part => part.split(PATH_SEPARATOR_REGEX))
+    .filter(Boolean)
+    .join('/');
 }
 
 // Simple command execution for CUE evaluation
@@ -583,7 +597,17 @@ export async function generateCommand(
     // Generate application artifacts
     if (configWithVersion.app) {
       console.log(chalk.blue('🎨 Generating application artifacts...'));
-      const appResults = await generateAppArtifacts(configWithVersion.app, outputDir, options);
+      const projectStructure: ProjectStructureConfig = {
+        ...DEFAULT_PROJECT_STRUCTURE,
+        ...config.projectStructure,
+      };
+
+      const appResults = await generateAppArtifacts(
+        configWithVersion.app,
+        outputDir,
+        options,
+        projectStructure
+      );
       results.push(...appResults);
     } else {
       throw new Error('Invalid configuration: missing app specification data');
@@ -716,7 +740,8 @@ async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVe
 async function generateAppArtifacts(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -730,7 +755,7 @@ async function generateAppArtifacts(
 
   // Generate test cases from flows
   if (appSpec.flows.length > 0) {
-    const testFiles = await generateFlowBasedTests(appSpec, outputDir, options);
+    const testFiles = await generateFlowBasedTests(appSpec, outputDir, options, structure);
     files.push(...testFiles);
   }
 
@@ -748,7 +773,29 @@ async function generateAppArtifacts(
 
   // Generate service structures
   if (appSpec.services && Object.keys(appSpec.services).length > 0) {
-    const serviceFiles = await generateServiceStructures(appSpec, outputDir, options);
+    // Apply default service directories when unspecified
+    for (const [serviceName, serviceConfig] of Object.entries(appSpec.services)) {
+      if (!serviceConfig || typeof serviceConfig !== 'object') continue;
+
+      const candidate = serviceConfig as any;
+      const isBespoke =
+        candidate.serviceType === 'bespoke' ||
+        (!!candidate.language && candidate.language !== 'container' && !candidate.image);
+
+      if (isBespoke && !candidate.sourceDirectory) {
+        const servicesRoot = structure.servicesDirectory;
+        candidate.sourceDirectory = joinRelativePath(servicesRoot, serviceName);
+      }
+
+      if (candidate.endpoints && !candidate.endpoints.directory && structure.endpointDirectory) {
+        candidate.endpoints = {
+          ...candidate.endpoints,
+          directory: joinRelativePath(structure.endpointDirectory, serviceName),
+        };
+      }
+    }
+
+    const serviceFiles = await generateServiceStructures(appSpec, outputDir, options, structure);
     files.push(...serviceFiles);
   }
 
@@ -826,7 +873,8 @@ async function generateUIComponents(
 async function generateFlowBasedTests(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -842,7 +890,8 @@ async function generateFlowBasedTests(
     );
   }
 
-  const testsDir = path.join(outputDir, 'tests', 'flows');
+  const testsDirSegments = [...toPathSegments(structure.testsDirectory), 'flows'];
+  const testsDir = path.join(outputDir, ...testsDirSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
@@ -876,11 +925,12 @@ import { test, expect } from '@playwright/test';`;
       testContent = generateDefaultFlowTest(flow, appSpec.locators);
     }
 
-    const testPath = path.join(testsDir, `${flow.id.replace(/:/g, '_')}.test.ts`);
+    const testFileName = `${flow.id.replace(/:/g, '_')}.test.ts`;
+    const testPath = path.join(testsDir, testFileName);
     if (!options.dryRun) {
       fs.writeFileSync(testPath, testContent);
     }
-    files.push(`tests/flows/${flow.id.replace(/:/g, '_')}.test.ts`);
+    files.push(joinRelativePath(structure.testsDirectory, 'flows', testFileName));
   }
 
   return files;
@@ -1198,10 +1248,25 @@ async function generateProjectStructure(
     );
 
     // Fallback: create minimal project structure
+    const structure = {
+      servicesDirectory: 'services',
+      endpointDirectory: 'endpoints',
+      testsDirectory: 'tests',
+      infraDirectory: 'infra',
+    };
+
     const packageJson = {
       name: appSpec.product.name.toLowerCase().replace(/\s+/g, '-'),
       version: '1.0.0',
       description: appSpec.product.goals?.join('; ') || 'Generated by Arbiter',
+      arbiter: {
+        projectStructure: {
+          services: structure.servicesDirectory,
+          endpoints: structure.endpointDirectory,
+          tests: structure.testsDirectory,
+          infra: structure.infraDirectory,
+        },
+      },
     };
 
     const packagePath = path.join(outputDir, 'package.json');
@@ -1274,7 +1339,8 @@ npm run build
 async function generateServiceStructures(
   appSpec: AppSpec,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1287,7 +1353,8 @@ async function generateServiceStructures(
   // Process each service
   for (const [serviceName, service] of Object.entries(appSpec.services)) {
     if (service.serviceType === 'bespoke' && service.sourceDirectory) {
-      const serviceDir = path.join(outputDir, service.sourceDirectory);
+      const serviceDirSegments = toPathSegments(service.sourceDirectory);
+      const serviceDir = path.join(outputDir, ...serviceDirSegments);
 
       console.log(
         chalk.dim(`  • ${serviceName} (${service.language}) -> ${service.sourceDirectory}`)
@@ -1303,30 +1370,34 @@ async function generateServiceStructures(
         const rustFiles = await generateRustFiles(
           { name: serviceName, version: '1.0.0' },
           serviceDir,
-          options
+          options,
+          structure
         );
-        files.push(...rustFiles.map(file => path.join(service.sourceDirectory, file)));
+        files.push(...rustFiles.map(file => joinRelativePath(service.sourceDirectory, file)));
       } else if (service.language === 'typescript') {
         const tsFiles = await generateTypeScriptFiles(
           { name: serviceName, version: '1.0.0' },
           serviceDir,
-          options
+          options,
+          structure
         );
-        files.push(...tsFiles.map(file => path.join(service.sourceDirectory, file)));
+        files.push(...tsFiles.map(file => joinRelativePath(service.sourceDirectory, file)));
       } else if (service.language === 'go') {
         const goFiles = await generateGoFiles(
           { name: serviceName, version: '1.0.0' },
           serviceDir,
-          options
+          options,
+          structure
         );
-        files.push(...goFiles.map(file => path.join(service.sourceDirectory, file)));
+        files.push(...goFiles.map(file => joinRelativePath(service.sourceDirectory, file)));
       } else if (service.language === 'python') {
         const pythonFiles = await generatePythonFiles(
           { name: serviceName, version: '1.0.0' },
           serviceDir,
-          options
+          options,
+          structure
         );
-        files.push(...pythonFiles.map(file => path.join(service.sourceDirectory, file)));
+        files.push(...pythonFiles.map(file => joinRelativePath(service.sourceDirectory, file)));
       }
     }
   }
@@ -1341,6 +1412,7 @@ async function generateLanguageFiles(
   config: any,
   outputDir: string,
   options: GenerateOptions,
+  structure: ProjectStructureConfig,
   assemblyConfig?: any
 ): Promise<string[]> {
   const files: string[] = [];
@@ -1387,14 +1459,14 @@ async function generateLanguageFiles(
       console.error(chalk.red(`❌ Failed to generate ${language} project:`), error.message);
       // Fallback to legacy generation for unsupported languages
       if (language === 'shell' || language === 'bash') {
-        files.push(...(await generateShellFiles(config, outputDir, options)));
+        files.push(...(await generateShellFiles(config, outputDir, options, structure)));
       }
     }
   } else {
     console.log(chalk.yellow(`⚠️  No plugin available for language: ${language}`));
     // Fallback for unsupported languages
     if (language === 'shell' || language === 'bash') {
-      files.push(...(await generateShellFiles(config, outputDir, options)));
+      files.push(...(await generateShellFiles(config, outputDir, options, structure)));
     }
   }
 
@@ -1405,21 +1477,39 @@ async function generateLanguageFiles(
       case 'k8s':
         console.log(chalk.blue('🚀 Generating Kubernetes deployment (Terraform)...'));
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
+          ...(await generateTerraformKubernetes(
+            config,
+            outputDir,
+            assemblyConfig,
+            options,
+            structure
+          ))
         );
         break;
       case 'aws':
         console.log(chalk.blue('🚀 Generating AWS deployment...'));
         // AWS-specific deployment logic would go here
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
+          ...(await generateTerraformKubernetes(
+            config,
+            outputDir,
+            assemblyConfig,
+            options,
+            structure
+          ))
         );
         break;
       case 'gcp':
         console.log(chalk.blue('🚀 Generating GCP deployment...'));
         // GCP-specific deployment logic would go here
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
+          ...(await generateTerraformKubernetes(
+            config,
+            outputDir,
+            assemblyConfig,
+            options,
+            structure
+          ))
         );
         break;
       default:
@@ -1429,7 +1519,13 @@ async function generateLanguageFiles(
           )
         );
         files.push(
-          ...(await generateTerraformKubernetes(config, outputDir, assemblyConfig, options))
+          ...(await generateTerraformKubernetes(
+            config,
+            outputDir,
+            assemblyConfig,
+            options,
+            structure
+          ))
         );
     }
   }
@@ -1452,9 +1548,13 @@ async function generateLanguageFiles(
 async function generateTypeScriptFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
+  const testsDirSegments = toPathSegments(structure.testsDirectory);
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // package.json
   const packageJson = {
@@ -1494,7 +1594,7 @@ async function generateTypeScriptFiles(
       rootDir: './src',
     },
     include: ['src/**/*'],
-    exclude: ['node_modules', 'dist', 'tests'],
+    exclude: ['node_modules', 'dist', testsDirRelative],
   };
 
   const tsconfigPath = path.join(outputDir, 'tsconfig.json');
@@ -1531,11 +1631,13 @@ if (import.meta.url === \`file://\${process.argv[1]}\`) {
   files.push('src/index.ts');
 
   // Create tests directory
-  const testsDir = path.join(outputDir, 'tests');
+  const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push('tests/');
+  if (testsDirRelative) {
+    files.push(`${testsDirRelative}/`);
+  }
 
   return files;
 }
@@ -1546,9 +1648,13 @@ if (import.meta.url === \`file://\${process.argv[1]}\`) {
 async function generatePythonFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
+  const testsDirSegments = toPathSegments(structure.testsDirectory);
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // pyproject.toml
   const pyprojectToml = `[build-system]
@@ -1565,7 +1671,7 @@ requires-python = ">=3.8"
 ${config.name} = "${config.name}.main:main"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["${testsDirRelative}"]
 python_files = ["test_*.py"]
 `;
 
@@ -1621,11 +1727,13 @@ if __name__ == "__main__":
   files.push(`src/${config.name}/main.py`);
 
   // Create tests directory
-  const testsDir = path.join(outputDir, 'tests');
+  const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push('tests/');
+  if (testsDirRelative) {
+    files.push(`${testsDirRelative}/`);
+  }
 
   return files;
 }
@@ -1636,9 +1744,13 @@ if __name__ == "__main__":
 async function generateRustFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
+  const testsDirSegments = toPathSegments(structure.testsDirectory);
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // Cargo.toml
   const cargoToml = `[package]
@@ -1687,11 +1799,13 @@ mod tests {
   files.push('src/lib.rs');
 
   // Create tests directory
-  const testsDir = path.join(outputDir, 'tests');
+  const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push('tests/');
+  if (testsDirRelative) {
+    files.push(`${testsDirRelative}/`);
+  }
 
   return files;
 }
@@ -1702,9 +1816,13 @@ mod tests {
 async function generateGoFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
+  const testsDirSegments = toPathSegments(structure.testsDirectory);
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // go.mod
   const goMod = `module ${config.name}
@@ -1754,9 +1872,14 @@ func main() {
 async function generateShellFiles(
   config: any,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
+
+  const testsDirSegments = toPathSegments(structure.testsDirectory);
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // Makefile
   const makefile = `# ${config.name} - Generated by Arbiter
@@ -1810,11 +1933,13 @@ fi
   files.push(`src/${config.name}`);
 
   // Create tests directory
-  const testsDir = path.join(outputDir, 'tests');
+  const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
   }
-  files.push('tests/');
+  if (testsDirRelative) {
+    files.push(`${testsDirRelative}/`);
+  }
 
   return files;
 }
@@ -2029,53 +2154,57 @@ async function generateTerraformKubernetes(
   config: any,
   outputDir: string,
   assemblyConfig: any,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
 ): Promise<string[]> {
   const files: string[] = [];
-  await fs.ensureDir(path.join(outputDir, 'terraform'));
+  const infraDirSegments = toPathSegments(structure.infraDirectory);
+  const effectiveInfraSegments = infraDirSegments.length > 0 ? infraDirSegments : ['terraform'];
+  const infraDirRelative = joinRelativePath(...effectiveInfraSegments);
+  await fs.ensureDir(path.join(outputDir, ...effectiveInfraSegments));
 
   // Parse assembly to extract services and cluster references
   const { services, cluster } = parseDeploymentServices(assemblyConfig);
 
   // Generate main.tf with provider configuration
   const mainTf = generateTerraformMain(cluster, config.name);
-  const mainPath = path.join(outputDir, 'terraform', 'main.tf');
+  const mainPath = path.join(outputDir, ...effectiveInfraSegments, 'main.tf');
   if (!options.dryRun) {
     await fs.writeFile(mainPath, mainTf);
   }
-  files.push('terraform/main.tf');
+  files.push(joinRelativePath(infraDirRelative, 'main.tf'));
 
   // Generate variables.tf
   const variablesTf = generateTerraformVariables(services, cluster);
-  const variablesPath = path.join(outputDir, 'terraform', 'variables.tf');
+  const variablesPath = path.join(outputDir, ...effectiveInfraSegments, 'variables.tf');
   if (!options.dryRun) {
     await fs.writeFile(variablesPath, variablesTf);
   }
-  files.push('terraform/variables.tf');
+  files.push(joinRelativePath(infraDirRelative, 'variables.tf'));
 
   // Generate services.tf with Kubernetes resources
   const servicesTf = generateTerraformServices(services, config.name);
-  const servicesPath = path.join(outputDir, 'terraform', 'services.tf');
+  const servicesPath = path.join(outputDir, ...effectiveInfraSegments, 'services.tf');
   if (!options.dryRun) {
     await fs.writeFile(servicesPath, servicesTf);
   }
-  files.push('terraform/services.tf');
+  files.push(joinRelativePath(infraDirRelative, 'services.tf'));
 
   // Generate outputs.tf
   const outputsTf = generateTerraformOutputs(services, config.name);
-  const outputsPath = path.join(outputDir, 'terraform', 'outputs.tf');
+  const outputsPath = path.join(outputDir, ...effectiveInfraSegments, 'outputs.tf');
   if (!options.dryRun) {
     await fs.writeFile(outputsPath, outputsTf);
   }
-  files.push('terraform/outputs.tf');
+  files.push(joinRelativePath(infraDirRelative, 'outputs.tf'));
 
   // Generate README for Terraform deployment
   const readme = generateTerraformReadme(services, cluster, config.name);
-  const readmePath = path.join(outputDir, 'terraform', 'README.md');
+  const readmePath = path.join(outputDir, ...effectiveInfraSegments, 'README.md');
   if (!options.dryRun) {
     await fs.writeFile(readmePath, readme);
   }
-  files.push('terraform/README.md');
+  files.push(joinRelativePath(infraDirRelative, 'README.md'));
 
   return files;
 }
@@ -3647,10 +3776,14 @@ async function writeTestFiles(
   testResult: TestCompositionResult,
   outputDir: string,
   language: string,
-  options: GenerateOptions
+  options: GenerateOptions,
+  structure: ProjectStructureConfig = DEFAULT_PROJECT_STRUCTURE
 ): Promise<string[]> {
   const files: string[] = [];
-  const testsDir = path.join(outputDir, 'tests');
+  const testsDirSegments = toPathSegments(structure.testsDirectory);
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
+  const testsDir = path.join(outputDir, ...effectiveTestSegments);
 
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     await fs.mkdir(testsDir, { recursive: true });
@@ -3666,7 +3799,7 @@ async function writeTestFiles(
     if (!options.dryRun) {
       await fs.writeFile(filePath, content);
     }
-    files.push(`tests/${fileName}`);
+    files.push(joinRelativePath(testsDirRelative, fileName));
   }
 
   // Write test composition report
@@ -3689,7 +3822,7 @@ async function writeTestFiles(
   if (!options.dryRun) {
     await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
   }
-  files.push('tests/composition_report.json');
+  files.push(joinRelativePath(testsDirRelative, 'composition_report.json'));
 
   return files;
 }

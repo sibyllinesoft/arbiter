@@ -35,6 +35,7 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
       title={selectedData.data.name || selectedData.name}
       maxWidth="2xl"
       maxHeight="90vh"
+      className="dark:bg-graphite-950"
     >
       {/* Type/Language/Framework row */}
       <div className="flex flex-wrap gap-6 mb-4">
