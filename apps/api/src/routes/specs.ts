@@ -225,22 +225,65 @@ export function createSpecsRouter(deps: Dependencies) {
         const actualImage = artifact.metadata?.containerImage;
         const imageToUse = actualImage || getContainerImage(language, framework);
 
+        const metadata: Record<string, unknown> = {
+          ...artifact.metadata,
+          language,
+          framework,
+          workspaceMember: artifact.metadata?.workspaceMember,
+          filePath: artifact.file_path,
+          detected: true,
+          originalImage: actualImage, // Keep track of original detected image
+          buildContext: artifact.metadata?.buildContext,
+          dockerfilePath: artifact.metadata?.dockerfile,
+          dockerfile: artifact.metadata?.dockerfile,
+        };
+
+        const dockerInfo = artifact.metadata?.docker;
+        if (dockerInfo && typeof dockerInfo === 'object') {
+          metadata.docker = dockerInfo;
+
+          const composeYaml = (dockerInfo as Record<string, unknown>).composeServiceYaml;
+          if (typeof composeYaml === 'string') {
+            metadata.composeServiceYaml = composeYaml;
+          }
+
+          const composeService = (dockerInfo as Record<string, unknown>).composeService;
+          if (composeService && typeof composeService === 'object') {
+            metadata.composeService = composeService;
+          }
+
+          const composeName = (dockerInfo as Record<string, unknown>).composeServiceName;
+          if (typeof composeName === 'string') {
+            metadata.composeServiceName = composeName;
+          }
+
+          const composeFile = (dockerInfo as Record<string, unknown>).composeFile;
+          if (typeof composeFile === 'string') {
+            metadata.composeFile = composeFile;
+          }
+
+          const dockerfileContent = (dockerInfo as Record<string, unknown>).dockerfile;
+          if (typeof dockerfileContent === 'string' && dockerfileContent.trim()) {
+            metadata.dockerfileContent = dockerfileContent;
+          }
+
+          const buildContext = (dockerInfo as Record<string, unknown>).buildContext;
+          if (typeof buildContext === 'string') {
+            metadata.buildContext = buildContext;
+          }
+
+          const dockerfilePath = (dockerInfo as Record<string, unknown>).dockerfilePath;
+          if (typeof dockerfilePath === 'string') {
+            metadata.dockerfilePath = dockerfilePath;
+          }
+        }
+
         services[serviceName] = {
           name: artifact.name, // Use the original name from docker-compose.yml
           type: 'service',
           image: imageToUse,
           ports: [{ port, targetPort: port }],
-          metadata: {
-            ...artifact.metadata,
-            language,
-            framework,
-            workspaceMember: artifact.metadata?.workspaceMember,
-            filePath: artifact.file_path,
-            detected: true,
-            originalImage: actualImage, // Keep track of original detected image
-            buildContext: artifact.metadata?.buildContext,
-            dockerfile: artifact.metadata?.dockerfile,
-          },
+          metadata,
         };
       }
 
@@ -342,6 +385,10 @@ export function createSpecsRouter(deps: Dependencies) {
             (packageData.bin && Object.keys(packageData.bin).length > 0)
         );
 
+        if (componentType === 'frontend' && artifact.metadata?.frontendAnalysis) {
+          continue;
+        }
+
         if (detectedType === 'tool' || classificationReason === 'manifest-bin' || hasCliBin) {
           componentType = 'tool';
         }
@@ -437,6 +484,7 @@ export function createSpecsRouter(deps: Dependencies) {
               packageRoot: pkg.packageRoot,
               routerType: route.routerType,
               filePath: route.filePath || null,
+              source: 'frontend-detection',
             },
           };
         })
@@ -1137,61 +1185,12 @@ export function createSpecsRouter(deps: Dependencies) {
         backendRoutes.push(...routesForService);
       }
 
-      const servicesWithBackendRoutes = new Set(
-        backendRoutes.flatMap((route: any) => {
-          const meta = route.metadata || {};
-          const rawName = meta.serviceName as string | undefined;
-          const displayName = meta.packageName as string | undefined;
-          return [rawName, displayName].filter(
-            (name): name is string => typeof name === 'string' && name.trim().length > 0
-          );
-        })
-      );
-
-      const allComponents = { ...services, ...components };
-      const fallbackRoutes = Object.keys(allComponents)
-        .slice(0, 5)
-        .map(compName => {
-          const comp = allComponents[compName];
-          if (!comp) return null;
-          const baseId = compName
-            .replace('-service', '')
-            .replace('service-', '')
-            .replace('@arbiter/', '');
-          if (
-            servicesWithBackendRoutes.has(comp.name) ||
-            servicesWithBackendRoutes.has(compName) ||
-            servicesWithBackendRoutes.has(baseId)
-          ) {
-            return null;
-          }
-          const safeIdSegment = baseId.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-          return {
-            id: `fallback-${safeIdSegment}`,
-            path: `/${baseId}`,
-            name: comp.name,
-            component: `${baseId.charAt(0).toUpperCase() + baseId.slice(1)}Page`,
-            capabilities:
-              comp.metadata?.scope === 'arbiter-package' ? ['api-access'] : ['read-data'],
-            type: comp.type || 'route',
-            metadata: {
-              source: 'fallback',
-            },
-          };
-        })
-        .filter((route): route is any => Boolean(route));
-
       const routeMap = new Map<string, any>();
       derivedRoutes.forEach((route: any) => {
         routeMap.set(route.id, route);
       });
       backendRoutes.forEach((route: any) => {
         routeMap.set(route.id, route);
-      });
-      fallbackRoutes.forEach((route: any) => {
-        if (!routeMap.has(route.id)) {
-          routeMap.set(route.id, route);
-        }
       });
 
       const routes = Array.from(routeMap.values());

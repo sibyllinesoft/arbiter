@@ -5,6 +5,7 @@
 import {
   Component,
   Database,
+  Eye,
   Layout,
   Navigation,
   Server,
@@ -148,6 +149,18 @@ export function ProjectList({
                     </Badge>
                   )}
 
+                  {projectStatus.entities.views > 0 && (
+                    <Badge
+                      variant="default"
+                      className="bg-[#725718] dark:bg-[#5D4614] text-white border-[#5D4614] dark:border-[#3D2E0C]"
+                    >
+                      <Eye className="w-3.5 h-3.5 mr-1 text-white" />
+                      <span className="text-xs font-medium text-white">
+                        Views: {projectStatus.entities.views}
+                      </span>
+                    </Badge>
+                  )}
+
                   {projectStatus.entities.databases > 0 && (
                     <Badge
                       variant="default"
@@ -179,7 +192,7 @@ export function ProjectList({
                     >
                       <Navigation className="w-3.5 h-3.5 mr-1 text-white" />
                       <span className="text-xs font-medium text-white">
-                        Endpoints: {projectStatus.entities.routes}
+                        Routes: {projectStatus.entities.routes}
                       </span>
                     </Badge>
                   )}

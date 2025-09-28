@@ -410,11 +410,8 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
                   {node.type === 'item' &&
                     mode === 'routes' &&
                     routerType &&
-                    routerType !== 'tsoa' && (
-                      <span className="text-xs text-gray-400 dark:text-graphite-400">
-                        ({routerType})
-                      </span>
-                    )}
+                    routerType !== 'tsoa' &&
+                    null}
 
                   {node.type === 'item' && mode === 'components' && framework && (
                     <span className="text-xs text-gray-400 dark:text-graphite-400">

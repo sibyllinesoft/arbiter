@@ -40,26 +40,3 @@
 .read-the-docs {
   color: #888;
 }
-
-/* Hide scrollbar track but keep thumb */
-.scrollbar-transparent::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.scrollbar-transparent::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-transparent::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-
-.scrollbar-transparent::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.scrollbar-transparent::-webkit-scrollbar-corner {
-  background: transparent;
-}

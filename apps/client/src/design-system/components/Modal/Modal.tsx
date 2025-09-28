@@ -232,107 +232,100 @@ export function Modal({
         )}
       >
         <div
-          ref={modalRef}
           className={cn(
-            // Base styles
-            'relative bg-white rounded-xl shadow-2xl border border-graphite-200',
-            'transform transition-all',
-            'animate-in fade-in zoom-in-95 duration-200',
-            'w-full max-h-[90vh] overflow-y-auto',
-            'focus:outline-none',
-
-            // Size classes
+            'relative bg-white dark:bg-graphite-900 rounded-xl shadow-2xl border border-[#2f394b] dark:border-[#242b3a]',
+            'transform transition-all animate-in fade-in zoom-in-95 duration-200',
+            'w-full max-h-[90vh] overflow-hidden',
             sizeClasses[size],
-
-            // Variant classes
             variantClasses[variant],
-
-            // Loading state
             loading && 'pointer-events-none',
-
-            // Custom className
             className
           )}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={title ? 'modal-title' : undefined}
-          aria-describedby={description ? 'modal-description' : undefined}
-          tabIndex={-1}
-          onKeyDown={handleKeyDown}
         >
-          {/* Loading overlay */}
-          {loading && (
-            <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl z-10">
-              <div className="flex items-center gap-3 text-graphite-600">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-sm font-medium">Loading...</span>
-              </div>
-            </div>
-          )}
-
-          {/* Header */}
-          {(title || showCloseButton) && (
-            <div className="flex items-start gap-4 p-6 border-b border-graphite-200">
-              {VariantIcon && (
-                <div className={cn('flex-shrink-0 mt-1', variantIconClasses[variant])}>
-                  <VariantIcon className="h-6 w-6" />
-                </div>
-              )}
-
-              <div className="flex-1 min-w-0">
-                {title && (
-                  <h2 id="modal-title" className="text-xl font-semibold text-graphite-900">
-                    {title}
-                  </h2>
-                )}
-                {description && (
-                  <p
-                    id="modal-description"
-                    className="mt-2 text-sm text-graphite-600 leading-relaxed"
-                  >
-                    {description}
-                  </p>
-                )}
-              </div>
-
-              {showCloseButton && (
-                <button
-                  type="button"
-                  className={cn(
-                    'flex-shrink-0 rounded-md p-2 transition-colors',
-                    'text-graphite-400 hover:text-graphite-600 hover:bg-graphite-100',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
-                  )}
-                  onClick={onClose}
-                  aria-label="Close modal"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Content */}
           <div
-            className={cn(
-              'px-6',
-              title || showCloseButton ? 'pt-2 pb-4' : 'pt-6',
-              footer || showDefaultFooter ? 'pb-4' : 'pb-6'
-            )}
+            ref={modalRef}
+            className="relative w-full max-h-[90vh] overflow-y-auto focus:outline-none"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={title ? 'modal-title' : undefined}
+            aria-describedby={description ? 'modal-description' : undefined}
+            tabIndex={-1}
+            onKeyDown={handleKeyDown}
           >
-            {children}
-          </div>
+            {/* Loading overlay */}
+            {loading && (
+              <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl z-10">
+                <div className="flex items-center gap-3 text-graphite-600">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm font-medium">Loading...</span>
+                </div>
+              </div>
+            )}
 
-          {/* Footer */}
-          {(footer || showDefaultFooter) && (
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-graphite-200 bg-graphite-50/50 rounded-b-xl">
-              {footer || (
-                <Button variant="secondary" onClick={onClose}>
-                  Close
-                </Button>
+            {/* Header */}
+            {(title || showCloseButton) && (
+              <div className="flex items-start gap-4 p-6 border-b border-graphite-300 dark:border-graphite-700">
+                {VariantIcon && (
+                  <div className={cn('flex-shrink-0 mt-1', variantIconClasses[variant])}>
+                    <VariantIcon className="h-6 w-6" />
+                  </div>
+                )}
+
+                <div className="flex-1 min-w-0">
+                  {title && (
+                    <h2 id="modal-title" className="text-xl font-semibold text-graphite-900">
+                      {title}
+                    </h2>
+                  )}
+                  {description && (
+                    <p
+                      id="modal-description"
+                      className="mt-2 text-sm text-graphite-600 leading-relaxed"
+                    >
+                      {description}
+                    </p>
+                  )}
+                </div>
+
+                {showCloseButton && (
+                  <button
+                    type="button"
+                    className={cn(
+                      'flex-shrink-0 rounded-md p-2 transition-colors',
+                      'text-graphite-400 hover:text-graphite-600 hover:bg-graphite-100',
+                      'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+                    )}
+                    onClick={onClose}
+                    aria-label="Close modal"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Content */}
+            <div
+              className={cn(
+                'px-6',
+                title || showCloseButton ? 'pt-2 pb-4' : 'pt-6',
+                footer || showDefaultFooter ? 'pb-4' : 'pb-6'
               )}
+            >
+              {children}
             </div>
-          )}
+
+            {/* Footer */}
+            {(footer || showDefaultFooter) && (
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-graphite-300 dark:border-graphite-700 bg-graphite-50/50 dark:bg-graphite-800/60 rounded-b-xl">
+                {footer || (
+                  <Button variant="secondary" onClick={onClose}>
+                    Close
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

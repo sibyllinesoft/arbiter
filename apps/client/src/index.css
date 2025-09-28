@@ -2,10 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: theme('colors.graphite.600');
+  }
+
+  .dark *,
+  .dark ::before,
+  .dark ::after {
+    border-color: theme('colors.graphite.700');
+  }
+}
+
 /* Custom scrollbar styles */
 .scrollbar-transparent {
   scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  scrollbar-color: rgba(156, 163, 175, 0.45) transparent;
 }
 
 .scrollbar-transparent::-webkit-scrollbar {
@@ -18,13 +32,13 @@
 }
 
 .scrollbar-transparent::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.5);
+  background-color: rgba(156, 163, 175, 0.45);
   border-radius: 4px;
   border: none;
 }
 
 .scrollbar-transparent::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.7);
+  background-color: rgba(156, 163, 175, 0.6);
 }
 
 /* Base styles */

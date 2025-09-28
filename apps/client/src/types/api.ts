@@ -24,6 +24,7 @@ export interface Project {
     modules: number;
     tools: number;
     frontends: number;
+    views: number;
     infrastructure: number;
     external: number;
     routes: number;

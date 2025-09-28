@@ -1,4 +1,5 @@
 import { clsx } from 'clsx';
+import { ArrowLeftRight, Folder, Package, Route as RouteIcon } from 'lucide-react';
 import React from 'react';
 import { LAYER_STYLE_CLASSES } from '../constants';
 
@@ -18,6 +19,8 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       case 'route':
         return 'route';
       case 'view':
+        return 'view';
+      case 'frontend':
         return 'frontend';
       case 'module':
         return 'module';
@@ -48,6 +51,17 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
     ? LAYER_STYLE_CLASSES[colorKey as keyof typeof LAYER_STYLE_CLASSES]
     : LAYER_STYLE_CLASSES.external;
 
+  const filepath =
+    data.filepath || data.filePath || data.metadata?.filePath || data.metadata?.controllerPath;
+  const packageName = data.package || data.metadata?.packageName;
+  const displayPath = data.path || data.metadata?.path || data.metadata?.routePath;
+  const rawMethods = data.metadata?.httpMethods ?? data.httpMethods;
+  const methods = Array.isArray(rawMethods)
+    ? rawMethods
+        .map(method => String(method).trim())
+        .filter((method, index, self) => method && self.indexOf(method) === index)
+    : undefined;
+
   return (
     <div
       className={clsx(
@@ -66,16 +80,28 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
 
       {/* Filepath and Package */}
       <div className="space-y-1 text-xs mt-2 opacity-80">
-        {data.filepath && (
-          <div>
-            <span className="font-semibold opacity-100">📁 Filepath:</span>{' '}
-            <span className="font-mono opacity-100">{data.filepath}</span>
+        {displayPath && (
+          <div className="flex items-center gap-2">
+            <RouteIcon className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="font-mono opacity-100">{displayPath}</span>
           </div>
         )}
-        {data.package && (
-          <div>
-            <span className="font-semibold opacity-100">📦 Package:</span>{' '}
-            <span className="font-mono opacity-100">{data.package}</span>
+        {Array.isArray(methods) && methods.length > 0 && (
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="opacity-100 text-xs tracking-wide">{methods.join(', ')}</span>
+          </div>
+        )}
+        {filepath && (
+          <div className="flex items-center gap-2">
+            <Folder className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="font-mono opacity-100">{filepath}</span>
+          </div>
+        )}
+        {packageName && (
+          <div className="flex items-center gap-2">
+            <Package className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="font-mono opacity-100">{packageName}</span>
           </div>
         )}
       </div>

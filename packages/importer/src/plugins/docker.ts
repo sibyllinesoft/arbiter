@@ -16,6 +16,9 @@ export interface DockerData {
   description: string;
   type: string;
   filePath: string;
+  dockerfileContent?: string;
+  composeServiceConfig?: Record<string, unknown>;
+  composeServiceYaml?: string;
   [key: string]: unknown;
 }
 
@@ -87,6 +90,7 @@ export class DockerPlugin implements ImporterPlugin {
       description: 'Docker build configuration',
       type: 'dockerfile',
       filePath,
+      dockerfileContent: content,
     };
 
     const evidenceId = path.relative(projectRoot, filePath);
@@ -125,6 +129,8 @@ export class DockerPlugin implements ImporterPlugin {
         description: 'Docker service',
         type: 'service',
         filePath,
+        composeServiceConfig: serviceConfig,
+        composeServiceYaml: yaml.stringify({ [serviceName]: serviceConfig }, { indent: 2 }),
       };
 
       evidence.push({
@@ -157,16 +163,47 @@ export class DockerPlugin implements ImporterPlugin {
 
       const artifactType = data.type === 'dockerfile' ? 'service' : data.type;
       const root = hasCompose ? path.basename(data.filePath) : path.dirname(data.filePath);
+      const dockerMetadata: Record<string, unknown> = {};
+      if (data.composeServiceConfig) {
+        dockerMetadata.composeService = data.composeServiceConfig;
+      }
+      if (data.composeServiceYaml) {
+        dockerMetadata.composeServiceYaml = data.composeServiceYaml;
+      }
+      if (data.dockerfileContent) {
+        dockerMetadata.dockerfile = data.dockerfileContent;
+      }
+
+      const metadata: Record<string, unknown> = {
+        sourceFile: data.filePath,
+        root,
+      };
+
+      if (Object.keys(dockerMetadata).length > 0) {
+        metadata.docker = dockerMetadata;
+      }
+
+      if (data.composeServiceConfig && typeof data.composeServiceConfig === 'object') {
+        const composeConfig = data.composeServiceConfig as Record<string, unknown>;
+        if (typeof composeConfig.image === 'string') {
+          metadata.containerImage = composeConfig.image;
+        }
+        if (composeConfig.build !== undefined) {
+          metadata.dockerBuild = composeConfig.build;
+        }
+      }
+
+      if (data.dockerfileContent) {
+        metadata.dockerfile = data.filePath;
+      }
+
       const artifact = {
         id: `docker-${artifactType}-${data.name}`,
         type: artifactType as any,
         name: data.name,
         description: data.description,
         tags: ['docker', artifactType],
-        metadata: {
-          sourceFile: data.filePath,
-          root,
-        },
+        metadata,
       };
 
       artifacts.push({

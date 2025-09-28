@@ -596,8 +596,243 @@ export class ScannerRunner {
       }
     }
 
+    this.augmentArtifactsWithDockerMetadata(allArtifacts, evidence, inferenceContext.projectRoot);
+
     this.debug(`Inferred ${allArtifacts.length} artifacts from ${evidence.length} evidence items`);
     return allArtifacts;
+  }
+
+  private augmentArtifactsWithDockerMetadata(
+    artifacts: InferredArtifact[],
+    evidence: Evidence[],
+    projectRoot?: string
+  ): void {
+    const dockerEvidence = evidence.filter(ev => ev.source === 'docker' && ev.type === 'config');
+    if (dockerEvidence.length === 0) return;
+
+    const baseProjectRoot = projectRoot ?? '';
+
+    const normalizeRelativePath = (value: string | undefined): string => {
+      if (!value) return '';
+      const normalized = value.replace(/\\/g, '/');
+      if (normalized === '.' || normalized === './') return '';
+      return normalized.replace(/^\.\//, '').replace(/\/$/, '');
+    };
+
+    interface ComposeServiceInfo {
+      composeFilePath: string;
+      composeFileRelative: string;
+      composeServiceName: string;
+      serviceConfig: Record<string, unknown>;
+      serviceYaml?: string;
+      buildContextAbsolute?: string;
+      buildContextRelative?: string;
+      dockerfilePathAbsolute?: string;
+      dockerfilePathRelative?: string;
+      dockerfileContent?: string;
+    }
+
+    const composeServices: ComposeServiceInfo[] = [];
+    const dockerfiles = new Map<string, string>();
+
+    for (const ev of dockerEvidence) {
+      const data = ev.data as Record<string, unknown> | undefined;
+      if (!data || typeof data !== 'object') continue;
+
+      const dataTypeRaw = data.type;
+      const dataType = typeof dataTypeRaw === 'string' ? dataTypeRaw.toLowerCase() : '';
+
+      if (dataType === 'dockerfile') {
+        const filePath = data.filePath;
+        const content = data.dockerfileContent;
+        if (typeof filePath === 'string' && typeof content === 'string') {
+          dockerfiles.set(path.resolve(filePath), content);
+        }
+        continue;
+      }
+
+      if (dataType !== 'service') continue;
+
+      const composeFilePath = data.filePath;
+      const composeServiceConfig = data.composeServiceConfig;
+      if (typeof composeFilePath !== 'string') continue;
+      if (!composeServiceConfig || typeof composeServiceConfig !== 'object') continue;
+
+      const composeServiceNameRaw = data.name;
+      const composeServiceName =
+        typeof composeServiceNameRaw === 'string' ? composeServiceNameRaw : '';
+      const composeServiceYaml =
+        typeof data.composeServiceYaml === 'string' ? data.composeServiceYaml : undefined;
+
+      const composeDir = path.dirname(composeFilePath);
+      const composeFileRelative = normalizeRelativePath(
+        path.relative(baseProjectRoot, composeFilePath)
+      );
+
+      let buildContextAbsolute: string | undefined;
+      let dockerfilePathAbsolute: string | undefined;
+
+      const buildConfig = (composeServiceConfig as Record<string, unknown>).build;
+
+      if (typeof buildConfig === 'string') {
+        buildContextAbsolute = path.resolve(composeDir, buildConfig);
+        dockerfilePathAbsolute = path.resolve(buildContextAbsolute, 'Dockerfile');
+      } else if (buildConfig && typeof buildConfig === 'object') {
+        const build = buildConfig as Record<string, unknown>;
+        const contextValue = build.context;
+        const dockerfileValue = build.dockerfile;
+
+        if (typeof contextValue === 'string') {
+          buildContextAbsolute = path.resolve(composeDir, contextValue);
+        } else {
+          buildContextAbsolute = composeDir;
+        }
+
+        if (typeof dockerfileValue === 'string') {
+          const baseDir = buildContextAbsolute ?? composeDir;
+          dockerfilePathAbsolute = path.resolve(baseDir, dockerfileValue);
+        } else if (buildContextAbsolute) {
+          dockerfilePathAbsolute = path.resolve(buildContextAbsolute, 'Dockerfile');
+        }
+      }
+
+      const buildContextRelative = buildContextAbsolute
+        ? normalizeRelativePath(path.relative(baseProjectRoot, buildContextAbsolute))
+        : undefined;
+      const dockerfilePathRelative = dockerfilePathAbsolute
+        ? normalizeRelativePath(path.relative(baseProjectRoot, dockerfilePathAbsolute))
+        : undefined;
+
+      composeServices.push({
+        composeFilePath,
+        composeFileRelative,
+        composeServiceName,
+        serviceConfig: composeServiceConfig as Record<string, unknown>,
+        serviceYaml: composeServiceYaml,
+        buildContextAbsolute,
+        buildContextRelative,
+        dockerfilePathAbsolute,
+        dockerfilePathRelative,
+      });
+    }
+
+    if (composeServices.length === 0) return;
+
+    for (const service of composeServices) {
+      if (!service.dockerfilePathAbsolute) continue;
+      const content = dockerfiles.get(path.resolve(service.dockerfilePathAbsolute));
+      if (content) {
+        service.dockerfileContent = content;
+      }
+    }
+
+    const scoredMatch = (artifact: InferredArtifact): ComposeServiceInfo | undefined => {
+      if (artifact.artifact.type !== 'service') return undefined;
+
+      const metadata = artifact.artifact.metadata as Record<string, unknown>;
+      const artifactRootRaw = typeof metadata.root === 'string' ? metadata.root : undefined;
+      const artifactRoot = normalizeRelativePath(artifactRootRaw);
+      const artifactName = artifact.artifact.name;
+      const containerImage =
+        typeof metadata.containerImage === 'string' ? metadata.containerImage : undefined;
+
+      const candidates = composeServices
+        .map(service => {
+          let score = 0;
+
+          if (!artifactRoot && !service.buildContextRelative) {
+            score += 80;
+          }
+
+          if (artifactRoot && service.buildContextRelative) {
+            if (service.buildContextRelative === artifactRoot) {
+              score += 100;
+            } else if (service.buildContextRelative.startsWith(`${artifactRoot}/`)) {
+              score += 60;
+            } else if (artifactRoot.startsWith(`${service.buildContextRelative}/`)) {
+              score += 40;
+            }
+          }
+
+          if (artifactName && service.composeServiceName === artifactName) {
+            score += 50;
+          }
+
+          const serviceImage = (service.serviceConfig as { image?: unknown }).image;
+          if (
+            containerImage &&
+            typeof serviceImage === 'string' &&
+            serviceImage === containerImage
+          ) {
+            score += 40;
+          }
+
+          if (!score && composeServices.length === 1) {
+            score = 10;
+          }
+
+          return { service, score };
+        })
+        .filter(candidate => candidate.score > 0)
+        .sort((a, b) => b.score - a.score);
+
+      return candidates.length > 0 ? candidates[0].service : undefined;
+    };
+
+    for (const artifact of artifacts) {
+      const match = scoredMatch(artifact);
+      if (!match) continue;
+
+      const metadata = artifact.artifact.metadata as Record<string, unknown>;
+
+      const dockerMetadata =
+        metadata.docker && typeof metadata.docker === 'object'
+          ? (metadata.docker as Record<string, unknown>)
+          : {};
+
+      const clone = <T>(value: T): T => {
+        try {
+          return JSON.parse(JSON.stringify(value)) as T;
+        } catch {
+          return value;
+        }
+      };
+
+      if (!metadata.docker || typeof metadata.docker !== 'object') {
+        metadata.docker = dockerMetadata;
+      }
+
+      dockerMetadata.composeFile = match.composeFileRelative || match.composeFilePath;
+      dockerMetadata.composeServiceName = match.composeServiceName;
+      dockerMetadata.composeService = clone(match.serviceConfig);
+      if (match.serviceYaml) {
+        dockerMetadata.composeServiceYaml = match.serviceYaml;
+      }
+      if (match.buildContextRelative !== undefined) {
+        dockerMetadata.buildContext = match.buildContextRelative;
+      }
+      if (match.dockerfilePathRelative) {
+        dockerMetadata.dockerfilePath = match.dockerfilePathRelative;
+      }
+      if (match.dockerfileContent) {
+        dockerMetadata.dockerfile = match.dockerfileContent;
+        metadata.dockerfileContent = match.dockerfileContent;
+      }
+
+      if (!metadata.containerImage) {
+        const candidateImage = (match.serviceConfig as { image?: unknown }).image;
+        if (typeof candidateImage === 'string') {
+          metadata.containerImage = candidateImage;
+        }
+      }
+
+      if (!metadata.buildContext && match.buildContextRelative !== undefined) {
+        metadata.buildContext = match.buildContextRelative;
+      }
+      if (!metadata.dockerfilePath && match.dockerfilePathRelative) {
+        metadata.dockerfilePath = match.dockerfilePathRelative;
+      }
+    }
   }
 
   private async generateManifest(

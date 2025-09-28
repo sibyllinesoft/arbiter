@@ -126,14 +126,14 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     // Card variant classes
     const variantClasses = {
       default: cn(
-        'bg-white dark:bg-graphite-800 border border-gray-200 dark:border-graphite-700 shadow-sm dark:shadow-graphite-900/10',
+        'bg-white dark:bg-graphite-800 border border-[#2f394b] dark:border-[#242b3a] shadow-sm dark:shadow-graphite-900/10',
         hoverable &&
           'hover:border-gray-300 dark:hover:border-graphite-600 hover:shadow-md dark:hover:shadow-graphite-900/20',
         selected &&
           'border-blue-500 dark:border-blue-400 ring-1 ring-blue-500 dark:ring-blue-400 ring-opacity-20'
       ),
       interactive: cn(
-        'bg-white dark:bg-graphite-800 border border-gray-200 dark:border-graphite-700 shadow-sm dark:shadow-graphite-900/10',
+        'bg-white dark:bg-graphite-800 border border-[#2f394b] dark:border-[#242b3a] shadow-sm dark:shadow-graphite-900/10',
         'hover:border-gray-300 dark:hover:border-graphite-600 hover:shadow-md dark:hover:shadow-graphite-900/20 hover:shadow-graphite-900/5',
         'active:scale-[0.998] active:shadow-sm',
         'transition-all duration-150 ease-out cursor-pointer',

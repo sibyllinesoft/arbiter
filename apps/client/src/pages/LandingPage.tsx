@@ -107,6 +107,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
       infrastructure: 0,
       tools: 0,
       frontends: 0,
+      views: 0,
       external: 0,
       routes: 0,
       flows: 0,

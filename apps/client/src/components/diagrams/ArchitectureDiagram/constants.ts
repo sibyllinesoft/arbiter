@@ -12,6 +12,7 @@ export const LAYER_STYLE_CLASSES: Record<string, string> = {
     'bg-amber-500 border-amber-700 text-white dark:bg-amber-600 dark:border-amber-800 dark:text-white',
   infrastructure:
     'bg-emerald-500 border-emerald-700 text-white dark:bg-emerald-600 dark:border-emerald-800 dark:text-white',
+  view: 'bg-[#725718] border-[#5D4614] text-white dark:bg-[#5D4614] dark:border-[#3D2E0C] dark:text-white',
   route:
     'bg-indigo-500 border-indigo-700 text-white dark:bg-indigo-600 dark:border-indigo-800 dark:text-white',
   external:

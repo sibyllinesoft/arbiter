@@ -1,28 +1,360 @@
 import StatusBadge from '@/design-system/components/StatusBadge';
 import { apiService } from '@/services/api';
 import { clsx } from 'clsx';
-import React, { useState, useEffect } from 'react';
+import {
+  Component,
+  Database,
+  Eye,
+  Layout,
+  Navigation,
+  Server,
+  Shield,
+  Terminal,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
-import { FrontendTreeSection } from './components/FrontendTree';
-import type {
-  FrontendPackage,
-  RouteEndpoint,
-  RouteEndpointDocumentation,
-  RouteEndpointParameter,
-  RouteEndpointResponse,
-} from './components/FrontendTree';
 import { LoadingState } from './components/LoadingState';
-import RouteCardsSection from './components/RouteCardsSection';
 import { SelectedDetails } from './components/SelectedDetails';
 import { SourceGroup } from './components/SourceGroup';
 import type { ArchitectureDiagramProps } from './types';
-import {
-  type GroupedComponentGroup,
-  type GroupedComponentItem,
-  computeGroupedComponents,
-  normalizeRelativePath,
-} from './utils';
+
+type TreeMode = 'components' | 'routes';
+
+interface GroupedComponentItem {
+  name: string;
+  data: any;
+}
+
+interface GroupedComponentGroup {
+  key: string;
+  label: string;
+  type: string;
+  layout: 'grid' | 'tree';
+  treeMode?: TreeMode;
+  items: GroupedComponentItem[];
+}
+
+interface RouteEndpointParameter {
+  name: string;
+  type?: string;
+  optional: boolean;
+  description?: string;
+  decorators?: string[];
+}
+
+interface RouteEndpointResponse {
+  decorator: 'SuccessResponse' | 'Response';
+  status?: string;
+  description?: string;
+}
+
+interface RouteEndpointDocumentation {
+  summary?: string;
+  description?: string;
+  returns?: string;
+  remarks?: string[];
+  examples?: string[];
+  deprecated?: boolean | string;
+}
+
+interface RouteEndpoint {
+  method: string;
+  path?: string;
+  fullPath?: string;
+  controller?: string;
+  handler?: string;
+  returnType?: string;
+  signature: string;
+  documentation?: RouteEndpointDocumentation;
+  parameters: RouteEndpointParameter[];
+  responses: RouteEndpointResponse[];
+  tags?: string[];
+  source?: { line: number };
+}
+
+interface FrontendPackage {
+  packageName: string;
+  packageRoot: string;
+  frameworks: string[];
+  components?: Array<{
+    name: string;
+    filePath: string;
+    framework: string;
+    description?: string;
+    props?: any;
+  }>;
+  routes?: Array<{
+    path: string;
+    filePath?: string;
+    treePath?: string;
+    routerType?: string;
+    displayLabel: string;
+    httpMethods: string[];
+    endpoints: RouteEndpoint[];
+    metadata: any;
+    isBaseRoute: boolean;
+  }>;
+}
+
+const normalizeRelativePath = (filePath: string | undefined, packageRoot: string): string => {
+  if (!filePath) return '';
+  const normalizedFile = filePath.replace(/\\/g, '/').replace(/^\/+/, '');
+  if (!packageRoot) return normalizedFile;
+
+  const normalizedRoot = packageRoot.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  if (!normalizedRoot) return normalizedFile;
+
+  if (normalizedFile.startsWith(normalizedRoot)) {
+    const trimmed = normalizedFile.slice(normalizedRoot.length);
+    return trimmed.replace(/^\/+/, '');
+  }
+
+  return normalizedFile;
+};
+
+const getComponentType = (data: any, name: string): string => {
+  const toLowerString = (value: unknown): string => String(value || '').toLowerCase();
+  const rawType = toLowerString(data.type || data.metadata?.type);
+  const language = toLowerString(data.metadata?.language);
+  const framework = toLowerString(data.metadata?.framework);
+  const detectedType = toLowerString(data.metadata?.detectedType);
+
+  if (detectedType === 'tool' || detectedType === 'build_tool') return 'tool';
+  if (detectedType === 'frontend') return 'view';
+  if (detectedType === 'web_service') return 'service';
+
+  if (rawType.includes('service')) return 'service';
+  if (['module', 'library'].includes(rawType)) return 'module';
+  if (['tool', 'cli', 'binary'].includes(rawType)) return 'tool';
+  if (['deployment', 'infrastructure'].includes(rawType)) return 'infrastructure';
+  if (rawType === 'database') return 'database';
+  if (rawType === 'frontend') return 'view';
+  if (rawType === 'route') {
+    const routerType = toLowerString(data.metadata?.routerType);
+    if (routerType && routerType !== 'tsoa') {
+      return 'view';
+    }
+    return 'route';
+  }
+  if (rawType === 'component') return 'component';
+
+  if (language && ['javascript', 'typescript', 'tsx', 'jsx'].includes(language)) {
+    if (data.metadata?.routerType) return 'view';
+    if (framework.includes('react') || framework.includes('next')) return 'view';
+  }
+
+  if (data.metadata?.containerImage || data.metadata?.compose) return 'service';
+  if (data.metadata?.kubernetes || data.metadata?.terraform) return 'infrastructure';
+
+  if (name.includes('@')) return 'module';
+
+  return 'component';
+};
+
+const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => {
+  const CUE_FILE_REGEX = /\.cue$/i;
+  const TYPE_CONFIG: Record<
+    string,
+    { label: string; layout: 'grid' | 'tree'; treeMode?: TreeMode }
+  > = {
+    service: { label: 'Services', layout: 'grid' },
+    module: { label: 'Modules', layout: 'grid' },
+    tool: { label: 'Tools', layout: 'grid' },
+    route: { label: 'Routes', layout: 'grid' },
+    view: { label: 'Views', layout: 'grid' },
+    component: { label: 'Components', layout: 'grid' },
+    infrastructure: { label: 'Infrastructure', layout: 'grid' },
+    database: { label: 'Databases', layout: 'grid' },
+    other: { label: 'Other', layout: 'grid' },
+  };
+
+  const DESIRED_GROUP_ORDER = [
+    'Services',
+    'Modules',
+    'Tools',
+    'Routes',
+    'Views',
+    'Databases',
+    'Infrastructure',
+    'Other',
+  ];
+
+  const getTypeConfig = (type: string) => TYPE_CONFIG[type] ?? TYPE_CONFIG.other;
+
+  const shouldExcludeFromDiagram = (item: any): boolean => {
+    const candidates = [
+      item?.metadata?.filePath,
+      item?.metadata?.sourceFile,
+      item?.filePath,
+      item?.sourceFile,
+    ]
+      .filter(Boolean)
+      .map(path => String(path));
+
+    return candidates.some(path => CUE_FILE_REGEX.test(path));
+  };
+
+  const enrichDataForGrouping = (data: any, enforcedType: string) => ({
+    ...data,
+    type: data.type || enforcedType,
+    metadata: {
+      ...(data.metadata || {}),
+    },
+  });
+
+  const groups = new Map<string, GroupedComponentGroup>();
+
+  const ensureGroup = (type: string): GroupedComponentGroup => {
+    const config = getTypeConfig(type)!;
+    if (!groups.has(config.label)) {
+      const baseGroup: GroupedComponentGroup = {
+        key: type,
+        label: config.label,
+        type,
+        layout: config.layout,
+        items: [],
+      };
+      if (config.treeMode !== undefined) {
+        baseGroup.treeMode = config.treeMode;
+      }
+      groups.set(config.label, baseGroup);
+    }
+    return groups.get(config.label)!;
+  };
+
+  const addToGroup = (type: string, name: string, data: any) => {
+    if (!type) return;
+    const group = ensureGroup(type);
+    group.items.push({ name, data });
+  };
+
+  if (projectData) {
+    const services = projectData.spec?.services || projectData.services || {};
+    const databases = projectData.spec?.databases || projectData.databases || {};
+    const components = projectData.spec?.components || projectData.components || {};
+    const routes = projectData.spec?.ui?.routes || projectData.ui?.routes || [];
+    const frontendPackages = projectData.spec?.frontend?.packages || [];
+
+    const processEntry = (name: string, originalData: any) => {
+      if (!originalData) return;
+      if (shouldExcludeFromDiagram(originalData)) return;
+      const type = getComponentType(originalData, name);
+      const data = enrichDataForGrouping(originalData, type);
+      addToGroup(type, name, data);
+    };
+
+    Object.entries(services).forEach(([name, data]) => {
+      processEntry(name, data);
+    });
+
+    Object.entries(databases).forEach(([name, data]) => {
+      if (!data) return;
+      const databaseData = enrichDataForGrouping(data, 'database');
+      if (shouldExcludeFromDiagram(databaseData)) return;
+      addToGroup('database', name, databaseData);
+    });
+
+    Object.entries(components).forEach(([name, data]) => {
+      processEntry(name, data);
+    });
+
+    (routes as any[]).forEach(route => {
+      if (!route) return;
+      const name = route.id || route.name || route.path || 'route';
+      const baseMetadata = route.metadata || {};
+      const routerType = baseMetadata.routerType;
+      const derivedType = routerType && routerType !== 'tsoa' ? 'view' : 'route';
+      const routeData = {
+        ...route,
+        name: route.name || route.path || name,
+        metadata: baseMetadata,
+        type: derivedType,
+      };
+      if (shouldExcludeFromDiagram(routeData)) return;
+      const type = getComponentType(routeData, name);
+      addToGroup(type, name, routeData);
+    });
+
+    frontendPackages.forEach((pkg: any) => {
+      const packageName = pkg.packageName || pkg.name || 'frontend';
+      const packageRoot = pkg.packageRoot || pkg.root || '.';
+
+      (pkg.components || []).forEach((component: any) => {
+        const name = `${packageName}:${component.name}`;
+        const relativeFilePath = normalizeRelativePath(component.filePath, packageRoot);
+        const data = enrichDataForGrouping(
+          {
+            ...component,
+            metadata: {
+              ...component.metadata,
+              packageName,
+              packageRoot,
+              filePath: relativeFilePath,
+              displayLabel: component.name,
+            },
+          },
+          'component'
+        );
+        if (shouldExcludeFromDiagram(data)) return;
+        addToGroup('component', name, data);
+      });
+
+      (pkg.routes || []).forEach((route: any) => {
+        const name = `${packageName}:${route.path || route.filePath || 'view'}`;
+        const relativeFilePath = normalizeRelativePath(route.filePath, packageRoot);
+        const displayLabel = route.path || route.filePath || route.name || name;
+        const data = enrichDataForGrouping(
+          {
+            ...route,
+            name: displayLabel,
+            metadata: {
+              ...route.metadata,
+              packageName,
+              packageRoot,
+              routerType: route.routerType || 'frontend',
+              filePath: relativeFilePath,
+              displayLabel,
+            },
+          },
+          'view'
+        );
+        if (shouldExcludeFromDiagram(data)) return;
+        addToGroup('view', name, data);
+      });
+    });
+  }
+
+  const dedupedGroups = Array.from(groups.values())
+    .map(group => {
+      const seenDisplayNames = new Set<string>();
+      const uniqueItems = group.items.filter(({ name, data }) => {
+        const displayName = data.name || name;
+        if (!displayName) return false;
+        if (seenDisplayNames.has(displayName)) return false;
+        seenDisplayNames.add(displayName);
+        return true;
+      });
+
+      return { ...group, items: uniqueItems };
+    })
+    .filter(group => group.items.length > 0 && group.type !== 'component');
+
+  const orderedGroups: GroupedComponentGroup[] = [];
+  const remainingGroups = new Map(dedupedGroups.map(group => [group.label, group] as const));
+
+  DESIRED_GROUP_ORDER.forEach(label => {
+    if (remainingGroups.has(label)) {
+      orderedGroups.push(remainingGroups.get(label)!);
+      remainingGroups.delete(label);
+    }
+  });
+
+  orderedGroups.push(...remainingGroups.values());
+
+  return orderedGroups;
+};
 
 const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, className = '' }) => {
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
@@ -63,7 +395,21 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
 
   // Group components by type for rendering
 
-  const groupedComponents = computeGroupedComponents(projectData);
+  const groupedComponents: GroupedComponentGroup[] = useMemo(
+    () => computeGroupedComponents(projectData),
+    [projectData]
+  );
+
+  const groupIconMap: Record<string, LucideIcon> = {
+    service: Server,
+    module: Component,
+    tool: Terminal,
+    route: Navigation,
+    view: Eye,
+    database: Database,
+    infrastructure: Shield,
+    frontend: Layout,
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -85,7 +431,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     );
   }
 
-  const totalComponents = groupedComponents.reduce((sum, group) => sum + group.items.length, 0);
+  const totalComponents = groupedComponents.reduce(
+    (sum: number, group: GroupedComponentGroup) => sum + group.items.length,
+    0
+  );
 
   const buildPackagesFromGroup = (group: GroupedComponentGroup): FrontendPackage[] => {
     const packages = new Map<string, FrontendPackage>();
@@ -110,7 +459,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         if (!Array.isArray(base.parameters)) {
           return [];
         }
-        return base.parameters.map(parameter => {
+        return (base.parameters || []).map((parameter: any) => {
           const param = parameter as Partial<RouteEndpointParameter> & { name?: string };
           const normalized: RouteEndpointParameter = {
             name: String(param.name ?? '').trim() || 'param',
@@ -123,7 +472,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
             normalized.description = String(param.description);
           }
           if (Array.isArray(param.decorators) && param.decorators.length > 0) {
-            normalized.decorators = param.decorators.map(dec => String(dec));
+            normalized.decorators = (param.decorators || []).map((dec: any) => String(dec));
           }
           return normalized;
         });
@@ -133,7 +482,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
         if (!Array.isArray(base.responses)) {
           return [];
         }
-        return base.responses.map(response => {
+        return (base.responses || []).map((response: any) => {
           const res = response as Partial<RouteEndpointResponse>;
           const decorator: RouteEndpointResponse['decorator'] =
             res.decorator === 'SuccessResponse' ? 'SuccessResponse' : 'Response';
@@ -188,7 +537,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       const returnType = base.returnType ? String(base.returnType) : undefined;
       const defaultSignature = `${handler ?? 'handler'}()${returnType ? `: ${returnType}` : ''}`;
 
-      const tags = Array.isArray(base.tags) ? base.tags.map(tag => String(tag)) : [];
+      const tags = Array.isArray(base.tags) ? base.tags.map((tag: any) => String(tag)) : [];
 
       const source = (() => {
         const raw = base.source as { line?: unknown } | undefined;
@@ -417,7 +766,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
       return pkg;
     };
 
-    group.items.forEach(item => {
+    group.items.forEach((item: GroupedComponentItem) => {
       const metadata = item.data.metadata || {};
       const routeInfo = group.treeMode === 'routes' ? deriveRouteInfo(item) : null;
       const pkg = ensurePackage(item, routeInfo ?? undefined);
@@ -551,36 +900,8 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
           <EmptyState />
         ) : (
           <div className="space-y-4">
-            {groupedComponents.map(group => {
-              if (group.type === 'route') {
-                const packages = buildPackagesFromGroup(group);
-                if (packages.length === 0) {
-                  return null;
-                }
-                return (
-                  <RouteCardsSection key={group.label} title={group.label} packages={packages} />
-                );
-              }
-
-              if (group.layout === 'tree') {
-                const packages = buildPackagesFromGroup(group);
-                if (packages.length === 0) {
-                  return null;
-                }
-                return (
-                  <div
-                    key={group.label}
-                    className="bg-white dark:bg-graphite-900 border border-gray-200 dark:border-graphite-700 rounded-lg overflow-hidden"
-                  >
-                    <FrontendTreeSection
-                      title={group.label}
-                      packages={packages}
-                      mode={group.treeMode === 'routes' ? 'routes' : 'components'}
-                    />
-                  </div>
-                );
-              }
-
+            {groupedComponents.map((group: GroupedComponentGroup) => {
+              const icon = groupIconMap[group.type];
               return (
                 <SourceGroup
                   key={group.label}
@@ -589,6 +910,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                   expandedSources={expandedSources}
                   setExpandedSources={setExpandedSources}
                   onComponentClick={setSelectedComponent}
+                  {...(icon ? { icon } : {})}
                 />
               );
             })}

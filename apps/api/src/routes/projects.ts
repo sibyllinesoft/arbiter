@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { ProjectEntities } from '@arbiter/shared/types/entities';
 import { Hono } from 'hono';
 import type { ContentFetcher } from '../content-fetcher';
@@ -91,6 +92,22 @@ export function createProjectsRouter(deps: Dependencies) {
         name: services[serviceName].name,
       }));
 
+      const frontendViewSet = new Set<string>();
+      artifacts
+        .filter((artifact: any) => artifact.metadata?.frontendAnalysis)
+        .forEach((artifact: any) => {
+          const analysis = artifact.metadata?.frontendAnalysis;
+          if (!analysis) return;
+          (analysis.routers || []).forEach((router: any) => {
+            (router.routes || []).forEach((route: any) => {
+              const rawPath = String(route.path || '').trim();
+              if (!rawPath) return;
+              const normalized = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+              frontendViewSet.add(normalized.replace(/\/+/g, '/'));
+            });
+          });
+        });
+
       const resolvedSpec = {
         version: '1.0',
         services,
@@ -120,6 +137,7 @@ export function createProjectsRouter(deps: Dependencies) {
               .length,
             infrastructure: infrastructureCount,
             external: externalCount,
+            views: frontendViewSet.size,
             routes: routes.length,
             flows: Object.keys(services).length > 0 ? 1 : 0,
             capabilities: Object.keys(services).length > 0 ? 1 : 0,
@@ -154,6 +172,7 @@ export function createProjectsRouter(deps: Dependencies) {
             modules: 0,
             tools: 0,
             frontends: 0,
+            views: 0,
             infrastructure: 0,
             external: 0,
             // CUE spec entities
@@ -302,6 +321,7 @@ export function createProjectsRouter(deps: Dependencies) {
             }
 
             // Include frontend-detected routes
+            const frontendRouteSet = new Set<string>();
             const frontendRoutes: string[] = artifacts
               .filter((artifact: any) => artifact.metadata?.frontendAnalysis)
               .flatMap((artifact: any) => {
@@ -318,10 +338,13 @@ export function createProjectsRouter(deps: Dependencies) {
               .filter(Boolean)
               .forEach((path: string) => {
                 const normalized = path.startsWith('/') ? path : `/${path}`;
-                routeSet.add(normalized.replace(/\/+/g, '/'));
+                const cleaned = normalized.replace(/\/+/g, '/');
+                routeSet.add(cleaned);
+                frontendRouteSet.add(cleaned);
               });
 
             const routes = Array.from(routeSet);
+            const frontendViews = Array.from(frontendRouteSet);
 
             // Calculate entity counts
             entities = {
@@ -332,6 +355,7 @@ export function createProjectsRouter(deps: Dependencies) {
               frontends: frontendCount,
               infrastructure: infrastructureCount,
               external: externalCount,
+              views: frontendViews.length,
               routes: routes.length,
               flows: routes.length > 0 ? 1 : 0, // Generate one flow if we have routes
               capabilities: routes.length > 0 ? 1 : 0, // Generate one capability if we have routes
@@ -347,6 +371,7 @@ export function createProjectsRouter(deps: Dependencies) {
               frontends: 0,
               infrastructure: 0,
               external: 0,
+              views: 0,
               routes: 0,
               flows: 0,
               capabilities: 0,
@@ -435,11 +460,13 @@ export function createProjectsRouter(deps: Dependencies) {
         }
 
         if (files.length > 0) {
+          const absoluteProjectRoot = projectPath ? path.resolve(projectPath) : undefined;
           const analysis = await analyzeProjectFiles(projectId, actualProjectName, files, {
             gitUrl,
             structure,
             branch,
             fetcher: contentFetcher,
+            projectRoot: absoluteProjectRoot,
           });
 
           artifacts = analysis.artifacts;
