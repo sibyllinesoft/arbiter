@@ -19,16 +19,12 @@ export function createGenerationCommands(program: Command): void {
     .command('generate [spec-name]')
     .description('generate project files from stored specifications')
     .option('--output-dir <dir>', 'output directory for generated files', '.')
-    .option('--include-ci', 'include CI/CD workflow files')
-    .option('--include-docs', 'include documentation generation')
-    .option('--docs-format <format>', 'documentation format (markdown, html)', 'markdown')
-    .option('--docs-output <dir>', 'documentation output directory', './docs')
-    .option('--include-examples', 'generate example files alongside documentation')
-    .option('--force', 'overwrite existing files without prompting')
+    .option('--spec <name>', 'use a specific stored specification')
+    .option('--force', 'overwrite existing files despite validation warnings')
     .option('--dry-run', 'preview what would be generated without creating files')
-    .option('--exclude <patterns>', 'comma-separated patterns to exclude from generation')
+    .option('--sync-github', 'sync generated epics and tasks to GitHub')
     .option('--github-dry-run', 'preview GitHub sync changes without applying them')
-    .option('--use-config', 'use configuration file repository info (for conflict resolution)')
+    .option('--verbose', 'enable verbose logging for generation flow')
     .action(async (specName: string | undefined, options: GenerateOptions, command) => {
       try {
         let config = command.parent?.config;
@@ -37,9 +33,7 @@ export function createGenerationCommands(program: Command): void {
         }
 
         // Auto-detect git repository information if needed
-        config = await loadConfigWithGitDetection(config, {
-          useGitRemote: options.useConfig !== false,
-        });
+        config = await loadConfigWithGitDetection(config);
 
         const exitCode = await generateCommand(options, config, specName);
         process.exit(exitCode);

@@ -1,5 +1,6 @@
 import Button from '@/design-system/components/Button';
 import Modal from '@/design-system/components/Modal';
+import { getHighlightedCode, normalizeSyntaxLanguage } from '@/utils/syntaxHighlight';
 import {
   Database,
   Eye,
@@ -60,26 +61,42 @@ const formatValue = (value: unknown): string => {
   return String(value);
 };
 
+const renderCodeBlock = (value: string, language?: string, extraClasses = '') => {
+  const highlighted = getHighlightedCode(value, language);
+  const normalized = normalizeSyntaxLanguage(language);
+  const baseClasses = `text-xs font-mono whitespace-pre-wrap break-words ${surfaceClasses}`;
+  const composed = `${baseClasses} ${extraClasses}`.trim();
+
+  if (highlighted) {
+    return (
+      <pre className={`syntax-highlight ${composed}`} data-language={normalized}>
+        <code dangerouslySetInnerHTML={{ __html: highlighted }} />
+      </pre>
+    );
+  }
+
+  return <pre className={composed}>{value}</pre>;
+};
+
 const buildDetail = (
   label: string,
   rawValue: unknown,
-  options: { code?: boolean } = {}
+  options: { code?: boolean; language?: string; codeClasses?: string } = {}
 ): React.ReactNode => {
   const value = formatValue(rawValue);
   if (!value) return null;
-  const isMultilineCode = Boolean(options.code && value.includes('\n'));
   const baseValueClasses = `whitespace-pre-wrap break-words ${surfaceClasses}`;
-  const valueClassName = options.code
-    ? `text-xs font-mono text-gray-700 dark:text-graphite-100 ${baseValueClasses}`
-    : `text-sm text-gray-700 dark:text-graphite-200 ${baseValueClasses}`;
+  const valueClassName = `text-sm text-gray-700 dark:text-graphite-200 ${baseValueClasses}`;
   return (
     <div key={label}>
       <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-graphite-300 mb-1">
         {label}
       </h5>
-      <div className={valueClassName}>
-        {isMultilineCode ? <pre className="whitespace-pre-wrap break-words">{value}</pre> : value}
-      </div>
+      {options.code ? (
+        renderCodeBlock(value, options.language, options.codeClasses)
+      ) : (
+        <div className={valueClassName}>{value}</div>
+      )}
     </div>
   );
 };
@@ -210,11 +227,7 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
           <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-graphite-300 mb-1">
             Package Contents
           </h5>
-          <pre
-            className={`text-xs font-mono whitespace-pre-wrap break-words text-gray-700 dark:text-graphite-100 ${surfaceClasses} max-h-64 overflow-auto scrollbar-transparent`}
-          >
-            {packageContent}
-          </pre>
+          {renderCodeBlock(packageContent, 'json', 'max-h-64 overflow-auto scrollbar-transparent')}
         </div>
       );
     }
@@ -298,6 +311,7 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
 
     const dockerfileContent = (() => {
       const candidates: Array<unknown> = [
+        dockerMetadata['dockerfileContent'],
         dockerMetadata['dockerfile'],
         metadata.dockerfileContent,
         metadata.dockerfile,
@@ -309,7 +323,7 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
         if (typeof candidate !== 'string') continue;
         const trimmed = candidate.trim();
         if (!trimmed) continue;
-        if (trimmed.includes('\n') || /^FROM\s+/i.test(trimmed)) {
+        if (trimmed.includes('\n') || /^\s*(FROM|ARG|ENV|RUN|CMD|ENTRYPOINT)\b/i.test(trimmed)) {
           return trimmed;
         }
       }
@@ -356,7 +370,6 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
 
     const allowedAdditionalDetails = [
       buildDetail('Package', packageName),
-      buildDetail('Package Root', packageRoot, { code: true }),
       buildDetail('Route Path', routePath, { code: true }),
       buildDetail('Route Base Path', routeBase, { code: true }),
       buildDetail('HTTP Methods', httpMethods),
@@ -376,11 +389,7 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
           <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-graphite-300 mb-1">
             Props
           </h5>
-          <pre
-            className={`text-xs font-mono whitespace-pre-wrap break-words text-gray-700 dark:text-graphite-100 ${surfaceClasses}`}
-          >
-            {formattedProps}
-          </pre>
+          {renderCodeBlock(formattedProps, 'json')}
         </div>
       );
     }
@@ -391,37 +400,41 @@ export const SelectedDetails: React.FC<SelectedDetailsProps> = ({
           <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-graphite-300 mb-1">
             Docker Compose File
           </h5>
-          <pre
-            className={`text-xs font-mono whitespace-pre break-words text-gray-700 dark:text-graphite-100 ${surfaceClasses} max-h-64 overflow-auto scrollbar-transparent`}
-          >
-            {composeFileYaml}
-          </pre>
+          {renderCodeBlock(
+            composeFileYaml,
+            'yaml',
+            'max-h-64 overflow-auto scrollbar-transparent whitespace-pre'
+          )}
         </div>
       );
-    } else if (composeServiceYaml) {
+    }
+
+    if (composeServiceYaml && composeServiceYaml !== composeFileYaml) {
       details.push(
         <div key="docker-compose-service">
           <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-graphite-300 mb-1">
             Docker Compose Service
           </h5>
-          <pre
-            className={`text-xs font-mono whitespace-pre break-words text-gray-700 dark:text-graphite-100 ${surfaceClasses} max-h-64 overflow-auto scrollbar-transparent`}
-          >
-            {composeServiceYaml}
-          </pre>
+          {renderCodeBlock(
+            composeServiceYaml,
+            'yaml',
+            'max-h-64 overflow-auto scrollbar-transparent whitespace-pre'
+          )}
         </div>
       );
-    } else if (dockerfileContent) {
+    }
+
+    if (dockerfileContent) {
       details.push(
         <div key="dockerfile">
           <h5 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-graphite-300 mb-1">
             Dockerfile
           </h5>
-          <pre
-            className={`text-xs font-mono whitespace-pre break-words text-gray-700 dark:text-graphite-100 ${surfaceClasses} max-h-64 overflow-auto scrollbar-transparent`}
-          >
-            {dockerfileContent}
-          </pre>
+          {renderCodeBlock(
+            dockerfileContent,
+            'dockerfile',
+            'max-h-64 overflow-auto scrollbar-transparent whitespace-pre'
+          )}
         </div>
       );
     }

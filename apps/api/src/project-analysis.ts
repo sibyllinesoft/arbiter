@@ -1300,6 +1300,11 @@ const PARSERS: ParserDefinition[] = [
       const lines = content.split(/\r?\n/);
       const metadata: Record<string, unknown> = { ...(artifact.metadata ?? {}) };
 
+      const normalizedContent = content?.trimEnd();
+      if (normalizedContent) {
+        metadata.dockerfileContent = normalizedContent;
+      }
+
       const fromLine = lines.find(line => /^\s*FROM\s+/i.test(line));
       if (fromLine) {
         const baseImage = fromLine.replace(/^\s*FROM\s+/i, '').split('s')[0];

@@ -82,12 +82,22 @@ export interface CLIConfig {
 }
 
 export interface ProjectStructureConfig {
-  appsDirectory: string;
-  packagesDirectory: string;
+  /** Primary location for client-facing applications */
+  clientsDirectory: string;
+  /** Primary location for backend and API services */
   servicesDirectory: string;
+  /** Shared modules and domain libraries */
+  modulesDirectory: string;
+  /** Developer tooling, CLIs, and automation scripts */
+  toolsDirectory: string;
+  /** Project documentation output */
+  docsDirectory: string;
+  /** Shared test suites and golden fixtures */
   testsDirectory: string;
+  /** Infrastructure as code and deployment assets */
   infraDirectory: string;
-  endpointDirectory: string;
+  /** Optional legacy endpoint directory support */
+  endpointDirectory?: string;
 }
 
 /**

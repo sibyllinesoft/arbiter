@@ -170,10 +170,6 @@ export class DockerPlugin implements ImporterPlugin {
       if (data.composeServiceYaml) {
         dockerMetadata.composeServiceYaml = data.composeServiceYaml;
       }
-      if (data.dockerfileContent) {
-        dockerMetadata.dockerfile = data.dockerfileContent;
-      }
-
       const metadata: Record<string, unknown> = {
         sourceFile: data.filePath,
         root,
@@ -194,6 +190,11 @@ export class DockerPlugin implements ImporterPlugin {
       }
 
       if (data.dockerfileContent) {
+        dockerMetadata.dockerfile = data.dockerfileContent;
+        metadata.dockerfileContent = data.dockerfileContent;
+      }
+
+      if (data.filePath) {
         metadata.dockerfile = data.filePath;
       }
 

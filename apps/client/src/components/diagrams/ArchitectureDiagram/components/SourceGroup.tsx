@@ -1,4 +1,5 @@
 import StatusBadge from '@/design-system/components/StatusBadge';
+import { clsx } from 'clsx';
 import type { LucideIcon } from 'lucide-react';
 import React from 'react';
 import { ComponentCard } from './ComponentCard';
@@ -20,7 +21,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
   onComponentClick,
   icon: Icon,
 }) => {
-  const isExpanded = expandedSources[groupLabel];
+  const isExpanded = expandedSources[groupLabel] ?? false;
 
   return (
     <div className="bg-white dark:bg-graphite-900 border border-gray-200 dark:border-graphite-700 rounded-lg overflow-hidden">
@@ -81,20 +82,33 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
       </button>
 
       {/* Components Grid */}
-      {isExpanded && (
-        <div className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {components.map(({ name, data }) => (
-              <ComponentCard
-                key={`${groupLabel}-${name}`}
-                name={name}
-                data={data}
-                onClick={() => onComponentClick(name)}
-              />
-            ))}
+      <div
+        className={clsx(
+          'grid transition-[grid-template-rows] duration-300 ease-out',
+          isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        )}
+        aria-hidden={!isExpanded}
+      >
+        <div
+          className={clsx(
+            'overflow-hidden transition-opacity duration-200 ease-out',
+            isExpanded ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'
+          )}
+        >
+          <div className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {components.map(({ name, data }) => (
+                <ComponentCard
+                  key={`${groupLabel}-${name}`}
+                  name={name}
+                  data={data}
+                  onClick={() => onComponentClick(name)}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };

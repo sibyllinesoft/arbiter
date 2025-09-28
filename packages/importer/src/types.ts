@@ -195,6 +195,8 @@ export interface ServiceArtifact extends BaseArtifact {
     buildContext?: string;
     /** Dockerfile path relative to build context */
     dockerfile?: string;
+    /** Raw Dockerfile contents when available */
+    dockerfileContent?: string;
   };
 }
 

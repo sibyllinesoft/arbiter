@@ -132,6 +132,7 @@ export type { ${config.name}Props } from './types';`,
       'typescript',
       'vite',
       '@vitejs/plugin-react',
+      'react-router-dom',
     ];
 
     // Package.json
@@ -177,9 +178,7 @@ export type { ${config.name}Props } from './types';`,
     });
 
     // Additional features
-    if (config.features.includes('routing')) {
-      dependencies.push('react-router-dom', '@types/react-router-dom');
-    }
+    dependencies.push('@types/react-router-dom');
     if (config.features.includes('state-management')) {
       dependencies.push('@reduxjs/toolkit', 'react-redux');
     }
@@ -550,24 +549,19 @@ export default defineConfig({
   }
 
   private generateMainApp(config: ProjectConfig): string {
-    const routing = config.features.includes('routing');
-    const routingImport = routing
-      ? "import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';"
-      : '';
-    const routingWrapper = routing
-      ? '<Router>\n      <Routes>\n        <Route path="/" element={<h1>Welcome to {name}</h1>} />\n      </Routes>\n    </Router>'
-      : '<h1>Welcome to {name}</h1>';
-
-    return `${routingImport}
+    return `import { BrowserRouter } from 'react-router-dom';
+import { Suspense } from 'react';
+import { routes } from './routes';
+import { AppRoutes } from './routes/AppRoutes';
 import './App.css';
 
-function App() {
-  const name = '${config.name}';
-
+export function App() {
   return (
-    <div className="App">
-      ${routingWrapper}
-    </div>
+    <BrowserRouter>
+      <Suspense fallback={<div>Loading...</div>}>
+        <AppRoutes routes={routes} />
+      </Suspense>
+    </BrowserRouter>
   );
 }
 
@@ -578,7 +572,7 @@ export default App;
   private generateMainEntry(config: ProjectConfig): string {
     return `import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+import { App } from './App';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

@@ -38,12 +38,14 @@ function generateProjectId(): string {
 }
 
 export const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
-  appsDirectory: 'apps',
-  packagesDirectory: 'packages',
+  clientsDirectory: 'clients',
   servicesDirectory: 'services',
+  modulesDirectory: 'modules',
+  toolsDirectory: 'tools',
+  docsDirectory: 'docs',
   testsDirectory: 'tests',
   infraDirectory: 'infra',
-  endpointDirectory: 'apps/api/src/endpoints',
+  endpointDirectory: 'services/endpoints',
 };
 
 /**
@@ -199,9 +201,11 @@ const gitHubSyncSchema = z.object({
 
 const projectStructureSchema = z
   .object({
-    appsDirectory: z.string().optional(),
-    packagesDirectory: z.string().optional(),
+    clientsDirectory: z.string().optional(),
     servicesDirectory: z.string().optional(),
+    modulesDirectory: z.string().optional(),
+    toolsDirectory: z.string().optional(),
+    docsDirectory: z.string().optional(),
     testsDirectory: z.string().optional(),
     infraDirectory: z.string().optional(),
     endpointDirectory: z.string().optional(),

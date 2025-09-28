@@ -1,9 +1,20 @@
+import { getHighlightedCode, normalizeSyntaxLanguage } from '@/utils/syntaxHighlight';
 import { Check, Copy } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 interface DataViewerProps {
   data: string | object;
-  language?: 'yaml' | 'json' | 'javascript' | 'typescript' | 'cue';
+  language?:
+    | 'yaml'
+    | 'yml'
+    | 'json'
+    | 'javascript'
+    | 'typescript'
+    | 'cue'
+    | 'dockerfile'
+    | 'docker'
+    | 'bash'
+    | 'shell';
   title?: string;
   className?: string;
   showCopyButton?: boolean;
@@ -30,10 +41,25 @@ export const DataViewer: React.FC<DataViewerProps> = ({
     }
   };
 
+  const highlightedLanguage = useMemo(() => normalizeSyntaxLanguage(language), [language]);
+
+  const highlightedHtml = useMemo(
+    () => getHighlightedCode(dataString, language),
+    [dataString, language]
+  );
+
   const getLanguageClass = () => {
     switch (language) {
       case 'json':
         return 'language-json';
+      case 'yml':
+      case 'yaml':
+        return 'language-yaml';
+      case 'dockerfile':
+      case 'docker':
+      case 'bash':
+      case 'shell':
+        return 'language-bash';
       case 'javascript':
         return 'language-javascript';
       case 'typescript':
@@ -73,9 +99,18 @@ export const DataViewer: React.FC<DataViewerProps> = ({
       )}
 
       <div className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-auto max-h-96 text-sm font-mono">
-        <pre className={getLanguageClass()}>
-          <code>{dataString}</code>
-        </pre>
+        {highlightedHtml ? (
+          <pre
+            className={`syntax-highlight ${getLanguageClass()}`}
+            data-language={highlightedLanguage}
+          >
+            <code dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+          </pre>
+        ) : (
+          <pre className={getLanguageClass()}>
+            <code>{dataString}</code>
+          </pre>
+        )}
       </div>
     </div>
   );

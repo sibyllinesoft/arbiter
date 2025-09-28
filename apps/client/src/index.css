@@ -198,6 +198,102 @@ body {
 }
 
 /* Coverage meter styles */
+
+/* Syntax highlight utility classes */
+.syntax-highlight {
+  background: inherit;
+  color: inherit;
+  line-height: 1.6;
+}
+
+.syntax-highlight code {
+  display: block;
+  white-space: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.syntax-highlight .syntax-key {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.syntax-highlight .syntax-string {
+  color: #047857;
+}
+
+.syntax-highlight .syntax-number {
+  color: #b45309;
+}
+
+.syntax-highlight .syntax-boolean {
+  color: #a21caf;
+  font-weight: 600;
+}
+
+.syntax-highlight .syntax-null {
+  color: #475569;
+  font-style: italic;
+}
+
+.syntax-highlight .syntax-comment {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.syntax-highlight .syntax-directive {
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.syntax-highlight .syntax-variable {
+  color: #2563eb;
+}
+
+.syntax-highlight .syntax-symbol {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.syntax-highlight .syntax-plain {
+  color: inherit;
+}
+
+.dark .syntax-highlight .syntax-key {
+  color: #60a5fa;
+}
+
+.dark .syntax-highlight .syntax-string {
+  color: #6ee7b7;
+}
+
+.dark .syntax-highlight .syntax-number {
+  color: #facc15;
+}
+
+.dark .syntax-highlight .syntax-boolean {
+  color: #f472b6;
+}
+
+.dark .syntax-highlight .syntax-null {
+  color: #a3a3b3;
+}
+
+.dark .syntax-highlight .syntax-comment {
+  color: #9ca3af;
+}
+
+.dark .syntax-highlight .syntax-directive {
+  color: #fb923c;
+}
+
+.dark .syntax-highlight .syntax-variable {
+  color: #93c5fd;
+}
+
+.dark .syntax-highlight .syntax-symbol {
+  color: #2dd4bf;
+}
 .coverage-meter {
   @apply relative bg-gray-200 rounded-full h-2 overflow-hidden;
 }
