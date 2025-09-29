@@ -69,13 +69,16 @@ export class HandlerExecutor {
 
     // Process results
     const handlerResults: HandlerResult[] = [];
+    const notificationPromises: Array<Promise<void>> = [];
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
       const handler = handlers[i];
 
       if (result.status === 'fulfilled') {
-        handlerResults.push(result.value.result);
-        this.updateHandlerStats(handler.id, result.value.result);
+        const handlerResult = result.value.result;
+        handlerResults.push(handlerResult);
+        this.updateHandlerStats(handler.id, handlerResult);
+        notificationPromises.push(this.broadcastHandlerResult(projectId, handler, handlerResult));
       } else {
         const errorResult: HandlerResult = {
           success: false,
@@ -90,10 +93,43 @@ export class HandlerExecutor {
         };
         handlerResults.push(errorResult);
         this.updateHandlerStats(handler.id, errorResult);
+        notificationPromises.push(this.broadcastHandlerResult(projectId, handler, errorResult));
       }
     }
 
+    await Promise.allSettled(notificationPromises);
+
     return handlerResults;
+  }
+
+  private async broadcastHandlerResult(
+    projectId: string,
+    handler: RegisteredHandler,
+    result: HandlerResult
+  ): Promise<void> {
+    try {
+      await this.services.events.broadcastToProject(projectId, {
+        project_id: projectId,
+        event_type: 'handler_executed',
+        data: {
+          handlerId: handler.id,
+          handlerName: handler.metadata?.name || handler.id,
+          provider: handler.provider,
+          event: handler.event,
+          success: result.success,
+          message: result.message,
+          actions: result.actions ?? [],
+          duration: result.duration ?? null,
+          errors: result.errors ?? [],
+        },
+      });
+    } catch (error) {
+      this.logger.error('Failed to broadcast handler result', error as Error, {
+        projectId,
+        handlerId: handler.id,
+        event: handler.event,
+      });
+    }
   }
 
   /**
@@ -203,7 +239,7 @@ export class HandlerExecutor {
       id: executionId,
       handlerId: handler.id,
       projectId,
-      provider: payload.parsed.repository.fullName.includes('gitlab') ? 'gitlab' : 'github',
+      provider: handler.provider,
       event: payload.parsed.eventType,
       payload,
       result,
@@ -339,6 +375,8 @@ export class HandlerExecutor {
 
     return {
       projectId,
+      provider: handler.provider,
+      event: handler.event,
       config: sanitizedConfig,
       logger: this.createHandlerLogger(handler.id, executionId),
       services: this.services,

@@ -2,6 +2,8 @@
  * API service for backend communication
  */
 
+import type { UIOptionCatalog } from '@arbiter/shared';
+
 import type {
   CreateFragmentRequest,
   CreateFragmentResponse,
@@ -51,6 +53,12 @@ export interface ProjectStructureSettings {
   testsDirectory: string;
   infraDirectory: string;
   endpointDirectory: string;
+}
+
+interface UiOptionsResponse {
+  success: boolean;
+  options?: UIOptionCatalog;
+  diagnostics?: string[];
 }
 
 interface ProjectStructureResponse {
@@ -239,6 +247,21 @@ export class ApiService {
 
   async getProjectStructureSettings(): Promise<ProjectStructureResponse> {
     return this.request<ProjectStructureResponse>('/api/config/project-structure');
+  }
+
+  async getUiOptionCatalog(): Promise<UIOptionCatalog> {
+    const response = await this.request<UiOptionsResponse>('/api/config/ui-options');
+    return (response.options ?? {}) as UIOptionCatalog;
+  }
+
+  async createProjectEntity(
+    projectId: string,
+    payload: { type: string; values: Record<string, string> }
+  ) {
+    return this.request(`/api/projects/${projectId}/entities`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
   }
 
   async updateProjectStructureSettings(

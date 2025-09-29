@@ -90,13 +90,14 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
                 break;
               case 'handler_executed':
                 const success = message.payload?.success;
+                const handlerMessage = message.payload?.message || 'Handler executed';
                 if (success) {
-                  toast.success('Handler executed successfully', {
+                  toast.success(handlerMessage, {
                     position: 'bottom-right',
                     autoClose: 3000,
                   });
                 } else {
-                  toast.error('Handler execution failed', {
+                  toast.error(handlerMessage, {
                     position: 'bottom-right',
                     autoClose: 5000,
                   });

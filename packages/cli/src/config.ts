@@ -1,11 +1,18 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  ARRAY_UI_OPTION_KEYS,
+  DEFAULT_UI_OPTION_CATALOG,
+  type UIOptionCatalog,
+  type UIOptionGeneratorMap,
+  UI_OPTION_KEYS,
+} from '@arbiter/shared';
 import chalk from 'chalk';
 import fs from 'fs-extra';
 import yaml from 'yaml';
 import { z } from 'zod';
-import type { CLIConfig, ProjectStructureConfig } from './types.js';
+import type { CLIConfig, GeneratorConfig, ProjectStructureConfig } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,6 +67,7 @@ export const DEFAULT_CONFIG: CLIConfig = {
   projectDir: process.cwd(),
   projectId: generateProjectId(), // Auto-generate project ID
   projectStructure: { ...DEFAULT_PROJECT_STRUCTURE },
+  uiOptions: { ...DEFAULT_UI_OPTION_CATALOG },
 };
 
 /**
@@ -212,6 +220,43 @@ const projectStructureSchema = z
   })
   .optional();
 
+const uiOptionCatalogSchema = z
+  .object({
+    frontendFrameworks: z.array(z.string()).optional(),
+    serviceLanguages: z.array(z.string()).optional(),
+    serviceFrameworks: z.record(z.string(), z.array(z.string())).optional(),
+    databaseEngines: z.array(z.string()).optional(),
+    infrastructureScopes: z.array(z.string()).optional(),
+  })
+  .optional();
+
+const uiOptionGeneratorsSchema = z
+  .object({
+    frontendFrameworks: z.string().optional(),
+    serviceLanguages: z.string().optional(),
+    serviceFrameworks: z.string().optional(),
+    databaseEngines: z.string().optional(),
+    infrastructureScopes: z.string().optional(),
+  })
+  .optional();
+
+const generatorHooksSchema = z
+  .object({
+    'before:generate': z.string().optional(),
+    'after:generate': z.string().optional(),
+    'before:fileWrite': z.string().optional(),
+    'after:fileWrite': z.string().optional(),
+  })
+  .optional();
+
+const generatorSchema = z
+  .object({
+    templateOverrides: z.record(z.string(), z.string()).optional(),
+    plugins: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+    hooks: generatorHooksSchema,
+  })
+  .optional();
+
 const configSchema = z.object({
   apiUrl: z.string().url().optional(),
   timeout: z.number().min(100).max(750).optional(), // Enforce spec maximum (≤750ms)
@@ -221,6 +266,9 @@ const configSchema = z.object({
   projectId: z.string().optional(),
   github: gitHubSyncSchema.optional(),
   projectStructure: projectStructureSchema,
+  uiOptions: uiOptionCatalogSchema,
+  uiOptionGenerators: uiOptionGeneratorsSchema,
+  generator: generatorSchema,
 });
 
 /**
@@ -239,6 +287,61 @@ const CONFIG_FILES = [
   'arbiter.yml',
 ];
 
+function cloneFrameworkMap(map?: Record<string, string[]>): Record<string, string[]> | undefined {
+  if (!map) return undefined;
+  return Object.fromEntries(
+    Object.entries(map).map(([language, frameworks]) => [language, [...frameworks]])
+  );
+}
+
+function cloneUIOptionCatalog(options?: UIOptionCatalog): UIOptionCatalog | undefined {
+  if (!options) return undefined;
+
+  const cloned: UIOptionCatalog = {};
+
+  for (const key of ARRAY_UI_OPTION_KEYS) {
+    const values = options[key];
+    if (Array.isArray(values)) {
+      cloned[key] = [...values];
+    }
+  }
+
+  if (options.serviceFrameworks) {
+    const frameworks = cloneFrameworkMap(options.serviceFrameworks);
+    if (frameworks) {
+      cloned.serviceFrameworks = frameworks;
+    } else {
+      cloned.serviceFrameworks = {};
+    }
+  }
+
+  return Object.keys(cloned).length > 0 ? cloned : undefined;
+}
+
+function deepClone<T>(value: T): T {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function cloneGeneratorConfig(config?: GeneratorConfig): GeneratorConfig | undefined {
+  if (!config) return undefined;
+
+  return {
+    templateOverrides: config.templateOverrides ? { ...config.templateOverrides } : undefined,
+    plugins: config.plugins
+      ? Object.fromEntries(
+          Object.entries(config.plugins).map(([language, options]) => [
+            language,
+            deepClone(options),
+          ])
+        )
+      : undefined,
+    hooks: config.hooks ? { ...config.hooks } : undefined,
+  };
+}
+
 /**
  * Load CLI configuration from file or use defaults
  */
@@ -246,6 +349,10 @@ function cloneConfig(config: CLIConfig): CLIConfig {
   return {
     ...config,
     projectStructure: { ...config.projectStructure },
+    uiOptions: cloneUIOptionCatalog(config.uiOptions),
+    uiOptionGenerators: config.uiOptionGenerators ? { ...config.uiOptionGenerators } : undefined,
+    configFilePath: config.configFilePath,
+    configDir: config.configDir,
     github: config.github
       ? {
           ...config.github,
@@ -255,6 +362,95 @@ function cloneConfig(config: CLIConfig): CLIConfig {
           templates: config.github.templates ? { ...config.github.templates } : undefined,
         }
       : undefined,
+    generator: cloneGeneratorConfig(config.generator),
+  };
+}
+
+function mergeOptionCatalog(
+  base: UIOptionCatalog | undefined,
+  overrides: UIOptionCatalog | undefined
+): UIOptionCatalog | undefined {
+  if (!base && !overrides) return undefined;
+  const merged: UIOptionCatalog = {};
+
+  for (const key of ARRAY_UI_OPTION_KEYS) {
+    const overrideValues = overrides?.[key];
+    const baseValues = base?.[key];
+
+    if (Array.isArray(overrideValues)) {
+      merged[key] = [...overrideValues];
+    } else if (Array.isArray(baseValues)) {
+      merged[key] = [...baseValues];
+    }
+  }
+
+  if (overrides?.serviceFrameworks) {
+    merged.serviceFrameworks = cloneFrameworkMap(overrides.serviceFrameworks) ?? {};
+  } else if (base?.serviceFrameworks) {
+    merged.serviceFrameworks = cloneFrameworkMap(base.serviceFrameworks) ?? {};
+  }
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeOptionGenerators(
+  base: UIOptionGeneratorMap | undefined,
+  overrides: UIOptionGeneratorMap | undefined
+): UIOptionGeneratorMap | undefined {
+  if (!base && !overrides) return undefined;
+  const merged: UIOptionGeneratorMap = {};
+  for (const key of UI_OPTION_KEYS) {
+    if (overrides?.[key]) {
+      merged[key] = overrides[key];
+    } else if (base?.[key]) {
+      merged[key] = base[key];
+    }
+  }
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeGeneratorConfig(
+  base: GeneratorConfig | undefined,
+  overrides: GeneratorConfig | undefined
+): GeneratorConfig | undefined {
+  if (!base && !overrides) return undefined;
+
+  const templateOverrides = {
+    ...(base?.templateOverrides ?? {}),
+    ...(overrides?.templateOverrides ?? {}),
+  } as Record<string, string>;
+
+  const pluginConfig: Record<string, Record<string, unknown>> = {};
+  if (base?.plugins) {
+    for (const [language, options] of Object.entries(base.plugins)) {
+      pluginConfig[language] = deepClone(options);
+    }
+  }
+  if (overrides?.plugins) {
+    for (const [language, options] of Object.entries(overrides.plugins)) {
+      pluginConfig[language] = pluginConfig[language]
+        ? { ...pluginConfig[language], ...deepClone(options) }
+        : deepClone(options);
+    }
+  }
+
+  const hookConfig = {
+    ...(base?.hooks ?? {}),
+    ...(overrides?.hooks ?? {}),
+  } as Record<string, string>;
+
+  const hasTemplateOverrides = Object.keys(templateOverrides).length > 0;
+  const hasPlugins = Object.keys(pluginConfig).length > 0;
+  const hasHooks = Object.keys(hookConfig).length > 0;
+
+  if (!hasTemplateOverrides && !hasPlugins && !hasHooks) {
+    return undefined;
+  }
+
+  return {
+    templateOverrides: hasTemplateOverrides ? templateOverrides : undefined,
+    plugins: hasPlugins ? pluginConfig : undefined,
+    hooks: hasHooks ? hookConfig : undefined,
   };
 }
 
@@ -287,6 +483,14 @@ function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig
       ...base.projectStructure,
       ...(overrides.projectStructure ?? {}),
     },
+    uiOptions: mergeOptionCatalog(base.uiOptions, overrides.uiOptions),
+    uiOptionGenerators: mergeOptionGenerators(
+      base.uiOptionGenerators,
+      overrides.uiOptionGenerators
+    ),
+    generator: mergeGeneratorConfig(base.generator, overrides.generator),
+    configFilePath: overrides.configFilePath ?? base.configFilePath,
+    configDir: overrides.configDir ?? base.configDir,
   };
 
   return merged;
@@ -416,7 +620,11 @@ async function loadConfigFile(filePath: string): Promise<Partial<CLIConfig>> {
     throw new Error(`Invalid configuration: ${result.error.message}`);
   }
 
-  return result.data as unknown as Partial<CLIConfig>;
+  return {
+    ...(result.data as unknown as Partial<CLIConfig>),
+    configFilePath: filePath,
+    configDir: path.dirname(filePath),
+  };
 }
 
 /**

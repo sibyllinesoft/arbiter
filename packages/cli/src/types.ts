@@ -60,6 +60,8 @@ export interface GitHubSyncConfig {
   templates?: GitHubTemplatesConfig;
 }
 
+import type { UIOptionCatalog, UIOptionGeneratorMap } from '@arbiter/shared';
+
 export interface CLIConfig {
   /** API endpoint URL */
   apiUrl: string;
@@ -75,10 +77,37 @@ export interface CLIConfig {
   projectDir: string;
   /** Project ID for API requests */
   projectId?: string;
+  /** Optional path to the loaded configuration file */
+  configFilePath?: string;
+  /** Optional directory of the loaded configuration file */
+  configDir?: string;
   /** GitHub sync configuration */
   github?: GitHubSyncConfig;
   /** Default project structure directories */
   projectStructure: ProjectStructureConfig;
+  /** UI option catalog used by CLI tooling and frontend integrations */
+  uiOptions?: UIOptionCatalog;
+  /** Optional generator scripts that can provide UI options dynamically */
+  uiOptionGenerators?: UIOptionGeneratorMap;
+  /** Code generation customization */
+  generator?: GeneratorConfig;
+}
+
+export type GeneratorHookEvent =
+  | 'before:generate'
+  | 'after:generate'
+  | 'before:fileWrite'
+  | 'after:fileWrite';
+
+export type GeneratorHookMap = Partial<Record<GeneratorHookEvent, string>>;
+
+export interface GeneratorConfig {
+  /** Mapping of language identifiers to template override directories */
+  templateOverrides?: Record<string, string>;
+  /** Language-specific plugin configuration objects */
+  plugins?: Record<string, Record<string, unknown>>;
+  /** Lifecycle hook commands executed around generation */
+  hooks?: GeneratorHookMap;
 }
 
 export interface ProjectStructureConfig {

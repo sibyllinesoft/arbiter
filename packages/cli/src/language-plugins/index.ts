@@ -53,6 +53,12 @@ export interface GeneratedFile {
   executable?: boolean;
 }
 
+export interface LanguagePluginConfigureOptions {
+  templateOverrides?: string[];
+  pluginConfig?: Record<string, unknown>;
+  workspaceRoot?: string;
+}
+
 export interface GenerationResult {
   files: GeneratedFile[];
   instructions?: string[];
@@ -78,6 +84,8 @@ export interface LanguagePlugin {
   readonly supportedFeatures: string[];
   readonly capabilities?: LanguagePluginCapabilities;
 
+  configure?(options: LanguagePluginConfigureOptions): void;
+
   // Component generation (primarily for frontend languages)
   generateComponent?(config: ComponentConfig): Promise<GenerationResult>;
 
@@ -102,6 +110,13 @@ export class LanguageRegistry {
 
   register(plugin: LanguagePlugin): void {
     this.plugins.set(plugin.language.toLowerCase(), plugin);
+  }
+
+  configure(language: string, options: LanguagePluginConfigureOptions): void {
+    const plugin = this.plugins.get(language.toLowerCase());
+    if (plugin?.configure) {
+      plugin.configure(options);
+    }
   }
 
   get(language: string): LanguagePlugin | undefined {

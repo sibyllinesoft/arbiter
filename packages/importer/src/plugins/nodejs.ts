@@ -65,7 +65,7 @@ interface FrontendComponentSummary {
   description?: string;
   props?: Array<{
     name: string;
-    type: string;
+    type?: string;
     required: boolean;
     description?: string;
   }>;
@@ -448,12 +448,15 @@ export class NodeJSPlugin implements ImporterPlugin {
           const props = doc.props
             ? Object.entries(doc.props)
                 .slice(0, 25)
-                .map(([propName, prop]) => ({
-                  name: propName,
-                  type: this.describePropType(prop),
-                  required: Boolean(prop.required),
-                  description: prop.description?.trim() || undefined,
-                }))
+                .map(([propName, prop]) => {
+                  const type = this.describePropType(prop);
+                  return {
+                    name: propName,
+                    ...(type ? { type } : {}),
+                    required: Boolean(prop.required),
+                    description: prop.description?.trim() || undefined,
+                  };
+                })
                 .filter(propInfo => propInfo.name)
             : undefined;
 
@@ -796,11 +799,11 @@ export class NodeJSPlugin implements ImporterPlugin {
     return candidate.startsWith(prefix);
   }
 
-  private describePropType(prop: PropItem): string {
+  private describePropType(prop: PropItem): string | undefined {
     const propAny = prop as any;
     const typeSource: any = propAny.tsType ?? prop.type;
     if (!typeSource) {
-      return 'unknown';
+      return undefined;
     }
     if (typeof typeSource.raw === 'string' && typeSource.raw.trim().length > 0) {
       return typeSource.raw.trim();
@@ -822,7 +825,7 @@ export class NodeJSPlugin implements ImporterPlugin {
     if (typeof typeSource.name === 'string' && typeSource.name.length > 0) {
       return typeSource.name;
     }
-    return 'unknown';
+    return undefined;
   }
 
   private inferComponentNameFromFile(filePath: string): string {

@@ -12,7 +12,8 @@ import {
   Terminal,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { AddEntityModal, type UiOptionCatalog } from './components/AddEntityModal';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
 import { LoadingState } from './components/LoadingState';
@@ -350,6 +351,12 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
     });
   }
 
+  Object.keys(TYPE_CONFIG)
+    .filter(type => type !== 'component')
+    .forEach(type => {
+      ensureGroup(type);
+    });
+
   const dedupedGroups = Array.from(groups.values())
     .map(group => {
       const seenDisplayNames = new Set<string>();
@@ -363,7 +370,7 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
 
       return { ...group, items: uniqueItems };
     })
-    .filter(group => group.items.length > 0 && group.type !== 'component');
+    .filter(group => group.type !== 'component');
 
   const orderedGroups: GroupedComponentGroup[] = [];
   const remainingGroups = new Map(dedupedGroups.map(group => [group.label, group] as const));
@@ -380,42 +387,79 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
   return orderedGroups;
 };
 
+const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {} as UiOptionCatalog;
+
 const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, className = '' }) => {
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
   const [projectData, setProjectData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
-  // Fetch real project data
-  useEffect(() => {
-    const fetchProjectData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const result = await apiService.getResolvedSpec(projectId);
-        setProjectData(result.resolved);
-      } catch (err: any) {
-        if (err.status === 404 || err.message?.includes('404')) {
-          // Project deleted or not found - clear data and show specific message
-          setProjectData(null);
-          setError('Project not found or has been deleted');
-          console.warn(`Project ${projectId} not found - likely deleted`);
-        } else {
-          setError(err instanceof Error ? err.message : 'Failed to fetch project data');
-          console.error('Failed to fetch project data:', err);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  const [addDialogConfig, setAddDialogConfig] = useState<{ type: string; label: string } | null>(
+    null
+  );
+  const [uiOptionCatalog, setUiOptionCatalog] =
+    useState<UiOptionCatalog>(DEFAULT_UI_OPTION_CATALOG);
 
-    if (projectId) {
-      fetchProjectData();
-    } else {
+  const refreshProjectData = useCallback(async () => {
+    if (!projectId) {
       setProjectData(null);
       setError(null);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await apiService.getResolvedSpec(projectId);
+      setProjectData(result.resolved);
+    } catch (err: any) {
+      if (err.status === 404 || err.message?.includes('404')) {
+        setProjectData(null);
+        setError('Project not found or has been deleted');
+        console.warn(`Project ${projectId} not found - likely deleted`);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to fetch project data');
+        console.error('Failed to fetch project data:', err);
+      }
+    } finally {
+      setLoading(false);
     }
   }, [projectId]);
+
+  // Fetch real project data
+  useEffect(() => {
+    refreshProjectData();
+  }, [refreshProjectData]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const options = await apiService.getUiOptionCatalog();
+        if (!mounted || !options) return;
+
+        console.time('[ArchitectureDiagram] option catalog merge');
+        setUiOptionCatalog(prev => {
+          console.log('[ArchitectureDiagram] merging UI option catalog', { prev, options });
+          const nextCatalog: UiOptionCatalog = { ...options } as UiOptionCatalog;
+          if (!nextCatalog.serviceFrameworks) {
+            nextCatalog.serviceFrameworks = {};
+          }
+          console.timeEnd('[ArchitectureDiagram] option catalog merge');
+          return nextCatalog;
+        });
+      } catch (error) {
+        console.warn('[ArchitectureDiagram] failed to load UI option catalog', error);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Group components by type for rendering
 
@@ -434,6 +478,31 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     infrastructure: Shield,
     frontend: Layout,
   };
+
+  const openAddDialog = (group: GroupedComponentGroup) => {
+    setAddDialogConfig({ type: group.type, label: group.label });
+  };
+
+  const closeAddDialog = () => setAddDialogConfig(null);
+
+  const handleAddEntity = useCallback(
+    async (payload: { entityType: string; values: Record<string, string> }) => {
+      if (!projectId) return;
+
+      try {
+        await apiService.createProjectEntity(projectId, {
+          type: payload.entityType,
+          values: payload.values,
+        });
+        await refreshProjectData();
+        setAddDialogConfig(null);
+      } catch (err: any) {
+        console.error('[ArchitectureDiagram] failed to add entity', err);
+        setError(err?.message || 'Failed to add entity');
+      }
+    },
+    [projectId, refreshProjectData]
+  );
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -929,6 +998,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                   expandedSources={expandedSources}
                   setExpandedSources={setExpandedSources}
                   onComponentClick={setSelectedComponent}
+                  onAddClick={() => openAddDialog(group)}
                   {...(icon ? { icon } : {})}
                 />
               );
@@ -942,6 +1012,17 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
           groupedComponents={groupedComponents}
           onClose={() => setSelectedComponent(null)}
         />
+
+        {addDialogConfig && (
+          <AddEntityModal
+            open={true}
+            entityType={addDialogConfig.type}
+            groupLabel={addDialogConfig.label}
+            optionCatalog={uiOptionCatalog}
+            onClose={closeAddDialog}
+            onSubmit={handleAddEntity}
+          />
+        )}
       </div>
     </div>
   );

@@ -68,6 +68,7 @@ export type EventType =
   | 'validation_failed'
   | 'version_frozen'
   | 'webhook_received'
+  | 'handler_executed'
   | 'git_push_processed'
   | 'git_merge_processed'
   | 'event_head_updated'

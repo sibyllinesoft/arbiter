@@ -1,5 +1,12 @@
 import { clsx } from 'clsx';
-import { ArrowLeftRight, Folder, Package, Route as RouteIcon } from 'lucide-react';
+import {
+  ArrowLeftRight,
+  Folder,
+  Languages,
+  Package,
+  Route as RouteIcon,
+  Workflow,
+} from 'lucide-react';
 import React from 'react';
 import { LAYER_STYLE_CLASSES } from '../constants';
 
@@ -8,6 +15,13 @@ interface ComponentCardProps {
   data: any;
   onClick: () => void;
 }
+
+const coerceDisplayValue = (raw: unknown): string | null => {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  return trimmed.toLowerCase() === 'unknown' ? null : trimmed;
+};
 
 export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClick }) => {
   const resolvedType =
@@ -33,8 +47,6 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       case 'database':
       case 'datastore':
         return 'database';
-      case 'frontend':
-        return 'frontend';
       case 'backend':
         return 'backend';
       default:
@@ -67,8 +79,8 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
   const filepath =
     data.filepath || data.filePath || data.metadata?.filePath || data.metadata?.controllerPath;
   const packageName = data.package || data.metadata?.packageName;
-  const metadataLanguage = data.metadata?.language || data.language;
-  const metadataFramework = data.metadata?.framework || data.framework;
+  const metadataLanguage = coerceDisplayValue(data.metadata?.language || data.language);
+  const metadataFramework = coerceDisplayValue(data.metadata?.framework || data.framework);
   const displayPath = data.path || data.metadata?.path || data.metadata?.routePath;
   const rawMethods = data.metadata?.httpMethods ?? data.httpMethods;
   const methods = Array.isArray(rawMethods)
@@ -121,18 +133,14 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
         )}
         {metadataLanguage && (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-graphite-400">
-              Language
-            </span>
-            <span className="opacity-100 text-xs">{String(metadataLanguage)}</span>
+            <Languages className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="opacity-100 text-xs capitalize">{metadataLanguage}</span>
           </div>
         )}
         {metadataFramework && (
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-graphite-400">
-              Framework
-            </span>
-            <span className="opacity-100 text-xs">{String(metadataFramework)}</span>
+            <Workflow className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="opacity-100 text-xs capitalize">{metadataFramework}</span>
           </div>
         )}
         {packageName && (

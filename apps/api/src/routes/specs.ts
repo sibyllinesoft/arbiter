@@ -206,19 +206,47 @@ export function createSpecsRouter(deps: Dependencies) {
 
         // Determine default port based on framework
         const getDefaultPort = (language: string, framework?: string) => {
-          if (framework?.includes('express') || framework?.includes('fastify')) return 3000;
-          if (framework?.includes('flask') || framework?.includes('fastapi')) return 5000;
-          if (framework?.includes('axum') || framework?.includes('warp')) return 8080;
-          if (framework?.includes('gin') || framework?.includes('echo')) return 8080;
-          if (language?.toLowerCase() === 'nodejs') return 3000;
-          if (language?.toLowerCase() === 'python') return 5000;
-          if (language?.toLowerCase() === 'rust') return 8080;
-          if (language?.toLowerCase() === 'go') return 8080;
+          const normalizedFramework = (framework ?? '').toLowerCase();
+          const normalizedLanguage = (language ?? '').toLowerCase();
+
+          if (normalizedFramework.includes('express') || normalizedFramework.includes('fastify')) {
+            return 3000;
+          }
+          if (normalizedFramework.includes('flask') || normalizedFramework.includes('fastapi')) {
+            return 5000;
+          }
+          if (normalizedFramework.includes('axum') || normalizedFramework.includes('warp')) {
+            return 8080;
+          }
+          if (normalizedFramework.includes('gin') || normalizedFramework.includes('echo')) {
+            return 8080;
+          }
+          if (normalizedLanguage === 'nodejs' || normalizedLanguage === 'javascript') {
+            return 3000;
+          }
+          if (normalizedLanguage === 'python') {
+            return 5000;
+          }
+          if (normalizedLanguage === 'rust') {
+            return 8080;
+          }
+          if (normalizedLanguage === 'go') {
+            return 8080;
+          }
           return 8080; // fallback
         };
 
-        const language = artifact.language || 'unknown';
-        const framework = artifact.framework || 'unknown';
+        const coerceText = (value: unknown): string | undefined => {
+          if (typeof value !== 'string') return undefined;
+          const trimmed = value.trim();
+          return trimmed.length > 0 ? trimmed : undefined;
+        };
+
+        const language =
+          coerceText(artifact.language) || coerceText(artifact.metadata?.language) || 'unknown';
+        const framework =
+          coerceText(artifact.framework) || coerceText(artifact.metadata?.framework) || 'unknown';
+
         const port = artifact.metadata?.port || getDefaultPort(language, framework);
 
         // Use actual container image if available, otherwise fall back to generated one

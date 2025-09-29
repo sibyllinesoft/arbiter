@@ -1,4 +1,14 @@
 import path from 'path';
+import {
+  ARRAY_UI_OPTION_KEYS,
+  DEFAULT_UI_OPTION_CATALOG,
+  type UIArrayOptionKey,
+  type UIOptionCatalog,
+  type UIOptionGeneratorMap,
+  UI_OPTION_KEYS,
+  buildUIOptionConfig,
+  resolveUIOptionCatalog,
+} from '@arbiter/shared';
 import fs from 'fs-extra';
 import { Hono } from 'hono';
 import yaml from 'yaml';
@@ -37,6 +47,79 @@ const DEFAULT_PROJECT_STRUCTURE: ProjectStructureSettings = {
   infraDirectory: 'infra',
   endpointDirectory: 'apps/api/src/endpoints',
 };
+
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (Array.isArray(value)) {
+    const result = value
+      .map(item => (typeof item === 'string' ? item.trim() : ''))
+      .filter(item => item.length > 0);
+    return result.length > 0 ? result : undefined;
+  }
+  if (typeof value === 'string') {
+    const items = value
+      .split(',')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    return items.length > 0 ? items : undefined;
+  }
+  return undefined;
+}
+
+function coerceFrameworkMap(value: unknown): Record<string, string[]> | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  const result: Record<string, string[]> = {};
+
+  for (const [rawLanguage, rawFrameworks] of Object.entries(record)) {
+    if (typeof rawLanguage !== 'string') continue;
+    const language = rawLanguage.trim();
+    if (!language) continue;
+
+    const frameworks = coerceStringArray(rawFrameworks);
+    if (frameworks !== undefined) {
+      result[language] = frameworks;
+    } else if (Array.isArray(rawFrameworks) && rawFrameworks.length === 0) {
+      result[language] = [];
+    }
+  }
+
+  return Object.keys(result).length > 0 ? result : {};
+}
+
+function extractOptionCatalog(raw: unknown): UIOptionCatalog | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const source = raw as Record<string, unknown>;
+  const catalog: UIOptionCatalog = {};
+
+  for (const key of ARRAY_UI_OPTION_KEYS) {
+    const values = coerceStringArray(source[key]);
+    if (values) {
+      (catalog as Record<UIArrayOptionKey, string[]>)[key] = values;
+    }
+  }
+
+  if (Object.prototype.hasOwnProperty.call(source, 'serviceFrameworks')) {
+    const frameworks = coerceFrameworkMap(source['serviceFrameworks']);
+    if (frameworks !== undefined) {
+      catalog.serviceFrameworks = frameworks;
+    }
+  }
+
+  return Object.keys(catalog).length > 0 ? catalog : undefined;
+}
+
+function extractOptionGenerators(raw: unknown): UIOptionGeneratorMap | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const source = raw as Record<string, unknown>;
+  const generators: UIOptionGeneratorMap = {};
+  for (const key of UI_OPTION_KEYS) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      generators[key] = value.trim();
+    }
+  }
+  return Object.keys(generators).length > 0 ? generators : undefined;
+}
 
 interface LoadedConfig {
   config: Record<string, unknown>;
@@ -178,6 +261,44 @@ export function createConfigRouter(_: Dependencies) {
         {
           success: false,
           error: 'Failed to update project structure configuration',
+        },
+        500
+      );
+    }
+  });
+
+  router.get('/config/ui-options', async c => {
+    try {
+      const loaded = await findExistingConfig();
+      const rawConfig = loaded?.config ?? {};
+      const optionCatalog =
+        extractOptionCatalog((rawConfig as Record<string, unknown>)['uiOptions']) ||
+        DEFAULT_UI_OPTION_CATALOG;
+      const optionGenerators = extractOptionGenerators(
+        (rawConfig as Record<string, unknown>)['uiOptionGenerators']
+      );
+
+      const optionConfig = buildUIOptionConfig(optionCatalog, optionGenerators);
+      const { catalog, diagnostics } = await resolveUIOptionCatalog(optionConfig, {
+        baseDir: loaded ? path.dirname(loaded.filePath) : PROJECT_ROOT,
+      });
+
+      const finalCatalog: UIOptionCatalog = {
+        ...DEFAULT_UI_OPTION_CATALOG,
+        ...catalog,
+      };
+
+      return c.json({
+        success: true,
+        options: finalCatalog,
+        diagnostics,
+      });
+    } catch (error) {
+      console.error('Failed to load UI options:', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to load UI options',
         },
         500
       );

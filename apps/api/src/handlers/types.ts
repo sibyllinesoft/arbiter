@@ -9,6 +9,8 @@ import type { WebhookPayload, WebhookRequest } from '../types.ts';
 // Handler execution context
 export interface HandlerContext {
   projectId: string;
+  provider: 'github' | 'gitlab';
+  event: string;
   config: HandlerConfig;
   logger: Logger;
   services: HandlerServices;

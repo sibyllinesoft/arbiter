@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { ProjectEntities } from '@arbiter/shared/types/entities';
 import { Hono } from 'hono';
@@ -18,6 +18,267 @@ const DEFAULT_STRUCTURE = {
   testsDirectory: 'tests',
   infraDirectory: 'infra',
 };
+
+const TECHNOLOGY_LANGUAGE_MAP: Record<string, string> = {
+  'node.js': 'javascript',
+  node: 'javascript',
+  express: 'javascript',
+  fastify: 'javascript',
+  nestjs: 'javascript',
+  'next.js': 'javascript',
+  go: 'go',
+  golang: 'go',
+  python: 'python',
+  django: 'python',
+  flask: 'python',
+  fastapi: 'python',
+  rust: 'rust',
+  java: 'java',
+  spring: 'java',
+  '.net': 'c#',
+  dotnet: 'c#',
+};
+
+function slugify(value: string | undefined, fallback: string): string {
+  if (!value || value.trim().length === 0) {
+    return fallback;
+  }
+
+  const normalized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
+
+  return normalized.length > 0 ? normalized : fallback;
+}
+
+function guessLanguage(technology: string | undefined): string | undefined {
+  if (!technology) return undefined;
+  const key = technology.toLowerCase();
+  return TECHNOLOGY_LANGUAGE_MAP[key] || TECHNOLOGY_LANGUAGE_MAP[key.replace(/\s+/g, '')];
+}
+
+function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string) {
+  const framework =
+    typeof values.framework === 'string' && values.framework.trim().length > 0
+      ? values.framework.trim()
+      : undefined;
+  const frameworks = framework ? [framework] : [];
+  const rawEntryPoint =
+    typeof values.entryPoint === 'string' && values.entryPoint.trim().length > 0
+      ? values.entryPoint.trim()
+      : undefined;
+  const packageRoot =
+    typeof values.packageRoot === 'string' && values.packageRoot.trim().length > 0
+      ? values.packageRoot.trim()
+      : rawEntryPoint && rawEntryPoint.includes('/')
+        ? rawEntryPoint.split('/').slice(0, -1).join('/') || `clients/${slug}`
+        : `clients/${slug}`;
+
+  const entryPoint = rawEntryPoint
+    ? rawEntryPoint.startsWith(`${packageRoot}/`)
+      ? rawEntryPoint.slice(packageRoot.length + 1)
+      : rawEntryPoint
+    : undefined;
+
+  const routerRoutes = entryPoint
+    ? [
+        {
+          path: '/',
+          filePath: entryPoint,
+          routerType: 'frontend',
+        },
+      ]
+    : [];
+
+  return {
+    packageRoot,
+    frameworks,
+    entryPoint,
+    frontendAnalysis: {
+      frameworks,
+      components: [],
+      routers: routerRoutes.length
+        ? [
+            {
+              type: 'frontend',
+              routerType: 'frontend',
+              routes: routerRoutes,
+            },
+          ]
+        : [],
+    },
+  };
+}
+
+function buildManualArtifactPayload(
+  type: string,
+  values: Record<string, any>,
+  slug: string
+): {
+  name: string;
+  description: string | null;
+  artifactType: string;
+  language?: string;
+  framework?: string;
+  metadata?: Record<string, unknown>;
+  filePath?: string;
+} | null {
+  const name =
+    typeof values.name === 'string' && values.name.trim().length > 0
+      ? values.name.trim()
+      : `${type}-${slug}`;
+  const description =
+    typeof values.description === 'string' && values.description.trim().length > 0
+      ? values.description.trim()
+      : null;
+
+  switch (type) {
+    case 'frontend': {
+      const metadata = buildFrontendArtifactMetadata(values, slug);
+      const framework = metadata.frameworks?.[0];
+      const entryPoint = metadata.entryPoint;
+
+      return {
+        name,
+        description,
+        artifactType: 'frontend',
+        language: 'typescript',
+        framework,
+        metadata: {
+          description,
+          root: metadata.packageRoot,
+          sourceFile: entryPoint ? `${metadata.packageRoot}/${entryPoint}` : undefined,
+          frontendAnalysis: metadata.frontendAnalysis,
+          classification: {
+            detectedType: 'frontend',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+        filePath: entryPoint ? `${metadata.packageRoot}/${entryPoint}` : undefined,
+      };
+    }
+    case 'service': {
+      const rawLanguage = typeof values.language === 'string' ? values.language.trim() : '';
+      const rawFramework = typeof values.framework === 'string' ? values.framework.trim() : '';
+      const legacyTechnology =
+        typeof values.technology === 'string' ? values.technology.trim() : '';
+      const language = rawLanguage || guessLanguage(legacyTechnology) || 'javascript';
+      const framework = rawFramework || legacyTechnology || undefined;
+      const defaultPortContext = `${framework ?? language}`.toLowerCase();
+      const defaultPort = defaultPortContext.includes('python') ? 5000 : 3000;
+      const portValue = Number.parseInt(values.port || '', 10);
+      const port = Number.isFinite(portValue) ? portValue : defaultPort;
+
+      return {
+        name,
+        description,
+        artifactType: 'service',
+        language,
+        framework,
+        metadata: {
+          description,
+          port,
+          containerImage: `manual/${slug}:latest`,
+          language,
+          framework,
+          classification: {
+            detectedType: 'service',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+        filePath: typeof values.sourcePath === 'string' ? values.sourcePath : undefined,
+      };
+    }
+    case 'module': {
+      return {
+        name,
+        description,
+        artifactType: 'module',
+        metadata: {
+          description,
+          classification: {
+            detectedType: 'module',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'tool': {
+      return {
+        name,
+        description,
+        artifactType: 'tool',
+        metadata: {
+          description,
+          command: typeof values.command === 'string' ? values.command.trim() : undefined,
+          classification: {
+            detectedType: 'tool',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'database': {
+      const engine =
+        typeof values.engine === 'string' ? values.engine.trim().toLowerCase() : 'postgresql';
+      const version = typeof values.version === 'string' ? values.version.trim() : undefined;
+      return {
+        name,
+        description,
+        artifactType: 'database',
+        framework: engine,
+        metadata: {
+          description,
+          engine,
+          version,
+          classification: {
+            detectedType: 'database',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'infrastructure': {
+      const scope = typeof values.scope === 'string' ? values.scope.trim() : 'infrastructure';
+      return {
+        name,
+        description,
+        artifactType: 'infrastructure',
+        metadata: {
+          description,
+          scope,
+          classification: {
+            detectedType: 'infrastructure',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    default:
+      return null;
+  }
+}
+
+function normalizeMetadata(
+  metadata?: Record<string, unknown>
+): Record<string, unknown> | undefined {
+  if (!metadata) return undefined;
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    if (value === undefined) continue;
+    cleaned[key] = value;
+  }
+  return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+}
 
 interface PresetArtifactInput {
   name: string;
@@ -1124,6 +1385,92 @@ export function createProjectsRouter(deps: Dependencies) {
   });
 
   // Create project endpoint
+  router.post('/projects/:projectId/entities', async c => {
+    const projectId = c.req.param('projectId');
+    const db = deps.db as any;
+    if (!db || typeof db.createArtifact !== 'function') {
+      return c.json({ success: false, error: 'Database unavailable' }, 500);
+    }
+
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch (error) {
+      return c.json({ success: false, error: 'Invalid JSON payload' }, 400);
+    }
+
+    const type = typeof body?.type === 'string' ? body.type.toLowerCase() : '';
+    const values = body?.values as Record<string, any> | undefined;
+
+    if (!type || !values || typeof values !== 'object') {
+      return c.json(
+        {
+          success: false,
+          error: 'Payload must include "type" and "values" fields',
+        },
+        400
+      );
+    }
+
+    const supportedTypes = new Set([
+      'frontend',
+      'service',
+      'module',
+      'tool',
+      'database',
+      'infrastructure',
+    ]);
+    if (!supportedTypes.has(type)) {
+      return c.json(
+        {
+          success: false,
+          error: `Unsupported entity type: ${type}`,
+        },
+        400
+      );
+    }
+
+    const slug = slugify(values.name, `${type}-${Date.now()}`);
+    const payload = buildManualArtifactPayload(type, values, slug);
+    if (!payload) {
+      return c.json(
+        {
+          success: false,
+          error: `Unable to construct artifact payload for type: ${type}`,
+        },
+        400
+      );
+    }
+
+    try {
+      const artifactId = randomUUID();
+      const metadata = normalizeMetadata(payload.metadata);
+      const artifact = await db.createArtifact(
+        artifactId,
+        projectId,
+        payload.name,
+        payload.description,
+        payload.artifactType,
+        payload.language,
+        payload.framework,
+        metadata,
+        payload.filePath,
+        0.95
+      );
+
+      return c.json({ success: true, artifact });
+    } catch (error) {
+      console.error('Failed to create manual artifact', error);
+      return c.json(
+        {
+          success: false,
+          error: 'Failed to create entity',
+        },
+        500
+      );
+    }
+  });
+
   router.post('/projects', async c => {
     try {
       const db = deps.db as any;

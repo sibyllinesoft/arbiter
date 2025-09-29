@@ -115,6 +115,8 @@ The handler receives a context object with the following services:
 ```typescript
 interface HandlerContext {
   projectId: string; // Current project ID
+  provider: 'github' | 'gitlab'; // Webhook provider
+  event: string; // Raw webhook event name
   config: HandlerConfig; // Handler configuration
   logger: Logger; // Scoped logger
   services: HandlerServices; // Available services

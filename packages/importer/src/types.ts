@@ -174,7 +174,7 @@ export interface ServiceArtifact extends BaseArtifact {
     sourceFile?: string;
     root?: string;
     /** Programming language */
-    language: string;
+    language?: string | null;
     /** Framework used (e.g., 'express', 'fastapi', 'spring') */
     framework?: string;
     /** Port number the service runs on */
@@ -209,7 +209,7 @@ export interface BinaryArtifact extends BaseArtifact {
     sourceFile?: string;
     root?: string;
     /** Programming language */
-    language: string;
+    language?: string | null;
     /** Build system (e.g., 'maven', 'gradle', 'npm') */
     buildSystem?: string;
     /** Entry point file */
@@ -230,7 +230,7 @@ export interface ToolArtifact extends BaseArtifact {
   type: 'tool';
   metadata: {
     /** Programming language */
-    language: string;
+    language?: string | null;
     /** Command-line framework used (e.g., 'commander', 'click', 'clap') */
     framework?: string;
     /** Build system (e.g., 'maven', 'gradle', 'npm') */
@@ -257,7 +257,7 @@ export interface ModuleArtifact extends BaseArtifact {
     sourceFile?: string;
     root?: string;
     /** Programming language */
-    language: string;
+    language?: string | null;
     /** Framework used (e.g., 'react', 'vue', 'lodash') */
     framework?: string;
     /** Package manager (e.g., 'npm', 'pip', 'maven') */
@@ -282,7 +282,7 @@ export interface JobArtifact extends BaseArtifact {
   type: 'job';
   metadata: {
     /** Programming language */
-    language: string;
+    language?: string | null;
     /** Job scheduler (e.g., 'cron', 'kubernetes', 'airflow') */
     scheduler?: string;
     /** Schedule expression */

@@ -151,9 +151,18 @@ export class KubernetesPlugin implements ImporterPlugin {
             break;
           }
           case 'Service': {
-            const ports = fullParsed.spec?.ports?.map((p: any) => p.port).join(', ') || 'unknown';
+            const portValues = (fullParsed.spec?.ports || [])
+              .map((p: any) => p?.port)
+              .filter(
+                (port: any) =>
+                  typeof port === 'number' || (typeof port === 'string' && port.trim().length > 0)
+              );
             const selector = JSON.stringify(fullParsed.spec?.selector || {});
-            description = `Exposes service ${data.name || 'unnamed'} on ports ${ports} selecting pods by ${selector}`;
+            const portSegment =
+              portValues.length > 0
+                ? `on ports ${portValues.join(', ')}`
+                : 'without explicit port configuration';
+            description = `Exposes service ${data.name || 'unnamed'} ${portSegment} selecting pods by ${selector}`;
             if (data.namespace) description += ` in namespace ${data.namespace}`;
             break;
           }

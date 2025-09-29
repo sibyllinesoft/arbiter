@@ -68,17 +68,23 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
         };
         break;
 
-      case 'handler_executed':
+      case 'handler_executed': {
+        const handlerName = payload?.handlerName || 'Handler';
+        const success = Boolean(payload?.success);
+        const details =
+          payload?.message ||
+          `${handlerName} ${success ? 'completed successfully' : 'encountered an error'}`;
         newEntry = {
           id: `ws_${Date.now()}`,
           timestamp,
           type: 'webhook',
           action: 'Handler Executed',
-          details: `Handler "${payload.handlerName}" ${payload.success ? 'completed successfully' : 'failed'}`,
-          status: payload.success ? 'success' : 'error',
+          details,
+          status: success ? 'success' : 'error',
           metadata: payload,
         };
         break;
+      }
 
       case 'validation_completed':
         newEntry = {

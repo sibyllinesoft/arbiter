@@ -38,6 +38,7 @@ import type {
 } from '../language-plugins/index.js';
 import { extractVariablesFromCue, templateManager } from '../templates/index.js';
 import type { CLIConfig, ProjectStructureConfig } from '../types.js';
+import { GenerationHookManager } from '../utils/generation-hooks.js';
 import {
   createRepositoryConfig,
   getSmartRepositoryConfig,
@@ -83,6 +84,57 @@ function slugify(value: string | undefined, fallback = 'app'): string {
     .replace(/-+/g, '-');
 
   return normalized.length > 0 ? normalized : fallback;
+}
+
+function configureLanguagePluginRuntime(language: string, cliConfig: CLIConfig): void {
+  const generatorConfig = cliConfig.generator;
+  const overridesEntry = generatorConfig?.templateOverrides?.[language];
+  const overrideList = Array.isArray(overridesEntry)
+    ? overridesEntry
+    : overridesEntry
+      ? [overridesEntry]
+      : [];
+
+  const baseDir = cliConfig.configDir || cliConfig.projectDir || process.cwd();
+  const resolvedOverrides = overrideList.map(dir =>
+    path.isAbsolute(dir) ? dir : path.resolve(baseDir, dir)
+  );
+
+  languageRegistry.configure(language, {
+    templateOverrides: resolvedOverrides,
+    pluginConfig: generatorConfig?.plugins?.[language],
+    workspaceRoot: cliConfig.projectDir,
+  });
+}
+
+let activeHookManager: GenerationHookManager | null = null;
+
+function setActiveHookManager(manager: GenerationHookManager | null): void {
+  activeHookManager = manager;
+}
+
+async function writeFileWithHooks(
+  filePath: string,
+  content: string,
+  options: GenerateOptions,
+  mode?: number
+): Promise<void> {
+  let finalContent = content;
+  if (activeHookManager) {
+    finalContent = await activeHookManager.beforeFileWrite(filePath, finalContent);
+  }
+
+  if (!options.dryRun) {
+    if (mode !== undefined) {
+      await fs.writeFile(filePath, finalContent, { mode });
+    } else {
+      await fs.writeFile(filePath, finalContent);
+    }
+  }
+
+  if (activeHookManager) {
+    await activeHookManager.afterFileWrite(filePath, finalContent);
+  }
 }
 
 async function ensureDirectory(dir: string, options: GenerateOptions): Promise<void> {
@@ -666,42 +718,68 @@ export async function generateCommand(
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
+    const hookManager = config.generator?.hooks
+      ? new GenerationHookManager({
+          hooks: config.generator.hooks,
+          workspaceRoot: config.projectDir || process.cwd(),
+          outputDir: path.resolve(outputDir),
+          configDir: config.configDir,
+          dryRun: Boolean(options.dryRun),
+        })
+      : null;
+
+    if (hookManager) {
+      setActiveHookManager(hookManager);
+      await hookManager.runBeforeGenerate();
+    }
+
     const results = [];
 
-    // Generate application artifacts
-    if (configWithVersion.app) {
-      console.log(chalk.blue('🎨 Generating application artifacts...'));
-      const projectStructure: ProjectStructureConfig = {
-        ...DEFAULT_PROJECT_STRUCTURE,
-        ...config.projectStructure,
-      };
+    try {
+      // Generate application artifacts
+      if (configWithVersion.app) {
+        console.log(chalk.blue('🎨 Generating application artifacts...'));
+        const projectStructure: ProjectStructureConfig = {
+          ...DEFAULT_PROJECT_STRUCTURE,
+          ...config.projectStructure,
+        };
 
-      const appResults = await generateAppArtifacts(
-        configWithVersion,
-        outputDir,
-        options,
-        projectStructure
-      );
-      results.push(...appResults);
-    } else {
-      throw new Error('Invalid configuration: missing app specification data');
+        const appResults = await generateAppArtifacts(
+          configWithVersion,
+          outputDir,
+          options,
+          projectStructure,
+          config
+        );
+        results.push(...appResults);
+      } else {
+        throw new Error('Invalid configuration: missing app specification data');
+      }
+
+      // Report results
+      if (options.dryRun) {
+        console.log(chalk.yellow('🔍 Dry run - files that would be generated:'));
+        results.forEach(file => console.log(chalk.dim(`  ${file}`)));
+      } else {
+        console.log(chalk.green(`✅ Generated ${results.length} files:`));
+        results.forEach(file => console.log(chalk.dim(`  ✓ ${file}`)));
+      }
+
+      if (hookManager) {
+        await hookManager.runAfterGenerate(results);
+      }
+
+      // Handle GitHub synchronization if requested
+      if (options.syncGithub || options.githubDryRun) {
+        await handleGitHubSync(options, config);
+      }
+
+      return 0;
+    } finally {
+      if (hookManager) {
+        setActiveHookManager(null);
+      }
     }
-
-    // Report results
-    if (options.dryRun) {
-      console.log(chalk.yellow('🔍 Dry run - files that would be generated:'));
-      results.forEach(file => console.log(chalk.dim(`  ${file}`)));
-    } else {
-      console.log(chalk.green(`✅ Generated ${results.length} files:`));
-      results.forEach(file => console.log(chalk.dim(`  ✓ ${file}`)));
-    }
-
-    // Handle GitHub synchronization if requested
-    if (options.syncGithub || options.githubDryRun) {
-      await handleGitHubSync(options, config);
-    }
-
-    return 0;
   } catch (error) {
     console.error(
       chalk.red('❌ Generate failed:'),
@@ -823,7 +901,8 @@ async function generateAppArtifacts(
   configWithVersion: ConfigWithVersion,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
+  cliConfig: CLIConfig
 ): Promise<string[]> {
   const files: string[] = [];
   const appSpec = configWithVersion.app;
@@ -890,7 +969,8 @@ async function generateAppArtifacts(
     outputDir,
     options,
     structure,
-    clientContext
+    clientContext,
+    cliConfig
   );
   files.push(...clientProjectFiles);
 
@@ -930,12 +1010,11 @@ async function generateUIComponents(
 
   const typeFilePath = path.join(clientContext.routesDir, 'types.ts');
   const typeFileRelative = joinRelativePath('src', 'routes', 'types.ts');
-  if (!options.dryRun) {
-    await fs.writeFile(
-      typeFilePath,
-      `import type { ComponentType } from 'react';\n\nexport interface RouteDefinition {\n  id: string;\n  path: string;\n  Component: ComponentType;\n  description?: string;\n  children?: RouteDefinition[];\n}\n\nexport type RouteDefinitions = RouteDefinition[];\n`
-    );
-  }
+  await writeFileWithHooks(
+    typeFilePath,
+    `import type { ComponentType } from 'react';\n\nexport interface RouteDefinition {\n  id: string;\n  path: string;\n  Component: ComponentType;\n  description?: string;\n  children?: RouteDefinition[];\n}\n\nexport type RouteDefinitions = RouteDefinition[];\n`,
+    options
+  );
   files.push(typeFileRelative);
 
   const routeDefinitions: Array<{ importName: string }> = [];
@@ -970,9 +1049,7 @@ async function generateUIComponents(
 
     const componentContent = `import React from 'react';\nimport type { RouteDefinition } from './types';\n\nconst ${componentName}: React.FC = () => {\n  return (\n    <section data-route="${route.id}" role="main">\n      <header>\n        <h1>${title}</h1>\n        <p>${description}</p>\n      </header>\n${capabilityBlock}    </section>\n  );\n};\n\nexport const ${definitionName}: RouteDefinition = {\n  id: '${route.id}',\n  path: '${safePath}',\n  Component: ${componentName},\n};\n`;
 
-    if (!options.dryRun) {
-      await fs.writeFile(filePath, componentContent);
-    }
+    await writeFileWithHooks(filePath, componentContent, options);
     files.push(relPath);
     routeDefinitions.push({ importName: definitionName });
   }
@@ -986,9 +1063,7 @@ async function generateUIComponents(
 
   const aggregatorContent = `import React from 'react';\nimport type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from './types';\n${imports ? `${imports}\n` : ''}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from './types';\n`;
 
-  if (!options.dryRun) {
-    await fs.writeFile(aggregatorPath, aggregatorContent);
-  }
+  await writeFileWithHooks(aggregatorPath, aggregatorContent, options);
   files.push(aggregatorRelative);
 
   const appRoutesPath = path.join(clientContext.routesDir, 'AppRoutes.tsx');
@@ -1006,9 +1081,7 @@ export function AppRoutes({ routes }: AppRoutesProps) {
 }
 `;
 
-  if (!options.dryRun) {
-    await fs.writeFile(appRoutesPath, appRoutesContent);
-  }
+  await writeFileWithHooks(appRoutesPath, appRoutesContent, options);
   files.push(appRoutesRelative);
 
   return files;
@@ -1079,9 +1152,7 @@ import { test, expect } from '@playwright/test';`;
 
     const testFileName = `${flow.id.replace(/:/g, '_')}.test.ts`;
     const testPath = path.join(testsDir, testFileName);
-    if (!options.dryRun) {
-      fs.writeFileSync(testPath, testContent);
-    }
+    await writeFileWithHooks(testPath, testContent, options);
     files.push(
       joinRelativePath(
         structure.testsDirectory,
@@ -1216,9 +1287,7 @@ async function generateAPISpecifications(
               fs.mkdirSync(dir, { recursive: true });
             }
 
-            if (!options.dryRun) {
-              fs.writeFileSync(fullPath, file.content);
-            }
+            await writeFileWithHooks(fullPath, file.content, options);
 
             files.push(
               joinRelativePath(structure.docsDirectory, 'api', file.path.replace(/^src\//i, ''))
@@ -1294,9 +1363,7 @@ async function generateAPISpecifications(
     }
 
     const specPath = path.join(apiDir, 'openapi.json');
-    if (!options.dryRun) {
-      fs.writeFileSync(specPath, JSON.stringify(openApiSpec, null, 2));
-    }
+    await writeFileWithHooks(specPath, JSON.stringify(openApiSpec, null, 2), options);
     files.push(joinRelativePath(structure.docsDirectory, 'api', 'openapi.json'));
   }
 
@@ -1322,26 +1389,24 @@ async function generateModuleArtifacts(
     for (const [componentName, componentSpec] of Object.entries(appSpec.components)) {
       const fileName = `${componentName}.json`;
       const filePath = path.join(modulesRoot, fileName);
-      if (!options.dryRun) {
-        await fs.writeFile(filePath, JSON.stringify(componentSpec, null, 2));
-      }
+      await writeFileWithHooks(filePath, JSON.stringify(componentSpec, null, 2), options);
       files.push(joinRelativePath(structure.modulesDirectory, fileName));
     }
   }
 
   if (appSpec.domain) {
     const domainPath = path.join(modulesRoot, 'domain.json');
-    if (!options.dryRun) {
-      await fs.writeFile(domainPath, JSON.stringify(appSpec.domain, null, 2));
-    }
+    await writeFileWithHooks(domainPath, JSON.stringify(appSpec.domain, null, 2), options);
     files.push(joinRelativePath(structure.modulesDirectory, 'domain.json'));
   }
 
   if (appSpec.stateModels) {
     const stateModelsPath = path.join(modulesRoot, 'state-models.json');
-    if (!options.dryRun) {
-      await fs.writeFile(stateModelsPath, JSON.stringify(appSpec.stateModels, null, 2));
-    }
+    await writeFileWithHooks(
+      stateModelsPath,
+      JSON.stringify(appSpec.stateModels, null, 2),
+      options
+    );
     files.push(joinRelativePath(structure.modulesDirectory, 'state-models.json'));
   }
 
@@ -1398,9 +1463,7 @@ ${appSpec.product.description || 'Auto-generated documentation overview.'}
   }
 
   const overviewPath = path.join(docsRoot, 'overview.md');
-  if (!options.dryRun) {
-    await fs.writeFile(overviewPath, overviewSections.join('\n'));
-  }
+  await writeFileWithHooks(overviewPath, overviewSections.join('\n'), options);
   files.push(joinRelativePath(structure.docsDirectory, 'overview.md'));
 
   if (appSpec.flows.length > 0) {
@@ -1416,9 +1479,7 @@ ${appSpec.product.description || 'Auto-generated documentation overview.'}
       )
       .join('\n');
 
-    if (!options.dryRun) {
-      await fs.writeFile(flowsPath, flowsContent);
-    }
+    await writeFileWithHooks(flowsPath, flowsContent, options);
     files.push(joinRelativePath(structure.docsDirectory, 'flows.md'));
   }
 
@@ -1451,9 +1512,7 @@ async function generateToolingArtifacts(
     .join('\n');
 
   const toolingPath = path.join(toolsRoot, 'README.md');
-  if (!options.dryRun) {
-    await fs.writeFile(toolingPath, toolingContent);
-  }
+  await writeFileWithHooks(toolingPath, toolingContent, options);
   files.push(joinRelativePath(structure.toolsDirectory, 'README.md'));
 
   return files;
@@ -1539,9 +1598,7 @@ export function loc(token: LocatorToken): string {
 
   await ensureDirectory(locatorsDir, options);
 
-  if (!options.dryRun) {
-    await fs.writeFile(locatorsPath, locatorsContent);
-  }
+  await writeFileWithHooks(locatorsPath, locatorsContent, options);
   files.push(joinRelativePath('src', 'routes', 'locators.ts'));
 
   return files;
@@ -1555,7 +1612,8 @@ async function generateProjectStructure(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContext: ClientGenerationContext
+  clientContext: ClientGenerationContext,
+  cliConfig: CLIConfig
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1565,6 +1623,8 @@ async function generateProjectStructure(
 
   if (plugin) {
     console.log(chalk.blue(`📦 Initializing ${language} project using ${plugin.name}...`));
+
+    configureLanguagePluginRuntime(language, cliConfig);
 
     // Create project configuration for the language plugin
     const projectConfig: LanguageProjectConfig = {
@@ -1584,9 +1644,12 @@ async function generateProjectStructure(
 
         await ensureDirectory(dir, options);
 
-        if (!options.dryRun) {
-          await fs.writeFile(fullPath, file.content);
-        }
+        await writeFileWithHooks(
+          fullPath,
+          file.content,
+          options,
+          file.executable ? 0o755 : undefined
+        );
 
         files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, file.path));
       }
@@ -1623,9 +1686,7 @@ async function generateProjectStructure(
 
     const packagePath = path.join(clientContext.root, 'package.json');
     await ensureDirectory(path.dirname(packagePath), options);
-    if (!options.dryRun) {
-      await fs.writeFile(packagePath, JSON.stringify(packageJson, null, 2));
-    }
+    await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
     files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, 'package.json'));
   }
 
@@ -1678,9 +1739,7 @@ npm run build
 `;
 
   const readmePath = path.join(clientContext.root, 'README.md');
-  if (!options.dryRun) {
-    await fs.writeFile(readmePath, readmeContent);
-  }
+  await writeFileWithHooks(readmePath, readmeContent, options);
   files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, 'README.md'));
 
   return files;
@@ -1787,7 +1846,8 @@ async function generateLanguageFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  assemblyConfig?: any
+  assemblyConfig?: any,
+  cliConfig?: CLIConfig
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1797,6 +1857,10 @@ async function generateLanguageFiles(
 
   if (plugin) {
     console.log(chalk.blue(`📦 Generating ${language} project using ${plugin.name}...`));
+
+    if (cliConfig) {
+      configureLanguagePluginRuntime(language, cliConfig);
+    }
 
     // Initialize project using the language plugin
     const projectConfig: LanguageProjectConfig = {
@@ -1818,9 +1882,12 @@ async function generateLanguageFiles(
           fs.mkdirSync(dir, { recursive: true });
         }
 
-        if (!options.dryRun) {
-          fs.writeFileSync(fullPath, file.content);
-        }
+        await writeFileWithHooks(
+          fullPath,
+          file.content,
+          options,
+          file.executable ? 0o755 : undefined
+        );
 
         files.push(file.path);
       }
@@ -1885,9 +1952,7 @@ async function generateTypeScriptFiles(
   };
 
   const packagePath = path.join(outputDir, 'package.json');
-  if (!options.dryRun) {
-    await fs.writeFile(packagePath, JSON.stringify(packageJson, null, 2));
-  }
+  await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
   files.push('package.json');
 
   const tsconfigJson = {
@@ -1907,9 +1972,7 @@ async function generateTypeScriptFiles(
   };
 
   const tsconfigPath = path.join(outputDir, 'tsconfig.json');
-  if (!options.dryRun) {
-    await fs.writeFile(tsconfigPath, JSON.stringify(tsconfigJson, null, 2));
-  }
+  await writeFileWithHooks(tsconfigPath, JSON.stringify(tsconfigJson, null, 2), options);
   files.push('tsconfig.json');
 
   const srcDir = path.join(outputDir, 'src');
@@ -1944,9 +2007,7 @@ export { bootstrap };
 `;
 
   const indexPath = path.join(srcDir, 'index.ts');
-  if (!options.dryRun) {
-    await fs.writeFile(indexPath, indexContent);
-  }
+  await writeFileWithHooks(indexPath, indexContent, options);
   files.push('src/index.ts');
 
   const routesDir = serviceContext?.routesDir || path.join(srcDir, 'routes');
@@ -2004,9 +2065,7 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 export const routes = routeDefinitions;
 `;
 
-  if (!options.dryRun) {
-    await fs.writeFile(routesIndexPath, routesIndexContent);
-  }
+  await writeFileWithHooks(routesIndexPath, routesIndexContent, options);
   files.push('src/routes/index.ts');
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
@@ -2039,16 +2098,12 @@ async function generatePythonFiles(
   const pyprojectToml = `[build-system]\nrequires = [\"setuptools>=45\", \"wheel\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"${config.name}\"\nversion = \"${config.version}\"\ndescription = \"Generated by Arbiter\"\nrequires-python = \">=3.10\"\ndependencies = [\n    \"fastapi>=0.110.0\",\n    \"uvicorn[standard]>=0.27.0\",\n    \"pydantic>=2.5.0\"\n]\n`;
 
   const pyprojectPath = path.join(outputDir, 'pyproject.toml');
-  if (!options.dryRun) {
-    await fs.writeFile(pyprojectPath, pyprojectToml);
-  }
+  await writeFileWithHooks(pyprojectPath, pyprojectToml, options);
   files.push('pyproject.toml');
 
   const requirementsPath = path.join(outputDir, 'requirements.txt');
   const requirementsContent = `fastapi>=0.110.0\nuvicorn[standard]>=0.27.0\n`;
-  if (!options.dryRun) {
-    await fs.writeFile(requirementsPath, requirementsContent);
-  }
+  await writeFileWithHooks(requirementsPath, requirementsContent, options);
   files.push('requirements.txt');
 
   const appDir = path.join(outputDir, 'app');
@@ -2059,9 +2114,7 @@ async function generatePythonFiles(
   const port = typeof serviceSpec.port === 'number' ? serviceSpec.port : 8000;
   const mainContent = `from fastapi import FastAPI\nfrom .routes import register_routes\n\napp = FastAPI(title=\"${config.name}\")\n\n@app.on_event(\"startup\")\nasync def startup_event() -> None:\n    await register_routes(app)\n\n\n@app.get(\"/health\")\nasync def healthcheck() -> dict[str, str]:\n    return {\"status\": \"ok\"}\n\n\ndef build_app() -> FastAPI:\n    return app\n\n\nif __name__ == \"__main__\":\n    import uvicorn\n\n    uvicorn.run(app, host=\"0.0.0.0\", port=${port})\n`;
 
-  if (!options.dryRun) {
-    await fs.writeFile(path.join(appDir, 'main.py'), mainContent);
-  }
+  await writeFileWithHooks(path.join(appDir, 'main.py'), mainContent, options);
   files.push('app/main.py');
 
   const endpoints = Array.isArray(serviceSpec.endpoints) ? serviceSpec.endpoints : [];
@@ -2123,14 +2176,10 @@ async function generatePythonFiles(
     .filter(Boolean)
     .join('\n');
 
-  if (!options.dryRun) {
-    await fs.writeFile(path.join(routesDir, '__init__.py'), routesInit);
-  }
+  await writeFileWithHooks(path.join(routesDir, '__init__.py'), routesInit, options);
   files.push('app/routes/__init__.py');
 
-  if (!options.dryRun) {
-    await fs.writeFile(path.join(appDir, '__init__.py'), '');
-  }
+  await writeFileWithHooks(path.join(appDir, '__init__.py'), '', options);
   files.push('app/__init__.py');
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
@@ -2174,9 +2223,7 @@ edition = "2021"
 `;
 
   const cargoPath = path.join(outputDir, 'Cargo.toml');
-  if (!options.dryRun) {
-    fs.writeFileSync(cargoPath, cargoToml);
-  }
+  await writeFileWithHooks(cargoPath, cargoToml, options);
   files.push('Cargo.toml');
 
   // Create src directory
@@ -2203,9 +2250,7 @@ mod tests {
 }
 `;
 
-  if (!options.dryRun) {
-    fs.writeFileSync(path.join(srcDir, 'lib.rs'), libContent);
-  }
+  await writeFileWithHooks(path.join(srcDir, 'lib.rs'), libContent, options);
   files.push('src/lib.rs');
 
   // Create tests directory
@@ -2244,9 +2289,7 @@ require ()
 `;
 
   const goModPath = path.join(outputDir, 'go.mod');
-  if (!options.dryRun) {
-    fs.writeFileSync(goModPath, goMod);
-  }
+  await writeFileWithHooks(goModPath, goMod, options);
   files.push('go.mod');
 
   // main.go
@@ -2262,9 +2305,7 @@ func main() {
 `;
 
   const mainGoPath = path.join(outputDir, 'main.go');
-  if (!options.dryRun) {
-    fs.writeFileSync(mainGoPath, mainGo);
-  }
+  await writeFileWithHooks(mainGoPath, mainGo, options);
   files.push('main.go');
 
   // Create test directory
@@ -2309,9 +2350,7 @@ clean:
 `;
 
   const makefilePath = path.join(outputDir, 'Makefile');
-  if (!options.dryRun) {
-    fs.writeFileSync(makefilePath, makefile);
-  }
+  await writeFileWithHooks(makefilePath, makefile, options);
   files.push('Makefile');
 
   // Create src directory
@@ -2337,10 +2376,7 @@ fi
 `;
 
   const scriptPath = path.join(srcDir, config.name);
-  if (!options.dryRun) {
-    fs.writeFileSync(scriptPath, mainScript);
-    fs.chmodSync(scriptPath, 0o755); // Make executable
-  }
+  await writeFileWithHooks(scriptPath, mainScript, options, 0o755);
   files.push(`src/${config.name}`);
 
   // Create tests directory
@@ -2405,9 +2441,7 @@ jobs:
 `;
 
   const workflowPath = path.join(workflowDir, 'ci.yml');
-  if (!options.dryRun) {
-    fs.writeFileSync(workflowPath, workflow);
-  }
+  await writeFileWithHooks(workflowPath, workflow, options);
   files.push('.github/workflows/ci.yml');
 
   return files;
@@ -2580,41 +2614,31 @@ async function generateTerraformKubernetes(
   // Generate main.tf with provider configuration
   const mainTf = generateTerraformMain(cluster, config.name);
   const mainPath = path.join(outputDir, ...effectiveInfraSegments, 'main.tf');
-  if (!options.dryRun) {
-    await fs.writeFile(mainPath, mainTf);
-  }
+  await writeFileWithHooks(mainPath, mainTf, options);
   files.push(joinRelativePath(infraDirRelative, 'main.tf'));
 
   // Generate variables.tf
   const variablesTf = generateTerraformVariables(services, cluster);
   const variablesPath = path.join(outputDir, ...effectiveInfraSegments, 'variables.tf');
-  if (!options.dryRun) {
-    await fs.writeFile(variablesPath, variablesTf);
-  }
+  await writeFileWithHooks(variablesPath, variablesTf, options);
   files.push(joinRelativePath(infraDirRelative, 'variables.tf'));
 
   // Generate services.tf with Kubernetes resources
   const servicesTf = generateTerraformServices(services, config.name);
   const servicesPath = path.join(outputDir, ...effectiveInfraSegments, 'services.tf');
-  if (!options.dryRun) {
-    await fs.writeFile(servicesPath, servicesTf);
-  }
+  await writeFileWithHooks(servicesPath, servicesTf, options);
   files.push(joinRelativePath(infraDirRelative, 'services.tf'));
 
   // Generate outputs.tf
   const outputsTf = generateTerraformOutputs(services, config.name);
   const outputsPath = path.join(outputDir, ...effectiveInfraSegments, 'outputs.tf');
-  if (!options.dryRun) {
-    await fs.writeFile(outputsPath, outputsTf);
-  }
+  await writeFileWithHooks(outputsPath, outputsTf, options);
   files.push(joinRelativePath(infraDirRelative, 'outputs.tf'));
 
   // Generate README for Terraform deployment
   const readme = generateTerraformReadme(services, cluster, config.name);
   const readmePath = path.join(outputDir, ...effectiveInfraSegments, 'README.md');
-  if (!options.dryRun) {
-    await fs.writeFile(readmePath, readme);
-  }
+  await writeFileWithHooks(readmePath, readme, options);
   files.push(joinRelativePath(infraDirRelative, 'README.md'));
 
   return files;
@@ -3220,17 +3244,13 @@ async function generateDockerCompose(
   // Generate docker-compose.yml
   const composeYml = generateDockerComposeFile(services, deployment, config.name);
   const composePath = path.join(composeRoot, 'docker-compose.yml');
-  if (!options.dryRun) {
-    await fs.writeFile(composePath, composeYml);
-  }
+  await writeFileWithHooks(composePath, composeYml, options);
   files.push(joinRelativePath(...composeRelativeRoot, 'docker-compose.yml'));
 
   // Generate .env template
   const envTemplate = generateComposeEnvTemplate(services, config.name);
   const envPath = path.join(composeRoot, '.env.template');
-  if (!options.dryRun) {
-    await fs.writeFile(envPath, envTemplate);
-  }
+  await writeFileWithHooks(envPath, envTemplate, options);
   files.push(joinRelativePath(...composeRelativeRoot, '.env.template'));
 
   // Generate build contexts for bespoke services
@@ -3245,9 +3265,7 @@ async function generateDockerCompose(
   // Generate compose README
   const readme = generateComposeReadme(services, deployment, config.name);
   const readmePath = path.join(composeRoot, 'README.md');
-  if (!options.dryRun) {
-    await fs.writeFile(readmePath, readme);
-  }
+  await writeFileWithHooks(readmePath, readme, options);
   files.push(joinRelativePath(...composeRelativeRoot, 'README.md'));
 
   return files;
@@ -3559,9 +3577,7 @@ async function generateBuildContexts(
             : JSON.stringify(configFile.content, null, 2);
 
         const filePath = path.join(configDir, configFile.name);
-        if (!options.dryRun) {
-          await fs.writeFile(filePath, content);
-        }
+        await writeFileWithHooks(filePath, content, options);
         files.push(joinRelativePath(...relativeRoot, 'config', service.name, configFile.name));
       }
     }
@@ -4216,9 +4232,7 @@ async function writeTestFiles(
 
     const content = generateTestFileContent(suite, language);
 
-    if (!options.dryRun) {
-      await fs.writeFile(filePath, content);
-    }
+    await writeFileWithHooks(filePath, content, options);
     files.push(joinRelativePath(testsDirRelative, fileName));
   }
 
@@ -4239,9 +4253,7 @@ async function writeTestFiles(
     },
   };
 
-  if (!options.dryRun) {
-    await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
-  }
+  await writeFileWithHooks(reportPath, JSON.stringify(report, null, 2), options);
   files.push(joinRelativePath(testsDirRelative, 'composition_report.json'));
 
   return files;
