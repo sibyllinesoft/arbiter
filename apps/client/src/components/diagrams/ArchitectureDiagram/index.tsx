@@ -122,7 +122,7 @@ const getComponentType = (data: any, name: string): string => {
   const detectedType = toLowerString(data.metadata?.detectedType);
 
   if (detectedType === 'tool' || detectedType === 'build_tool') return 'tool';
-  if (detectedType === 'frontend') return 'view';
+  if (detectedType === 'frontend' || detectedType === 'mobile') return 'frontend';
   if (detectedType === 'web_service') return 'service';
 
   if (rawType.includes('service')) return 'service';
@@ -130,7 +130,7 @@ const getComponentType = (data: any, name: string): string => {
   if (['tool', 'cli', 'binary'].includes(rawType)) return 'tool';
   if (['deployment', 'infrastructure'].includes(rawType)) return 'infrastructure';
   if (rawType === 'database') return 'database';
-  if (rawType === 'frontend') return 'view';
+  if (rawType === 'frontend' || rawType === 'mobile') return 'frontend';
   if (rawType === 'route') {
     const routerType = toLowerString(data.metadata?.routerType);
     if (routerType && routerType !== 'tsoa') {
@@ -160,6 +160,7 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
     { label: string; layout: 'grid' | 'tree'; treeMode?: TreeMode }
   > = {
     service: { label: 'Services', layout: 'grid' },
+    frontend: { label: 'Frontends', layout: 'grid' },
     module: { label: 'Modules', layout: 'grid' },
     tool: { label: 'Tools', layout: 'grid' },
     route: { label: 'Routes', layout: 'grid' },
@@ -171,6 +172,7 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
   };
 
   const DESIRED_GROUP_ORDER = [
+    'Frontends',
     'Services',
     'Modules',
     'Tools',
@@ -280,6 +282,28 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
     frontendPackages.forEach((pkg: any) => {
       const packageName = pkg.packageName || pkg.name || 'frontend';
       const packageRoot = pkg.packageRoot || pkg.root || '.';
+
+      const frontendSummary = enrichDataForGrouping(
+        {
+          name: packageName,
+          description:
+            pkg.description ||
+            pkg.summary ||
+            `Frontend package located at ${packageRoot || 'project root'}`,
+          metadata: {
+            ...(pkg.metadata || {}),
+            packageName,
+            packageRoot,
+            frameworks: pkg.frameworks,
+            framework: Array.isArray(pkg.frameworks) ? pkg.frameworks[0] : undefined,
+            detectedType: 'frontend',
+            type: 'frontend',
+          },
+        },
+        'frontend'
+      );
+
+      addToGroup('frontend', packageName, frontendSummary);
 
       (pkg.components || []).forEach((component: any) => {
         const name = `${packageName}:${component.name}`;

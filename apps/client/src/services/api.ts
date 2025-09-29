@@ -250,10 +250,14 @@ export class ApiService {
     });
   }
 
-  async createProject(name: string, path?: string): Promise<Project> {
+  async createProject(name: string, path?: string, presetId?: string): Promise<Project> {
     return this.request<Project>('/api/projects', {
       method: 'POST',
-      body: JSON.stringify({ name, path }),
+      body: JSON.stringify(
+        Object.fromEntries(
+          Object.entries({ name, path, presetId }).filter(([, value]) => value !== undefined)
+        )
+      ),
     });
   }
 

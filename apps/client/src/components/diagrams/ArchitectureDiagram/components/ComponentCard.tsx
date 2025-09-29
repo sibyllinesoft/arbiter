@@ -10,7 +10,9 @@ interface ComponentCardProps {
 }
 
 export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClick }) => {
-  const normalizedType = (data.type || data.metadata?.type || '').toLowerCase();
+  const resolvedType =
+    data.type || data.metadata?.type || data.metadata?.detectedType || data.metadata?.category;
+  const normalizedType = typeof resolvedType === 'string' ? resolvedType.toLowerCase() : '';
 
   const colorKey = (() => {
     switch (normalizedType) {
@@ -29,12 +31,23 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       case 'infrastructure':
         return 'infrastructure';
       case 'database':
+      case 'datastore':
         return 'database';
       case 'frontend':
         return 'frontend';
       case 'backend':
         return 'backend';
       default:
+        if (
+          data.metadata?.detectedType === 'frontend' ||
+          data.metadata?.type === 'frontend' ||
+          (Array.isArray(data.metadata?.frameworks) && data.metadata.frameworks.length > 0)
+        ) {
+          return 'frontend';
+        }
+        if (data.metadata?.engine || data.metadata?.database) {
+          return 'database';
+        }
         return 'external';
     }
   })();
@@ -54,6 +67,8 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
   const filepath =
     data.filepath || data.filePath || data.metadata?.filePath || data.metadata?.controllerPath;
   const packageName = data.package || data.metadata?.packageName;
+  const metadataLanguage = data.metadata?.language || data.language;
+  const metadataFramework = data.metadata?.framework || data.framework;
   const displayPath = data.path || data.metadata?.path || data.metadata?.routePath;
   const rawMethods = data.metadata?.httpMethods ?? data.httpMethods;
   const methods = Array.isArray(rawMethods)
@@ -96,6 +111,28 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
           <div className="flex items-center gap-2">
             <Folder className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
             <span className="font-mono opacity-100">{filepath}</span>
+          </div>
+        )}
+        {Array.isArray(methods) && methods.length > 0 && (
+          <div className="flex items-center gap-2">
+            <ArrowLeftRight className="w-3.5 h-3.5 text-gray-500 dark:text-graphite-300" />
+            <span className="opacity-100 text-xs tracking-wide">{methods.join(', ')}</span>
+          </div>
+        )}
+        {metadataLanguage && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-graphite-400">
+              Language
+            </span>
+            <span className="opacity-100 text-xs">{String(metadataLanguage)}</span>
+          </div>
+        )}
+        {metadataFramework && (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-graphite-400">
+              Framework
+            </span>
+            <span className="opacity-100 text-xs">{String(metadataFramework)}</span>
           </div>
         )}
         {packageName && (

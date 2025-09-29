@@ -10,6 +10,7 @@ interface TypeDisplayConfig {
 
 const TYPE_CONFIG: Record<string, TypeDisplayConfig> = {
   service: { label: 'Services', layout: 'grid' },
+  frontend: { label: 'Frontends', layout: 'grid' },
   module: { label: 'Modules', layout: 'grid' },
   tool: { label: 'Tools', layout: 'grid' },
   route: { label: 'Routes', layout: 'tree', treeMode: 'routes' },
@@ -21,6 +22,7 @@ const TYPE_CONFIG: Record<string, TypeDisplayConfig> = {
 };
 
 const DESIRED_GROUP_ORDER = [
+  'Frontends',
   'Services',
   'Modules',
   'Tools',
@@ -99,7 +101,7 @@ export const getComponentType = (data: any, name: string): string => {
   const detectedType = toLowerString(data.metadata?.detectedType);
 
   if (detectedType === 'tool' || detectedType === 'build_tool') return 'tool';
-  if (detectedType === 'frontend') return 'view';
+  if (detectedType === 'frontend' || detectedType === 'mobile') return 'frontend';
   if (detectedType === 'web_service') return 'service';
 
   if (rawType.includes('service')) return 'service';
@@ -107,7 +109,7 @@ export const getComponentType = (data: any, name: string): string => {
   if (['tool', 'cli', 'binary'].includes(rawType)) return 'tool';
   if (['deployment', 'infrastructure'].includes(rawType)) return 'infrastructure';
   if (rawType === 'database') return 'database';
-  if (rawType === 'frontend') return 'view';
+  if (rawType === 'frontend' || rawType === 'mobile') return 'frontend';
   if (rawType === 'route') {
     const routerType = toLowerString(data.metadata?.routerType);
     if (routerType && routerType !== 'tsoa') {

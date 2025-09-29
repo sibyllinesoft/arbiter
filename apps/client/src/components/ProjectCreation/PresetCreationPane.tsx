@@ -59,7 +59,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
   const handleCreateProjectFromPreset = async (preset: any, projectName: string) => {
     setIsCreatingProject(true);
     try {
-      const newProject = await apiService.createProject(projectName);
+      const newProject = await apiService.createProject(projectName, undefined, preset.id);
       setCurrentProject(newProject);
       refetchProjects();
       onClose();

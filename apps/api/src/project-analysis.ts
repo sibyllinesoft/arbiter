@@ -1360,7 +1360,7 @@ const PARSERS: ParserDefinition[] = [
 
         const serviceArtifact: AnalyzedArtifact = {
           id: makeArtifactId(context.projectId, `${context.filePath}#${serviceName}`),
-          name: `${serviceName}-compose-service`,
+          name: serviceName,
           type: 'service',
           description: `Service defined in docker-compose file ${context.filePath}`,
           language: null,

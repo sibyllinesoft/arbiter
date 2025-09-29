@@ -132,6 +132,60 @@ export interface ValidationResult {
   processingTime: number;
 }
 
+export interface UIRoute {
+  id: string;
+  path?: string;
+  name?: string | null;
+  summary?: string | null;
+  description?: string | null;
+  capabilities?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface UISpec {
+  routes: UIRoute[];
+}
+
+export interface FlowSpec {
+  id: string;
+  description?: string | null;
+  steps?: Array<Record<string, unknown>>;
+}
+
+export interface ServiceConfig {
+  description?: string | null;
+  technology?: string | null;
+  [key: string]: unknown;
+}
+
+export interface OpsAutomationSpec {
+  tools?: string[];
+  notes?: string[];
+}
+
+export interface OpsSpec {
+  automation?: OpsAutomationSpec;
+}
+
+export interface ProductSpec {
+  name: string;
+  description?: string | null;
+  goals?: string[];
+}
+
+export interface AppSpec {
+  product: ProductSpec;
+  config?: {
+    language?: string;
+    description?: string | null;
+    technology?: string | null;
+  } | null;
+  ui: UISpec;
+  services?: Record<string, ServiceConfig>;
+  flows: FlowSpec[];
+  ops?: OpsSpec | null;
+}
+
 /**
  * Export format options
  */
@@ -459,9 +513,9 @@ export type GitHubTemplateSetSource =
   | GitHubFileTemplateRef
   | {
       name?: string;
-      description?: string;
+      description?: string | null;
       sections?: {
-        description?: string;
+        description?: string | null;
         details?: Array<Partial<GitHubTemplateField>>;
         acceptanceCriteria?: string;
         dependencies?: string;
@@ -497,7 +551,7 @@ export interface GitHubFileTemplateRef {
   /** Optional metadata for the file template */
   metadata?: {
     name?: string;
-    description?: string;
+    description?: string | null;
     labels?: string[];
     assignees?: string[];
   };
@@ -511,7 +565,7 @@ export interface GitHubTemplateSet {
   /** Template name/identifier */
   name: string;
   /** Template description */
-  description?: string;
+  description?: string | null;
   /** Template content sections */
   sections: GitHubTemplateSections;
   /** Default labels to apply */
@@ -528,7 +582,7 @@ export interface GitHubTemplateConfig {
   /** Template title format */
   title?: string;
   /** Template description */
-  description?: string;
+  description?: string | null;
   /** Custom template sections */
   sections?: Partial<GitHubTemplateSections>;
   /** Labels to apply */
@@ -625,7 +679,7 @@ export interface GitHubLabel {
   /** Label color (hex without #) */
   color: string;
   /** Label description */
-  description?: string;
+  description?: string | null;
 }
 
 export interface GitHubTemplateOptions {
