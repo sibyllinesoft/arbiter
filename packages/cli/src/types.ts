@@ -342,9 +342,11 @@ export interface ProjectTemplate {
  */
 export interface InitOptions {
   template?: string;
+  schema?: string;
   name?: string;
   force?: boolean;
   listTemplates?: boolean;
+  directory?: string;
 }
 
 /**

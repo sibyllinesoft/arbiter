@@ -27,6 +27,11 @@ export function createProjectCommands(program: Command): void {
     .command('init [display-name]')
     .description('initialize a new CUE project with templates in current directory')
     .option('--schema <type>', 'schema type to use (app)', 'app')
+    .option(
+      '--directory <path>',
+      'target directory to initialize (defaults to current working directory)'
+    )
+    .option('--force', 'overwrite target directory if it already exists')
     .option('--list-templates', 'list available templates')
     .action(async (displayName: string | undefined, options: InitOptions, command) => {
       try {

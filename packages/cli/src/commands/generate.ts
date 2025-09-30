@@ -682,21 +682,20 @@ export async function generateCommand(
       return 1;
     }
 
-    if (validationResult.hasWarnings && !options.force) {
+    if (validationResult.hasWarnings) {
       console.log('\n' + chalk.yellow('⚠️  Specification validation warnings found:'));
       console.log(formatWarnings(validationResult));
-      console.log(chalk.blue('\n💡 To proceed: Add --force flag to generate with warnings'));
-      console.log(
-        chalk.dim(
-          'Recommendation: Fix the warnings above for a complete, production-ready specification.'
-        )
-      );
 
-      return 1;
-    }
+      if (!options.force) {
+        console.log(chalk.blue('\n💡 To proceed: Add --force flag to generate with warnings'));
+        console.log(
+          chalk.dim(
+            'Recommendation: Fix the warnings above for a complete, production-ready specification.'
+          )
+        );
+        return 1;
+      }
 
-    if (validationResult.hasWarnings && options.force) {
-      console.log(formatWarnings(validationResult));
       console.log(chalk.yellow('\n⚠️  Generating despite warnings (--force used)'));
       console.log(chalk.red.bold('\n🚨 REMINDER FOR AI AGENTS:'));
       console.log(
@@ -707,9 +706,7 @@ export async function generateCommand(
       console.log(
         chalk.dim('This may result in production issues that require additional work later.')
       );
-    }
-
-    if (!validationResult.hasWarnings && !validationResult.hasErrors) {
+    } else {
       console.log(chalk.green('✅ Specification validation passed'));
     }
 

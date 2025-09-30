@@ -104,7 +104,7 @@ export function createAddCommands(program: Command): Command {
     .command('flow <id>')
     .description('add a user flow for testing and validation')
     .option('--description <description>', 'flow description')
-    .option('--steps <steps>', 'comma-separated list of flow steps')
+    .option('--steps <steps>', 'JSON array of flow steps (e.g. "[{"visit":"/"}]")')
     .option('--expected-outcome <outcome>', 'expected outcome of the flow')
     .option('--dry-run', 'preview changes without applying them')
     .option('--force', 'overwrite existing configuration')

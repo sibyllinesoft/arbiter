@@ -1,22 +1,22 @@
-import path from "node:path";
-import chalk from "chalk";
-import fs from "fs-extra";
-import inquirer from "inquirer";
-import type { InitOptions, ProjectTemplate } from "../types.js";
-import { withProgress } from "../utils/progress.js";
+import path from 'node:path';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import { DEFAULT_CONFIG } from '../config.js';
+import type { InitOptions, ProjectTemplate } from '../types.js';
+import { withProgress } from '../utils/progress.js';
 
 /**
  * Basic project templates for initialization (structure only - no CUE files)
  */
 const TEMPLATES: Record<string, ProjectTemplate> = {
   basic: {
-    name: "Basic",
-    description: "A simple CUE project with basic structure",
+    name: 'Basic',
+    description: 'A simple CUE project with basic structure',
     files: {
-      "cue.mod/module.cue": `module: "example.com/myproject"
+      'cue.mod/module.cue': `module: "example.com/myproject"
 language: version: "v0.6.0"
 `,
-      "README.md": `# {{PROJECT_NAME}}
+      'README.md': `# {{PROJECT_NAME}}
 
 This is a CUE project created with Arbiter CLI.
 
@@ -52,7 +52,7 @@ arbiter check
 - [CUE Documentation](https://cuelang.org/docs/)
 - [Arbiter CLI](https://github.com/arbiter/cli)
 `,
-      ".gitignore": `# Build artifacts
+      '.gitignore': `# Build artifacts
 *.out
 dist/
 build/
@@ -75,13 +75,13 @@ Thumbs.db
   },
 
   kubernetes: {
-    name: "Kubernetes",
-    description: "CUE project for Kubernetes configurations",
+    name: 'Kubernetes',
+    description: 'CUE project for Kubernetes configurations',
     files: {
-      "cue.mod/module.cue": `module: "example.com/k8s-config"
+      'cue.mod/module.cue': `module: "example.com/k8s-config"
 language: version: "v0.6.0"
 `,
-      "README.md": `# {{PROJECT_NAME}} - Kubernetes Configuration
+      'README.md': `# {{PROJECT_NAME}} - Kubernetes Configuration
 
 This project uses CUE to manage Kubernetes configurations with type safety and validation.
 
@@ -123,13 +123,13 @@ arbiter export --format k8s
   },
 
   api: {
-    name: "API Schema",
-    description: "CUE project for API schema definition",
+    name: 'API Schema',
+    description: 'CUE project for API schema definition',
     files: {
-      "cue.mod/module.cue": `module: "example.com/api-schema"
+      'cue.mod/module.cue': `module: "example.com/api-schema"
 language: version: "v0.6.0"
 `,
-      "README.md": `# {{PROJECT_NAME}} - API Schema
+      'README.md': `# {{PROJECT_NAME}} - API Schema
 
 This project defines API schemas using CUE with type safety and OpenAPI generation.
 
@@ -182,7 +182,7 @@ arbiter export --format types > types.ts
  */
 export async function initCommand(
   displayName: string | undefined,
-  options: InitOptions,
+  options: InitOptions
 ): Promise<number> {
   try {
     // Get project details
@@ -192,45 +192,46 @@ export async function initCommand(
     // Check if directory exists and handle accordingly
     const targetDir = path.resolve(directory);
     const exists = await fs.pathExists(targetDir);
+    const displayPath = path.relative(process.cwd(), targetDir) || '.';
 
     if (exists && !options.force) {
       console.log(
-        chalk.yellow(`Directory "${directory}" already exists. Use --force to overwrite.`),
+        chalk.yellow(`Directory "${displayPath}" already exists. Use --force to overwrite.`)
       );
       return 1;
     }
 
     // Create project
     return await withProgress(
-      { text: `Creating project "${name}"...`, color: "green" },
+      { text: `Creating project "${name}"...`, color: 'green' },
       async () => {
         await createProject(targetDir, name, template);
 
-        console.log(chalk.green(`\n✓ Created project "${name}" in ${directory}`));
+        console.log(chalk.green(`\n✓ Created project "${name}" in ${displayPath}`));
 
-        console.log(chalk.yellow("\n📋 IMPORTANT: Basic project structure created"));
-        console.log(chalk.red("⚠️  NO CUE files have been generated yet - this is intentional!"));
-        console.log(chalk.dim("\nNext steps:"));
-        console.log(chalk.dim(`  cd ${directory}`));
-        console.log(chalk.green("  1. Add components to build your specification:"));
+        console.log(chalk.yellow('\n📋 IMPORTANT: Basic project structure created'));
+        console.log(chalk.red('⚠️  NO CUE files have been generated yet - this is intentional!'));
+        console.log(chalk.dim('\nNext steps:'));
+        console.log(chalk.dim(`  cd ${displayPath}`));
+        console.log(chalk.green('  1. Add components to build your specification:'));
         console.log(
           chalk.cyan(
-            "     arbiter add <component-type> <name>  # Add models, endpoints, configs, etc.",
-          ),
+            '     arbiter add <component-type> <name>  # Add models, endpoints, configs, etc.'
+          )
         );
-        console.log(chalk.green("  2. Generate CUE files from your specification:"));
-        console.log(chalk.cyan("     arbiter generate  # Creates the actual CUE files"));
-        console.log(chalk.green("  3. Validate your generated CUE files:"));
-        console.log(chalk.cyan("     arbiter check  # Validate the generated CUE"));
+        console.log(chalk.green('  2. Generate CUE files from your specification:'));
+        console.log(chalk.cyan('     arbiter generate  # Creates the actual CUE files'));
+        console.log(chalk.green('  3. Validate your generated CUE files:'));
+        console.log(chalk.cyan('     arbiter check  # Validate the generated CUE'));
         console.log(chalk.dim("\n💡 Use 'arbiter --help' to see all available add commands"));
 
         return 0;
-      },
+      }
     );
   } catch (error) {
     console.error(
-      chalk.red("Init command failed:"),
-      error instanceof Error ? error.message : String(error),
+      chalk.red('Init command failed:'),
+      error instanceof Error ? error.message : String(error)
     );
     return 2;
   }
@@ -241,13 +242,15 @@ export async function initCommand(
  */
 async function getProjectDetails(
   displayName: string | undefined,
-  options: InitOptions,
+  options: InitOptions
 ): Promise<{ name: string; directory: string; template: ProjectTemplate }> {
   // Use defaults for all required values, no interactive prompts
-  const name = displayName || path.basename(process.cwd());
-  const templateKey = options.template || "basic";
-  const directory = process.cwd();
-  const template = TEMPLATES[templateKey];
+  const targetDirectory = options.directory ? path.resolve(options.directory) : process.cwd();
+  const name = displayName || options.name || path.basename(targetDirectory);
+  const templateKey = options.template || options.schema || 'basic';
+  const resolvedTemplateKey = templateKey === 'app' ? 'basic' : templateKey;
+  const directory = targetDirectory;
+  const template = TEMPLATES[resolvedTemplateKey];
   if (!template) {
     throw new Error(`Unknown template: ${templateKey}`);
   }
@@ -261,7 +264,7 @@ async function getProjectDetails(
 async function createProject(
   targetDir: string,
   projectName: string,
-  template: ProjectTemplate,
+  template: ProjectTemplate
 ): Promise<void> {
   // Ensure target directory exists
   await fs.ensureDir(targetDir);
@@ -279,22 +282,23 @@ async function createProject(
       .replace(/{{PROJECT_NAME}}/g, projectName)
       .replace(/{{DESCRIPTION}}/g, template.description);
 
-    await fs.writeFile(fullPath, processedContent, "utf-8");
+    await fs.writeFile(fullPath, processedContent, 'utf-8');
   }
 
   // Create .arbiter/config.json config file
   const configContent = {
-    apiUrl: "http://localhost:8080",
-    format: "table",
-    color: true,
+    apiUrl: DEFAULT_CONFIG.apiUrl,
+    format: DEFAULT_CONFIG.format,
+    color: DEFAULT_CONFIG.color,
+    timeout: DEFAULT_CONFIG.timeout,
   };
 
-  const arbiterDir = path.join(targetDir, ".arbiter");
+  const arbiterDir = path.join(targetDir, '.arbiter');
   await fs.ensureDir(arbiterDir);
   await fs.writeFile(
-    path.join(arbiterDir, "config.json"),
+    path.join(arbiterDir, 'config.json'),
     JSON.stringify(configContent, null, 2),
-    "utf-8",
+    'utf-8'
   );
 }
 
@@ -302,7 +306,7 @@ async function createProject(
  * List available templates
  */
 export function listTemplates(): void {
-  console.log(chalk.cyan("Available templates:"));
+  console.log(chalk.cyan('Available templates:'));
   console.log();
 
   Object.entries(TEMPLATES).forEach(([key, template]) => {
