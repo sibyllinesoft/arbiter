@@ -1,11 +1,17 @@
-import type { IRResponse, ValidationRequest, ValidationResponse } from "@arbiter/shared";
-import { COMMON_PORTS } from "./config.js";
-import type { CLIConfig, CommandResult } from "./types.js";
+import type { IRResponse, ValidationRequest, ValidationResponse } from '@arbiter/shared';
+import { COMMON_PORTS } from './config.js';
+import type { CLIConfig, CommandResult } from './types.js';
 
 /**
- * Rate-limited HTTP API client for Arbiter server
- * Implements rate limiting (≤1 RPS), payload size limits (≤64KB), and timeout compliance (≤750ms)
- * according to the Arbiter specification
+ * @packageDocumentation
+ * Provides a thin, rate-limited HTTP client used by the Arbiter CLI to
+ * communicate with the Spec Workbench API.
+ */
+/**
+ * Rate-limited HTTP client for the Arbiter API that enforces the specification
+ * constraints around payload size, request cadence, and request timeout.
+ *
+ * @public
  */
 export class ApiClient {
   private baseUrl: string;
@@ -18,28 +24,34 @@ export class ApiClient {
   private readonly MAX_TIMEOUT = 750; // 750ms per spec
 
   constructor(config: CLIConfig) {
-    this.baseUrl = config.apiUrl.replace(/\/$/, ""); // Remove trailing slash
+    this.baseUrl = config.apiUrl.replace(/\/$/, ''); // Remove trailing slash
     // Ensure timeout compliance with spec (≤750ms)
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
-    this.projectId = config.projectId || "cli-project"; // Use configured project ID or fallback
+    this.projectId = config.projectId || 'cli-project'; // Use configured project ID or fallback
   }
 
   /**
-   * Update the project ID for subsequent requests
+   * Updates the project identifier that subsequent requests should target.
+   *
+   * @param projectId - Identifier of the project whose specifications will be accessed.
    */
   setProjectId(projectId: string): void {
     this.projectId = projectId;
   }
 
   /**
-   * Get the current project ID
+   * Returns the identifier the client currently uses when addressing the API.
+   *
+   * @returns The active project identifier.
    */
   getProjectId(): string {
     return this.projectId;
   }
 
   /**
-   * Auto-discover server by trying common ports
+   * Attempts to discover a running Arbiter server by probing the known development ports.
+   *
+   * @returns Result describing whether a server was found and the discovered URL if applicable.
    */
   async discoverServer(): Promise<{ success: boolean; url?: string; error?: string }> {
     const hostname = new URL(this.baseUrl).hostname;
@@ -54,7 +66,7 @@ export class ApiClient {
 
         const response = await fetch(`${testUrl}/health`, {
           signal: controller.signal,
-          method: "GET",
+          method: 'GET',
         });
 
         clearTimeout(timeoutId);
@@ -68,19 +80,24 @@ export class ApiClient {
 
     return {
       success: false,
-      error: `No Arbiter server found on common ports [${COMMON_PORTS.join(", ")}]. Please ensure the server is running.`,
+      error: `No Arbiter server found on common ports [${COMMON_PORTS.join(', ')}]. Please ensure the server is running.`,
     };
   }
 
   /**
-   * Get the effective base URL (discovered or configured)
+   * Resolves the URL that should be used for the next request.
+   *
+   * @returns The discovered base URL if available, otherwise the configured base URL.
    */
   private getEffectiveBaseUrl(): string {
     return this.discoveredUrl || this.baseUrl;
   }
 
   /**
-   * Enforce rate limiting (≤1 RPS) with exponential backoff
+   * Ensures the client respects the one-request-per-second service constraint.
+   *
+   * @remarks
+   * The implementation waits until the minimum interval between requests has elapsed before resolving.
    */
   private async enforceRateLimit(): Promise<void> {
     const now = Date.now();
@@ -88,33 +105,40 @@ export class ApiClient {
 
     if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
       const waitTime = this.MIN_REQUEST_INTERVAL - timeSinceLastRequest;
-      await new Promise((resolve) => setTimeout(resolve, waitTime));
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
 
     this.lastRequestTime = Date.now();
   }
 
   /**
-   * Validate payload size (≤64KB)
+   * Validates that a JSON payload does not exceed the service's size limits.
+   *
+   * @param payload - Serialized payload that will be transmitted to the API.
+   * @throws Error if the payload exceeds the 64KB cap mandated by the service.
    */
   private validatePayloadSize(payload: string): void {
     const size = new TextEncoder().encode(payload).length;
     if (size > this.MAX_PAYLOAD_SIZE) {
       throw new Error(
-        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`,
+        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`
       );
     }
   }
 
   /**
-   * Validate CUE content using the /api/validate endpoint
+   * Validates CUE content against the Arbiter service schemas using the `/api/validate` endpoint.
+   *
+   * @param content - Raw CUE content to validate.
+   * @param _options - Reserved for future options such as alternative schemas.
+   * @returns A command result describing the validation outcome.
    */
   async validate(
     content: string,
     _options: {
       schema?: string;
       strict?: boolean;
-    } = {},
+    } = {}
   ): Promise<CommandResult<ValidationResponse>> {
     try {
       await this.enforceRateLimit();
@@ -129,11 +153,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify(request);
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/validate", {
-        method: "POST",
+      const response = await this.fetch('/api/validate', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -163,7 +187,10 @@ export class ApiClient {
   }
 
   /**
-   * Get intermediate representation using the /api/ir endpoint
+   * Requests a normalized intermediate representation from the `/api/ir` endpoint.
+   *
+   * @param content - Specification content from which to derive the IR.
+   * @returns A command result containing the generated intermediate representation.
    */
   async getIR(content: string): Promise<CommandResult<IRResponse>> {
     try {
@@ -173,11 +200,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ text: content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/ir", {
-        method: "POST",
+      const response = await this.fetch('/api/ir', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -207,7 +234,11 @@ export class ApiClient {
   }
 
   /**
-   * Lightweight helper for ad-hoc API requests
+   * Performs an arbitrary request while still enforcing the client's rate limit.
+   *
+   * @param path - Relative API path to call.
+   * @param init - Additional fetch options.
+   * @returns The raw `Response` object returned by `fetch`.
    */
   async request(path: string, init: RequestInit = {}): Promise<Response> {
     await this.enforceRateLimit();
@@ -215,14 +246,17 @@ export class ApiClient {
   }
 
   /**
-   * List fragments for a project
+   * Retrieves the list of specification fragments available for a project.
+   *
+   * @param projectId - Identifier of the project that owns the fragments.
+   * @returns Command result containing the fragment metadata array.
    */
-  async listFragments(projectId = "default"): Promise<CommandResult<any[]>> {
+  async listFragments(projectId = 'default'): Promise<CommandResult<any[]>> {
     try {
       await this.enforceRateLimit();
 
       const response = await this.fetch(
-        `/api/fragments?projectId=${encodeURIComponent(projectId)}`,
+        `/api/fragments?projectId=${encodeURIComponent(projectId)}`
       );
 
       if (!response.ok) {
@@ -251,13 +285,19 @@ export class ApiClient {
   }
 
   /**
-   * Update or create a fragment
+   * Creates or updates a fragment in the Arbiter backend.
+   *
+   * @param projectId - Identifier of the project that owns the fragment.
+   * @param path - Logical path that the fragment should be stored under.
+   * @param content - Fragment content to persist.
+   * @param options - Optional authoring metadata to persist with the fragment.
+   * @returns Command result containing the stored fragment payload.
    */
   async updateFragment(
     projectId: string,
     path: string,
     content: string,
-    options?: { author?: string; message?: string },
+    options?: { author?: string; message?: string }
   ): Promise<CommandResult<any>> {
     try {
       await this.enforceRateLimit();
@@ -272,11 +312,11 @@ export class ApiClient {
       });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/fragments", {
-        method: "POST",
+      const response = await this.fetch('/api/fragments', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -306,7 +346,10 @@ export class ApiClient {
   }
 
   /**
-   * Store CUE specification in service database with sharding support
+   * Persists a high-level specification in the backend, allowing the service to shard storage as needed.
+   *
+   * @param spec - Specification payload to store.
+   * @returns Result describing whether the operation succeeded and identifying the shard when relevant.
    */
   async storeSpecification(spec: {
     content: string;
@@ -318,7 +361,7 @@ export class ApiClient {
     const requestId = Math.random().toString(36).substr(2, 9);
 
     console.log(
-      `[CLI-STORE] ${requestId} - Starting storeSpecification at ${new Date().toISOString()}`,
+      `[CLI-STORE] ${requestId} - Starting storeSpecification at ${new Date().toISOString()}`
     );
     console.log(`[CLI-STORE] ${requestId} - Spec details:`, {
       type: spec.type,
@@ -331,9 +374,9 @@ export class ApiClient {
     try {
       console.log(`[CLI-STORE] ${requestId} - Making POST request to /api/specifications`);
 
-      const response = await this.fetch("/api/specifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await this.fetch('/api/specifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...spec,
           sharded: true, // Indicate this should use sharded storage
@@ -342,13 +385,13 @@ export class ApiClient {
 
       const duration = Date.now() - startTime;
       console.log(
-        `[CLI-STORE] ${requestId} - Response received after ${duration}ms, status: ${response.status}`,
+        `[CLI-STORE] ${requestId} - Response received after ${duration}ms, status: ${response.status}`
       );
 
       if (!response.ok) {
         const error = await response.text();
         console.error(
-          `[CLI-STORE] ${requestId} - Failed with status ${response.status}, error: ${error}`,
+          `[CLI-STORE] ${requestId} - Failed with status ${response.status}, error: ${error}`
         );
         return {
           success: false,
@@ -375,7 +418,11 @@ export class ApiClient {
   }
 
   /**
-   * Get CUE specification from service database
+   * Fetches a stored specification from the backend.
+   *
+   * @param type - Specification type used during storage.
+   * @param path - Logical path where the specification resides.
+   * @returns Stored specification content if available.
    */
   async getSpecification(type: string, path: string): Promise<CommandResult<{ content: string }>> {
     await this.enforceRateLimit();
@@ -389,7 +436,7 @@ export class ApiClient {
           return {
             success: false,
             data: null,
-            error: "Specification not found",
+            error: 'Specification not found',
             exitCode: 1,
           };
         }
@@ -415,27 +462,28 @@ export class ApiClient {
   }
 
   /**
-   * Check server health using the /health endpoint
-   * Automatically attempts discovery if initial connection fails
+   * Checks the `/health` endpoint and, if necessary, attempts service discovery before retrying.
+   *
+   * @returns Command result describing the server health and timestamp.
    */
   async health(): Promise<CommandResult<{ status: string; timestamp: string }>> {
     try {
       await this.enforceRateLimit();
 
       // First try the configured URL
-      let response = await this.fetch("/health");
+      let response = await this.fetch('/health');
 
       // If it fails, try auto-discovery
       if (!response.ok || response.status === 404) {
         console.warn(
-          `Initial connection to ${this.baseUrl} failed. Attempting server discovery...`,
+          `Initial connection to ${this.baseUrl} failed. Attempting server discovery...`
         );
         const discovery = await this.discoverServer();
 
         if (discovery.success && discovery.url) {
           console.log(`✓ Found server at ${discovery.url}`);
           // Retry with discovered URL
-          response = await this.fetch("/health");
+          response = await this.fetch('/health');
         } else {
           return {
             success: false,
@@ -479,7 +527,12 @@ export class ApiClient {
   }
 
   /**
-   * Export CUE content to various formats using the dedicated /export endpoint
+   * Invokes the `/export` endpoint so callers can materialize CUE content in auxiliary formats.
+   *
+   * @param content - Raw CUE content to export.
+   * @param format - Output format identifier requested from the API.
+   * @param options - Optional flags that fine-tune the export behaviour.
+   * @returns Result containing the exported artifact metadata.
    */
   async export(
     content: string,
@@ -487,26 +540,26 @@ export class ApiClient {
     options: {
       strict?: boolean;
       includeExamples?: boolean;
-      outputMode?: "single" | "multiple";
-    } = {},
+      outputMode?: 'single' | 'multiple';
+    } = {}
   ): Promise<CommandResult<any>> {
     try {
-      const response = await this.fetch("/export", {
-        method: "POST",
+      const response = await this.fetch('/export', {
+        method: 'POST',
         body: JSON.stringify({
           text: content,
           format,
           strict: options.strict || false,
           includeExamples: options.includeExamples || false,
-          outputMode: options.outputMode || "single",
+          outputMode: options.outputMode || 'single',
         }),
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         return {
           success: false,
           error: errorData.error || `Export failed: ${response.status}`,
@@ -519,7 +572,7 @@ export class ApiClient {
       if (!data.success) {
         return {
           success: false,
-          error: data.error || "Export failed",
+          error: data.error || 'Export failed',
           exitCode: 1,
         };
       }
@@ -539,11 +592,13 @@ export class ApiClient {
   }
 
   /**
-   * Get supported export formats from the API
+   * Retrieves the list of export formats supported by the server.
+   *
+   * @returns Command result containing the supported format descriptors.
    */
   async getSupportedFormats(): Promise<CommandResult<any>> {
     try {
-      const response = await this.fetch("/export/formats");
+      const response = await this.fetch('/export/formats');
 
       if (!response.ok) {
         return {
@@ -570,13 +625,16 @@ export class ApiClient {
   }
 
   /**
-   * List components by type
+   * Retrieves detected components from the backend, optionally filtered by type.
+   *
+   * @param type - Optional component classification to filter the results by.
+   * @returns Command result containing zero or more component descriptions.
    */
   async listComponents(type?: string): Promise<CommandResult<any[]>> {
     try {
       await this.enforceRateLimit();
 
-      const url = type ? `/api/components?type=${encodeURIComponent(type)}` : "/api/components";
+      const url = type ? `/api/components?type=${encodeURIComponent(type)}` : '/api/components';
       const response = await this.fetch(url);
 
       if (!response.ok) {
@@ -605,13 +663,15 @@ export class ApiClient {
   }
 
   /**
-   * Get project status
+   * Fetches aggregate project status details from the API.
+   *
+   * @returns Command result describing the overall project status.
    */
   async getProjectStatus(): Promise<CommandResult<any>> {
     try {
       await this.enforceRateLimit();
 
-      const response = await this.fetch("/api/status");
+      const response = await this.fetch('/api/status');
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -639,7 +699,10 @@ export class ApiClient {
   }
 
   /**
-   * Validate best practices (if API supports it)
+   * Validates a specification against the platform's best-practice rules, when supported by the server.
+   *
+   * @param content - Specification content to validate.
+   * @returns Command result containing the validation outcome.
    */
   async validateBestPractices?(content: string): Promise<CommandResult<any>> {
     try {
@@ -649,11 +712,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/validate/best-practices", {
-        method: "POST",
+      const response = await this.fetch('/api/validate/best-practices', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -683,7 +746,11 @@ export class ApiClient {
   }
 
   /**
-   * Validate custom rules (if API supports it)
+   * Validates a specification against custom rule sets.
+   *
+   * @param content - Specification content to validate.
+   * @param rules - One or more rule identifiers provided to the backend.
+   * @returns Command result that includes rule validation feedback.
    */
   async validateCustomRules?(content: string, rules: string[]): Promise<CommandResult<any>> {
     try {
@@ -693,11 +760,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ content, rules });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/validate/custom-rules", {
-        method: "POST",
+      const response = await this.fetch('/api/validate/custom-rules', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -737,11 +804,11 @@ export class ApiClient {
       const requestPayload = JSON.stringify({ content });
       this.validatePayloadSize(requestPayload);
 
-      const response = await this.fetch("/api/validate/consistency", {
-        method: "POST",
+      const response = await this.fetch('/api/validate/consistency', {
+        method: 'POST',
         body: requestPayload,
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -780,10 +847,10 @@ export class ApiClient {
     const fetchId = Math.random().toString(36).substr(2, 9);
 
     console.log(
-      `[CLI-FETCH] ${fetchId} - Starting request to ${url} at ${new Date().toISOString()}`,
+      `[CLI-FETCH] ${fetchId} - Starting request to ${url} at ${new Date().toISOString()}`
     );
     console.log(`[CLI-FETCH] ${fetchId} - Timeout configured: ${this.timeout}ms`);
-    console.log(`[CLI-FETCH] ${fetchId} - Method: ${options.method || "GET"}`);
+    console.log(`[CLI-FETCH] ${fetchId} - Method: ${options.method || 'GET'}`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
@@ -812,7 +879,7 @@ export class ApiClient {
 
       console.error(`[CLI-FETCH] ${fetchId} - Error after ${duration}ms:`, error);
 
-      if (error instanceof Error && error.name === "AbortError") {
+      if (error instanceof Error && error.name === 'AbortError') {
         const errorMsg = `Request timeout after ${this.timeout}ms connecting to ${baseUrl}`;
         console.error(`[CLI-FETCH] ${fetchId} - TIMEOUT: ${errorMsg}`);
         throw new Error(errorMsg);
@@ -821,7 +888,7 @@ export class ApiClient {
       // Enhance error message with connection details
       if (
         error instanceof Error &&
-        (error.message.includes("ECONNREFUSED") || error.message.includes("fetch failed"))
+        (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed'))
       ) {
         const errorMsg = `Connection failed to ${baseUrl}. Is the Arbiter server running?`;
         console.error(`[CLI-FETCH] ${fetchId} - CONNECTION FAILED: ${errorMsg}`);
@@ -853,9 +920,9 @@ export class ApiClient {
     error?: string;
   }> {
     await this.enforceRateLimit();
-    const response = await this.fetch("/api/webhooks/github/setup", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await this.fetch('/api/webhooks/github/setup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params),
     });
     return await response.json();
@@ -863,7 +930,7 @@ export class ApiClient {
 
   async listGitHubWebhooks(
     owner: string,
-    repo: string,
+    repo: string
   ): Promise<{
     success: boolean;
     webhooks?: Array<{
@@ -885,7 +952,7 @@ export class ApiClient {
   async deleteGitHubWebhook(
     owner: string,
     repo: string,
-    hookId: number,
+    hookId: number
   ): Promise<{
     success: boolean;
     message?: string;
@@ -893,7 +960,7 @@ export class ApiClient {
   }> {
     await this.enforceRateLimit();
     const response = await this.fetch(`/api/webhooks/github/${owner}/${repo}/${hookId}`, {
-      method: "DELETE",
+      method: 'DELETE',
     });
     return await response.json();
   }

@@ -1,8 +1,9 @@
 /**
- * Arbiter CLI - Main entry point
+ * @packageDocumentation
+ * Arbiter CLI entry points for programmatic usage.
  *
- * This module exports the main CLI components for programmatic use
- * while the cli.ts file is used for direct command-line execution.
+ * This module re-exports the primary command program and supporting utilities
+ * so that downstream tooling can integrate the CLI without shelling out.
  */
 
 export * from './api-client.js';

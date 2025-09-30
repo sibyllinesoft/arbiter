@@ -103,6 +103,54 @@ The import analysis follows a five-stage pipeline:
 - **Databases**: Database instances, data stores
 - **Infrastructure**: Deployment configs, infrastructure as code
 
+## Configuration
+
+The `ScannerRunner` accepts a rich configuration object that controls parsing
+and inference. Important options include:
+
+- `parseOptions.deepAnalysis`: enable more expensive heuristics at the cost of
+  runtime
+- `parseOptions.targetLanguages`: restricts plugins to a set of languages when
+  working in polyglot repositories
+- `parseOptions.maxFileSize`: guards against scanning large binaries that slow
+  down the pipeline
+- `inferenceOptions.minConfidence`: filters out artifacts that do not meet a
+  minimum confidence score
+- `ignorePatterns`: additional glob patterns merged with the built-in defaults
+- `maxConcurrency`: controls the number of files parsed in parallel when the
+  importer streams evidence
+
+Covering these knobs in project-specific presets allows large organisations to
+standardise how repositories are analysed.
+
+## Evidence and Artifacts
+
+Plugins collect `Evidence` objects during the parse phase; each evidence record
+references the file that produced it, the detection heuristic that fired, and a
+confidence value. During inference, evidence is aggregated into
+`InferredArtifact` records that combine metadata, provenance, and supporting
+sources. The resulting `ArtifactManifest` includes:
+
+- `project` metadata such as file counts and aggregate size
+- `artifacts` for every detected service, module, job, frontend, infrastructure
+  asset, and more
+- `provenance` mappings that explain which evidence justifies each artifact
+- `statistics` summarising confidence distribution and plugin execution metrics
+- `configuration` capturing the options used during the scan
+
+## Extending the Pipeline
+
+Implement the `ImporterPlugin` interface to add support for additional
+languages, frameworks, or infrastructure formats. Plugins typically focus on:
+
+1. Quick `supports()` checks to avoid loading unnecessary files
+2. Structured parsing with robust error handling in `parse()`
+3. Combining cross-file evidence inside `infer()` to produce confident artifacts
+
+The shared `PluginRegistry` and `ScannerRunner` utilities handle concurrency,
+error isolation, and manifest assembly so plugins can remain focused on their
+specific detection logic.
+
 ## License
 
 MIT

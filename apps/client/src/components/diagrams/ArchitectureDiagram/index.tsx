@@ -5,10 +5,14 @@ import {
   Component,
   Database,
   Eye,
+  Flag,
+  GitBranch,
   Layout,
+  ListChecks,
   Navigation,
   Server,
   Shield,
+  Sparkles,
   Terminal,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -169,6 +173,10 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
     component: { label: 'Components', layout: 'grid' },
     infrastructure: { label: 'Infrastructure', layout: 'grid' },
     database: { label: 'Databases', layout: 'grid' },
+    flow: { label: 'Flows', layout: 'grid' },
+    capability: { label: 'Capabilities', layout: 'grid' },
+    epic: { label: 'Epics', layout: 'grid' },
+    task: { label: 'Tasks', layout: 'grid' },
     other: { label: 'Other', layout: 'grid' },
   };
 
@@ -179,8 +187,12 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
     'Tools',
     'Routes',
     'Views',
+    'Flows',
+    'Capabilities',
     'Databases',
     'Infrastructure',
+    'Epics',
+    'Tasks',
     'Other',
   ];
 
@@ -351,6 +363,111 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
     });
   }
 
+  const capabilitySource = projectData?.spec?.capabilities ?? projectData?.capabilities ?? [];
+  const recordCapability = (raw: any, fallbackName: string, idx: number) => {
+    if (!raw && typeof raw !== 'string') return;
+    const capabilityData = typeof raw === 'string' ? { name: raw } : { ...raw };
+    const capabilityName = String(capabilityData.name || fallbackName || `Capability ${idx + 1}`);
+    const enriched = enrichDataForGrouping(
+      {
+        ...capabilityData,
+        name: capabilityName,
+      },
+      'capability'
+    );
+    addToGroup('capability', capabilityName, enriched);
+  };
+
+  if (Array.isArray(capabilitySource)) {
+    capabilitySource.forEach((capability, index) => {
+      recordCapability(capability, `Capability ${index + 1}`, index);
+    });
+  } else if (capabilitySource && typeof capabilitySource === 'object') {
+    Object.entries(capabilitySource as Record<string, any>).forEach(([key, capability], index) => {
+      recordCapability(capability, key || `Capability ${index + 1}`, index);
+    });
+  }
+
+  const flowsSource = projectData?.spec?.flows ?? projectData?.flows ?? [];
+  const flowsArray = Array.isArray(flowsSource)
+    ? flowsSource
+    : flowsSource && typeof flowsSource === 'object'
+      ? Object.values(flowsSource as Record<string, any>)
+      : [];
+  flowsArray.forEach((flow, index) => {
+    if (!flow && typeof flow !== 'string') return;
+    const flowData = typeof flow === 'string' ? { name: flow } : { ...flow };
+    const flowName = String(flowData.name || flowData.id || `Flow ${index + 1}`);
+    const enriched = enrichDataForGrouping(
+      {
+        ...flowData,
+        name: flowName,
+      },
+      'flow'
+    );
+    addToGroup('flow', flowName, enriched);
+  });
+
+  const epicSource = projectData?.spec?.epics ?? projectData?.epics ?? [];
+  const epicEntries: Array<{ key: string; value: any; index: number }> = [];
+  if (Array.isArray(epicSource)) {
+    epicSource.forEach((value, index) => {
+      const key =
+        (value && typeof value === 'object' && (value.id || value.name)) || `epic-${index + 1}`;
+      epicEntries.push({ key: String(key), value, index });
+    });
+  } else if (epicSource && typeof epicSource === 'object') {
+    Object.entries(epicSource as Record<string, any>).forEach(([key, value], index) => {
+      epicEntries.push({ key, value, index });
+    });
+  }
+
+  epicEntries.forEach(({ key, value, index }) => {
+    if (!value && typeof value !== 'string') return;
+    const epicData = typeof value === 'string' ? { id: key, name: value } : { ...value };
+    const epicId = String(epicData.id || key || `epic-${index + 1}`);
+    const epicName = String(epicData.name || epicId || `Epic ${index + 1}`);
+    const enrichedEpic = enrichDataForGrouping(
+      {
+        ...epicData,
+        id: epicId,
+        name: epicName,
+        metadata: {
+          ...(epicData.metadata || {}),
+          epicId,
+        },
+      },
+      'epic'
+    );
+    addToGroup('epic', epicName, enrichedEpic);
+
+    const tasksSource = epicData.tasks ?? [];
+    const tasksArray = Array.isArray(tasksSource)
+      ? tasksSource
+      : tasksSource && typeof tasksSource === 'object'
+        ? Object.values(tasksSource as Record<string, any>)
+        : [];
+
+    tasksArray.forEach((task, taskIndex) => {
+      if (!task && typeof task !== 'string') return;
+      const taskData = typeof task === 'string' ? { name: task } : { ...task };
+      const taskName = String(taskData.name || taskData.id || `${epicName} Task ${taskIndex + 1}`);
+      const enrichedTask = enrichDataForGrouping(
+        {
+          ...taskData,
+          name: taskName,
+          metadata: {
+            ...(taskData.metadata || {}),
+            epicId,
+            epicName,
+          },
+        },
+        'task'
+      );
+      addToGroup('task', taskName, enrichedTask);
+    });
+  });
+
   Object.keys(TYPE_CONFIG)
     .filter(type => type !== 'component')
     .forEach(type => {
@@ -477,6 +594,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
     database: Database,
     infrastructure: Shield,
     frontend: Layout,
+    flow: GitBranch,
+    capability: Sparkles,
+    epic: Flag,
+    task: ListChecks,
   };
 
   const openAddDialog = (group: GroupedComponentGroup) => {

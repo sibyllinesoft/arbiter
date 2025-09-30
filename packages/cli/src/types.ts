@@ -1,5 +1,6 @@
 /**
- * CLI configuration schema and types
+ * @packageDocumentation
+ * Shared type definitions for the Arbiter CLI.
  */
 
 import type { SpinnerName } from 'cli-spinners';
@@ -18,6 +19,11 @@ export {
   createIssue,
   createChecklistItem,
 } from '@arbiter/shared';
+/**
+ * GitHub repository metadata used by the synchronization subsystem.
+ *
+ * @public
+ */
 export interface GitHubRepo {
   /** GitHub repository owner/organization (auto-detected from Git remote if not specified) */
   owner?: string;
@@ -29,6 +35,11 @@ export interface GitHubRepo {
   tokenEnv?: string;
 }
 
+/**
+ * Configuration that controls how project artifacts synchronize to GitHub.
+ *
+ * @public
+ */
 export interface GitHubSyncConfig {
   /** GitHub repository configuration */
   repository?: GitHubRepo;
@@ -62,6 +73,11 @@ export interface GitHubSyncConfig {
 
 import type { UIOptionCatalog, UIOptionGeneratorMap } from '@arbiter/shared';
 
+/**
+ * Primary configuration object consumed by the CLI.
+ *
+ * @public
+ */
 export interface CLIConfig {
   /** API endpoint URL */
   apiUrl: string;
@@ -93,14 +109,25 @@ export interface CLIConfig {
   generator?: GeneratorConfig;
 }
 
+/**
+ * Lifecycle hook identifiers emitted by the generator.
+ */
 export type GeneratorHookEvent =
   | 'before:generate'
   | 'after:generate'
   | 'before:fileWrite'
   | 'after:fileWrite';
 
+/**
+ * Mapping of generator hooks to shell commands executed during scaffolding.
+ */
 export type GeneratorHookMap = Partial<Record<GeneratorHookEvent, string>>;
 
+/**
+ * Customization points for the code generation pipeline.
+ *
+ * @public
+ */
 export interface GeneratorConfig {
   /** Mapping of language identifiers to template override directories */
   templateOverrides?: Record<string, string>;
@@ -110,6 +137,11 @@ export interface GeneratorConfig {
   hooks?: GeneratorHookMap;
 }
 
+/**
+ * Directory layout hints used by the CLI when scaffolding or resolving files.
+ *
+ * @public
+ */
 export interface ProjectStructureConfig {
   /** Primary location for client-facing applications */
   clientsDirectory: string;
@@ -130,7 +162,10 @@ export interface ProjectStructureConfig {
 }
 
 /**
- * Command result interface for consistent error handling
+ * Standardized result wrapper returned by CLI operations.
+ *
+ * @typeParam T - Shape of the payload returned on success.
+ * @public
  */
 export interface CommandResult<T = any> {
   success: boolean;
@@ -140,7 +175,9 @@ export interface CommandResult<T = any> {
 }
 
 /**
- * Validation result for pretty table output
+ * Summary of validation feedback suitable for downstream presentation.
+ *
+ * @public
  */
 export interface ValidationResult {
   file: string;
@@ -161,6 +198,11 @@ export interface ValidationResult {
   processingTime: number;
 }
 
+/**
+ * Canonical representation of a UI route extracted from project specifications.
+ *
+ * @public
+ */
 export interface UIRoute {
   id: string;
   path?: string;
@@ -171,31 +213,61 @@ export interface UIRoute {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Container for UI route definitions that form part of a project specification.
+ *
+ * @public
+ */
 export interface UISpec {
   routes: UIRoute[];
 }
 
+/**
+ * Flow definition describing a behavioural path through the system.
+ *
+ * @public
+ */
 export interface FlowSpec {
   id: string;
   description?: string | null;
   steps?: Array<Record<string, unknown>>;
 }
 
+/**
+ * Lightweight service descriptor derived from specification metadata.
+ *
+ * @public
+ */
 export interface ServiceConfig {
   description?: string | null;
   technology?: string | null;
   [key: string]: unknown;
 }
 
+/**
+ * Captures automation tooling and notes for operations teams.
+ *
+ * @public
+ */
 export interface OpsAutomationSpec {
   tools?: string[];
   notes?: string[];
 }
 
+/**
+ * Collection of operational characteristics for the project.
+ *
+ * @public
+ */
 export interface OpsSpec {
   automation?: OpsAutomationSpec;
 }
 
+/**
+ * High-level product definition summarizing goals and positioning.
+ *
+ * @public
+ */
 export interface ProductSpec {
   name: string;
   description?: string | null;

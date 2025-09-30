@@ -1,8 +1,6 @@
 /**
- * Sharded CUE Storage Implementation
- *
- * Manages CUE files across multiple shards for better organization and performance.
- * Each shard contains a subset of epics and their tasks, with ordering preserved.
+ * @packageDocumentation
+ * Implements sharded persistence helpers for epic and task specifications.
  */
 
 import path from 'node:path';
@@ -11,6 +9,11 @@ import fs from 'fs-extra';
 import { createCUEManipulator, formatCUE, validateCUE } from '../cue/index.js';
 
 // Types for sharded storage management
+/**
+ * Serialized representation of an on-disk shard manifest.
+ *
+ * @public
+ */
 export interface ShardManifest {
   shardId: string;
   fileName: string;
@@ -25,6 +28,11 @@ export interface ShardManifest {
   lastModified: string;
 }
 
+/**
+ * High-level epic description stored in CUE.
+ *
+ * @public
+ */
 export interface Epic {
   id: string;
   name: string;
@@ -54,6 +62,11 @@ export interface Epic {
   };
 }
 
+/**
+ * Task representation associated with an epic shard.
+ *
+ * @public
+ */
 export interface Task {
   id: string;
   name: string;
@@ -92,6 +105,11 @@ export interface Task {
   };
 }
 
+/**
+ * Runtime configuration for the sharded storage helper.
+ *
+ * @public
+ */
 export interface ShardedStorageConfig {
   baseDir: string;
   manifestFile: string;
@@ -102,7 +120,9 @@ export interface ShardedStorageConfig {
 }
 
 /**
- * Manages sharded CUE storage for epics and tasks
+ * Coordinates reading and writing epics across multiple shard files.
+ *
+ * @public
  */
 export class ShardedCUEStorage {
   private config: ShardedStorageConfig;
@@ -124,7 +144,7 @@ export class ShardedCUEStorage {
   }
 
   /**
-   * Initialize sharded storage directory structure
+   * Ensures directories and manifests are ready for use.
    */
   async initialize(): Promise<void> {
     await fs.ensureDir(this.config.baseDir);
@@ -139,7 +159,7 @@ export class ShardedCUEStorage {
   }
 
   /**
-   * Create initial manifest file
+   * Creates a minimal manifest file when no shards exist.
    */
   private async createInitialManifest(): Promise<void> {
     const initialManifest = `package ${this.config.cuePackage}
@@ -165,7 +185,7 @@ config: {
   }
 
   /**
-   * Load all shard manifests from the manifest file
+   * Loads manifest metadata from disk so shard operations can be resolved quickly.
    */
   private async loadManifests(): Promise<void> {
     try {
@@ -183,7 +203,7 @@ config: {
   }
 
   /**
-   * Save manifest changes back to file
+   * Persists the in-memory manifest collection back to disk.
    */
   private async saveManifests(): Promise<void> {
     try {

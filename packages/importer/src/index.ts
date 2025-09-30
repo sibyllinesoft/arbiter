@@ -1,7 +1,9 @@
 /**
- * Brownfield Detection Pipeline
+ * @packageDocumentation
+ * Entry point for the Arbiter importer.
  *
- * Exports all types and interfaces for the importer detection system
+ * Re-exports the core scanner, plugin registry, and type definitions used when
+ * analysing existing repositories.
  */
 
 export * from './types';

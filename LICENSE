@@ -1,42 +1,74 @@
-Sustainable Programming License (SPL) v1.0
+Sibylline Business License (SBL) v1.0
 
 Copyright (c) 2024 Nathan Rice
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This Software is licensed under the Sibylline Business License ("License"). By
+accessing, downloading, modifying, or distributing the Software, you agree to be
+bound by the terms of this License.
 
-1. The above copyright notice and this permission notice shall be included in
-   all copies or substantial portions of the Software.
+1. Definitions
+   a. "Software" means the code, documentation, and other materials distributed
+      under this License.
+   b. "You" means the individual or entity exercising permissions under this
+      License.
+   c. "Competing Software-as-a-Service Offering" means making the core
+      capabilities of the Software available to third parties as an online or
+      hosted service (whether free or paid) that replicates or replaces the
+      functionality of Arbiter or substantially similar products.
 
-2. Any derivative work based on this Software must acknowledge the original
-   work and maintain this license or a compatible open-source license.
+2. Grant of Rights
+   Subject to the conditions in this License, You are granted a worldwide,
+   non-exclusive, royalty-free, non-transferable license to:
+   a. Use, reproduce, and modify the Software for internal purposes;
+   b. Create and distribute derivative works, provided distribution remains
+      subject to this License; and
+   c. Incorporate the Software or derivative works into larger applications,
+      provided such applications are not Competing Software-as-a-Service
+      Offerings.
 
-3. If this Software is used in research that results in academic publications,
-   the original work must be properly cited using the citation information
-   provided with this Software.
+3. Restrictions
+   a. You must not use the Software or any derivative work to offer, enable, or
+      assist a third party in offering a Competing Software-as-a-Service
+      Offering.
+   b. You must not remove or alter any copyright, trademark, or attribution
+      notices included with the Software.
+   c. You must comply with all applicable laws and regulations when using the
+      Software.
 
-4. Redistribution for commercial purposes requires that derivative works
-   contribute meaningful improvements, optimizations, or novel applications
-   back to the community under the same or compatible license terms.
+4. Downstream Distribution
+   a. Any redistribution of the Software or derivative works must include a copy
+      of this License.
+   b. You may provide paid services (for example, consulting or integration)
+      built on top of the Software, provided those services do not violate
+      Section 3(a).
 
-5. Any benchmarking, performance testing, or comparative analysis involving
-   this Software must follow responsible disclosure practices and provide
-   fair, reproducible, and scientifically sound methodologies.
+5. Patents
+   a. No patent rights are granted under this License. A separate agreement is
+      required to obtain any patent rights from the Licensor.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+6. Termination
+   a. This License terminates automatically if You breach any term of this
+      License.
+   b. Upon termination, You must cease all use of the Software and destroy any
+      copies in Your possession.
+   c. Termination does not affect any rights or licenses granted by You to third
+      parties prior to termination, provided those parties remain in compliance
+      with this License.
 
-For questions about this license or to obtain alternative licensing terms,
-please contact: nathan.alexander.rice@gmail.com
+7. Warranty Disclaimer and Limitation of Liability
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
 
-Project: arbiter
-URL/DOI: https://github.com/nathanlrice/arbiter
+8. Alternative Licensing
+   To obtain a commercial license that permits hosting or delivering a Competing
+   Software-as-a-Service Offering, please contact the Licensor at
+   nathan.alexander.rice@gmail.com.
+
+For archival purposes a Sibylline Permissive License is distributed alongside
+this project for reference. It does not govern the Software unless a separate
+written agreement explicitly grants You rights under that permissive license.

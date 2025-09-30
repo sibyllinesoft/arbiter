@@ -1,9 +1,6 @@
 /**
- * Generate command - Core code generation based on assembly.cue configuration
- *
- * This is the primary command for generating project files, CI workflows,
- * language-specific configurations, and other artifacts based on the
- * specification stored in the .arbiter/ directory.
+ * @packageDocumentation
+ * Implements the `generate` command which powers Arbiter code generation.
  */
 
 import { spawn } from 'node:child_process';
@@ -580,7 +577,12 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 }
 
 /**
- * Main generate command implementation
+ * Executes the `generate` command using the provided CLI and runtime options.
+ *
+ * @param options - Command-line options supplied by the user.
+ * @param config - Fully resolved configuration for the running CLI instance.
+ * @param specName - Optional named specification to generate instead of the default assembly.
+ * @returns Zero on success; non-zero values indicate generation failed.
  */
 export async function generateCommand(
   options: GenerateOptions,

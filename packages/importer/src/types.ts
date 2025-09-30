@@ -1,9 +1,9 @@
 /**
- * Core types and interfaces for the Brownfield Detection Pipeline
+ * @packageDocumentation
+ * Core type system used by the importer pipeline.
  *
- * This module defines the complete type system for analyzing existing codebases
- * and inferring architectural specifications. The pipeline follows a plugin-based
- * architecture with structured evidence collection and confidence scoring.
+ * The declarations in this module power the plugin architecture, evidence
+ * collection stages, and artifact manifests generated when scanning projects.
  */
 
 // ============================================================================
@@ -11,8 +11,9 @@
 // ============================================================================
 
 /**
- * Base plugin interface for importer detection
- * All detection plugins must implement these methods
+ * Base plugin interface for importer detection.
+ *
+ * @public
  */
 export interface ImporterPlugin {
   /**
@@ -54,7 +55,9 @@ export interface ImporterPlugin {
 // ============================================================================
 
 /**
- * Context provided during the parsing phase
+ * Context provided during the parsing phase.
+ *
+ * @public
  */
 export interface ParseContext {
   /** Root directory of the project being analyzed */
@@ -68,7 +71,9 @@ export interface ParseContext {
 }
 
 /**
- * Context provided during the inference phase
+ * Context provided during the inference phase.
+ *
+ * @public
  */
 export interface InferenceContext {
   /** Root directory of the project being analyzed */
@@ -86,7 +91,9 @@ export interface InferenceContext {
 }
 
 /**
- * Configuration options for the parsing phase
+ * Configuration options for the parsing phase.
+ *
+ * @public
  */
 export interface ParseOptions {
   /** Whether to perform deep analysis (slower but more accurate) */
@@ -105,7 +112,9 @@ export interface ParseOptions {
 }
 
 /**
- * Configuration options for the inference phase
+ * Configuration options for the inference phase.
+ *
+ * @public
  */
 export interface InferenceOptions {
   /** Minimum confidence threshold for including artifacts */
@@ -123,7 +132,9 @@ export interface InferenceOptions {
 // ============================================================================
 
 /**
- * Types of artifacts that can be detected in a importer project
+ * Allowed artifact classifications that importer plugins may emit.
+ *
+ * @public
  */
 export type ArtifactType =
   | 'service' // HTTP services, APIs, microservices
@@ -146,7 +157,9 @@ export type ArtifactType =
   | 'infrastructure'; // Infrastructure as code
 
 /**
- * Base artifact interface
+ * Base artifact interface shared by all detected resources.
+ *
+ * @public
  */
 export interface BaseArtifact {
   /** Unique identifier for this artifact */

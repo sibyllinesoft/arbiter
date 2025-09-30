@@ -1,9 +1,7 @@
 /**
- * Simplified Scanner for Config File Detection
- *
- * Discovers config files using git ls-files (if available) or glob, dispatches to
- * matching plugins via supports(), collects evidence, aggregates inferences from
- * plugins, and generates a basic manifest.
+ * @packageDocumentation
+ * Implements the importer scanning pipeline that discovers files, dispatches
+ * plugin analysis, and aggregates inferred artifacts.
  */
 
 import { spawn } from 'child_process';
@@ -35,6 +33,11 @@ import {
   ProjectMetadata,
 } from './types';
 
+/**
+ * Configuration used to control the scanner pipeline.
+ *
+ * @public
+ */
 export interface ScannerConfig {
   /** Root directory to analyze */
   projectRoot: string;
@@ -55,7 +58,7 @@ export interface ScannerConfig {
 }
 
 /**
- * Default configuration
+ * Default configuration applied when callers do not specify overrides.
  */
 const DEFAULT_SCANNER_CONFIG: Partial<ScannerConfig> = {
   parseOptions: {
@@ -93,11 +96,20 @@ const DEFAULT_SCANNER_CONFIG: Partial<ScannerConfig> = {
   debug: false,
 };
 
-// Plugin Registry
+/**
+ * Maintains the set of importer plugins available to the scanner.
+ *
+ * @public
+ */
 export class PluginRegistry {
   private plugins = new Map<string, ImporterPlugin>();
   private enabledPlugins = new Set<string>();
 
+  /**
+   * Registers a plugin so it can participate in future scans.
+   *
+   * @param plugin - Plugin instance to register.
+   */
   register(plugin: ImporterPlugin): void {
     const name = plugin.name();
     if (this.plugins.has(name)) {
@@ -107,12 +119,21 @@ export class PluginRegistry {
     this.enabledPlugins.add(name);
   }
 
+  /**
+   * Returns all plugins that are currently enabled.
+   */
   getEnabled(): ImporterPlugin[] {
     return Array.from(this.enabledPlugins)
       .map(name => this.plugins.get(name))
       .filter((plugin): plugin is ImporterPlugin => plugin !== undefined);
   }
 
+  /**
+   * Filters registered plugins to those that support the provided file.
+   *
+   * @param filePath - Absolute file path to check.
+   * @param fileContent - Optional file content available for heuristics.
+   */
   getSupportingPlugins(filePath: string, fileContent?: string): ImporterPlugin[] {
     return this.getEnabled().filter(plugin => {
       try {
@@ -124,7 +145,13 @@ export class PluginRegistry {
   }
 }
 
-// File System Utilities
+/**
+ * Builds an index of files and directories that will participate in parsing.
+ *
+ * @param projectRoot - Root directory of the project under analysis.
+ * @param ignorePatterns - Glob patterns to exclude from scanning.
+ * @param parseOptions - Current parse options controlling file guards.
+ */
 async function buildFileIndex(
   projectRoot: string,
   ignorePatterns: string[],
@@ -199,6 +226,9 @@ async function buildFileIndex(
   };
 }
 
+/**
+ * Enumerates files by delegating to `git ls-files` when the project is a Git repository.
+ */
 async function tryGitFileEnumeration(projectRoot: string): Promise<string[]> {
   const gitDir = path.join(projectRoot, '.git');
   if (!(await fs.pathExists(gitDir))) {
@@ -237,6 +267,9 @@ async function tryGitFileEnumeration(projectRoot: string): Promise<string[]> {
   });
 }
 
+/**
+ * Glob-based fallback for projects that are not tracked by Git.
+ */
 async function fallbackGlobEnumeration(
   projectRoot: string,
   ignorePatterns: string[],
@@ -308,6 +341,9 @@ async function fallbackGlobEnumeration(
   });
 }
 
+/**
+ * Filters out files that are unlikely to contain configuration or infrastructure hints.
+ */
 function passesConfigAllowlist(relativePath: string, basename: string): boolean {
   const configPatterns = [
     /^Dockerfile$/,
@@ -368,6 +404,9 @@ function passesConfigAllowlist(relativePath: string, basename: string): boolean 
   return configPatterns.some(pattern => pattern.test(basename) || pattern.test(relativePath));
 }
 
+/**
+ * Guards against scanning files that are known to be generated or extremely large.
+ */
 async function passesContentGuard(filePath: string, extension: string): Promise<boolean> {
   try {
     const basename = path.basename(filePath);
@@ -410,6 +449,9 @@ async function passesContentGuard(filePath: string, extension: string): Promise<
   }
 }
 
+/**
+ * Performs a lightweight heuristic to determine whether a file should be treated as binary.
+ */
 async function isFileBinary(filePath: string, includeBinaries: boolean): Promise<boolean> {
   if (includeBinaries) return false;
 
@@ -427,7 +469,11 @@ async function isFileBinary(filePath: string, includeBinaries: boolean): Promise
   }
 }
 
-// Main Scanner Class
+/**
+ * Orchestrates the multi-stage importer pipeline.
+ *
+ * @public
+ */
 export class ScannerRunner {
   private config: ScannerConfig;
   private pluginRegistry: PluginRegistry;
@@ -444,6 +490,11 @@ export class ScannerRunner {
     }
   }
 
+  /**
+   * Executes discovery, parsing, inference, and manifest generation.
+   *
+   * @returns Manifest containing all inferred artifacts.
+   */
   async scan(): Promise<ArtifactManifest> {
     const startTime = Date.now();
 
@@ -472,6 +523,9 @@ export class ScannerRunner {
     }
   }
 
+  /**
+   * Discovers files to analyse by building a file index.
+   */
   private async discoverFiles(): Promise<FileIndex> {
     try {
       return await buildFileIndex(
@@ -484,6 +538,9 @@ export class ScannerRunner {
     }
   }
 
+  /**
+   * Runs the parsing stage by dispatching matching plugins across files.
+   */
   private async parseFiles(fileIndex: FileIndex): Promise<Evidence[]> {
     const allEvidence: Evidence[] = [];
     const failedFiles: string[] = [];
@@ -530,6 +587,9 @@ export class ScannerRunner {
     return allEvidence;
   }
 
+  /**
+   * Parses a single file and collects evidence from all supporting plugins.
+   */
   private async parseFile(fileInfo: FileInfo, parseContext: ParseContext): Promise<Evidence[]> {
     if (fileInfo.isBinary && !this.config.parseOptions.includeBinaries) {
       return [];
@@ -568,6 +628,9 @@ export class ScannerRunner {
     return evidence;
   }
 
+  /**
+   * Executes the inference stage for all registered plugins.
+   */
   private async inferArtifacts(
     evidence: Evidence[],
     fileIndex: FileIndex
@@ -602,6 +665,9 @@ export class ScannerRunner {
     return allArtifacts;
   }
 
+  /**
+   * Enriches inferred artifacts with metadata extracted from Docker evidence.
+   */
   private augmentArtifactsWithDockerMetadata(
     artifacts: InferredArtifact[],
     evidence: Evidence[],
@@ -835,6 +901,9 @@ export class ScannerRunner {
     }
   }
 
+  /**
+   * Combines artifacts, evidence, and statistics into a manifest structure.
+   */
   private async generateManifest(
     artifacts: InferredArtifact[],
     evidence: Evidence[],
@@ -859,6 +928,9 @@ export class ScannerRunner {
     };
   }
 
+  /**
+   * Derives high-level metadata about the analysed project.
+   */
   private async generateProjectMetadata(fileIndex: FileIndex): Promise<ProjectMetadata> {
     const files = Array.from(fileIndex.files.values());
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
@@ -874,6 +946,9 @@ export class ScannerRunner {
     };
   }
 
+  /**
+   * Computes aggregate statistics for the scan run.
+   */
   private generateStatistics(
     artifacts: InferredArtifact[],
     evidence: Evidence[],
@@ -900,6 +975,9 @@ export class ScannerRunner {
     };
   }
 
+  /**
+   * Captures configuration details that influenced the scan.
+   */
   private generateConfiguration(): AnalysisConfiguration {
     return {
       parseOptions: this.config.parseOptions,
@@ -909,6 +987,9 @@ export class ScannerRunner {
     };
   }
 
+  /**
+   * Groups artifacts by the configuration evidence that identified them.
+   */
   private groupArtifactsByConfig(
     artifacts: InferredArtifact[]
   ): Record<string, InferredArtifact[]> {
@@ -926,6 +1007,9 @@ export class ScannerRunner {
     return grouped;
   }
 
+  /**
+   * Produces a lookup of artifact IDs to their supporting evidence IDs.
+   */
   private buildProvenanceMap(artifacts: InferredArtifact[]): Record<string, string[]> {
     const provenance = new Map<string, Set<string>>();
 
@@ -981,6 +1065,9 @@ export class ScannerRunner {
     return this.pluginRegistry;
   }
 
+  /**
+   * Emits debug logging when the scanner is running in debug mode.
+   */
   private debug(message: string): void {
     if (this.config.debug) {
       console.debug(`[Scanner] ${message}`);

@@ -1,3 +1,8 @@
+/**
+ * @packageDocumentation
+ * Persistence helpers for storing importer artefacts during iterative scans.
+ */
+
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs-extra';
@@ -9,22 +14,59 @@ import type {
   Spec,
 } from './types';
 
+/**
+ * Minimal persistence contract used by the importer.
+ *
+ * @public
+ */
 export interface IPersister {
+  /**
+   * Creates a snapshot specification for the provided scope.
+   */
   createSpec(scope: string, config_files?: string[]): Promise<string>;
+  /**
+   * Appends an artifact mutation entry to the log.
+   */
   logArtifact(specId: string, artifact: InferredArtifact, action: ActionType): Promise<void>;
+  /**
+   * Records that an artifact was removed from a scope.
+   */
   logRemove(specId: string, lastAddLog: ArtifactLog): Promise<void>;
+  /**
+   * Retrieves the most recent specification identifier for the scope.
+   */
   getLatestSpecId(scope: string): Promise<string | null>;
+  /**
+   * Replays the log to determine the current set of artifacts for a scope.
+   */
   deriveCurrentArtifacts(scope: string): Promise<InferredArtifact[]>;
+  /**
+   * Returns the log chain associated with a specification.
+   */
   getAllLogsForSpecChain(specId: string): Promise<ArtifactLog[]>;
+  /**
+   * Checks whether the artefact is still active in the latest spec.
+   */
   isArtifactCurrent(scope: string, artifact: InferredArtifact): Promise<boolean>;
+  /**
+   * Finds the most recent add-log entry for a named artifact.
+   */
   getLastAddLog(scope: string, artifactName: string): Promise<ArtifactLog | null>;
 }
 
+/**
+ * Simple JSON-backed implementation of {@link IPersister}.
+ *
+ * @public
+ */
 export class SimpleJsonPersister implements IPersister {
   private specsPath: string;
   private logsPath: string;
   private projectRoot: string;
 
+  /**
+   * Creates a persister rooted at the supplied project directory.
+   */
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
     this.specsPath = path.join(projectRoot, 'importer-specs.json');
@@ -32,6 +74,9 @@ export class SimpleJsonPersister implements IPersister {
     this.ensureFiles();
   }
 
+  /**
+   * Ensures the JSON backing files exist before reads or writes.
+   */
   private ensureFiles() {
     if (!fs.existsSync(this.specsPath)) {
       fs.writeJsonSync(this.specsPath, { scopes: {} }, { spaces: 2 });
