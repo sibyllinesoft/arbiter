@@ -6,14 +6,14 @@
  */
 
 // IR generation types
-export type IRKind = "flow" | "fsm" | "view" | "site";
+export type IRKind = 'flow' | 'fsm' | 'view' | 'site';
 
 // Authentication context
 export interface AuthContext {
   user_id: string;
   scopes: string[];
   client_id?: string;
-  token_type?: "bearer" | "basic";
+  token_type?: 'bearer' | 'basic';
   expires_at?: string;
   authenticated: boolean;
 }
@@ -32,6 +32,15 @@ export interface ServerConfig {
     mcpBaseUrl: string;
     authServerUrl: string;
     requiredScopes: string[];
+    provider?: 'supertokens' | 'auth0' | 'clerk' | string;
+    authServerPort?: number;
+    enableAuthServer?: boolean;
+    clientId?: string;
+    clientSecret?: string;
+    issuerOverride?: string;
+    discoveryPath?: string;
+    audience?: string[];
+    redirectUri?: string;
   };
   webhooks?: {
     enabled: boolean;
@@ -62,7 +71,7 @@ export interface PaginatedResponse<T> {
 }
 
 // Sort order
-export type SortOrder = "asc" | "desc";
+export type SortOrder = 'asc' | 'desc';
 
 // Generic sort parameters
 export interface SortParams {
@@ -103,18 +112,18 @@ export interface RateLimit {
 }
 
 // HTTP method types
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS" | "HEAD";
+export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS' | 'HEAD';
 
 // Content types
 export type ContentType =
-  | "application/json"
-  | "application/xml"
-  | "text/plain"
-  | "text/html"
-  | "text/csv"
-  | "application/octet-stream"
-  | "multipart/form-data"
-  | "application/x-www-form-urlencoded";
+  | 'application/json'
+  | 'application/xml'
+  | 'text/plain'
+  | 'text/html'
+  | 'text/csv'
+  | 'application/octet-stream'
+  | 'multipart/form-data'
+  | 'application/x-www-form-urlencoded';
 
 // File upload types
 export interface FileUpload {
@@ -204,13 +213,13 @@ export type Email = string;
 export type URL = string;
 
 // Environment types
-export type Environment = "development" | "staging" | "production" | "test";
+export type Environment = 'development' | 'staging' | 'production' | 'test';
 
 // Log levels
-export type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 // Time units
-export type TimeUnit = "ms" | "s" | "m" | "h" | "d" | "w" | "M" | "y";
+export type TimeUnit = 'ms' | 's' | 'm' | 'h' | 'd' | 'w' | 'M' | 'y';
 
 // Duration with unit
 export interface Duration {

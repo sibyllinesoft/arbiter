@@ -766,8 +766,11 @@ export class SpecWorkbenchDB {
         } else if (event.created_at <= headRow.created_at) {
           activateEvent();
         } else {
-          // Event is beyond current head - mark as dangling
-          deactivateEvent();
+          // Event occurs after current head - promote to new head and reactivate
+          this.db
+            .prepare('UPDATE projects SET event_head_id = ? WHERE id = ?')
+            .run(event.id, projectId);
+          activateEvent();
         }
       }
 
@@ -1093,9 +1096,14 @@ export class SpecWorkbenchDB {
       throw new Error('Failed to create artifact');
     }
 
+    const parsedMetadata = result.metadata ? JSON.parse(result.metadata) : null;
+    if (parsedMetadata && typeof parsedMetadata === 'object') {
+      (parsedMetadata as Record<string, unknown>).artifactId = result.id;
+    }
+
     return {
       ...result,
-      metadata: result.metadata ? JSON.parse(result.metadata) : null,
+      metadata: parsedMetadata,
     };
   }
 
@@ -1105,10 +1113,32 @@ export class SpecWorkbenchDB {
     );
     const results = stmt.all(projectId) as any[];
 
-    return results.map(artifact => ({
-      ...artifact,
-      metadata: artifact.metadata ? JSON.parse(artifact.metadata) : null,
-    }));
+    return results.map(artifact => {
+      const metadata = artifact.metadata ? JSON.parse(artifact.metadata) : null;
+      if (metadata && typeof metadata === 'object') {
+        (metadata as Record<string, unknown>).artifactId = artifact.id;
+      }
+      return {
+        ...artifact,
+        metadata,
+      };
+    });
+  }
+
+  async getArtifact(projectId: string, artifactId: string): Promise<any | null> {
+    const stmt = this.db.prepare('SELECT * FROM artifacts WHERE project_id = ? AND id = ? LIMIT 1');
+    const result = stmt.get(projectId, artifactId) as any | undefined;
+    if (!result) {
+      return null;
+    }
+    const metadata = result.metadata ? JSON.parse(result.metadata) : null;
+    if (metadata && typeof metadata === 'object') {
+      (metadata as Record<string, unknown>).artifactId = result.id;
+    }
+    return {
+      ...result,
+      metadata,
+    };
   }
 
   async getArtifactsByType(projectId: string, type: string): Promise<any[]> {
@@ -1117,10 +1147,22 @@ export class SpecWorkbenchDB {
     );
     const results = stmt.all(projectId, type) as any[];
 
-    return results.map(artifact => ({
-      ...artifact,
-      metadata: artifact.metadata ? JSON.parse(artifact.metadata) : null,
-    }));
+    return results.map(artifact => {
+      const metadata = artifact.metadata ? JSON.parse(artifact.metadata) : null;
+      if (metadata && typeof metadata === 'object') {
+        (metadata as Record<string, unknown>).artifactId = artifact.id;
+      }
+      return {
+        ...artifact,
+        metadata,
+      };
+    });
+  }
+
+  async deleteArtifact(projectId: string, artifactId: string): Promise<boolean> {
+    const stmt = this.db.prepare('DELETE FROM artifacts WHERE project_id = ? AND id = ?');
+    const result = stmt.run(projectId, artifactId);
+    return typeof result?.changes === 'number' ? result.changes > 0 : false;
   }
 
   async deleteArtifacts(projectId: string): Promise<void> {

@@ -50,6 +50,78 @@ sources for IDE discovery.
    pnpm --filter @arbiter/cli exec -- node src/cli.ts --help
    ```
 
+## OAuth Setup & Testing
+
+Many workflows require exercising the OAuth flow repeatedly when iterating on
+the CLI or API. The repository ships a complete dev loop that includes a local
+OIDC provider, preconfigured server settings, and CLI helpers.
+
+### 1. Launch the full OAuth stack
+
+```bash
+bun run dev:full:oauth
+```
+
+This single command runs four processes:
+
+- Type-checker in watch mode
+- A lightweight OAuth server (`scripts/dev-oauth-server.ts`) on
+  `http://localhost:4571`
+- The API with `apps/api/config.dev-oauth.json` (auth required, OAuth enabled)
+- The web client, pointed at `http://localhost:5050`
+
+Environment overrides:
+
+- `ARBITER_CONFIG_PATH` loads the API config with OAuth defaults.
+- `ARBITER_URL` / `VITE_API_URL` ensure the client and CLI target the same API.
+- The OAuth server accepts overrides via `OAUTH_DEV_*` variables if you need to
+  test different client IDs, ports, or redirect URIs.
+
+### 2. Configure the CLI endpoint
+
+The CLI resolves the API URL in the following order: `ARBITER_URL` env var,
+`--arbiter-url/--api-url` flag, `arbiter_url` (or `apiUrl`) in
+`.arbiter/config.*`.
+
+Example YAML config:
+
+```yaml
+arbiter_url: http://localhost:5050
+timeout: 750
+```
+
+### 3. Authenticate the CLI
+
+Once `dev:full:oauth` is running:
+
+```bash
+arbiter auth
+```
+
+Steps:
+
+1. The command prints an authorization URL from the local OAuth server.
+2. Open it in a browser, approve access, and copy the displayed code.
+3. Paste the code back into the CLI prompt.
+
+Tokens are cached in `~/.arbiter/auth.json`. Re-run `arbiter auth` any time you
+want to refresh credentials, or `arbiter auth --logout` to clear the cache.
+
+### 4. Inspect metadata
+
+The API exposes discovery information at
+`http://localhost:5050/api/auth/metadata`. Useful for verifying the client ID,
+scopes, or endpoints consumed by external tools.
+
+### 5. Common reset checklist
+
+- Restart `dev:full:oauth` after changing OAuth environment variables.
+- Delete `~/.arbiter/auth.json` (or run `arbiter auth --logout`) if scopes or
+  tokens look stale.
+- Regenerate CLI config with the correct `arbiter_url` before running commands.
+
+Following these steps keeps local OAuth iterations quick and reproducible.
+
 ## Development Workflow
 
 - `pnpm lint` – Static analysis and formatting checks

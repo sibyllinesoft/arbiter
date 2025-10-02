@@ -81,6 +81,7 @@ export function useSetEventHead(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }
@@ -93,6 +94,7 @@ export function useRevertProjectEvents(projectId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }

@@ -78,6 +78,26 @@ import type { UIOptionCatalog, UIOptionGeneratorMap } from '@arbiter/shared';
  *
  * @public
  */
+
+/**
+ * Persisted OAuth session information for CLI authentication.
+ */
+export interface AuthSession {
+  accessToken: string;
+  refreshToken?: string;
+  tokenType?: string;
+  scope?: string;
+  expiresAt?: string;
+  obtainedAt: string;
+  metadata?: {
+    tokenEndpoint?: string;
+    authorizationEndpoint?: string;
+    clientId?: string;
+    redirectUri?: string | null;
+    provider?: string;
+  };
+}
+
 export interface CLIConfig {
   /** API endpoint URL */
   apiUrl: string;
@@ -97,6 +117,8 @@ export interface CLIConfig {
   configFilePath?: string;
   /** Optional directory of the loaded configuration file */
   configDir?: string;
+  /** Saved authentication session for API access */
+  authSession?: AuthSession;
   /** GitHub sync configuration */
   github?: GitHubSyncConfig;
   /** Default project structure directories */

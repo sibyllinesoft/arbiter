@@ -4,6 +4,7 @@ import { ProjectEntities } from '@arbiter/shared/types/entities';
 import { Hono } from 'hono';
 import type { ContentFetcher } from '../content-fetcher';
 import { createGithubContentFetcher, createLocalContentFetcher } from '../content-fetcher';
+import type { EventService } from '../events';
 import { gitScanner } from '../git-scanner';
 import { parseGitUrl } from '../git-url';
 import { analyzeProjectFiles } from '../project-analysis';
@@ -111,6 +112,21 @@ function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string
         : [],
     },
   };
+}
+
+function coerceStringArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => (typeof item === 'string' ? item.trim() : ''))
+      .filter(item => item.length > 0);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+  }
+  return [];
 }
 
 function buildManualArtifactPayload(
@@ -257,6 +273,108 @@ function buildManualArtifactPayload(
           scope,
           classification: {
             detectedType: 'infrastructure',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+
+    case 'route': {
+      const pathValue = typeof values.path === 'string' ? values.path.trim() : '/';
+      const methods = coerceStringArray(values.methods).map(method => method.toUpperCase());
+
+      return {
+        name,
+        description,
+        artifactType: 'route',
+        metadata: {
+          description,
+          path: pathValue || '/',
+          methods,
+          classification: {
+            detectedType: 'route',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'view': {
+      const pathValue = typeof values.path === 'string' ? values.path.trim() : undefined;
+      return {
+        name,
+        description,
+        artifactType: 'view',
+        metadata: {
+          description,
+          path: pathValue,
+          classification: {
+            detectedType: 'view',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'flow': {
+      return {
+        name,
+        description,
+        artifactType: 'flow',
+        metadata: {
+          description,
+          classification: {
+            detectedType: 'flow',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'capability': {
+      return {
+        name,
+        description,
+        artifactType: 'capability',
+        metadata: {
+          description,
+          classification: {
+            detectedType: 'capability',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'epic': {
+      const tasks = coerceStringArray(values.tasks);
+      return {
+        name,
+        description,
+        artifactType: 'epic',
+        metadata: {
+          description,
+          tasks: tasks.length > 0 ? tasks : undefined,
+          classification: {
+            detectedType: 'epic',
+            reason: 'manual-entry',
+            source: 'user',
+          },
+        },
+      };
+    }
+    case 'task': {
+      const status = typeof values.status === 'string' ? values.status.trim() : undefined;
+      return {
+        name,
+        description,
+        artifactType: 'task',
+        metadata: {
+          description,
+          status,
+          classification: {
+            detectedType: 'task',
             reason: 'manual-entry',
             source: 'user',
           },
@@ -1030,14 +1148,17 @@ export function createProjectsRouter(deps: Dependencies) {
       artifacts.forEach((artifact: any) => {
         const cleanName = artifact.name.replace(/_/g, '-');
         const baseData = {
+          id: artifact.id,
+          artifactId: artifact.id,
           name: artifact.name,
           type: artifact.type,
           description: artifact.description || artifact.metadata?.description || '',
           metadata: {
-            ...artifact.metadata,
+            ...(artifact.metadata ?? {}),
             detected: true,
             language: artifact.language,
             framework: artifact.framework,
+            artifactId: artifact.id,
           },
         };
 
@@ -1271,6 +1392,9 @@ export function createProjectsRouter(deps: Dependencies) {
             let frontendCount = 0;
             let infrastructureCount = 0;
             let externalCount = 0;
+            let viewCount = 0;
+            let flowCount = 0;
+            let capabilityCount = 0;
 
             for (const artifact of otherArtifacts) {
               // Normalize types
@@ -1290,19 +1414,75 @@ export function createProjectsRouter(deps: Dependencies) {
                 case 'infrastructure':
                   infrastructureCount++;
                   break;
+                case 'route':
+                  {
+                    const pathValue = String(
+                      artifact.metadata?.path || artifact.name || '/'
+                    ).trim();
+                    const normalizedPath = pathValue.startsWith('/') ? pathValue : `/${pathValue}`;
+                    routeSet.add(normalizedPath.replace(/\/+/g, '/'));
+                    const methods = Array.isArray(artifact.metadata?.methods)
+                      ? artifact.metadata.methods
+                      : coerceStringArray(artifact.metadata?.methods);
+                    if (methods.length > 0) {
+                      flowCount += 1;
+                    }
+                  }
+                  break;
+                case 'view':
+                  viewCount++;
+                  break;
+                case 'flow':
+                  flowCount++;
+                  break;
+                case 'capability':
+                  capabilityCount++;
+                  break;
                 default:
                   {
                     const detectedType = String(
                       artifact.metadata?.detectedType || artifact.metadata?.type || ''
                     ).toLowerCase();
-                    if (detectedType === 'tool' || detectedType === 'build_tool') {
-                      toolCount++;
-                    } else if (detectedType === 'frontend') {
-                      frontendCount++;
-                    } else if (detectedType === 'infrastructure') {
-                      infrastructureCount++;
-                    } else {
-                      externalCount++;
+                    switch (detectedType) {
+                      case 'tool':
+                      case 'build_tool':
+                        toolCount++;
+                        break;
+                      case 'frontend':
+                        frontendCount++;
+                        break;
+                      case 'infrastructure':
+                        infrastructureCount++;
+                        break;
+                      case 'route':
+                        {
+                          const pathValue = String(
+                            artifact.metadata?.path || artifact.name || '/'
+                          ).trim();
+                          const normalizedPath = pathValue.startsWith('/')
+                            ? pathValue
+                            : `/${pathValue}`;
+                          routeSet.add(normalizedPath.replace(/\/+/g, '/'));
+                          const methods = Array.isArray(artifact.metadata?.methods)
+                            ? artifact.metadata.methods
+                            : coerceStringArray(artifact.metadata?.methods);
+                          if (methods.length > 0) {
+                            flowCount += 1;
+                          }
+                        }
+                        break;
+                      case 'view':
+                        viewCount++;
+                        break;
+                      case 'flow':
+                        flowCount++;
+                        break;
+                      case 'capability':
+                        capabilityCount++;
+                        break;
+                      default:
+                        externalCount++;
+                        break;
                     }
                   }
                   break;
@@ -1335,6 +1515,10 @@ export function createProjectsRouter(deps: Dependencies) {
             const routes = Array.from(routeSet);
             const frontendViews = Array.from(frontendRouteSet);
 
+            const totalViews = viewCount + frontendViews.length;
+            const totalFlows = Math.max(flowCount, routes.length > 0 ? 1 : 0);
+            const totalCapabilities = Math.max(capabilityCount, routes.length > 0 ? 1 : 0);
+
             // Calculate entity counts
             entities = {
               services: Object.keys(services).length,
@@ -1344,10 +1528,10 @@ export function createProjectsRouter(deps: Dependencies) {
               frontends: frontendCount,
               infrastructure: infrastructureCount,
               external: externalCount,
-              views: frontendViews.length,
+              views: totalViews,
               routes: routes.length,
-              flows: routes.length > 0 ? 1 : 0, // Generate one flow if we have routes
-              capabilities: routes.length > 0 ? 1 : 0, // Generate one capability if we have routes
+              flows: totalFlows,
+              capabilities: totalCapabilities,
             } as ProjectEntities;
           } catch (error) {
             console.warn(`Failed to calculate entities for project ${project.id}:`, error);
@@ -1419,6 +1603,12 @@ export function createProjectsRouter(deps: Dependencies) {
       'tool',
       'database',
       'infrastructure',
+      'route',
+      'view',
+      'flow',
+      'capability',
+      'epic',
+      'task',
     ]);
     if (!supportedTypes.has(type)) {
       return c.json(
@@ -1458,6 +1648,30 @@ export function createProjectsRouter(deps: Dependencies) {
         0.95
       );
 
+      const eventPayload = {
+        action: 'entity_created',
+        source: 'manual',
+        entity_type: type,
+        artifact_type: payload.artifactType,
+        artifact_id: artifactId,
+        entity_id: artifactId,
+        name: payload.name,
+        description: payload.description,
+        values,
+        metadata,
+      };
+
+      const eventsService = deps.events as EventService | undefined;
+      if (eventsService?.broadcastToProject) {
+        await eventsService.broadcastToProject(projectId, {
+          project_id: projectId,
+          event_type: 'entity_created',
+          data: eventPayload,
+        });
+      } else if (typeof db.createEvent === 'function') {
+        await db.createEvent(randomUUID(), projectId, 'entity_created', eventPayload);
+      }
+
       return c.json({ success: true, artifact });
     } catch (error) {
       console.error('Failed to create manual artifact', error);
@@ -1471,6 +1685,226 @@ export function createProjectsRouter(deps: Dependencies) {
     }
   });
 
+  router.delete('/projects/:projectId/entities/:artifactId', async c => {
+    const projectId = c.req.param('projectId');
+    const artifactId = c.req.param('artifactId');
+
+    if (!projectId) {
+      return c.json({ success: false, error: 'Project ID is required' }, 400);
+    }
+
+    if (!artifactId) {
+      return c.json({ success: false, error: 'Artifact ID is required' }, 400);
+    }
+
+    const db = deps.db as any;
+    if (!db || typeof db.deleteArtifact !== 'function' || typeof db.getArtifact !== 'function') {
+      return c.json({ success: false, error: 'Database unavailable' }, 500);
+    }
+
+    try {
+      const existingArtifact = await db.getArtifact(projectId, artifactId);
+      if (!existingArtifact) {
+        return c.json({ success: false, error: 'Artifact not found' }, 404);
+      }
+
+      const deleted = await db.deleteArtifact(projectId, artifactId);
+      if (!deleted) {
+        return c.json({ success: false, error: 'Artifact not found' }, 404);
+      }
+
+      const eventsService = deps.events as EventService | undefined;
+      const entityType =
+        existingArtifact.metadata?.classification?.detectedType ||
+        existingArtifact.metadata?.detectedType ||
+        existingArtifact.type;
+
+      const snapshot: Record<string, unknown> = {
+        id: existingArtifact.id,
+        project_id: existingArtifact.project_id,
+        name: existingArtifact.name,
+        description: existingArtifact.description,
+        type: existingArtifact.type,
+        language: existingArtifact.language,
+        framework: existingArtifact.framework,
+        metadata: existingArtifact.metadata ?? {},
+        file_path: existingArtifact.file_path ?? existingArtifact.filePath ?? null,
+        confidence: existingArtifact.confidence ?? 0.95,
+        created_at: existingArtifact.created_at ?? null,
+        updated_at: existingArtifact.updated_at ?? null,
+      };
+
+      const eventPayload = {
+        action: 'entity_deleted',
+        source: 'manual',
+        entity_type: entityType,
+        artifact_type: existingArtifact.type,
+        artifact_id: artifactId,
+        entity_id: artifactId,
+        name: existingArtifact.name,
+        description: existingArtifact.description,
+        metadata: existingArtifact.metadata ?? {},
+        values: existingArtifact.metadata?.values ?? undefined,
+        snapshot,
+        deleted_at: new Date().toISOString(),
+      };
+
+      if (eventsService?.broadcastToProject) {
+        await eventsService.broadcastToProject(projectId, {
+          project_id: projectId,
+          event_type: 'entity_deleted',
+          data: eventPayload,
+        });
+      } else if (typeof db.createEvent === 'function') {
+        await db.createEvent(randomUUID(), projectId, 'entity_deleted', eventPayload);
+      }
+
+      return c.json({ success: true, artifactId });
+    } catch (error) {
+      console.error('Failed to delete artifact', error);
+      return c.json({ success: false, error: 'Failed to delete entity' }, 500);
+    }
+  });
+
+  router.post('/projects/:projectId/entities/:artifactId/restore', async c => {
+    const projectId = c.req.param('projectId');
+    const artifactId = c.req.param('artifactId');
+
+    if (!projectId) {
+      return c.json({ success: false, error: 'Project ID is required' }, 400);
+    }
+
+    if (!artifactId) {
+      return c.json({ success: false, error: 'Artifact ID is required' }, 400);
+    }
+
+    const db = deps.db as any;
+    if (!db || typeof db.createArtifact !== 'function' || typeof db.getArtifact !== 'function') {
+      return c.json({ success: false, error: 'Database unavailable' }, 500);
+    }
+
+    let body: any;
+    try {
+      body = await c.req.json();
+    } catch (error) {
+      return c.json({ success: false, error: 'Invalid JSON payload' }, 400);
+    }
+
+    const snapshot = body?.snapshot;
+    if (!snapshot || typeof snapshot !== 'object') {
+      return c.json({ success: false, error: 'Payload must include a snapshot object' }, 400);
+    }
+
+    const sourceEventId = typeof body?.eventId === 'string' ? body.eventId : undefined;
+
+    try {
+      const existingArtifact = await db.getArtifact(projectId, artifactId);
+      if (existingArtifact) {
+        return c.json({ success: false, error: 'Artifact already exists' }, 409);
+      }
+
+      const normalizedSnapshot = snapshot as Record<string, unknown>;
+      const snapshotMetadataValue =
+        normalizedSnapshot['metadata'] && typeof normalizedSnapshot['metadata'] === 'object'
+          ? (normalizedSnapshot['metadata'] as Record<string, unknown>)
+          : undefined;
+      const rawName = normalizedSnapshot['name'];
+      const displayLabelValue =
+        snapshotMetadataValue && typeof snapshotMetadataValue['displayLabel'] === 'string'
+          ? (snapshotMetadataValue['displayLabel'] as string)
+          : undefined;
+      const name =
+        typeof rawName === 'string' && rawName.trim()
+          ? rawName.trim()
+          : (displayLabelValue ?? 'Restored artifact');
+      const rawDescription = normalizedSnapshot['description'];
+      const description = typeof rawDescription === 'string' ? rawDescription : null;
+      const rawType = normalizedSnapshot['type'];
+      const artifactType =
+        typeof rawType === 'string'
+          ? rawType
+          : typeof normalizedSnapshot['artifact_type'] === 'string'
+            ? (normalizedSnapshot['artifact_type'] as string)
+            : 'component';
+      const languageValue =
+        typeof normalizedSnapshot['language'] === 'string'
+          ? (normalizedSnapshot['language'] as string)
+          : snapshotMetadataValue && typeof snapshotMetadataValue['language'] === 'string'
+            ? (snapshotMetadataValue['language'] as string)
+            : undefined;
+      const frameworkValue =
+        typeof normalizedSnapshot['framework'] === 'string'
+          ? (normalizedSnapshot['framework'] as string)
+          : snapshotMetadataValue && typeof snapshotMetadataValue['framework'] === 'string'
+            ? (snapshotMetadataValue['framework'] as string)
+            : undefined;
+      const metadata = normalizeMetadata(snapshotMetadataValue);
+      const values =
+        snapshotMetadataValue && 'values' in snapshotMetadataValue
+          ? snapshotMetadataValue['values']
+          : undefined;
+      const filePathCandidate =
+        typeof normalizedSnapshot['file_path'] === 'string'
+          ? (normalizedSnapshot['file_path'] as string)
+          : typeof normalizedSnapshot['filePath'] === 'string'
+            ? (normalizedSnapshot['filePath'] as string)
+            : undefined;
+      const confidence =
+        typeof normalizedSnapshot['confidence'] === 'number'
+          ? (normalizedSnapshot['confidence'] as number)
+          : 0.95;
+      const language = languageValue;
+      const framework = frameworkValue;
+
+      const artifact = await db.createArtifact(
+        artifactId,
+        projectId,
+        name,
+        description,
+        artifactType,
+        language,
+        framework,
+        metadata,
+        filePathCandidate ?? null,
+        confidence
+      );
+
+      const eventsService = deps.events as EventService | undefined;
+      const entityType =
+        metadata?.classification?.detectedType || metadata?.detectedType || artifactType;
+
+      const eventPayload = {
+        action: 'entity_restored',
+        source: 'manual',
+        entity_type: entityType,
+        artifact_type: artifactType,
+        artifact_id: artifactId,
+        entity_id: artifactId,
+        name,
+        description,
+        metadata,
+        values,
+        snapshot: normalizedSnapshot,
+        restored_from_event_id: sourceEventId,
+        restored_at: new Date().toISOString(),
+      };
+
+      if (eventsService?.broadcastToProject) {
+        await eventsService.broadcastToProject(projectId, {
+          project_id: projectId,
+          event_type: 'entity_restored',
+          data: eventPayload,
+        });
+      } else if (typeof db.createEvent === 'function') {
+        await db.createEvent(randomUUID(), projectId, 'entity_restored', eventPayload);
+      }
+
+      return c.json({ success: true, artifact });
+    } catch (error) {
+      console.error('Failed to restore artifact', error);
+      return c.json({ success: false, error: 'Failed to restore entity' }, 500);
+    }
+  });
   router.post('/projects', async c => {
     try {
       const db = deps.db as any;

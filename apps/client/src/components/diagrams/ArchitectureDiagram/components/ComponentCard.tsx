@@ -5,6 +5,7 @@ import {
   Languages,
   Package,
   Route as RouteIcon,
+  Trash2,
   Workflow,
 } from 'lucide-react';
 import React from 'react';
@@ -14,6 +15,7 @@ interface ComponentCardProps {
   name: string;
   data: any;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
 const coerceDisplayValue = (raw: unknown): string | null => {
@@ -23,7 +25,7 @@ const coerceDisplayValue = (raw: unknown): string | null => {
   return trimmed.toLowerCase() === 'unknown' ? null : trimmed;
 };
 
-export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClick }) => {
+export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClick, onDelete }) => {
   const resolvedType =
     data.type || data.metadata?.type || data.metadata?.detectedType || data.metadata?.category;
   const normalizedType = typeof resolvedType === 'string' ? resolvedType.toLowerCase() : '';
@@ -89,6 +91,11 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
         .filter((method, index, self) => method && self.indexOf(method) === index)
     : undefined;
 
+  const handleDeleteClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    onDelete?.();
+  };
+
   return (
     <div
       className={clsx(
@@ -98,7 +105,24 @@ export const ComponentCard: React.FC<ComponentCardProps> = ({ name, data, onClic
       onClick={onClick}
     >
       {/* Component Name */}
-      <h4 className="font-medium text-sm mb-1 relative">{data.name || name}</h4>
+      <div className="mb-1 flex items-start justify-between gap-2">
+        <h4
+          className="font-medium text-sm relative flex-1 text-left pr-2"
+          title={data.name || name}
+        >
+          {data.name || name}
+        </h4>
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={handleDeleteClick}
+            className="rounded-full p-1 text-gray-500 transition-colors hover:text-rose-600 focus:outline-none focus-visible:ring focus-visible:ring-rose-500/50 dark:text-graphite-300 dark:hover:text-rose-300"
+            aria-label={`Delete ${data.name || name}`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
+      </div>
 
       {/* Component Description */}
       {truncatedDescription && (

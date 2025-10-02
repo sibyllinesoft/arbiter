@@ -353,6 +353,12 @@ function cloneConfig(config: CLIConfig): CLIConfig {
     uiOptionGenerators: config.uiOptionGenerators ? { ...config.uiOptionGenerators } : undefined,
     configFilePath: config.configFilePath,
     configDir: config.configDir,
+    authSession: config.authSession
+      ? {
+          ...config.authSession,
+          metadata: config.authSession.metadata ? { ...config.authSession.metadata } : undefined,
+        }
+      : undefined,
     github: config.github
       ? {
           ...config.github,
@@ -364,6 +370,17 @@ function cloneConfig(config: CLIConfig): CLIConfig {
       : undefined,
     generator: cloneGeneratorConfig(config.generator),
   };
+}
+
+export function applyEnvironmentOverrides(config: CLIConfig): CLIConfig {
+  const merged = cloneConfig(config);
+  const envUrl = (process.env.ARBITER_URL || process.env.ARBITER_API_URL || '').trim();
+
+  if (envUrl) {
+    merged.apiUrl = envUrl;
+  }
+
+  return merged;
 }
 
 function mergeOptionCatalog(
@@ -491,6 +508,7 @@ function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig
     generator: mergeGeneratorConfig(base.generator, overrides.generator),
     configFilePath: overrides.configFilePath ?? base.configFilePath,
     configDir: overrides.configDir ?? base.configDir,
+    authSession: base.authSession,
   };
 
   return merged;
@@ -499,11 +517,11 @@ function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig
 export async function loadConfig(configPath?: string): Promise<CLIConfig> {
   const baseConfig = cloneConfig(DEFAULT_CONFIG);
 
-  if (configPath) {
-    return await loadSpecificConfigFile(configPath, baseConfig);
-  }
+  const resolved = configPath
+    ? await loadSpecificConfigFile(configPath, baseConfig)
+    : await searchForConfigFile(baseConfig);
 
-  return await searchForConfigFile(baseConfig);
+  return applyEnvironmentOverrides(resolved);
 }
 
 /**
@@ -544,11 +562,11 @@ export async function loadConfigWithGitDetection(
       );
     }
 
-    return enhancedConfig;
+    return applyEnvironmentOverrides(enhancedConfig);
   }
 
   // If no smart config found, return original
-  return baseConfig;
+  return applyEnvironmentOverrides(baseConfig);
 }
 
 /**
@@ -614,8 +632,10 @@ async function loadConfigFile(filePath: string): Promise<Partial<CLIConfig>> {
     throw new Error(`Unsupported configuration file format: ${ext}`);
   }
 
+  const normalized = normalizeConfigShape(parsed);
+
   // Validate configuration
-  const result = configSchema.safeParse(parsed);
+  const result = configSchema.safeParse(normalized);
   if (!result.success) {
     throw new Error(`Invalid configuration: ${result.error.message}`);
   }
@@ -627,17 +647,30 @@ async function loadConfigFile(filePath: string): Promise<Partial<CLIConfig>> {
   };
 }
 
-/**
- * Save configuration to file
- */
+function prepareConfigForSave(config: Partial<CLIConfig>): Record<string, unknown> {
+  const serializable: Record<string, unknown> = { ...config };
+
+  delete serializable.authSession;
+  delete serializable.configFilePath;
+  delete serializable.configDir;
+
+  if (serializable.apiUrl) {
+    serializable.arbiter_url = serializable.apiUrl;
+    delete serializable.apiUrl;
+  }
+
+  return serializable;
+}
+
 export async function saveConfig(config: Partial<CLIConfig>, filePath: string): Promise<void> {
   const ext = path.extname(filePath).toLowerCase();
+  const serializable = prepareConfigForSave(config);
   let content: string;
 
   if (ext === '.json') {
-    content = JSON.stringify(config, null, 2);
+    content = JSON.stringify(serializable, null, 2);
   } else if (ext === '.yaml' || ext === '.yml') {
-    content = yaml.stringify(config);
+    content = yaml.stringify(serializable);
   } else {
     throw new Error(`Unsupported configuration file format: ${ext}`);
   }

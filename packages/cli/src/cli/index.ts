@@ -8,8 +8,10 @@
 
 import chalk from 'chalk';
 import { Command } from 'commander';
-import { loadConfig } from '../config.js';
+import { loadAuthSession } from '../auth-store.js';
+import { applyEnvironmentOverrides, loadConfig } from '../config.js';
 import { createAddCommands } from './add.js';
+import { createAuthCommand } from './auth.js';
 import { createEpicTaskCommands } from './epic-task.js';
 import { createGenerationCommands } from './generation.js';
 import { createIntegrationCommands } from './integration.js';
@@ -29,6 +31,7 @@ program
   .option('-c, --config <path>', 'path to configuration file')
   .option('--no-color', 'disable colored output')
   .option('--api-url <url>', 'API server URL')
+  .option('--arbiter-url <url>', 'Arbiter server URL (alias for --api-url)')
   .option('--timeout <ms>', 'request timeout in milliseconds')
   .hook('preAction', async (thisCommand, actionCommand) => {
     try {
@@ -38,12 +41,24 @@ program
       const config = await loadConfig(opts.config);
 
       // Override config with CLI options
-      if (opts.apiUrl) config.apiUrl = opts.apiUrl;
+      const cliUrl = opts.arbiterUrl ?? opts.apiUrl;
+      if (cliUrl) config.apiUrl = cliUrl;
       if (opts.timeout) config.timeout = Number.parseInt(opts.timeout, 10);
       if (opts.color === false) config.color = false;
 
+      const finalConfig = applyEnvironmentOverrides(config);
+      const authSession = await loadAuthSession();
+      if (authSession) {
+        finalConfig.authSession = authSession;
+      } else if (finalConfig.authSession) {
+        delete finalConfig.authSession;
+      }
+
+      const normalizedUrl = finalConfig.apiUrl.trim().replace(/\/+$/, '');
+      finalConfig.apiUrl = normalizedUrl || finalConfig.apiUrl.trim();
+
       // Store config on command for subcommands to access
-      (thisCommand as any).config = config;
+      (thisCommand as any).config = finalConfig;
     } catch (error) {
       console.error(
         chalk.red('Configuration error:'),
@@ -61,6 +76,7 @@ createEpicTaskCommands(addCmd); // Epic and task are subcommands of add
 createGenerationCommands(program);
 createIntegrationCommands(program);
 createUtilitiesCommands(program);
+createAuthCommand(program);
 
 // Webhook commands already added by createIntegrationCommands
 // const webhookCmd = createWebhookCommands();

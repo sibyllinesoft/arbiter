@@ -73,7 +73,10 @@ export type EventType =
   | 'git_merge_processed'
   | 'event_head_updated'
   | 'events_reverted'
-  | 'events_reapplied';
+  | 'events_reapplied'
+  | 'entity_created'
+  | 'entity_deleted'
+  | 'entity_restored';
 
 // API request/response types
 export interface CreateFragmentRequest {
@@ -360,5 +363,12 @@ export interface ServerConfig {
     authServerPort: number;
     enableAuthServer: boolean;
     requiredScopes?: string[];
+    provider?: 'supertokens' | 'auth0' | 'clerk' | string;
+    clientId?: string;
+    clientSecret?: string;
+    issuerOverride?: string;
+    discoveryPath?: string;
+    audience?: string[];
+    redirectUri?: string;
   };
 }

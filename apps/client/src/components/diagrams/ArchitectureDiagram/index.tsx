@@ -1,5 +1,6 @@
 import StatusBadge from '@/design-system/components/StatusBadge';
 import { apiService } from '@/services/api';
+import { useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import {
   Component,
@@ -17,7 +18,12 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AddEntityModal, type UiOptionCatalog } from './components/AddEntityModal';
+import {
+  AddEntityModal,
+  type EpicTaskOption,
+  type FieldValue,
+  type UiOptionCatalog,
+} from './components/AddEntityModal';
 import { EmptyState } from './components/EmptyState';
 import { ErrorState } from './components/ErrorState';
 import { LoadingState } from './components/LoadingState';
@@ -158,7 +164,10 @@ const getComponentType = (data: any, name: string): string => {
   return 'component';
 };
 
-const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => {
+const computeGroupedComponents = (
+  projectData: any,
+  removedArtifactIds: Set<string> = new Set()
+): GroupedComponentGroup[] => {
   const CUE_FILE_REGEX = /\.cue$/i;
   const TYPE_CONFIG: Record<
     string,
@@ -199,6 +208,9 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
   const getTypeConfig = (type: string) => TYPE_CONFIG[type] ?? TYPE_CONFIG.other;
 
   const shouldExcludeFromDiagram = (item: any): boolean => {
+    if (isRemovedItem(item)) {
+      return true;
+    }
     const candidates = [
       item?.metadata?.filePath,
       item?.metadata?.sourceFile,
@@ -221,6 +233,42 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
 
   const groups = new Map<string, GroupedComponentGroup>();
 
+  const resolveArtifactId = (item: unknown): string | undefined => {
+    if (!item || typeof item !== 'object') {
+      return undefined;
+    }
+    const candidateSources: unknown[] = [
+      (item as Record<string, unknown>).artifactId,
+      (item as Record<string, unknown>).artifact_id,
+      (item as Record<string, unknown>).id,
+    ];
+    const metadata = (item as Record<string, unknown>).metadata;
+    if (metadata && typeof metadata === 'object') {
+      candidateSources.push(
+        (metadata as Record<string, unknown>).artifactId,
+        (metadata as Record<string, unknown>).artifact_id,
+        (metadata as Record<string, unknown>).id
+      );
+    }
+    for (const candidate of candidateSources) {
+      if (typeof candidate === 'string') {
+        const trimmed = candidate.trim();
+        if (trimmed) {
+          return trimmed;
+        }
+      }
+    }
+    return undefined;
+  };
+
+  const isRemovedItem = (item: unknown): boolean => {
+    if (!removedArtifactIds || removedArtifactIds.size === 0) {
+      return false;
+    }
+    const candidateId = resolveArtifactId(item);
+    return candidateId ? removedArtifactIds.has(candidateId) : false;
+  };
+
   const ensureGroup = (type: string): GroupedComponentGroup => {
     const config = getTypeConfig(type)!;
     if (!groups.has(config.label)) {
@@ -241,6 +289,7 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
 
   const addToGroup = (type: string, name: string, data: any) => {
     if (!type) return;
+    if (isRemovedItem(data)) return;
     const group = ensureGroup(type);
     group.items.push({ name, data });
   };
@@ -504,7 +553,7 @@ const computeGroupedComponents = (projectData: any): GroupedComponentGroup[] => 
   return orderedGroups;
 };
 
-const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {} as UiOptionCatalog;
+const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = { epicTaskOptions: [] };
 
 const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, className = '' }) => {
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null);
@@ -517,33 +566,57 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   );
   const [uiOptionCatalog, setUiOptionCatalog] =
     useState<UiOptionCatalog>(DEFAULT_UI_OPTION_CATALOG);
+  const [optimisticRemovals, setOptimisticRemovals] = useState<Set<string>>(new Set());
+  const queryClient = useQueryClient();
 
-  const refreshProjectData = useCallback(async () => {
-    if (!projectId) {
-      setProjectData(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await apiService.getResolvedSpec(projectId);
-      setProjectData(result.resolved);
-    } catch (err: any) {
-      if (err.status === 404 || err.message?.includes('404')) {
-        setProjectData(null);
-        setError('Project not found or has been deleted');
-        console.warn(`Project ${projectId} not found - likely deleted`);
+  const toggleOptimisticRemoval = useCallback((artifactId: string, shouldAdd: boolean) => {
+    setOptimisticRemovals(prev => {
+      const next = new Set(prev);
+      if (shouldAdd) {
+        next.add(artifactId);
       } else {
-        setError(err instanceof Error ? err.message : 'Failed to fetch project data');
-        console.error('Failed to fetch project data:', err);
+        next.delete(artifactId);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
+      return next;
+    });
+  }, []);
+
+  const refreshProjectData = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent ?? false;
+      if (!projectId) {
+        setProjectData(null);
+        setError(null);
+        if (!silent) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        setError(null);
+        const result = await apiService.getResolvedSpec(projectId);
+        setProjectData(result.resolved);
+      } catch (err: any) {
+        if (err.status === 404 || err.message?.includes('404')) {
+          setProjectData(null);
+          setError('Project not found or has been deleted');
+          console.warn(`Project ${projectId} not found - likely deleted`);
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to fetch project data');
+          console.error('Failed to fetch project data:', err);
+        }
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [projectId]
+  );
 
   // Fetch real project data
   useEffect(() => {
@@ -581,9 +654,156 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   // Group components by type for rendering
 
   const groupedComponents: GroupedComponentGroup[] = useMemo(
-    () => computeGroupedComponents(projectData),
-    [projectData]
+    () => computeGroupedComponents(projectData, optimisticRemovals),
+    [projectData, optimisticRemovals]
   );
+
+  const completedTaskOptions = useMemo<EpicTaskOption[]>(() => {
+    if (!projectData) return [];
+
+    const epicSource = projectData?.spec?.epics ?? projectData?.epics ?? [];
+    const epicEntries: Array<{ key: string; value: any; index: number }> = [];
+
+    if (Array.isArray(epicSource)) {
+      epicSource.forEach((value, index) => {
+        const key =
+          (value && typeof value === 'object' && (value.id || value.name)) || `epic-${index + 1}`;
+        epicEntries.push({ key: String(key), value, index });
+      });
+    } else if (epicSource && typeof epicSource === 'object') {
+      Object.entries(epicSource as Record<string, any>).forEach(([key, value], index) => {
+        epicEntries.push({ key, value, index });
+      });
+    }
+
+    const options: EpicTaskOption[] = [];
+
+    epicEntries.forEach(({ key, value, index }) => {
+      if (!value && typeof value !== 'string') return;
+
+      const epicData = typeof value === 'string' ? { id: key, name: value } : { ...value };
+      const epicIdRaw = epicData.id ?? key ?? `epic-${index + 1}`;
+      const epicId = String(epicIdRaw ?? '').trim() || `epic-${index + 1}`;
+      const epicName =
+        String(epicData.name ?? epicId ?? `Epic ${index + 1}`).trim() || `Epic ${index + 1}`;
+
+      const tasksSource = epicData.tasks ?? [];
+      const tasksArray = Array.isArray(tasksSource)
+        ? tasksSource
+        : tasksSource && typeof tasksSource === 'object'
+          ? Object.values(tasksSource as Record<string, any>)
+          : [];
+
+      tasksArray.forEach((task, taskIndex) => {
+        if (!task && typeof task !== 'string') return;
+        const taskData = typeof task === 'string' ? { name: task } : { ...task };
+        const taskIdRaw = taskData.id ?? `${epicId}-${taskIndex + 1}`;
+        const taskId = String(taskIdRaw ?? '').trim();
+        if (!taskId) return;
+
+        const taskName =
+          String(taskData.name ?? taskId ?? `Task ${taskIndex + 1}`).trim() || taskId;
+        const metadata = (taskData.metadata ?? {}) as Record<string, unknown>;
+        const statusCandidates = [taskData.status, taskData.state, metadata.status, metadata.state]
+          .map(value => (typeof value === 'string' ? value.toLowerCase() : ''))
+          .filter(Boolean);
+
+        const completedFlag =
+          taskData.completed === true ||
+          taskData.done === true ||
+          taskData.isCompleted === true ||
+          metadata.completed === true ||
+          statusCandidates.includes('completed');
+
+        if (!completedFlag) return;
+
+        options.push({
+          id: taskId,
+          name: taskName,
+          epicId,
+          epicName,
+          status:
+            statusCandidates[0] ||
+            (typeof taskData.status === 'string' ? taskData.status : undefined),
+          completed: true,
+        });
+      });
+    });
+
+    const seen = new Set<string>();
+    return options.filter(option => {
+      const dedupeKey = `${option.epicId ?? 'epic'}-${option.id}`;
+      if (seen.has(dedupeKey)) {
+        return false;
+      }
+      seen.add(dedupeKey);
+      return true;
+    });
+  }, [projectData]);
+
+  const optionCatalogWithTasks = useMemo<UiOptionCatalog>(
+    () => ({
+      ...uiOptionCatalog,
+      epicTaskOptions: completedTaskOptions,
+    }),
+    [uiOptionCatalog, completedTaskOptions]
+  );
+
+  useEffect(() => {
+    if (!projectData || optimisticRemovals.size === 0) {
+      return;
+    }
+    const artifactArray = Array.isArray(projectData?.artifacts)
+      ? (projectData.artifacts as Array<unknown>)
+      : [];
+    const existingIds = new Set<string>();
+    artifactArray.forEach(artifactValue => {
+      if (!artifactValue || typeof artifactValue !== 'object') {
+        return;
+      }
+      const artifact = artifactValue as Record<string, unknown>;
+      const metadataValue = artifact['metadata'];
+      const metadata =
+        metadataValue && typeof metadataValue === 'object'
+          ? (metadataValue as Record<string, unknown>)
+          : undefined;
+      const candidates = [
+        artifact['id'],
+        artifact['artifactId'],
+        artifact['artifact_id'],
+        metadata?.['artifactId'],
+        metadata?.['artifact_id'],
+      ];
+      for (const candidate of candidates) {
+        if (typeof candidate === 'string') {
+          const trimmed = candidate.trim();
+          if (trimmed) {
+            existingIds.add(trimmed);
+            break;
+          }
+        }
+      }
+    });
+
+    setOptimisticRemovals(prev => {
+      if (prev.size === 0) {
+        return prev;
+      }
+      let shouldUpdate = false;
+      const next = new Set<string>();
+      prev.forEach(id => {
+        if (existingIds.has(id)) {
+          next.add(id);
+        } else {
+          shouldUpdate = true;
+        }
+      });
+      if (!shouldUpdate) {
+        return prev;
+      }
+      return next;
+    });
+  }, [projectData, optimisticRemovals]);
 
   const groupIconMap: Record<string, LucideIcon> = {
     service: Server,
@@ -607,7 +827,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
   const closeAddDialog = () => setAddDialogConfig(null);
 
   const handleAddEntity = useCallback(
-    async (payload: { entityType: string; values: Record<string, string> }) => {
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
       if (!projectId) return;
 
       try {
@@ -616,13 +836,56 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
           values: payload.values,
         });
         await refreshProjectData();
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
         setAddDialogConfig(null);
       } catch (err: any) {
         console.error('[ArchitectureDiagram] failed to add entity', err);
         setError(err?.message || 'Failed to add entity');
       }
     },
-    [projectId, refreshProjectData]
+    [projectId, refreshProjectData, queryClient]
+  );
+
+  const handleDeleteEntity = useCallback(
+    async (artifactId: string, label?: string) => {
+      if (!projectId) {
+        return;
+      }
+      if (!artifactId) {
+        setError('Unable to delete artifact: missing identifier');
+        return;
+      }
+
+      const labelPreview = label ? `"${label}"` : '';
+      const confirmationMessage = labelPreview
+        ? `Delete ${labelPreview} from the architecture?`
+        : 'Delete this artifact from the architecture?';
+      if (typeof window !== 'undefined' && !window.confirm(confirmationMessage)) {
+        return;
+      }
+
+      toggleOptimisticRemoval(artifactId, true);
+      setSelectedComponent(null);
+
+      try {
+        await apiService.deleteProjectEntity(projectId, artifactId);
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+        refreshProjectData({ silent: true })
+          .then(() => toggleOptimisticRemoval(artifactId, false))
+          .catch(refreshError => {
+            console.error(
+              '[ArchitectureDiagram] failed to refresh project data after deletion',
+              refreshError
+            );
+            toggleOptimisticRemoval(artifactId, false);
+          });
+      } catch (err: any) {
+        toggleOptimisticRemoval(artifactId, false);
+        console.error('[ArchitectureDiagram] failed to delete entity', err);
+        setError(err?.message || 'Failed to delete entity');
+      }
+    },
+    [projectId, queryClient, refreshProjectData, toggleOptimisticRemoval]
   );
 
   useEffect(() => {
@@ -1120,6 +1383,9 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
                   setExpandedSources={setExpandedSources}
                   onComponentClick={setSelectedComponent}
                   onAddClick={() => openAddDialog(group)}
+                  onDeleteComponent={({ artifactId, label }) =>
+                    handleDeleteEntity(artifactId, label)
+                  }
                   {...(icon ? { icon } : {})}
                 />
               );
@@ -1139,7 +1405,7 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({ projectId, cl
             open={true}
             entityType={addDialogConfig.type}
             groupLabel={addDialogConfig.label}
-            optionCatalog={uiOptionCatalog}
+            optionCatalog={optionCatalogWithTasks}
             onClose={closeAddDialog}
             onSubmit={handleAddEntity}
           />

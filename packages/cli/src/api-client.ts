@@ -1,6 +1,6 @@
 import type { IRResponse, ValidationRequest, ValidationResponse } from '@arbiter/shared';
 import { COMMON_PORTS } from './config.js';
-import type { CLIConfig, CommandResult } from './types.js';
+import type { AuthSession, CLIConfig, CommandResult } from './types.js';
 
 /**
  * @packageDocumentation
@@ -19,6 +19,8 @@ export class ApiClient {
   private projectId: string;
   private lastRequestTime = 0;
   private discoveredUrl: string | null = null;
+  private authSession?: AuthSession;
+  private warnedAboutExpiredToken = false;
   private readonly MAX_PAYLOAD_SIZE = 64 * 1024; // 64KB
   private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second (1 RPS)
   private readonly MAX_TIMEOUT = 750; // 750ms per spec
@@ -28,6 +30,7 @@ export class ApiClient {
     // Ensure timeout compliance with spec (≤750ms)
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
     this.projectId = config.projectId || 'cli-project'; // Use configured project ID or fallback
+    this.authSession = config.authSession;
   }
 
   /**
@@ -837,6 +840,41 @@ export class ApiClient {
     }
   }
 
+  private isTokenExpired(session: AuthSession): boolean {
+    if (!session.expiresAt) {
+      return false;
+    }
+
+    const expiresAt = Date.parse(session.expiresAt);
+    if (Number.isNaN(expiresAt)) {
+      return false;
+    }
+
+    // Add a small buffer to avoid using tokens that are about to expire
+    return expiresAt <= Date.now() + 60_000;
+  }
+
+  private buildAuthorizationHeader(): string | null {
+    if (!this.authSession || !this.authSession.accessToken) {
+      return null;
+    }
+
+    if (this.isTokenExpired(this.authSession)) {
+      if (!this.warnedAboutExpiredToken) {
+        console.warn(
+          'OAuth access token appears to be expired. Run `arbiter auth` to refresh credentials.'
+        );
+        this.warnedAboutExpiredToken = true;
+      }
+      return null;
+    }
+
+    const tokenTypeRaw = this.authSession.tokenType?.trim();
+    const tokenType = tokenTypeRaw && tokenTypeRaw.length > 0 ? tokenTypeRaw : 'Bearer';
+
+    return `${tokenType} ${this.authSession.accessToken}`;
+  }
+
   /**
    * Internal fetch wrapper with timeout and error handling
    */
@@ -861,8 +899,15 @@ export class ApiClient {
     try {
       console.log(`[CLI-FETCH] ${fetchId} - Calling fetch() now...`);
 
+      const headers = new Headers(options.headers as HeadersInit | undefined);
+      const authHeader = this.buildAuthorizationHeader();
+      if (authHeader) {
+        headers.set('Authorization', authHeader);
+      }
+
       const response = await fetch(url, {
         ...options,
+        headers,
         signal: controller.signal,
       });
 

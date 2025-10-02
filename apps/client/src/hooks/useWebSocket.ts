@@ -17,6 +17,8 @@ interface WebSocketMessage {
   payload: any;
   timestamp: string;
   projectId?: string;
+  data?: any;
+  project_id?: string;
 }
 
 export function useWebSocket(projectId: string | null, options: WebSocketOptions = {}) {
@@ -76,12 +78,18 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
 
       ws.onmessage = event => {
         try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          setLastMessage(message);
+          const raw = JSON.parse(event.data);
+          const normalized: WebSocketMessage = {
+            ...raw,
+            payload: raw.payload ?? raw.data ?? null,
+            timestamp: raw.timestamp ?? new Date().toISOString(),
+            projectId: raw.projectId ?? raw.project_id ?? projectId ?? undefined,
+          };
+          setLastMessage(normalized);
 
           // Show notifications for specific event types
           if (showToastNotifications) {
-            switch (message.type) {
+            switch (normalized.type) {
               case 'webhook_received':
                 toast.info('Webhook received', {
                   position: 'bottom-right',
@@ -89,22 +97,24 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
                 });
                 break;
               case 'handler_executed':
-                const success = message.payload?.success;
-                const handlerMessage = message.payload?.message || 'Handler executed';
-                if (success) {
-                  toast.success(handlerMessage, {
-                    position: 'bottom-right',
-                    autoClose: 3000,
-                  });
-                } else {
-                  toast.error(handlerMessage, {
-                    position: 'bottom-right',
-                    autoClose: 5000,
-                  });
+                {
+                  const success = normalized.payload?.success;
+                  const handlerMessage = normalized.payload?.message || 'Handler executed';
+                  if (success) {
+                    toast.success(handlerMessage, {
+                      position: 'bottom-right',
+                      autoClose: 3000,
+                    });
+                  } else {
+                    toast.error(handlerMessage, {
+                      position: 'bottom-right',
+                      autoClose: 5000,
+                    });
+                  }
                 }
                 break;
               case 'validation_completed':
-                if (message.payload?.success) {
+                if (normalized.payload?.success) {
                   toast.success('Validation completed', {
                     position: 'bottom-right',
                     autoClose: 2000,

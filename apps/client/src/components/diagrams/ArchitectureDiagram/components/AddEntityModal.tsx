@@ -1,8 +1,17 @@
 import Button from '@/design-system/components/Button';
 import Input from '@/design-system/components/Input';
 import Modal from '@/design-system/components/Modal';
-import Select from '@/design-system/components/Select';
+import Select, { type SelectOption } from '@/design-system/components/Select';
 import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
+
+export interface EpicTaskOption {
+  id: string;
+  name: string;
+  epicId?: string;
+  epicName?: string;
+  status?: string;
+  completed?: boolean;
+}
 
 export interface UiOptionCatalog {
   frontendFrameworks?: string[];
@@ -10,7 +19,10 @@ export interface UiOptionCatalog {
   serviceFrameworks?: Record<string, string[]>;
   databaseEngines?: string[];
   infrastructureScopes?: string[];
+  epicTaskOptions?: EpicTaskOption[];
 }
+
+export type FieldValue = string | string[];
 
 interface FieldConfig {
   name: string;
@@ -19,9 +31,13 @@ interface FieldConfig {
   placeholder?: string;
   required?: boolean;
   description?: string;
-  options?: string[];
-  resolveOptions?: (values: Record<string, string>) => string[];
-  isVisible?: (values: Record<string, string>, resolvedOptions: string[]) => boolean;
+  multiple?: boolean;
+  options?: Array<string | SelectOption>;
+  resolveOptions?: (values: Record<string, FieldValue>) => Array<string | SelectOption>;
+  isVisible?: (
+    values: Record<string, FieldValue>,
+    resolvedOptions: Array<string | SelectOption>
+  ) => boolean;
   onChangeClear?: string[];
 }
 
@@ -31,7 +47,7 @@ interface AddEntityModalProps {
   groupLabel: string;
   optionCatalog: UiOptionCatalog;
   onClose: () => void;
-  onSubmit?: (payload: { entityType: string; values: Record<string, string> }) => void;
+  onSubmit?: (payload: { entityType: string; values: Record<string, FieldValue> }) => void;
 }
 
 const FALLBACK_SERVICE_LANGUAGES = [
@@ -62,15 +78,31 @@ const FALLBACK_INFRASTRUCTURE_SCOPES = [
   'Serverless Platform',
 ];
 
-const DEFAULT_FIELDS: FieldConfig[] = [
-  { name: 'name', label: 'Name', required: true, placeholder: 'enter a name' },
-  {
-    name: 'description',
-    label: 'Description',
-    type: 'textarea',
-    placeholder: 'What does this component do?',
-  },
-];
+const DEFAULT_DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
+  component: 'Outline the responsibilities, dependencies, and integrations for this component.',
+  flow: 'Summarize the key steps, triggers, and outcomes for this flow.',
+  capability: 'Explain the capability, supporting systems, and users it serves.',
+  epic: 'Capture the objective, scope, and success metrics for this epic.',
+  task: 'Detail the work, dependencies, and definition of done for this task.',
+  other: 'Provide helpful context, purpose, or constraints for this item.',
+  default: 'Share context, goals, or constraints that clarify this addition.',
+};
+
+const buildDefaultFields = (entityType: string): FieldConfig[] => {
+  const normalizedType = entityType?.toLowerCase?.() || 'default';
+  const placeholder =
+    DEFAULT_DESCRIPTION_PLACEHOLDERS[normalizedType] || DEFAULT_DESCRIPTION_PLACEHOLDERS.default;
+
+  return [
+    { name: 'name', label: 'Name', required: true, placeholder: 'enter a name' },
+    {
+      name: 'description',
+      label: 'Description',
+      type: 'textarea',
+      placeholder,
+    },
+  ];
+};
 
 function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConfig[] {
   const frontendCandidate = Array.isArray(catalog.frontendFrameworks)
@@ -215,7 +247,12 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
         label: 'Framework (optional)',
         type: 'select',
         placeholder: 'Select framework',
-        resolveOptions: values => frameworkOptionsFor(values.language),
+        resolveOptions: values =>
+          frameworkOptionsFor(
+            Array.isArray(values['language'])
+              ? values['language'][0]
+              : (values['language'] as string | undefined)
+          ),
         isVisible: (_, resolvedOptions) => resolvedOptions.length > 0,
         description: 'Optional: choose a framework that fits the selected language.',
       },
@@ -316,10 +353,39 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
         placeholder: 'What infrastructure does this provide?',
       },
     ],
-    other: DEFAULT_FIELDS,
+    epic: [
+      { name: 'name', label: 'Epic Name', required: true, placeholder: 'Checkout flow revamp' },
+      {
+        name: 'description',
+        label: 'Description',
+        type: 'textarea',
+        placeholder: 'Summarize the objective, scope, and success metrics for this epic',
+      },
+      {
+        name: 'tasks',
+        label: 'Completed Tasks',
+        type: 'select',
+        multiple: true,
+        placeholder: 'Select completed tasks',
+        resolveOptions: () =>
+          (catalog.epicTaskOptions ?? [])
+            .map(task => {
+              const value = String(task.id ?? task.name ?? '').trim();
+              if (!value) return null;
+              const label = (task.name ?? value).trim();
+              const description = task.epicName ? `Epic: ${task.epicName}` : undefined;
+              return description
+                ? ({ value, label, description } as SelectOption)
+                : ({ value, label } as SelectOption);
+            })
+            .filter((option): option is SelectOption => Boolean(option)),
+        description: 'Associate finished tasks that roll up into this epic.',
+      },
+    ],
+    other: buildDefaultFields('other'),
   };
 
-  return configs[entityType] ?? DEFAULT_FIELDS;
+  return configs[entityType] ?? buildDefaultFields(entityType);
 }
 
 function toSingularLabel(label: string, fallback: string): string {
@@ -352,14 +418,14 @@ export function AddEntityModal({
   );
 
   const initialValues = useMemo(() => {
-    const values: Record<string, string> = {};
+    const values: Record<string, FieldValue> = {};
     for (const field of fields) {
-      values[field.name] = '';
+      values[field.name] = field.multiple ? [] : '';
     }
     return values;
   }, [fields]);
 
-  const [values, setValues] = useState<Record<string, string>>(initialValues);
+  const [values, setValues] = useState<Record<string, FieldValue>>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -385,66 +451,109 @@ export function AddEntityModal({
     return map;
   }, [fields]);
 
-  const handleChange = (name: string, value: string) => {
+  const toArray = (input: FieldValue): string[] =>
+    Array.isArray(input) ? input : input ? [input] : [];
+
+  const arraysEqual = (a: string[], b: string[]): boolean => {
+    if (a.length !== b.length) return false;
+    return a.every((value, index) => value === b[index]);
+  };
+
+  const handleChange = (name: string, nextValue: FieldValue) => {
     const field = fieldByName.get(name);
     const clearKeys = field?.onChangeClear ?? [];
     const impactedKeys = [name, ...clearKeys];
 
     setValues(prev => {
-      let next = prev;
+      let nextState = prev;
       let mutated = false;
 
-      if (prev[name] !== value) {
-        next = { ...prev, [name]: value };
+      const prevValue = prev[name];
+      const shouldUpdate =
+        Array.isArray(prevValue) || Array.isArray(nextValue)
+          ? !arraysEqual(toArray(prevValue), toArray(nextValue))
+          : prevValue !== nextValue;
+
+      if (shouldUpdate) {
+        nextState = { ...prev, [name]: nextValue };
         mutated = true;
       }
 
       if (clearKeys.length > 0) {
         if (!mutated) {
-          next = { ...prev };
+          nextState = { ...prev };
         }
 
         for (const key of clearKeys) {
-          if (next[key] !== '') {
-            next[key] = '';
+          const targetField = fieldByName.get(key);
+          const defaultValue: FieldValue = targetField?.multiple ? [] : '';
+          const existingValue = nextState[key];
+          const needsReset = Array.isArray(defaultValue)
+            ? !arraysEqual(toArray(existingValue), defaultValue)
+            : existingValue !== defaultValue;
+
+          if (needsReset) {
+            nextState[key] = targetField?.multiple ? [] : '';
             mutated = true;
           }
         }
       }
 
-      return mutated ? next : prev;
+      return mutated ? nextState : prev;
     });
 
     if (impactedKeys.some(key => errors[key])) {
       setErrors(prev => {
-        const next = { ...prev };
+        const nextErrors = { ...prev };
         for (const key of impactedKeys) {
-          delete next[key];
+          delete nextErrors[key];
         }
-        return next;
+        return nextErrors;
       });
     }
 
     if (import.meta.env.DEV) {
-      console.debug('[AddEntityModal] handleChange', { field: name, value });
+      console.debug('[AddEntityModal] handleChange', { field: name, value: nextValue });
     }
+  };
+
+  const toStringValue = (input: FieldValue): string => {
+    if (Array.isArray(input)) {
+      return input[0] ?? '';
+    }
+    return input ?? '';
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const validationErrors: Record<string, string> = {};
-    const payloadValues: Record<string, string> = {};
+    const payloadValues: Record<string, FieldValue> = {};
 
     for (const field of fields) {
-      const rawValue = values[field.name] ?? '';
-      const trimmedValue = rawValue.trim();
+      const rawValue = values[field.name];
 
-      if (field.required && trimmedValue.length === 0) {
-        validationErrors[field.name] = `${field.label} is required`;
-      }
+      if (field.multiple) {
+        const normalizedValues = toArray(rawValue)
+          .map(item => item.trim())
+          .filter(Boolean);
 
-      if (trimmedValue.length > 0 || field.required) {
-        payloadValues[field.name] = trimmedValue;
+        if (field.required && normalizedValues.length === 0) {
+          validationErrors[field.name] = `${field.label} is required`;
+        }
+
+        if (normalizedValues.length > 0 || field.required) {
+          payloadValues[field.name] = normalizedValues;
+        }
+      } else {
+        const trimmedValue = toStringValue(rawValue).trim();
+
+        if (field.required && trimmedValue.length === 0) {
+          validationErrors[field.name] = `${field.label} is required`;
+        }
+
+        if (trimmedValue.length > 0 || field.required) {
+          payloadValues[field.name] = trimmedValue;
+        }
       }
     }
 
@@ -472,7 +581,7 @@ export function AddEntityModal({
       <form id={formId} onSubmit={handleSubmit} className="space-y-4">
         {fields.map(field => {
           const fieldId = `${formId}-${field.name}`;
-          const value = values[field.name] ?? '';
+          const rawValue = values[field.name];
           const errorMessage = errors[field.name];
           const resolvedOptions =
             field.type === 'select'
@@ -499,7 +608,7 @@ export function AddEntityModal({
                   id={fieldId}
                   name={field.name}
                   placeholder={field.placeholder}
-                  value={value}
+                  value={toStringValue(rawValue)}
                   onChange={event => handleChange(field.name, event.target.value)}
                   className="block w-full rounded-md border border-gray-300 dark:border-graphite-600 bg-white dark:bg-graphite-900 text-sm text-graphite-900 dark:text-graphite-100 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
                 />
@@ -515,14 +624,35 @@ export function AddEntityModal({
 
           if (field.type === 'select') {
             const optionValues = Array.isArray(resolvedOptions) ? resolvedOptions : [];
-            const uniqueOptions = Array.from(
-              new Set(
-                optionValues.filter(
-                  option => typeof option === 'string' && option.trim().length > 0
-                )
-              )
-            ) as string[];
-            const selectOptions = uniqueOptions.map(option => ({ value: option, label: option }));
+            const seen = new Set<string>();
+            const selectOptions: SelectOption[] = [];
+
+            optionValues.forEach(option => {
+              if (typeof option === 'string') {
+                const trimmed = option.trim();
+                if (!trimmed) return;
+                const dedupeKey = trimmed.toLowerCase();
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+                selectOptions.push({ value: trimmed, label: trimmed });
+              } else if (option && typeof option.value === 'string') {
+                const trimmedValue = option.value.trim();
+                if (!trimmedValue) return;
+                const dedupeKey = trimmedValue.toLowerCase();
+                if (seen.has(dedupeKey)) return;
+                seen.add(dedupeKey);
+                selectOptions.push({
+                  value: trimmedValue,
+                  label: option.label?.trim() || trimmedValue,
+                  description: option.description,
+                  disabled: option.disabled,
+                  icon: option.icon,
+                  group: option.group,
+                });
+              }
+            });
+
+            const selectValue = field.multiple ? toArray(rawValue) : toStringValue(rawValue).trim();
 
             return (
               <div key={field.name} className="space-y-1">
@@ -537,13 +667,30 @@ export function AddEntityModal({
                   key={field.name}
                   label={field.label}
                   hideLabel
-                  placeholder={field.placeholder || 'Select an option'}
-                  value={value ? value : undefined}
+                  multiple={field.multiple}
+                  placeholder={
+                    field.placeholder ||
+                    (field.multiple ? 'Select one or more options' : 'Select an option')
+                  }
+                  value={
+                    field.multiple
+                      ? (selectValue as string[])
+                      : (selectValue as string) || undefined
+                  }
                   onChange={nextValue => {
-                    const normalized = Array.isArray(nextValue)
-                      ? (nextValue[0] ?? '')
-                      : ((nextValue as string | undefined) ?? '');
-                    handleChange(field.name, normalized);
+                    if (field.multiple) {
+                      const normalized = Array.isArray(nextValue)
+                        ? nextValue
+                        : nextValue
+                          ? [String(nextValue)]
+                          : [];
+                      handleChange(field.name, normalized);
+                    } else {
+                      const normalized = Array.isArray(nextValue)
+                        ? (nextValue[0] ?? '')
+                        : ((nextValue as string | undefined) ?? '');
+                      handleChange(field.name, normalized);
+                    }
                   }}
                   options={selectOptions}
                   disabled={selectOptions.length === 0}
@@ -567,7 +714,7 @@ export function AddEntityModal({
             label: field.label,
             placeholder: field.placeholder,
             required: field.required,
-            value,
+            value: toStringValue(rawValue),
             onChange: (event: ChangeEvent<HTMLInputElement>) =>
               handleChange(field.name, event.target.value),
           };

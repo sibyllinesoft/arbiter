@@ -76,7 +76,10 @@ export type EventType =
   | 'git_merge_processed'
   | 'event_head_updated'
   | 'events_reverted'
-  | 'events_reapplied';
+  | 'events_reapplied'
+  | 'entity_created'
+  | 'entity_deleted'
+  | 'entity_restored';
 
 // API request/response types
 export interface CreateFragmentRequest {

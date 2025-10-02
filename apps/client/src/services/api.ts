@@ -256,11 +256,52 @@ export class ApiService {
 
   async createProjectEntity(
     projectId: string,
-    payload: { type: string; values: Record<string, string> }
+    payload: { type: string; values: Record<string, string | string[]> }
   ) {
+    const normalizedValues = Object.fromEntries(
+      Object.entries(payload.values).map(([key, value]) => {
+        if (Array.isArray(value)) {
+          return [key, value];
+        }
+        return [key, typeof value === 'string' ? value : String(value ?? '')];
+      })
+    );
+
     return this.request(`/api/projects/${projectId}/entities`, {
       method: 'POST',
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        type: payload.type,
+        values: normalizedValues,
+      }),
+    });
+  }
+
+  async deleteProjectEntity(projectId: string, artifactId: string): Promise<void> {
+    if (!artifactId) {
+      throw new Error('artifactId is required to delete a project entity');
+    }
+    await this.request<void>(`/api/projects/${projectId}/entities/${artifactId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async restoreProjectEntity(
+    projectId: string,
+    artifactId: string,
+    payload: { snapshot: Record<string, unknown>; eventId?: string | null }
+  ): Promise<void> {
+    if (!artifactId) {
+      throw new Error('artifactId is required to restore a project entity');
+    }
+    if (!payload?.snapshot || typeof payload.snapshot !== 'object') {
+      throw new Error('snapshot is required to restore a project entity');
+    }
+    await this.request<void>(`/api/projects/${projectId}/entities/${artifactId}/restore`, {
+      method: 'POST',
+      body: JSON.stringify({
+        snapshot: payload.snapshot,
+        eventId: payload.eventId ?? undefined,
+      }),
     });
   }
 

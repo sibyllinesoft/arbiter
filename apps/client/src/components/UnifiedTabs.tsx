@@ -28,7 +28,7 @@ function DiagramPlaceholder({ type }: DiagramPlaceholderProps) {
       <div className="text-center text-gray-600 dark:text-graphite-300">
         <div className="mb-3 text-gray-400 dark:text-graphite-400">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-xl bg-gray-100 shadow-sm dark:bg-graphite-900">
-            <span className="text-2xl">📊</span>
+            <span className="text-2xl font-semibold text-gray-400 dark:text-graphite-500">...</span>
           </div>
         </div>
         <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-graphite-50">{type}</h3>

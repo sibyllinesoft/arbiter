@@ -13,6 +13,7 @@ interface SourceGroupProps {
   onComponentClick: (name: string) => void;
   icon?: LucideIcon;
   onAddClick?: () => void;
+  onDeleteComponent?: (payload: { artifactId: string; label?: string }) => void;
 }
 
 export const SourceGroup: React.FC<SourceGroupProps> = ({
@@ -23,6 +24,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
   onComponentClick,
   icon: Icon,
   onAddClick,
+  onDeleteComponent,
 }) => {
   const hasComponents = components.length > 0;
   const isExpanded = hasComponents ? (expandedSources[groupLabel] ?? false) : false;
@@ -152,14 +154,34 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           >
             <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {components.map(({ name, data }) => (
-                  <ComponentCard
-                    key={`${groupLabel}-${name}`}
-                    name={name}
-                    data={data}
-                    onClick={() => onComponentClick(name)}
-                  />
-                ))}
+                {components.map(({ name, data }) => {
+                  const displayLabel =
+                    typeof data?.name === 'string' && data.name.trim() ? data.name : name;
+                  const potentialIds = [
+                    data?.artifactId,
+                    data?.id,
+                    data?.metadata?.artifactId,
+                    data?.metadata?.artifact_id,
+                  ];
+                  const artifactIdRaw = potentialIds.find(
+                    value => typeof value === 'string' && value.trim().length > 0
+                  ) as string | undefined;
+                  const artifactId = artifactIdRaw?.trim();
+                  const onDelete =
+                    artifactId && onDeleteComponent
+                      ? () => onDeleteComponent({ artifactId, label: displayLabel })
+                      : undefined;
+
+                  return (
+                    <ComponentCard
+                      key={`${groupLabel}-${name}`}
+                      name={name}
+                      data={data}
+                      onClick={() => onComponentClick(name)}
+                      onDelete={onDelete}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>

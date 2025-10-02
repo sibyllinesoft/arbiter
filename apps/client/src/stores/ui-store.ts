@@ -34,6 +34,7 @@ export const useUiStore = zukeeper(
   create<UiState>((set, get) => {
     // Load initial theme from localStorage
     let savedTheme: string | null = null;
+    let prefersDark = false;
 
     if (isBrowser) {
       try {
@@ -41,8 +42,15 @@ export const useUiStore = zukeeper(
       } catch (error) {
         console.warn('Failed to read theme from localStorage', error);
       }
+      try {
+        const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        prefersDark = media ? media.matches : false;
+      } catch (error) {
+        prefersDark = false;
+      }
     }
-    const initialDark = savedTheme ? savedTheme === 'dark' : true;
+
+    const initialDark = savedTheme === 'dark' ? true : savedTheme === 'light' ? false : prefersDark;
 
     return {
       leftTab: 'source',

@@ -1,0 +1,23 @@
+{
+  "port": 5050,
+  "host": "0.0.0.0",
+  "database_path": "arbiter.dev-oauth.db",
+  "spec_workdir": ".spec-workdir",
+  "cue_binary_path": "cue",
+  "jq_binary_path": "jq",
+  "auth_required": true,
+  "rate_limit": { "max_tokens": 10, "refill_rate": 1, "window_ms": 10000 },
+  "external_tool_timeout_ms": 5000,
+  "websocket": { "max_connections": 100, "ping_interval_ms": 30000 },
+  "oauth": {
+    "enabled": true,
+    "mcpBaseUrl": "http://localhost:5050",
+    "authServerUrl": "http://localhost:4571",
+    "authServerPort": 4571,
+    "enableAuthServer": false,
+    "requiredScopes": ["read", "write"],
+    "provider": "dev-oauth",
+    "clientId": "dev-cli",
+    "redirectUri": "urn:ietf:wg:oauth:2.0:oob"
+  }
+}
