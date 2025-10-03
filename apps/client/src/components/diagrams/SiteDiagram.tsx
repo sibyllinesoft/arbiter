@@ -1,4 +1,6 @@
+import { useTheme } from '@/stores/ui-store';
 import { Graphviz } from '@hpcc-js/wasm';
+import { clsx } from 'clsx';
 import { type FC, useEffect, useRef, useState } from 'react';
 import { apiService } from '../../services/api';
 import type { IRResponse } from '../../types/api';
@@ -122,16 +124,20 @@ const extractDependencies = (value: unknown, routesSource: unknown): SiteDepende
   return [];
 };
 
-const normalizeSiteData = (raw: UnknownRecord): SiteIRData => {
-  const routesSource = raw.routes;
-  const dependenciesSource = raw.dependencies;
+const normalizeSiteData = (raw: unknown): SiteIRData => {
+  if (!isRecord(raw)) {
+    return { routes: [], dependencies: [] };
+  }
+
+  const routesSource = raw['routes'];
+  const dependenciesSource = raw['dependencies'];
 
   const siteData: SiteIRData = {
     routes: extractRoutes(routesSource),
     dependencies: extractDependencies(dependenciesSource, routesSource),
   };
 
-  const specHash = isString(raw.specHash) ? raw.specHash : undefined;
+  const specHash = isString(raw['specHash']) ? (raw['specHash'] as string) : undefined;
   if (specHash !== undefined) {
     siteData.specHash = specHash;
   }
@@ -140,6 +146,7 @@ const normalizeSiteData = (raw: UnknownRecord): SiteIRData => {
 };
 
 const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
+  const { isDark } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [siteData, setSiteData] = useState<SiteIRData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -282,12 +289,16 @@ const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
       // Generate SVG from DOT source
       const svg = graphviz.dot(dotSource);
 
+      const diagramBackground = isDark ? '#141821' : '#ffffff';
+      const diagramBorder = isDark ? '#2F394B' : '#e5e7eb';
+      const diagramText = isDark ? '#e2e8f0' : '#1f2937';
+
       // Clear previous content
       containerRef.current.innerHTML = '';
 
       // Create a container for the SVG
       const svgContainer = document.createElement('div');
-      svgContainer.className = 'flex justify-center items-center min-h-[400px]';
+      svgContainer.className = 'flex min-h-[400px] items-center justify-center';
       svgContainer.innerHTML = svg;
 
       // Style the SVG for responsiveness
@@ -295,10 +306,15 @@ const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
       if (svgElement) {
         svgElement.style.maxWidth = '100%';
         svgElement.style.height = 'auto';
-        svgElement.style.background = 'white';
-        svgElement.style.border = '1px solid #e5e7eb';
+        svgElement.style.background = diagramBackground;
+        svgElement.style.border = `1px solid ${diagramBorder}`;
         svgElement.style.borderRadius = '8px';
         svgElement.style.padding = '20px';
+        svgElement.style.color = diagramText;
+
+        svgElement.querySelectorAll('text').forEach(node => {
+          node.setAttribute('fill', diagramText);
+        });
       }
 
       containerRef.current.appendChild(svgContainer);
@@ -313,14 +329,19 @@ const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
       const dotSource = generateDotFromSiteData(siteData);
       renderGraphvizDiagram(dotSource);
     }
-  }, [siteData, graphviz, loading, error]);
+  }, [siteData, graphviz, loading, error, isDark]);
 
   if (loading) {
     return (
-      <div className={`flex items-center justify-center h-full ${className}`}>
+      <div
+        className={clsx(
+          'flex h-full items-center justify-center bg-white text-gray-600 transition-colors dark:bg-graphite-950 dark:text-graphite-300',
+          className
+        )}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading site diagrams...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+          <p className="text-sm text-gray-600 dark:text-graphite-300">Loading site diagrams...</p>
         </div>
       </div>
     );
@@ -328,11 +349,16 @@ const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center h-full ${className}`}>
+      <div
+        className={clsx(
+          'flex h-full items-center justify-center bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+          className
+        )}
+      >
         <div className="text-center">
-          <div className="text-red-500 mb-4">
+          <div className="mb-4 text-red-500 dark:text-red-300">
             <svg
-              className="w-12 h-12 mx-auto"
+              className="mx-auto h-12 w-12"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -345,11 +371,11 @@ const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
               />
             </svg>
           </div>
-          <p className="text-red-700 font-medium">Error loading site diagram</p>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
+          <p className="font-medium text-red-700 dark:text-red-300">Error loading site diagram</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-300">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
+            className="mt-3 rounded-md bg-red-100 px-4 py-2 text-sm font-medium text-red-800 transition-colors hover:bg-red-200 dark:bg-red-500/20 dark:text-red-200 dark:hover:bg-red-500/30"
           >
             Retry
           </button>
@@ -359,36 +385,46 @@ const SiteDiagram: FC<SiteDiagramProps> = ({ projectId, className = '' }) => {
   }
 
   return (
-    <div className={`h-full overflow-auto ${className}`}>
+    <div
+      className={clsx(
+        'h-full overflow-auto bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+        className
+      )}
+    >
       <div className="p-4">
         {siteData?.routes && siteData.routes.length > 0 && (
           <div className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Site Route DAG</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-50">
+              Site Route DAG
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-graphite-300">
               Showing {siteData.routes.length} route{siteData.routes.length !== 1 ? 's' : ''} and
               their relationships
             </p>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            <div className="mt-2 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-graphite-300">
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-200 border border-green-600 rounded"></div>
+                <div className="h-3 w-3 rounded border border-green-600 bg-green-200"></div>
                 <span>Create</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-yellow-200 border border-yellow-600 rounded"></div>
+                <div className="h-3 w-3 rounded border border-yellow-600 bg-yellow-200"></div>
                 <span>Edit/Update</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-200 border border-red-600 rounded"></div>
+                <div className="h-3 w-3 rounded border border-red-600 bg-red-200"></div>
                 <span>Delete</span>
               </div>
               <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-blue-200 border border-blue-600 rounded"></div>
+                <div className="h-3 w-3 rounded border border-blue-600 bg-blue-200"></div>
                 <span>View/List</span>
               </div>
             </div>
           </div>
         )}
-        <div ref={containerRef} className="site-diagram-container" />
+        <div
+          ref={containerRef}
+          className="site-diagram-container text-gray-900 dark:text-graphite-100"
+        />
       </div>
     </div>
   );

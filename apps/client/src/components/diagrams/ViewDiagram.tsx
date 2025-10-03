@@ -1,9 +1,11 @@
+import { useTheme } from '@/stores/ui-store';
 import { Excalidraw } from '@excalidraw/excalidraw';
 import type {
   ExcalidrawElement,
   ExcalidrawTextElement,
 } from '@excalidraw/excalidraw/types/element/types';
 import type { AppState } from '@excalidraw/excalidraw/types/types';
+import { clsx } from 'clsx';
 import { type FC, useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
 import type { IRResponse } from '../../types/api';
@@ -100,8 +102,12 @@ const normalizeView = (value: unknown, index: number): ViewNode | null => {
   return view;
 };
 
-const normalizeViewData = (raw: UnknownRecord): ViewIRData => {
-  const viewsSource = raw.views;
+const normalizeViewData = (raw: unknown): ViewIRData => {
+  if (!isRecord(raw)) {
+    return { views: [] };
+  }
+
+  const viewsSource = raw['views'];
   const views = Array.isArray(viewsSource)
     ? viewsSource
         .map((view, index) => normalizeView(view, index))
@@ -112,7 +118,7 @@ const normalizeViewData = (raw: UnknownRecord): ViewIRData => {
     views,
   };
 
-  const specHash = isString(raw.specHash) ? raw.specHash : undefined;
+  const specHash = isString(raw['specHash']) ? (raw['specHash'] as string) : undefined;
   if (specHash !== undefined) {
     viewData.specHash = specHash;
   }
@@ -121,10 +127,12 @@ const normalizeViewData = (raw: UnknownRecord): ViewIRData => {
 };
 
 const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
+  const { isDark } = useTheme();
   const [viewData, setViewData] = useState<ViewIRData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excalidrawElements, setExcalidrawElements] = useState<ExcalidrawElement[]>([]);
+  const viewBackgroundColor = isDark ? '#141821' : '#ffffff';
 
   useEffect(() => {
     if (!projectId) return;
@@ -480,10 +488,15 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
 
   if (loading) {
     return (
-      <div className={`flex items-center justify-center h-full ${className}`}>
+      <div
+        className={clsx(
+          'flex h-full items-center justify-center bg-white text-gray-600 transition-colors dark:bg-graphite-950 dark:text-graphite-300',
+          className
+        )}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading view diagrams...</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
+          <p className="text-sm text-gray-600 dark:text-graphite-300">Loading view diagrams...</p>
         </div>
       </div>
     );
@@ -491,11 +504,16 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
 
   if (error) {
     return (
-      <div className={`flex items-center justify-center h-full ${className}`}>
+      <div
+        className={clsx(
+          'flex h-full items-center justify-center bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+          className
+        )}
+      >
         <div className="text-center">
-          <div className="text-red-500 mb-4">
+          <div className="mb-4 text-red-500 dark:text-red-300">
             <svg
-              className="w-12 h-12 mx-auto"
+              className="mx-auto h-12 w-12"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -508,11 +526,11 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
               />
             </svg>
           </div>
-          <p className="text-red-700 font-medium">Error loading view diagram</p>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
+          <p className="font-medium text-red-700 dark:text-red-300">Error loading view diagram</p>
+          <p className="mt-1 text-sm text-red-600 dark:text-red-300">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-3 px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
+            className="mt-3 rounded-md bg-red-100 px-4 py-2 text-sm font-medium text-red-800 transition-colors hover:bg-red-200 dark:bg-red-500/20 dark:text-red-200 dark:hover:bg-red-500/30"
           >
             Retry
           </button>
@@ -522,21 +540,27 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
   }
 
   return (
-    <div className={`h-full ${className}`}>
+    <div
+      className={clsx(
+        'h-full bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+        className
+      )}
+    >
       {viewData?.views && viewData.views.length > 0 && (
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
-          <h3 className="text-lg font-medium text-gray-900">View Diagrams</h3>
-          <p className="text-sm text-gray-600">
+        <div className="border-b border-gray-200 bg-gray-50 p-4 dark:border-graphite-700 dark:bg-graphite-900">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-50">View Diagrams</h3>
+          <p className="text-sm text-gray-600 dark:text-graphite-300">
             Interactive wireframes showing UI widgets and tokens
           </p>
         </div>
       )}
-      <div className="h-full">
+      <div className="h-full bg-white transition-colors dark:bg-graphite-950">
         <Excalidraw
+          key={isDark ? 'view-diagram-dark' : 'view-diagram-light'}
           initialData={{
             elements: excalidrawElements,
             appState: {
-              viewBackgroundColor: '#ffffff',
+              viewBackgroundColor: viewBackgroundColor,
               currentItemStrokeColor: '#000000',
               currentItemBackgroundColor: 'transparent',
               currentItemFillStyle: 'solid',
@@ -560,7 +584,7 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
           viewModeEnabled={false}
           zenModeEnabled={false}
           gridModeEnabled={false}
-          theme="light"
+          theme={isDark ? 'dark' : 'light'}
         />
       </div>
     </div>

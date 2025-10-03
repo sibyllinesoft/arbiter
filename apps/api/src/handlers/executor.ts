@@ -7,13 +7,16 @@ import { setTimeout } from 'node:timers/promises';
 import type { SpecWorkbenchDB } from '../db.js';
 import type { EventService } from '../events.js';
 import { logger as defaultLogger, generateId, getCurrentTimestamp } from '../utils.js';
+import { CloudflareHandlerAdapter } from './adapters/cloudflare.js';
 import type { HandlerDiscovery } from './discovery.js';
 import { HandlerLoader } from './loader.js';
 import { HandlerSecurityValidator } from './services.js';
 import type {
+  CloudflareHandlerConfig,
   EnhancedWebhookPayload,
   HandlerContext,
   HandlerExecution,
+  HandlerModule,
   HandlerResult,
   HandlerServices,
   Logger,
@@ -27,6 +30,7 @@ export class HandlerExecutor {
   private activeExecutions = new Map<string, AbortController>();
   private executionHistory: HandlerExecution[] = [];
   private loader: HandlerLoader;
+  private cloudflareAdapter: CloudflareHandlerAdapter;
 
   constructor(
     private discovery: HandlerDiscovery,
@@ -34,6 +38,7 @@ export class HandlerExecutor {
     private logger: Logger = defaultLogger
   ) {
     this.loader = new HandlerLoader(this.logger);
+    this.cloudflareAdapter = new CloudflareHandlerAdapter(this.logger);
   }
 
   /**
@@ -160,10 +165,9 @@ export class HandlerExecutor {
     let duration: number;
 
     try {
-      // Load handler module
       const handlerModule = await this.loadHandlerModule(handler);
+      const executionHandler = this.resolveExecutionHandler(handler, handlerModule);
 
-      // Create execution context
       const context = await this.createHandlerContext(
         projectId,
         handler,
@@ -171,13 +175,12 @@ export class HandlerExecutor {
         abortController.signal
       );
 
-      // Execute with timeout
       const timeoutPromise = setTimeout(handler.config.timeout, null, {
         signal: abortController.signal,
       });
 
       const executionPromise = this.executeWithRetries(
-        handlerModule.handler,
+        executionHandler,
         payload,
         context,
         handler.config.retries
@@ -256,6 +259,27 @@ export class HandlerExecutor {
     }
 
     return { result, execution };
+  }
+
+  private resolveExecutionHandler(
+    handler: RegisteredHandler,
+    handlerModule: HandlerModule
+  ): WebhookHandler {
+    if (handler.runtime === 'local') {
+      if (!handlerModule?.handler) {
+        throw new Error('Local handler module is missing a handler function');
+      }
+      return handlerModule.handler;
+    }
+
+    const cloudflareConfig: CloudflareHandlerConfig | undefined =
+      handlerModule.cloudflare ?? handler.cloudflare;
+
+    if (!cloudflareConfig) {
+      throw new Error('Cloudflare handler is missing configuration');
+    }
+
+    return (payload, context) => this.cloudflareAdapter.execute(cloudflareConfig, payload, context);
   }
 
   /**
@@ -343,7 +367,7 @@ export class HandlerExecutor {
   /**
    * Load handler module dynamically
    */
-  private async loadHandlerModule(handler: RegisteredHandler): Promise<any> {
+  private async loadHandlerModule(handler: RegisteredHandler): Promise<HandlerModule> {
     return this.loader.load(handler);
   }
 

@@ -7,7 +7,14 @@ import { access, readdir, stat } from 'node:fs/promises';
 import { basename, extname, join, relative } from 'node:path';
 import { logger as defaultLogger } from '../utils.js';
 import { HandlerLoader } from './loader.js';
-import type { HandlerDiscoveryConfig, HandlerModule, Logger, RegisteredHandler } from './types.js';
+import type {
+  HandlerConfig,
+  HandlerDiscoveryConfig,
+  HandlerModule,
+  HandlerRuntime,
+  Logger,
+  RegisteredHandler,
+} from './types.js';
 
 export class HandlerDiscovery {
   private handlers = new Map<string, RegisteredHandler>();
@@ -135,7 +142,15 @@ export class HandlerDiscovery {
         throw new Error('Handler path outside allowed directory');
       }
 
-      const handlerModule = await this.loader.load({
+      const defaultMetadata = {
+        name: `${provider} ${eventName} handler`,
+        description: `Handler for ${provider} ${eventName} events`,
+        version: '1.0.0',
+        supportedEvents: [eventName],
+        requiredPermissions: [],
+      } as HandlerModule['metadata'];
+
+      const provisionalHandler = {
         id: handlerId ?? this.createHandlerId(provider, eventName, handlerPath),
         provider,
         event: eventName,
@@ -148,36 +163,31 @@ export class HandlerDiscovery {
           environment: {},
           secrets: {},
         },
+        runtime: 'local',
         executionCount: 0,
         errorCount: 0,
-      } as RegisteredHandler);
+        metadata: defaultMetadata,
+      } as RegisteredHandler;
 
-      // Validate handler metadata
-      this.validateHandlerModule(handlerModule, eventName);
+      const handlerModule = await this.loader.load(provisionalHandler);
+
+      const runtime = this.determineHandlerRuntime(handlerModule, eventName);
+
+      const mergedConfig = {
+        enabled: handlerModule.config?.enabled ?? true,
+        timeout: handlerModule.config?.timeout ?? this.config.defaultTimeout,
+        retries: handlerModule.config?.retries ?? this.config.defaultRetries,
+        environment: handlerModule.config?.environment ?? {},
+        secrets: handlerModule.config?.secrets ?? {},
+      } as HandlerConfig;
 
       const registeredHandler: RegisteredHandler = {
-        id: handlerId ?? this.createHandlerId(provider, eventName, handlerPath),
-        provider,
-        event: eventName,
-        handlerPath,
-        enabled: handlerModule.config?.enabled ?? true,
-        config: {
-          enabled: true,
-          timeout: this.config.defaultTimeout,
-          retries: this.config.defaultRetries,
-          environment: {},
-          secrets: {},
-          ...handlerModule.config,
-        },
-        executionCount: 0,
-        errorCount: 0,
-        metadata: handlerModule.metadata || {
-          name: `${provider} ${eventName} handler`,
-          description: `Handler for ${provider} ${eventName} events`,
-          version: '1.0.0',
-          supportedEvents: [eventName],
-          requiredPermissions: [],
-        },
+        ...provisionalHandler,
+        enabled: mergedConfig.enabled,
+        config: mergedConfig,
+        runtime,
+        cloudflare: handlerModule.cloudflare,
+        metadata: handlerModule.metadata || defaultMetadata,
       };
 
       this.logger.info('Handler loaded successfully', {
@@ -185,6 +195,7 @@ export class HandlerDiscovery {
         provider,
         event: eventName,
         name: registeredHandler.metadata?.name,
+        runtime: registeredHandler.runtime,
       });
 
       return registeredHandler;
@@ -208,18 +219,44 @@ export class HandlerDiscovery {
   }
 
   /**
-   * Validate handler module structure
+   * Determine the runtime for a handler module and validate its structure
    */
-  private validateHandlerModule(module: HandlerModule, eventName: string): void {
-    if (!module.handler) {
-      throw new Error('Handler module must export a handler function');
+  private determineHandlerRuntime(module: HandlerModule, eventName: string): HandlerRuntime {
+    const hasHandler = typeof module.handler === 'function';
+    const hasCloudflare = typeof module.cloudflare === 'object' && module.cloudflare !== null;
+
+    if (!hasHandler && !hasCloudflare) {
+      throw new Error('Handler module must export a handler function or Cloudflare configuration');
     }
 
-    if (typeof module.handler !== 'function') {
-      throw new Error('Handler must be a function');
+    this.validateHandlerMetadata(module, eventName);
+
+    if (hasHandler) {
+      return 'local';
     }
 
-    // Validate supported events if specified
+    const cloudflareConfig = module.cloudflare!;
+    if (!cloudflareConfig.endpoint) {
+      throw new Error('Cloudflare handler configuration must include an endpoint');
+    }
+
+    if (cloudflareConfig.type === 'worker') {
+      return 'cloudflare-worker';
+    }
+
+    if (cloudflareConfig.type === 'durable-object') {
+      if (!cloudflareConfig.objectName) {
+        throw new Error('Cloudflare durable object handlers require an objectName');
+      }
+      return 'cloudflare-durable-object';
+    }
+
+    throw new Error(
+      `Unsupported Cloudflare handler type: ${(cloudflareConfig as { type?: string }).type}`
+    );
+  }
+
+  private validateHandlerMetadata(module: HandlerModule, eventName: string): void {
     if (module.metadata?.supportedEvents) {
       const supportedEvents = module.metadata.supportedEvents;
       if (!supportedEvents.includes(eventName)) {
@@ -230,7 +267,6 @@ export class HandlerDiscovery {
       }
     }
 
-    // Validate required permissions format
     if (module.metadata?.requiredPermissions) {
       for (const permission of module.metadata.requiredPermissions) {
         if (typeof permission !== 'string' || !permission.includes(':')) {

@@ -57,7 +57,11 @@ export function ProjectView() {
   }, [isError, isLoading, navigate, project, projectId, setCurrentProject]);
 
   if (isLoading || !project) {
-    return <div className="h-full flex items-center justify-center">Loading project...</div>;
+    return (
+      <div className="flex h-full items-center justify-center bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200">
+        Loading project...
+      </div>
+    );
   }
 
   // Get tab configurations

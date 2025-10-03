@@ -1,3 +1,4 @@
+import { clsx } from 'clsx';
 import { AlertTriangle, Clipboard, Download, FileText, Hash, Loader2 } from 'lucide-react';
 import { type FC, useEffect, useState } from 'react';
 import { apiService } from '../../services/api';
@@ -223,14 +224,21 @@ ${indentStr}}`;
 
   if (loading) {
     return (
-      <div className={`h-full flex flex-col ${className}`}>
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
-          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+      <div
+        className={clsx(
+          'flex h-full flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+          className
+        )}
+      >
+        <div className="flex-shrink-0 border-b border-gray-200 bg-white p-4 dark:border-graphite-700 dark:bg-graphite-900">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-50">{title}</h3>
         </div>
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
-          <div className="flex items-center space-x-3">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
-            <span className="text-gray-600">Loading specification source...</span>
+        <div className="flex flex-1 items-center justify-center bg-gray-50 transition-colors dark:bg-graphite-900/40">
+          <div className="flex items-center space-x-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-graphite-700 dark:bg-graphite-900">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+            <span className="text-sm text-gray-600 dark:text-graphite-300">
+              Loading specification source...
+            </span>
           </div>
         </div>
       </div>
@@ -239,19 +247,26 @@ ${indentStr}}`;
 
   if (error) {
     return (
-      <div className={`h-full flex flex-col ${className}`}>
-        <div className="flex-shrink-0 p-4 border-b border-gray-200 bg-white">
-          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+      <div
+        className={clsx(
+          'flex h-full flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+          className
+        )}
+      >
+        <div className="flex-shrink-0 border-b border-gray-200 bg-white p-4 dark:border-graphite-700 dark:bg-graphite-900">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-50">{title}</h3>
         </div>
-        <div className="flex-1 flex items-center justify-center bg-red-50">
-          <div className="flex items-center space-x-3">
-            <AlertTriangle className="w-6 h-6 text-red-600" />
+        <div className="flex flex-1 items-center justify-center bg-red-50 transition-colors dark:bg-red-500/10">
+          <div className="flex items-center space-x-3 rounded-lg border border-red-200 bg-white px-4 py-3 shadow-sm dark:border-red-400/40 dark:bg-red-500/10">
+            <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-300" />
             <div className="text-center">
-              <div className="text-red-900 font-medium">Failed to load specification</div>
-              <div className="text-red-700 text-sm mt-1">{error}</div>
+              <div className="font-medium text-red-900 dark:text-red-200">
+                Failed to load specification
+              </div>
+              <div className="mt-1 text-sm text-red-700 dark:text-red-300">{error}</div>
               <button
                 onClick={handleRefresh}
-                className="mt-3 px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700 transition-colors"
+                className="mt-3 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
               >
                 Retry
               </button>
@@ -266,7 +281,12 @@ ${indentStr}}`;
   const charCount = sourceContent.length;
 
   return (
-    <div className={`h-full flex flex-col min-h-0 ${className}`}>
+    <div
+      className={clsx(
+        'flex h-full min-h-0 flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
+        className
+      )}
+    >
       {/* Header - Fixed */}
       <div className="flex-shrink-0 p-4 border-b border-gray-200 dark:border-graphite-700 bg-white dark:bg-graphite-900">
         <div className="flex items-center justify-between">

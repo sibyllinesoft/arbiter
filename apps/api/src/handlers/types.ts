@@ -6,6 +6,9 @@ import type { SpecWorkbenchDB } from '../db.ts';
 import type { EventService } from '../events.ts';
 import type { WebhookPayload, WebhookRequest } from '../types.ts';
 
+// Supported handler runtimes
+export type HandlerRuntime = 'local' | 'cloudflare-worker' | 'cloudflare-durable-object';
+
 // Handler execution context
 export interface HandlerContext {
   projectId: string;
@@ -24,6 +27,51 @@ export interface HandlerConfig {
   retries: number;
   environment: Record<string, string>;
   secrets: Record<string, string>; // Encrypted secrets
+}
+
+// Cloudflare handler configuration
+export type CloudflareHandlerConfig =
+  | CloudflareWorkerHandlerConfig
+  | CloudflareDurableObjectHandlerConfig;
+
+export interface CloudflareWorkerHandlerConfig {
+  type: 'worker';
+  endpoint: string;
+  method?: string;
+  headers?: Record<string, string>;
+  accountId?: string;
+  workerName?: string;
+  route?: string;
+  timeoutMs?: number;
+  forwardSecrets?: string[];
+}
+
+export interface CloudflareDurableObjectHandlerConfig {
+  type: 'durable-object';
+  endpoint: string;
+  objectName: string;
+  objectId?: string;
+  namespace?: string;
+  method?: string;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+  forwardSecrets?: string[];
+  container?: CloudflareContainerTemplate;
+}
+
+export interface CloudflareContainerTemplate {
+  template: 'codex' | 'claude' | 'claude-code' | 'otel-collector';
+  name?: string;
+  repository?: string;
+  branch?: string;
+  entry?: string;
+  command?: string;
+  args?: string[];
+  workdir?: string;
+  environment?: Record<string, string>;
+  setupCommands?: string[];
+  image?: string;
+  description?: string;
 }
 
 // Available services for handlers
@@ -120,7 +168,8 @@ export type WebhookHandler = (
 
 // Handler module interface
 export interface HandlerModule {
-  handler: WebhookHandler;
+  handler?: WebhookHandler;
+  cloudflare?: CloudflareHandlerConfig;
   config?: Partial<HandlerConfig>;
   metadata?: {
     name: string;
@@ -200,6 +249,8 @@ export interface RegisteredHandler {
   handlerPath: string;
   enabled: boolean;
   config: HandlerConfig;
+  runtime: HandlerRuntime;
+  cloudflare?: CloudflareHandlerConfig;
   lastExecuted?: string;
   executionCount: number;
   errorCount: number;

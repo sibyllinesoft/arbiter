@@ -59,7 +59,8 @@
     "prepare": "husky",
     "build:core": "bun run --cwd packages/arbiter-core build",
     "build:shared-types": "bun run --cwd packages/shared-types build",
-    "dev:full:oauth": "concurrently \"bun run typecheck:watch\" \"bun scripts/dev-oauth-server.ts\" \"NODE_ENV=development AUTH_REQUIRED=true ARBITER_CONFIG_PATH=apps/api/config.dev-oauth.json bun run --cwd apps/api dev\" \"VITE_API_URL=http://localhost:5050 ARBITER_URL=http://localhost:5050 bun run --cwd apps/client dev\""
+    "dev:full:oauth": "concurrently \"bun run typecheck:watch\" \"bun scripts/dev-oauth-server.ts\" \"NODE_ENV=development AUTH_REQUIRED=true ARBITER_CONFIG_PATH=apps/api/config.dev-oauth.json bun run --cwd apps/api dev\" \"VITE_API_URL=http://localhost:5050 ARBITER_URL=http://localhost:5050 bun run --cwd apps/client dev\"",
+    "handlers:publish": "bun scripts/publish-handler.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

@@ -1,0 +1,8 @@
+version: 1
+name: arbiter-webhook
+steps:
+  - name: Inspect Payload
+    run: |
+      echo "Repository: ${ARBITER_REPO_FULL_NAME:-unknown}"
+      echo "Branch: ${ARBITER_REPO_BRANCH:-unknown}"
+      cat "$ARBITER_WEBHOOK_PATH"
