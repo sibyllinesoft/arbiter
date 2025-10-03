@@ -7,18 +7,29 @@ BIFROST_PORT="${BIFROST_PORT:-8080}"
 BIFROST_APP_DIR="${BIFROST_APP_DIR:-/srv/claude-code/bifrost}"
 BIFROST_CONFIG_PATH="${BIFROST_CONFIG_PATH:-/srv/claude-code/bifrost.config.json}"
 BIFROST_BINARY="${BIFROST_BINARY:-bifrost}"
-
-mkdir -p "${BIFROST_APP_DIR}"
-mkdir -p /root/.config/bifrost
-export XDG_CONFIG_HOME="${BIFROST_APP_DIR}"
+APP_USER="${APP_USER:-claude}"
+APP_GROUP="${APP_GROUP:-$APP_USER}"
+APP_HOME=$(getent passwd "${APP_USER}" | cut -d: -f6)
+if [[ -z "${APP_HOME}" ]]; then
+  echo "[entrypoint] unable to determine home directory for ${APP_USER}" >&2
+  exit 1
+fi
+BIFROST_USER_CONFIG="${BIFROST_USER_CONFIG:-${APP_HOME}/.config/bifrost}"
+CLAUDE_CODE_WORKDIR="${CLAUDE_CODE_WORKDIR:-/srv/claude-code/workspaces}"
+XDG_CONFIG_ROOT=$(dirname "${BIFROST_USER_CONFIG}")
+mkdir -p "${BIFROST_APP_DIR}" "${CLAUDE_CODE_WORKDIR}" "${BIFROST_USER_CONFIG}"
+export XDG_CONFIG_HOME="${XDG_CONFIG_ROOT}"
+export HOME="${APP_HOME}"
 
 # Ensure globally installed npm binaries (claude-code) are on PATH
 export PATH="/usr/local/bin:$PATH"
 
 if [[ -f "${BIFROST_CONFIG_PATH}" ]]; then
   cp -f "${BIFROST_CONFIG_PATH}" "${BIFROST_APP_DIR}/config.json"
-  cp -f "${BIFROST_CONFIG_PATH}" "/root/.config/bifrost/config.json"
+  cp -f "${BIFROST_CONFIG_PATH}" "${BIFROST_USER_CONFIG}/config.json"
 fi
+
+chown -R "${APP_USER}:${APP_GROUP}" "${BIFROST_APP_DIR}" "${CLAUDE_CODE_WORKDIR}" "${XDG_CONFIG_ROOT}"
 
 # Load local secrets for OpenRouter when available
 if [[ -z "${OPENROUTER_API_KEY:-}" ]] && [[ -f "/run/secrets/openrouter_api_key" ]]; then
@@ -32,6 +43,8 @@ fi
 if [[ -z "${ANTHROPIC_API_KEY:-}" ]] && [[ -n "${OPENROUTER_API_KEY:-}" ]]; then
   export ANTHROPIC_API_KEY="${OPENROUTER_API_KEY}"
 fi
+
+export CLAUDE_CODE_PERMISSION_MODE="${CLAUDE_CODE_PERMISSION_MODE:-bypassPermissions}"
 
 # Ensure reasonable defaults for OTEL export so traces are emitted when collector is attached
 export OTEL_SERVICE_NAME="${OTEL_SERVICE_NAME:-claude-code-bifrost}"
@@ -83,7 +96,7 @@ if [[ "${BIFROST_ENABLED}" != "0" ]]; then
     extra_args=(${BIFROST_EXTRA_ARGS})
   fi
 
-  "${BIFROST_BINARY}" http \
+  gosu "${APP_USER}" env HOME="${APP_HOME}" XDG_CONFIG_HOME="${XDG_CONFIG_HOME}" "${BIFROST_BINARY}" http \
     --host "${BIFROST_HOST}" \
     --port "${BIFROST_PORT}" \
     --app-dir "${BIFROST_APP_DIR}" \
@@ -105,7 +118,7 @@ if [[ -n "${BIFROST_PID:-}" ]]; then
   done
 fi
 
-node server.mjs "$@" &
+gosu "${APP_USER}" env HOME="${APP_HOME}" XDG_CONFIG_HOME="${XDG_CONFIG_HOME}" node server.mjs "$@" &
 NODE_PID=$!
 
 wait $NODE_PID

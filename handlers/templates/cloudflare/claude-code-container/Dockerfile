@@ -9,8 +9,11 @@ FROM node:20-bullseye
 
 # Install system dependencies used by both Claude Code and the Bifrost gateway
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git ca-certificates curl \
+  && apt-get install -y --no-install-recommends git ca-certificates curl gosu \
   && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for automation
+RUN useradd --system --create-home --home-dir /home/claude --shell /bin/bash claude
 
 # Install Claude Code CLI (replace with pinned versions as needed) and Bifrost gateway
 RUN npm install -g @anthropic-ai/claude-code @maximhq/bifrost
@@ -27,6 +30,8 @@ COPY bifrost.config.json ./
 COPY entrypoint.sh ./
 
 RUN chmod +x entrypoint.sh
+RUN mkdir -p /srv/claude-code/workspaces /srv/claude-code/bifrost \
+  && chown -R claude:claude /srv/claude-code /home/claude
 
 ENV PORT=8787 \
     CLAUDE_CODE_WORKDIR=/srv/claude-code/workspaces \

@@ -177,10 +177,12 @@ the gateway falls back to the host environment if Cloudflare secrets are not
 present. The entrypoint copies that value into `CLAUDE_API_KEY` and
 `ANTHROPIC_API_KEY` so the CLI never attempts to prompt for login. The container
 also forces `CLAUDE_USE_API_KEYS=true` so the Claude CLI automatically uses the
-forwarded key without prompting for /login. Set `GITHUB_TOKEN` (or
-`GIT_ACCESS_TOKEN`) as well when the repository requires authentication—the
-entrypoint uses it automatically and disables Git prompts so the container never
-blocks.
+forwarded key without prompting for /login, runs the runtime as the non-root
+`claude` user, and sets `CLAUDE_CODE_PERMISSION_MODE=bypassPermissions` so
+shell/FS commands run in automation without interactive approval. Set
+`GITHUB_TOKEN` (or `GIT_ACCESS_TOKEN`) as well when the repository requires
+authentication—the entrypoint uses it automatically and disables Git prompts so
+the container never blocks.
 
 ### Publish and Register a Handler
 

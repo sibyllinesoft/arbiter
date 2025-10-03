@@ -68,6 +68,7 @@ const server = createServer(async (req, res) => {
       '--print',
       '--output-format=json',
       '--model', process.env.CLAUDE_CODE_MODEL ?? 'openrouter/x-ai/grok-4-fast',
+      '--permission-mode', process.env.CLAUDE_CODE_PERMISSION_MODE ?? 'bypassPermissions',
       '--debug', 'api,http',
       ...((body.claudeArgs && Array.isArray(body.claudeArgs)) ? body.claudeArgs : []),
       prompt,
