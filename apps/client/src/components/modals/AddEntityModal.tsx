@@ -1,3 +1,4 @@
+import { MarkdownField, type MarkdownFieldProps } from '@/components/form/MarkdownField';
 import Button from '@/design-system/components/Button';
 import Input from '@/design-system/components/Input';
 import Modal from '@/design-system/components/Modal';
@@ -13,6 +14,11 @@ export interface EpicTaskOption {
   completed?: boolean;
 }
 
+export interface TaskEpicOption {
+  id: string;
+  name: string;
+}
+
 export interface UiOptionCatalog {
   frontendFrameworks?: string[];
   serviceLanguages?: string[];
@@ -20,9 +26,82 @@ export interface UiOptionCatalog {
   databaseEngines?: string[];
   infrastructureScopes?: string[];
   epicTaskOptions?: EpicTaskOption[];
+  taskEpicOptions?: TaskEpicOption[];
 }
 
-export type FieldValue = string | string[];
+export type FieldValue =
+  | string
+  | string[]
+  | number
+  | boolean
+  | Record<string, unknown>
+  | Array<Record<string, unknown>>;
+
+const FIELD_RECORD_KEYS = ['value', 'id', 'name', 'label', 'slug', 'key'] as const;
+
+const extractRecordString = (record: Record<string, unknown> | undefined | null): string => {
+  if (!record) return '';
+  for (const key of FIELD_RECORD_KEYS) {
+    const candidate = record[key];
+    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+  return '';
+};
+
+export const coerceFieldValueToString = (input: FieldValue | undefined): string => {
+  if (input === null || input === undefined) {
+    return '';
+  }
+
+  if (typeof input === 'string') {
+    return input;
+  }
+
+  if (typeof input === 'number' || typeof input === 'boolean') {
+    return String(input);
+  }
+
+  if (Array.isArray(input)) {
+    for (const entry of input as unknown[]) {
+      const normalized = coerceFieldValueToString(entry as FieldValue);
+      if (normalized.trim().length > 0) {
+        return normalized;
+      }
+    }
+    return '';
+  }
+
+  if (typeof input === 'object') {
+    return extractRecordString(input as Record<string, unknown>);
+  }
+
+  return '';
+};
+
+const coerceFieldValueToArrayInternal = (input: FieldValue | undefined): string[] => {
+  if (input === null || input === undefined) {
+    return [];
+  }
+
+  if (Array.isArray(input)) {
+    return input
+      .map(entry => coerceFieldValueToString(entry as FieldValue).trim())
+      .filter((value): value is string => value.length > 0);
+  }
+
+  const normalized = coerceFieldValueToString(input).trim();
+  return normalized.length > 0 ? [normalized] : [];
+};
+
+export const coerceFieldValueToArray = (input: FieldValue | undefined): string[] =>
+  coerceFieldValueToArrayInternal(input);
+
+export const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {
+  epicTaskOptions: [],
+  taskEpicOptions: [],
+};
 
 interface FieldConfig {
   name: string;
@@ -39,6 +118,7 @@ interface FieldConfig {
     resolvedOptions: Array<string | SelectOption>
   ) => boolean;
   onChangeClear?: string[];
+  markdown?: boolean;
 }
 
 interface AddEntityModalProps {
@@ -48,6 +128,7 @@ interface AddEntityModalProps {
   optionCatalog: UiOptionCatalog;
   onClose: () => void;
   onSubmit?: (payload: { entityType: string; values: Record<string, FieldValue> }) => void;
+  initialValues?: Record<string, FieldValue>;
 }
 
 const FALLBACK_SERVICE_LANGUAGES = [
@@ -99,7 +180,7 @@ const buildDefaultFields = (entityType: string): FieldConfig[] => {
       name: 'description',
       label: 'Description',
       type: 'textarea',
-      placeholder,
+      ...(placeholder ? { placeholder } : {}),
     },
   ];
 };
@@ -190,14 +271,25 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
     ])
   );
 
-  const frameworkOptionsFor = (languageValue: string | undefined): string[] => {
-    const language = (languageValue ?? '').trim();
+  const frameworkOptionsFor = (languageValue: FieldValue | undefined): string[] => {
+    const language = coerceFieldValueToString(languageValue).trim();
     if (!language) return [];
     if (serviceFrameworks[language]?.length) {
       return serviceFrameworks[language]!;
     }
     return frameworkLookup.get(language.toLowerCase()) ?? [];
   };
+
+  const applyMarkdownSupport = (fields: FieldConfig[]): FieldConfig[] =>
+    fields.map(field =>
+      field.name === 'description'
+        ? {
+            ...field,
+            type: field.type ?? 'textarea',
+            markdown: true,
+          }
+        : field
+    );
 
   const configs: Record<string, FieldConfig[]> = {
     frontend: [
@@ -247,12 +339,7 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
         label: 'Framework (optional)',
         type: 'select',
         placeholder: 'Select framework',
-        resolveOptions: values =>
-          frameworkOptionsFor(
-            Array.isArray(values['language'])
-              ? values['language'][0]
-              : (values['language'] as string | undefined)
-          ),
+        resolveOptions: values => frameworkOptionsFor(values['language']),
         isVisible: (_, resolvedOptions) => resolvedOptions.length > 0,
         description: 'Optional: choose a framework that fits the selected language.',
       },
@@ -363,12 +450,13 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
       },
       {
         name: 'tasks',
-        label: 'Completed Tasks',
+        label: 'Open Tasks',
         type: 'select',
         multiple: true,
-        placeholder: 'Select completed tasks',
+        placeholder: 'Select open tasks',
         resolveOptions: () =>
           (catalog.epicTaskOptions ?? [])
+            .filter(task => task && task.completed !== true)
             .map(task => {
               const value = String(task.id ?? task.name ?? '').trim();
               if (!value) return null;
@@ -379,13 +467,41 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
                 : ({ value, label } as SelectOption);
             })
             .filter((option): option is SelectOption => Boolean(option)),
-        description: 'Associate finished tasks that roll up into this epic.',
+        description: 'Associate outstanding tasks that still need to be completed.',
+      },
+    ],
+    task: [
+      { name: 'name', label: 'Task Name', required: true, placeholder: 'Design API contract' },
+      {
+        name: 'epicId',
+        label: 'Epic',
+        type: 'select',
+        required: false,
+        placeholder: 'Select epic',
+        resolveOptions: () =>
+          (catalog.taskEpicOptions ?? [])
+            .map(option => {
+              const value = String(option.id ?? '').trim();
+              if (!value) return null;
+              const label = String(option.name ?? value).trim() || value;
+              return { value, label } as SelectOption;
+            })
+            .filter((option): option is SelectOption => Boolean(option)),
+        description:
+          'Optional: choose the epic this task belongs to. Leave blank to keep it unassigned.',
+      },
+      {
+        name: 'description',
+        label: 'Description',
+        type: 'textarea',
+        placeholder: 'Detail the work, dependencies, and definition of done for this task.',
       },
     ],
     other: buildDefaultFields('other'),
   };
 
-  return configs[entityType] ?? buildDefaultFields(entityType);
+  const result = configs[entityType] ?? buildDefaultFields(entityType);
+  return applyMarkdownSupport(result);
 }
 
 function toSingularLabel(label: string, fallback: string): string {
@@ -411,37 +527,12 @@ export function AddEntityModal({
   optionCatalog,
   onClose,
   onSubmit,
+  initialValues,
 }: AddEntityModalProps) {
   const fields = useMemo(
     () => getFieldConfig(entityType, optionCatalog),
     [entityType, optionCatalog]
   );
-
-  const initialValues = useMemo(() => {
-    const values: Record<string, FieldValue> = {};
-    for (const field of fields) {
-      values[field.name] = field.multiple ? [] : '';
-    }
-    return values;
-  }, [fields]);
-
-  const [values, setValues] = useState<Record<string, FieldValue>>(initialValues);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (open) {
-      setValues(initialValues);
-      setErrors({});
-    }
-  }, [initialValues, open]);
-
-  const singularLabel = useMemo(
-    () => toSingularLabel(groupLabel, entityType).toLowerCase(),
-    [groupLabel, entityType]
-  );
-
-  const formId = `add-entity-${entityType}`;
-  const firstField = fields[0]?.name ?? null;
 
   const fieldByName = useMemo(() => {
     const map = new Map<string, FieldConfig>();
@@ -451,8 +542,47 @@ export function AddEntityModal({
     return map;
   }, [fields]);
 
-  const toArray = (input: FieldValue): string[] =>
-    Array.isArray(input) ? input : input ? [input] : [];
+  const defaultValues = useMemo(() => {
+    const values: Record<string, FieldValue> = {};
+    for (const field of fields) {
+      values[field.name] = field.multiple ? [] : '';
+    }
+    return values;
+  }, [fields]);
+
+  const [values, setValues] = useState<Record<string, FieldValue>>(defaultValues);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (open) {
+      const nextValues: Record<string, FieldValue> = { ...defaultValues };
+      if (initialValues) {
+        Object.entries(initialValues).forEach(([key, rawValue]) => {
+          const field = fieldByName.get(key);
+          if (!field) return;
+
+          if (field.multiple) {
+            nextValues[key] = coerceFieldValueToArray(rawValue);
+          } else {
+            nextValues[key] = coerceFieldValueToString(rawValue).trim();
+          }
+        });
+      }
+
+      setValues(nextValues);
+      setErrors({});
+    }
+  }, [defaultValues, open, fieldByName, initialValues]);
+
+  const singularLabel = useMemo(
+    () => toSingularLabel(groupLabel, entityType).toLowerCase(),
+    [groupLabel, entityType]
+  );
+
+  const formId = `add-entity-${entityType}`;
+  const firstField = fields[0]?.name ?? null;
+
+  const toArray = (input: FieldValue | undefined): string[] => coerceFieldValueToArray(input);
 
   const arraysEqual = (a: string[], b: string[]): boolean => {
     if (a.length !== b.length) return false;
@@ -469,10 +599,10 @@ export function AddEntityModal({
       let mutated = false;
 
       const prevValue = prev[name];
-      const shouldUpdate =
-        Array.isArray(prevValue) || Array.isArray(nextValue)
-          ? !arraysEqual(toArray(prevValue), toArray(nextValue))
-          : prevValue !== nextValue;
+      const isMultiple = field?.multiple === true;
+      const shouldUpdate = isMultiple
+        ? !arraysEqual(toArray(prevValue), toArray(nextValue))
+        : coerceFieldValueToString(prevValue).trim() !== coerceFieldValueToString(nextValue).trim();
 
       if (shouldUpdate) {
         nextState = { ...prev, [name]: nextValue };
@@ -488,9 +618,10 @@ export function AddEntityModal({
           const targetField = fieldByName.get(key);
           const defaultValue: FieldValue = targetField?.multiple ? [] : '';
           const existingValue = nextState[key];
-          const needsReset = Array.isArray(defaultValue)
-            ? !arraysEqual(toArray(existingValue), defaultValue)
-            : existingValue !== defaultValue;
+          const needsReset = targetField?.multiple
+            ? !arraysEqual(toArray(existingValue), toArray(defaultValue))
+            : coerceFieldValueToString(existingValue).trim() !==
+              coerceFieldValueToString(defaultValue).trim();
 
           if (needsReset) {
             nextState[key] = targetField?.multiple ? [] : '';
@@ -517,12 +648,7 @@ export function AddEntityModal({
     }
   };
 
-  const toStringValue = (input: FieldValue): string => {
-    if (Array.isArray(input)) {
-      return input[0] ?? '';
-    }
-    return input ?? '';
-  };
+  const toStringValue = (input: FieldValue | undefined): string => coerceFieldValueToString(input);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -594,6 +720,30 @@ export function AddEntityModal({
             return null;
           }
 
+          if (field.type === 'textarea' && field.markdown) {
+            const markdownProps: MarkdownFieldProps = {
+              id: fieldId,
+              label: field.label,
+              value: toStringValue(rawValue),
+              onChange: (next: string) => handleChange(field.name, next),
+            };
+
+            if (field.placeholder) {
+              markdownProps.placeholder = field.placeholder;
+            }
+            if (field.description) {
+              markdownProps.description = field.description;
+            }
+            if (field.required) {
+              markdownProps.required = true;
+            }
+            if (errorMessage) {
+              markdownProps.error = errorMessage;
+            }
+
+            return <MarkdownField key={field.name} {...markdownProps} />;
+          }
+
           if (field.type === 'textarea') {
             return (
               <div key={field.name} className="space-y-1">
@@ -641,18 +791,28 @@ export function AddEntityModal({
                 const dedupeKey = trimmedValue.toLowerCase();
                 if (seen.has(dedupeKey)) return;
                 seen.add(dedupeKey);
-                selectOptions.push({
+                const normalizedOption: SelectOption = {
                   value: trimmedValue,
                   label: option.label?.trim() || trimmedValue,
-                  description: option.description,
-                  disabled: option.disabled,
-                  icon: option.icon,
-                  group: option.group,
-                });
+                };
+                if (typeof option.description === 'string' && option.description.trim()) {
+                  normalizedOption.description = option.description.trim();
+                }
+                if (option.disabled !== undefined) {
+                  normalizedOption.disabled = option.disabled;
+                }
+                if (option.icon !== undefined) {
+                  normalizedOption.icon = option.icon;
+                }
+                if (typeof option.group === 'string' && option.group.trim()) {
+                  normalizedOption.group = option.group.trim();
+                }
+                selectOptions.push(normalizedOption);
               }
             });
 
-            const selectValue = field.multiple ? toArray(rawValue) : toStringValue(rawValue).trim();
+            const isMultiple = field.multiple === true;
+            const selectValue = isMultiple ? toArray(rawValue) : toStringValue(rawValue).trim();
 
             return (
               <div key={field.name} className="space-y-1">
@@ -667,18 +827,18 @@ export function AddEntityModal({
                   key={field.name}
                   label={field.label}
                   hideLabel
-                  multiple={field.multiple}
+                  {...(isMultiple ? { multiple: true } : {})}
                   placeholder={
                     field.placeholder ||
-                    (field.multiple ? 'Select one or more options' : 'Select an option')
+                    (isMultiple ? 'Select one or more options' : 'Select an option')
                   }
-                  value={
-                    field.multiple
-                      ? (selectValue as string[])
-                      : (selectValue as string) || undefined
-                  }
+                  {...(isMultiple
+                    ? { value: selectValue as string[] }
+                    : selectValue
+                      ? { value: selectValue as string }
+                      : {})}
                   onChange={nextValue => {
-                    if (field.multiple) {
+                    if (isMultiple) {
                       const normalized = Array.isArray(nextValue)
                         ? nextValue
                         : nextValue

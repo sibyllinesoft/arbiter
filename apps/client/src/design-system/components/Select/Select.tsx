@@ -164,6 +164,16 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       return [];
     });
 
+    useEffect(() => {
+      if (value === undefined) {
+        if (!multiple && defaultValue === undefined) {
+          setSelectedValues([]);
+        }
+        return;
+      }
+      setSelectedValues(Array.isArray(value) ? value : [value]);
+    }, [value, multiple, defaultValue]);
+
     // Refs
     const selectRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLInputElement>(null);

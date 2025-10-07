@@ -820,6 +820,7 @@ async function createSingleTask(
   const task: Task = {
     id: taskId,
     name: options.name,
+    epicId: epic.id,
     description: options.description,
     type: options.type || 'feature',
     priority: options.priority || 'medium',

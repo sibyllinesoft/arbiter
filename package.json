@@ -13,7 +13,7 @@
     "arbiter": "./arbiter-cli"
   },
   "scripts": {
-    "dev": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\"",
+    "dev": "FORCE_COLOR=1 concurrently --prefix-colors \"cyan,magenta\" --names \"typecheck,api\" \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\"",
     "dev:workbench": "bun run --cwd apps/client dev",
     "dev:full": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",
     "dev:full:auth": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=true bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",
@@ -37,9 +37,10 @@
     "cli:demo": "./demo-cli-usage.sh",
     "cli:validate": "./test-cli-distribution.sh",
     "typecheck": "bunx tsc --build",
-    "typecheck:watch": "bunx tsc --build --watch",
+    "typecheck:watch": "bunx tsc --build --watch --pretty --preserveWatchOutput",
     "migrate": "bun run --cwd apps/api migrate",
-    "test": "bun test packages/ apps/ --recursive",
+    "test": "bun test packages/ apps/api --recursive && bun run --cwd apps/client test",
+    "test:playwright": "bun run --cwd apps/client test:e2e",
     "test:unit": "bun test packages/shared/src --recursive --bail",
     "test:cli": "bun test packages/cli --recursive",
     "test:api": "bun test apps/api --recursive",
@@ -99,6 +100,7 @@
     "@headlessui/react": "^2.2.7",
     "@modelcontextprotocol/sdk": "^1.18.1",
     "@octokit/rest": "^22.0.0",
-    "handlebars": "^4.7.8"
+    "handlebars": "^4.7.8",
+    "wrangler": "^4.42.0"
   }
 }

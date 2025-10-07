@@ -143,6 +143,7 @@ describe('Epic and Task Management', () => {
         {
           id: 'task-3',
           name: 'Third Task',
+          epicId: 'task-test-epic',
           type: 'feature',
           priority: 'medium',
           status: 'todo',
@@ -151,6 +152,7 @@ describe('Epic and Task Management', () => {
         {
           id: 'task-1',
           name: 'First Task',
+          epicId: 'task-test-epic',
           type: 'feature',
           priority: 'high',
           status: 'todo',
@@ -159,6 +161,7 @@ describe('Epic and Task Management', () => {
         {
           id: 'task-2',
           name: 'Second Task',
+          epicId: 'task-test-epic',
           type: 'test',
           priority: 'medium',
           status: 'todo',
@@ -197,6 +200,7 @@ describe('Epic and Task Management', () => {
           {
             id: 'alpha-task-1',
             name: 'Alpha Task 1',
+            epicId: 'epic-alpha',
             type: 'feature',
             priority: 'high',
             status: 'todo',
@@ -205,6 +209,7 @@ describe('Epic and Task Management', () => {
           {
             id: 'alpha-task-2',
             name: 'Alpha Task 2',
+            epicId: 'epic-alpha',
             type: 'test',
             priority: 'medium',
             status: 'todo',
@@ -222,6 +227,7 @@ describe('Epic and Task Management', () => {
           {
             id: 'beta-task-1',
             name: 'Beta Task 1',
+            epicId: 'epic-beta',
             type: 'docs',
             priority: 'low',
             status: 'todo',
@@ -271,10 +277,18 @@ describe('Epic and Task Management', () => {
         priority: 'high',
         status: 'planning',
         tasks: [
-          { id: 't1', name: 'T1', type: 'feature', priority: 'medium', status: 'todo' },
+          {
+            id: 't1',
+            name: 'T1',
+            epicId: 'stats-epic-1',
+            type: 'feature',
+            priority: 'medium',
+            status: 'todo',
+          },
           {
             id: 't2',
             name: 'T2',
+            epicId: 'stats-epic-1',
             type: 'test',
             priority: 'medium',
             status: 'todo',
@@ -288,7 +302,16 @@ describe('Epic and Task Management', () => {
         name: 'Stats Epic 2',
         priority: 'medium',
         status: 'in_progress',
-        tasks: [{ id: 't3', name: 'T3', type: 'docs', priority: 'low', status: 'todo' }],
+        tasks: [
+          {
+            id: 't3',
+            name: 'T3',
+            epicId: 'stats-epic-2',
+            type: 'docs',
+            priority: 'low',
+            status: 'todo',
+          },
+        ],
       };
 
       await storage.addEpic(epic1);
@@ -315,6 +338,7 @@ describe('Epic and Task Management', () => {
           {
             id: 'validate-task',
             name: 'Validation Task',
+            epicId: 'cue-validation-epic',
             description: 'Test task for CUE validation',
             type: 'test',
             priority: 'high',

@@ -22,6 +22,9 @@
         permissions?: { [#Cap]: [...#Role] }           // e.g., approve: ["manager","admin"]
       }
 
+      // Capability definitions with behavioural specifications
+      capabilities?: { [#Slug]: #CapabilitySpec }
+
       // Data/APIs: simple schema map with examples; can be projected to OpenAPI
       components?: {
         schemas?: {
@@ -32,13 +35,13 @@
           }
         }
       }
-      paths?: {                                   // Optional REST description (OpenAPI-lite)
+      paths?: {                                   // OpenAPI-style HTTP operations
         [#URLPath]: {
-          get?:    { response: { $ref?: string, example?: _ } }
-          post?:   { request?: { $ref?: string, example?: _ }, response?: { $ref?: string, example?: _ }, status?: #HTTPStatus }
-          put?:    { request?: { $ref?: string, example?: _ }, response?: { $ref?: string, example?: _ }, status?: #HTTPStatus }
-          patch?:  { request?: { $ref?: string, example?: _ }, response?: { $ref?: string, example?: _ }, status?: #HTTPStatus }
-          delete?: { response?: { $ref?: string, example?: _ }, status?: #HTTPStatus }
+          get?:    #HttpOperation
+          post?:   #HttpOperation
+          put?:    #HttpOperation
+          patch?:  #HttpOperation
+          delete?: #HttpOperation
         }
       }
 
@@ -108,6 +111,58 @@
       id:      #Slug
       initial: #Slug
       states:  { [#Slug]: { on?: { [#Slug]: #Slug } } }
+    }
+
+    #HttpMediaType: {
+      schema?: _
+      schemaRef?: string
+      example?: _
+    }
+
+    #HttpContent: { [string]: #HttpMediaType }
+
+    #HttpRequestBody: {
+      description?: string
+      required?: bool | *false
+      content: #HttpContent & minFields(1)
+    }
+
+    #HttpResponse: {
+      description: string
+      headers?: { [string]: _ }
+      content?: #HttpContent
+    }
+
+    #HttpParameter: {
+      name: string & !=""
+      'in': "path" | "query" | "header" | "cookie"
+      description?: string
+      required?: bool | *(self.'in' == "path")
+      schema?: _
+      schemaRef?: string
+      deprecated?: bool
+      example?: _
+    }
+
+    #HttpOperation: {
+      operationId?: string
+      summary?: #Human
+      description?: string
+      tags?: [...#Slug]
+      deprecated?: bool
+      parameters?: [...#HttpParameter]
+      requestBody?: #HttpRequestBody
+      responses: { [string]: #HttpResponse } & minFields(1)
+      assertions?: #CueAssertionBlock
+    }
+
+    #CapabilitySpec: {
+      name?: #Human
+      description?: string
+      owner?: #Human
+      gherkin?: string
+      depends_on?: [...#Cap]
+      tags?: [...#Slug]
     }
 
     // ---------- Helpers ----------

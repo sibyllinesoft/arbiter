@@ -1,16 +1,16 @@
 /**
  * Authentication and authorization module
  */
-import { Buffer } from 'node:buffer';
+import { Buffer } from "node:buffer";
 import {
   type JWTPayload,
   type JWTVerifyOptions,
   type JWTVerifyResult,
   createRemoteJWKSet,
   jwtVerify,
-} from 'jose';
-import type { AuthContext, ServerConfig } from './types';
-import { logger, parseBearerToken } from './utils';
+} from "jose";
+import type { AuthContext, ServerConfig } from "./types";
+import { logger, parseBearerToken } from "./utils";
 
 // OAuth-related interfaces
 export interface OAuthToken {
@@ -82,22 +82,22 @@ export class AuthService {
 
   constructor(private config: ServerConfig) {
     // Initialize with development tokens only in development mode
-    if (process.env.NODE_ENV === 'development') {
-      const devToken = process.env.DEV_AUTH_TOKEN || 'dev-token';
-      const devUser = process.env.DEV_AUTH_USER || 'dev-user';
+    if (process.env.NODE_ENV === "development") {
+      const devToken = process.env.DEV_AUTH_TOKEN || "dev-token";
+      const devUser = process.env.DEV_AUTH_USER || "dev-user";
 
-      this.addToken(devToken, devUser, ['*']);
+      this.addToken(devToken, devUser, ["*"]);
 
-      logger.warn('DEVELOPMENT MODE: Authentication tokens configured!', {
+      logger.warn("DEVELOPMENT MODE: Authentication tokens configured!", {
         devToken: `${devToken.substring(0, 4)}...`,
         devUser,
-        warning: 'This should NEVER be enabled in production!',
+        warning: "This should NEVER be enabled in production!",
       });
     }
 
     // Fail-safe: Ensure no dev tokens in production
-    if (process.env.NODE_ENV === 'production' && this.validTokens.has('dev-token')) {
-      throw new Error('SECURITY ERROR: Development tokens detected in production environment!');
+    if (process.env.NODE_ENV === "production" && this.validTokens.has("dev-token")) {
+      throw new Error("SECURITY ERROR: Development tokens detected in production environment!");
     }
   }
 
@@ -109,7 +109,7 @@ export class AuthService {
     this.tokenToUserMap.set(token, userId);
     this.userProjectAccess.set(userId, projectAccess);
 
-    logger.info('Token added for user', {
+    logger.info("Token added for user", {
       userId,
       projectCount: projectAccess.length,
     });
@@ -126,7 +126,7 @@ export class AuthService {
 
     if (userId) {
       this.userProjectAccess.delete(userId);
-      logger.info('Token removed for user', { userId });
+      logger.info("Token removed for user", { userId });
     }
   }
 
@@ -153,7 +153,7 @@ export class AuthService {
    */
   hasProjectAccess(authContext: AuthContext, projectId: string): boolean {
     // Wildcard access
-    if (authContext.project_access.includes('*')) {
+    if (authContext.project_access.includes("*")) {
       return true;
     }
 
@@ -168,13 +168,13 @@ export class AuthService {
     if (!this.config.auth_required) {
       // Return a default context when auth is disabled
       return {
-        token: 'no-auth',
-        user_id: 'anonymous',
-        project_access: ['*'],
+        token: "no-auth",
+        user_id: "anonymous",
+        project_access: ["*"],
       };
     }
 
-    const authHeader = headers.get('authorization');
+    const authHeader = headers.get("authorization");
     const token = parseBearerToken(authHeader ?? undefined);
 
     if (!token) {
@@ -189,7 +189,7 @@ export class AuthService {
    */
   createAuthMiddleware() {
     return async (
-      request: Request
+      request: Request,
     ): Promise<{
       authorized: boolean;
       authContext?: AuthContext;
@@ -203,39 +203,39 @@ export class AuthService {
             authorized: false,
             response: new Response(
               JSON.stringify({
-                type: 'https://httpstatuses.com/401',
-                title: 'Unauthorized',
+                type: "https://httpstatuses.com/401",
+                title: "Unauthorized",
                 status: 401,
-                detail: 'Valid bearer token required',
+                detail: "Valid bearer token required",
               }),
               {
                 status: 401,
                 headers: {
-                  'Content-Type': 'application/problem+json',
-                  'WWW-Authenticate': 'Bearer',
+                  "Content-Type": "application/problem+json",
+                  "WWW-Authenticate": "Bearer",
                 },
-              }
+              },
             ),
           };
         }
 
         return { authorized: true, authContext };
       } catch (error) {
-        logger.error('Auth middleware error', error instanceof Error ? error : undefined);
+        logger.error("Auth middleware error", error instanceof Error ? error : undefined);
 
         return {
           authorized: false,
           response: new Response(
             JSON.stringify({
-              type: 'https://httpstatuses.com/500',
-              title: 'Internal Server Error',
+              type: "https://httpstatuses.com/500",
+              title: "Internal Server Error",
               status: 500,
-              detail: 'Authentication service error',
+              detail: "Authentication service error",
             }),
             {
               status: 500,
-              headers: { 'Content-Type': 'application/problem+json' },
-            }
+              headers: { "Content-Type": "application/problem+json" },
+            },
           ),
         };
       }
@@ -248,7 +248,7 @@ export class AuthService {
   createProjectAccessMiddleware() {
     return (
       authContext: AuthContext,
-      projectId: string
+      projectId: string,
     ): {
       authorized: boolean;
       response?: Response;
@@ -258,15 +258,15 @@ export class AuthService {
           authorized: false,
           response: new Response(
             JSON.stringify({
-              type: 'https://httpstatuses.com/403',
-              title: 'Forbidden',
+              type: "https://httpstatuses.com/403",
+              title: "Forbidden",
               status: 403,
               detail: `Access denied to project: ${projectId}`,
             }),
             {
               status: 403,
-              headers: { 'Content-Type': 'application/problem+json' },
-            }
+              headers: { "Content-Type": "application/problem+json" },
+            },
           ),
         };
       }
@@ -298,7 +298,7 @@ export class AuthService {
     userId?: string;
     projectCount: number;
   }> {
-    return Array.from(this.validTokens).map(token => {
+    return Array.from(this.validTokens).map((token) => {
       const userId = this.tokenToUserMap.get(token);
       const projectAccess = userId ? (this.userProjectAccess.get(userId) ?? []) : [];
 
@@ -315,7 +315,7 @@ export class AuthService {
    */
   async startOAuthService(): Promise<void> {
     if (!this.config.oauth?.enabled) {
-      logger.info('OAuth service disabled, skipping startup');
+      logger.info("OAuth service disabled, skipping startup");
       return;
     }
 
@@ -328,13 +328,13 @@ export class AuthService {
       if (this.config.oauth.enableAuthServer) {
         this.authorizationServer = this.oauthAdapter.createAuthorizationServer();
         if (this.authorizationServer) {
-          logger.info('OAuth Authorization Server started', {
+          logger.info("OAuth Authorization Server started", {
             provider: this.oauthAdapter.name,
             url: this.config.oauth.authServerUrl,
             port: this.config.oauth.authServerPort,
           });
         } else {
-          logger.warn('OAuth adapter did not provide an authorization server implementation', {
+          logger.warn("OAuth adapter did not provide an authorization server implementation", {
             provider: this.oauthAdapter.name,
           });
         }
@@ -346,7 +346,7 @@ export class AuthService {
 
       const metadata = this.oauthAdapter.getProtectedResourceMetadata();
 
-      logger.info('OAuth service started', {
+      logger.info("OAuth service started", {
         provider: this.oauthAdapter.name,
         issuer: metadata?.issuer ?? this.config.oauth.authServerUrl,
         authorizationEndpoint: metadata?.authorization_endpoint,
@@ -355,9 +355,9 @@ export class AuthService {
         requiredScopes: this.config.oauth.requiredScopes || [],
       });
     } catch (error) {
-      logger.error('Failed to start OAuth service', error instanceof Error ? error : undefined);
+      logger.error("Failed to start OAuth service", error instanceof Error ? error : undefined);
       throw new Error(
-        `OAuth service startup failed: ${error instanceof Error ? error.message : String(error)}`
+        `OAuth service startup failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -379,9 +379,9 @@ export class AuthService {
       this.oauthProvider = null;
       this.oauthAdapter = null;
 
-      logger.info('OAuth service stopped successfully');
+      logger.info("OAuth service stopped successfully");
     } catch (error) {
-      logger.error('Error stopping OAuth service', error instanceof Error ? error : undefined);
+      logger.error("Error stopping OAuth service", error instanceof Error ? error : undefined);
     }
   }
 
@@ -408,9 +408,9 @@ export class AuthService {
       issuer: this.config.oauth.authServerUrl,
       authorization_endpoint: `${this.config.oauth.authServerUrl}/oauth/authorize`,
       token_endpoint: `${this.config.oauth.authServerUrl}/oauth/token`,
-      scopes_supported: this.config.oauth.requiredScopes || ['read', 'write'],
-      response_types_supported: ['code', 'token'],
-      grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
+      scopes_supported: this.config.oauth.requiredScopes || ["read", "write"],
+      response_types_supported: ["code", "token"],
+      grant_types_supported: ["authorization_code", "client_credentials", "refresh_token"],
     };
   }
 
@@ -438,32 +438,32 @@ export class AuthService {
     }
 
     return async (
-      request: Request
+      request: Request,
     ): Promise<{
       authorized: boolean;
       authContext?: AuthContext;
       response?: Response;
     }> => {
       try {
-        const token = parseBearerToken(request.headers.get('authorization') || '');
+        const token = parseBearerToken(request.headers.get("authorization") || "");
 
         if (!token) {
           return {
             authorized: false,
             response: new Response(
               JSON.stringify({
-                type: 'https://httpstatuses.com/401',
-                title: 'Unauthorized',
+                type: "https://httpstatuses.com/401",
+                title: "Unauthorized",
                 status: 401,
-                detail: 'Authorization token required',
+                detail: "Authorization token required",
               }),
               {
                 status: 401,
                 headers: {
-                  'Content-Type': 'application/problem+json',
-                  'WWW-Authenticate': 'Bearer',
+                  "Content-Type": "application/problem+json",
+                  "WWW-Authenticate": "Bearer",
                 },
-              }
+              },
             ),
           };
         }
@@ -487,22 +487,22 @@ export class AuthService {
         return regularAuthMiddleware(request);
       } catch (error) {
         logger.error(
-          'OAuth-aware auth middleware error',
-          error instanceof Error ? error : undefined
+          "OAuth-aware auth middleware error",
+          error instanceof Error ? error : undefined,
         );
         return {
           authorized: false,
           response: new Response(
             JSON.stringify({
-              type: 'https://httpstatuses.com/500',
-              title: 'Internal Server Error',
+              type: "https://httpstatuses.com/500",
+              title: "Internal Server Error",
               status: 500,
-              detail: 'Authentication error',
+              detail: "Authentication error",
             }),
             {
               status: 500,
-              headers: { 'Content-Type': 'application/problem+json' },
-            }
+              headers: { "Content-Type": "application/problem+json" },
+            },
           ),
         };
       }
@@ -529,7 +529,7 @@ export class AuthService {
         project_access: this.extractProjectAccessFromScope(oauthToken.scope),
       };
     } catch (error) {
-      logger.error('OAuth token validation failed', error instanceof Error ? error : undefined);
+      logger.error("OAuth token validation failed", error instanceof Error ? error : undefined);
       return null;
     }
   }
@@ -537,15 +537,15 @@ export class AuthService {
   private createOAuthAdapter(): OAuthIntegrationAdapter {
     const oauthConfig = this.config.oauth;
     if (!oauthConfig) {
-      throw new Error('OAuth configuration missing while creating adapter');
+      throw new Error("OAuth configuration missing while creating adapter");
     }
 
-    const providerId = (oauthConfig.provider ?? 'supertokens').toLowerCase();
+    const providerId = (oauthConfig.provider ?? "supertokens").toLowerCase();
 
     switch (providerId) {
-      case 'supertokens':
-      case 'super-tokens':
-      case 'super_tokens':
+      case "supertokens":
+      case "super-tokens":
+      case "super_tokens":
         return new SupertokensOAuthAdapter(oauthConfig);
       default:
         throw new Error(`Unsupported OAuth provider: ${oauthConfig.provider ?? providerId}`);
@@ -558,7 +558,7 @@ export class AuthService {
   private extractProjectAccessFromScope(scope: string): string[] {
     // Parse scope string to extract project access
     // Format: "read:project:proj1 write:project:proj2" etc.
-    const scopes = scope.split(' ');
+    const scopes = scope.split(" ");
     const projectAccess = new Set<string>();
 
     for (const scopeItem of scopes) {
@@ -572,13 +572,13 @@ export class AuthService {
   }
 }
 class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
-  public readonly name = 'supertokens';
+  public readonly name = "supertokens";
 
   private metadataPromise: Promise<OidcMetadata> | null = null;
   private metadataCache: OidcMetadata | null = null;
   private remoteJwkSet: ReturnType<typeof createRemoteJWKSet> | null = null;
 
-  constructor(private readonly config: NonNullable<ServerConfig['oauth']>) {}
+  constructor(private readonly config: NonNullable<ServerConfig["oauth"]>) {}
 
   async initialize(): Promise<void> {
     await this.ensureMetadataReady();
@@ -606,7 +606,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
         const scope = adapter.extractScopeFromPayload(payload);
         const userId = adapter.extractUserIdFromPayload(payload);
-        const tokenType = typeof payload.token_type === 'string' ? payload.token_type : 'Bearer';
+        const tokenType = typeof payload.token_type === "string" ? payload.token_type : "Bearer";
 
         return {
           access_token: token,
@@ -631,15 +631,15 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
         const scope = adapter.extractScopeFromPayload(payload);
         const userId = adapter.extractUserIdFromPayload(payload);
-        const tokenType = typeof payload.token_type === 'string' ? payload.token_type : 'Bearer';
+        const tokenType = typeof payload.token_type === "string" ? payload.token_type : "Bearer";
 
         return {
           active: true,
           scope,
           token_type: tokenType,
-          client_id: typeof payload.client_id === 'string' ? payload.client_id : undefined,
+          client_id: typeof payload.client_id === "string" ? payload.client_id : undefined,
           username: userId,
-          sub: typeof payload.sub === 'string' ? payload.sub : undefined,
+          sub: typeof payload.sub === "string" ? payload.sub : undefined,
           iss: payload.iss ?? metadata.issuer,
           aud: payload.aud,
           exp: payload.exp,
@@ -677,7 +677,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       async issueToken(clientId: string, scope: string): Promise<OAuthToken> {
         const resolvedClientId = adapter.resolveClientId(clientId);
         if (!resolvedClientId) {
-          throw new Error('OAuth client ID is required to issue tokens');
+          throw new Error("OAuth client ID is required to issue tokens");
         }
 
         const clientSecret = adapter.resolveClientSecret(resolvedClientId);
@@ -687,28 +687,28 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
         const metadata = await adapter.getOidcMetadata();
         if (!metadata.token_endpoint) {
-          throw new Error('OAuth token endpoint not available in discovery document');
+          throw new Error("OAuth token endpoint not available in discovery document");
         }
 
         const params = new URLSearchParams({
-          grant_type: 'client_credentials',
+          grant_type: "client_credentials",
           scope,
         });
 
         const headers: Record<string, string> = {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Basic ${Buffer.from(`${resolvedClientId}:${clientSecret}`, 'utf-8').toString('base64')}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${Buffer.from(`${resolvedClientId}:${clientSecret}`, "utf-8").toString("base64")}`,
         };
 
         const response = await fetch(metadata.token_endpoint, {
-          method: 'POST',
+          method: "POST",
           headers,
           body: params.toString(),
         });
 
         if (!response.ok) {
           const errorBody = (await response.text()).slice(0, 500);
-          logger.error('SuperTokens client credentials grant failed', {
+          logger.error("SuperTokens client credentials grant failed", undefined, {
             status: response.status,
             statusText: response.statusText,
             clientId: resolvedClientId,
@@ -735,24 +735,24 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
           }
 
           const params = new URLSearchParams({
-            grant_type: 'client_credentials',
-            scope: 'validate',
+            grant_type: "client_credentials",
+            scope: "validate",
           });
 
           const headers: Record<string, string> = {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`, 'utf-8').toString('base64')}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`, "utf-8").toString("base64")}`,
           };
 
           const response = await fetch(metadata.token_endpoint, {
-            method: 'POST',
+            method: "POST",
             headers,
             body: params.toString(),
           });
 
           return response.ok;
         } catch (error) {
-          logger.warn('SuperTokens client validation failed', {
+          logger.warn("SuperTokens client validation failed", {
             clientId,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -764,7 +764,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
         try {
           const metadata = await adapter.getOidcMetadata();
           if (!metadata.revocation_endpoint) {
-            logger.warn('SuperTokens metadata missing revocation endpoint');
+            logger.warn("SuperTokens metadata missing revocation endpoint");
             return false;
           }
 
@@ -773,26 +773,26 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
           const params = new URLSearchParams({
             token,
-            token_type_hint: 'access_token',
+            token_type_hint: "access_token",
           });
 
           const headers: Record<string, string> = {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
           };
 
           if (clientId && clientSecret) {
-            headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`, 'utf-8').toString('base64')}`;
+            headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`, "utf-8").toString("base64")}`;
           }
 
           const response = await fetch(metadata.revocation_endpoint, {
-            method: 'POST',
+            method: "POST",
             headers,
             body: params.toString(),
           });
 
           return response.ok;
         } catch (error) {
-          logger.warn('SuperTokens token revocation failed', {
+          logger.warn("SuperTokens token revocation failed", {
             tokenPrefix: token.substring(0, 8),
             error: error instanceof Error ? error.message : String(error),
           });
@@ -809,11 +809,11 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       async authorize(params: any): Promise<string> {
         const metadata = await adapter.getOidcMetadata();
         if (!metadata.authorization_endpoint) {
-          throw new Error('OAuth authorization endpoint not available in discovery document');
+          throw new Error("OAuth authorization endpoint not available in discovery document");
         }
 
         const query = new URLSearchParams();
-        const entries = params && typeof params === 'object' ? Object.entries(params) : [];
+        const entries = params && typeof params === "object" ? Object.entries(params) : [];
         for (const [key, value] of entries) {
           if (value === undefined || value === null) {
             continue;
@@ -821,30 +821,30 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
           query.set(key, String(value));
         }
 
-        if (!query.has('response_type')) {
-          query.set('response_type', 'code');
+        if (!query.has("response_type")) {
+          query.set("response_type", "code");
         }
 
-        if (!query.has('client_id')) {
+        if (!query.has("client_id")) {
           const clientId = adapter.resolveClientId();
           if (clientId) {
-            query.set('client_id', clientId);
+            query.set("client_id", clientId);
           }
         }
 
-        if (!query.has('scope')) {
+        if (!query.has("scope")) {
           const requiredScopes = adapter.config.requiredScopes;
           if (Array.isArray(requiredScopes) && requiredScopes.length) {
-            query.set('scope', requiredScopes.join(' '));
+            query.set("scope", requiredScopes.join(" "));
           }
         }
 
         const endpoint = new URL(metadata.authorization_endpoint);
         endpoint.search = query.toString();
 
-        logger.debug('Generated SuperTokens authorization URL', {
+        logger.debug("Generated SuperTokens authorization URL", {
           endpoint: metadata.authorization_endpoint,
-          hasState: query.has('state'),
+          hasState: query.has("state"),
         });
 
         return endpoint.toString();
@@ -853,44 +853,44 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       async getTokenFromCode(
         code: string,
         clientId: string,
-        clientSecret: string
+        clientSecret: string,
       ): Promise<OAuthToken> {
         const metadata = await adapter.getOidcMetadata();
         if (!metadata.token_endpoint) {
-          throw new Error('OAuth token endpoint not available in discovery document');
+          throw new Error("OAuth token endpoint not available in discovery document");
         }
 
         const resolvedClientId = adapter.resolveClientId(clientId);
         const resolvedSecret = adapter.resolveClientSecret(
           resolvedClientId ?? undefined,
-          clientSecret
+          clientSecret,
         );
 
         const headers: Record<string, string> = {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         };
 
         const params = new URLSearchParams({
-          grant_type: 'authorization_code',
+          grant_type: "authorization_code",
           code,
         });
 
         const redirectUri = adapter.getRedirectUri();
         if (redirectUri) {
-          params.set('redirect_uri', redirectUri);
+          params.set("redirect_uri", redirectUri);
         }
 
         if (resolvedClientId && resolvedSecret) {
-          headers.Authorization = `Basic ${Buffer.from(`${resolvedClientId}:${resolvedSecret}`, 'utf-8').toString('base64')}`;
+          headers.Authorization = `Basic ${Buffer.from(`${resolvedClientId}:${resolvedSecret}`, "utf-8").toString("base64")}`;
         } else if (resolvedClientId) {
-          params.set('client_id', resolvedClientId);
+          params.set("client_id", resolvedClientId);
           if (resolvedSecret) {
-            params.set('client_secret', resolvedSecret);
+            params.set("client_secret", resolvedSecret);
           }
         }
 
         const response = await fetch(metadata.token_endpoint, {
-          method: 'POST',
+          method: "POST",
           headers,
           body: params.toString(),
         });
@@ -898,7 +898,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
         if (!response.ok) {
           const errorBody = (await response.text()).slice(0, 500);
           throw new Error(
-            `Failed to exchange authorization code: ${response.status} ${response.statusText} ${errorBody}`
+            `Failed to exchange authorization code: ${response.status} ${response.statusText} ${errorBody}`,
           );
         }
 
@@ -909,32 +909,32 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       async refreshToken(refreshToken: string): Promise<OAuthToken> {
         const metadata = await adapter.getOidcMetadata();
         if (!metadata.token_endpoint) {
-          throw new Error('OAuth token endpoint not available in discovery document');
+          throw new Error("OAuth token endpoint not available in discovery document");
         }
 
         const clientId = adapter.resolveClientId();
         const clientSecret = adapter.resolveClientSecret(clientId ?? undefined);
 
         const headers: Record<string, string> = {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         };
 
         const params = new URLSearchParams({
-          grant_type: 'refresh_token',
+          grant_type: "refresh_token",
           refresh_token: refreshToken,
         });
 
         if (clientId && clientSecret) {
-          headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`, 'utf-8').toString('base64')}`;
+          headers.Authorization = `Basic ${Buffer.from(`${clientId}:${clientSecret}`, "utf-8").toString("base64")}`;
         } else if (clientId) {
-          params.set('client_id', clientId);
+          params.set("client_id", clientId);
           if (clientSecret) {
-            params.set('client_secret', clientSecret);
+            params.set("client_secret", clientSecret);
           }
         }
 
         const response = await fetch(metadata.token_endpoint, {
-          method: 'POST',
+          method: "POST",
           headers,
           body: params.toString(),
         });
@@ -942,7 +942,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
         if (!response.ok) {
           const errorBody = (await response.text()).slice(0, 500);
           throw new Error(
-            `Failed to refresh OAuth token: ${response.status} ${response.statusText} ${errorBody}`
+            `Failed to refresh OAuth token: ${response.status} ${response.statusText} ${errorBody}`,
           );
         }
 
@@ -966,15 +966,15 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
         scopes_supported:
           cached.scopes_supported && cached.scopes_supported.length > 0
             ? cached.scopes_supported
-            : this.config.requiredScopes || ['read', 'write'],
+            : this.config.requiredScopes || ["read", "write"],
         response_types_supported:
           cached.response_types_supported && cached.response_types_supported.length > 0
             ? cached.response_types_supported
-            : ['code', 'token'],
+            : ["code", "token"],
         grant_types_supported:
           cached.grant_types_supported && cached.grant_types_supported.length > 0
             ? cached.grant_types_supported
-            : ['authorization_code', 'client_credentials', 'refresh_token'],
+            : ["authorization_code", "client_credentials", "refresh_token"],
       };
     }
 
@@ -982,9 +982,9 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       issuer: this.config.authServerUrl,
       authorization_endpoint: `${this.config.authServerUrl}/oauth/authorize`,
       token_endpoint: `${this.config.authServerUrl}/oauth/token`,
-      scopes_supported: this.config.requiredScopes || ['read', 'write'],
-      response_types_supported: ['code', 'token'],
-      grant_types_supported: ['authorization_code', 'client_credentials', 'refresh_token'],
+      scopes_supported: this.config.requiredScopes || ["read", "write"],
+      response_types_supported: ["code", "token"],
+      grant_types_supported: ["authorization_code", "client_credentials", "refresh_token"],
     };
   }
 
@@ -1002,28 +1002,28 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
     if (!candidate) {
       throw new Error(
-        'OAuth issuer URL is not configured. Set SUPERTOKENS_OIDC_ISSUER or oauth.authServerUrl'
+        "OAuth issuer URL is not configured. Set SUPERTOKENS_OIDC_ISSUER or oauth.authServerUrl",
       );
     }
 
-    return candidate.replace(/\/+$/, '');
+    return candidate.replace(/\/+$/, "");
   }
 
   private getDiscoveryPath(): string {
     const fromEnv = process.env.SUPERTOKENS_OIDC_DISCOVERY_PATH;
     const fromConfig = this.config.discoveryPath;
-    const path = fromEnv?.trim() || fromConfig?.trim() || '.well-known/openid-configuration';
-    return path.startsWith('/') ? path.slice(1) : path;
+    const path = fromEnv?.trim() || fromConfig?.trim() || ".well-known/openid-configuration";
+    return path.startsWith("/") ? path.slice(1) : path;
   }
 
   private getExpectedAudiences(): string[] | undefined {
     const configAudience = Array.isArray(this.config.audience) ? [...this.config.audience] : [];
 
     const envAudienceRaw =
-      process.env.SUPERTOKENS_OIDC_AUDIENCE ?? process.env.OAUTH_EXPECTED_AUDIENCE ?? '';
+      process.env.SUPERTOKENS_OIDC_AUDIENCE ?? process.env.OAUTH_EXPECTED_AUDIENCE ?? "";
     const envAudience = envAudienceRaw
-      .split(',')
-      .map(value => value.trim())
+      .split(",")
+      .map((value) => value.trim())
       .filter(Boolean);
 
     const combined = [...configAudience, ...envAudience];
@@ -1036,7 +1036,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
   private async getOidcMetadata(): Promise<OidcMetadata> {
     if (!this.config.enabled) {
-      throw new Error('OAuth is not enabled');
+      throw new Error("OAuth is not enabled");
     }
 
     if (this.metadataPromise) {
@@ -1045,25 +1045,25 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
     const issuer = this.resolveIssuerUrl();
     const discoveryPath = this.getDiscoveryPath();
-    const base = issuer.endsWith('/') ? issuer : `${issuer}/`;
+    const base = issuer.endsWith("/") ? issuer : `${issuer}/`;
     const discoveryUrl = new URL(discoveryPath, base);
 
     const loadPromise = (async () => {
       const response = await fetch(discoveryUrl, {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: "application/json" },
       });
 
       if (!response.ok) {
         const body = (await response.text()).slice(0, 256);
         throw new Error(
-          `Failed to fetch OAuth discovery document: ${response.status} ${response.statusText} ${body}`
+          `Failed to fetch OAuth discovery document: ${response.status} ${response.statusText} ${body}`,
         );
       }
 
       const data = (await response.json()) as Partial<OidcMetadata> & Record<string, unknown>;
 
       if (!data.issuer || !data.jwks_uri) {
-        throw new Error('OAuth discovery document missing issuer or jwks_uri');
+        throw new Error("OAuth discovery document missing issuer or jwks_uri");
       }
 
       const metadata: OidcMetadata = {
@@ -1085,7 +1085,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
       this.metadataCache = metadata;
 
-      logger.debug('Loaded SuperTokens OIDC metadata', {
+      logger.debug("Loaded SuperTokens OIDC metadata", {
         issuer: metadata.issuer,
         jwksUri: metadata.jwks_uri,
         tokenEndpoint: metadata.token_endpoint,
@@ -1094,7 +1094,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       return metadata;
     })();
 
-    this.metadataPromise = loadPromise.catch(error => {
+    this.metadataPromise = loadPromise.catch((error) => {
       this.metadataPromise = null;
       throw error;
     });
@@ -1104,7 +1104,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
   private async getRemoteJwkSet(): Promise<ReturnType<typeof createRemoteJWKSet>> {
     if (!this.config.enabled) {
-      throw new Error('OAuth is not enabled');
+      throw new Error("OAuth is not enabled");
     }
 
     if (this.remoteJwkSet) {
@@ -1125,7 +1125,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
   }
 
   private async verifyOAuthJwt(
-    token: string
+    token: string,
   ): Promise<{ result: JWTVerifyResult; metadata: OidcMetadata } | null> {
     if (!this.config.enabled) {
       return null;
@@ -1148,7 +1148,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       const result = await jwtVerify(token, jwkSet, verifyOptions);
       return { result, metadata };
     } catch (error) {
-      logger.warn('SuperTokens OAuth token verification failed', {
+      logger.warn("SuperTokens OAuth token verification failed", {
         reason: error instanceof Error ? error.message : String(error),
         tokenPrefix: token.substring(0, 8),
       });
@@ -1157,7 +1157,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
   }
 
   private extractScopeFromPayload(payload: JWTPayload): string {
-    if (typeof payload.scope === 'string' && payload.scope.length > 0) {
+    if (typeof payload.scope === "string" && payload.scope.length > 0) {
       return payload.scope;
     }
 
@@ -1165,57 +1165,57 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
 
     if (Array.isArray(anyPayload.scope)) {
       const values = (anyPayload.scope as unknown[]).filter(
-        (value): value is string => typeof value === 'string'
+        (value): value is string => typeof value === "string",
       );
       if (values.length) {
-        return values.join(' ');
+        return values.join(" ");
       }
     }
 
     if (Array.isArray(anyPayload.scp)) {
       const values = (anyPayload.scp as unknown[]).filter(
-        (value): value is string => typeof value === 'string'
+        (value): value is string => typeof value === "string",
       );
       if (values.length) {
-        return values.join(' ');
+        return values.join(" ");
       }
     }
 
     if (Array.isArray(anyPayload.permissions)) {
       const values = (anyPayload.permissions as unknown[]).filter(
-        (value): value is string => typeof value === 'string'
+        (value): value is string => typeof value === "string",
       );
       if (values.length) {
-        return values.join(' ');
+        return values.join(" ");
       }
     }
 
-    if (typeof anyPayload.scp === 'string' && anyPayload.scp.length > 0) {
+    if (typeof anyPayload.scp === "string" && anyPayload.scp.length > 0) {
       return anyPayload.scp;
     }
 
-    if (typeof anyPayload.permissions === 'string' && anyPayload.permissions.length > 0) {
+    if (typeof anyPayload.permissions === "string" && anyPayload.permissions.length > 0) {
       return anyPayload.permissions;
     }
 
     const requiredScopes = this.config.requiredScopes;
     if (Array.isArray(requiredScopes) && requiredScopes.length > 0) {
-      return requiredScopes.join(' ');
+      return requiredScopes.join(" ");
     }
 
-    return '';
+    return "";
   }
 
   private extractUserIdFromPayload(payload: JWTPayload): string | undefined {
-    if (typeof payload.sub === 'string' && payload.sub.length > 0) {
+    if (typeof payload.sub === "string" && payload.sub.length > 0) {
       return payload.sub;
     }
 
     const anyPayload = payload as Record<string, unknown>;
 
-    for (const key of ['user_id', 'userId', 'uid', 'sessionHandle']) {
+    for (const key of ["user_id", "userId", "uid", "sessionHandle"]) {
       const value = anyPayload[key];
-      if (typeof value === 'string' && value.length > 0) {
+      if (typeof value === "string" && value.length > 0) {
         return value;
       }
     }
@@ -1224,7 +1224,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
   }
 
   private computeExpiresIn(payload: JWTPayload): number {
-    if (typeof payload.exp !== 'number') {
+    if (typeof payload.exp !== "number") {
       return 0;
     }
 
@@ -1237,51 +1237,51 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
   }
 
   private normalizeTokenResponse(response: any, fallbackScope?: string): OAuthToken {
-    if (!response || typeof response !== 'object') {
-      throw new Error('Invalid OAuth token response');
+    if (!response || typeof response !== "object") {
+      throw new Error("Invalid OAuth token response");
     }
 
     const record = response as Record<string, any>;
     const accessToken = record.access_token;
-    if (typeof accessToken !== 'string' || accessToken.length === 0) {
-      throw new Error('OAuth token response missing access_token');
+    if (typeof accessToken !== "string" || accessToken.length === 0) {
+      throw new Error("OAuth token response missing access_token");
     }
 
     const tokenType =
-      typeof record.token_type === 'string' && record.token_type.length > 0
+      typeof record.token_type === "string" && record.token_type.length > 0
         ? record.token_type
-        : 'Bearer';
+        : "Bearer";
 
     const expiresRaw = record.expires_in;
     const expiresIn =
-      typeof expiresRaw === 'number'
+      typeof expiresRaw === "number"
         ? expiresRaw
-        : typeof expiresRaw === 'string'
+        : typeof expiresRaw === "string"
           ? Number.parseInt(expiresRaw, 10) || 0
           : 0;
 
     const scopeValue = record.scope;
-    let scope = '';
+    let scope = "";
 
-    if (typeof scopeValue === 'string') {
+    if (typeof scopeValue === "string") {
       scope = scopeValue;
     } else if (Array.isArray(scopeValue)) {
       scope = scopeValue
-        .filter((value: unknown): value is string => typeof value === 'string')
-        .join(' ');
+        .filter((value: unknown): value is string => typeof value === "string")
+        .join(" ");
     } else if (fallbackScope) {
       scope = fallbackScope;
     } else {
       const requiredScopes = this.config.requiredScopes;
       if (Array.isArray(requiredScopes) && requiredScopes.length > 0) {
-        scope = requiredScopes.join(' ');
+        scope = requiredScopes.join(" ");
       }
     }
 
     const userId =
-      typeof record.user_id === 'string'
+      typeof record.user_id === "string"
         ? record.user_id
-        : typeof record.sub === 'string'
+        : typeof record.sub === "string"
           ? record.sub
           : undefined;
 
@@ -1319,7 +1319,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
     }
 
     if (clientId && clientId.length > 0) {
-      const envKey = `OAUTH_CLIENT_${clientId.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase()}_SECRET`;
+      const envKey = `OAUTH_CLIENT_${clientId.replace(/[^a-zA-Z0-9]/g, "_").toUpperCase()}_SECRET`;
       const keyedSecret = process.env[envKey];
       if (keyedSecret && keyedSecret.length > 0) {
         return keyedSecret;

@@ -1,9 +1,9 @@
-import StatusBadge from '@/design-system/components/StatusBadge';
-import { clsx } from 'clsx';
-import type { LucideIcon } from 'lucide-react';
-import { PlusCircle } from 'lucide-react';
-import React from 'react';
-import { ComponentCard } from './ComponentCard';
+import StatusBadge from "@/design-system/components/StatusBadge";
+import { clsx } from "clsx";
+import type { LucideIcon } from "lucide-react";
+import { PlusCircle } from "lucide-react";
+import React from "react";
+import { ComponentCard } from "./ComponentCard";
 
 interface SourceGroupProps {
   groupLabel: string;
@@ -32,7 +32,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
     if (!hasComponents) {
       return;
     }
-    setExpandedSources(prev => ({ ...prev, [groupLabel]: !prev[groupLabel] }));
+    setExpandedSources((prev) => ({ ...prev, [groupLabel]: !prev[groupLabel] }));
   };
 
   const handleAddClick = () => {
@@ -43,9 +43,9 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
 
   const singularLabel = (() => {
     const trimmed = groupLabel.trim();
-    if (!trimmed) return 'item';
-    if (/ies$/i.test(trimmed)) return trimmed.replace(/ies$/i, 'y');
-    if (/s$/i.test(trimmed)) return trimmed.replace(/s$/i, '');
+    if (!trimmed) return "item";
+    if (/ies$/i.test(trimmed)) return trimmed.replace(/ies$/i, "y");
+    if (/s$/i.test(trimmed)) return trimmed.replace(/s$/i, "");
     return trimmed;
   })();
   const addButtonLabel = `Add ${singularLabel}`;
@@ -119,15 +119,15 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           type="button"
           onClick={hasComponents ? handleToggle : undefined}
           className={clsx(
-            'p-2 rounded-md text-gray-500 hover:text-graphite-900 hover:bg-gray-100 dark:text-graphite-300 dark:hover:text-graphite-25 dark:hover:bg-graphite-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500',
-            !hasComponents && 'invisible pointer-events-none'
+            "p-2 rounded-md text-gray-500 hover:text-graphite-900 hover:bg-gray-100 dark:text-graphite-300 dark:hover:text-graphite-25 dark:hover:bg-graphite-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500",
+            !hasComponents && "invisible pointer-events-none",
           )}
           aria-label={hasComponents ? toggleLabel : undefined}
           aria-expanded={hasComponents ? isExpanded : undefined}
           disabled={!hasComponents}
         >
           <svg
-            className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -141,22 +141,22 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
       {hasComponents && (
         <div
           className={clsx(
-            'grid transition-[grid-template-rows] duration-300 ease-out',
-            isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            "grid transition-[grid-template-rows] duration-300 ease-out",
+            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
           aria-hidden={!isExpanded}
         >
           <div
             className={clsx(
-              'overflow-hidden transition-opacity duration-200 ease-out',
-              isExpanded ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'
+              "overflow-hidden transition-opacity duration-200 ease-out",
+              isExpanded ? "opacity-100 delay-100" : "opacity-0 pointer-events-none",
             )}
           >
             <div className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {components.map(({ name, data }) => {
                   const displayLabel =
-                    typeof data?.name === 'string' && data.name.trim() ? data.name : name;
+                    typeof data?.name === "string" && data.name.trim() ? data.name : name;
                   const potentialIds = [
                     data?.artifactId,
                     data?.id,
@@ -164,7 +164,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
                     data?.metadata?.artifact_id,
                   ];
                   const artifactIdRaw = potentialIds.find(
-                    value => typeof value === 'string' && value.trim().length > 0
+                    (value) => typeof value === "string" && value.trim().length > 0,
                   ) as string | undefined;
                   const artifactId = artifactIdRaw?.trim();
                   const onDelete =
@@ -178,7 +178,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
                       name={name}
                       data={data}
                       onClick={() => onComponentClick(name)}
-                      onDelete={onDelete}
+                      {...(onDelete ? { onDelete } : {})}
                     />
                   );
                 })}

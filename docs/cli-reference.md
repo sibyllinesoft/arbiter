@@ -154,6 +154,31 @@ arbiter generate --target typescript,docker
 - `--force` - Overwrite existing files
 - `--clean` - Remove files not in specification
 
+##### Configuring endpoint assertion generation
+
+Endpoint assertion tests honour per-language settings in `.arbiter/config`. Add
+your preferences under `generator.testing` to choose frameworks or override
+output directories:
+
+```json
+{
+  "generator": {
+    "testing": {
+      "master": { "type": "make", "output": "Makefile" },
+      "typescript": { "framework": "jest" },
+      "javascript": { "framework": "vitest" },
+      "python": { "framework": "pytest", "outputDir": "tests/api/assertions" },
+      "rust": { "outputDir": "tests/api/assertions" },
+      "go": { "outputDir": "tests/api/assertions" }
+    }
+  }
+}
+```
+
+When omitted, Arbiter falls back to sensible defaults: Vitest for TypeScript,
+Jest for JavaScript, Pytest for Python, Rust's built-in test harness, and Go's
+standard `testing` package.
+
 ---
 
 ### Validation & Analysis

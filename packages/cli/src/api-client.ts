@@ -990,7 +990,9 @@ export class ApiClient {
     error?: string;
   }> {
     await this.enforceRateLimit();
-    const response = await this.fetch(`/api/webhooks/github/list/${owner}/${repo}`);
+    const safeOwner = encodeURIComponent(owner.trim());
+    const safeRepo = encodeURIComponent(repo.trim());
+    const response = await this.fetch(`/api/webhooks/github/list/${safeOwner}/${safeRepo}`);
     return await response.json();
   }
 
@@ -1004,7 +1006,9 @@ export class ApiClient {
     error?: string;
   }> {
     await this.enforceRateLimit();
-    const response = await this.fetch(`/api/webhooks/github/${owner}/${repo}/${hookId}`, {
+    const safeOwner = encodeURIComponent(owner.trim());
+    const safeRepo = encodeURIComponent(repo.trim());
+    const response = await this.fetch(`/api/webhooks/github/${safeOwner}/${safeRepo}/${hookId}`, {
       method: 'DELETE',
     });
     return await response.json();

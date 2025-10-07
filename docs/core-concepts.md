@@ -117,12 +117,54 @@ contracts: {
             user: domain.entities.User
             token: string
           }
+          assertions: {
+            tokenIssued: {
+              assert: response.token != ""
+              message: "Token should be returned for new users"
+            }
+          }
         }
         getUser: {
           method: "GET"
           path: "/{userId}"
           parameters: { userId: domain.entities.User.id }
           response: domain.entities.User
+          assertions: {
+            userExists: response.id != ""
+          }
+        }
+      }
+    }
+}
+}
+```
+
+When you promote a contract into the application specification you can describe
+the concrete HTTP behaviour using the `paths` section, which now maps cleanly to
+OpenAPI:
+
+```cue
+paths: {
+  "/api/v1/users/{userId}": {
+    get: {
+      summary: "Fetch a user by ID"
+      operationId: "getUserById"
+      tags: ["users"]
+      parameters: [{
+        name:        "userId"
+        "in":        "path"
+        description: "Identifier of the user"
+        required:    true
+        schema:      { type: "string" }
+      }]
+      responses: {
+        "200": {
+          description: "User payload"
+          content: {
+            "application/json": {
+              schemaRef: "#/components/schemas/User"
+            }
+          }
         }
       }
     }

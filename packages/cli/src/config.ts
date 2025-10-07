@@ -12,7 +12,16 @@ import chalk from 'chalk';
 import fs from 'fs-extra';
 import yaml from 'yaml';
 import { z } from 'zod';
-import type { CLIConfig, GeneratorConfig, ProjectStructureConfig } from './types.js';
+import type {
+  CLIConfig,
+  DockerGeneratorConfig,
+  DockerTemplateConfig,
+  GeneratorConfig,
+  GeneratorTestingConfig,
+  LanguageTestingConfig,
+  MasterTestRunnerConfig,
+  ProjectStructureConfig,
+} from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -249,11 +258,52 @@ const generatorHooksSchema = z
   })
   .optional();
 
+const testingLanguageSchema = z.object({
+  framework: z.string().optional(),
+  outputDir: z.string().optional(),
+  command: z.string().optional(),
+  options: z.record(z.unknown()).optional(),
+});
+
+const generatorTestingSchema = z
+  .object({
+    master: z
+      .object({
+        type: z.enum(['make', 'node']).optional(),
+        output: z.string().optional(),
+      })
+      .optional(),
+  })
+  .catchall(testingLanguageSchema)
+  .optional();
+
+const dockerTemplateSchema = z
+  .object({
+    dockerfile: z.string().optional(),
+    dockerignore: z.string().optional(),
+  })
+  .strict();
+
+const dockerGeneratorSchema = z
+  .object({
+    defaults: z
+      .object({
+        service: dockerTemplateSchema.optional(),
+        client: dockerTemplateSchema.optional(),
+      })
+      .optional(),
+    services: z.record(z.string(), dockerTemplateSchema).optional(),
+    clients: z.record(z.string(), dockerTemplateSchema).optional(),
+  })
+  .optional();
+
 const generatorSchema = z
   .object({
     templateOverrides: z.record(z.string(), z.string()).optional(),
     plugins: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
     hooks: generatorHooksSchema,
+    testing: generatorTestingSchema,
+    docker: dockerGeneratorSchema,
   })
   .optional();
 
@@ -286,6 +336,33 @@ const CONFIG_FILES = [
   'arbiter.yaml',
   'arbiter.yml',
 ];
+
+function normalizeConfigShape(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== 'object') {
+    return {};
+  }
+
+  const normalized: Record<string, unknown> = { ...(input as Record<string, unknown>) };
+
+  const renameKey = (from: string, to: string) => {
+    if (from in normalized) {
+      const value = normalized[from];
+      if (normalized[to] === undefined) {
+        normalized[to] = value;
+      }
+      delete normalized[from];
+    }
+  };
+
+  renameKey('arbiter_url', 'apiUrl');
+  renameKey('project_dir', 'projectDir');
+  renameKey('project_id', 'projectId');
+  renameKey('project_structure', 'projectStructure');
+  renameKey('ui_options', 'uiOptions');
+  renameKey('ui_option_generators', 'uiOptionGenerators');
+
+  return normalized;
+}
 
 function cloneFrameworkMap(map?: Record<string, string[]>): Record<string, string[]> | undefined {
   if (!map) return undefined;
@@ -339,7 +416,139 @@ function cloneGeneratorConfig(config?: GeneratorConfig): GeneratorConfig | undef
         )
       : undefined,
     hooks: config.hooks ? { ...config.hooks } : undefined,
+    testing: cloneTestingConfig(config.testing),
+    docker: cloneDockerConfig(config.docker),
   };
+}
+
+function cloneDockerConfig(config?: DockerGeneratorConfig): DockerGeneratorConfig | undefined {
+  if (!config) return undefined;
+
+  const cloned = deepClone(config) as DockerGeneratorConfig;
+  return Object.keys(cloned).length > 0 ? cloned : undefined;
+}
+
+function cloneTestingConfig(testing?: GeneratorTestingConfig): GeneratorTestingConfig | undefined {
+  if (!testing) return undefined;
+  const cloned: GeneratorTestingConfig = {} as GeneratorTestingConfig;
+  for (const [key, value] of Object.entries(testing)) {
+    if (key === 'master') {
+      if (value) {
+        (cloned as GeneratorTestingConfig).master = { ...(value as MasterTestRunnerConfig) };
+      }
+    } else if (value) {
+      (cloned as Record<string, LanguageTestingConfig>)[key] = deepClone(
+        value as LanguageTestingConfig
+      );
+    }
+  }
+  return Object.keys(cloned).length > 0 ? cloned : undefined;
+}
+
+function mergeDockerTemplateEntry(
+  base?: DockerTemplateConfig,
+  overrides?: DockerTemplateConfig
+): DockerTemplateConfig | undefined {
+  if (!base && !overrides) return undefined;
+  const merged: DockerTemplateConfig = {
+    ...(base ?? {}),
+    ...(overrides ?? {}),
+  };
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeDockerTemplateRecord(
+  base?: Record<string, DockerTemplateConfig>,
+  overrides?: Record<string, DockerTemplateConfig>
+): Record<string, DockerTemplateConfig> | undefined {
+  if (!base && !overrides) return undefined;
+  const merged: Record<string, DockerTemplateConfig> = {};
+  const keys = new Set([...Object.keys(base ?? {}), ...Object.keys(overrides ?? {})]);
+
+  for (const key of keys) {
+    const value = mergeDockerTemplateEntry(base?.[key], overrides?.[key]);
+    if (value) {
+      merged[key] = value;
+    }
+  }
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeDockerDefaults(
+  base?: { service?: DockerTemplateConfig; client?: DockerTemplateConfig },
+  overrides?: { service?: DockerTemplateConfig; client?: DockerTemplateConfig }
+): { service?: DockerTemplateConfig; client?: DockerTemplateConfig } | undefined {
+  if (!base && !overrides) return undefined;
+
+  const service = mergeDockerTemplateEntry(base?.service, overrides?.service);
+  const client = mergeDockerTemplateEntry(base?.client, overrides?.client);
+
+  const merged: { service?: DockerTemplateConfig; client?: DockerTemplateConfig } = {};
+  if (service) merged.service = service;
+  if (client) merged.client = client;
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeDockerConfig(
+  base?: DockerGeneratorConfig,
+  overrides?: DockerGeneratorConfig
+): DockerGeneratorConfig | undefined {
+  if (!base && !overrides) return undefined;
+
+  const defaults = mergeDockerDefaults(base?.defaults, overrides?.defaults);
+  const services = mergeDockerTemplateRecord(base?.services, overrides?.services);
+  const clients = mergeDockerTemplateRecord(base?.clients, overrides?.clients);
+
+  const merged: DockerGeneratorConfig = {};
+  if (defaults) merged.defaults = defaults;
+  if (services) merged.services = services;
+  if (clients) merged.clients = clients;
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function mergeTestingConfig(
+  base: GeneratorTestingConfig | undefined,
+  overrides: GeneratorTestingConfig | undefined
+): GeneratorTestingConfig | undefined {
+  if (!base && !overrides) return undefined;
+
+  const merged: GeneratorTestingConfig = {} as GeneratorTestingConfig;
+
+  if (base) {
+    for (const [key, value] of Object.entries(base)) {
+      if (key === 'master') {
+        if (value) {
+          (merged as GeneratorTestingConfig).master = { ...(value as MasterTestRunnerConfig) };
+        }
+      } else if (value) {
+        (merged as Record<string, LanguageTestingConfig>)[key] = deepClone(
+          value as LanguageTestingConfig
+        );
+      }
+    }
+  }
+
+  if (overrides) {
+    for (const [key, value] of Object.entries(overrides)) {
+      if (!value) continue;
+      if (key === 'master') {
+        (merged as GeneratorTestingConfig).master = {
+          ...(merged.master ?? {}),
+          ...(value as MasterTestRunnerConfig),
+        };
+      } else {
+        const existing = (merged as Record<string, LanguageTestingConfig>)[key];
+        (merged as Record<string, LanguageTestingConfig>)[key] = existing
+          ? { ...existing, ...deepClone(value as LanguageTestingConfig) }
+          : deepClone(value as LanguageTestingConfig);
+      }
+    }
+  }
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
 /**
@@ -456,11 +665,16 @@ function mergeGeneratorConfig(
     ...(overrides?.hooks ?? {}),
   } as Record<string, string>;
 
+  const testingConfig = mergeTestingConfig(base?.testing, overrides?.testing);
+  const dockerConfig = mergeDockerConfig(base?.docker, overrides?.docker);
+
   const hasTemplateOverrides = Object.keys(templateOverrides).length > 0;
   const hasPlugins = Object.keys(pluginConfig).length > 0;
   const hasHooks = Object.keys(hookConfig).length > 0;
+  const hasTesting = testingConfig !== undefined;
+  const hasDocker = dockerConfig !== undefined;
 
-  if (!hasTemplateOverrides && !hasPlugins && !hasHooks) {
+  if (!hasTemplateOverrides && !hasPlugins && !hasHooks && !hasTesting && !hasDocker) {
     return undefined;
   }
 
@@ -468,6 +682,8 @@ function mergeGeneratorConfig(
     templateOverrides: hasTemplateOverrides ? templateOverrides : undefined,
     plugins: hasPlugins ? pluginConfig : undefined,
     hooks: hasHooks ? hookConfig : undefined,
+    testing: testingConfig,
+    docker: dockerConfig,
   };
 }
 

@@ -150,6 +150,22 @@ export type GeneratorHookMap = Partial<Record<GeneratorHookEvent, string>>;
  *
  * @public
  */
+export interface DockerTemplateConfig {
+  dockerfile?: string;
+  dockerignore?: string;
+}
+
+export interface DockerGeneratorDefaultsConfig {
+  service?: DockerTemplateConfig;
+  client?: DockerTemplateConfig;
+}
+
+export interface DockerGeneratorConfig {
+  defaults?: DockerGeneratorDefaultsConfig;
+  services?: Record<string, DockerTemplateConfig>;
+  clients?: Record<string, DockerTemplateConfig>;
+}
+
 export interface GeneratorConfig {
   /** Mapping of language identifiers to template override directories */
   templateOverrides?: Record<string, string>;
@@ -157,7 +173,38 @@ export interface GeneratorConfig {
   plugins?: Record<string, Record<string, unknown>>;
   /** Lifecycle hook commands executed around generation */
   hooks?: GeneratorHookMap;
+  /** Testing configuration (frameworks, output paths, master runner, etc.) */
+  testing?: GeneratorTestingConfig;
+  /** Docker artifact configuration */
+  docker?: DockerGeneratorConfig;
 }
+
+/**
+ * Testing configuration for a specific language.
+ *
+ * @public
+ */
+export interface LanguageTestingConfig {
+  /** Preferred test framework identifier (e.g., vitest, jest, pytest). */
+  framework?: string;
+  /** Optional override for where generated test files should be written (relative to project root). */
+  outputDir?: string;
+  /** Optional custom command or script to execute generated tests. */
+  command?: string;
+  /** Optional arbitrary options consumed by language plugins or generators. */
+  options?: Record<string, unknown>;
+}
+
+export interface MasterTestRunnerConfig {
+  /** Runner type for aggregating tests. Defaults to "make". */
+  type?: 'make' | 'node';
+  /** Custom output path for the generated runner (relative to output dir). */
+  output?: string;
+}
+
+export type GeneratorTestingConfig = {
+  master?: MasterTestRunnerConfig;
+} & Record<string, LanguageTestingConfig>;
 
 /**
  * Directory layout hints used by the CLI when scaffolding or resolving files.
@@ -255,6 +302,15 @@ export interface FlowSpec {
   steps?: Array<Record<string, unknown>>;
 }
 
+export interface CapabilitySpec {
+  name?: string | null;
+  description?: string | null;
+  owner?: string | null;
+  gherkin?: string | null;
+  depends_on?: string[];
+  tags?: string[];
+}
+
 /**
  * Lightweight service descriptor derived from specification metadata.
  *
@@ -307,6 +363,7 @@ export interface AppSpec {
   services?: Record<string, ServiceConfig>;
   flows: FlowSpec[];
   ops?: OpsSpec | null;
+  capabilities?: Record<string, CapabilitySpec> | null;
 }
 
 /**

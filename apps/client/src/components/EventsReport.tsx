@@ -1,7 +1,7 @@
-import { useProjectEvents } from '@/hooks/api-hooks';
-import { useWebSocket } from '@/hooks/useWebSocket';
-import { apiService } from '@/services/api';
-import type { Event } from '@/types/api';
+import { useProjectEvents } from "@/hooks/api-hooks";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { apiService } from "@/services/api";
+import type { Event } from "@/types/api";
 import {
   ChevronDown,
   ChevronRight,
@@ -10,8 +10,8 @@ import {
   PlusCircle,
   RotateCcw,
   Trash2,
-} from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 interface EventsReportProps {
   projectId: string;
@@ -21,7 +21,7 @@ const sortEventsDesc = (entries: Event[]): Event[] =>
   [...entries].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
 const toShortId = (value: unknown, length = 8): string | undefined => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return undefined;
   }
   const trimmed = value.trim();
@@ -31,40 +31,40 @@ const toShortId = (value: unknown, length = 8): string | undefined => {
 
 const humanizeKey = (key: string) =>
   key
-    .split('_')
+    .split("_")
     .filter(Boolean)
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
 const formatValue = (value: unknown): string => {
   if (value === null || value === undefined) {
-    return 'n/a';
+    return "n/a";
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
-    return trimmed.length > 80 ? `${trimmed.slice(0, 77)}…` : trimmed || 'n/a';
+    return trimmed.length > 80 ? `${trimmed.slice(0, 77)}…` : trimmed || "n/a";
   }
-  if (typeof value === 'number' || typeof value === 'bigint') {
+  if (typeof value === "number" || typeof value === "bigint") {
     return Number(value).toLocaleString();
   }
-  if (typeof value === 'boolean') {
-    return value ? 'yes' : 'no';
+  if (typeof value === "boolean") {
+    return value ? "yes" : "no";
   }
   if (Array.isArray(value)) {
-    if (value.length === 0) return 'none';
-    const formatted = value.map(item => formatValue(item));
-    const preview = formatted.slice(0, 3).join(', ');
+    if (value.length === 0) return "none";
+    const formatted = value.map((item) => formatValue(item));
+    const preview = formatted.slice(0, 3).join(", ");
     return formatted.length > 3 ? `${preview} +${formatted.length - 3} more` : preview;
   }
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>).filter(
-      ([, v]) => v !== undefined && v !== null
+      ([, v]) => v !== undefined && v !== null,
     );
-    if (entries.length === 0) return '—';
+    if (entries.length === 0) return "—";
     const preview = entries
       .slice(0, 3)
       .map(([entryKey, val]) => `${humanizeKey(entryKey)}=${formatValue(val)}`)
-      .join(', ');
+      .join(", ");
     return entries.length > 3 ? `${preview} +${entries.length - 3} more` : preview;
   }
   return String(value);
@@ -77,7 +77,7 @@ const formatDuration = (ms?: number): string | undefined => {
   if (seconds < 60) return `${seconds < 10 ? seconds.toFixed(1) : Math.round(seconds)}s`;
   const minutes = Math.floor(seconds / 60);
   const remaining = Math.round(seconds % 60);
-  return `${minutes}m${remaining ? ` ${remaining}s` : ''}`;
+  return `${minutes}m${remaining ? ` ${remaining}s` : ""}`;
 };
 
 const emphasizeLabel = (value: string): string => humanizeKey(value);
@@ -86,15 +86,15 @@ type DetailRow = { label: string; value: string };
 
 const summarizeGeneric = (data: Record<string, unknown>): string => {
   const entries = Object.entries(data ?? {}).filter(
-    ([, value]) => value !== undefined && value !== null && value !== ''
+    ([, value]) => value !== undefined && value !== null && value !== "",
   );
   if (entries.length === 0) {
-    return 'No additional details provided.';
+    return "No additional details provided.";
   }
   const preview = entries
     .slice(0, 3)
     .map(([key, value]) => `${humanizeKey(key)}: ${formatValue(value)}`)
-    .join(' · ');
+    .join(" · ");
   const remaining = entries.length - 3;
   return remaining > 0 ? `${preview} · +${remaining} more` : preview;
 };
@@ -102,7 +102,7 @@ const summarizeGeneric = (data: Record<string, unknown>): string => {
 const formatEventSummary = (
   event: Event,
   lookupEvent?: (eventId: string) => Event | undefined,
-  seen: Set<string> = new Set()
+  seen: Set<string> = new Set(),
 ): string => {
   if (seen.has(event.id)) {
     return event.event_type;
@@ -113,17 +113,17 @@ const formatEventSummary = (
 
   const getString = (key: string): string | undefined => {
     const value = data[key];
-    if (typeof value === 'string' && value.trim()) {
+    if (typeof value === "string" && value.trim()) {
       return value.trim();
     }
     return undefined;
   };
   const getNumber = (key: string): number | undefined => {
     const value = data[key];
-    if (typeof value === 'number' && !Number.isNaN(value)) {
+    if (typeof value === "number" && !Number.isNaN(value)) {
       return value;
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       const parsed = Number(value);
       if (!Number.isNaN(parsed)) {
         return parsed;
@@ -135,7 +135,7 @@ const formatEventSummary = (
     Array.isArray(data[key]) ? (data[key] as unknown[]) : [];
   const join = (...parts: (string | undefined)[]) => {
     const filtered = parts.filter(Boolean) as string[];
-    return filtered.length > 0 ? filtered.join(' · ') : '';
+    return filtered.length > 0 ? filtered.join(" · ") : "";
   };
 
   const describeById = (id?: string): string | undefined => {
@@ -146,81 +146,81 @@ const formatEventSummary = (
   };
 
   const describeEventLike = (value: unknown, fallbackId?: string): string | undefined => {
-    if (!value || typeof value !== 'object') return undefined;
+    if (!value || typeof value !== "object") return undefined;
     const raw = value as Partial<Event> & Record<string, unknown>;
     const type = raw.event_type;
-    if (!type || typeof type !== 'string') return undefined;
+    if (!type || typeof type !== "string") return undefined;
     const normalized: Event = {
       id: String(raw.id ?? fallbackId ?? `${event.id}-ref`),
       project_id: String(raw.project_id ?? event.project_id),
-      event_type: type as Event['event_type'],
-      data: raw.data && typeof raw.data === 'object' ? (raw.data as Record<string, unknown>) : {},
+      event_type: type as Event["event_type"],
+      data: raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : {},
       is_active: raw.is_active !== undefined ? Boolean(raw.is_active) : true,
       reverted_at: raw.reverted_at ?? null,
-      created_at: typeof raw.created_at === 'string' ? raw.created_at : event.created_at,
+      created_at: typeof raw.created_at === "string" ? raw.created_at : event.created_at,
     };
     return formatEventSummary(normalized, lookupEvent, new Set(seen));
   };
 
-  const fragmentPath = getString('fragment_path') ?? getString('path');
-  const fragmentId = getString('fragment_id');
-  const fragmentLabel = fragmentPath ?? toShortId(fragmentId) ?? 'fragment';
-  const user = getString('user_id') ?? getString('author') ?? getString('user');
+  const fragmentPath = getString("fragment_path") ?? getString("path");
+  const fragmentId = getString("fragment_id");
+  const fragmentLabel = fragmentPath ?? toShortId(fragmentId) ?? "fragment";
+  const user = getString("user_id") ?? getString("author") ?? getString("user");
 
   switch (event.event_type) {
-    case 'fragment_created': {
-      const contentLength = getNumber('content_length');
+    case "fragment_created": {
+      const contentLength = getNumber("content_length");
       const createdLabel =
-        fragmentLabel === 'fragment' ? 'Added fragment' : `Added fragment ${fragmentLabel}`;
+        fragmentLabel === "fragment" ? "Added fragment" : `Added fragment ${fragmentLabel}`;
       return (
         join(
           createdLabel,
           user ? `by ${user}` : undefined,
-          contentLength ? `${contentLength.toLocaleString()} chars` : undefined
-        ) || 'Added fragment'
+          contentLength ? `${contentLength.toLocaleString()} chars` : undefined,
+        ) || "Added fragment"
       );
     }
-    case 'fragment_updated': {
-      const revisionIdValue = getString('revision_id');
-      const revisionNumberValue = getNumber('revision_number');
+    case "fragment_updated": {
+      const revisionIdValue = getString("revision_id");
+      const revisionNumberValue = getNumber("revision_number");
       const revision = revisionIdValue
         ? toShortId(revisionIdValue)
         : revisionNumberValue !== undefined
           ? revisionNumberValue.toString()
           : undefined;
-      const length = getNumber('content_length');
+      const length = getNumber("content_length");
       const changes =
-        data.changes && typeof data.changes === 'object' ? formatValue(data.changes) : undefined;
+        data.changes && typeof data.changes === "object" ? formatValue(data.changes) : undefined;
       const updatedLabel =
-        fragmentLabel === 'fragment' ? 'Updated fragment' : `Updated fragment ${fragmentLabel}`;
+        fragmentLabel === "fragment" ? "Updated fragment" : `Updated fragment ${fragmentLabel}`;
       return (
         join(
           updatedLabel,
           revision ? `rev ${revision}` : undefined,
           user ? `by ${user}` : undefined,
           length ? `${length.toLocaleString()} chars` : undefined,
-          changes ? `changes: ${changes}` : undefined
-        ) || 'Updated fragment'
+          changes ? `changes: ${changes}` : undefined,
+        ) || "Updated fragment"
       );
     }
-    case 'fragment_deleted': {
+    case "fragment_deleted": {
       return (
         join(
-          fragmentLabel === 'fragment' ? 'Deleted fragment' : `Deleted fragment ${fragmentLabel}`,
-          user ? `by ${user}` : undefined
-        ) || 'Deleted fragment'
+          fragmentLabel === "fragment" ? "Deleted fragment" : `Deleted fragment ${fragmentLabel}`,
+          user ? `by ${user}` : undefined,
+        ) || "Deleted fragment"
       );
     }
-    case 'fragment_revision_created': {
-      const revisionNumberValue = getNumber('revision_number');
-      const revisionIdValue = getString('revision_id');
-      const message = getString('message');
-      const author = getString('author');
-      const contentHash = getString('content_hash');
+    case "fragment_revision_created": {
+      const revisionNumberValue = getNumber("revision_number");
+      const revisionIdValue = getString("revision_id");
+      const message = getString("message");
+      const author = getString("author");
+      const contentHash = getString("content_hash");
       return (
         join(
-          fragmentLabel === 'fragment'
-            ? 'Saved fragment revision'
+          fragmentLabel === "fragment"
+            ? "Saved fragment revision"
             : `Saved revision for ${fragmentLabel}`,
           revisionNumberValue !== undefined
             ? `rev ${revisionNumberValue}`
@@ -229,140 +229,140 @@ const formatEventSummary = (
               : undefined,
           author ? `by ${author}` : user ? `by ${user}` : undefined,
           message,
-          contentHash ? `hash ${toShortId(contentHash)}` : undefined
-        ) || 'Fragment revision created'
+          contentHash ? `hash ${toShortId(contentHash)}` : undefined,
+        ) || "Fragment revision created"
       );
     }
-    case 'validation_started': {
-      const count = getNumber('fragment_count');
+    case "validation_started": {
+      const count = getNumber("fragment_count");
       return (
         join(
-          'Validation started',
-          count !== undefined ? `${count} fragment${count === 1 ? '' : 's'}` : undefined,
-          user ? `by ${user}` : undefined
-        ) || 'Validation started'
+          "Validation started",
+          count !== undefined ? `${count} fragment${count === 1 ? "" : "s"}` : undefined,
+          user ? `by ${user}` : undefined,
+        ) || "Validation started"
       );
     }
-    case 'validation_completed': {
-      const errors = getNumber('error_count');
-      const warnings = getNumber('warning_count');
-      const specHash = getString('spec_hash');
-      const duration = formatDuration(getNumber('duration_ms'));
+    case "validation_completed": {
+      const errors = getNumber("error_count");
+      const warnings = getNumber("warning_count");
+      const specHash = getString("spec_hash");
+      const duration = formatDuration(getNumber("duration_ms"));
       return (
         join(
           errors
-            ? `${errors} error${errors === 1 ? '' : 's'}`
-            : 'Validation completed without errors',
-          warnings ? `${warnings} warning${warnings === 1 ? '' : 's'}` : undefined,
+            ? `${errors} error${errors === 1 ? "" : "s"}`
+            : "Validation completed without errors",
+          warnings ? `${warnings} warning${warnings === 1 ? "" : "s"}` : undefined,
           specHash ? `spec ${toShortId(specHash)}` : undefined,
           duration ? `in ${duration}` : undefined,
-          user ? `by ${user}` : undefined
-        ) || 'Validation completed'
+          user ? `by ${user}` : undefined,
+        ) || "Validation completed"
       );
     }
-    case 'validation_failed': {
-      const specHash = getString('spec_hash');
-      const failureReason = getString('failure_reason');
-      const errors = getNumber('error_count');
-      const warnings = getNumber('warning_count');
+    case "validation_failed": {
+      const specHash = getString("spec_hash");
+      const failureReason = getString("failure_reason");
+      const errors = getNumber("error_count");
+      const warnings = getNumber("warning_count");
       return (
         join(
-          'Validation failed',
+          "Validation failed",
           specHash ? `spec ${toShortId(specHash)}` : undefined,
           failureReason,
           errors ? `${errors} errors` : undefined,
           warnings ? `${warnings} warnings` : undefined,
-          user ? `by ${user}` : undefined
-        ) || 'Validation failed'
+          user ? `by ${user}` : undefined,
+        ) || "Validation failed"
       );
     }
-    case 'version_frozen': {
-      const versionName = getString('version_name');
-      const versionId = getString('version_id');
-      const description = getString('description');
-      const specHash = getString('spec_hash');
+    case "version_frozen": {
+      const versionName = getString("version_name");
+      const versionId = getString("version_id");
+      const description = getString("description");
+      const specHash = getString("spec_hash");
       return (
         join(
-          versionName ? `Frozen version "${versionName}"` : 'Version frozen',
+          versionName ? `Frozen version "${versionName}"` : "Version frozen",
           versionId ? `id ${toShortId(versionId)}` : undefined,
           specHash ? `spec ${toShortId(specHash)}` : undefined,
           description,
-          user ? `by ${user}` : undefined
-        ) || 'Version frozen'
+          user ? `by ${user}` : undefined,
+        ) || "Version frozen"
       );
     }
-    case 'webhook_received': {
-      const provider = getString('provider');
-      const repo = getString('repository');
-      const ref = getString('ref');
-      const eventName = getString('event_type');
-      const actions = getArray('actions');
+    case "webhook_received": {
+      const provider = getString("provider");
+      const repo = getString("repository");
+      const ref = getString("ref");
+      const eventName = getString("event_type");
+      const actions = getArray("actions");
       return (
         join(
-          `Received ${provider ?? 'webhook'}${eventName ? ` ${eventName}` : ''}`,
+          `Received ${provider ?? "webhook"}${eventName ? ` ${eventName}` : ""}`,
           repo ? `for ${repo}` : undefined,
-          ref ? `ref ${ref.split('/').pop() ?? ref}` : undefined,
+          ref ? `ref ${ref.split("/").pop() ?? ref}` : undefined,
           actions.length
-            ? `actions: ${actions.slice(0, 2).map(formatValue).join(', ')}${
-                actions.length > 2 ? ` +${actions.length - 2}` : ''
+            ? `actions: ${actions.slice(0, 2).map(formatValue).join(", ")}${
+                actions.length > 2 ? ` +${actions.length - 2}` : ""
               }`
-            : undefined
-        ) || 'Received webhook'
+            : undefined,
+        ) || "Received webhook"
       );
     }
-    case 'handler_executed': {
+    case "handler_executed": {
       const handlerName =
-        getString('handlerName') ?? getString('handler') ?? toShortId(getString('handlerId'));
+        getString("handlerName") ?? getString("handler") ?? toShortId(getString("handlerId"));
       const success = data.success === true;
-      const message = getString('message');
-      const duration = formatDuration(getNumber('duration'));
-      const actions = getArray('actions');
+      const message = getString("message");
+      const duration = formatDuration(getNumber("duration"));
+      const actions = getArray("actions");
       return (
         join(
           handlerName
-            ? `${handlerName} ${success ? 'succeeded' : 'failed'}`
-            : `Handler ${success ? 'succeeded' : 'failed'}`,
+            ? `${handlerName} ${success ? "succeeded" : "failed"}`
+            : `Handler ${success ? "succeeded" : "failed"}`,
           message,
           actions.length
-            ? `actions: ${actions.slice(0, 2).map(formatValue).join(', ')}${
-                actions.length > 2 ? ` +${actions.length - 2}` : ''
+            ? `actions: ${actions.slice(0, 2).map(formatValue).join(", ")}${
+                actions.length > 2 ? ` +${actions.length - 2}` : ""
               }`
             : undefined,
-          duration ? `in ${duration}` : undefined
-        ) || 'Handler executed'
+          duration ? `in ${duration}` : undefined,
+        ) || "Handler executed"
       );
     }
-    case 'git_push_processed': {
-      const commits = getNumber('commits');
-      const ref = getString('ref');
-      const repository = getString('repository');
-      const provider = getString('provider');
+    case "git_push_processed": {
+      const commits = getNumber("commits");
+      const ref = getString("ref");
+      const repository = getString("repository");
+      const provider = getString("provider");
       return (
         join(
-          `Processed ${commits ?? 0} commit${commits === 1 ? '' : 's'}`,
+          `Processed ${commits ?? 0} commit${commits === 1 ? "" : "s"}`,
           ref ? `on ${ref}` : undefined,
           repository ? `repo ${repository}` : undefined,
-          provider ? `via ${provider}` : undefined
-        ) || 'Processed git push'
+          provider ? `via ${provider}` : undefined,
+        ) || "Processed git push"
       );
     }
-    case 'git_merge_processed': {
-      const action = getString('action');
-      const source = getString('head_branch');
-      const target = getString('base_branch');
-      const provider = getString('provider');
-      const pr = getString('pr_id');
+    case "git_merge_processed": {
+      const action = getString("action");
+      const source = getString("head_branch");
+      const target = getString("base_branch");
+      const provider = getString("provider");
+      const pr = getString("pr_id");
       return (
         join(
-          action ? `${action.charAt(0).toUpperCase()}${action.slice(1)} merge` : 'Merge processed',
+          action ? `${action.charAt(0).toUpperCase()}${action.slice(1)} merge` : "Merge processed",
           source && target ? `${source} → ${target}` : undefined,
           pr ? `PR ${toShortId(pr)}` : undefined,
-          provider ? `via ${provider}` : undefined
-        ) || 'Processed merge event'
+          provider ? `via ${provider}` : undefined,
+        ) || "Processed merge event"
       );
     }
-    case 'event_head_updated': {
-      const headId = getString('head_event_id');
+    case "event_head_updated": {
+      const headId = getString("head_event_id");
       const headSummary =
         describeEventLike(data.head_event, headId ?? undefined) ??
         describeById(headId) ??
@@ -371,22 +371,22 @@ const formatEventSummary = (
         ? `Head set to "${headSummary}"`
         : headId
           ? `Head set to ${toShortId(headId)}`
-          : 'Head updated';
-      const reactivated = getArray('reactivated_event_ids').length;
-      const deactivated = getArray('deactivated_event_ids').length;
+          : "Head updated";
+      const reactivated = getArray("reactivated_event_ids").length;
+      const deactivated = getArray("deactivated_event_ids").length;
       return (
         join(
           base,
           reactivated ? `re-activated ${reactivated}` : undefined,
-          deactivated ? `deactivated ${deactivated}` : undefined
+          deactivated ? `deactivated ${deactivated}` : undefined,
         ) || base
       );
     }
-    case 'events_reverted': {
-      const revertedIds = getArray('reverted_event_ids').map(id => String(id));
-      const headId = getString('head_event_id');
+    case "events_reverted": {
+      const revertedIds = getArray("reverted_event_ids").map((id) => String(id));
+      const headId = getString("head_event_id");
       const described = revertedIds
-        .map(id => describeById(id))
+        .map((id) => describeById(id))
         .filter((value): value is string => Boolean(value));
       let description: string;
       if (described.length === 1) {
@@ -394,31 +394,31 @@ const formatEventSummary = (
       } else if (described.length > 1) {
         const preview = described
           .slice(0, 2)
-          .map(item => `"${item}"`)
-          .join(', ');
-        const suffix = described.length > 2 ? ` +${described.length - 2} more` : '';
+          .map((item) => `"${item}"`)
+          .join(", ");
+        const suffix = described.length > 2 ? ` +${described.length - 2} more` : "";
         description = `Reverted ${revertedIds.length} events (${preview}${suffix})`;
       } else {
         description =
           join(
-            `Reverted ${revertedIds.length} event${revertedIds.length === 1 ? '' : 's'}`,
+            `Reverted ${revertedIds.length} event${revertedIds.length === 1 ? "" : "s"}`,
             revertedIds.length
               ? `(${revertedIds
                   .slice(0, 2)
-                  .map(id => toShortId(String(id)))
-                  .join(', ')}${revertedIds.length > 2 ? '…' : ''})`
-              : undefined
-          ) || 'Events reverted';
+                  .map((id) => toShortId(String(id)))
+                  .join(", ")}${revertedIds.length > 2 ? "…" : ""})`
+              : undefined,
+          ) || "Events reverted";
       }
       return headId ? `${description} · head now ${toShortId(headId)}` : description;
     }
-    case 'events_reapplied': {
-      const reappliedIds = getArray('reapplied_event_ids').map(id => String(id));
+    case "events_reapplied": {
+      const reappliedIds = getArray("reapplied_event_ids").map((id) => String(id));
       if (reappliedIds.length === 0) {
-        reappliedIds.push(...getArray('reactivated_event_ids').map(id => String(id)));
+        reappliedIds.push(...getArray("reactivated_event_ids").map((id) => String(id)));
       }
       const described = reappliedIds
-        .map(id => describeById(id))
+        .map((id) => describeById(id))
         .filter((value): value is string => Boolean(value));
       if (described.length === 1) {
         return `Reapplied "${described[0]}"`;
@@ -426,58 +426,58 @@ const formatEventSummary = (
       if (described.length > 1) {
         const preview = described
           .slice(0, 2)
-          .map(item => `"${item}"`)
-          .join(', ');
-        const suffix = described.length > 2 ? ` +${described.length - 2} more` : '';
+          .map((item) => `"${item}"`)
+          .join(", ");
+        const suffix = described.length > 2 ? ` +${described.length - 2} more` : "";
         return `Reapplied ${reappliedIds.length} events (${preview}${suffix})`;
       }
       return (
         join(
-          `Reapplied ${reappliedIds.length} event${reappliedIds.length === 1 ? '' : 's'}`,
+          `Reapplied ${reappliedIds.length} event${reappliedIds.length === 1 ? "" : "s"}`,
           reappliedIds.length
             ? `(${reappliedIds
                 .slice(0, 2)
-                .map(id => toShortId(String(id)))
-                .join(', ')}${reappliedIds.length > 2 ? '…' : ''})`
-            : undefined
-        ) || 'Events reapplied'
+                .map((id) => toShortId(String(id)))
+                .join(", ")}${reappliedIds.length > 2 ? "…" : ""})`
+            : undefined,
+        ) || "Events reapplied"
       );
     }
-    case 'entity_created': {
-      const entityType = getString('entity_type') ?? getString('artifact_type');
-      const name = getString('name');
+    case "entity_created": {
+      const entityType = getString("entity_type") ?? getString("artifact_type");
+      const name = getString("name");
       const values =
-        data.values && typeof data.values === 'object' ? formatValue(data.values) : undefined;
+        data.values && typeof data.values === "object" ? formatValue(data.values) : undefined;
       return (
         join(
-          entityType ? `Added ${humanizeKey(entityType)}` : 'Entity created',
+          entityType ? `Added ${humanizeKey(entityType)}` : "Entity created",
           name ? `"${name}"` : undefined,
-          values ? `values: ${values}` : undefined
-        ) || 'Entity created'
+          values ? `values: ${values}` : undefined,
+        ) || "Entity created"
       );
     }
-    case 'entity_deleted': {
-      const entityType = getString('entity_type') ?? getString('artifact_type');
-      const name = getString('name');
-      const reason = getString('reason') ?? getString('source');
+    case "entity_deleted": {
+      const entityType = getString("entity_type") ?? getString("artifact_type");
+      const name = getString("name");
+      const reason = getString("reason") ?? getString("source");
       return (
         join(
-          entityType ? `Removed ${humanizeKey(entityType)}` : 'Entity deleted',
+          entityType ? `Removed ${humanizeKey(entityType)}` : "Entity deleted",
           name ? `"${name}"` : undefined,
-          reason ? `(${reason})` : undefined
-        ) || 'Entity deleted'
+          reason ? `(${reason})` : undefined,
+        ) || "Entity deleted"
       );
     }
-    case 'entity_restored': {
-      const entityType = getString('entity_type') ?? getString('artifact_type');
-      const name = getString('name');
-      const sourceEvent = getString('restored_from_event_id');
+    case "entity_restored": {
+      const entityType = getString("entity_type") ?? getString("artifact_type");
+      const name = getString("name");
+      const sourceEvent = getString("restored_from_event_id");
       return (
         join(
-          entityType ? `Restored ${humanizeKey(entityType)}` : 'Entity restored',
+          entityType ? `Restored ${humanizeKey(entityType)}` : "Entity restored",
           name ? `"${name}"` : undefined,
-          sourceEvent ? `from ${toShortId(sourceEvent) ?? sourceEvent}` : undefined
-        ) || 'Entity restored'
+          sourceEvent ? `from ${toShortId(sourceEvent) ?? sourceEvent}` : undefined,
+        ) || "Entity restored"
       );
     }
     default:
@@ -501,11 +501,11 @@ const coerceToString = (value: unknown): string | undefined => {
   if (value === null || value === undefined) {
     return undefined;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     return trimmed ? trimmed : undefined;
   }
-  if (typeof value === 'number' || typeof value === 'bigint') {
+  if (typeof value === "number" || typeof value === "bigint") {
     return String(value);
   }
   return undefined;
@@ -513,7 +513,7 @@ const coerceToString = (value: unknown): string | undefined => {
 
 const getEventTargetInfo = (
   event: Event,
-  context: { lookupEvent?: (eventId: string) => Event | undefined; seen?: Set<string> } = {}
+  context: { lookupEvent?: (eventId: string) => Event | undefined; seen?: Set<string> } = {},
 ): EventTargetInfo => {
   const data = (event.data ?? {}) as Record<string, unknown>;
   const { lookupEvent } = context;
@@ -553,20 +553,21 @@ const getEventTargetInfo = (
   };
 
   const resolveFromEventLike = (value: unknown, fallbackId: string): EventTargetInfo | null => {
-    if (!value || typeof value !== 'object') return null;
+    if (!value || typeof value !== "object") return null;
     const raw = value as Partial<Event> & Record<string, unknown>;
     const type = raw.event_type;
-    if (!type || typeof type !== 'string') return null;
+    if (!type || typeof type !== "string") return null;
     const normalized: Event = {
       id: String(raw.id ?? fallbackId),
       project_id: String(raw.project_id ?? event.project_id),
-      event_type: type as Event['event_type'],
-      data: raw.data && typeof raw.data === 'object' ? (raw.data as Record<string, unknown>) : {},
+      event_type: type as Event["event_type"],
+      data: raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : {},
       is_active: raw.is_active !== undefined ? Boolean(raw.is_active) : true,
-      reverted_at: typeof raw.reverted_at === 'string' ? raw.reverted_at : null,
-      created_at: typeof raw.created_at === 'string' ? raw.created_at : event.created_at,
+      reverted_at: typeof raw.reverted_at === "string" ? raw.reverted_at : null,
+      created_at: typeof raw.created_at === "string" ? raw.created_at : event.created_at,
     };
-    return getEventTargetInfo(normalized, { lookupEvent, seen });
+    const nextContext = lookupEvent ? { lookupEvent, seen } : { seen };
+    return getEventTargetInfo(normalized, nextContext);
   };
 
   const resolveFromEventArray = (values: unknown[], prefix: string): EventTargetInfo | null => {
@@ -581,22 +582,22 @@ const getEventTargetInfo = (
 
   const timelineTarget = (description: string): EventTargetInfo => ({
     key: `timeline:${event.event_type}`,
-    label: 'Timeline update',
+    label: "Timeline update",
     description,
   });
 
   switch (event.event_type) {
-    case 'fragment_created':
-    case 'fragment_updated':
-    case 'fragment_deleted':
-    case 'fragment_revision_created': {
-      const fragmentId = takeString('fragment_id', 'fragmentId', 'id');
-      const fragmentPath = takeString('fragment_path', 'path');
-      const revisionId = takeString('revision_id', 'revisionId');
-      const revisionNumber = takeString('revision_number', 'revisionNumber');
+    case "fragment_created":
+    case "fragment_updated":
+    case "fragment_deleted":
+    case "fragment_revision_created": {
+      const fragmentId = takeString("fragment_id", "fragmentId", "id");
+      const fragmentPath = takeString("fragment_path", "path");
+      const revisionId = takeString("revision_id", "revisionId");
+      const revisionNumber = takeString("revision_number", "revisionNumber");
       const label =
         fragmentPath ??
-        (fragmentId ? `Fragment ${toShortId(fragmentId) ?? fragmentId}` : 'Fragment');
+        (fragmentId ? `Fragment ${toShortId(fragmentId) ?? fragmentId}` : "Fragment");
       const descriptionParts: string[] = [];
       if (fragmentId) {
         descriptionParts.push(`ID ${toShortId(fragmentId) ?? fragmentId}`);
@@ -606,43 +607,45 @@ const getEventTargetInfo = (
       } else if (revisionId) {
         descriptionParts.push(`Revision ${toShortId(revisionId) ?? revisionId}`);
       }
+      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
         key: `fragment:${fragmentId ?? fragmentPath ?? event.event_type}`,
         label,
-        description: descriptionParts.length ? descriptionParts.join(' · ') : undefined,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'validation_started':
-    case 'validation_completed':
-    case 'validation_failed': {
-      const validationId = takeString('validation_id', 'validationId');
-      const specHash = takeString('spec_hash', 'specHash');
-      const fragmentCount = takeString('fragment_count', 'fragmentCount');
+    case "validation_started":
+    case "validation_completed":
+    case "validation_failed": {
+      const validationId = takeString("validation_id", "validationId");
+      const specHash = takeString("spec_hash", "specHash");
+      const fragmentCount = takeString("fragment_count", "fragmentCount");
       const label = validationId
         ? `Validation ${toShortId(validationId) ?? validationId}`
         : specHash
           ? `Validation ${toShortId(specHash) ?? specHash}`
-          : 'Validation run';
+          : "Validation run";
       const descriptionParts: string[] = [];
       if (fragmentCount) {
-        descriptionParts.push(`${fragmentCount} fragment${fragmentCount === '1' ? '' : 's'}`);
+        descriptionParts.push(`${fragmentCount} fragment${fragmentCount === "1" ? "" : "s"}`);
       }
       if (specHash) {
         descriptionParts.push(`Spec ${toShortId(specHash) ?? specHash}`);
       }
+      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
-        key: `validation:${validationId ?? specHash ?? 'general'}`,
+        key: `validation:${validationId ?? specHash ?? "general"}`,
         label,
-        description: descriptionParts.length ? descriptionParts.join(' · ') : undefined,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'version_frozen': {
-      const versionId = takeString('version_id', 'versionId');
-      const versionName = takeString('version_name', 'versionName');
-      const specHash = takeString('spec_hash', 'specHash');
+    case "version_frozen": {
+      const versionId = takeString("version_id", "versionId");
+      const versionName = takeString("version_name", "versionName");
+      const specHash = takeString("spec_hash", "specHash");
       const label =
         versionName ??
-        (versionId ? `Version ${toShortId(versionId) ?? versionId}` : 'Version frozen');
+        (versionId ? `Version ${toShortId(versionId) ?? versionId}` : "Version frozen");
       const descriptionParts: string[] = [];
       if (versionId) {
         descriptionParts.push(`ID ${toShortId(versionId) ?? versionId}`);
@@ -650,78 +653,82 @@ const getEventTargetInfo = (
       if (specHash) {
         descriptionParts.push(`Spec ${toShortId(specHash) ?? specHash}`);
       }
+      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
-        key: `version:${versionId ?? versionName ?? 'frozen'}`,
+        key: `version:${versionId ?? versionName ?? "frozen"}`,
         label,
-        description: descriptionParts.length ? descriptionParts.join(' · ') : undefined,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'webhook_received': {
-      const webhookId = takeString('webhook_id', 'webhookId', 'id');
-      const provider = takeString('provider');
-      const repository = takeString('repository', 'repo');
-      const eventName = takeString('event_type', 'eventType');
+    case "webhook_received": {
+      const webhookId = takeString("webhook_id", "webhookId", "id");
+      const provider = takeString("provider");
+      const repository = takeString("repository", "repo");
+      const eventName = takeString("event_type", "eventType");
       const providerName = capitalize(provider);
-      const label = providerName ? `${providerName} webhook` : 'Webhook';
+      const label = providerName ? `${providerName} webhook` : "Webhook";
       const descriptionParts = [repository, eventName ? humanizeKey(eventName) : undefined].filter(
-        (value): value is string => Boolean(value)
+        (value): value is string => Boolean(value),
       );
       const fallbackKey =
-        [provider, repository].filter((value): value is string => Boolean(value)).join(':') ||
-        'general';
+        [provider, repository].filter((value): value is string => Boolean(value)).join(":") ||
+        "general";
       const keyBase = webhookId ?? fallbackKey;
+      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
         key: `webhook:${keyBase}`,
         label,
-        description: descriptionParts.length ? descriptionParts.join(' · ') : undefined,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'handler_executed': {
-      const handlerId = takeString('handler_id', 'handlerId');
-      const handlerName = takeString('handler_name', 'handlerName', 'handler');
+    case "handler_executed": {
+      const handlerId = takeString("handler_id", "handlerId");
+      const handlerName = takeString("handler_name", "handlerName", "handler");
       const label =
-        handlerName ?? (handlerId ? `Handler ${toShortId(handlerId) ?? handlerId}` : 'Handler');
+        handlerName ?? (handlerId ? `Handler ${toShortId(handlerId) ?? handlerId}` : "Handler");
       const description = handlerId ? `ID ${toShortId(handlerId) ?? handlerId}` : undefined;
       return {
-        key: `handler:${handlerId ?? handlerName ?? 'execution'}`,
+        key: `handler:${handlerId ?? handlerName ?? "execution"}`,
         label,
-        description,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'git_push_processed': {
-      const repository = takeString('repository');
-      const branch = takeString('branch', 'ref');
-      const provider = takeString('provider');
-      const branchLabel = branch ? (branch.split('/').pop() ?? branch) : undefined;
-      const label = repository ? `Push · ${repository}` : 'Git push';
+    case "git_push_processed": {
+      const repository = takeString("repository");
+      const branch = takeString("branch", "ref");
+      const provider = takeString("provider");
+      const branchLabel = branch ? (branch.split("/").pop() ?? branch) : undefined;
+      const label = repository ? `Push · ${repository}` : "Git push";
       const descriptionParts = [
         branchLabel ? `Branch ${branchLabel}` : undefined,
         provider ? `via ${provider}` : undefined,
       ].filter((value): value is string => Boolean(value));
+      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
-        key: `git-push:${repository ?? 'unknown'}:${branch ?? 'general'}`,
+        key: `git-push:${repository ?? "unknown"}:${branch ?? "general"}`,
         label,
-        description: descriptionParts.length ? descriptionParts.join(' · ') : undefined,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'git_merge_processed': {
-      const repository = takeString('repository');
-      const source = takeString('source_branch', 'head_branch');
-      const target = takeString('target_branch', 'base_branch');
-      const provider = takeString('provider');
-      const label = repository ? `Merge · ${repository}` : 'Git merge';
+    case "git_merge_processed": {
+      const repository = takeString("repository");
+      const source = takeString("source_branch", "head_branch");
+      const target = takeString("target_branch", "base_branch");
+      const provider = takeString("provider");
+      const label = repository ? `Merge · ${repository}` : "Git merge";
       const branches = source && target ? `${source} → ${target}` : undefined;
       const descriptionParts = [branches, provider ? `via ${provider}` : undefined].filter(
-        (value): value is string => Boolean(value)
+        (value): value is string => Boolean(value),
       );
+      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
-        key: `git-merge:${repository ?? 'unknown'}:${target ?? 'general'}`,
+        key: `git-merge:${repository ?? "unknown"}:${target ?? "general"}`,
         label,
-        description: descriptionParts.length ? descriptionParts.join(' · ') : undefined,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'event_head_updated': {
-      const headId = takeString('head_event_id');
+    case "event_head_updated": {
+      const headId = takeString("head_event_id");
       const resolved =
         (headId && resolveFromEventIds([headId])) ||
         resolveFromEventLike(data.head_event, `${event.id}-head`);
@@ -730,71 +737,71 @@ const getEventTargetInfo = (
         return resolved;
       }
 
-      return timelineTarget('Head updated');
+      return timelineTarget("Head updated");
     }
-    case 'events_reverted': {
+    case "events_reverted": {
       const resolved =
-        resolveFromEventIds(getArray('reverted_event_ids')) ||
-        resolveFromEventIds(getArray('reactivated_event_ids')) ||
+        resolveFromEventIds(getArray("reverted_event_ids")) ||
+        resolveFromEventIds(getArray("reactivated_event_ids")) ||
         resolveFromEventLike(data.reverted_event, `${event.id}-reverted`) ||
-        resolveFromEventArray(getArray('reverted_events'), 'reverted');
+        resolveFromEventArray(getArray("reverted_events"), "reverted");
 
       if (resolved) {
         return resolved;
       }
 
-      return timelineTarget('Events reverted');
+      return timelineTarget("Events reverted");
     }
-    case 'events_reapplied': {
+    case "events_reapplied": {
       const resolved =
-        resolveFromEventIds(getArray('reapplied_event_ids')) ||
-        resolveFromEventIds(getArray('reactivated_event_ids')) ||
+        resolveFromEventIds(getArray("reapplied_event_ids")) ||
+        resolveFromEventIds(getArray("reactivated_event_ids")) ||
         resolveFromEventLike(data.reapplied_event, `${event.id}-reapplied`) ||
-        resolveFromEventArray(getArray('reapplied_events'), 'reapplied');
+        resolveFromEventArray(getArray("reapplied_events"), "reapplied");
 
       if (resolved) {
         return resolved;
       }
 
-      return timelineTarget('Events reapplied');
+      return timelineTarget("Events reapplied");
     }
-    case 'entity_created': {
-      const entityType = takeString('entity_type', 'artifact_type');
-      const name = takeString('name');
-      const entityId = takeString('entity_id', 'id');
-      const baseLabel = entityType ? humanizeKey(entityType) : 'Entity';
+    case "entity_created": {
+      const entityType = takeString("entity_type", "artifact_type");
+      const name = takeString("name");
+      const entityId = takeString("entity_id", "id");
+      const baseLabel = entityType ? humanizeKey(entityType) : "Entity";
       const label = name ? `${baseLabel}: ${name}` : `${baseLabel} created`;
       const description = entityId ? `ID ${toShortId(entityId) ?? entityId}` : undefined;
       return {
-        key: `entity:${entityType ?? 'generic'}:${entityId ?? name ?? 'created'}`,
+        key: `entity:${entityType ?? "generic"}:${entityId ?? name ?? "created"}`,
         label,
-        description,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'entity_deleted': {
-      const entityType = takeString('entity_type', 'artifact_type');
-      const name = takeString('name');
-      const entityId = takeString('entity_id', 'id');
-      const baseLabel = entityType ? humanizeKey(entityType) : 'Entity';
+    case "entity_deleted": {
+      const entityType = takeString("entity_type", "artifact_type");
+      const name = takeString("name");
+      const entityId = takeString("entity_id", "id");
+      const baseLabel = entityType ? humanizeKey(entityType) : "Entity";
       const label = name ? `${baseLabel}: ${name}` : `${baseLabel} deleted`;
       const description = entityId ? `ID ${toShortId(entityId) ?? entityId}` : undefined;
       return {
-        key: `entity:${entityType ?? 'generic'}:${entityId ?? name ?? 'deleted'}`,
+        key: `entity:${entityType ?? "generic"}:${entityId ?? name ?? "deleted"}`,
         label,
-        description,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
-    case 'entity_restored': {
-      const entityType = takeString('entity_type', 'artifact_type');
-      const name = takeString('name');
-      const entityId = takeString('entity_id', 'id');
-      const baseLabel = entityType ? humanizeKey(entityType) : 'Entity';
+    case "entity_restored": {
+      const entityType = takeString("entity_type", "artifact_type");
+      const name = takeString("name");
+      const entityId = takeString("entity_id", "id");
+      const baseLabel = entityType ? humanizeKey(entityType) : "Entity";
       const label = name ? `${baseLabel}: ${name}` : `${baseLabel} restored`;
       const description = entityId ? `ID ${toShortId(entityId) ?? entityId}` : undefined;
       return {
-        key: `entity:${entityType ?? 'generic'}:${entityId ?? name ?? 'restored'}`,
+        key: `entity:${entityType ?? "generic"}:${entityId ?? name ?? "restored"}`,
         label,
-        description,
+        ...(description ? { description } : {}),
       } satisfies EventTargetInfo;
     }
     default:
@@ -813,25 +820,25 @@ const extractDetailRows = (event: Event): DetailRow[] => {
 
   const addRow = (label: string, value: unknown) => {
     const formatted = formatValue(value);
-    if (!label || !formatted || formatted === 'n/a') return;
+    if (!label || !formatted || formatted === "n/a") return;
     rows.push({ label: emphasizeLabel(label), value: formatted });
   };
 
   const addFromValues = (values: unknown, prefix?: string) => {
-    if (!values || typeof values !== 'object') return;
+    if (!values || typeof values !== "object") return;
     Object.entries(values as Record<string, unknown>).forEach(([key, val]) => {
       addRow(prefix ? `${prefix} ${key}` : key, val);
     });
   };
 
   const changes = data.changes;
-  if (changes && typeof changes === 'object') {
+  if (changes && typeof changes === "object") {
     Object.entries(changes as Record<string, unknown>).forEach(([key, change]) => {
       if (
         change &&
-        typeof change === 'object' &&
-        'before' in (change as Record<string, unknown>) &&
-        'after' in (change as Record<string, unknown>)
+        typeof change === "object" &&
+        "before" in (change as Record<string, unknown>) &&
+        "after" in (change as Record<string, unknown>)
       ) {
         const entry = change as { before: unknown; after: unknown };
         const before = formatValue(entry.before);
@@ -843,30 +850,30 @@ const extractDetailRows = (event: Event): DetailRow[] => {
     });
   }
 
-  if (rows.length === 0 && data.values && typeof data.values === 'object') {
+  if (rows.length === 0 && data.values && typeof data.values === "object") {
     addFromValues(data.values);
   }
 
   const importantKeys = [
-    'name',
-    'path',
-    'fragment_path',
-    'fragment_id',
-    'entity_id',
-    'artifact_id',
-    'entity_type',
-    'artifact_type',
-    'restored_from_event_id',
-    'deleted_at',
-    'restored_at',
-    'user',
-    'user_id',
-    'author',
-    'description',
-    'status',
+    "name",
+    "path",
+    "fragment_path",
+    "fragment_id",
+    "entity_id",
+    "artifact_id",
+    "entity_type",
+    "artifact_type",
+    "restored_from_event_id",
+    "deleted_at",
+    "restored_at",
+    "user",
+    "user_id",
+    "author",
+    "description",
+    "status",
   ];
 
-  importantKeys.forEach(key => {
+  importantKeys.forEach((key) => {
     if (key in data) {
       addRow(key, data[key]);
     }
@@ -877,7 +884,7 @@ const extractDetailRows = (event: Event): DetailRow[] => {
 
 type EventCardProps = {
   event: Event;
-  variant: 'root' | 'child';
+  variant: "root" | "child";
   lookupEvent: (eventId: string) => Event | undefined;
   targetLabel?: string;
   targetDescription?: string;
@@ -905,71 +912,71 @@ function EventCard({
   const detailRows = useMemo(() => extractDetailRows(event), [event]);
   const summary = useMemo(() => formatEventSummary(event, lookupEvent), [event, lookupEvent]);
 
-  const isHistorical = variant === 'child';
+  const isHistorical = variant === "child";
   const normalizedType = event.event_type.toLowerCase();
   const isInactive = !event.is_active;
-  const isReversionType = normalizedType.includes('revert');
+  const isReversionType = normalizedType.includes("revert");
   const showRevertedContainer = isInactive || isReversionType;
   const canRestore =
     !showRevertedContainer &&
-    variant === 'root' &&
-    event.event_type === 'entity_deleted' &&
-    typeof onRestore === 'function';
+    variant === "root" &&
+    event.event_type === "entity_deleted" &&
+    typeof onRestore === "function";
   const isRestoreInFlight = Boolean(isRestoring);
 
-  const statusLabel = isHistorical ? 'Historical' : isInactive ? 'Reverted' : 'Active';
+  const statusLabel = isHistorical ? "Historical" : isInactive ? "Reverted" : "Active";
   const statusClasses = isHistorical
-    ? 'bg-slate-200 text-slate-700 dark:bg-graphite-800 dark:text-graphite-200'
+    ? "bg-slate-200 text-slate-700 dark:bg-graphite-800 dark:text-graphite-200"
     : isInactive
-      ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'
-      : 'bg-green-100 text-green-700 dark:bg-emerald-500/20 dark:text-emerald-200';
+      ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200"
+      : "bg-green-100 text-green-700 dark:bg-emerald-500/20 dark:text-emerald-200";
 
   const containerClasses = [
-    'rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow',
-    'dark:border-graphite-700 dark:bg-graphite-900 dark:shadow-none',
-    variant === 'child'
-      ? 'border-dashed bg-slate-50/70 p-3 dark:border-graphite-700 dark:bg-graphite-900/60'
-      : 'p-4',
+    "rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow",
+    "dark:border-graphite-700 dark:bg-graphite-900 dark:shadow-none",
+    variant === "child"
+      ? "border-dashed bg-slate-50/70 p-3 dark:border-graphite-700 dark:bg-graphite-900/60"
+      : "p-4",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   const revertedWrapperClasses = [
-    'rounded-xl border border-amber-300 bg-amber-50/60 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10',
-    variant === 'child' ? 'p-3' : 'p-4',
+    "rounded-xl border border-amber-300 bg-amber-50/60 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/10",
+    variant === "child" ? "p-3" : "p-4",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
-  const iconSizeClass = variant === 'child' ? 'h-4 w-4' : 'h-5 w-5';
+  const iconSizeClass = variant === "child" ? "h-4 w-4" : "h-5 w-5";
   const iconWrapperClasses = [
-    'flex items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-graphite-800 dark:text-graphite-200',
-    variant === 'child' ? 'mt-0.5 h-7 w-7' : 'mt-1 h-8 w-8',
+    "flex items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-graphite-800 dark:text-graphite-200",
+    variant === "child" ? "mt-0.5 h-7 w-7" : "mt-1 h-8 w-8",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   const historyCount = history?.length ?? 0;
   const totalStates = historyCount + 1;
   const stackLabel =
-    variant === 'root' && totalStates > 1
-      ? `Stack · ${totalStates} state${totalStates === 1 ? '' : 's'}`
+    variant === "root" && totalStates > 1
+      ? `Stack · ${totalStates} state${totalStates === 1 ? "" : "s"}`
       : undefined;
 
   const icon = useMemo(() => {
     if (isInactive || isReversionType) {
       return <RotateCcw className={`${iconSizeClass} text-amber-500`} />;
     }
-    if (normalizedType.includes('restored')) {
+    if (normalizedType.includes("restored")) {
       return <RotateCcw className={`${iconSizeClass} text-emerald-500`} />;
     }
-    if (normalizedType.includes('created')) {
+    if (normalizedType.includes("created")) {
       return <PlusCircle className={`${iconSizeClass} text-emerald-500`} />;
     }
-    if (normalizedType.includes('updated') || normalizedType.includes('revision')) {
+    if (normalizedType.includes("updated") || normalizedType.includes("revision")) {
       return <Pencil className={`${iconSizeClass} text-blue-500`} />;
     }
-    if (normalizedType.includes('deleted')) {
+    if (normalizedType.includes("deleted")) {
       return <Trash2 className={`${iconSizeClass} text-rose-500`} />;
     }
     return <Info className={`${iconSizeClass} text-slate-400`} />;
@@ -981,20 +988,20 @@ function EventCard({
     const data = (event.data ?? {}) as Record<string, unknown>;
 
     const normalizeEventLike = (value: unknown, suffix: string): Event | null => {
-      if (!value || typeof value !== 'object') return null;
+      if (!value || typeof value !== "object") return null;
       const raw = value as Partial<Event> & Record<string, unknown>;
       const eventType =
-        typeof raw.event_type === 'string'
-          ? (raw.event_type as Event['event_type'])
+        typeof raw.event_type === "string"
+          ? (raw.event_type as Event["event_type"])
           : event.event_type;
       return {
         id: String(raw.id ?? `${event.id}-${suffix}`),
         project_id: String(raw.project_id ?? event.project_id),
         event_type: eventType,
-        data: raw.data && typeof raw.data === 'object' ? (raw.data as Record<string, unknown>) : {},
+        data: raw.data && typeof raw.data === "object" ? (raw.data as Record<string, unknown>) : {},
         is_active: raw.is_active !== undefined ? Boolean(raw.is_active) : true,
-        reverted_at: typeof raw.reverted_at === 'string' ? raw.reverted_at : null,
-        created_at: typeof raw.created_at === 'string' ? raw.created_at : event.created_at,
+        reverted_at: typeof raw.reverted_at === "string" ? raw.reverted_at : null,
+        created_at: typeof raw.created_at === "string" ? raw.created_at : event.created_at,
       } satisfies Event;
     };
 
@@ -1010,14 +1017,14 @@ function EventCard({
     };
 
     const candidate =
-      normalizeEventLike(data.reverted_event, 'reverted') ||
-      normalizeEventLike(data.reapplied_event, 'reapplied') ||
-      normalizeEventLike(data.head_event, 'head') ||
+      normalizeEventLike(data.reverted_event, "reverted") ||
+      normalizeEventLike(data.reapplied_event, "reapplied") ||
+      normalizeEventLike(data.head_event, "head") ||
       (Array.isArray(data.reverted_events)
-        ? normalizeEventLike(data.reverted_events[0], 'reverted-array')
+        ? normalizeEventLike(data.reverted_events[0], "reverted-array")
         : null) ||
       (Array.isArray(data.reapplied_events)
-        ? normalizeEventLike(data.reapplied_events[0], 'reapplied-array')
+        ? normalizeEventLike(data.reapplied_events[0], "reapplied-array")
         : null) ||
       fromIds(data.reverted_event_ids) ||
       fromIds(data.reapplied_event_ids) ||
@@ -1061,7 +1068,7 @@ function EventCard({
   const restoreButton = canRestore ? (
     <button
       type="button"
-      onClick={eventObj => {
+      onClick={(eventObj) => {
         eventObj.stopPropagation();
         onRestore?.(event);
       }}
@@ -1069,7 +1076,7 @@ function EventCard({
       className="inline-flex items-center gap-1 rounded-full border border-emerald-500 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-400/60 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
     >
       <RotateCcw className="h-3 w-3" />
-      {isRestoreInFlight ? 'Restoring…' : 'Restore'}
+      {isRestoreInFlight ? "Restoring…" : "Restore"}
     </button>
   ) : null;
 
@@ -1080,7 +1087,7 @@ function EventCard({
         className="mt-0.5 rounded border border-transparent p-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring dark:text-graphite-300 dark:hover:bg-graphite-800"
         onClick={onToggleHistory}
         aria-expanded={isExpanded}
-        aria-label={isExpanded ? 'Collapse previous states' : 'Expand previous states'}
+        aria-label={isExpanded ? "Collapse previous states" : "Expand previous states"}
       >
         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
@@ -1103,7 +1110,7 @@ function EventCard({
     ) : null;
 
   const nestedContent =
-    showRevertedContainer && nestedRevertedEvent && variant === 'root' ? (
+    showRevertedContainer && nestedRevertedEvent && variant === "root" ? (
       <div className="mt-3 space-y-3 border-l border-amber-300/60 pl-3 dark:border-amber-500/30">
         <EventCard event={nestedRevertedEvent} variant="child" lookupEvent={lookupEvent} />
       </div>
@@ -1112,11 +1119,11 @@ function EventCard({
   return (
     <div
       className={[
-        showRevertedContainer ? revertedWrapperClasses : '',
-        !showRevertedContainer ? containerClasses : '',
+        showRevertedContainer ? revertedWrapperClasses : "",
+        !showRevertedContainer ? containerClasses : "",
       ]
         .filter(Boolean)
-        .join(' ')}
+        .join(" ")}
     >
       {showRevertedContainer ? (
         <div className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
@@ -1154,7 +1161,7 @@ function EventCard({
         <div
           className={
             targetLabel
-              ? 'border-t border-dashed border-gray-200 pt-3 dark:border-graphite-700'
+              ? "border-t border-dashed border-gray-200 pt-3 dark:border-graphite-700"
               : undefined
           }
         >
@@ -1212,7 +1219,7 @@ function EventGroupCard({
   const totalStates = previous.length + 1;
   const isRestoring = restoringEvents?.has(current.id) ?? false;
   const restoreHandler =
-    current.event_type === 'entity_deleted' && typeof onRestore === 'function'
+    current.event_type === "entity_deleted" && typeof onRestore === "function"
       ? onRestore
       : undefined;
 
@@ -1222,12 +1229,12 @@ function EventGroupCard({
       variant="root"
       lookupEvent={lookupEvent}
       targetLabel={target.label}
-      targetDescription={target.description}
-      orderLabel={totalStates > 1 ? `Current state · 1/${totalStates}` : 'Current state'}
+      {...(target.description ? { targetDescription: target.description } : {})}
+      orderLabel={totalStates > 1 ? `Current state · 1/${totalStates}` : "Current state"}
       history={previous}
-      isExpanded={expanded}
-      onToggleHistory={previous.length > 0 ? onToggle : undefined}
-      onRestore={restoreHandler}
+      {...(expanded ? { isExpanded: true } : {})}
+      {...(previous.length > 0 ? { onToggleHistory: onToggle } : {})}
+      {...(restoreHandler ? { onRestore: restoreHandler } : {})}
       isRestoring={isRestoring}
     />
   );
@@ -1241,7 +1248,7 @@ export function EventsReport({ projectId }: EventsReportProps) {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [restoringEvents, setRestoringEvents] = useState<Set<string>>(new Set());
   const updateRestoringEvents = useCallback((eventId: string, shouldAdd: boolean) => {
-    setRestoringEvents(prev => {
+    setRestoringEvents((prev) => {
       const next = new Set(prev);
       if (shouldAdd) {
         next.add(eventId);
@@ -1254,7 +1261,7 @@ export function EventsReport({ projectId }: EventsReportProps) {
 
   const eventById = useMemo(() => {
     const map = new Map<string, Event>();
-    eventLog.forEach(item => map.set(item.id, item));
+    eventLog.forEach((item) => map.set(item.id, item));
     return map;
   }, [eventLog]);
 
@@ -1263,10 +1270,10 @@ export function EventsReport({ projectId }: EventsReportProps) {
   useEffect(() => {
     if (!Array.isArray(data?.events)) return;
 
-    setEventLog(prev => {
+    setEventLog((prev) => {
       const merged = new Map<string, Event>();
-      data.events.forEach(event => merged.set(event.id, event));
-      prev.forEach(event => {
+      data.events.forEach((event) => merged.set(event.id, event));
+      prev.forEach((event) => {
         if (!merged.has(event.id)) {
           merged.set(event.id, event);
         }
@@ -1276,12 +1283,12 @@ export function EventsReport({ projectId }: EventsReportProps) {
   }, [data]);
 
   useEffect(() => {
-    if (!lastMessage || lastMessage.type !== 'event') return;
+    if (!lastMessage || lastMessage.type !== "event") return;
 
     const payloadCandidate =
       (lastMessage as { payload?: unknown }).payload ?? (lastMessage as { data?: unknown }).data;
 
-    if (!payloadCandidate || typeof payloadCandidate !== 'object') {
+    if (!payloadCandidate || typeof payloadCandidate !== "object") {
       return;
     }
 
@@ -1289,53 +1296,53 @@ export function EventsReport({ projectId }: EventsReportProps) {
     const readString = (key: string): string | undefined => coerceToString(payload[key]);
 
     const eventProjectIdValue =
-      readString('project_id') ??
-      readString('projectId') ??
+      readString("project_id") ??
+      readString("projectId") ??
       coerceToString((lastMessage as unknown as Record<string, unknown>).projectId);
 
     if (eventProjectIdValue && projectId && eventProjectIdValue !== projectId) {
       return;
     }
 
-    const eventId = readString('id');
-    const eventType = readString('event_type') ?? readString('type');
+    const eventId = readString("id");
+    const eventType = readString("event_type") ?? readString("type");
     if (!eventId || !eventType) {
       return;
     }
 
     const createdAt =
-      readString('created_at') ?? readString('timestamp') ?? new Date().toISOString();
+      readString("created_at") ?? readString("timestamp") ?? new Date().toISOString();
 
-    const rawData = payload['data'];
-    const isActiveRaw = payload['is_active'];
-    const revertedAtRaw = payload['reverted_at'];
+    const rawData = payload["data"];
+    const isActiveRaw = payload["is_active"];
+    const revertedAtRaw = payload["reverted_at"];
 
     const eventData: Event = {
       id: eventId,
       project_id: String(eventProjectIdValue ?? projectId),
-      event_type: eventType as Event['event_type'],
-      data: rawData && typeof rawData === 'object' ? (rawData as Record<string, unknown>) : {},
+      event_type: eventType as Event["event_type"],
+      data: rawData && typeof rawData === "object" ? (rawData as Record<string, unknown>) : {},
       is_active:
-        typeof isActiveRaw === 'boolean'
+        typeof isActiveRaw === "boolean"
           ? isActiveRaw
-          : typeof isActiveRaw === 'string'
-            ? isActiveRaw === 'true'
+          : typeof isActiveRaw === "string"
+            ? isActiveRaw === "true"
             : true,
-      reverted_at: typeof revertedAtRaw === 'string' && revertedAtRaw.trim() ? revertedAtRaw : null,
+      reverted_at: typeof revertedAtRaw === "string" && revertedAtRaw.trim() ? revertedAtRaw : null,
       created_at: createdAt,
     };
 
-    setEventLog(prev => {
+    setEventLog((prev) => {
       let updated = prev;
-      if (eventData.event_type === 'entity_restored') {
+      if (eventData.event_type === "entity_restored") {
         const restoredFromId = coerceToString(eventData.data?.restored_from_event_id);
         if (restoredFromId) {
-          updated = prev.map(item =>
-            item.id === restoredFromId ? { ...item, is_active: false } : item
+          updated = prev.map((item) =>
+            item.id === restoredFromId ? { ...item, is_active: false } : item,
           );
         }
       }
-      if (updated.some(event => event.id === eventId)) {
+      if (updated.some((event) => event.id === eventId)) {
         return sortEventsDesc(updated);
       }
       return sortEventsDesc([eventData, ...updated]);
@@ -1348,7 +1355,7 @@ export function EventsReport({ projectId }: EventsReportProps) {
     const lookupFromMap = (eventId: string) => eventById.get(eventId);
     const groups = new Map<string, Event[]>();
 
-    eventLog.forEach(event => {
+    eventLog.forEach((event) => {
       const target = getEventTargetInfo(event, { lookupEvent: lookupFromMap });
       const existing = groups.get(target.key);
       if (existing) {
@@ -1358,33 +1365,37 @@ export function EventsReport({ projectId }: EventsReportProps) {
       }
     });
 
-    return Array.from(groups.entries())
+    const prepared = Array.from(groups.entries())
       .map(([, events]) => {
         const sorted = [...events].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
-        const current = sorted.find(item => item.is_active) ?? sorted[0];
-        const previous = sorted.filter(item => item.id !== current.id);
+        if (sorted.length === 0) {
+          return null;
+        }
+        const current = sorted.find((item) => item.is_active) ?? sorted[0]!;
+        const previous = sorted.filter((item) => item.id !== current.id);
         return {
           target: getEventTargetInfo(current, { lookupEvent: lookupFromMap }),
           current,
           previous,
         } satisfies EventGroup;
       })
-      .sort(
-        (a, b) =>
-          new Date(b.current.created_at).getTime() - new Date(a.current.created_at).getTime()
-      );
+      .filter((group): group is EventGroup => group !== null);
+
+    return prepared.sort(
+      (a, b) => new Date(b.current.created_at).getTime() - new Date(a.current.created_at).getTime(),
+    );
   }, [eventById, eventLog]);
 
   useEffect(() => {
     const validKeys = new Set(
-      groupedEvents.filter(group => group.previous.length > 0).map(group => group.target.key)
+      groupedEvents.filter((group) => group.previous.length > 0).map((group) => group.target.key),
     );
-    setExpandedGroups(prev => {
+    setExpandedGroups((prev) => {
       let changed = false;
       const next = new Set<string>();
-      prev.forEach(key => {
+      prev.forEach((key) => {
         if (validKeys.has(key)) {
           next.add(key);
         } else {
@@ -1399,7 +1410,7 @@ export function EventsReport({ projectId }: EventsReportProps) {
   }, [groupedEvents]);
 
   const toggleGroup = useCallback((groupKey: string) => {
-    setExpandedGroups(prev => {
+    setExpandedGroups((prev) => {
       const next = new Set(prev);
       if (next.has(groupKey)) {
         next.delete(groupKey);
@@ -1417,18 +1428,18 @@ export function EventsReport({ projectId }: EventsReportProps) {
       const snapshot = event.data?.snapshot;
       if (!artifactId) {
         console.error(
-          '[EventsReport] Unable to restore entity: missing artifact identifier',
-          event
+          "[EventsReport] Unable to restore entity: missing artifact identifier",
+          event,
         );
-        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-          window.alert('Unable to restore entity: missing artifact identifier');
+        if (typeof window !== "undefined" && typeof window.alert === "function") {
+          window.alert("Unable to restore entity: missing artifact identifier");
         }
         return;
       }
-      if (!snapshot || typeof snapshot !== 'object') {
-        console.error('[EventsReport] Unable to restore entity: missing snapshot payload', event);
-        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-          window.alert('Unable to restore entity: missing snapshot data');
+      if (!snapshot || typeof snapshot !== "object") {
+        console.error("[EventsReport] Unable to restore entity: missing snapshot payload", event);
+        if (typeof window !== "undefined" && typeof window.alert === "function") {
+          window.alert("Unable to restore entity: missing snapshot data");
         }
         return;
       }
@@ -1439,23 +1450,23 @@ export function EventsReport({ projectId }: EventsReportProps) {
           snapshot: snapshot as Record<string, unknown>,
           eventId: event.id,
         });
-        setEventLog(prev =>
-          prev.map(item => (item.id === event.id ? { ...item, is_active: false } : item))
+        setEventLog((prev) =>
+          prev.map((item) => (item.id === event.id ? { ...item, is_active: false } : item)),
         );
         await refetch();
       } catch (error) {
-        console.error('[EventsReport] Failed to restore entity', error);
-        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
-          window.alert('Failed to restore entity. Please try again.');
+        console.error("[EventsReport] Failed to restore entity", error);
+        if (typeof window !== "undefined" && typeof window.alert === "function") {
+          window.alert("Failed to restore entity. Please try again.");
         }
       } finally {
         updateRestoringEvents(event.id, false);
       }
     },
-    [projectId, refetch, updateRestoringEvents]
+    [projectId, refetch, updateRestoringEvents],
   );
 
-  const activeCount = useMemo(() => eventLog.filter(event => event.is_active).length, [eventLog]);
+  const activeCount = useMemo(() => eventLog.filter((event) => event.is_active).length, [eventLog]);
   const danglingCount = eventLog.length - activeCount;
   const stackCount = groupedEvents.length;
 
@@ -1496,7 +1507,7 @@ export function EventsReport({ projectId }: EventsReportProps) {
           </div>
         ) : (
           <div className="space-y-6 p-4">
-            {groupedEvents.map(group => (
+            {groupedEvents.map((group) => (
               <EventGroupCard
                 key={group.target.key}
                 group={group}

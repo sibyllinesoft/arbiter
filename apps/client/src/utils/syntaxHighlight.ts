@@ -1,6 +1,6 @@
 import yaml from 'yaml';
 
-type HighlightLanguage = 'json' | 'yaml' | 'dockerfile' | 'shell';
+type HighlightLanguage = 'json' | 'yaml' | 'dockerfile' | 'shell' | 'gherkin';
 
 const LANGUAGE_ALIASES: Record<string, HighlightLanguage> = {
   json: 'json',
@@ -12,6 +12,8 @@ const LANGUAGE_ALIASES: Record<string, HighlightLanguage> = {
   bash: 'shell',
   shell: 'shell',
   sh: 'shell',
+  feature: 'gherkin',
+  gherkin: 'gherkin',
 };
 
 const INDENT = '  ';
@@ -270,6 +272,37 @@ const highlightYamlWithParser = (code: string): string => {
   }
 };
 
+const GHERKIN_KEYWORD_REGEX =
+  /^(\s*)(Scenario Outline|Scenario|Feature|Background|Examples|Given|When|Then|And|But)(\b|:)(.*)$/i;
+
+const highlightGherkin = (code: string): string =>
+  code
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map(line => {
+      if (!line) return '';
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return '';
+      }
+      if (trimmed.startsWith('#')) {
+        return `<span class="syntax-comment">${escapeHtml(line)}</span>`;
+      }
+      if (trimmed.startsWith('@')) {
+        return `<span class="syntax-key">${escapeHtml(line)}</span>`;
+      }
+      const keywordMatch = line.match(GHERKIN_KEYWORD_REGEX);
+      if (keywordMatch) {
+        const [, indent = '', keyword = '', boundary = '', rest = ''] = keywordMatch;
+        const remaining = rest ?? '';
+        return `${escapeHtml(indent)}<span class="syntax-key">${escapeHtml(keyword)}</span>${escapeHtml(boundary)}${escapeHtml(
+          remaining
+        )}`;
+      }
+      return escapeHtml(line);
+    })
+    .join('\n');
+
 const highlightByLanguage = (code: string, language: HighlightLanguage): string => {
   switch (language) {
     case 'json':
@@ -280,6 +313,8 @@ const highlightByLanguage = (code: string, language: HighlightLanguage): string 
       return highlightDockerfile(code);
     case 'shell':
       return highlightShell(code);
+    case 'gherkin':
+      return highlightGherkin(code);
     default:
       return escapeHtml(code);
   }

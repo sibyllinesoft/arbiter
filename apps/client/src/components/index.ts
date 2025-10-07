@@ -16,6 +16,7 @@ export { ArchitectureReport } from './ArchitectureReport';
 export { HandlersReport } from './HandlersReport';
 export { EventsReport } from './EventsReport';
 export { WebhooksReport } from './WebhooksReport';
+export { TasksReport } from './TasksReport';
 
 // Other Components
 export { ProjectList } from './ProjectList';

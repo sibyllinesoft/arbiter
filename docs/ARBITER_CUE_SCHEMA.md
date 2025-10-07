@@ -248,10 +248,22 @@ arbiterSpec: {
       headers?:     #SchemaDef | string
     }
   }
+  assertions?: #EndpointAssertions
   auth?: {
     required?: bool | *false
     scopes?:   [...string]
   }
+}
+
+#EndpointAssertions: {
+  [AssertionName=string]: #CueAssertion
+}
+
+#CueAssertion: bool | {
+  assert:   bool
+  message?: string
+  severity?: "error" | "warn" | "info"
+  tags?:    [...string]
 }
 
 #RPCContract: {
@@ -325,6 +337,15 @@ arbiterSpec: {
   }
   // for cron
   schedule?: string  // cron expr
+}
+
+#CapabilitySpec: {
+  name?: string
+  description?: string
+  owner?: string
+  gherkin?: string         // Behaviour scenarios expressed in Given/When/Then
+  depends_on?: [...string]
+  tags?: [...string]
 }
 
 #HealthCheck: {

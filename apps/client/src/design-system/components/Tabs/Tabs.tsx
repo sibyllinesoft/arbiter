@@ -63,11 +63,12 @@ export interface TabsProps {
 
 const variantClasses = {
   underline: {
-    container: 'border-b border-graphite-200',
-    tab: 'border-b-2 border-transparent hover:border-graphite-300 hover:text-graphite-700',
-    activeTab: 'border-blue-500 text-blue-600',
+    container:
+      'relative after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-graphite-200',
+    tab: 'relative border-none text-graphite-600 hover:text-graphite-800 after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-transparent after:transition-all after:duration-200 hover:after:bg-graphite-300',
+    activeTab: 'text-blue-600 after:bg-blue-500',
     disabledTab:
-      'text-graphite-400 cursor-not-allowed hover:border-transparent hover:text-graphite-400',
+      'text-graphite-400 cursor-not-allowed hover:text-graphite-400 hover:after:bg-transparent',
   },
   pills: {
     container: '',
@@ -281,7 +282,7 @@ export function Tabs({
                   // Base styles
                   'relative inline-flex items-center gap-2',
                   'font-medium transition-all duration-150 whitespace-nowrap',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
 
                   // Size styles
                   sizes.tab,
@@ -330,7 +331,7 @@ export function Tabs({
                     type="button"
                     className={cn(
                       'flex-shrink-0 rounded-sm p-0.5 hover:bg-graphite-300/50 transition-colors',
-                      'focus:outline-none focus:ring-1 focus:ring-blue-500'
+                      'focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500'
                     )}
                     onClick={e => handleTabClose(item.id, e)}
                     aria-label={`Close ${item.label} tab`}

@@ -16,6 +16,7 @@ export { MermaidRenderer } from './MermaidRenderer';
 export { NetworkDiagram } from './NetworkDiagram';
 export { default as SiteDiagram } from './SiteDiagram';
 export { default as ViewDiagram } from './ViewDiagram';
+export { default as TasksDiagram } from './TasksDiagram';
 
 // Split View Components
 export { SplitViewShowcase } from './SplitViewShowcase';

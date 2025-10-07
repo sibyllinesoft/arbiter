@@ -3,6 +3,8 @@
  * Provides pluggable code generation for multiple programming languages
  */
 
+import type { AppSpec } from '@arbiter/shared';
+
 // Core types for the plugin system
 export interface ComponentProp {
   name: string;
@@ -57,6 +59,7 @@ export interface LanguagePluginConfigureOptions {
   templateOverrides?: string[];
   pluginConfig?: Record<string, unknown>;
   workspaceRoot?: string;
+  testing?: LanguageTestingConfig;
 }
 
 export interface GenerationResult {
@@ -64,6 +67,39 @@ export interface GenerationResult {
   instructions?: string[];
   dependencies?: string[];
   scripts?: Record<string, string>;
+}
+
+export interface LanguageTestingConfig {
+  framework?: string;
+  outputDir?: string;
+  command?: string;
+  options?: Record<string, unknown>;
+}
+
+export interface EndpointAssertionDefinition {
+  name: string;
+  result: boolean | null;
+  severity: 'error' | 'warn' | 'info';
+  message?: string;
+  tags?: string[];
+  raw?: unknown;
+}
+
+export interface EndpointTestCaseDefinition {
+  path: string;
+  method: string;
+  assertions: EndpointAssertionDefinition[];
+  status?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EndpointTestGenerationConfig {
+  app: AppSpec;
+  cases: EndpointTestCaseDefinition[];
+  outputDir: string;
+  relativeDir: string;
+  language: string;
+  testing?: LanguageTestingConfig;
 }
 
 export interface LanguagePluginCapabilities {
@@ -102,6 +138,9 @@ export interface LanguagePlugin {
   validateConfig?(config: any): Promise<boolean>;
   getTemplates?(): string[];
   getDependencies?(features: string[]): string[];
+
+  // Optional endpoint assertion test generation
+  generateEndpointTests?(config: EndpointTestGenerationConfig): Promise<GenerationResult>;
 }
 
 // Plugin registry

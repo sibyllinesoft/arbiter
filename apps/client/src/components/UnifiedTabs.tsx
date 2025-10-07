@@ -2,8 +2,8 @@
  * UnifiedTabs - Combines editor and diagram tabs into a single tab list
  */
 
-import React from 'react';
-import type { Project } from '../types/api';
+import React from "react";
+import type { Project } from "../types/api";
 import {
   ArchitectureReport,
   EventsReport,
@@ -14,9 +14,10 @@ import {
   ResolvedReport,
   SiteReport,
   SourceEditor,
+  TasksReport,
   ViewReport,
   WebhooksReport,
-} from './';
+} from "./";
 
 interface DiagramPlaceholderProps {
   type: string;
@@ -46,8 +47,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
   const allTabs = [
     // Editor tabs
     {
-      id: 'source',
-      label: 'Source',
+      id: "source",
+      label: "Source",
       content: project ? (
         <SourceEditor projectId={project.id} />
       ) : (
@@ -56,8 +57,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
     },
     // Diagram tabs
     {
-      id: 'flow',
-      label: 'Flow',
+      id: "flow",
+      label: "Flow",
       content: project ? (
         <FlowReport projectId={project.id} />
       ) : (
@@ -65,8 +66,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'site',
-      label: 'Site',
+      id: "site",
+      label: "Site",
       content: project ? (
         <SiteReport projectId={project.id} />
       ) : (
@@ -74,8 +75,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'fsm',
-      label: 'FSM',
+      id: "fsm",
+      label: "FSM",
       content: project ? (
         <FsmReport projectId={project.id} />
       ) : (
@@ -83,8 +84,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'view',
-      label: 'View',
+      id: "view",
+      label: "View",
       content: project ? (
         <ViewReport projectId={project.id} />
       ) : (
@@ -92,8 +93,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'gaps',
-      label: 'Gaps',
+      id: "gaps",
+      label: "Gaps",
       content: project ? (
         <GapsReport projectId={project.id} />
       ) : (
@@ -101,8 +102,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'resolved',
-      label: 'Resolved',
+      id: "resolved",
+      label: "Resolved",
       content: project ? (
         <ResolvedReport projectId={project.id} />
       ) : (
@@ -110,8 +111,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'architecture',
-      label: 'Sources',
+      id: "architecture",
+      label: "Sources",
       content: project ? (
         <ArchitectureReport projectId={project.id} />
       ) : (
@@ -119,8 +120,17 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'events',
-      label: 'Events',
+      id: "tasks",
+      label: "Tasks",
+      content: project ? (
+        <TasksReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Epic Tasks" />
+      ),
+    },
+    {
+      id: "events",
+      label: "Events",
       content: project ? (
         <EventsReport projectId={project.id} />
       ) : (
@@ -128,8 +138,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'webhooks',
-      label: 'Webhooks',
+      id: "webhooks",
+      label: "Webhooks",
       content: project ? (
         <WebhooksReport projectId={project.id} />
       ) : (
@@ -137,8 +147,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'handlers',
-      label: 'Handlers',
+      id: "handlers",
+      label: "Handlers",
       content: <HandlersReport />,
     },
   ];

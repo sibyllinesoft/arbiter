@@ -39,6 +39,18 @@
       headers?: { [string]: string }
     }
 
+    // ---------- Assertion helpers ----------
+    #AssertionSeverity: "error" | "warn" | "info"
+
+    #CueAssertion: bool | {
+      assert:   bool
+      message?: #Human
+      severity?: #AssertionSeverity
+      tags?:    [...#Slug]
+    }
+
+    #CueAssertionBlock: {[#Slug]: #CueAssertion}
+
     // ---------- Seeds & factories ----------
     #FactoryName:   #Slug
     #Seed: {

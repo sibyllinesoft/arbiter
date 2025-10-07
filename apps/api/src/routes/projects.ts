@@ -1,43 +1,43 @@
-import { createHash, randomUUID } from 'node:crypto';
-import path from 'node:path';
-import { ProjectEntities } from '@arbiter/shared/types/entities';
-import { Hono } from 'hono';
-import type { ContentFetcher } from '../content-fetcher';
-import { createGithubContentFetcher, createLocalContentFetcher } from '../content-fetcher';
-import type { EventService } from '../events';
-import { gitScanner } from '../git-scanner';
-import { parseGitUrl } from '../git-url';
-import { analyzeProjectFiles } from '../project-analysis';
+import { createHash, randomUUID } from "node:crypto";
+import path from "node:path";
+import { ProjectEntities } from "@arbiter/shared/types/entities";
+import { Hono } from "hono";
+import type { ContentFetcher } from "../content-fetcher";
+import { createGithubContentFetcher, createLocalContentFetcher } from "../content-fetcher";
+import type { EventService } from "../events";
+import { gitScanner } from "../git-scanner";
+import { parseGitUrl } from "../git-url";
+import { analyzeProjectFiles } from "../project-analysis";
 type Dependencies = Record<string, unknown>;
 
 const DEFAULT_STRUCTURE = {
-  servicesDirectory: 'services',
-  clientsDirectory: 'clients',
-  modulesDirectory: 'modules',
-  toolsDirectory: 'tools',
-  docsDirectory: 'docs',
-  testsDirectory: 'tests',
-  infraDirectory: 'infra',
+  servicesDirectory: "services",
+  clientsDirectory: "clients",
+  modulesDirectory: "modules",
+  toolsDirectory: "tools",
+  docsDirectory: "docs",
+  testsDirectory: "tests",
+  infraDirectory: "infra",
 };
 
 const TECHNOLOGY_LANGUAGE_MAP: Record<string, string> = {
-  'node.js': 'javascript',
-  node: 'javascript',
-  express: 'javascript',
-  fastify: 'javascript',
-  nestjs: 'javascript',
-  'next.js': 'javascript',
-  go: 'go',
-  golang: 'go',
-  python: 'python',
-  django: 'python',
-  flask: 'python',
-  fastapi: 'python',
-  rust: 'rust',
-  java: 'java',
-  spring: 'java',
-  '.net': 'c#',
-  dotnet: 'c#',
+  "node.js": "javascript",
+  node: "javascript",
+  express: "javascript",
+  fastify: "javascript",
+  nestjs: "javascript",
+  "next.js": "javascript",
+  go: "go",
+  golang: "go",
+  python: "python",
+  django: "python",
+  flask: "python",
+  fastapi: "python",
+  rust: "rust",
+  java: "java",
+  spring: "java",
+  ".net": "c#",
+  dotnet: "c#",
 };
 
 function slugify(value: string | undefined, fallback: string): string {
@@ -48,9 +48,9 @@ function slugify(value: string | undefined, fallback: string): string {
   const normalized = value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 
   return normalized.length > 0 ? normalized : fallback;
 }
@@ -58,24 +58,24 @@ function slugify(value: string | undefined, fallback: string): string {
 function guessLanguage(technology: string | undefined): string | undefined {
   if (!technology) return undefined;
   const key = technology.toLowerCase();
-  return TECHNOLOGY_LANGUAGE_MAP[key] || TECHNOLOGY_LANGUAGE_MAP[key.replace(/\s+/g, '')];
+  return TECHNOLOGY_LANGUAGE_MAP[key] || TECHNOLOGY_LANGUAGE_MAP[key.replace(/\s+/g, "")];
 }
 
 function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string) {
   const framework =
-    typeof values.framework === 'string' && values.framework.trim().length > 0
+    typeof values.framework === "string" && values.framework.trim().length > 0
       ? values.framework.trim()
       : undefined;
   const frameworks = framework ? [framework] : [];
   const rawEntryPoint =
-    typeof values.entryPoint === 'string' && values.entryPoint.trim().length > 0
+    typeof values.entryPoint === "string" && values.entryPoint.trim().length > 0
       ? values.entryPoint.trim()
       : undefined;
   const packageRoot =
-    typeof values.packageRoot === 'string' && values.packageRoot.trim().length > 0
+    typeof values.packageRoot === "string" && values.packageRoot.trim().length > 0
       ? values.packageRoot.trim()
-      : rawEntryPoint && rawEntryPoint.includes('/')
-        ? rawEntryPoint.split('/').slice(0, -1).join('/') || `clients/${slug}`
+      : rawEntryPoint && rawEntryPoint.includes("/")
+        ? rawEntryPoint.split("/").slice(0, -1).join("/") || `clients/${slug}`
         : `clients/${slug}`;
 
   const entryPoint = rawEntryPoint
@@ -87,9 +87,9 @@ function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string
   const routerRoutes = entryPoint
     ? [
         {
-          path: '/',
+          path: "/",
           filePath: entryPoint,
-          routerType: 'frontend',
+          routerType: "frontend",
         },
       ]
     : [];
@@ -104,8 +104,8 @@ function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string
       routers: routerRoutes.length
         ? [
             {
-              type: 'frontend',
-              routerType: 'frontend',
+              type: "frontend",
+              routerType: "frontend",
               routes: routerRoutes,
             },
           ]
@@ -117,14 +117,14 @@ function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string
 function coerceStringArray(value: unknown): string[] {
   if (Array.isArray(value)) {
     return value
-      .map(item => (typeof item === 'string' ? item.trim() : ''))
-      .filter(item => item.length > 0);
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item) => item.length > 0);
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value
-      .split(',')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
   }
   return [];
 }
@@ -132,7 +132,7 @@ function coerceStringArray(value: unknown): string[] {
 function buildManualArtifactPayload(
   type: string,
   values: Record<string, any>,
-  slug: string
+  slug: string,
 ): {
   name: string;
   description: string | null;
@@ -143,16 +143,16 @@ function buildManualArtifactPayload(
   filePath?: string;
 } | null {
   const name =
-    typeof values.name === 'string' && values.name.trim().length > 0
+    typeof values.name === "string" && values.name.trim().length > 0
       ? values.name.trim()
       : `${type}-${slug}`;
   const description =
-    typeof values.description === 'string' && values.description.trim().length > 0
+    typeof values.description === "string" && values.description.trim().length > 0
       ? values.description.trim()
       : null;
 
   switch (type) {
-    case 'frontend': {
+    case "frontend": {
       const metadata = buildFrontendArtifactMetadata(values, slug);
       const framework = metadata.frameworks?.[0];
       const entryPoint = metadata.entryPoint;
@@ -160,8 +160,8 @@ function buildManualArtifactPayload(
       return {
         name,
         description,
-        artifactType: 'frontend',
-        language: 'typescript',
+        artifactType: "frontend",
+        language: "typescript",
         framework,
         metadata: {
           description,
@@ -169,30 +169,30 @@ function buildManualArtifactPayload(
           sourceFile: entryPoint ? `${metadata.packageRoot}/${entryPoint}` : undefined,
           frontendAnalysis: metadata.frontendAnalysis,
           classification: {
-            detectedType: 'frontend',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "frontend",
+            reason: "manual-entry",
+            source: "user",
           },
         },
         filePath: entryPoint ? `${metadata.packageRoot}/${entryPoint}` : undefined,
       };
     }
-    case 'service': {
-      const rawLanguage = typeof values.language === 'string' ? values.language.trim() : '';
-      const rawFramework = typeof values.framework === 'string' ? values.framework.trim() : '';
+    case "service": {
+      const rawLanguage = typeof values.language === "string" ? values.language.trim() : "";
+      const rawFramework = typeof values.framework === "string" ? values.framework.trim() : "";
       const legacyTechnology =
-        typeof values.technology === 'string' ? values.technology.trim() : '';
-      const language = rawLanguage || guessLanguage(legacyTechnology) || 'javascript';
+        typeof values.technology === "string" ? values.technology.trim() : "";
+      const language = rawLanguage || guessLanguage(legacyTechnology) || "javascript";
       const framework = rawFramework || legacyTechnology || undefined;
       const defaultPortContext = `${framework ?? language}`.toLowerCase();
-      const defaultPort = defaultPortContext.includes('python') ? 5000 : 3000;
-      const portValue = Number.parseInt(values.port || '', 10);
+      const defaultPort = defaultPortContext.includes("python") ? 5000 : 3000;
+      const portValue = Number.parseInt(values.port || "", 10);
       const port = Number.isFinite(portValue) ? portValue : defaultPort;
 
       return {
         name,
         description,
-        artifactType: 'service',
+        artifactType: "service",
         language,
         framework,
         metadata: {
@@ -202,181 +202,219 @@ function buildManualArtifactPayload(
           language,
           framework,
           classification: {
-            detectedType: 'service',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "service",
+            reason: "manual-entry",
+            source: "user",
           },
         },
-        filePath: typeof values.sourcePath === 'string' ? values.sourcePath : undefined,
+        filePath: typeof values.sourcePath === "string" ? values.sourcePath : undefined,
       };
     }
-    case 'module': {
+    case "module": {
       return {
         name,
         description,
-        artifactType: 'module',
+        artifactType: "module",
         metadata: {
           description,
           classification: {
-            detectedType: 'module',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "module",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'tool': {
+    case "tool": {
       return {
         name,
         description,
-        artifactType: 'tool',
+        artifactType: "tool",
         metadata: {
           description,
-          command: typeof values.command === 'string' ? values.command.trim() : undefined,
+          command: typeof values.command === "string" ? values.command.trim() : undefined,
           classification: {
-            detectedType: 'tool',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "tool",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'database': {
+    case "database": {
       const engine =
-        typeof values.engine === 'string' ? values.engine.trim().toLowerCase() : 'postgresql';
-      const version = typeof values.version === 'string' ? values.version.trim() : undefined;
+        typeof values.engine === "string" ? values.engine.trim().toLowerCase() : "postgresql";
+      const version = typeof values.version === "string" ? values.version.trim() : undefined;
       return {
         name,
         description,
-        artifactType: 'database',
+        artifactType: "database",
         framework: engine,
         metadata: {
           description,
           engine,
           version,
           classification: {
-            detectedType: 'database',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "database",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'infrastructure': {
-      const scope = typeof values.scope === 'string' ? values.scope.trim() : 'infrastructure';
+    case "infrastructure": {
+      const scope = typeof values.scope === "string" ? values.scope.trim() : "infrastructure";
       return {
         name,
         description,
-        artifactType: 'infrastructure',
+        artifactType: "infrastructure",
         metadata: {
           description,
           scope,
           classification: {
-            detectedType: 'infrastructure',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "infrastructure",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
 
-    case 'route': {
-      const pathValue = typeof values.path === 'string' ? values.path.trim() : '/';
-      const methods = coerceStringArray(values.methods).map(method => method.toUpperCase());
+    case "route": {
+      const pathValue = typeof values.path === "string" ? values.path.trim() : "/";
+      const inferredMethod =
+        typeof values.method === "string" && values.method.trim().length > 0
+          ? values.method.trim().toUpperCase()
+          : undefined;
+      const methods = coerceStringArray(values.methods).map((method) => method.toUpperCase());
+      if (inferredMethod && !methods.includes(inferredMethod)) {
+        methods.push(inferredMethod);
+      }
+      const normalizedMethods = methods.length > 0 ? methods : ["GET"];
+
+      const rawOperations = values.operations;
+      let operations: Record<string, unknown> | undefined;
+      if (rawOperations && typeof rawOperations === "object") {
+        operations = rawOperations as Record<string, unknown>;
+      } else if (inferredMethod) {
+        const methodKey = inferredMethod.toLowerCase();
+        const tags = coerceStringArray(values.tags);
+        operations = {
+          [methodKey]: {
+            summary: typeof values.summary === "string" ? values.summary.trim() : undefined,
+            description:
+              typeof values.description === "string" ? values.description.trim() : undefined,
+            tags: tags.length > 0 ? tags : undefined,
+            responses: values.responses,
+            requestBody: values.requestBody,
+          },
+        } as Record<string, unknown>;
+      }
 
       return {
         name,
         description,
-        artifactType: 'route',
+        artifactType: "route",
         metadata: {
           description,
-          path: pathValue || '/',
-          methods,
+          path: pathValue || "/",
+          methods: normalizedMethods,
+          ...(operations ? { operations } : {}),
           classification: {
-            detectedType: 'route',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "route",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'view': {
-      const pathValue = typeof values.path === 'string' ? values.path.trim() : undefined;
+    case "view": {
+      const pathValue = typeof values.path === "string" ? values.path.trim() : undefined;
       return {
         name,
         description,
-        artifactType: 'view',
+        artifactType: "view",
         metadata: {
           description,
           path: pathValue,
           classification: {
-            detectedType: 'view',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "view",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'flow': {
+    case "flow": {
       return {
         name,
         description,
-        artifactType: 'flow',
+        artifactType: "flow",
         metadata: {
           description,
           classification: {
-            detectedType: 'flow',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "flow",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'capability': {
+    case "capability": {
+      const owner =
+        typeof values.owner === "string" && values.owner.trim().length > 0
+          ? values.owner.trim()
+          : undefined;
+      const gherkinSpec =
+        typeof values.gherkin === "string" && values.gherkin.trim().length > 0
+          ? values.gherkin.trim()
+          : undefined;
       return {
         name,
         description,
-        artifactType: 'capability',
+        artifactType: "capability",
         metadata: {
           description,
+          ...(owner ? { owner } : {}),
+          ...(gherkinSpec ? { gherkinSpec } : {}),
           classification: {
-            detectedType: 'capability',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "capability",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'epic': {
+    case "epic": {
       const tasks = coerceStringArray(values.tasks);
       return {
         name,
         description,
-        artifactType: 'epic',
+        artifactType: "epic",
         metadata: {
           description,
           tasks: tasks.length > 0 ? tasks : undefined,
           classification: {
-            detectedType: 'epic',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "epic",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
     }
-    case 'task': {
-      const status = typeof values.status === 'string' ? values.status.trim() : undefined;
+    case "task": {
+      const status = typeof values.status === "string" ? values.status.trim() : undefined;
       return {
         name,
         description,
-        artifactType: 'task',
+        artifactType: "task",
         metadata: {
           description,
           status,
           classification: {
-            detectedType: 'task',
-            reason: 'manual-entry',
-            source: 'user',
+            detectedType: "task",
+            reason: "manual-entry",
+            source: "user",
           },
         },
       };
@@ -387,7 +425,7 @@ function buildManualArtifactPayload(
 }
 
 function normalizeMetadata(
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ): Record<string, unknown> | undefined {
   if (!metadata) return undefined;
   const cleaned: Record<string, unknown> = {};
@@ -418,7 +456,7 @@ const PRESET_BUILDERS: Record<
   string,
   (projectId: string, projectName: string) => PresetProjectData
 > = {
-  'web-app': (_projectId, projectName) => {
+  "web-app": (_projectId, projectName) => {
     const timestamp = new Date().toISOString();
     const composeYaml = `version: '3.9'
 services:
@@ -458,86 +496,86 @@ volumes:
         product: {
           name: projectName,
           description:
-            'Full-stack web application preset with a React frontend, Node.js API tier, and PostgreSQL database.',
+            "Full-stack web application preset with a React frontend, Node.js API tier, and PostgreSQL database.",
           goals: [
-            'Deliver a responsive user experience',
-            'Expose a well-documented REST API',
-            'Support secure authentication and account management',
+            "Deliver a responsive user experience",
+            "Expose a well-documented REST API",
+            "Support secure authentication and account management",
           ],
         },
         ui: {
-          routes: [{ id: 'root', path: '/' }],
+          routes: [{ id: "root", path: "/" }],
           views: [
             {
-              id: 'root-view',
-              name: 'RootView',
-              filePath: 'clients/web/src/routes/root.tsx',
-              description: 'Entry view rendered at the application root.',
+              id: "root-view",
+              name: "RootView",
+              filePath: "clients/web/src/routes/root.tsx",
+              description: "Entry view rendered at the application root.",
             },
           ],
         },
         services: {
           rest: {
-            name: 'rest-service',
-            description: 'Fastify REST API providing backend capabilities for the web application.',
-            technology: 'Node.js 20 + Fastify',
-            language: 'TypeScript',
+            name: "rest-service",
+            description: "Fastify REST API providing backend capabilities for the web application.",
+            technology: "Node.js 20 + Fastify",
+            language: "TypeScript",
             endpoints: [
-              { method: 'GET', path: '/api/rest', description: 'List resources.' },
-              { method: 'POST', path: '/api/rest', description: 'Create a resource.' },
+              { method: "GET", path: "/api/rest", description: "List resources." },
+              { method: "POST", path: "/api/rest", description: "Create a resource." },
             ],
             metadata: {
-              presetId: 'web-app',
-              type: 'service',
-              packagePath: 'services/rest',
+              presetId: "web-app",
+              type: "service",
+              packagePath: "services/rest",
             },
           },
         },
         databases: {
           primary: {
-            name: 'app-db',
-            engine: 'postgresql',
-            description: 'Primary relational database storing transactional data.',
-            schemas: ['public', 'audit'],
+            name: "app-db",
+            engine: "postgresql",
+            description: "Primary relational database storing transactional data.",
+            schemas: ["public", "audit"],
           },
         },
         modules: {
           frontend: {
-            name: 'frontend-app',
-            description: 'React frontend package served via Vite.',
-            language: 'TypeScript',
+            name: "frontend-app",
+            description: "React frontend package served via Vite.",
+            language: "TypeScript",
             metadata: {
-              presetId: 'web-app',
-              type: 'frontend',
-              packagePath: 'clients/web',
+              presetId: "web-app",
+              type: "frontend",
+              packagePath: "clients/web",
             },
           },
           shared: {
-            name: 'shared-library',
-            description: 'Reusable TypeScript utilities shared across services.',
-            language: 'TypeScript',
+            name: "shared-library",
+            description: "Reusable TypeScript utilities shared across services.",
+            language: "TypeScript",
           },
         },
         frontend: {
           packages: [
             {
-              packageName: 'frontend-app',
-              packageRoot: 'clients/web',
-              frameworks: ['react'],
+              packageName: "frontend-app",
+              packageRoot: "clients/web",
+              frameworks: ["react"],
               components: [
                 {
-                  name: 'RootView',
-                  filePath: 'clients/web/src/routes/root.tsx',
-                  framework: 'React',
-                  description: 'Entry view rendered at the application root.',
+                  name: "RootView",
+                  filePath: "clients/web/src/routes/root.tsx",
+                  framework: "React",
+                  description: "Entry view rendered at the application root.",
                 },
               ],
               routes: [
                 {
-                  path: '/',
-                  filePath: 'clients/web/src/routes/root.tsx',
-                  displayLabel: '/',
-                  routerType: 'react-router',
+                  path: "/",
+                  filePath: "clients/web/src/routes/root.tsx",
+                  displayLabel: "/",
+                  routerType: "react-router",
                   isBaseRoute: true,
                 },
               ],
@@ -546,106 +584,106 @@ volumes:
         },
         tools: {
           cli: {
-            name: 'project-cli',
-            description: 'Developer experience CLI with build and test helpers.',
-            commands: ['dev', 'lint', 'test'],
+            name: "project-cli",
+            description: "Developer experience CLI with build and test helpers.",
+            commands: ["dev", "lint", "test"],
           },
         },
         infrastructure: {
           containers: [
             {
-              name: 'frontend',
-              image: 'node:20-alpine',
-              scope: 'frontend',
+              name: "frontend",
+              image: "node:20-alpine",
+              scope: "frontend",
               ports: [{ containerPort: 5173 }],
             },
             {
-              name: 'rest',
-              image: 'node:20-alpine',
-              scope: 'service',
+              name: "rest",
+              image: "node:20-alpine",
+              scope: "service",
               ports: [{ containerPort: 3000 }],
             },
             {
-              name: 'postgres',
-              image: 'postgres:15',
-              scope: 'database',
+              name: "postgres",
+              image: "postgres:15",
+              scope: "database",
               ports: [{ containerPort: 5432 }],
             },
           ],
           compose: {
-            file: 'docker-compose.yml',
-            services: ['frontend', 'rest', 'postgres'],
+            file: "docker-compose.yml",
+            services: ["frontend", "rest", "postgres"],
           },
         },
       },
       meta: {
-        presetId: 'web-app',
+        presetId: "web-app",
         generatedAt: timestamp,
       },
     } as Record<string, unknown>;
 
     const artifacts: PresetArtifactInput[] = [
       {
-        name: 'frontend-app',
-        type: 'frontend',
-        description: 'React SPA delivered with Vite dev server.',
-        language: 'typescript',
-        framework: 'react',
-        filePath: 'clients/web',
+        name: "frontend-app",
+        type: "frontend",
+        description: "React SPA delivered with Vite dev server.",
+        language: "typescript",
+        framework: "react",
+        filePath: "clients/web",
         metadata: {
-          presetId: 'web-app',
-          detectedType: 'frontend',
-          technology: 'React 18 + Vite',
-          role: 'frontend',
+          presetId: "web-app",
+          detectedType: "frontend",
+          technology: "React 18 + Vite",
+          role: "frontend",
         },
       },
       {
-        name: 'rest-service',
-        type: 'service',
-        description: 'Fastify REST API serving the web application.',
-        language: 'typescript',
-        framework: 'fastify',
-        filePath: 'services/rest',
+        name: "rest-service",
+        type: "service",
+        description: "Fastify REST API serving the web application.",
+        language: "typescript",
+        framework: "fastify",
+        filePath: "services/rest",
         metadata: {
-          presetId: 'web-app',
-          endpoints: ['/api/rest'],
+          presetId: "web-app",
+          endpoints: ["/api/rest"],
         },
       },
       {
-        name: 'app-db',
-        type: 'database',
-        description: 'PostgreSQL database for transactional data.',
+        name: "app-db",
+        type: "database",
+        description: "PostgreSQL database for transactional data.",
         language: null,
         framework: null,
-        filePath: 'infra/database',
+        filePath: "infra/database",
         metadata: {
-          presetId: 'web-app',
-          engine: 'postgresql',
-          version: '15',
+          presetId: "web-app",
+          engine: "postgresql",
+          version: "15",
         },
       },
       {
-        name: 'project-cli',
-        type: 'tool',
-        description: 'Developer productivity CLI.',
-        language: 'typescript',
+        name: "project-cli",
+        type: "tool",
+        description: "Developer productivity CLI.",
+        language: "typescript",
         framework: null,
-        filePath: 'tools/cli',
+        filePath: "tools/cli",
         metadata: {
-          presetId: 'web-app',
-          commands: ['dev', 'lint', 'test'],
+          presetId: "web-app",
+          commands: ["dev", "lint", "test"],
         },
       },
       {
-        name: 'docker-compose',
-        type: 'infrastructure',
+        name: "docker-compose",
+        type: "infrastructure",
         description:
-          'Docker Compose definition for the frontend, REST API, and PostgreSQL database.',
+          "Docker Compose definition for the frontend, REST API, and PostgreSQL database.",
         language: null,
         framework: null,
-        filePath: 'infra/docker-compose.yml',
+        filePath: "infra/docker-compose.yml",
         metadata: {
-          presetId: 'web-app',
+          presetId: "web-app",
           compose: true,
           composeYaml,
         },
@@ -658,44 +696,44 @@ volumes:
       structure: { ...DEFAULT_STRUCTURE },
     };
   },
-  'mobile-app': (_projectId, projectName) => {
+  "mobile-app": (_projectId, projectName) => {
     const timestamp = new Date().toISOString();
     const frontendPackage = {
-      packageName: 'mobile-app',
-      packageRoot: 'clients/mobile',
-      frameworks: ['react-native'],
+      packageName: "mobile-app",
+      packageRoot: "clients/mobile",
+      frameworks: ["react-native"],
       components: [
         {
-          name: 'HomeScreen',
-          filePath: 'clients/mobile/src/screens/Home.tsx',
-          framework: 'React Native',
-          description: 'Landing experience with personalized content.',
+          name: "HomeScreen",
+          filePath: "clients/mobile/src/screens/Home.tsx",
+          framework: "React Native",
+          description: "Landing experience with personalized content.",
         },
         {
-          name: 'ProfileScreen',
-          filePath: 'clients/mobile/src/screens/Profile.tsx',
-          framework: 'React Native',
-          description: 'Profile management and account preferences.',
+          name: "ProfileScreen",
+          filePath: "clients/mobile/src/screens/Profile.tsx",
+          framework: "React Native",
+          description: "Profile management and account preferences.",
         },
       ],
       routes: [
         {
-          path: '/home',
-          filePath: 'clients/mobile/src/screens/Home.tsx',
-          displayLabel: '/home',
-          routerType: 'react-native-stack',
+          path: "/home",
+          filePath: "clients/mobile/src/screens/Home.tsx",
+          displayLabel: "/home",
+          routerType: "react-native-stack",
         },
         {
-          path: '/profile',
-          filePath: 'clients/mobile/src/screens/Profile.tsx',
-          displayLabel: '/profile',
-          routerType: 'react-native-stack',
+          path: "/profile",
+          filePath: "clients/mobile/src/screens/Profile.tsx",
+          displayLabel: "/profile",
+          routerType: "react-native-stack",
         },
         {
-          path: '/settings',
-          filePath: 'clients/mobile/src/screens/Settings.tsx',
-          displayLabel: '/settings',
-          routerType: 'react-native-stack',
+          path: "/settings",
+          filePath: "clients/mobile/src/screens/Settings.tsx",
+          displayLabel: "/settings",
+          routerType: "react-native-stack",
         },
       ],
     };
@@ -705,22 +743,22 @@ volumes:
         product: {
           name: projectName,
           description:
-            'Cross-platform mobile application preset with React Native UI and supporting API.',
+            "Cross-platform mobile application preset with React Native UI and supporting API.",
           goals: [
-            'Provide native-feeling mobile experience',
-            'Sync data when online and offline',
-            'Deliver push notification capabilities',
+            "Provide native-feeling mobile experience",
+            "Sync data when online and offline",
+            "Deliver push notification capabilities",
           ],
         },
         ui: {
           routes:
-            frontendPackage.routes?.map(route => ({
-              id: route.path.replace('/', '') || 'home',
+            frontendPackage.routes?.map((route) => ({
+              id: route.path.replace("/", "") || "home",
               path: route.path,
               name: `${route.displayLabel} Screen`.trim(),
             })) ?? [],
           views:
-            frontendPackage.components?.map(component => ({
+            frontendPackage.components?.map((component) => ({
               id: component.name.toLowerCase(),
               name: component.name,
               filePath: component.filePath,
@@ -729,27 +767,27 @@ volumes:
         },
         services: {
           api: {
-            name: 'mobile-api',
-            description: 'Node.js API optimized for mobile use-cases.',
-            technology: 'Node.js 20 + Fastify',
-            language: 'TypeScript',
+            name: "mobile-api",
+            description: "Node.js API optimized for mobile use-cases.",
+            technology: "Node.js 20 + Fastify",
+            language: "TypeScript",
             endpoints: [
-              { method: 'GET', path: '/api/feed', description: 'Fetch personalized feed.' },
-              { method: 'POST', path: '/api/profile', description: 'Update profile information.' },
+              { method: "GET", path: "/api/feed", description: "Fetch personalized feed." },
+              { method: "POST", path: "/api/profile", description: "Update profile information." },
             ],
             metadata: {
-              presetId: 'mobile-app',
-              type: 'service',
+              presetId: "mobile-app",
+              type: "service",
             },
           },
           notifications: {
-            name: 'notifications-worker',
-            description: 'Background worker dispatching push notifications.',
-            technology: 'Node.js 20 + BullMQ',
-            language: 'TypeScript',
+            name: "notifications-worker",
+            description: "Background worker dispatching push notifications.",
+            technology: "Node.js 20 + BullMQ",
+            language: "TypeScript",
             metadata: {
-              presetId: 'mobile-app',
-              type: 'job',
+              presetId: "mobile-app",
+              type: "job",
             },
           },
         },
@@ -758,91 +796,91 @@ volumes:
         },
         databases: {
           cache: {
-            name: 'mobile-cache',
-            engine: 'redis',
-            description: 'Caching layer for offline synchronization.',
+            name: "mobile-cache",
+            engine: "redis",
+            description: "Caching layer for offline synchronization.",
           },
         },
         tools: {
           pipeline: {
-            name: 'mobile-pipeline',
-            description: 'CI pipeline for building and distributing mobile binaries.',
-            commands: ['build:ios', 'build:android', 'publish'],
+            name: "mobile-pipeline",
+            description: "CI pipeline for building and distributing mobile binaries.",
+            commands: ["build:ios", "build:android", "publish"],
           },
         },
         infrastructure: {
           containers: [
             {
-              name: 'mobile-api',
-              image: 'node:20-alpine',
-              scope: 'service',
+              name: "mobile-api",
+              image: "node:20-alpine",
+              scope: "service",
               ports: [{ containerPort: 3001 }],
             },
-            { name: 'notifications-worker', image: 'node:20-alpine', scope: 'job', ports: [] },
+            { name: "notifications-worker", image: "node:20-alpine", scope: "job", ports: [] },
             {
-              name: 'redis',
-              image: 'redis:7-alpine',
-              scope: 'cache',
+              name: "redis",
+              image: "redis:7-alpine",
+              scope: "cache",
               ports: [{ containerPort: 6379 }],
             },
           ],
         },
       },
       meta: {
-        presetId: 'mobile-app',
+        presetId: "mobile-app",
         generatedAt: timestamp,
       },
     } as Record<string, unknown>;
 
     const artifacts: PresetArtifactInput[] = [
       {
-        name: 'mobile-app',
-        type: 'frontend',
-        description: 'React Native application delivered through Expo.',
-        language: 'typescript',
-        framework: 'react-native',
+        name: "mobile-app",
+        type: "frontend",
+        description: "React Native application delivered through Expo.",
+        language: "typescript",
+        framework: "react-native",
         filePath: frontendPackage.packageRoot,
         metadata: {
-          presetId: 'mobile-app',
-          detectedType: 'frontend',
+          presetId: "mobile-app",
+          detectedType: "frontend",
           packageRoot: frontendPackage.packageRoot,
           frameworks: frontendPackage.frameworks,
         },
       },
       {
-        name: 'mobile-api',
-        type: 'service',
-        description: 'API optimized for mobile workloads.',
-        language: 'typescript',
-        framework: 'fastify',
-        filePath: 'services/mobile-api',
+        name: "mobile-api",
+        type: "service",
+        description: "API optimized for mobile workloads.",
+        language: "typescript",
+        framework: "fastify",
+        filePath: "services/mobile-api",
         metadata: {
-          presetId: 'mobile-app',
-          endpoints: ['/api/feed', '/api/profile'],
+          presetId: "mobile-app",
+          endpoints: ["/api/feed", "/api/profile"],
         },
       },
       {
-        name: 'notifications-worker',
-        type: 'service',
-        description: 'Background worker delivering push notifications.',
-        language: 'typescript',
-        framework: 'bullmq',
-        filePath: 'services/notifications-worker',
+        name: "notifications-worker",
+        type: "service",
+        description: "Background worker delivering push notifications.",
+        language: "typescript",
+        framework: "bullmq",
+        filePath: "services/notifications-worker",
         metadata: {
-          presetId: 'mobile-app',
-          type: 'job',
+          presetId: "mobile-app",
+          type: "job",
         },
       },
       {
-        name: 'mobile-cache',
-        type: 'database',
-        description: 'Redis cache supporting offline sync.',
+        name: "mobile-cache",
+        type: "database",
+        description: "Redis cache supporting offline sync.",
         language: null,
         framework: null,
-        filePath: 'infra/cache',
+        filePath: "infra/cache",
         metadata: {
-          presetId: 'mobile-app',
-          engine: 'redis',
+          presetId: "mobile-app",
+          engine: "redis",
         },
       },
     ];
@@ -853,135 +891,135 @@ volumes:
       structure: { ...DEFAULT_STRUCTURE },
     };
   },
-  'api-service': (_projectId, projectName) => {
+  "api-service": (_projectId, projectName) => {
     const timestamp = new Date().toISOString();
     const resolvedSpec = {
       spec: {
         product: {
           name: projectName,
           description:
-            'Preset for a production-ready REST API with documentation and observability.',
+            "Preset for a production-ready REST API with documentation and observability.",
           goals: [
-            'Expose versioned REST endpoints',
-            'Provide comprehensive API documentation',
-            'Instrument metrics for monitoring',
+            "Expose versioned REST endpoints",
+            "Provide comprehensive API documentation",
+            "Instrument metrics for monitoring",
           ],
         },
         services: {
           api: {
-            name: 'core-api',
-            description: 'REST API built with Fastify.',
-            technology: 'Node.js 20 + Fastify',
-            language: 'TypeScript',
+            name: "core-api",
+            description: "REST API built with Fastify.",
+            technology: "Node.js 20 + Fastify",
+            language: "TypeScript",
             endpoints: [
-              { method: 'GET', path: '/v1/resources', description: 'List resources.' },
-              { method: 'POST', path: '/v1/resources', description: 'Create a resource.' },
+              { method: "GET", path: "/v1/resources", description: "List resources." },
+              { method: "POST", path: "/v1/resources", description: "Create a resource." },
             ],
             metadata: {
-              presetId: 'api-service',
-              type: 'service',
+              presetId: "api-service",
+              type: "service",
             },
           },
           worker: {
-            name: 'background-worker',
-            description: 'Queue processing worker for async jobs.',
-            technology: 'Node.js 20 + BullMQ',
-            language: 'TypeScript',
+            name: "background-worker",
+            description: "Queue processing worker for async jobs.",
+            technology: "Node.js 20 + BullMQ",
+            language: "TypeScript",
             metadata: {
-              presetId: 'api-service',
-              type: 'job',
+              presetId: "api-service",
+              type: "job",
             },
           },
         },
         databases: {
           primary: {
-            name: 'api-db',
-            engine: 'postgresql',
-            description: 'Transactional database backing the API.',
+            name: "api-db",
+            engine: "postgresql",
+            description: "Transactional database backing the API.",
           },
         },
         tools: {
           docs: {
-            name: 'api-docs',
-            description: 'OpenAPI documentation bundle.',
-            commands: ['docs:generate'],
+            name: "api-docs",
+            description: "OpenAPI documentation bundle.",
+            commands: ["docs:generate"],
           },
           tests: {
-            name: 'contract-tests',
-            description: 'Postman collection runner for contract testing.',
+            name: "contract-tests",
+            description: "Postman collection runner for contract testing.",
           },
         },
         infrastructure: {
           containers: [
             {
-              name: 'core-api',
-              image: 'node:20-alpine',
-              scope: 'service',
+              name: "core-api",
+              image: "node:20-alpine",
+              scope: "service",
               ports: [{ containerPort: 3000 }],
             },
-            { name: 'worker', image: 'node:20-alpine', scope: 'job', ports: [] },
+            { name: "worker", image: "node:20-alpine", scope: "job", ports: [] },
             {
-              name: 'postgres',
-              image: 'postgres:15',
-              scope: 'database',
+              name: "postgres",
+              image: "postgres:15",
+              scope: "database",
               ports: [{ containerPort: 5432 }],
             },
           ],
         },
       },
       meta: {
-        presetId: 'api-service',
+        presetId: "api-service",
         generatedAt: timestamp,
       },
     } as Record<string, unknown>;
 
     const artifacts: PresetArtifactInput[] = [
       {
-        name: 'core-api',
-        type: 'service',
-        description: 'Fastify REST API exposing versioned endpoints.',
-        language: 'typescript',
-        framework: 'fastify',
-        filePath: 'services/core-api',
+        name: "core-api",
+        type: "service",
+        description: "Fastify REST API exposing versioned endpoints.",
+        language: "typescript",
+        framework: "fastify",
+        filePath: "services/core-api",
         metadata: {
-          presetId: 'api-service',
-          endpoints: ['/v1/resources'],
+          presetId: "api-service",
+          endpoints: ["/v1/resources"],
         },
       },
       {
-        name: 'background-worker',
-        type: 'service',
-        description: 'Queue processing worker handling asynchronous tasks.',
-        language: 'typescript',
-        framework: 'bullmq',
-        filePath: 'services/background-worker',
+        name: "background-worker",
+        type: "service",
+        description: "Queue processing worker handling asynchronous tasks.",
+        language: "typescript",
+        framework: "bullmq",
+        filePath: "services/background-worker",
         metadata: {
-          presetId: 'api-service',
-          type: 'job',
+          presetId: "api-service",
+          type: "job",
         },
       },
       {
-        name: 'api-db',
-        type: 'database',
-        description: 'Primary PostgreSQL database for the API.',
+        name: "api-db",
+        type: "database",
+        description: "Primary PostgreSQL database for the API.",
         language: null,
         framework: null,
-        filePath: 'infra/database',
+        filePath: "infra/database",
         metadata: {
-          presetId: 'api-service',
-          engine: 'postgresql',
+          presetId: "api-service",
+          engine: "postgresql",
         },
       },
       {
-        name: 'api-docs',
-        type: 'tool',
-        description: 'OpenAPI documentation package.',
-        language: 'typescript',
+        name: "api-docs",
+        type: "tool",
+        description: "OpenAPI documentation package.",
+        language: "typescript",
         framework: null,
-        filePath: 'tools/docs',
+        filePath: "tools/docs",
         metadata: {
-          presetId: 'api-service',
-          commands: ['docs:generate'],
+          presetId: "api-service",
+          commands: ["docs:generate"],
         },
       },
     ];
@@ -999,110 +1037,110 @@ volumes:
         product: {
           name: projectName,
           description:
-            'Containerized microservice preset with observability and asynchronous messaging.',
+            "Containerized microservice preset with observability and asynchronous messaging.",
           goals: [
-            'Deploy as an independent container',
-            'Expose health checks for orchestration',
-            'Publish domain events to a message broker',
+            "Deploy as an independent container",
+            "Expose health checks for orchestration",
+            "Publish domain events to a message broker",
           ],
         },
         services: {
           microservice: {
-            name: 'inventory-service',
-            description: 'Go microservice managing inventory levels.',
-            technology: 'Go 1.22 + Echo',
-            language: 'Go',
+            name: "inventory-service",
+            description: "Go microservice managing inventory levels.",
+            technology: "Go 1.22 + Echo",
+            language: "Go",
             endpoints: [
-              { method: 'GET', path: '/inventory', description: 'List inventory items.' },
-              { method: 'POST', path: '/inventory/reserve', description: 'Reserve inventory.' },
+              { method: "GET", path: "/inventory", description: "List inventory items." },
+              { method: "POST", path: "/inventory/reserve", description: "Reserve inventory." },
             ],
             metadata: {
-              presetId: 'microservice',
-              type: 'service',
+              presetId: "microservice",
+              type: "service",
             },
           },
           metrics: {
-            name: 'metrics-collector',
-            description: 'Prometheus metrics exporter for the service.',
-            technology: 'Go 1.22',
-            language: 'Go',
+            name: "metrics-collector",
+            description: "Prometheus metrics exporter for the service.",
+            technology: "Go 1.22",
+            language: "Go",
             metadata: {
-              presetId: 'microservice',
-              type: 'service',
+              presetId: "microservice",
+              type: "service",
             },
           },
         },
         infrastructure: {
           containers: [
             {
-              name: 'inventory-service',
-              image: 'golang:1.22-alpine',
-              scope: 'service',
+              name: "inventory-service",
+              image: "golang:1.22-alpine",
+              scope: "service",
               ports: [{ containerPort: 8080 }],
             },
             {
-              name: 'metrics',
-              image: 'prom/prometheus',
-              scope: 'observability',
+              name: "metrics",
+              image: "prom/prometheus",
+              scope: "observability",
               ports: [{ containerPort: 9090 }],
             },
             {
-              name: 'nats',
-              image: 'nats:2-alpine',
-              scope: 'messaging',
+              name: "nats",
+              image: "nats:2-alpine",
+              scope: "messaging",
               ports: [{ containerPort: 4222 }],
             },
           ],
         },
         tools: {
           ci: {
-            name: 'service-pipeline',
-            description: 'CI pipeline with build, test, and deploy stages.',
-            commands: ['build', 'test', 'docker:publish'],
+            name: "service-pipeline",
+            description: "CI pipeline with build, test, and deploy stages.",
+            commands: ["build", "test", "docker:publish"],
           },
         },
       },
       meta: {
-        presetId: 'microservice',
+        presetId: "microservice",
         generatedAt: timestamp,
       },
     } as Record<string, unknown>;
 
     const artifacts: PresetArtifactInput[] = [
       {
-        name: 'inventory-service',
-        type: 'service',
-        description: 'Go microservice exposing inventory APIs.',
-        language: 'go',
-        framework: 'echo',
-        filePath: 'services/inventory',
+        name: "inventory-service",
+        type: "service",
+        description: "Go microservice exposing inventory APIs.",
+        language: "go",
+        framework: "echo",
+        filePath: "services/inventory",
         metadata: {
-          presetId: 'microservice',
-          technology: 'Go 1.22 + Echo',
+          presetId: "microservice",
+          technology: "Go 1.22 + Echo",
         },
       },
       {
-        name: 'metrics-collector',
-        type: 'service',
-        description: 'Prometheus metrics sidecar.',
-        language: 'go',
+        name: "metrics-collector",
+        type: "service",
+        description: "Prometheus metrics sidecar.",
+        language: "go",
         framework: null,
-        filePath: 'services/metrics',
+        filePath: "services/metrics",
         metadata: {
-          presetId: 'microservice',
-          role: 'observability',
+          presetId: "microservice",
+          role: "observability",
         },
       },
       {
-        name: 'event-bus',
-        type: 'infrastructure',
-        description: 'NATS message broker for asynchronous communication.',
+        name: "event-bus",
+        type: "infrastructure",
+        description: "NATS message broker for asynchronous communication.",
         language: null,
         framework: null,
-        filePath: 'infra/messaging',
+        filePath: "infra/messaging",
         metadata: {
-          presetId: 'microservice',
-          technology: 'nats',
+          presetId: "microservice",
+          technology: "nats",
         },
       },
     ];
@@ -1119,11 +1157,11 @@ export function createProjectsRouter(deps: Dependencies) {
   const router = new Hono();
 
   // GET single project with full resolved spec and artifacts
-  router.get('/projects/:id', async c => {
-    const projectId = c.req.param('id');
+  router.get("/projects/:id", async (c) => {
+    const projectId = c.req.param("id");
 
     if (!projectId) {
-      return c.json({ error: 'Project ID is required' }, 400);
+      return c.json({ error: "Project ID is required" }, 400);
     }
 
     try {
@@ -1134,7 +1172,7 @@ export function createProjectsRouter(deps: Dependencies) {
       const project = projects.find((p: any) => p.id === projectId);
 
       if (!project) {
-        return c.json({ error: 'Project not found' }, 404);
+        return c.json({ error: "Project not found" }, 404);
       }
 
       // Fetch all artifacts for this project
@@ -1146,13 +1184,13 @@ export function createProjectsRouter(deps: Dependencies) {
       const components: Record<string, any> = {};
 
       artifacts.forEach((artifact: any) => {
-        const cleanName = artifact.name.replace(/_/g, '-');
+        const cleanName = artifact.name.replace(/_/g, "-");
         const baseData = {
           id: artifact.id,
           artifactId: artifact.id,
           name: artifact.name,
           type: artifact.type,
-          description: artifact.description || artifact.metadata?.description || '',
+          description: artifact.description || artifact.metadata?.description || "",
           metadata: {
             ...(artifact.metadata ?? {}),
             detected: true,
@@ -1163,19 +1201,19 @@ export function createProjectsRouter(deps: Dependencies) {
         };
 
         switch (artifact.type) {
-          case 'service':
+          case "service":
             services[cleanName] = baseData;
             break;
-          case 'database':
+          case "database":
             databases[cleanName] = baseData;
             break;
-          case 'module':
-          case 'tool':
-          case 'binary':
-          case 'frontend':
-          case 'job':
-          case 'infrastructure':
-          case 'deployment':
+          case "module":
+          case "tool":
+          case "binary":
+          case "frontend":
+          case "job":
+          case "infrastructure":
+          case "deployment":
             components[cleanName] = baseData;
             break;
           default:
@@ -1188,15 +1226,15 @@ export function createProjectsRouter(deps: Dependencies) {
       let infrastructureCount = 0;
       let externalCount = 0;
       for (const [key, comp] of Object.entries(components)) {
-        if (comp.type === 'infrastructure') {
+        if (comp.type === "infrastructure") {
           infrastructureCount++;
-        } else if (!['module', 'tool', 'binary', 'frontend'].includes(comp.type)) {
+        } else if (!["module", "tool", "binary", "frontend"].includes(comp.type)) {
           externalCount++;
         }
       }
 
       // Generate routes from services (for UI consistency)
-      const routes = Object.keys(services).map(serviceName => ({
+      const routes = Object.keys(services).map((serviceName) => ({
         id: serviceName,
         path: `/${serviceName}`,
         name: services[serviceName].name,
@@ -1210,16 +1248,16 @@ export function createProjectsRouter(deps: Dependencies) {
           if (!analysis) return;
           (analysis.routers || []).forEach((router: any) => {
             (router.routes || []).forEach((route: any) => {
-              const rawPath = String(route.path || '').trim();
+              const rawPath = String(route.path || "").trim();
               if (!rawPath) return;
-              const normalized = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
-              frontendViewSet.add(normalized.replace(/\/+/g, '/'));
+              const normalized = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+              frontendViewSet.add(normalized.replace(/\/+/g, "/"));
             });
           });
         });
 
       const resolvedSpec = {
-        version: '1.0',
+        version: "1.0",
         services,
         databases,
         components,
@@ -1227,10 +1265,10 @@ export function createProjectsRouter(deps: Dependencies) {
         // Add placeholder flows and capabilities based on services
         flows:
           Object.keys(services).length > 0
-            ? [{ id: 'main-flow', name: 'Main Application Flow' }]
+            ? [{ id: "main-flow", name: "Main Application Flow" }]
             : [],
         capabilities:
-          Object.keys(services).length > 0 ? [{ id: 'api-capability', name: 'API Services' }] : [],
+          Object.keys(services).length > 0 ? [{ id: "api-capability", name: "API Services" }] : [],
         // Include raw artifacts for detailed rendering
         artifacts,
         project: {
@@ -1239,11 +1277,11 @@ export function createProjectsRouter(deps: Dependencies) {
           entities: {
             services: Object.keys(services).length,
             databases: Object.keys(databases).length,
-            modules: Object.keys(components).filter(k => components[k].type === 'module').length,
+            modules: Object.keys(components).filter((k) => components[k].type === "module").length,
             tools: Object.keys(components).filter(
-              k => components[k].type === 'tool' || components[k].type === 'binary'
+              (k) => components[k].type === "tool" || components[k].type === "binary",
             ).length,
-            frontends: Object.keys(components).filter(k => components[k].type === 'frontend')
+            frontends: Object.keys(components).filter((k) => components[k].type === "frontend")
               .length,
             infrastructure: infrastructureCount,
             external: externalCount,
@@ -1257,21 +1295,21 @@ export function createProjectsRouter(deps: Dependencies) {
 
       return c.json({ resolved: resolvedSpec });
     } catch (error) {
-      console.error('Error fetching project details:', error);
-      return c.json({ error: 'Failed to fetch project details' }, 500);
+      console.error("Error fetching project details:", error);
+      return c.json({ error: "Failed to fetch project details" }, 500);
     }
   });
 
   // Projects endpoint - using real database with entity counts
-  router.get('/projects', async c => {
+  router.get("/projects", async (c) => {
     console.log(
-      '🔄 GET /api/projects - Request received from:',
-      c.req.header('origin') || 'unknown'
+      "🔄 GET /api/projects - Request received from:",
+      c.req.header("origin") || "unknown",
     );
     try {
       const db = deps.db as any;
       const projects = await db.listProjects();
-      console.log('📊 GET /api/projects - Raw projects from DB:', projects.length, 'projects');
+      console.log("📊 GET /api/projects - Raw projects from DB:", projects.length, "projects");
 
       // Transform database projects and calculate entity counts from specs
       const formattedProjects = await Promise.all(
@@ -1297,29 +1335,29 @@ export function createProjectsRouter(deps: Dependencies) {
 
             // Build services from real artifacts
             const services: Record<string, any> = {};
-            const serviceArtifacts = artifacts.filter((a: any) => a.type === 'service');
+            const serviceArtifacts = artifacts.filter((a: any) => a.type === "service");
             const routeSet = new Set<string>();
 
             const toSlug = (value: string) =>
-              String(value || '')
-                .replace(/[^a-z0-9]+/gi, '-')
-                .replace(/^-+|-+$/g, '')
+              String(value || "")
+                .replace(/[^a-z0-9]+/gi, "-")
+                .replace(/^-+|-+$/g, "")
                 .toLowerCase();
 
             for (const artifact of serviceArtifacts) {
-              const serviceName = artifact.name.replace(/_/g, '-');
+              const serviceName = artifact.name.replace(/_/g, "-");
               services[serviceName] = {
                 name: artifact.name,
-                type: 'service',
+                type: "service",
                 metadata: { detected: true },
               };
 
               const analysis = artifact.metadata?.tsoaAnalysis;
               if (analysis) {
-                const rawServiceName = artifact.name.replace(/^@[^/]+\//, '') || artifact.name;
-                const slugRoot = toSlug(artifact.name) || 'service';
+                const rawServiceName = artifact.name.replace(/^@[^/]+\//, "") || artifact.name;
+                const slugRoot = toSlug(artifact.name) || "service";
                 const serviceSlug = toSlug(rawServiceName) || slugRoot;
-                const baseRoutePath = `/${serviceSlug}`.replace(/\/+/g, '/');
+                const baseRoutePath = `/${serviceSlug}`.replace(/\/+/g, "/");
                 if (baseRoutePath) {
                   routeSet.add(baseRoutePath);
                 }
@@ -1329,16 +1367,16 @@ export function createProjectsRouter(deps: Dependencies) {
                   : [];
 
                 controllerCandidates.forEach((candidate: string) => {
-                  const normalized = candidate.split('\\').join('/');
-                  const fileName = normalized.split('/').pop() || normalized;
+                  const normalized = candidate.split("\\").join("/");
+                  const fileName = normalized.split("/").pop() || normalized;
                   const baseSegment = toSlug(
                     fileName
-                      .replace(/\.[tj]sx?$/i, '')
-                      .replace(/controller$/i, '')
-                      .replace(/route$/i, '')
+                      .replace(/\.[tj]sx?$/i, "")
+                      .replace(/controller$/i, "")
+                      .replace(/route$/i, ""),
                   );
                   const routePath = baseSegment
-                    ? `${baseRoutePath}/${baseSegment}`.replace(/\/+/g, '/')
+                    ? `${baseRoutePath}/${baseSegment}`.replace(/\/+/g, "/")
                     : baseRoutePath;
                   routeSet.add(routePath);
                 });
@@ -1347,20 +1385,20 @@ export function createProjectsRouter(deps: Dependencies) {
 
             // Build databases from real artifacts
             const databases: Record<string, any> = {};
-            const databaseArtifacts = artifacts.filter((a: any) => a.type === 'database');
+            const databaseArtifacts = artifacts.filter((a: any) => a.type === "database");
 
             for (const artifact of databaseArtifacts) {
-              const dbName = artifact.name.replace(/_/g, '-');
+              const dbName = artifact.name.replace(/_/g, "-");
 
               // Determine database type from artifact
               const getDatabaseType = (framework?: string, name?: string) => {
                 if (framework) return framework.toLowerCase();
-                if (name?.includes('postgres') || name?.includes('pg')) return 'postgresql';
-                if (name?.includes('mysql') || name?.includes('maria')) return 'mysql';
-                if (name?.includes('mongo')) return 'mongodb';
-                if (name?.includes('redis')) return 'redis';
-                if (name?.includes('sqlite')) return 'sqlite';
-                return 'unknown';
+                if (name?.includes("postgres") || name?.includes("pg")) return "postgresql";
+                if (name?.includes("mysql") || name?.includes("maria")) return "mysql";
+                if (name?.includes("mongo")) return "mongodb";
+                if (name?.includes("redis")) return "redis";
+                if (name?.includes("sqlite")) return "sqlite";
+                return "unknown";
               };
 
               databases[dbName] = {
@@ -1368,15 +1406,15 @@ export function createProjectsRouter(deps: Dependencies) {
                 type: getDatabaseType(artifact.framework, artifact.name),
                 metadata: {
                   detected: true,
-                  language: artifact.language || 'sql',
-                  framework: artifact.framework || 'unknown',
+                  language: artifact.language || "sql",
+                  framework: artifact.framework || "unknown",
                 },
               };
             }
 
             // Count other artifact types properly
             const otherArtifacts = artifacts.filter(
-              (a: any) => !['service', 'database'].includes(a.type)
+              (a: any) => !["service", "database"].includes(a.type),
             );
 
             // Group artifacts by type for debugging
@@ -1399,28 +1437,28 @@ export function createProjectsRouter(deps: Dependencies) {
             for (const artifact of otherArtifacts) {
               // Normalize types
               let type = artifact.type;
-              if (type === 'binary') type = 'tool';
+              if (type === "binary") type = "tool";
 
               switch (type) {
-                case 'module':
+                case "module":
                   moduleCount++;
                   break;
-                case 'tool':
+                case "tool":
                   toolCount++;
                   break;
-                case 'frontend':
+                case "frontend":
                   frontendCount++;
                   break;
-                case 'infrastructure':
+                case "infrastructure":
                   infrastructureCount++;
                   break;
-                case 'route':
+                case "route":
                   {
                     const pathValue = String(
-                      artifact.metadata?.path || artifact.name || '/'
+                      artifact.metadata?.path || artifact.name || "/",
                     ).trim();
-                    const normalizedPath = pathValue.startsWith('/') ? pathValue : `/${pathValue}`;
-                    routeSet.add(normalizedPath.replace(/\/+/g, '/'));
+                    const normalizedPath = pathValue.startsWith("/") ? pathValue : `/${pathValue}`;
+                    routeSet.add(normalizedPath.replace(/\/+/g, "/"));
                     const methods = Array.isArray(artifact.metadata?.methods)
                       ? artifact.metadata.methods
                       : coerceStringArray(artifact.metadata?.methods);
@@ -1429,40 +1467,40 @@ export function createProjectsRouter(deps: Dependencies) {
                     }
                   }
                   break;
-                case 'view':
+                case "view":
                   viewCount++;
                   break;
-                case 'flow':
+                case "flow":
                   flowCount++;
                   break;
-                case 'capability':
+                case "capability":
                   capabilityCount++;
                   break;
                 default:
                   {
                     const detectedType = String(
-                      artifact.metadata?.detectedType || artifact.metadata?.type || ''
+                      artifact.metadata?.detectedType || artifact.metadata?.type || "",
                     ).toLowerCase();
                     switch (detectedType) {
-                      case 'tool':
-                      case 'build_tool':
+                      case "tool":
+                      case "build_tool":
                         toolCount++;
                         break;
-                      case 'frontend':
+                      case "frontend":
                         frontendCount++;
                         break;
-                      case 'infrastructure':
+                      case "infrastructure":
                         infrastructureCount++;
                         break;
-                      case 'route':
+                      case "route":
                         {
                           const pathValue = String(
-                            artifact.metadata?.path || artifact.name || '/'
+                            artifact.metadata?.path || artifact.name || "/",
                           ).trim();
-                          const normalizedPath = pathValue.startsWith('/')
+                          const normalizedPath = pathValue.startsWith("/")
                             ? pathValue
                             : `/${pathValue}`;
-                          routeSet.add(normalizedPath.replace(/\/+/g, '/'));
+                          routeSet.add(normalizedPath.replace(/\/+/g, "/"));
                           const methods = Array.isArray(artifact.metadata?.methods)
                             ? artifact.metadata.methods
                             : coerceStringArray(artifact.metadata?.methods);
@@ -1471,13 +1509,13 @@ export function createProjectsRouter(deps: Dependencies) {
                           }
                         }
                         break;
-                      case 'view':
+                      case "view":
                         viewCount++;
                         break;
-                      case 'flow':
+                      case "flow":
                         flowCount++;
                         break;
-                      case 'capability':
+                      case "capability":
                         capabilityCount++;
                         break;
                       default:
@@ -1497,17 +1535,17 @@ export function createProjectsRouter(deps: Dependencies) {
                 const analysis = artifact.metadata?.frontendAnalysis;
                 if (!analysis) return [] as string[];
                 const packageRoutes = (analysis.routers || []).flatMap((router: any) =>
-                  (router.routes || []).map((route: any) => String(route.path || ''))
+                  (router.routes || []).map((route: any) => String(route.path || "")),
                 );
                 return packageRoutes;
               });
 
             frontendRoutes
-              .map((path: string) => String(path || '').trim())
+              .map((path: string) => String(path || "").trim())
               .filter(Boolean)
               .forEach((path: string) => {
-                const normalized = path.startsWith('/') ? path : `/${path}`;
-                const cleaned = normalized.replace(/\/+/g, '/');
+                const normalized = path.startsWith("/") ? path : `/${path}`;
+                const cleaned = normalized.replace(/\/+/g, "/");
                 routeSet.add(cleaned);
                 frontendRouteSet.add(cleaned);
               });
@@ -1554,61 +1592,61 @@ export function createProjectsRouter(deps: Dependencies) {
           return {
             id: project.id,
             name: project.name,
-            status: 'active',
+            status: "active",
             entities,
             lastActivity: project.updated_at,
           };
-        })
+        }),
       );
 
       return c.json({ projects: formattedProjects });
     } catch (error) {
-      console.error('Error fetching projects:', error);
+      console.error("Error fetching projects:", error);
       return c.json({ projects: [] });
     }
   });
 
   // Create project endpoint
-  router.post('/projects/:projectId/entities', async c => {
-    const projectId = c.req.param('projectId');
+  router.post("/projects/:projectId/entities", async (c) => {
+    const projectId = c.req.param("projectId");
     const db = deps.db as any;
-    if (!db || typeof db.createArtifact !== 'function') {
-      return c.json({ success: false, error: 'Database unavailable' }, 500);
+    if (!db || typeof db.createArtifact !== "function") {
+      return c.json({ success: false, error: "Database unavailable" }, 500);
     }
 
     let body: any;
     try {
       body = await c.req.json();
     } catch (error) {
-      return c.json({ success: false, error: 'Invalid JSON payload' }, 400);
+      return c.json({ success: false, error: "Invalid JSON payload" }, 400);
     }
 
-    const type = typeof body?.type === 'string' ? body.type.toLowerCase() : '';
+    const type = typeof body?.type === "string" ? body.type.toLowerCase() : "";
     const values = body?.values as Record<string, any> | undefined;
 
-    if (!type || !values || typeof values !== 'object') {
+    if (!type || !values || typeof values !== "object") {
       return c.json(
         {
           success: false,
           error: 'Payload must include "type" and "values" fields',
         },
-        400
+        400,
       );
     }
 
     const supportedTypes = new Set([
-      'frontend',
-      'service',
-      'module',
-      'tool',
-      'database',
-      'infrastructure',
-      'route',
-      'view',
-      'flow',
-      'capability',
-      'epic',
-      'task',
+      "frontend",
+      "service",
+      "module",
+      "tool",
+      "database",
+      "infrastructure",
+      "route",
+      "view",
+      "flow",
+      "capability",
+      "epic",
+      "task",
     ]);
     if (!supportedTypes.has(type)) {
       return c.json(
@@ -1616,7 +1654,7 @@ export function createProjectsRouter(deps: Dependencies) {
           success: false,
           error: `Unsupported entity type: ${type}`,
         },
-        400
+        400,
       );
     }
 
@@ -1628,7 +1666,7 @@ export function createProjectsRouter(deps: Dependencies) {
           success: false,
           error: `Unable to construct artifact payload for type: ${type}`,
         },
-        400
+        400,
       );
     }
 
@@ -1645,12 +1683,12 @@ export function createProjectsRouter(deps: Dependencies) {
         payload.framework,
         metadata,
         payload.filePath,
-        0.95
+        0.95,
       );
 
       const eventPayload = {
-        action: 'entity_created',
-        source: 'manual',
+        action: "entity_created",
+        source: "manual",
         entity_type: type,
         artifact_type: payload.artifactType,
         artifact_id: artifactId,
@@ -1665,52 +1703,52 @@ export function createProjectsRouter(deps: Dependencies) {
       if (eventsService?.broadcastToProject) {
         await eventsService.broadcastToProject(projectId, {
           project_id: projectId,
-          event_type: 'entity_created',
+          event_type: "entity_created",
           data: eventPayload,
         });
-      } else if (typeof db.createEvent === 'function') {
-        await db.createEvent(randomUUID(), projectId, 'entity_created', eventPayload);
+      } else if (typeof db.createEvent === "function") {
+        await db.createEvent(randomUUID(), projectId, "entity_created", eventPayload);
       }
 
       return c.json({ success: true, artifact });
     } catch (error) {
-      console.error('Failed to create manual artifact', error);
+      console.error("Failed to create manual artifact", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to create entity',
+          error: "Failed to create entity",
         },
-        500
+        500,
       );
     }
   });
 
-  router.delete('/projects/:projectId/entities/:artifactId', async c => {
-    const projectId = c.req.param('projectId');
-    const artifactId = c.req.param('artifactId');
+  router.delete("/projects/:projectId/entities/:artifactId", async (c) => {
+    const projectId = c.req.param("projectId");
+    const artifactId = c.req.param("artifactId");
 
     if (!projectId) {
-      return c.json({ success: false, error: 'Project ID is required' }, 400);
+      return c.json({ success: false, error: "Project ID is required" }, 400);
     }
 
     if (!artifactId) {
-      return c.json({ success: false, error: 'Artifact ID is required' }, 400);
+      return c.json({ success: false, error: "Artifact ID is required" }, 400);
     }
 
     const db = deps.db as any;
-    if (!db || typeof db.deleteArtifact !== 'function' || typeof db.getArtifact !== 'function') {
-      return c.json({ success: false, error: 'Database unavailable' }, 500);
+    if (!db || typeof db.deleteArtifact !== "function" || typeof db.getArtifact !== "function") {
+      return c.json({ success: false, error: "Database unavailable" }, 500);
     }
 
     try {
       const existingArtifact = await db.getArtifact(projectId, artifactId);
       if (!existingArtifact) {
-        return c.json({ success: false, error: 'Artifact not found' }, 404);
+        return c.json({ success: false, error: "Artifact not found" }, 404);
       }
 
       const deleted = await db.deleteArtifact(projectId, artifactId);
       if (!deleted) {
-        return c.json({ success: false, error: 'Artifact not found' }, 404);
+        return c.json({ success: false, error: "Artifact not found" }, 404);
       }
 
       const eventsService = deps.events as EventService | undefined;
@@ -1735,8 +1773,8 @@ export function createProjectsRouter(deps: Dependencies) {
       };
 
       const eventPayload = {
-        action: 'entity_deleted',
-        source: 'manual',
+        action: "entity_deleted",
+        source: "manual",
         entity_type: entityType,
         artifact_type: existingArtifact.type,
         artifact_id: artifactId,
@@ -1752,106 +1790,106 @@ export function createProjectsRouter(deps: Dependencies) {
       if (eventsService?.broadcastToProject) {
         await eventsService.broadcastToProject(projectId, {
           project_id: projectId,
-          event_type: 'entity_deleted',
+          event_type: "entity_deleted",
           data: eventPayload,
         });
-      } else if (typeof db.createEvent === 'function') {
-        await db.createEvent(randomUUID(), projectId, 'entity_deleted', eventPayload);
+      } else if (typeof db.createEvent === "function") {
+        await db.createEvent(randomUUID(), projectId, "entity_deleted", eventPayload);
       }
 
       return c.json({ success: true, artifactId });
     } catch (error) {
-      console.error('Failed to delete artifact', error);
-      return c.json({ success: false, error: 'Failed to delete entity' }, 500);
+      console.error("Failed to delete artifact", error);
+      return c.json({ success: false, error: "Failed to delete entity" }, 500);
     }
   });
 
-  router.post('/projects/:projectId/entities/:artifactId/restore', async c => {
-    const projectId = c.req.param('projectId');
-    const artifactId = c.req.param('artifactId');
+  router.post("/projects/:projectId/entities/:artifactId/restore", async (c) => {
+    const projectId = c.req.param("projectId");
+    const artifactId = c.req.param("artifactId");
 
     if (!projectId) {
-      return c.json({ success: false, error: 'Project ID is required' }, 400);
+      return c.json({ success: false, error: "Project ID is required" }, 400);
     }
 
     if (!artifactId) {
-      return c.json({ success: false, error: 'Artifact ID is required' }, 400);
+      return c.json({ success: false, error: "Artifact ID is required" }, 400);
     }
 
     const db = deps.db as any;
-    if (!db || typeof db.createArtifact !== 'function' || typeof db.getArtifact !== 'function') {
-      return c.json({ success: false, error: 'Database unavailable' }, 500);
+    if (!db || typeof db.createArtifact !== "function" || typeof db.getArtifact !== "function") {
+      return c.json({ success: false, error: "Database unavailable" }, 500);
     }
 
     let body: any;
     try {
       body = await c.req.json();
     } catch (error) {
-      return c.json({ success: false, error: 'Invalid JSON payload' }, 400);
+      return c.json({ success: false, error: "Invalid JSON payload" }, 400);
     }
 
     const snapshot = body?.snapshot;
-    if (!snapshot || typeof snapshot !== 'object') {
-      return c.json({ success: false, error: 'Payload must include a snapshot object' }, 400);
+    if (!snapshot || typeof snapshot !== "object") {
+      return c.json({ success: false, error: "Payload must include a snapshot object" }, 400);
     }
 
-    const sourceEventId = typeof body?.eventId === 'string' ? body.eventId : undefined;
+    const sourceEventId = typeof body?.eventId === "string" ? body.eventId : undefined;
 
     try {
       const existingArtifact = await db.getArtifact(projectId, artifactId);
       if (existingArtifact) {
-        return c.json({ success: false, error: 'Artifact already exists' }, 409);
+        return c.json({ success: false, error: "Artifact already exists" }, 409);
       }
 
       const normalizedSnapshot = snapshot as Record<string, unknown>;
       const snapshotMetadataValue =
-        normalizedSnapshot['metadata'] && typeof normalizedSnapshot['metadata'] === 'object'
-          ? (normalizedSnapshot['metadata'] as Record<string, unknown>)
+        normalizedSnapshot["metadata"] && typeof normalizedSnapshot["metadata"] === "object"
+          ? (normalizedSnapshot["metadata"] as Record<string, unknown>)
           : undefined;
-      const rawName = normalizedSnapshot['name'];
+      const rawName = normalizedSnapshot["name"];
       const displayLabelValue =
-        snapshotMetadataValue && typeof snapshotMetadataValue['displayLabel'] === 'string'
-          ? (snapshotMetadataValue['displayLabel'] as string)
+        snapshotMetadataValue && typeof snapshotMetadataValue["displayLabel"] === "string"
+          ? (snapshotMetadataValue["displayLabel"] as string)
           : undefined;
       const name =
-        typeof rawName === 'string' && rawName.trim()
+        typeof rawName === "string" && rawName.trim()
           ? rawName.trim()
-          : (displayLabelValue ?? 'Restored artifact');
-      const rawDescription = normalizedSnapshot['description'];
-      const description = typeof rawDescription === 'string' ? rawDescription : null;
-      const rawType = normalizedSnapshot['type'];
+          : (displayLabelValue ?? "Restored artifact");
+      const rawDescription = normalizedSnapshot["description"];
+      const description = typeof rawDescription === "string" ? rawDescription : null;
+      const rawType = normalizedSnapshot["type"];
       const artifactType =
-        typeof rawType === 'string'
+        typeof rawType === "string"
           ? rawType
-          : typeof normalizedSnapshot['artifact_type'] === 'string'
-            ? (normalizedSnapshot['artifact_type'] as string)
-            : 'component';
+          : typeof normalizedSnapshot["artifact_type"] === "string"
+            ? (normalizedSnapshot["artifact_type"] as string)
+            : "component";
       const languageValue =
-        typeof normalizedSnapshot['language'] === 'string'
-          ? (normalizedSnapshot['language'] as string)
-          : snapshotMetadataValue && typeof snapshotMetadataValue['language'] === 'string'
-            ? (snapshotMetadataValue['language'] as string)
+        typeof normalizedSnapshot["language"] === "string"
+          ? (normalizedSnapshot["language"] as string)
+          : snapshotMetadataValue && typeof snapshotMetadataValue["language"] === "string"
+            ? (snapshotMetadataValue["language"] as string)
             : undefined;
       const frameworkValue =
-        typeof normalizedSnapshot['framework'] === 'string'
-          ? (normalizedSnapshot['framework'] as string)
-          : snapshotMetadataValue && typeof snapshotMetadataValue['framework'] === 'string'
-            ? (snapshotMetadataValue['framework'] as string)
+        typeof normalizedSnapshot["framework"] === "string"
+          ? (normalizedSnapshot["framework"] as string)
+          : snapshotMetadataValue && typeof snapshotMetadataValue["framework"] === "string"
+            ? (snapshotMetadataValue["framework"] as string)
             : undefined;
       const metadata = normalizeMetadata(snapshotMetadataValue);
       const values =
-        snapshotMetadataValue && 'values' in snapshotMetadataValue
-          ? snapshotMetadataValue['values']
+        snapshotMetadataValue && "values" in snapshotMetadataValue
+          ? snapshotMetadataValue["values"]
           : undefined;
       const filePathCandidate =
-        typeof normalizedSnapshot['file_path'] === 'string'
-          ? (normalizedSnapshot['file_path'] as string)
-          : typeof normalizedSnapshot['filePath'] === 'string'
-            ? (normalizedSnapshot['filePath'] as string)
+        typeof normalizedSnapshot["file_path"] === "string"
+          ? (normalizedSnapshot["file_path"] as string)
+          : typeof normalizedSnapshot["filePath"] === "string"
+            ? (normalizedSnapshot["filePath"] as string)
             : undefined;
       const confidence =
-        typeof normalizedSnapshot['confidence'] === 'number'
-          ? (normalizedSnapshot['confidence'] as number)
+        typeof normalizedSnapshot["confidence"] === "number"
+          ? (normalizedSnapshot["confidence"] as number)
           : 0.95;
       const language = languageValue;
       const framework = frameworkValue;
@@ -1866,16 +1904,29 @@ export function createProjectsRouter(deps: Dependencies) {
         framework,
         metadata,
         filePathCandidate ?? null,
-        confidence
+        confidence,
       );
 
       const eventsService = deps.events as EventService | undefined;
-      const entityType =
-        metadata?.classification?.detectedType || metadata?.detectedType || artifactType;
+      const classification = (() => {
+        if (!metadata) return undefined;
+        const value = metadata["classification"];
+        return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+      })();
+      const classificationDetected =
+        classification && typeof classification["detectedType"] === "string"
+          ? (classification["detectedType"] as string)
+          : undefined;
+      const metadataDetected = (() => {
+        if (!metadata) return undefined;
+        const candidate = metadata["detectedType"];
+        return typeof candidate === "string" ? (candidate as string) : undefined;
+      })();
+      const entityType = classificationDetected ?? metadataDetected ?? artifactType;
 
       const eventPayload = {
-        action: 'entity_restored',
-        source: 'manual',
+        action: "entity_restored",
+        source: "manual",
         entity_type: entityType,
         artifact_type: artifactType,
         artifact_id: artifactId,
@@ -1892,27 +1943,27 @@ export function createProjectsRouter(deps: Dependencies) {
       if (eventsService?.broadcastToProject) {
         await eventsService.broadcastToProject(projectId, {
           project_id: projectId,
-          event_type: 'entity_restored',
+          event_type: "entity_restored",
           data: eventPayload,
         });
-      } else if (typeof db.createEvent === 'function') {
-        await db.createEvent(randomUUID(), projectId, 'entity_restored', eventPayload);
+      } else if (typeof db.createEvent === "function") {
+        await db.createEvent(randomUUID(), projectId, "entity_restored", eventPayload);
       }
 
       return c.json({ success: true, artifact });
     } catch (error) {
-      console.error('Failed to restore artifact', error);
-      return c.json({ success: false, error: 'Failed to restore entity' }, 500);
+      console.error("Failed to restore artifact", error);
+      return c.json({ success: false, error: "Failed to restore entity" }, 500);
     }
   });
-  router.post('/projects', async c => {
+  router.post("/projects", async (c) => {
     try {
       const db = deps.db as any;
       const body = await c.req.json();
       const { name, path: projectPath, presetId } = body;
 
       if (!name) {
-        return c.json({ error: 'Project name is required' }, 400);
+        return c.json({ error: "Project name is required" }, 400);
       }
 
       // Generate project ID
@@ -1944,13 +1995,13 @@ export function createProjectsRouter(deps: Dependencies) {
           ((presetData.resolvedSpec as Record<string, any>)?.spec?.services as Record<
             string,
             unknown
-          >) ?? {}
+          >) ?? {},
         ).length;
         databases = Object.keys(
           ((presetData.resolvedSpec as Record<string, any>)?.spec?.databases as Record<
             string,
             unknown
-          >) ?? {}
+          >) ?? {},
         ).length;
         detectedStructure = presetData.structure
           ? { ...presetData.structure }
@@ -1975,8 +2026,8 @@ export function createProjectsRouter(deps: Dependencies) {
           if (gitUrl) {
             const parsedGit = parseGitUrl(gitUrl);
             if (parsedGit) {
-              const ref = branch ?? parsedGit.ref ?? 'main';
-              const token = typeof process !== 'undefined' ? process.env.GITHUB_TOKEN : undefined;
+              const ref = branch ?? parsedGit.ref ?? "main";
+              const token = typeof process !== "undefined" ? process.env.GITHUB_TOKEN : undefined;
               contentFetcher = createGithubContentFetcher({
                 owner: parsedGit.owner,
                 repo: parsedGit.repo,
@@ -2024,7 +2075,7 @@ export function createProjectsRouter(deps: Dependencies) {
       // Now create all the artifacts for the project
       for (const artifact of artifacts) {
         try {
-          console.debug('[projects.create] storing artifact', {
+          console.debug("[projects.create] storing artifact", {
             projectId,
             name: artifact.name,
             type: artifact.type,
@@ -2035,12 +2086,12 @@ export function createProjectsRouter(deps: Dependencies) {
             artifact.id,
             projectId,
             artifact.name,
-            typeof artifact.description === 'string' ? artifact.description?.trim() || null : null,
+            typeof artifact.description === "string" ? artifact.description?.trim() || null : null,
             artifact.type,
             artifact.language,
             artifact.framework,
             artifact.metadata,
-            artifact.filePath
+            artifact.filePath,
           );
         } catch (error) {
           console.warn(`Failed to create artifact ${artifact.name}:`, error);
@@ -2049,14 +2100,14 @@ export function createProjectsRouter(deps: Dependencies) {
 
       if (presetData?.resolvedSpec) {
         const resolvedJson = JSON.stringify(presetData.resolvedSpec, null, 2);
-        const specHash = createHash('sha1').update(resolvedJson).digest('hex');
+        const specHash = createHash("sha1").update(resolvedJson).digest("hex");
         await db.createVersion(`version-${Date.now()}`, project.id, specHash, resolvedJson);
       }
 
       return c.json({
         id: project.id,
         name: project.name,
-        status: 'active',
+        status: "active",
         services,
         databases,
         artifacts: artifacts.length,
@@ -2064,17 +2115,17 @@ export function createProjectsRouter(deps: Dependencies) {
         structure: detectedStructure,
       });
     } catch (error) {
-      console.error('Error creating project:', error);
-      return c.json({ error: 'Failed to create project' }, 500);
+      console.error("Error creating project:", error);
+      return c.json({ error: "Failed to create project" }, 500);
     }
   });
 
   // Delete project endpoint
-  router.delete('/projects/:id', async c => {
-    const projectId = c.req.param('id');
+  router.delete("/projects/:id", async (c) => {
+    const projectId = c.req.param("id");
 
     if (!projectId) {
-      return c.json({ error: 'Project ID is required' }, 400);
+      return c.json({ error: "Project ID is required" }, 400);
     }
 
     try {
@@ -2085,7 +2136,7 @@ export function createProjectsRouter(deps: Dependencies) {
       const project = projects.find((p: any) => p.id === projectId);
 
       if (!project) {
-        return c.json({ error: 'Project not found' }, 404);
+        return c.json({ error: "Project not found" }, 404);
       }
 
       // Delete all related artifacts first
@@ -2102,35 +2153,35 @@ export function createProjectsRouter(deps: Dependencies) {
         projectId,
       });
     } catch (error) {
-      console.error('Error deleting project:', error);
-      return c.json({ error: 'Failed to delete project' }, 500);
+      console.error("Error deleting project:", error);
+      return c.json({ error: "Failed to delete project" }, 500);
     }
   });
 
   // Action log endpoint for service activities
-  router.get('/activities', c => {
+  router.get("/activities", (c) => {
     return c.json({
       activities: [
         {
-          id: 'act-1',
-          type: 'service',
-          message: 'Service added: user-auth-service',
-          timestamp: '2025-09-20T10:30:00Z',
-          projectId: 'project-1',
+          id: "act-1",
+          type: "service",
+          message: "Service added: user-auth-service",
+          timestamp: "2025-09-20T10:30:00Z",
+          projectId: "project-1",
         },
         {
-          id: 'act-2',
-          type: 'database',
-          message: 'Database configured: postgres-main',
-          timestamp: '2025-09-20T10:15:00Z',
-          projectId: 'project-1',
+          id: "act-2",
+          type: "database",
+          message: "Database configured: postgres-main",
+          timestamp: "2025-09-20T10:15:00Z",
+          projectId: "project-1",
         },
         {
-          id: 'act-3',
-          type: 'service',
-          message: 'Service deployed to staging environment',
-          timestamp: '2025-09-20T09:45:00Z',
-          projectId: 'project-2',
+          id: "act-3",
+          type: "service",
+          message: "Service deployed to staging environment",
+          timestamp: "2025-09-20T09:45:00Z",
+          projectId: "project-2",
         },
       ],
     });

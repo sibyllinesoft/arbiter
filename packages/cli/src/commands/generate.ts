@@ -10,10 +10,13 @@ import type {
   AppSpec,
   AssemblyConfig,
   ConfigWithVersion,
+  CueAssertion,
+  CueAssertionBlock,
   DeploymentConfig,
   ServiceConfig as DeploymentServiceConfig,
   DeploymentTarget,
   EnhancedGenerateOptions,
+  PathSpec,
   SchemaVersion,
   TestCase,
   TestCompositionResult,
@@ -21,6 +24,7 @@ import type {
 } from '@arbiter/shared';
 import chalk from 'chalk';
 import fs from 'fs-extra';
+import * as YAML from 'yaml';
 import { ApiClient } from '../api-client.js';
 import { DEFAULT_PROJECT_STRUCTURE } from '../config.js';
 import {
@@ -30,11 +34,21 @@ import {
   registry as languageRegistry,
 } from '../language-plugins/index.js';
 import type {
+  EndpointAssertionDefinition,
+  EndpointTestCaseDefinition,
+  EndpointTestGenerationConfig,
   ProjectConfig as LanguageProjectConfig,
   ServiceConfig as LanguageServiceConfig,
 } from '../language-plugins/index.js';
 import { extractVariablesFromCue, templateManager } from '../templates/index.js';
-import type { CLIConfig, ProjectStructureConfig } from '../types.js';
+import type {
+  CLIConfig,
+  CapabilitySpec,
+  GeneratorTestingConfig,
+  LanguageTestingConfig,
+  MasterTestRunnerConfig,
+  ProjectStructureConfig,
+} from '../types.js';
 import { GenerationHookManager } from '../utils/generation-hooks.js';
 import {
   createRepositoryConfig,
@@ -83,6 +97,33 @@ function slugify(value: string | undefined, fallback = 'app'): string {
   return normalized.length > 0 ? normalized : fallback;
 }
 
+function normalizeCapabilities(input: any): Record<string, CapabilitySpec> | null {
+  if (!input) {
+    return null;
+  }
+
+  if (Array.isArray(input)) {
+    const entries: Record<string, CapabilitySpec> = {};
+    input.forEach((raw, index) => {
+      const base: CapabilitySpec =
+        typeof raw === 'string' ? { name: raw } : { ...(raw as CapabilitySpec) };
+      const idSource =
+        (typeof (raw as any)?.id === 'string' && (raw as any).id) ||
+        base.name ||
+        `capability_${index + 1}`;
+      const key = slugify(String(idSource), `capability_${index + 1}`);
+      entries[key] = base;
+    });
+    return entries;
+  }
+
+  if (typeof input === 'object') {
+    return { ...(input as Record<string, CapabilitySpec>) };
+  }
+
+  return null;
+}
+
 function configureLanguagePluginRuntime(language: string, cliConfig: CLIConfig): void {
   const generatorConfig = cliConfig.generator;
   const overridesEntry = generatorConfig?.templateOverrides?.[language];
@@ -101,6 +142,7 @@ function configureLanguagePluginRuntime(language: string, cliConfig: CLIConfig):
     templateOverrides: resolvedOverrides,
     pluginConfig: generatorConfig?.plugins?.[language],
     workspaceRoot: cliConfig.projectDir,
+    testing: getLanguageTestingConfig(generatorConfig?.testing, language),
   });
 }
 
@@ -843,6 +885,7 @@ function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithV
     flows: cueData.flows || [],
     services: cueData.services,
     domain: cueData.domain,
+    capabilities: normalizeCapabilities(cueData.capabilities),
     components: cueData.components,
     paths: cueData.paths,
     testability: cueData.testability,
@@ -881,6 +924,7 @@ async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVe
     ui: { routes: [] },
     locators: {},
     flows: [],
+    capabilities: null,
   };
 
   const config: ConfigWithVersion = {
@@ -944,13 +988,36 @@ async function generateAppArtifacts(
     files.push(...testFiles);
   }
 
+  const endpointAssertionFiles = await generateEndpointAssertionTests(
+    appSpec,
+    outputDir,
+    options,
+    structure,
+    cliConfig
+  );
+  files.push(...endpointAssertionFiles);
+
+  const capabilityFeatureFiles = await generateCapabilityFeatures(
+    appSpec,
+    outputDir,
+    options,
+    structure
+  );
+  files.push(...capabilityFeatureFiles);
+
   if (appSpec.components || appSpec.paths) {
     const apiFiles = await generateAPISpecifications(appSpec, outputDir, options, structure);
     files.push(...apiFiles);
   }
 
   if (appSpec.services && Object.keys(appSpec.services).length > 0) {
-    const serviceFiles = await generateServiceStructures(appSpec, outputDir, options, structure);
+    const serviceFiles = await generateServiceStructures(
+      appSpec,
+      outputDir,
+      options,
+      structure,
+      cliConfig
+    );
     files.push(...serviceFiles);
   }
 
@@ -978,9 +1045,23 @@ async function generateAppArtifacts(
     outputDir,
     options,
     structure,
-    appSpec
+    appSpec,
+    clientContext,
+    cliConfig
   );
   files.push(...infraFiles);
+
+  const workflowFiles = await generateCIWorkflows(configWithVersion, outputDir, options);
+  files.push(...workflowFiles);
+
+  const testRunnerFiles = await generateMasterTestRunner(
+    appSpec,
+    outputDir,
+    options,
+    structure,
+    cliConfig
+  );
+  files.push(...testRunnerFiles);
 
   return files;
 }
@@ -1165,6 +1246,757 @@ import { test, expect } from '@playwright/test';`;
   return files;
 }
 
+async function generateEndpointAssertionTests(
+  appSpec: AppSpec,
+  outputDir: string,
+  options: GenerateOptions,
+  structure: ProjectStructureConfig,
+  cliConfig: CLIConfig
+): Promise<string[]> {
+  const files: string[] = [];
+  const cases = collectEndpointAssertionCases(appSpec);
+
+  if (cases.length === 0) {
+    return files;
+  }
+
+  console.log(chalk.blue('🧪 Generating endpoint assertion tests...'));
+
+  const language = (appSpec.config?.language || 'typescript').toLowerCase();
+  const testingConfig = cliConfig.generator?.testing?.[language];
+  const framework = resolveTestingFramework(language, testingConfig?.framework);
+  const plugin = languageRegistry.get(language);
+
+  const defaultDirSegments = [...toPathSegments(structure.testsDirectory), 'api', 'assertions'];
+  const configuredSegments = testingConfig?.outputDir
+    ? toPathSegments(testingConfig.outputDir)
+    : defaultDirSegments;
+
+  const testsDir =
+    configuredSegments.length > 0 ? path.join(outputDir, ...configuredSegments) : outputDir;
+  const relativeDir = configuredSegments.length > 0 ? joinRelativePath(...configuredSegments) : '.';
+
+  if (!fs.existsSync(testsDir) && !options.dryRun) {
+    fs.mkdirSync(testsDir, { recursive: true });
+  }
+
+  let handledByPlugin = false;
+
+  if (plugin?.generateEndpointTests) {
+    const generationConfig: EndpointTestGenerationConfig = {
+      app: appSpec,
+      cases,
+      outputDir: testsDir,
+      relativeDir,
+      language,
+      testing: testingConfig,
+    };
+
+    try {
+      const generation = await plugin.generateEndpointTests(generationConfig);
+
+      for (const file of generation.files) {
+        const relativePath = file.path.replace(/^\/+/, '');
+        const destination = path.join(testsDir, relativePath);
+        const mode = file.executable ? 0o755 : undefined;
+
+        await writeFileWithHooks(destination, file.content, options, mode);
+        const relativeFile =
+          configuredSegments.length > 0
+            ? joinRelativePath(...configuredSegments, relativePath.replace(/^\.\//, ''))
+            : relativePath.replace(/^\.\//, '');
+        files.push(relativeFile);
+      }
+
+      if (generation.instructions && generation.instructions.length > 0) {
+        generation.instructions.forEach(instruction =>
+          console.log(chalk.green(`✅ ${instruction}`))
+        );
+      }
+
+      handledByPlugin = generation.files.length > 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        chalk.yellow(
+          `⚠️  Plugin endpoint test generation failed for ${plugin.name}, falling back to default: ${message}`
+        )
+      );
+    }
+  }
+
+  if (handledByPlugin) {
+    return files;
+  }
+
+  switch (language) {
+    case 'typescript':
+    case 'javascript': {
+      const normalized = language === 'javascript' ? 'javascript' : 'typescript';
+      const frameworkChoice = normalizeJsFramework(normalized, framework);
+      console.log(
+        chalk.dim(
+          `   • Using ${frameworkChoice.toUpperCase()} template for ${normalized} endpoint assertions`
+        )
+      );
+      const fileName = `endpoint-assertions.test.${normalized === 'javascript' ? 'js' : 'ts'}`;
+      const filePath = path.join(testsDir, fileName);
+      const content = generateJsTsEndpointAssertionTest(normalized, frameworkChoice, cases);
+      await writeFileWithHooks(filePath, content, options);
+      files.push(
+        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+      );
+      break;
+    }
+    case 'python': {
+      const frameworkChoice = framework === 'pytest' ? 'pytest' : 'pytest';
+      console.log(chalk.dim('   • Using PYTEST template for python endpoint assertions'));
+      const fileName = 'test_endpoint_assertions.py';
+      const filePath = path.join(testsDir, fileName);
+      const content = generatePythonEndpointAssertionTest(frameworkChoice, cases);
+      await writeFileWithHooks(filePath, content, options);
+      files.push(
+        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+      );
+      break;
+    }
+    case 'rust': {
+      console.log(chalk.dim('   • Using Rust std test template for endpoint assertions'));
+      const fileName = 'endpoint_assertions.rs';
+      const filePath = path.join(testsDir, fileName);
+      const content = generateRustEndpointAssertionTest(cases);
+      await writeFileWithHooks(filePath, content, options);
+      files.push(
+        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+      );
+      break;
+    }
+    case 'go': {
+      console.log(chalk.dim('   • Using Go testing template for endpoint assertions'));
+      const fileName = 'endpoint_assertions_test.go';
+      const filePath = path.join(testsDir, fileName);
+      const content = generateGoEndpointAssertionTest(cases);
+      await writeFileWithHooks(filePath, content, options);
+      files.push(
+        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+      );
+      break;
+    }
+    default: {
+      console.log(
+        chalk.yellow(
+          `⚠️  Endpoint assertion tests not generated for language '${language}'. Provide a language plugin implementation or add a generator fallback.`
+        )
+      );
+    }
+  }
+
+  return files;
+}
+
+async function generateCapabilityFeatures(
+  appSpec: AppSpec,
+  outputDir: string,
+  options: GenerateOptions,
+  structure: ProjectStructureConfig
+): Promise<string[]> {
+  const capabilities = appSpec.capabilities;
+
+  if (!capabilities || Object.keys(capabilities).length === 0) {
+    return [];
+  }
+
+  const entries = Object.entries(capabilities).filter(([, capability]) => {
+    const spec = capability?.gherkin;
+    return typeof spec === 'string' && spec.trim().length > 0;
+  });
+
+  if (entries.length === 0) {
+    return [];
+  }
+
+  const featuresDir = path.join(outputDir, structure.testsDirectory, 'features', 'capabilities');
+  await ensureDirectory(featuresDir, options);
+
+  const files: string[] = [];
+
+  for (const [capabilityId, capability] of entries) {
+    const identifier = capabilityId || capability.name || 'capability';
+    const slug = slugify(
+      typeof identifier === 'string' ? identifier : String(capabilityId),
+      'capability'
+    );
+    const fileName = `${slug}.feature`;
+    const filePath = path.join(featuresDir, fileName);
+
+    const headerLines: string[] = [`# Capability: ${capability.name ?? capabilityId}`];
+
+    if (capability.description) {
+      headerLines.push(`# Description: ${capability.description}`);
+    }
+    if (capability.owner) {
+      headerLines.push(`# Owner: ${capability.owner}`);
+    }
+    if (Array.isArray(capability.depends_on) && capability.depends_on.length > 0) {
+      headerLines.push(`# Depends on: ${capability.depends_on.join(', ')}`);
+    }
+    if (Array.isArray(capability.tags) && capability.tags.length > 0) {
+      headerLines.push(`# Tags: ${capability.tags.join(', ')}`);
+    }
+
+    headerLines.push('');
+
+    const normalizedSpec = capability.gherkin!.replace(/\r\n?/g, '\n').trim();
+    const featureBody = normalizedSpec.startsWith('Feature:')
+      ? normalizedSpec
+      : `Feature: ${capability.name ?? slug}\n${normalizedSpec}`;
+
+    const content = [...headerLines, featureBody, ''].join('\n');
+    await writeFileWithHooks(filePath, content, options);
+    files.push(joinRelativePath(structure.testsDirectory, 'features', 'capabilities', fileName));
+  }
+
+  return files;
+}
+
+const SUPPORTED_HTTP_METHODS: Array<keyof PathSpec> = ['get', 'post', 'put', 'patch', 'delete'];
+
+function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefinition[] {
+  const cases: EndpointTestCaseDefinition[] = [];
+  const pathEntries = Object.entries(appSpec.paths ?? {});
+
+  for (const [pathKey, pathSpec] of pathEntries) {
+    if (!pathSpec || typeof pathSpec !== 'object') {
+      continue;
+    }
+
+    for (const method of SUPPORTED_HTTP_METHODS) {
+      const operation = (pathSpec as Record<string, any>)[method];
+      if (!operation || typeof operation !== 'object') {
+        continue;
+      }
+
+      const assertions = normalizeCueAssertionBlock(operation.assertions);
+      if (assertions.length === 0) {
+        continue;
+      }
+
+      const responses = operation.responses as Record<string, any> | undefined;
+      let primaryResponseStatus: number | undefined;
+      let primaryResponse: Record<string, unknown> | undefined;
+
+      if (responses && typeof responses === 'object') {
+        const preferredOrder = ['200', '201', '202', '204'];
+        const entries = Object.entries(responses).filter(([status]) => status);
+        const preferredEntry = entries.find(([status]) => preferredOrder.includes(status));
+        const fallbackEntry = entries[0];
+        const chosen = preferredEntry ?? fallbackEntry;
+        if (chosen) {
+          primaryResponseStatus = Number.parseInt(chosen[0], 10);
+          primaryResponse = chosen[1] as Record<string, unknown>;
+        }
+      }
+
+      const requestBody = operation.requestBody as Record<string, unknown> | undefined;
+      const metadata: Record<string, unknown> = {};
+
+      if (requestBody && typeof requestBody === 'object') {
+        const requestContent = requestBody.content as
+          | Record<string, Record<string, unknown>>
+          | undefined;
+        if (requestContent && typeof requestContent === 'object') {
+          const [contentType, media] = Object.entries(requestContent)[0] ?? [];
+          metadata.requestBody = {
+            contentType,
+            schema: media?.schema,
+            example: media?.example,
+          };
+        }
+      }
+
+      if (primaryResponse) {
+        const responseContent = primaryResponse.content as
+          | Record<string, Record<string, unknown>>
+          | undefined;
+        if (responseContent && typeof responseContent === 'object') {
+          const [contentType, media] = Object.entries(responseContent)[0] ?? [];
+          metadata.response = {
+            status: primaryResponseStatus,
+            contentType,
+            schema: media?.schema,
+            example: media?.example,
+          };
+        }
+      }
+
+      cases.push({
+        path: pathKey,
+        method: method.toUpperCase(),
+        assertions,
+        status: primaryResponseStatus,
+        metadata,
+      });
+    }
+  }
+
+  return cases;
+}
+
+function normalizeCueAssertionBlock(
+  block?: CueAssertionBlock
+): EndpointTestCaseDefinition['assertions'] {
+  if (!block || typeof block !== 'object') {
+    return [];
+  }
+
+  const result: EndpointTestCaseDefinition['assertions'] = [];
+
+  for (const [name, value] of Object.entries(block)) {
+    const normalized = normalizeCueAssertion(name, value as CueAssertion);
+    if (normalized) {
+      result.push(normalized);
+    }
+  }
+
+  return result;
+}
+
+function normalizeCueAssertion(
+  name: string,
+  value: CueAssertion
+): EndpointAssertionDefinition | null {
+  if (typeof value === 'boolean') {
+    return {
+      name,
+      result: value,
+      severity: 'error',
+      raw: value,
+    };
+  }
+
+  if (value && typeof value === 'object') {
+    const severity =
+      value.severity === 'warn' || value.severity === 'info' ? value.severity : 'error';
+    const tags = Array.isArray(value.tags)
+      ? value.tags.filter((tag): tag is string => typeof tag === 'string')
+      : undefined;
+
+    return {
+      name,
+      result: typeof value.assert === 'boolean' ? value.assert : null,
+      severity,
+      message: value.message,
+      tags,
+      raw: value,
+    };
+  }
+
+  return null;
+}
+
+function resolveTestingFramework(language: string, configuredFramework?: string | null): string {
+  if (configuredFramework && configuredFramework.trim().length > 0) {
+    return configuredFramework.trim().toLowerCase();
+  }
+
+  switch (language) {
+    case 'javascript':
+      return 'jest';
+    case 'typescript':
+      return 'vitest';
+    case 'python':
+      return 'pytest';
+    case 'rust':
+      return 'builtin';
+    case 'go':
+      return 'go-test';
+    default:
+      return 'vitest';
+  }
+}
+
+function normalizeJsFramework(
+  language: 'typescript' | 'javascript',
+  framework: string
+): 'vitest' | 'jest' {
+  if (framework === 'jest') {
+    return 'jest';
+  }
+  if (framework === 'vitest') {
+    return 'vitest';
+  }
+  return language === 'javascript' ? 'jest' : 'vitest';
+}
+
+function normalizeCasesForSerialization(cases: EndpointTestCaseDefinition[]): Array<{
+  path: string;
+  method: string;
+  status: number | null;
+  assertions: Array<{
+    name: string;
+    result: boolean | null;
+    severity: string;
+    message: string | null;
+    tags: string[];
+  }>;
+}> {
+  return cases.map(({ path, method, status, assertions }) => ({
+    path,
+    method,
+    status: typeof status === 'number' ? status : null,
+    assertions: assertions.map(assertion => ({
+      name: assertion.name,
+      result: assertion.result,
+      severity: assertion.severity,
+      message: assertion.message ?? null,
+      tags: assertion.tags ?? [],
+    })),
+  }));
+}
+
+function generateJsTsEndpointAssertionTest(
+  language: 'typescript' | 'javascript',
+  framework: 'vitest' | 'jest',
+  cases: EndpointTestCaseDefinition[]
+): string {
+  const payload = normalizeCasesForSerialization(cases);
+  const serialized = JSON.stringify(payload, null, 2);
+  const importLine =
+    framework === 'jest'
+      ? "import { describe, it, expect } from '@jest/globals';"
+      : "import { describe, it, expect } from 'vitest';";
+
+  const typeDefinitions =
+    language === 'typescript'
+      ? `\ntype EndpointAssertion = {\n  name: string;\n  result: boolean | null;\n  severity: 'error' | 'warn' | 'info';\n  message: string | null;\n  tags: string[];\n};\n\ntype EndpointTestCase = {\n  path: string;\n  method: string;\n  status: number | null;\n  assertions: EndpointAssertion[];\n};\n`
+      : '';
+
+  const casesDeclaration =
+    language === 'typescript'
+      ? `const endpointCases: EndpointTestCase[] = ${serialized};`
+      : `const endpointCases = ${serialized};`;
+
+  return `// Generated by Arbiter - Endpoint assertion tests\n${importLine}${typeDefinitions}\n${casesDeclaration}\n\nendpointCases.forEach(({ method, path, assertions }) => {\n  describe(\`[\${method}] \${path}\`, () => {\n    assertions.forEach(assertion => {\n      const label = assertion.message || assertion.name;\n      const runner = assertion.result === null ? it.skip : it;\n      runner(label, () => {\n        expect(assertion.result, assertion.message || assertion.name).toBe(true);\n      });\n    });\n  });\n});\n`;
+}
+
+function generatePythonEndpointAssertionTest(
+  _framework: string,
+  cases: EndpointTestCaseDefinition[]
+): string {
+  const serialized = JSON.stringify(normalizeCasesForSerialization(cases), null, 2);
+
+  return `# Generated by Arbiter - Endpoint assertion tests\nimport json\nimport pytest\n\nENDPOINT_CASES = json.loads(r'''${serialized}''')\n\n@pytest.mark.parametrize(\"case\", ENDPOINT_CASES, ids=lambda c: f\"{c['method']} {c['path']}\")\ndef test_endpoint_assertions(case):\n    for assertion in case['assertions']:\n        result = assertion.get('result')\n        message = assertion.get('message') or assertion['name']\n        if result is None:\n            pytest.skip(f\"{message} marked as TODO\")\n        assert result, message\n`;
+}
+
+function generateRustEndpointAssertionTest(cases: EndpointTestCaseDefinition[]): string {
+  const renderedCases = normalizeCasesForSerialization(cases)
+    .map(caseItem => {
+      const assertions = caseItem.assertions
+        .map(assertion => {
+          const result =
+            assertion.result === null ? 'None' : `Some(${assertion.result ? 'true' : 'false'})`;
+          const message = assertion.message
+            ? `Some("${escapeRustString(assertion.message)}")`
+            : 'None';
+          const tags =
+            assertion.tags.length > 0
+              ? `vec![${assertion.tags.map(tag => `"${escapeRustString(tag)}"`).join(', ')}]`
+              : 'Vec::new()';
+
+          return `                EndpointAssertion {\n                    name: "${escapeRustString(assertion.name)}",\n                    result: ${result},\n                    severity: "${escapeRustString(assertion.severity)}",\n                    message: ${message},\n                    tags: ${tags},\n                }`;
+        })
+        .join(',\n');
+
+      const status = caseItem.status !== null ? `Some(${caseItem.status})` : 'None';
+
+      return `            EndpointCase {\n                path: "${escapeRustString(caseItem.path)}",\n                method: "${escapeRustString(caseItem.method)}",\n                status: ${status},\n                assertions: vec![\n${assertions}\n                ],\n            }`;
+    })
+    .join(',\n');
+
+  return `// Generated by Arbiter - Endpoint assertion tests\n#[cfg(test)]\nmod tests {\n    struct EndpointAssertion<'a> {\n        name: &'a str,\n        result: Option<bool>,\n        severity: &'a str,\n        message: Option<&'a str>,\n        tags: Vec<&'a str>,\n    }\n\n    struct EndpointCase<'a> {\n        path: &'a str,\n        method: &'a str,\n        status: Option<u16>,\n        assertions: Vec<EndpointAssertion<'a>>,\n    }\n\n    fn endpoint_cases() -> Vec<EndpointCase<'static>> {\n        vec![\n${renderedCases}\n        ]\n    }\n\n    #[test]\n    fn endpoint_assertions_pass() {\n        for case in endpoint_cases() {\n            for assertion in case.assertions {\n                match assertion.result {\n                    Some(true) => {}\n                    Some(false) => {\n                        let message = assertion.message.unwrap_or(assertion.name);\n                        panic!(\"{} {} -> {} failed: {}\", case.method, case.path, assertion.name, message);\n                    }\n                    None => {\n                        println!(\"skipping {} {} -> {}\", case.method, case.path, assertion.name);\n                    }\n                }\n            }\n        }\n    }\n}\n`;
+}
+
+function generateGoEndpointAssertionTest(cases: EndpointTestCaseDefinition[]): string {
+  const serialized = JSON.stringify(normalizeCasesForSerialization(cases));
+  const escaped = escapeGoString(serialized);
+
+  return (
+    `// Generated by Arbiter - Endpoint assertion tests\npackage assertions\n\nimport (\n    \"encoding/json\"\n    \"testing\"\n)\n\ntype EndpointAssertion struct {\n    Name     string   ` +
+    '`json:"name"`' +
+    `\n    Result   *bool    ` +
+    '`json:"result"`' +
+    `\n    Severity string   ` +
+    '`json:"severity"`' +
+    `\n    Message  *string  ` +
+    '`json:"message"`' +
+    `\n    Tags     []string ` +
+    '`json:"tags"`' +
+    `\n}\n\ntype EndpointCase struct {\n    Path       string              ` +
+    '`json:"path"`' +
+    `\n    Method     string              ` +
+    '`json:"method"`' +
+    `\n    Status     *int                ` +
+    '`json:"status"`' +
+    `\n    Assertions []EndpointAssertion ` +
+    '`json:"assertions"`' +
+    `\n}\n\nfunc loadEndpointCases(t *testing.T) []EndpointCase {\n    data := []byte(\"${escaped}\")\n    var cases []EndpointCase\n    if err := json.Unmarshal(data, &cases); err != nil {\n        t.Fatalf(\"failed to parse endpoint cases: %v\", err)\n    }\n    return cases\n}\n\nfunc TestEndpointAssertions(t *testing.T) {\n    cases := loadEndpointCases(t)\n    for _, c := range cases {\n        for _, assertion := range c.Assertions {\n            if assertion.Result == nil {\n                t.Logf(\"skipping %s %s -> %s\", c.Method, c.Path, assertion.Name)\n                continue\n            }\n            if !*assertion.Result {\n                if assertion.Message != nil && *assertion.Message != \"\" {\n                    t.Fatalf(\"%s %s -> %s failed: %s\", c.Method, c.Path, assertion.Name, *assertion.Message)\n                }\n                t.Fatalf(\"%s %s -> %s failed\", c.Method, c.Path, assertion.Name)\n            }\n        }\n    }\n}\n`
+  );
+}
+
+function escapeRustString(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+function escapeGoString(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+const DEFAULT_TEST_COMMANDS: Record<string, string> = {
+  typescript: 'npm test',
+  javascript: 'npm test',
+  python: 'pytest',
+  rust: 'cargo test',
+  go: 'go test ./...',
+};
+
+type TestTask = {
+  name: string;
+  command: string;
+  cwd: string;
+};
+
+function getLanguageTestingConfig(
+  testing: GeneratorTestingConfig | undefined,
+  language: string
+): LanguageTestingConfig | undefined {
+  if (!testing) return undefined;
+  if (language === 'master') return undefined;
+  const base = testing as Record<
+    string,
+    LanguageTestingConfig | MasterTestRunnerConfig | undefined
+  >;
+  const value = base[language];
+  if (!value) return undefined;
+  if (typeof value === 'object' && 'type' in (value as MasterTestRunnerConfig)) {
+    return undefined;
+  }
+  return value as LanguageTestingConfig;
+}
+
+function getMasterRunnerConfig(
+  testing: GeneratorTestingConfig | undefined
+): MasterTestRunnerConfig | undefined {
+  return testing?.master;
+}
+
+async function generateMasterTestRunner(
+  appSpec: AppSpec,
+  outputDir: string,
+  options: GenerateOptions,
+  structure: ProjectStructureConfig,
+  cliConfig: CLIConfig
+): Promise<string[]> {
+  const files: string[] = [];
+  const testingConfig = cliConfig.generator?.testing;
+  const masterConfig = getMasterRunnerConfig(testingConfig);
+  const runnerType = masterConfig?.type ?? 'make';
+
+  const tasks: TestTask[] = [];
+
+  const serviceEntries = Object.entries(appSpec.services ?? {});
+  for (const [serviceName, serviceConfig] of serviceEntries) {
+    if (!serviceConfig || typeof serviceConfig !== 'object') continue;
+    const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
+    const language = (serviceConfig.language as string | undefined)?.toLowerCase() ?? 'typescript';
+    const languageConfig = getLanguageTestingConfig(testingConfig, language);
+    const testCommand = resolveTestingCommand(language, languageConfig);
+    if (!testCommand) continue;
+
+    const serviceDir = joinRelativePath(structure.servicesDirectory, context.name);
+    tasks.push({
+      name: `test-service-${context.name}`,
+      command: testCommand,
+      cwd: serviceDir,
+    });
+  }
+
+  const clientTask = await buildClientTestTask(appSpec, outputDir, structure, testingConfig);
+  if (clientTask) {
+    tasks.push(clientTask);
+  }
+
+  const assertionTask = await buildEndpointAssertionTask(
+    appSpec,
+    outputDir,
+    structure,
+    testingConfig
+  );
+  if (assertionTask) {
+    tasks.push(assertionTask);
+  }
+
+  if (runnerType === 'node') {
+    const scriptPath = path.join(
+      outputDir,
+      masterConfig?.output ?? path.join('tests', 'run-all.mjs')
+    );
+    await ensureDirectory(path.dirname(scriptPath), options);
+    const scriptContent = createNodeRunnerScript(tasks);
+    await writeFileWithHooks(scriptPath, scriptContent, options, 0o755);
+    const relativePath = path.relative(outputDir, scriptPath).replace(/\\\\/g, '/');
+    files.push(relativePath.length > 0 ? relativePath : path.basename(scriptPath));
+    if (options.verbose) {
+      console.log(chalk.dim(`🧰 Master test runner written to ${scriptPath}`));
+    }
+    return files;
+  }
+
+  const makefilePath = path.join(outputDir, masterConfig?.output ?? 'Makefile');
+  await ensureDirectory(path.dirname(makefilePath), options);
+
+  const targets = tasks.map(task => task.name);
+  let makefile = '';
+  if (targets.length > 0) {
+    makefile += `.PHONY: test ${targets.join(' ')}\n\n`;
+    makefile += `test: ${targets.join(' ')}\n\n`;
+    for (const task of tasks) {
+      makefile += `${task.name}:\n\tcd ${task.cwd || '.'} && ${task.command}\n\n`;
+    }
+  } else {
+    makefile += '.PHONY: test\n\n';
+    makefile += 'test:\n\t@echo "No automated tests are configured yet."\n\n';
+  }
+
+  await writeFileWithHooks(makefilePath, makefile, options);
+  if (options.verbose) {
+    console.log(chalk.dim(`🧰 Master test runner written to ${makefilePath}`));
+  }
+  const relativeMake = path.relative(outputDir, makefilePath).replace(/\\\\/g, '/');
+  files.push(relativeMake.length > 0 ? relativeMake : path.basename(makefilePath));
+
+  return files;
+}
+
+function resolveTestingCommand(
+  language: string,
+  config?: LanguageTestingConfig
+): string | undefined {
+  if (config?.command && config.command.trim().length > 0) {
+    return config.command.trim();
+  }
+  return DEFAULT_TEST_COMMANDS[language];
+}
+
+async function buildClientTestTask(
+  appSpec: AppSpec,
+  outputDir: string,
+  structure: ProjectStructureConfig,
+  testingConfig: GeneratorTestingConfig | undefined
+): Promise<TestTask | null> {
+  const clientLanguage = appSpec.config?.language?.toLowerCase();
+  if (clientLanguage !== 'typescript' && clientLanguage !== 'javascript') {
+    return null;
+  }
+
+  const languageConfig = getLanguageTestingConfig(testingConfig, clientLanguage);
+  const command = resolveTestingCommand(clientLanguage, languageConfig);
+  if (!command) return null;
+
+  const context = createClientContext(appSpec, structure, outputDir);
+  const clientDir = joinRelativePath(structure.clientsDirectory, context.slug);
+  return {
+    name: 'test-client',
+    command,
+    cwd: clientDir,
+  };
+}
+
+async function buildEndpointAssertionTask(
+  appSpec: AppSpec,
+  outputDir: string,
+  structure: ProjectStructureConfig,
+  testingConfig: GeneratorTestingConfig | undefined
+): Promise<TestTask | null> {
+  const tsServices = Object.entries(appSpec.services ?? {}).filter(
+    ([, svc]) => (svc?.language as string | undefined)?.toLowerCase() === 'typescript'
+  );
+
+  if (tsServices.length === 0) {
+    return null;
+  }
+
+  const tsConfig = getLanguageTestingConfig(testingConfig, 'typescript');
+  const assertionsDir = tsConfig?.outputDir ?? 'tests/assertions/ts';
+  const assertionsPath = path.join(outputDir, assertionsDir);
+  const exists = await fs.pathExists(assertionsPath);
+  if (!exists) {
+    return null;
+  }
+
+  const [serviceName, serviceConfig] = tsServices[0];
+  const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
+  const serviceDir = joinRelativePath(structure.servicesDirectory, context.name);
+  const relativeAssertions = path.relative(path.join(outputDir, serviceDir), assertionsPath) || '.';
+  const command = tsConfig?.command
+    ? tsConfig.command
+    : `npm exec vitest -- run ${relativeAssertions} --run`;
+
+  return {
+    name: 'test-endpoint-assertions',
+    command,
+    cwd: serviceDir,
+  };
+}
+
+function createNodeRunnerScript(tasks: TestTask[]): string {
+  const taskList = JSON.stringify(tasks, null, 2);
+  return [
+    '#!/usr/bin/env node',
+    "import { spawn } from 'node:child_process';",
+    "import { resolve } from 'node:path';",
+    '',
+    'const rootDir = process.cwd();',
+    `const tasks = ${taskList};`,
+    '',
+    'async function runTask(task) {',
+    '  return new Promise((resolvePromise, rejectPromise) => {',
+    "    const cwd = resolve(rootDir, task.cwd || '.');",
+    "    console.log('\n▶ ' + task.name + ' (cwd: ' + (task.cwd || '.') + ')');",
+    '    const child = spawn(task.command, {',
+    '      cwd,',
+    '      shell: true,',
+    "      stdio: 'inherit',",
+    '    });',
+    "    child.on('close', code => {",
+    '      if (code === 0) {',
+    '        resolvePromise();',
+    '      } else {',
+    "        rejectPromise(new Error(task.name + ' exited with code ' + code));",
+    '      }',
+    '    });',
+    "    child.on('error', rejectPromise);",
+    '  });',
+    '}',
+    '',
+    'async function main() {',
+    '  if (tasks.length === 0) {',
+    "    console.log('No automated tests are configured yet.');",
+    '    return;',
+    '  }',
+    '  for (const task of tasks) {',
+    '    await runTask(task);',
+    '  }',
+    "  console.log('\n✅ All tests completed successfully');",
+    '}',
+    '',
+    'main().catch(error => {',
+    "  console.error('\n❌ ' + error.message);",
+    '  process.exit(1);',
+    '});',
+    '',
+  ].join('\n');
+}
+
 /**
  * Generate default Playwright test content
  */
@@ -1329,34 +2161,209 @@ async function generateAPISpecifications(
       );
     }
 
+    const resolveMediaContent = (content?: Record<string, any>) => {
+      if (!content || typeof content !== 'object') {
+        return undefined;
+      }
+      const entries = Object.entries(content).map(([contentType, media]) => {
+        if (!contentType) {
+          return null;
+        }
+        const mediaObject: Record<string, unknown> = {};
+        if (media && typeof media === 'object') {
+          const schemaCandidate = (media as Record<string, unknown>).schema;
+          const schemaRefCandidate = (media as Record<string, unknown>).schemaRef;
+          if (schemaCandidate && typeof schemaCandidate === 'object') {
+            mediaObject.schema = schemaCandidate;
+          } else if (
+            typeof schemaRefCandidate === 'string' &&
+            schemaRefCandidate.trim().length > 0
+          ) {
+            mediaObject.schema = { $ref: schemaRefCandidate.trim() };
+          }
+          if ((media as Record<string, unknown>).example !== undefined) {
+            mediaObject.example = (media as Record<string, unknown>).example;
+          }
+        }
+
+        return [contentType, Object.keys(mediaObject).length > 0 ? mediaObject : {}] as [
+          string,
+          Record<string, unknown>,
+        ];
+      });
+
+      const sanitized = entries.filter(Boolean) as Array<[string, Record<string, unknown>]>;
+      if (!sanitized.length) {
+        return undefined;
+      }
+      return Object.fromEntries(sanitized);
+    };
+
+    const convertParameters = (parameters?: any[]): any[] | undefined => {
+      if (!Array.isArray(parameters) || parameters.length === 0) {
+        return undefined;
+      }
+
+      const converted = parameters
+        .filter(parameter => parameter && typeof parameter === 'object')
+        .map(parameter => {
+          const coerced = parameter as Record<string, unknown>;
+          const schemaCandidate = coerced.schema;
+          const schemaRefCandidate = coerced.schemaRef;
+          let schema: unknown;
+          if (schemaCandidate && typeof schemaCandidate === 'object') {
+            schema = schemaCandidate;
+          } else if (
+            typeof schemaRefCandidate === 'string' &&
+            schemaRefCandidate.trim().length > 0
+          ) {
+            schema = { $ref: schemaRefCandidate.trim() };
+          }
+          return {
+            name: coerced.name,
+            in: coerced['in'],
+            description: coerced.description,
+            required:
+              typeof coerced.required === 'boolean' ? coerced.required : coerced['in'] === 'path',
+            deprecated: coerced.deprecated,
+            example: coerced.example,
+            ...(schema ? { schema } : {}),
+          };
+        })
+        .filter(param => typeof param.name === 'string' && param.name.trim().length > 0);
+
+      return converted.length > 0 ? converted : undefined;
+    };
+
+    const convertRequestBody = (requestBody: unknown): any => {
+      if (!requestBody || typeof requestBody !== 'object') {
+        return undefined;
+      }
+      const coerced = requestBody as Record<string, unknown>;
+      const content = resolveMediaContent(coerced.content as Record<string, any>);
+      if (!content) {
+        return undefined;
+      }
+      return {
+        description: coerced.description,
+        required: typeof coerced.required === 'boolean' ? coerced.required : undefined,
+        content,
+      };
+    };
+
+    const convertResponses = (responses: unknown): Record<string, any> | undefined => {
+      if (!responses || typeof responses !== 'object') {
+        return undefined;
+      }
+
+      const convertedEntries = Object.entries(responses)
+        .filter(([status]) => status)
+        .map(([status, value]) => {
+          if (!value || typeof value !== 'object') {
+            return null;
+          }
+          const responseRecord = value as Record<string, unknown>;
+          const content = resolveMediaContent(responseRecord.content as Record<string, any>);
+          const headers = responseRecord.headers;
+          return [
+            status,
+            {
+              description:
+                typeof responseRecord.description === 'string'
+                  ? responseRecord.description
+                  : 'Response',
+              ...(headers && typeof headers === 'object' ? { headers } : {}),
+              ...(content ? { content } : {}),
+            },
+          ] as [string, Record<string, unknown>];
+        })
+        .filter(Boolean) as Array<[string, Record<string, unknown>]>;
+
+      if (!convertedEntries.length) {
+        return undefined;
+      }
+      return Object.fromEntries(convertedEntries);
+    };
+
     // Convert paths to OpenAPI format
     for (const [pathKey, pathSpec] of Object.entries(appSpec.paths)) {
       openApiSpec.paths[pathKey] = {};
 
       for (const [method, operation] of Object.entries(pathSpec)) {
-        openApiSpec.paths[pathKey][method] = {
-          summary: `${method.toUpperCase()} ${pathKey}`,
-          ...(operation.request && {
-            requestBody: {
-              content: {
-                'application/json': {
-                  schema: operation.request.$ref ? { $ref: operation.request.$ref } : {},
-                  example: operation.request.example,
+        if (!operation) {
+          continue;
+        }
+
+        const isLegacyOperation =
+          typeof (operation as any).response !== 'undefined' ||
+          typeof (operation as any).request !== 'undefined';
+
+        if (isLegacyOperation) {
+          const legacyOperation = operation as Record<string, any>;
+          const responseStatus = legacyOperation.status || (method === 'get' ? 200 : 201);
+          openApiSpec.paths[pathKey][method] = {
+            summary: `${method.toUpperCase()} ${pathKey}`,
+            ...(legacyOperation.request && {
+              requestBody: {
+                content: {
+                  'application/json': {
+                    schema: legacyOperation.request.$ref
+                      ? { $ref: legacyOperation.request.$ref }
+                      : {},
+                    example: legacyOperation.request.example,
+                  },
+                },
+              },
+            }),
+            responses: {
+              [responseStatus]: {
+                description: 'Success',
+                content: {
+                  'application/json': {
+                    schema: legacyOperation.response?.$ref
+                      ? { $ref: legacyOperation.response.$ref }
+                      : {},
+                    example: legacyOperation.response?.example,
+                  },
                 },
               },
             },
-          }),
-          responses: {
-            [operation.status || (method === 'get' ? 200 : 201)]: {
-              description: 'Success',
-              content: {
-                'application/json': {
-                  schema: operation.response?.$ref ? { $ref: operation.response.$ref } : {},
-                  example: operation.response?.example,
-                },
-              },
+            ...(legacyOperation.assertions ? { 'x-assertions': legacyOperation.assertions } : {}),
+          };
+          continue;
+        }
+
+        const modernOperation = operation as Record<string, unknown>;
+        const parameters = convertParameters(modernOperation.parameters as any[]);
+        const requestBody = convertRequestBody(modernOperation.requestBody);
+        const responses = convertResponses(modernOperation.responses);
+
+        openApiSpec.paths[pathKey][method] = {
+          summary:
+            typeof modernOperation.summary === 'string'
+              ? modernOperation.summary
+              : `${method.toUpperCase()} ${pathKey}`,
+          description:
+            typeof modernOperation.description === 'string'
+              ? modernOperation.description
+              : undefined,
+          operationId:
+            typeof modernOperation.operationId === 'string'
+              ? modernOperation.operationId
+              : undefined,
+          tags: Array.isArray(modernOperation.tags) ? modernOperation.tags : undefined,
+          deprecated:
+            typeof modernOperation.deprecated === 'boolean'
+              ? modernOperation.deprecated
+              : undefined,
+          ...(parameters ? { parameters } : {}),
+          ...(requestBody ? { requestBody } : {}),
+          responses: responses ?? {
+            default: {
+              description: 'Response',
             },
           },
+          ...(modernOperation.assertions ? { 'x-assertions': modernOperation.assertions } : {}),
         };
       }
     }
@@ -1522,7 +2529,9 @@ async function generateInfrastructureArtifacts(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  appSpec: AppSpec
+  appSpec: AppSpec,
+  clientContext?: ClientGenerationContext,
+  _cliConfig?: CLIConfig
 ): Promise<string[]> {
   const files: string[] = [];
   const cueData = (configWithVersion as any)._fullCueData;
@@ -1551,7 +2560,8 @@ async function generateInfrastructureArtifacts(
     outputDir,
     configWithVersion,
     options,
-    structure
+    structure,
+    clientContext
   );
   files.push(...composeFiles);
 
@@ -1741,6 +2751,19 @@ npm run build
   await writeFileWithHooks(readmePath, readmeContent, options);
   files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, 'README.md'));
 
+  const dockerArtifacts = await generateClientDockerArtifacts(
+    clientContext,
+    appSpec,
+    options,
+    cliConfig
+  );
+
+  files.push(
+    ...dockerArtifacts.map(artifact =>
+      joinRelativePath(structure.clientsDirectory, clientContext.slug, artifact)
+    )
+  );
+
   return files;
 }
 
@@ -1751,7 +2774,8 @@ async function generateServiceStructures(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
+  cliConfig: CLIConfig
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -1832,9 +2856,411 @@ async function generateServiceStructures(
     files.push(
       ...generated.map(file => joinRelativePath(...relativePrefix, file.replace(/^\.\//, '')))
     );
+
+    const dockerArtifacts = await generateServiceDockerArtifacts(
+      serviceContext,
+      serviceConfig,
+      options,
+      cliConfig,
+      structure
+    );
+
+    files.push(...dockerArtifacts.map(artifact => joinRelativePath(...relativePrefix, artifact)));
   }
 
   return files;
+}
+
+interface DockerTemplateSelection {
+  dockerfile?: string;
+  dockerignore?: string;
+}
+
+async function generateServiceDockerArtifacts(
+  serviceContext: ServiceGenerationContext,
+  serviceSpec: any,
+  options: GenerateOptions,
+  cliConfig: CLIConfig,
+  _structure: ProjectStructureConfig
+): Promise<string[]> {
+  const language = serviceContext.language?.toLowerCase() || 'typescript';
+  const override = resolveDockerTemplateSelection(cliConfig, 'service', language);
+
+  const defaults = buildDefaultServiceDockerArtifacts(language, serviceContext, serviceSpec);
+
+  if (!override && !defaults) {
+    return [];
+  }
+
+  const dockerfileContent = override?.dockerfile
+    ? await loadDockerTemplateContent(override.dockerfile, cliConfig)
+    : defaults?.dockerfile;
+
+  const dockerignoreContent = override?.dockerignore
+    ? await loadDockerTemplateContent(override.dockerignore, cliConfig)
+    : defaults?.dockerignore;
+
+  const written: string[] = [];
+
+  if (dockerfileContent) {
+    const dockerfilePath = path.join(serviceContext.root, 'Dockerfile');
+    await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
+    written.push('Dockerfile');
+  }
+
+  if (dockerignoreContent) {
+    const dockerignorePath = path.join(serviceContext.root, '.dockerignore');
+    await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
+    written.push('.dockerignore');
+  }
+
+  return written;
+}
+
+async function generateClientDockerArtifacts(
+  clientContext: ClientGenerationContext,
+  appSpec: AppSpec,
+  options: GenerateOptions,
+  cliConfig: CLIConfig
+): Promise<string[]> {
+  const language = appSpec.config?.language?.toLowerCase() || 'typescript';
+  const override = resolveDockerTemplateSelection(cliConfig, 'client', language);
+  const defaults = buildDefaultClientDockerArtifacts(language, clientContext, appSpec);
+
+  if (!override && !defaults) {
+    return [];
+  }
+
+  const dockerfileContent = override?.dockerfile
+    ? await loadDockerTemplateContent(override.dockerfile, cliConfig)
+    : defaults?.dockerfile;
+
+  const dockerignoreContent = override?.dockerignore
+    ? await loadDockerTemplateContent(override.dockerignore, cliConfig)
+    : defaults?.dockerignore;
+
+  const written: string[] = [];
+
+  if (dockerfileContent) {
+    const dockerfilePath = path.join(clientContext.root, 'Dockerfile');
+    await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
+    written.push('Dockerfile');
+  }
+
+  if (dockerignoreContent) {
+    const dockerignorePath = path.join(clientContext.root, '.dockerignore');
+    await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
+    written.push('.dockerignore');
+  }
+
+  return written;
+}
+
+function resolveDockerTemplateSelection(
+  cliConfig: CLIConfig,
+  kind: 'service' | 'client',
+  identifier: string
+): DockerTemplateSelection | null {
+  const dockerConfig = cliConfig.generator?.docker;
+  if (!dockerConfig) {
+    return null;
+  }
+
+  const normalizedId = identifier.toLowerCase();
+  const defaults =
+    kind === 'service' ? dockerConfig.defaults?.service : dockerConfig.defaults?.client;
+  const catalog = kind === 'service' ? dockerConfig.services : dockerConfig.clients;
+
+  let selected: DockerTemplateSelection | undefined = defaults ? { ...defaults } : undefined;
+
+  if (catalog) {
+    let entry: DockerTemplateSelection | undefined = catalog[normalizedId] ?? catalog[identifier];
+
+    if (!entry) {
+      for (const [key, value] of Object.entries(catalog)) {
+        if (key.toLowerCase() === normalizedId) {
+          entry = value;
+          break;
+        }
+      }
+    }
+
+    if (entry) {
+      selected = { ...(selected ?? {}), ...entry };
+    }
+  }
+
+  if (!selected) {
+    return null;
+  }
+
+  return selected;
+}
+
+async function loadDockerTemplateContent(
+  templatePath: string,
+  cliConfig: CLIConfig
+): Promise<string> {
+  const baseDir = cliConfig.configDir || cliConfig.projectDir || process.cwd();
+  const resolved = path.isAbsolute(templatePath)
+    ? templatePath
+    : path.resolve(baseDir, templatePath);
+
+  try {
+    return await fs.readFile(resolved, 'utf-8');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read Docker template at ${resolved}: ${message}`);
+  }
+}
+
+function ensureTrailingNewline(content: string): string {
+  return content.endsWith('\n') ? content : `${content}\n`;
+}
+
+function buildDefaultServiceDockerArtifacts(
+  language: string,
+  context: ServiceGenerationContext,
+  serviceSpec: any
+): DockerTemplateSelection | null {
+  switch (language) {
+    case 'typescript':
+    case 'javascript':
+      return buildTypeScriptServiceDockerArtifacts(serviceSpec);
+    case 'python':
+      return buildPythonServiceDockerArtifacts(serviceSpec);
+    case 'go':
+      return buildGoServiceDockerArtifacts(serviceSpec);
+    case 'rust':
+      return buildRustServiceDockerArtifacts(serviceSpec, context);
+    default:
+      console.log(
+        chalk.dim(
+          `    Skipping Dockerfile generation for unsupported service language '${language}'.`
+        )
+      );
+      return null;
+  }
+}
+
+function buildDefaultClientDockerArtifacts(
+  language: string,
+  _context: ClientGenerationContext,
+  _appSpec: AppSpec
+): DockerTemplateSelection | null {
+  switch (language) {
+    case 'typescript':
+    case 'javascript':
+      return buildTypeScriptClientDockerArtifacts();
+    default:
+      console.log(
+        chalk.dim(
+          `    Skipping client Dockerfile generation for unsupported language '${language}'.`
+        )
+      );
+      return null;
+  }
+}
+
+function getPrimaryServicePort(serviceSpec: any, fallback: number): number {
+  const ports = Array.isArray(serviceSpec?.ports) ? serviceSpec.ports : [];
+  if (ports.length === 0) {
+    return fallback;
+  }
+
+  const portEntry = ports[0];
+  const candidate = Number(portEntry?.targetPort ?? portEntry?.port);
+  return Number.isFinite(candidate) && candidate > 0 ? candidate : fallback;
+}
+
+function buildTypeScriptServiceDockerArtifacts(serviceSpec: any): DockerTemplateSelection {
+  const port = getPrimaryServicePort(serviceSpec, 3000);
+
+  const dockerfile = `# syntax=docker/dockerfile:1
+FROM node:20-bullseye AS base
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+RUN npm prune --production
+
+ENV NODE_ENV=production
+ENV PORT=${port}
+EXPOSE ${port}
+
+CMD ["node", "dist/index.js"]
+`;
+
+  const dockerignore = `node_modules
+dist
+coverage
+.turbo
+.cache
+.git
+tests
+*.log
+.env*
+Dockerfile
+.dockerignore
+`;
+
+  return { dockerfile, dockerignore };
+}
+
+function buildPythonServiceDockerArtifacts(serviceSpec: any): DockerTemplateSelection {
+  const port = getPrimaryServicePort(serviceSpec, 8000);
+
+  const dockerfile = `# syntax=docker/dockerfile:1
+FROM python:3.11-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+COPY requirements*.txt ./
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+
+COPY . .
+
+ENV PORT=${port}
+EXPOSE ${port}
+
+CMD ["/bin/sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port \${PORT:-${port}}"]
+`;
+
+  const dockerignore = `__pycache__
+*.pyc
+*.pyo
+.venv
+.mypy_cache
+.pytest_cache
+tests
+.git
+.env*
+Dockerfile
+.dockerignore
+`;
+
+  return { dockerfile, dockerignore };
+}
+
+function buildGoServiceDockerArtifacts(serviceSpec: any): DockerTemplateSelection {
+  const port = getPrimaryServicePort(serviceSpec, 8080);
+
+  const dockerfile = `# syntax=docker/dockerfile:1
+FROM golang:1.21-alpine AS build
+WORKDIR /src
+
+COPY go.mod go.sum* ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/service ./...
+
+FROM alpine:3.19
+WORKDIR /app
+RUN adduser -D -g '' appuser
+USER appuser
+
+COPY --from=build /bin/service ./service
+
+ENV PORT=${port}
+EXPOSE ${port}
+
+CMD ["./service"]
+`;
+
+  const dockerignore = `bin
+pkg
+.git
+tests
+coverage
+Dockerfile
+.dockerignore
+`;
+
+  return { dockerfile, dockerignore };
+}
+
+function buildRustServiceDockerArtifacts(
+  serviceSpec: any,
+  context: ServiceGenerationContext
+): DockerTemplateSelection {
+  const port = getPrimaryServicePort(serviceSpec, 3000);
+  const binaryName = context.name;
+
+  const dockerfile = `# syntax=docker/dockerfile:1
+FROM rust:1.74 AS build
+WORKDIR /usr/src/app
+
+COPY Cargo.toml Cargo.lock* ./
+RUN mkdir -p src && echo "fn main() {}" > src/main.rs
+RUN cargo fetch
+
+COPY . .
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+COPY --from=build /usr/src/app/target/release/${binaryName} /usr/local/bin/${binaryName}
+
+ENV PORT=${port}
+EXPOSE ${port}
+
+CMD ["${binaryName}"]
+`;
+
+  const dockerignore = `target
+**/*.rs.bk
+.git
+tests
+Dockerfile
+.dockerignore
+`;
+
+  return { dockerfile, dockerignore };
+}
+
+function buildTypeScriptClientDockerArtifacts(): DockerTemplateSelection {
+  const port = 4173;
+
+  const dockerfile = `# syntax=docker/dockerfile:1
+FROM node:20-bullseye
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+RUN npm run build
+
+ENV NODE_ENV=production
+ENV PORT=${port}
+EXPOSE ${port}
+
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "${port}"]
+`;
+
+  const dockerignore = `node_modules
+dist
+.turbo
+.cache
+coverage
+tests
+.git
+.env*
+Dockerfile
+.dockerignore
+`;
+
+  return { dockerfile, dockerignore };
 }
 
 /**
@@ -2210,49 +3636,87 @@ async function generateRustFiles(
   const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
   const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
-  // Cargo.toml
   const cargoToml = `[package]
 name = "${config.name}"
 version = "${config.version}"
 edition = "2021"
 
 [dependencies]
+axum = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
 
 [dev-dependencies]
+hyper = "1"
+tokio = { version = "1", features = ["full"] }
 `;
 
   const cargoPath = path.join(outputDir, 'Cargo.toml');
   await writeFileWithHooks(cargoPath, cargoToml, options);
   files.push('Cargo.toml');
 
-  // Create src directory
   const srcDir = path.join(outputDir, 'src');
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
 
-  const libContent = `//! ${config.name} - Generated by Arbiter
-//! Version: ${config.version}
+  const mainContent = `use axum::{routing::get, Json, Router};
+use serde::Serialize;
+use std::net::SocketAddr;
 
-pub fn main() {
-    println!("Hello from ${config.name}!");
+#[derive(Serialize)]
+struct HealthResponse {
+    status: &'static str,
+}
+
+fn build_router() -> Router {
+    Router::new().route(
+        "/health",
+        get(|| async { Json(HealthResponse { status: "ok" }) }),
+    )
+}
+
+#[tokio::main]
+async fn main() {
+    let router = build_router();
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(3000);
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+
+    println!("{} listening on {}", env!("CARGO_PKG_NAME"), addr);
+
+    axum::Server::bind(&addr)
+        .serve(router.into_make_service())
+        .await
+        .expect("server failed");
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
 
-    #[test]
-    fn test_main() {
-        main(); // Should not panic
+    #[tokio::test]
+    async fn health_endpoint_returns_ok() {
+        let app = build_router();
+        let response = app
+            .oneshot(Request::builder().uri("/health").body(()).unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
     }
 }
 `;
 
-  await writeFileWithHooks(path.join(srcDir, 'lib.rs'), libContent, options);
-  files.push('src/lib.rs');
+  await writeFileWithHooks(path.join(srcDir, 'main.rs'), mainContent, options);
+  files.push('src/main.rs');
 
-  // Create tests directory
   const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
@@ -2264,9 +3728,6 @@ mod tests {
   return files;
 }
 
-/**
- * Generate Go project files
- */
 async function generateGoFiles(
   config: any,
   outputDir: string,
@@ -2390,60 +3851,362 @@ fi
   return files;
 }
 
+const ARBITER_APP_JOB_ID = 'arbiter_app';
+const ARBITER_SERVICE_JOB_PREFIX = 'arbiter_service_';
+
 /**
- * Generate CI/CD workflows
+ * Generate or update GitHub Actions workflows based on the current specification.
+ *
+ * The workflow writer is idempotent and only manages Arbiter-owned jobs,
+ * allowing teams to add or customise additional jobs without losing changes.
  */
 async function generateCIWorkflows(
-  config: any,
+  configWithVersion: ConfigWithVersion,
   outputDir: string,
   options: GenerateOptions
 ): Promise<string[]> {
   const files: string[] = [];
+  const appSpec = configWithVersion.app;
 
-  // GitHub Actions workflow
-  const workflowDir = path.join(outputDir, '.github', 'workflows');
-  if (!fs.existsSync(workflowDir) && !options.dryRun) {
-    fs.mkdirSync(workflowDir, { recursive: true });
+  if (!appSpec) {
+    return files;
   }
 
-  const workflow = `# ${config.name} CI/CD - Generated by Arbiter
-name: CI
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup ${config.language}
-      uses: ${getSetupAction(config.language)}
-      ${getSetupActionConfig(config.language)}
-    
-    - name: Install dependencies
-      run: ${getInstallCommand(config.language, config.buildTool)}
-    
-    - name: Lint
-      run: ${getLintCommand(config.language, config.buildTool)}
-    
-    - name: Test  
-      run: ${getTestCommand(config.language, config.buildTool)}
-    
-    - name: Build
-      run: ${getBuildCommand(config.language, config.buildTool)}
-`;
+  const workflowDir = path.join(outputDir, '.github', 'workflows');
+  await ensureDirectory(workflowDir, options);
 
   const workflowPath = path.join(workflowDir, 'ci.yml');
-  await writeFileWithHooks(workflowPath, workflow, options);
+  let workflowContent = '';
+  let workflow: Record<string, any> = {};
+
+  if (fs.existsSync(workflowPath)) {
+    try {
+      workflowContent = await fs.readFile(workflowPath, 'utf-8');
+      const parsed = YAML.parse(workflowContent);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        workflow = parsed as Record<string, any>;
+      }
+    } catch (error) {
+      console.warn(
+        chalk.yellow(
+          `⚠️  Unable to parse existing workflow at ${workflowPath}: ${
+            error instanceof Error ? error.message : String(error)
+          }\n    A fresh workflow will be generated.`
+        )
+      );
+      workflow = {};
+    }
+  }
+
+  const applicationName = appSpec.product?.name ?? 'Application';
+  const managedServices = extractServiceSummaries(configWithVersion);
+  const primaryLanguage = inferPrimaryLanguage(appSpec, managedServices);
+  const buildTool = appSpec.config?.buildTool;
+
+  // Preserve existing triggers but ensure CI defaults exist.
+  workflow.name ||= `${applicationName} CI`;
+  workflow.on = ensureDefaultWorkflowTriggers(workflow.on);
+
+  const jobs: Record<string, any> =
+    workflow.jobs && typeof workflow.jobs === 'object' ? { ...workflow.jobs } : {};
+
+  const managedJobIds = new Set<string>();
+
+  const appJob = createLanguageJob({
+    jobName: `${applicationName} (${formatLanguage(primaryLanguage)})`,
+    language: primaryLanguage,
+    buildTool,
+  });
+
+  if (appJob) {
+    jobs[ARBITER_APP_JOB_ID] = appJob;
+    managedJobIds.add(ARBITER_APP_JOB_ID);
+  } else {
+    delete jobs[ARBITER_APP_JOB_ID];
+  }
+
+  for (const service of managedServices) {
+    if (service.serviceType !== 'bespoke') {
+      const jobId = `${ARBITER_SERVICE_JOB_PREFIX}${service.slug}`;
+      delete jobs[jobId];
+      continue;
+    }
+
+    const jobId = `${ARBITER_SERVICE_JOB_PREFIX}${service.slug}`;
+    const serviceJob = createLanguageJob({
+      jobName: `${service.displayName} (${formatLanguage(service.language)})`,
+      language: service.language,
+      buildTool: service.buildTool ?? buildTool,
+      workingDirectory: service.workingDirectory,
+    });
+
+    if (serviceJob) {
+      if (jobs[ARBITER_APP_JOB_ID]) {
+        serviceJob.needs = Array.from(new Set([ARBITER_APP_JOB_ID, ...(serviceJob.needs || [])]));
+      }
+      jobs[jobId] = serviceJob;
+      managedJobIds.add(jobId);
+    } else {
+      delete jobs[jobId];
+    }
+  }
+
+  for (const existingJobId of Object.keys(jobs)) {
+    if (isManagedWorkflowJob(existingJobId) && !managedJobIds.has(existingJobId)) {
+      delete jobs[existingJobId];
+    }
+  }
+
+  workflow.jobs = jobs;
+
+  const headerComment = `# ${applicationName} CI workflow\n# Arbiter-managed jobs (prefixed with '${ARBITER_SERVICE_JOB_PREFIX}' and '${ARBITER_APP_JOB_ID}') are kept in sync with your specifications.\n`;
+
+  const serializedWorkflow =
+    headerComment + YAML.stringify(workflow, { indent: 2, lineWidth: 0 }).trimEnd() + '\n';
+
+  const normalizedExisting = workflowContent
+    ? workflowContent.replace(/\r\n/g, '\n').trimEnd() + '\n'
+    : '';
+
+  if (normalizedExisting === serializedWorkflow) {
+    return files;
+  }
+
+  await writeFileWithHooks(workflowPath, serializedWorkflow, options);
   files.push('.github/workflows/ci.yml');
 
   return files;
+}
+
+interface ServiceSummary {
+  name: string;
+  displayName: string;
+  slug: string;
+  language: string;
+  buildTool?: string;
+  workingDirectory?: string;
+  serviceType: 'bespoke' | 'prebuilt' | 'external';
+}
+
+function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceSummary[] {
+  const cueData = (configWithVersion as any)._fullCueData || {};
+  const servicesInput =
+    cueData.services && typeof cueData.services === 'object' ? cueData.services : {};
+  const summaries: ServiceSummary[] = [];
+
+  for (const [serviceName, rawConfig] of Object.entries(servicesInput)) {
+    const parsed = parseDeploymentServiceConfig(serviceName, rawConfig);
+    if (!parsed) {
+      continue;
+    }
+
+    const language = parsed.language || configWithVersion.app?.config?.language || 'typescript';
+    const buildTool =
+      (rawConfig as any)?.buildTool ||
+      (rawConfig as any)?.build?.tool ||
+      configWithVersion.app?.config?.buildTool;
+
+    const workingDirectory =
+      typeof parsed.sourceDirectory === 'string'
+        ? parsed.sourceDirectory
+        : typeof (rawConfig as any)?.sourceDirectory === 'string'
+          ? (rawConfig as any).sourceDirectory
+          : undefined;
+
+    summaries.push({
+      name: serviceName,
+      displayName: friendlyServiceName(serviceName),
+      slug: slugify(serviceName, serviceName),
+      language,
+      buildTool,
+      workingDirectory,
+      serviceType: parsed.serviceType,
+    });
+  }
+
+  return summaries;
+}
+
+function ensureDefaultWorkflowTriggers(onConfig: any): Record<string, any> {
+  const triggers: Record<string, any> =
+    onConfig && typeof onConfig === 'object' && !Array.isArray(onConfig) ? { ...onConfig } : {};
+
+  if (!triggers.push) {
+    triggers.push = { branches: ['main', 'develop'] };
+  }
+
+  if (!triggers.pull_request) {
+    triggers.pull_request = { branches: ['main'] };
+  }
+
+  return triggers;
+}
+
+interface LanguageJobParams {
+  jobName: string;
+  language: string;
+  buildTool?: string;
+  workingDirectory?: string;
+}
+
+interface WorkflowStep {
+  name?: string;
+  uses?: string;
+  run?: string;
+  with?: Record<string, any>;
+  env?: Record<string, string>;
+  'working-directory'?: string;
+  shell?: string;
+}
+
+function createLanguageJob(params: LanguageJobParams): Record<string, any> | null {
+  const { jobName, language, buildTool, workingDirectory } = params;
+
+  if (!language || language === 'container') {
+    return null;
+  }
+
+  const steps: WorkflowStep[] = [];
+
+  steps.push({
+    name: 'Checkout repository',
+    uses: 'actions/checkout@v4',
+  });
+
+  steps.push(...getSetupSteps(language, buildTool));
+
+  pushRunStep(
+    steps,
+    'Install dependencies',
+    getInstallCommand(language, buildTool),
+    workingDirectory
+  );
+  pushRunStep(steps, 'Lint', getLintCommand(language, buildTool), workingDirectory);
+  pushRunStep(steps, 'Test', getTestCommand(language, buildTool), workingDirectory);
+  pushRunStep(steps, 'Build', getBuildCommand(language, buildTool), workingDirectory);
+
+  if (steps.length <= 1) {
+    return null;
+  }
+
+  return {
+    name: jobName,
+    'runs-on': 'ubuntu-latest',
+    steps,
+  };
+}
+
+function getSetupSteps(language: string, buildTool?: string): WorkflowStep[] {
+  switch (language) {
+    case 'typescript': {
+      const steps: WorkflowStep[] = [
+        {
+          name: 'Setup Node.js',
+          uses: 'actions/setup-node@v4',
+          with: {
+            'node-version': '20',
+            cache: buildTool === 'bun' ? undefined : 'npm',
+          },
+        },
+      ];
+
+      if (buildTool === 'bun') {
+        steps.push({
+          name: 'Setup Bun',
+          uses: 'oven-sh/setup-bun@v1',
+        });
+      }
+
+      return steps;
+    }
+    case 'python':
+      return [
+        {
+          name: 'Setup Python',
+          uses: 'actions/setup-python@v5',
+          with: {
+            'python-version': '3.11',
+          },
+        },
+      ];
+    case 'rust':
+      return [
+        {
+          name: 'Setup Rust toolchain',
+          uses: 'dtolnay/rust-toolchain@stable',
+        },
+      ];
+    case 'go':
+      return [
+        {
+          name: 'Setup Go',
+          uses: 'actions/setup-go@v5',
+          with: {
+            'go-version': '1.21',
+          },
+        },
+      ];
+    default:
+      return [];
+  }
+}
+
+function pushRunStep(
+  steps: WorkflowStep[],
+  name: string,
+  command: string,
+  workingDirectory?: string
+): void {
+  if (!command || isNoopCommand(command)) {
+    return;
+  }
+
+  const step: WorkflowStep = {
+    name,
+    run: command,
+  };
+
+  if (workingDirectory && workingDirectory !== '.' && workingDirectory !== './') {
+    step['working-directory'] = workingDirectory;
+  }
+
+  steps.push(step);
+}
+
+function isNoopCommand(command: string): boolean {
+  return /^echo\s+"[^"]*not defined"/i.test(command.trim());
+}
+
+function isManagedWorkflowJob(jobId: string): boolean {
+  return jobId === ARBITER_APP_JOB_ID || jobId.startsWith(ARBITER_SERVICE_JOB_PREFIX);
+}
+
+function inferPrimaryLanguage(appSpec: AppSpec | undefined, services: ServiceSummary[]): string {
+  if (appSpec?.config?.language) {
+    return appSpec.config.language;
+  }
+
+  const bespokeService = services.find(service => service.serviceType === 'bespoke');
+  if (bespokeService) {
+    return bespokeService.language;
+  }
+
+  if (services.length > 0) {
+    return services[0]?.language ?? 'typescript';
+  }
+
+  return 'typescript';
+}
+
+function friendlyServiceName(name: string): string {
+  return name.replace(/[-_]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function formatLanguage(language: string): string {
+  if (!language) {
+    return 'Unknown';
+  }
+  return language.charAt(0).toUpperCase() + language.slice(1);
 }
 
 /**
@@ -2456,37 +4219,6 @@ async function generateDocumentation(
 ): Promise<string[]> {
   // Documentation generation will be handled by the docs command
   return [];
-}
-
-// Helper functions for CI workflow generation
-function getSetupAction(language: string): string {
-  switch (language) {
-    case 'typescript':
-      return 'actions/setup-node@v4';
-    case 'python':
-      return 'actions/setup-python@v4';
-    case 'rust':
-      return 'actions-rs/toolchain@v1';
-    case 'go':
-      return 'actions/setup-go@v4';
-    default:
-      return 'actions/setup-node@v4';
-  }
-}
-
-function getSetupActionConfig(language: string): string {
-  switch (language) {
-    case 'typescript':
-      return "with:\n        node-version: '20'";
-    case 'python':
-      return "with:\n        python-version: '3.11'";
-    case 'rust':
-      return 'with:\n        toolchain: stable';
-    case 'go':
-      return "with:\n        go-version: '1.21'";
-    default:
-      return "with:\n        node-version: '20'";
-  }
 }
 
 function getPrerequisites(language: string, buildTool?: string): string {
@@ -3223,12 +4955,20 @@ terraform apply
 /**
  * Generate Docker Compose files for the given services
  */
+type ComposeServiceConfig = DeploymentServiceConfig & {
+  resolvedBuildContext?: string;
+  resolvedSourceDirectory?: string;
+};
+
+const CLIENT_COMPONENT_LABEL = 'arbiter.io/component';
+
 async function generateDockerCompose(
   config: any,
   outputDir: string,
   assemblyConfig: any,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
+  clientContext?: ClientGenerationContext
 ): Promise<string[]> {
   const files: string[] = [];
   const composeSegments = [...toPathSegments(structure.infraDirectory), 'compose'];
@@ -3240,21 +4980,30 @@ async function generateDockerCompose(
   // Parse assembly to extract services and deployment configuration
   const { services, deployment } = parseDockerComposeServices(assemblyConfig);
 
+  const resolvedServices = prepareComposeServices(
+    services,
+    outputDir,
+    structure,
+    composeRoot,
+    composeRelativeRoot,
+    clientContext
+  );
+
   // Generate docker-compose.yml
-  const composeYml = generateDockerComposeFile(services, deployment, config.name);
+  const composeYml = generateDockerComposeFile(resolvedServices, deployment, config.name);
   const composePath = path.join(composeRoot, 'docker-compose.yml');
   await writeFileWithHooks(composePath, composeYml, options);
   files.push(joinRelativePath(...composeRelativeRoot, 'docker-compose.yml'));
 
   // Generate .env template
-  const envTemplate = generateComposeEnvTemplate(services, config.name);
+  const envTemplate = generateComposeEnvTemplate(resolvedServices, config.name);
   const envPath = path.join(composeRoot, '.env.template');
   await writeFileWithHooks(envPath, envTemplate, options);
   files.push(joinRelativePath(...composeRelativeRoot, '.env.template'));
 
   // Generate build contexts for bespoke services
   const buildFiles = await generateBuildContexts(
-    services,
+    resolvedServices,
     composeRoot,
     options,
     composeRelativeRoot
@@ -3262,7 +5011,7 @@ async function generateDockerCompose(
   files.push(...buildFiles);
 
   // Generate compose README
-  const readme = generateComposeReadme(services, deployment, config.name);
+  const readme = generateComposeReadme(resolvedServices, deployment, config.name);
   const readmePath = path.join(composeRoot, 'README.md');
   await writeFileWithHooks(readmePath, readme, options);
   files.push(joinRelativePath(...composeRelativeRoot, 'README.md'));
@@ -3336,8 +5085,151 @@ function parseServiceForCompose(name: string, config: any): DeploymentServiceCon
   return service;
 }
 
-function generateDockerComposeFile(
+function prepareComposeServices(
   services: DeploymentServiceConfig[],
+  outputDir: string,
+  structure: ProjectStructureConfig,
+  composeRoot: string,
+  composeSegments: string[],
+  clientContext?: ClientGenerationContext
+): ComposeServiceConfig[] {
+  const collected: DeploymentServiceConfig[] = [...services];
+  const usedNames = new Set<string>(services.map(service => service.name));
+
+  if (clientContext) {
+    const frontendService = createFrontendComposeService(clientContext, structure, usedNames);
+    if (frontendService) {
+      collected.push(frontendService);
+    }
+  }
+
+  return collected.map(service =>
+    resolveComposeServiceConfig(
+      service,
+      outputDir,
+      structure,
+      composeRoot,
+      composeSegments,
+      clientContext
+    )
+  );
+}
+
+function resolveComposeServiceConfig(
+  service: DeploymentServiceConfig,
+  outputDir: string,
+  structure: ProjectStructureConfig,
+  composeRoot: string,
+  composeSegments: string[],
+  clientContext?: ClientGenerationContext
+): ComposeServiceConfig {
+  const isBespoke = service.serviceType === 'bespoke';
+  const isClientService = service.labels?.[CLIENT_COMPONENT_LABEL] === 'client';
+
+  let generatedRoot: string | undefined;
+  let generatedSource: string | undefined;
+
+  if (isBespoke) {
+    if (isClientService && clientContext) {
+      generatedRoot = clientContext.root;
+      generatedSource = joinRelativePath(structure.clientsDirectory, clientContext.slug);
+    } else if (!isClientService) {
+      const slug = slugify(service.name, service.name);
+      generatedRoot = path.join(outputDir, structure.servicesDirectory, slug);
+      generatedSource = joinRelativePath(structure.servicesDirectory, slug);
+    }
+  }
+
+  const generatedContext = generatedRoot
+    ? normalizeRelativeForCompose(path.relative(composeRoot, generatedRoot))
+    : undefined;
+
+  const fallbackContext = service.sourceDirectory
+    ? buildFallbackComposeContext(service.sourceDirectory, composeSegments)
+    : undefined;
+
+  const resolvedBuildContext = generatedContext ?? fallbackContext;
+
+  const resolvedSourceDirectory =
+    generatedSource ??
+    (service.sourceDirectory ? normalizeSpecPath(service.sourceDirectory) : undefined);
+
+  return {
+    ...service,
+    resolvedBuildContext,
+    resolvedSourceDirectory,
+  };
+}
+
+function createFrontendComposeService(
+  clientContext: ClientGenerationContext,
+  structure: ProjectStructureConfig,
+  usedNames: Set<string>
+): DeploymentServiceConfig {
+  const baseName = clientContext.slug.includes('client')
+    ? clientContext.slug
+    : `${clientContext.slug}-client`;
+  const name = ensureUniqueComposeName(baseName, usedNames);
+  const sourceDirectory = joinRelativePath(structure.clientsDirectory, clientContext.slug);
+  const port = 4173;
+
+  return {
+    name,
+    serviceType: 'bespoke',
+    language: 'typescript',
+    type: 'deployment',
+    sourceDirectory,
+    ports: [
+      {
+        name: 'web',
+        port,
+        targetPort: port,
+      },
+    ],
+    env: {
+      PORT: String(port),
+    },
+    labels: {
+      [CLIENT_COMPONENT_LABEL]: 'client',
+    },
+  };
+}
+
+function ensureUniqueComposeName(base: string, usedNames: Set<string>): string {
+  const normalizedBase = slugify(base, 'client');
+  let candidate = normalizedBase;
+  let counter = 2;
+
+  while (usedNames.has(candidate)) {
+    candidate = `${normalizedBase}-${counter}`;
+    counter += 1;
+  }
+
+  usedNames.add(candidate);
+  return candidate;
+}
+
+function normalizeRelativeForCompose(value: string): string {
+  if (!value || value === '.') {
+    return '.';
+  }
+
+  const normalized = value.replace(/\\/g, '/');
+  return normalized.length > 0 ? normalized : '.';
+}
+
+function buildFallbackComposeContext(value: string, composeSegments: string[]): string {
+  const ups = new Array(composeSegments.length).fill('..');
+  const segments = value.split(PATH_SEPARATOR_REGEX).filter(Boolean);
+  return joinRelativePath(...ups, ...segments);
+}
+
+function normalizeSpecPath(value: string): string {
+  return joinRelativePath(...value.split(PATH_SEPARATOR_REGEX).filter(Boolean));
+}
+
+function generateDockerComposeFile(
+  services: ComposeServiceConfig[],
   deployment: DeploymentConfig,
   projectName: string
 ): string {
@@ -3381,17 +5273,17 @@ ${namedVolumes.map(volume => `  ${volume}:`).join('\n')}`;
   return compose;
 }
 
-function generateComposeService(service: DeploymentServiceConfig, projectName: string): string {
+function generateComposeService(service: ComposeServiceConfig, projectName: string): string {
   const serviceName = service.name;
   let serviceConfig = `  ${serviceName}:`;
 
   // Image or build configuration
   if (service.serviceType === 'bespoke') {
     // Build from source
-    if (service.sourceDirectory) {
+    if (service.resolvedBuildContext) {
       serviceConfig += `
     build:
-      context: ../${service.sourceDirectory}`;
+      context: ${service.resolvedBuildContext}`;
 
       if (service.buildContext?.dockerfile) {
         serviceConfig += `
@@ -3514,10 +5406,7 @@ ${Object.entries(labels)
   return serviceConfig;
 }
 
-function generateComposeEnvTemplate(
-  services: DeploymentServiceConfig[],
-  projectName: string
-): string {
+function generateComposeEnvTemplate(services: ComposeServiceConfig[], projectName: string): string {
   const envVars = new Set<string>();
 
   // Collect all environment variables from services
@@ -3556,7 +5445,7 @@ IMAGE_TAG=latest
 }
 
 async function generateBuildContexts(
-  services: DeploymentServiceConfig[],
+  services: ComposeServiceConfig[],
   composeRoot: string,
   options: GenerateOptions,
   relativeRoot: string[]
@@ -3586,7 +5475,7 @@ async function generateBuildContexts(
 }
 
 function generateComposeReadme(
-  services: DeploymentServiceConfig[],
+  services: ComposeServiceConfig[],
   deployment: DeploymentConfig,
   projectName: string
 ): string {
@@ -3608,7 +5497,9 @@ ${services
 - **Type**: ${service.type}
 ${
   service.serviceType === 'bespoke'
-    ? `- **Source**: ${service.sourceDirectory || 'Built from local source'}`
+    ? `- **Source**: ${
+        service.resolvedSourceDirectory || service.sourceDirectory || 'Built from local source'
+      }`
     : `- **Image**: ${service.image}`
 }${
       service.ports

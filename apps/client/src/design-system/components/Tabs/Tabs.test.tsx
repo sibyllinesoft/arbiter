@@ -1,29 +1,68 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { FileText, Settings, Users } from 'lucide-react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import Tabs, { type TabItem } from './Tabs';
 
-// Mock scrollTo since it's not available in jsdom
-Object.defineProperty(Element.prototype, 'scrollTo', {
+if (typeof window === 'undefined' || typeof document === 'undefined') {
+  const { JSDOM } = await import('jsdom');
+  const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+    pretendToBeVisual: true,
+  });
+
+  const jsdomWindow = dom.window;
+  const windowInstance = jsdomWindow as unknown as Window & typeof globalThis;
+
+  globalThis.window = windowInstance;
+  globalThis.document = windowInstance.document;
+  globalThis.HTMLElement = windowInstance.HTMLElement;
+  globalThis.Element = windowInstance.Element;
+  globalThis.Node = windowInstance.Node;
+  globalThis.MutationObserver = windowInstance.MutationObserver;
+  globalThis.navigator = windowInstance.navigator;
+  globalThis.getComputedStyle = windowInstance.getComputedStyle.bind(windowInstance);
+  globalThis.requestAnimationFrame = windowInstance.requestAnimationFrame.bind(windowInstance);
+  globalThis.cancelAnimationFrame = windowInstance.cancelAnimationFrame.bind(windowInstance);
+}
+
+const { fireEvent, render, screen, waitFor, cleanup } = await import('@testing-library/react');
+const userEventModule = await import('@testing-library/user-event');
+const userEvent = userEventModule.default;
+await import('@testing-library/jest-dom/vitest');
+
+afterEach(() => {
+  cleanup();
+});
+
+const elementPrototype = (() => {
+  if (typeof Element !== 'undefined' && Element?.prototype) {
+    return Element.prototype;
+  }
+
+  class StubElement {}
+  Object.defineProperty(globalThis, 'Element', {
+    value: StubElement,
+    writable: true,
+  });
+  return StubElement.prototype;
+})();
+
+Object.defineProperty(elementPrototype, 'scrollTo', {
   value: vi.fn(),
   writable: true,
 });
 
-// Mock scroll properties
-Object.defineProperty(Element.prototype, 'scrollWidth', {
+Object.defineProperty(elementPrototype, 'scrollWidth', {
   get() {
     return 500;
   },
 });
 
-Object.defineProperty(Element.prototype, 'clientWidth', {
+Object.defineProperty(elementPrototype, 'clientWidth', {
   get() {
     return 300;
   },
 });
 
-Object.defineProperty(Element.prototype, 'scrollLeft', {
+Object.defineProperty(elementPrototype, 'scrollLeft', {
   get() {
     return 0;
   },
@@ -322,7 +361,8 @@ describe('Tabs', () => {
     it('applies underline variant classes', () => {
       render(<Tabs items={mockTabItems} variant="underline" />);
       const tablist = screen.getByRole('tablist');
-      expect(tablist).toHaveClass('border-b', 'border-graphite-200');
+      expect(tablist).toHaveClass('relative');
+      expect(tablist).toHaveClass('after:bg-graphite-200');
     });
 
     it('applies pills variant classes', () => {

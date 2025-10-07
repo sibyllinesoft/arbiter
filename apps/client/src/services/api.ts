@@ -256,11 +256,17 @@ export class ApiService {
 
   async createProjectEntity(
     projectId: string,
-    payload: { type: string; values: Record<string, string | string[]> }
+    payload: { type: string; values: Record<string, unknown> }
   ) {
     const normalizedValues = Object.fromEntries(
       Object.entries(payload.values).map(([key, value]) => {
         if (Array.isArray(value)) {
+          return [key, value];
+        }
+        if (value && typeof value === 'object') {
+          return [key, value];
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
           return [key, value];
         }
         return [key, typeof value === 'string' ? value : String(value ?? '')];
@@ -541,7 +547,9 @@ export class ApiService {
     }>;
     error?: string;
   }> {
-    return this.request(`/api/webhooks/github/list/${owner}/${repo}`);
+    const safeOwner = encodeURIComponent(owner.trim());
+    const safeRepo = encodeURIComponent(repo.trim());
+    return this.request(`/api/webhooks/github/list/${safeOwner}/${safeRepo}`);
   }
 
   async deleteGitHubWebhook(
@@ -553,7 +561,9 @@ export class ApiService {
     message?: string;
     error?: string;
   }> {
-    return this.request(`/api/webhooks/github/${owner}/${repo}/${hookId}`, {
+    const safeOwner = encodeURIComponent(owner.trim());
+    const safeRepo = encodeURIComponent(repo.trim());
+    return this.request(`/api/webhooks/github/${safeOwner}/${safeRepo}/${hookId}`, {
       method: 'DELETE',
     });
   }

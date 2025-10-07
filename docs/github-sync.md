@@ -137,6 +137,8 @@ The GitHub sync is designed to be idempotent:
 
 - **Title**: `[Task] Task Name`
 - **Body**: Task description with epic context and acceptance criteria
+- **Epic Mapping**: `epicId` links each task back to its parent epic for
+  GitHub/GitLab sync
 - **Labels**: Based on type and custom task label mappings
 - **Milestone**: Linked to epic milestone if available
 - **Assignee**: Synced if `syncAssignees` is enabled

@@ -89,6 +89,7 @@ describe('GitHub Sync Data Structures', () => {
     const task: Task = {
       id: 'task-1',
       name: 'Implement user login',
+      epicId: 'epic-1',
       description: 'Add login functionality to the app',
       type: 'feature',
       priority: 'high',
@@ -114,6 +115,7 @@ describe('GitHub Sync Data Structures', () => {
     const task: Task = {
       id: 'task-1',
       name: 'Create login form',
+      epicId: 'epic-1',
       type: 'feature',
       priority: 'high',
       status: 'todo',
@@ -205,6 +207,7 @@ describe('GitHub Sync Label Generation', () => {
     const task: Task = {
       id: 'task-1',
       name: 'Test Task',
+      epicId: 'epic-1',
       type: 'feature',
       priority: 'medium',
       status: 'todo',
@@ -274,6 +277,7 @@ describe('GitHub Sync Title Generation', () => {
     const task: Task = {
       id: 'task-1',
       name: 'Implement user login',
+      epicId: 'epic-1',
       type: 'feature',
       priority: 'high',
       status: 'todo',
@@ -320,6 +324,7 @@ describe('GitHub Sync Body Generation', () => {
     const task: Task = {
       id: 'task-1',
       name: 'Test Task',
+      epicId: 'epic-1',
       description: 'Test task description',
       type: 'feature',
       priority: 'high',

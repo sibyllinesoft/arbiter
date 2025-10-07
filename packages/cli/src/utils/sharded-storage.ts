@@ -70,6 +70,7 @@ export interface Epic {
 export interface Task {
   id: string;
   name: string;
+  epicId?: string | null;
   description?: string;
   type: 'feature' | 'bug' | 'refactor' | 'test' | 'docs' | 'devops' | 'research';
   priority: 'critical' | 'high' | 'medium' | 'low';
@@ -141,6 +142,20 @@ export class ShardedCUEStorage {
     };
 
     this.cueManipulator = createCUEManipulator();
+  }
+
+  private ensureEpicTaskContext(epic: Epic): Epic {
+    if (!Array.isArray(epic.tasks)) {
+      epic.tasks = [];
+      return epic;
+    }
+
+    epic.tasks = epic.tasks.map(task => ({
+      ...task,
+      epicId: task.epicId ?? epic.id,
+    }));
+
+    return epic;
   }
 
   /**
@@ -306,6 +321,8 @@ epics: {
       cuePackage: this.config.cuePackage,
     };
 
+    this.ensureEpicTaskContext(epic);
+
     // Validate task dependencies
     this.validateTaskDependencies(epic.tasks);
 
@@ -347,7 +364,7 @@ epics: {
       lastModified: new Date().toISOString(),
     });
     manifest.size = manifest.epics.length;
-    manifest.totalTasks = manifest.epics.reduce((sum, e) => sum + (epic.tasks?.length || 0), 0);
+    manifest.totalTasks = (manifest.totalTasks || 0) + (epic.tasks?.length || 0);
     manifest.lastModified = new Date().toISOString();
 
     await this.saveManifests();
@@ -384,7 +401,16 @@ epics: {
     const shardContent = await fs.readFile(shardPath, 'utf-8');
     const ast = await this.cueManipulator.parse(shardContent);
 
-    return ast.epics?.[epicId] || null;
+    const epic = ast.epics?.[epicId] || null;
+    if (!epic) {
+      return null;
+    }
+
+    if (!epic.id) {
+      epic.id = epicId;
+    }
+
+    return this.ensureEpicTaskContext(epic);
   }
 
   /**
@@ -402,6 +428,7 @@ epics: {
     }
 
     // Validate task dependencies and sort by dependency order
+    this.ensureEpicTaskContext(epic);
     this.validateTaskDependencies(epic.tasks);
     epic.tasks = this.sortTasksByDependencies(epic.tasks);
 
@@ -432,6 +459,9 @@ epics: {
       epicManifest.lastModified = new Date().toISOString();
     }
 
+    const previousTaskCount = existingEpic.tasks?.length ?? 0;
+    const newTaskCount = epic.tasks?.length ?? 0;
+    manifest.totalTasks = (manifest.totalTasks || 0) - previousTaskCount + newTaskCount;
     manifest.lastModified = new Date().toISOString();
     await this.saveManifests();
 
@@ -458,7 +488,11 @@ epics: {
 
         if (ast.epics) {
           for (const epicId of Object.keys(ast.epics)) {
-            const epic = ast.epics[epicId];
+            const epicAst = ast.epics[epicId];
+            if (epicAst && !epicAst.id) {
+              epicAst.id = epicId;
+            }
+            const epic = this.ensureEpicTaskContext(epicAst);
             if (!status || epic.status === status) {
               // Sort tasks by dependency order
               if (epic.tasks) {
