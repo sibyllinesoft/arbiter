@@ -1,7 +1,7 @@
 /**
- * Epic command - Epic and task management with ordered execution
+ * Epic command - Epic and task management with dependency-driven execution
  *
- * Manages epics and their ordered tasks using sharded CUE storage
+ * Manages epics and their tasks using sharded CUE storage, relying on dependency graphs
  */
 
 import chalk from 'chalk';
@@ -663,7 +663,7 @@ async function batchCreateTasks(
       console.log(chalk.dim('Examples:'));
       console.log(
         chalk.dim(
-          '  arbiter task batch --epic my-epic --json \'[{"name":"Task 1","order":0},{"name":"Task 2","order":1}]\''
+          '  arbiter task batch --epic my-epic --json \'[{"id":"task-1","name":"Task 1"},{"id":"task-2","name":"Task 2","dependsOn":["task-1"]}]\''
         )
       );
       console.log(chalk.dim('  arbiter task batch --epic my-epic --file tasks.json'));
@@ -766,7 +766,6 @@ async function batchCreateTasks(
     "description": "Add login/logout functionality",
     "type": "feature",
     "priority": "high",
-    "order": 0,
     "assignee": "dev1",
     "acceptanceCriteria": ["User can log in", "User can log out", "Session persists"]
   },
@@ -775,7 +774,6 @@ async function batchCreateTasks(
     "description": "Add comprehensive unit tests for auth",
     "type": "test", 
     "priority": "medium",
-    "order": 1,
     "dependsOn": ["implement-user-authentication"]
   }
 ]`)
@@ -920,50 +918,6 @@ async function updateTask(
   await storage.updateEpic(targetEpic);
 
   console.log(chalk.green(`✅ Updated task '${targetTask.name}'`));
-  return 0;
-}
-
-/**
- * Move a task to a different order position
- */
-async function moveTask(
-  storage: ShardedCUEStorage,
-  taskId: string,
-  options: TaskOptions & { newOrder?: number },
-  config: CLIConfig
-): Promise<number> {
-  if (options.newOrder === undefined) {
-    console.error(chalk.red('New order position is required (use --new-order <number>)'));
-    return 1;
-  }
-
-  // Find task and update order
-  const epics = await storage.listEpics();
-  let targetEpic: Epic | null = null;
-  let targetTask: Task | null = null;
-
-  for (const epic of epics) {
-    const task = epic.tasks?.find(t => t.id === taskId);
-    if (task) {
-      targetEpic = epic;
-      targetTask = task;
-      break;
-    }
-  }
-
-  if (!targetTask || !targetEpic) {
-    console.error(chalk.red(`Task '${taskId}' not found`));
-    return 1;
-  }
-
-  const oldOrder = targetTask.order;
-  targetTask.order = options.newOrder;
-
-  await storage.updateEpic(targetEpic);
-
-  console.log(
-    chalk.green(`✅ Moved task '${targetTask.name}' from order ${oldOrder} to ${options.newOrder}`)
-  );
   return 0;
 }
 

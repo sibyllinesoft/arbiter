@@ -320,28 +320,28 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         cn(
           'bg-white border border-graphite-300 text-graphite-900',
           'hover:border-graphite-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-          'dark:bg-graphite-900 dark:border-graphite-600 dark:text-graphite-100',
+          'dark:bg-graphite-950 dark:border-graphite-600 dark:text-graphite-50',
           'dark:hover:border-graphite-500 dark:focus:border-blue-400 dark:focus:ring-blue-400'
         ),
       actualVariant === 'error' &&
         cn(
           'bg-white border border-red-300 text-graphite-900',
           'hover:border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500',
-          'dark:bg-graphite-900 dark:border-red-500/60 dark:text-graphite-100',
+          'dark:bg-graphite-950 dark:border-red-500/60 dark:text-graphite-50',
           'dark:hover:border-red-500 dark:focus:border-red-400 dark:focus:ring-red-400'
         ),
       actualVariant === 'warning' &&
         cn(
           'bg-white border border-amber-300 text-graphite-900',
           'hover:border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500',
-          'dark:bg-graphite-900 dark:border-amber-500/60 dark:text-graphite-100',
+          'dark:bg-graphite-950 dark:border-amber-500/60 dark:text-graphite-50',
           'dark:hover:border-amber-500 dark:focus:border-amber-400 dark:focus:ring-amber-400'
         ),
       actualVariant === 'success' &&
         cn(
           'bg-white border border-emerald-300 text-graphite-900',
           'hover:border-emerald-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500',
-          'dark:bg-graphite-900 dark:border-emerald-500/60 dark:text-graphite-100',
+          'dark:bg-graphite-950 dark:border-emerald-500/60 dark:text-graphite-50',
           'dark:hover:border-emerald-500 dark:focus:border-emerald-400 dark:focus:ring-emerald-400'
         ),
 
@@ -486,7 +486,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               className={cn(
                 'absolute z-50 w-full mt-1',
                 'bg-white border border-graphite-300 rounded-lg shadow-lg',
-                'dark:bg-graphite-900 dark:border-graphite-700 dark:shadow-black/20',
+                'dark:bg-graphite-950 dark:border-graphite-700 dark:shadow-black/20',
                 'animate-in fade-in-0 zoom-in-95 duration-100',
                 dropdownClassName
               )}
@@ -503,7 +503,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                       placeholder="Search options..."
-                      className="w-full pl-10 pr-3 py-2 text-sm border border-graphite-300 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-graphite-100 dark:placeholder:text-graphite-400"
+                      className="w-full pl-10 pr-3 py-2 text-sm border border-graphite-300 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-graphite-50 dark:placeholder:text-graphite-400"
                     />
                   </div>
                 </div>
@@ -524,7 +524,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                       onClick={() => !option.disabled && handleSelect(option.value)}
                       className={cn(
                         'w-full px-3 py-2 text-left flex items-center gap-3',
-                        'text-graphite-900 dark:text-graphite-100',
+                        'text-graphite-900 dark:text-graphite-50',
                         'hover:bg-graphite-50 focus:bg-graphite-50 focus:outline-none',
                         'dark:hover:bg-graphite-800 dark:focus:bg-graphite-800',
                         'transition-colors duration-100',
@@ -547,7 +547,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
 
                       {/* Option content */}
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium text-sm text-graphite-900 dark:text-graphite-100">
+                        <div className="font-medium text-sm text-graphite-900 dark:text-graphite-50">
                           {option.label}
                         </div>
                         {option.description && showDescriptions && (

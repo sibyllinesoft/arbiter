@@ -39,6 +39,11 @@ export type FieldValue =
 
 const FIELD_RECORD_KEYS = ['value', 'id', 'name', 'label', 'slug', 'key'] as const;
 
+const INPUT_SURFACE_CLASSES =
+  'bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-300 dark:border-graphite-700 hover:border-graphite-400 dark:hover:border-graphite-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500';
+const SELECT_DROPDOWN_CLASSES =
+  'bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700';
+
 const extractRecordString = (record: Record<string, unknown> | undefined | null): string => {
   if (!record) return '';
   for (const key of FIELD_RECORD_KEYS) {
@@ -128,7 +133,10 @@ interface AddEntityModalProps {
   optionCatalog: UiOptionCatalog;
   onClose: () => void;
   onSubmit?: (payload: { entityType: string; values: Record<string, FieldValue> }) => void;
-  initialValues?: Record<string, FieldValue>;
+  initialValues?: Record<string, FieldValue> | undefined;
+  titleOverride?: string | undefined;
+  descriptionOverride?: string | undefined;
+  mode?: 'create' | 'edit';
 }
 
 const FALLBACK_SERVICE_LANGUAGES = [
@@ -446,28 +454,8 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
         name: 'description',
         label: 'Description',
         type: 'textarea',
+        markdown: true,
         placeholder: 'Summarize the objective, scope, and success metrics for this epic',
-      },
-      {
-        name: 'tasks',
-        label: 'Open Tasks',
-        type: 'select',
-        multiple: true,
-        placeholder: 'Select open tasks',
-        resolveOptions: () =>
-          (catalog.epicTaskOptions ?? [])
-            .filter(task => task && task.completed !== true)
-            .map(task => {
-              const value = String(task.id ?? task.name ?? '').trim();
-              if (!value) return null;
-              const label = (task.name ?? value).trim();
-              const description = task.epicName ? `Epic: ${task.epicName}` : undefined;
-              return description
-                ? ({ value, label, description } as SelectOption)
-                : ({ value, label } as SelectOption);
-            })
-            .filter((option): option is SelectOption => Boolean(option)),
-        description: 'Associate outstanding tasks that still need to be completed.',
       },
     ],
     task: [
@@ -528,6 +516,9 @@ export function AddEntityModal({
   onClose,
   onSubmit,
   initialValues,
+  titleOverride,
+  descriptionOverride,
+  mode = 'create',
 }: AddEntityModalProps) {
   const fields = useMemo(
     () => getFieldConfig(entityType, optionCatalog),
@@ -671,14 +662,16 @@ export function AddEntityModal({
           payloadValues[field.name] = normalizedValues;
         }
       } else {
-        const trimmedValue = toStringValue(rawValue).trim();
+        const stringValue = toStringValue(rawValue);
+        const trimmedValue = stringValue.trim();
+        const useRawValue = field.markdown === true;
 
         if (field.required && trimmedValue.length === 0) {
           validationErrors[field.name] = `${field.label} is required`;
         }
 
-        if (trimmedValue.length > 0 || field.required) {
-          payloadValues[field.name] = trimmedValue;
+        if ((useRawValue ? stringValue.length > 0 : trimmedValue.length > 0) || field.required) {
+          payloadValues[field.name] = useRawValue ? stringValue : trimmedValue;
         }
       }
     }
@@ -692,12 +685,25 @@ export function AddEntityModal({
     onClose();
   };
 
+  const defaultTitle =
+    mode === 'edit'
+      ? `Update ${toSingularLabel(groupLabel, entityType)}`
+      : `Add ${toSingularLabel(groupLabel, entityType)}`;
+  const defaultDescription =
+    mode === 'edit'
+      ? `Review and update this ${singularLabel}.`
+      : `Provide the details needed to add a new ${singularLabel}.`;
+
+  const modalTitle = titleOverride ?? defaultTitle;
+  const modalDescription = descriptionOverride ?? defaultDescription;
+  const submitVerb = mode === 'edit' ? 'Update' : 'Add';
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Add ${toSingularLabel(groupLabel, entityType)}`}
-      description={`Provide the details needed to add a new ${singularLabel}.`}
+      title={modalTitle}
+      description={modalDescription}
       size="lg"
       showDefaultFooter={false}
       className="bg-white text-graphite-900 dark:bg-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700 shadow-2xl dark:[&_label]:text-graphite-100 dark:[&_p]:text-graphite-300 dark:[&_h2]:text-graphite-50"
@@ -709,6 +715,9 @@ export function AddEntityModal({
           const fieldId = `${formId}-${field.name}`;
           const rawValue = values[field.name];
           const errorMessage = errors[field.name];
+          const shouldRenderMarkdown =
+            field.type === 'textarea' &&
+            (field.markdown || (entityType === 'epic' && field.name === 'description'));
           const resolvedOptions =
             field.type === 'select'
               ? field.resolveOptions
@@ -720,7 +729,7 @@ export function AddEntityModal({
             return null;
           }
 
-          if (field.type === 'textarea' && field.markdown) {
+          if (shouldRenderMarkdown) {
             const markdownProps: MarkdownFieldProps = {
               id: fieldId,
               label: field.label,
@@ -749,7 +758,7 @@ export function AddEntityModal({
               <div key={field.name} className="space-y-1">
                 <label
                   htmlFor={fieldId}
-                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-100"
+                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
                 >
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
@@ -760,7 +769,7 @@ export function AddEntityModal({
                   placeholder={field.placeholder}
                   value={toStringValue(rawValue)}
                   onChange={event => handleChange(field.name, event.target.value)}
-                  className="block w-full rounded-md border border-gray-300 dark:border-graphite-600 bg-white dark:bg-graphite-900 text-sm text-graphite-900 dark:text-graphite-100 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
+                  className="block w-full rounded-md border border-gray-300 dark:border-graphite-700 bg-white dark:bg-graphite-950 text-sm text-graphite-900 dark:text-graphite-50 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
                 />
                 {field.description && (
                   <p className="text-xs text-graphite-500 dark:text-graphite-300">
@@ -818,7 +827,7 @@ export function AddEntityModal({
               <div key={field.name} className="space-y-1">
                 <label
                   htmlFor={fieldId}
-                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-100"
+                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
                 >
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
@@ -855,8 +864,8 @@ export function AddEntityModal({
                   options={selectOptions}
                   disabled={selectOptions.length === 0}
                   fullWidth
-                  className="bg-white dark:bg-graphite-900 text-graphite-900 dark:text-graphite-100 border border-gray-300 dark:border-graphite-600 hover:border-graphite-400 dark:hover:border-graphite-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                  dropdownClassName="bg-white dark:bg-graphite-900 text-graphite-900 dark:text-graphite-100 border border-gray-200 dark:border-graphite-700"
+                  className={INPUT_SURFACE_CLASSES}
+                  dropdownClassName={SELECT_DROPDOWN_CLASSES}
                   {...(field.required ? { required: true } : {})}
                   {...(errorMessage ? { error: errorMessage } : {})}
                 />
@@ -877,6 +886,7 @@ export function AddEntityModal({
             value: toStringValue(rawValue),
             onChange: (event: ChangeEvent<HTMLInputElement>) =>
               handleChange(field.name, event.target.value),
+            className: INPUT_SURFACE_CLASSES,
           };
 
           return (
@@ -889,7 +899,9 @@ export function AddEntityModal({
         })}
 
         <div className="flex items-center justify-end pt-2">
-          <Button type="submit">Add {toSingularLabel(groupLabel, entityType)}</Button>
+          <Button type="submit">
+            {submitVerb} {toSingularLabel(groupLabel, entityType)}
+          </Button>
         </div>
       </form>
     </Modal>

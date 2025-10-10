@@ -9,11 +9,10 @@ type LeftTab = 'source';
 type RightTab =
   | 'flow'
   | 'site'
-  | 'fsm'
   | 'view'
-  | 'gaps'
-  | 'resolved'
   | 'architecture'
+  | 'services'
+  | 'tasks'
   | 'webhooks'
   | 'events'
   | 'handlers';

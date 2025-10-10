@@ -1159,6 +1159,56 @@ export class SpecWorkbenchDB {
     });
   }
 
+  async updateArtifact(
+    projectId: string,
+    artifactId: string,
+    updates: {
+      name: string;
+      description: string | null;
+      type: string;
+      language?: string | null;
+      framework?: string | null;
+      metadata?: Record<string, unknown> | undefined;
+      filePath?: string | null;
+      confidence?: number;
+    }
+  ): Promise<any> {
+    const stmt = this.db.prepare(`
+      UPDATE artifacts
+         SET name = ?, description = ?, type = ?, language = ?, framework = ?, metadata = ?, file_path = ?, confidence = ?
+       WHERE project_id = ? AND id = ?
+    `);
+
+    const confidence =
+      typeof updates.confidence === 'number' && Number.isFinite(updates.confidence)
+        ? updates.confidence
+        : 0.95;
+
+    const result = stmt.run(
+      updates.name,
+      updates.description ?? null,
+      updates.type,
+      updates.language ?? null,
+      updates.framework ?? null,
+      updates.metadata ? JSON.stringify(updates.metadata) : null,
+      updates.filePath ?? null,
+      confidence,
+      projectId,
+      artifactId
+    );
+
+    if (!result || typeof result.changes !== 'number' || result.changes === 0) {
+      throw new Error('Failed to update artifact');
+    }
+
+    const updated = await this.getArtifact(projectId, artifactId);
+    if (!updated) {
+      throw new Error('Updated artifact not found');
+    }
+
+    return updated;
+  }
+
   async deleteArtifact(projectId: string, artifactId: string): Promise<boolean> {
     const stmt = this.db.prepare('DELETE FROM artifacts WHERE project_id = ? AND id = ?');
     const result = stmt.run(projectId, artifactId);

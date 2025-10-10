@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -69,20 +69,40 @@ function splitHeaderAndBody(content: string): { header: string; body: string } {
 }
 
 describe('Generate command workflows', () => {
+  let consoleErrorSpy: ReturnType<typeof spyOn<typeof console, 'error'>>;
+
+  beforeAll(() => {
+    consoleErrorSpy = spyOn(console, 'error');
+    consoleErrorSpy.mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
+  const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
   let tmpDir: string;
-  let previousCwd: string;
   let config: CLIConfig;
+  let previousSkipRemoteSpec: string | undefined;
 
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'arbiter-generate-workflow-'));
-    previousCwd = process.cwd();
+    process.chdir(PROJECT_ROOT);
     process.chdir(tmpDir);
     config = buildConfig(tmpDir);
+    previousSkipRemoteSpec = process.env.ARBITER_SKIP_REMOTE_SPEC;
+    process.env.ARBITER_SKIP_REMOTE_SPEC = '1';
   });
 
   afterEach(async () => {
-    process.chdir(previousCwd);
+    process.chdir(PROJECT_ROOT);
     await fs.rm(tmpDir, { recursive: true, force: true });
+    if (previousSkipRemoteSpec === undefined) {
+      delete process.env.ARBITER_SKIP_REMOTE_SPEC;
+    } else {
+      process.env.ARBITER_SKIP_REMOTE_SPEC = previousSkipRemoteSpec;
+    }
+    consoleErrorSpy.mockClear();
   });
 
   async function writeSpec(serviceBlocks: string): Promise<void> {

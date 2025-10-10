@@ -21,6 +21,7 @@ export class ApiClient {
   private discoveredUrl: string | null = null;
   private authSession?: AuthSession;
   private warnedAboutExpiredToken = false;
+  private readonly debugFetchLogs: boolean;
   private readonly MAX_PAYLOAD_SIZE = 64 * 1024; // 64KB
   private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second (1 RPS)
   private readonly MAX_TIMEOUT = 750; // 750ms per spec
@@ -31,6 +32,10 @@ export class ApiClient {
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
     this.projectId = config.projectId || 'cli-project'; // Use configured project ID or fallback
     this.authSession = config.authSession;
+    const fetchDebugFlag = process.env.ARBITER_FETCH_DEBUG?.toLowerCase?.() ?? '';
+    const debugNamespace = process.env.DEBUG ?? '';
+    this.debugFetchLogs =
+      fetchDebugFlag === '1' || fetchDebugFlag === 'true' || /arbiter:fetch/.test(debugNamespace);
   }
 
   /**
@@ -363,10 +368,10 @@ export class ApiClient {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substr(2, 9);
 
-    console.log(
+    this.logDebug(
       `[CLI-STORE] ${requestId} - Starting storeSpecification at ${new Date().toISOString()}`
     );
-    console.log(`[CLI-STORE] ${requestId} - Spec details:`, {
+    this.logDebug(`[CLI-STORE] ${requestId} - Spec details:`, {
       type: spec.type,
       path: spec.path,
       contentLength: spec.content?.length || 0,
@@ -375,7 +380,7 @@ export class ApiClient {
     await this.enforceRateLimit();
 
     try {
-      console.log(`[CLI-STORE] ${requestId} - Making POST request to /api/specifications`);
+      this.logDebug(`[CLI-STORE] ${requestId} - Making POST request to /api/specifications`);
 
       const response = await this.fetch('/api/specifications', {
         method: 'POST',
@@ -387,13 +392,13 @@ export class ApiClient {
       });
 
       const duration = Date.now() - startTime;
-      console.log(
+      this.logDebug(
         `[CLI-STORE] ${requestId} - Response received after ${duration}ms, status: ${response.status}`
       );
 
       if (!response.ok) {
         const error = await response.text();
-        console.error(
+        this.logDebugError(
           `[CLI-STORE] ${requestId} - Failed with status ${response.status}, error: ${error}`
         );
         return {
@@ -405,11 +410,11 @@ export class ApiClient {
       }
 
       const data = await response.json();
-      console.log(`[CLI-STORE] ${requestId} - Success after ${duration}ms`);
+      this.logDebug(`[CLI-STORE] ${requestId} - Success after ${duration}ms`);
       return { success: true, data, error: null, exitCode: 0 };
     } catch (error) {
       const duration = Date.now() - startTime;
-      console.error(`[CLI-STORE] ${requestId} - Network error after ${duration}ms:`, error);
+      this.logDebugError(`[CLI-STORE] ${requestId} - Network error after ${duration}ms:`, error);
 
       return {
         success: false,
@@ -884,20 +889,20 @@ export class ApiClient {
     const fetchStartTime = Date.now();
     const fetchId = Math.random().toString(36).substr(2, 9);
 
-    console.log(
+    this.logDebug(
       `[CLI-FETCH] ${fetchId} - Starting request to ${url} at ${new Date().toISOString()}`
     );
-    console.log(`[CLI-FETCH] ${fetchId} - Timeout configured: ${this.timeout}ms`);
-    console.log(`[CLI-FETCH] ${fetchId} - Method: ${options.method || 'GET'}`);
+    this.logDebug(`[CLI-FETCH] ${fetchId} - Timeout configured: ${this.timeout}ms`);
+    this.logDebug(`[CLI-FETCH] ${fetchId} - Method: ${options.method || 'GET'}`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.log(`[CLI-FETCH] ${fetchId} - TIMEOUT! Aborting after ${this.timeout}ms`);
+      this.logDebug(`[CLI-FETCH] ${fetchId} - TIMEOUT! Aborting after ${this.timeout}ms`);
       controller.abort();
     }, this.timeout);
 
     try {
-      console.log(`[CLI-FETCH] ${fetchId} - Calling fetch() now...`);
+      this.logDebug(`[CLI-FETCH] ${fetchId} - Calling fetch() now...`);
 
       const headers = new Headers(options.headers as HeadersInit | undefined);
       const authHeader = this.buildAuthorizationHeader();
@@ -914,19 +919,19 @@ export class ApiClient {
       const duration = Date.now() - fetchStartTime;
       clearTimeout(timeoutId);
 
-      console.log(`[CLI-FETCH] ${fetchId} - Response received after ${duration}ms`);
-      console.log(`[CLI-FETCH] ${fetchId} - Status: ${response.status} ${response.statusText}`);
+      this.logDebug(`[CLI-FETCH] ${fetchId} - Response received after ${duration}ms`);
+      this.logDebug(`[CLI-FETCH] ${fetchId} - Status: ${response.status} ${response.statusText}`);
 
       return response;
     } catch (error) {
       const duration = Date.now() - fetchStartTime;
       clearTimeout(timeoutId);
 
-      console.error(`[CLI-FETCH] ${fetchId} - Error after ${duration}ms:`, error);
+      this.logDebugError(`[CLI-FETCH] ${fetchId} - Error after ${duration}ms:`, error);
 
       if (error instanceof Error && error.name === 'AbortError') {
         const errorMsg = `Request timeout after ${this.timeout}ms connecting to ${baseUrl}`;
-        console.error(`[CLI-FETCH] ${fetchId} - TIMEOUT: ${errorMsg}`);
+        this.logDebugError(`[CLI-FETCH] ${fetchId} - TIMEOUT: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
@@ -936,12 +941,29 @@ export class ApiClient {
         (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed'))
       ) {
         const errorMsg = `Connection failed to ${baseUrl}. Is the Arbiter server running?`;
-        console.error(`[CLI-FETCH] ${fetchId} - CONNECTION FAILED: ${errorMsg}`);
+        this.logDebugError(`[CLI-FETCH] ${fetchId} - CONNECTION FAILED: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
-      console.error(`[CLI-FETCH] ${fetchId} - OTHER ERROR:`, error);
+      this.logDebugError(`[CLI-FETCH] ${fetchId} - OTHER ERROR:`, error);
       throw error;
+    }
+  }
+
+  private logDebug(...entries: unknown[]): void {
+    if (this.debugFetchLogs) {
+      console.log(...entries);
+    }
+  }
+
+  private logDebugError(message: string, error?: unknown): void {
+    if (!this.debugFetchLogs) {
+      return;
+    }
+    if (error === undefined) {
+      console.error(message);
+    } else {
+      console.error(message, error);
     }
   }
 

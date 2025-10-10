@@ -703,7 +703,7 @@ versionCmd
  */
 const epicCmd = program
   .command('epic')
-  .description('manage epics and their ordered tasks using sharded CUE storage');
+  .description('manage epics and their tasks using sharded CUE storage');
 
 epicCmd
   .command('list')
@@ -839,7 +839,7 @@ epicCmd
 /**
  * Task command - Ordered task management within epics
  */
-const taskCmd = program.command('task').description('manage ordered tasks within epics');
+const taskCmd = program.command('task').description('manage tasks within epics');
 
 taskCmd
   .command('list')

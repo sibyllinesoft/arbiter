@@ -1,14 +1,13 @@
 [
   {
     "name": "Design Epic and Task Schema",
-    "description": "Create comprehensive CUE schemas for epic and task management with ordering support",
+    "description": "Create comprehensive CUE schemas for epic and task management with dependency support",
     "type": "feature",
     "priority": "high",
-    "order": 0,
     "assignee": "architect",
     "acceptanceCriteria": [
       "CUE schema validates epic structure",
-      "Task ordering is enforced",
+      "Dependency modeling is enforced",
       "Dependencies are properly modeled"
     ]
   },
@@ -17,7 +16,6 @@
     "description": "Create sharded CUE file storage architecture for better organization",
     "type": "feature",
     "priority": "high",
-    "order": 1,
     "dependsOn": ["design-epic-and-task-schema"],
     "assignee": "backend-dev",
     "acceptanceCriteria": [
@@ -31,7 +29,6 @@
     "description": "Implement CLI commands for epic and task management",
     "type": "feature",
     "priority": "medium",
-    "order": 2,
     "dependsOn": ["implement-sharded-storage"],
     "assignee": "frontend-dev",
     "acceptanceCriteria": [
@@ -46,7 +43,6 @@
     "description": "Add unit and integration tests for all epic/task functionality",
     "type": "test",
     "priority": "medium",
-    "order": 3,
     "dependsOn": ["add-cli-commands"],
     "assignee": "qa-engineer",
     "acceptanceCriteria": [
@@ -61,7 +57,6 @@
     "description": "Create user documentation and examples for epic/task management",
     "type": "docs",
     "priority": "low",
-    "order": 4,
     "dependsOn": ["write-comprehensive-tests"],
     "assignee": "technical-writer",
     "acceptanceCriteria": [
@@ -76,7 +71,6 @@
     "description": "Optimize sharded storage performance and memory usage",
     "type": "refactor",
     "priority": "low",
-    "order": 5,
     "canRunInParallel": true,
     "assignee": "performance-engineer",
     "acceptanceCriteria": [

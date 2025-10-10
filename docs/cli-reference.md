@@ -374,7 +374,7 @@ arbiter version bump --to 2.1.0
 
 #### `arbiter epic`
 
-Manage epics and their ordered tasks using sharded CUE storage.
+Manage epics and their tasks using sharded CUE storage.
 
 **Usage:**
 
@@ -394,7 +394,7 @@ arbiter epic run auth-epic
 
 #### `arbiter task`
 
-Manage ordered tasks within epics.
+Manage tasks within epics.
 
 **Usage:**
 

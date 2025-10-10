@@ -81,7 +81,6 @@ export interface Task {
   actualHours?: number;
   dependsOn?: string[];
   acceptanceCriteria?: string[];
-  order?: number;
   config?: {
     canRunInParallel?: boolean;
     requiresReview?: boolean;

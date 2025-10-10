@@ -151,7 +151,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       <div className={wrapperClasses}>
         {/* Label */}
         {label && !hideLabel && !floatingLabel && (
-          <label htmlFor={inputId} className="block text-sm font-medium text-graphite-700">
+          <label
+            htmlFor={inputId}
+            className="block text-sm font-medium text-graphite-700 dark:text-graphite-100"
+          >
             {label}
             {props.required && <span className="text-red-500 ml-1">*</span>}
           </label>
@@ -159,7 +162,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         {/* Description */}
         {description && !floatingLabel && (
-          <p className="text-sm text-graphite-600">{description}</p>
+          <p className="text-sm text-graphite-600 dark:text-graphite-300">{description}</p>
         )}
 
         {/* Input wrapper */}

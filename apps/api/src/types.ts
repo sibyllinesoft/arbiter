@@ -75,6 +75,7 @@ export type EventType =
   | 'events_reverted'
   | 'events_reapplied'
   | 'entity_created'
+  | 'entity_updated'
   | 'entity_deleted'
   | 'entity_restored';
 

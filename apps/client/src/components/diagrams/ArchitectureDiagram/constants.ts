@@ -17,4 +17,14 @@ export const LAYER_STYLE_CLASSES: Record<string, string> = {
     'bg-indigo-500 border-indigo-700 text-white dark:bg-indigo-600 dark:border-indigo-800 dark:text-white',
   external:
     'bg-slate-300 border-slate-500 text-slate-900 dark:bg-slate-600 dark:border-slate-700 dark:text-white',
+  'task-completed':
+    'bg-emerald-500 border-emerald-700 text-white dark:bg-emerald-600 dark:border-emerald-800 dark:text-white',
+  'task-in-progress':
+    'bg-blue-500 border-blue-700 text-white dark:bg-blue-600 dark:border-blue-800 dark:text-white',
+  'task-blocked':
+    'bg-rose-500 border-rose-700 text-white dark:bg-rose-600 dark:border-rose-800 dark:text-white',
+  'task-at-risk':
+    'bg-amber-500 border-amber-700 text-white dark:bg-amber-600 dark:border-amber-800 dark:text-white',
+  'task-default':
+    'bg-slate-500 border-slate-700 text-white dark:bg-slate-600 dark:border-slate-800 dark:text-white',
 };

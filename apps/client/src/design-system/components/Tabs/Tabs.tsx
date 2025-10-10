@@ -4,6 +4,7 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
+import Badge from '@/components/Badge';
 import { ChevronLeft, ChevronRight, Loader2, X } from 'lucide-react';
 import React, { useState, useRef, useEffect, type ReactNode } from 'react';
 import { cn } from '../../variants';
@@ -63,12 +64,10 @@ export interface TabsProps {
 
 const variantClasses = {
   underline: {
-    container:
-      'relative after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-graphite-200',
-    tab: 'relative border-none text-graphite-600 hover:text-graphite-800 after:absolute after:left-0 after:right-0 after:bottom-[-1px] after:h-[2px] after:bg-transparent after:transition-all after:duration-200 hover:after:bg-graphite-300',
-    activeTab: 'text-blue-600 after:bg-blue-500',
-    disabledTab:
-      'text-graphite-400 cursor-not-allowed hover:text-graphite-400 hover:after:bg-transparent',
+    container: 'relative',
+    tab: 'relative border-none text-graphite-400 hover:text-graphite-200',
+    activeTab: 'text-white',
+    disabledTab: 'text-graphite-500 cursor-not-allowed hover:text-graphite-500',
   },
   pills: {
     container: '',
@@ -253,7 +252,7 @@ export function Tabs({
         <nav
           ref={tabListRef}
           className={cn(
-            'flex',
+            'flex gap-3',
             classes.container,
             fullWidth && !scrollable && 'w-full',
             scrollable && 'overflow-x-auto scrollbar-hide',
@@ -311,18 +310,16 @@ export function Tabs({
                   <span className={cn('flex-shrink-0', sizes.icon)}>{item.icon}</span>
                 )}
 
-                <span className="truncate">{item.label}</span>
+                <span className="truncate tracking-wide">{item.label}</span>
 
                 {/* Badge */}
                 {item.badge && (
-                  <span
-                    className={cn(
-                      'inline-flex items-center justify-center font-medium bg-graphite-200 text-graphite-700 rounded-md',
-                      sizes.badge
-                    )}
+                  <Badge
+                    variant={isActive ? 'accent' : 'neutral'}
+                    size={size === 'lg' ? 'md' : 'sm'}
                   >
                     {item.badge}
-                  </span>
+                  </Badge>
                 )}
 
                 {/* Close button */}

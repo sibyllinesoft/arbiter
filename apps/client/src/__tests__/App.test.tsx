@@ -227,10 +227,13 @@ describe('App', () => {
 
       expect(screen.getByTestId('tab-flow')).toBeInTheDocument();
       expect(screen.getByTestId('tab-site')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-fsm')).toBeInTheDocument();
       expect(screen.getByTestId('tab-view')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-gaps')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-resolved')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-architecture')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-services')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-tasks')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-events')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-webhooks')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-handlers')).toBeInTheDocument();
     });
 
     it('should have flow tab active by default', () => {
@@ -247,21 +250,11 @@ describe('App', () => {
       const user = userEvent.setup();
       render(<App />);
 
-      const gapsTab = screen.getByTestId('tab-gaps');
-      await user.click(gapsTab);
+      const servicesTab = screen.getByTestId('tab-services');
+      await user.click(servicesTab);
 
       const tabs = screen.getByTestId('tabs');
-      expect(tabs).toHaveAttribute('data-active-tab', 'gaps');
-    });
-
-    it('should display gaps badge when gaps exist', () => {
-      // This would need to be tested with proper context setup
-      // For now, we'll just verify the badge element exists when rendered
-      render(<App />);
-
-      // Initially no badge should be visible (no gaps data)
-      const gapsBadge = screen.queryByTestId('badge-gaps');
-      expect(gapsBadge).not.toBeInTheDocument();
+      expect(tabs).toHaveAttribute('data-active-tab', 'services');
     });
   });
 
@@ -320,12 +313,11 @@ describe('DiagramPlaceholder', () => {
 
     // The actual text content would be rendered within the tab content
     // We can verify this by checking if specific text exists in the document
-    expect(screen.getByText(/Mermaid Flow Diagram/)).toBeInTheDocument();
-    expect(screen.getByText(/Graphviz Site DAG/)).toBeInTheDocument();
-    expect(screen.getByText(/XState FSM/)).toBeInTheDocument();
-    expect(screen.getByText(/Excalidraw Canvas/)).toBeInTheDocument();
-    expect(screen.getByText(/Interactive Gaps Checklist/)).toBeInTheDocument();
-    expect(screen.getByText(/JSON Viewer/)).toBeInTheDocument();
+    expect(screen.getByText(/Flow Diagram coming soon/)).toBeInTheDocument();
+    expect(screen.getByText(/View Wireframes coming soon/)).toBeInTheDocument();
+    expect(screen.getByText(/System Architecture coming soon/)).toBeInTheDocument();
+    expect(screen.getByText(/Service Catalog coming soon/)).toBeInTheDocument();
+    expect(screen.getByText(/Epic Tasks coming soon/)).toBeInTheDocument();
   });
 });
 

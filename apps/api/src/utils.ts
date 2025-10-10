@@ -355,3 +355,365 @@ export function parseBearerToken(authHeader: string | undefined): string | null 
   }
   return authHeader.slice(7).trim();
 }
+
+const COMPLETED_STATUS_TOKENS = new Set([
+  'done',
+  'complete',
+  'completed',
+  'closed',
+  'resolved',
+  'shipped',
+]);
+
+const AFFIRMATIVE_TOKENS = new Set(['true', 'yes', 'y', '1', 'complete', 'completed', 'done']);
+const NEGATIVE_TOKENS = new Set(['false', 'no', 'n', '0']);
+
+const slugifyValue = (value: string | undefined | null, fallback: string): string => {
+  const base = value ?? '';
+  const source = base.trim().length > 0 ? base : fallback;
+  const sanitized = source
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
+
+  if (sanitized.length > 0) {
+    return sanitized;
+  }
+
+  const fallbackSanitized = fallback
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
+
+  return fallbackSanitized.length > 0 ? fallbackSanitized : 'item';
+};
+
+const normalizeCandidate = (value?: string | null): string | null => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const normalized = slugifyValue(trimmed, trimmed);
+  return normalized || null;
+};
+
+const toOptionalString = (value: unknown): string | undefined => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+  return undefined;
+};
+
+const toOptionalNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number.parseFloat(trimmed);
+    if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return undefined;
+};
+
+const toOptionalBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (AFFIRMATIVE_TOKENS.has(normalized)) {
+      return true;
+    }
+    if (NEGATIVE_TOKENS.has(normalized)) {
+      return false;
+    }
+  }
+  if (typeof value === 'number') {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
+  return undefined;
+};
+
+export const coerceStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map(item => (typeof item === 'string' ? item.trim() : ''))
+      .filter((item): item is string => item.length > 0);
+  }
+
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter((item): item is string => item.length > 0);
+  }
+
+  return [];
+};
+
+const collectAliasKeys = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+      .filter((entry): entry is string => entry.length > 0);
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map(entry => entry.trim())
+      .filter((entry): entry is string => entry.length > 0);
+  }
+  return [];
+};
+
+const sortTasks = (a: any, b: any): number => {
+  const nameA = toOptionalString(a.name) ?? '';
+  const nameB = toOptionalString(b.name) ?? '';
+  return nameA.localeCompare(nameB);
+};
+
+const registerKeys = (
+  map: Map<string, any>,
+  keys: Array<string | undefined | null>,
+  target: any
+) => {
+  keys.forEach(key => {
+    const normalized = normalizeCandidate(key ?? undefined);
+    if (normalized && !map.has(normalized)) {
+      map.set(normalized, target);
+    }
+  });
+};
+
+export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[] } {
+  const epicArtifacts = artifacts.filter(
+    (artifact: any) => artifact && typeof artifact === 'object' && artifact.type === 'epic'
+  );
+  const taskArtifacts = artifacts.filter(
+    (artifact: any) => artifact && typeof artifact === 'object' && artifact.type === 'task'
+  );
+
+  const epics: any[] = [];
+  const tasks: any[] = [];
+  const epicMatchMap = new Map<string, any>();
+  const taskMatchMap = new Map<string, any>();
+
+  epicArtifacts.forEach((artifact: any) => {
+    const metadata: Record<string, unknown> = {
+      ...(artifact.metadata ?? {}),
+    };
+
+    const slug = slugifyValue(
+      toOptionalString(metadata.slug) ?? artifact.name,
+      `epic-${artifact.id}`
+    );
+    const id = toOptionalString(metadata.id) ?? slug;
+
+    metadata.id = id;
+    metadata.slug = slug;
+    metadata.artifactId = artifact.id;
+
+    const status = toOptionalString(metadata.status);
+    const priority = toOptionalString(metadata.priority);
+    const owner = toOptionalString(metadata.owner ?? metadata.assignee);
+    const referencedTasks = Array.isArray(metadata.tasks)
+      ? metadata.tasks
+          .map(task => (typeof task === 'string' ? task.trim() : ''))
+          .filter((task): task is string => task.length > 0)
+      : coerceStringArray(metadata.tasks);
+
+    const epic = {
+      id,
+      slug,
+      artifactId: artifact.id,
+      name: artifact.name,
+      ...(artifact.description ? { description: artifact.description } : {}),
+      ...(status ? { status } : {}),
+      ...(priority ? { priority } : {}),
+      ...(owner ? { owner } : {}),
+      metadata,
+      tasks: [] as any[],
+    };
+
+    epics.push(epic);
+
+    registerKeys(
+      epicMatchMap,
+      [id, slug, artifact.name, metadata.slug as string, metadata.id as string],
+      epic
+    );
+    registerKeys(epicMatchMap, collectAliasKeys(metadata.aliases), epic);
+    registerKeys(epicMatchMap, referencedTasks, epic);
+  });
+
+  taskArtifacts.forEach((artifact: any) => {
+    const metadata: Record<string, unknown> = {
+      ...(artifact.metadata ?? {}),
+    };
+
+    const slug = slugifyValue(
+      toOptionalString(metadata.slug) ?? artifact.name,
+      `task-${artifact.id}`
+    );
+    const id = toOptionalString(metadata.id) ?? slug;
+
+    metadata.id = id;
+    metadata.slug = slug;
+    metadata.artifactId = artifact.id;
+
+    const status = toOptionalString(metadata.status);
+    const assignee = toOptionalString(metadata.assignee ?? metadata.owner);
+    const priority = toOptionalString(metadata.priority);
+    const dependencyCandidates = [
+      metadata.dependsOn,
+      metadata.depends_on,
+      metadata.dependencies,
+      metadata.blockedBy,
+      metadata.blocked_by,
+    ];
+
+    const dependsOn = Array.from(
+      new Set(
+        dependencyCandidates
+          .flatMap(entry => coerceStringArray(entry))
+          .filter((dep): dep is string => dep.length > 0)
+      )
+    );
+
+    const epicCandidates = [
+      toOptionalString(metadata.epicId),
+      toOptionalString(metadata.epic),
+      toOptionalString(metadata.epicSlug),
+      toOptionalString(metadata.parentEpic),
+    ].filter((candidate): candidate is string => Boolean(candidate));
+
+    const epicName = toOptionalString(metadata.epicName) ?? epicCandidates[0];
+
+    const completedFlag =
+      toOptionalBoolean(metadata.completed ?? metadata.done ?? metadata.isCompleted) ??
+      (status ? COMPLETED_STATUS_TOKENS.has(status.toLowerCase()) : undefined);
+
+    const task = {
+      id,
+      slug,
+      artifactId: artifact.id,
+      name: artifact.name,
+      ...(artifact.description ? { description: artifact.description } : {}),
+      ...(status ? { status } : {}),
+      ...(assignee ? { assignee } : {}),
+      ...(priority ? { priority } : {}),
+      ...(dependsOn.length ? { dependsOn } : {}),
+      ...(epicCandidates[0] ? { epicId: epicCandidates[0] } : {}),
+      ...(epicName ? { epicName } : {}),
+      ...(completedFlag !== undefined ? { completed: completedFlag } : {}),
+      metadata,
+    };
+
+    tasks.push(task);
+
+    registerKeys(
+      taskMatchMap,
+      [
+        id,
+        slug,
+        artifact.name,
+        metadata.slug as string,
+        metadata.id as string,
+        epicName,
+        ...epicCandidates,
+      ],
+      task
+    );
+    if ('order' in metadata) {
+      delete metadata.order;
+    }
+    registerKeys(taskMatchMap, collectAliasKeys(metadata.aliases), task);
+  });
+
+  tasks.forEach(task => {
+    const metadata = (task.metadata ?? {}) as Record<string, unknown>;
+    const candidates = [
+      task.epicId,
+      task.epicName,
+      toOptionalString(metadata.epicId),
+      toOptionalString(metadata.epic),
+      toOptionalString(metadata.epicSlug),
+      toOptionalString(metadata.parentEpic),
+    ].filter((candidate): candidate is string => Boolean(candidate));
+
+    for (const candidate of candidates) {
+      const normalized = normalizeCandidate(candidate);
+      if (normalized && epicMatchMap.has(normalized)) {
+        const epic = epicMatchMap.get(normalized);
+        if (!epic.tasks.some((existing: any) => existing.id === task.id)) {
+          epic.tasks.push(task);
+        }
+        if (!task.epicId) {
+          task.epicId = epic.id;
+        }
+        if (!task.epicName) {
+          task.epicName = epic.name;
+        }
+        break;
+      }
+    }
+  });
+
+  const taskMatchKeys = new Map<string, any>();
+  tasks.forEach(task => {
+    const keys = [task.id, task.slug, task.name, task.epicId, task.epicName];
+    keys.forEach(key => {
+      const normalized = normalizeCandidate(key);
+      if (normalized && !taskMatchKeys.has(normalized)) {
+        taskMatchKeys.set(normalized, task);
+      }
+    });
+    const metadata = (task.metadata ?? {}) as Record<string, unknown>;
+    registerKeys(taskMatchKeys, collectAliasKeys(metadata.aliases), task);
+  });
+
+  epics.forEach(epic => {
+    const metadata = (epic.metadata ?? {}) as Record<string, unknown>;
+    const referenced = Array.isArray(metadata.tasks)
+      ? metadata.tasks
+          .map(task => (typeof task === 'string' ? task.trim() : ''))
+          .filter((task): task is string => task.length > 0)
+      : coerceStringArray(metadata.tasks);
+
+    referenced.forEach(ref => {
+      const normalized = normalizeCandidate(ref);
+      if (!normalized) return;
+      const task = taskMatchKeys.get(normalized) ?? taskMatchMap.get(normalized);
+      if (task && !epic.tasks.some((existing: any) => existing.id === task.id)) {
+        epic.tasks.push(task);
+        if (!task.epicId) {
+          task.epicId = epic.id;
+        }
+        if (!task.epicName) {
+          task.epicName = epic.name;
+        }
+      }
+    });
+
+    epic.tasks.sort(sortTasks);
+  });
+
+  epics.sort((a, b) => {
+    const nameA = toOptionalString(a.name) ?? '';
+    const nameB = toOptionalString(b.name) ?? '';
+    return nameA.localeCompare(nameB);
+  });
+
+  tasks.sort(sortTasks);
+
+  return { epics, tasks };
+}

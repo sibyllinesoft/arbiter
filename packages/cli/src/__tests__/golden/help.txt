@@ -21,9 +21,9 @@ Commands:
                                         file
   version                               semver-aware version planning and
                                         release management
-  epic                                  manage epics and their ordered tasks
-                                        using sharded CUE storage
-  task                                  manage ordered tasks within epics
+  epic                                  manage epics and their tasks using
+                                        sharded CUE storage
+  task                                  manage tasks within epics
   check [options] [patterns...]         validate CUE files in the current
                                         directory
   validate [options] <files...>         validate CUE files with explicit schema

@@ -1,10 +1,21 @@
-import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { ApiClient } from '../api-client';
 import type { CLIConfig } from '../types';
 
 // Mock fetch globally
 const mockFetch = mock();
 global.fetch = mockFetch;
+
+let consoleErrorSpy: ReturnType<typeof spyOn<typeof console, 'error'>>;
+
+beforeAll(() => {
+  consoleErrorSpy = spyOn(console, 'error');
+  consoleErrorSpy.mockImplementation(() => {});
+});
+
+afterAll(() => {
+  consoleErrorSpy.mockRestore();
+});
 
 describe('ApiClient', () => {
   let apiClient: ApiClient;

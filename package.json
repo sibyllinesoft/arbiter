@@ -13,7 +13,7 @@
     "arbiter": "./arbiter-cli"
   },
   "scripts": {
-    "dev": "FORCE_COLOR=1 concurrently --prefix-colors \"cyan,magenta\" --names \"typecheck,api\" \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\"",
+    "dev": "bun run scripts/dev-runner.ts",
     "dev:workbench": "bun run --cwd apps/client dev",
     "dev:full": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=false bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",
     "dev:full:auth": "concurrently \"bun run typecheck:watch\" \"NODE_ENV=development AUTH_REQUIRED=true bun run --cwd apps/api dev\" \"bun run --cwd apps/client dev\"",

@@ -1,16 +1,16 @@
 # Epic and Task Management Workflow
 
-This example demonstrates how to use Arbiter's new epic and task management
-features with ordered execution and sharded CUE storage.
+This example demonstrates how to use Arbiter's epic and task management features
+with dependency-driven execution and sharded CUE storage.
 
 ## Overview
 
-- **Epics**: Major features or initiatives containing ordered tasks
-- **Tasks**: Individual work items with dependencies and ordering within epics
+- **Epics**: Major features or initiatives containing related tasks
+- **Tasks**: Individual work items with dependencies within epics
 - **Sharded Storage**: CUE files are split across multiple shards for better
   organization
-- **Ordered Execution**: Tasks are executed in a specified order with dependency
-  management
+- **Dependency Execution**: Tasks progress based on dependency relationships
+  rather than manual ordering
 
 ## Basic Workflow
 
@@ -20,7 +20,7 @@ features with ordered execution and sharded CUE storage.
 # Create an epic for adding epic/task management to Arbiter
 arbiter epic create \
   --name "Add Epic and Task Management" \
-  --description "Implement comprehensive epic and task management with ordered execution" \
+  --description "Implement comprehensive epic and task management with dependency-driven execution" \
   --priority high \
   --owner architect \
   --assignee backend-team \
@@ -41,9 +41,8 @@ arbiter task create \
   --description "Create comprehensive CUE schemas for epic and task management" \
   --type feature \
   --priority high \
-  --order 0 \
   --assignee architect \
-  --acceptance-criteria "CUE schema validates epic structure,Task ordering is enforced,Dependencies are properly modeled"
+  --acceptance-criteria "CUE schema validates epic structure,Dependencies are properly modeled,Schema supports dependency validation"
 
 # Add second task - depends on first
 arbiter task create \
@@ -52,7 +51,6 @@ arbiter task create \
   --description "Create sharded CUE file storage architecture" \
   --type feature \
   --priority high \
-  --order 1 \
   --assignee backend-dev \
   --depends-on "design-epic-and-task-schema" \
   --acceptance-criteria "Files are sharded based on configurable limits,Manifest tracks shard contents"
@@ -81,7 +79,7 @@ arbiter epic list --status in_progress
 ### 5. Manage Task Progress
 
 ```bash
-# List all tasks across epics (ordered by execution order)
+# List all tasks across epics (dependency-aware ordering)
 arbiter task list --format table
 
 # View detailed task information
@@ -145,7 +143,6 @@ When using `arbiter task batch`, provide a JSON array of task objects:
     "description": "Task description",
     "type": "feature|bug|refactor|test|docs|devops|research",
     "priority": "critical|high|medium|low",
-    "order": 0,
     "assignee": "developer-name",
     "reviewer": "reviewer-name",
     "dependsOn": ["other-task-id"],
@@ -173,18 +170,18 @@ The epic and task management creates the following file structure:
     └── epic-task.cue               # Epic and task CUE schemas
 ```
 
-## Task Dependencies and Ordering
+## Task Dependencies
 
-Tasks within an epic are ordered using the `order` field (0-1000). Dependencies
-between tasks are tracked using the `dependsOn` field, which references other
-task IDs within the same epic.
+Tasks within an epic progress based on their `dependsOn` relationships, which
+reference other task IDs within the same epic. Arbiter validates that dependency
+graphs are acyclic and enforces dependency completion before tasks can proceed.
 
 ### Dependency Rules:
 
-- Tasks with lower order numbers execute first
 - Tasks cannot start until their dependencies are completed
 - Circular dependencies are validated and rejected
-- Tasks marked with `canRunInParallel: true` can execute alongside others
+- Tasks marked with `canRunInParallel: true` can execute alongside others once
+  prerequisites finish
 
 ### Epic Configuration:
 

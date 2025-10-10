@@ -6438,6 +6438,10 @@ function handleTestGenerationError(error: unknown): string[] {
  * Emit sharded CUE specifications from service to .arbiter directory before generation
  */
 async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
+  if (process.env.ARBITER_SKIP_REMOTE_SPEC === '1') {
+    return;
+  }
+
   try {
     const apiClient = new ApiClient(config);
 

@@ -11,6 +11,7 @@ import { type Epic, ShardedCUEStorage, type Task } from '../utils/sharded-storag
 describe('Epic and Task Management', () => {
   let tempDir: string;
   let storage: ShardedCUEStorage;
+  const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
 
   beforeEach(async () => {
     // Create temporary directory for each test
@@ -29,6 +30,7 @@ describe('Epic and Task Management', () => {
 
   afterEach(async () => {
     await storage.close();
+    process.chdir(PROJECT_ROOT);
     // Clean up temporary directory
     await fs.remove(tempDir);
   });

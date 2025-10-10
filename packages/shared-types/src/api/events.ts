@@ -22,6 +22,7 @@ export type EventType =
   | 'user_left'
   | 'project_activity'
   | 'entity_created'
+  | 'entity_updated'
   | 'entity_deleted'
   | 'entity_restored';
 

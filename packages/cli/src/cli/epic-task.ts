@@ -1,5 +1,5 @@
 /**
- * Epic and Task commands module - Epic and task management with ordered execution
+ * Epic and Task commands module - Epic and task management with dependency-driven execution
  */
 
 import chalk from 'chalk';
@@ -11,7 +11,7 @@ export function createEpicTaskCommands(addCmd: Command): void {
   // Epic commands as subcommands of add
   const epicSubCmd = addCmd
     .command('epic')
-    .description('manage epics and their ordered tasks using sharded CUE storage');
+    .description('manage epics and their tasks using sharded CUE storage');
 
   epicSubCmd
     .command('list')
@@ -148,7 +148,7 @@ export function createEpicTaskCommands(addCmd: Command): void {
     });
 
   // Task commands as subcommands of add
-  const taskSubCmd = addCmd.command('task').description('manage ordered tasks within epics');
+  const taskSubCmd = addCmd.command('task').description('manage tasks within epics');
 
   taskSubCmd
     .command('list')

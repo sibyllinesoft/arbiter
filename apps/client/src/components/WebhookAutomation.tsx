@@ -16,12 +16,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import CreatableSelect from 'react-select/creatable';
+import type { SingleValue } from 'react-select';
 import { toast } from 'react-toastify';
-import { useApp } from '../contexts/AppContext';
 import { Button, Card, Input, StatusBadge, cn } from '../design-system';
 import { apiService } from '../services/api';
 import type { GitHubOrganization, GitHubRepository } from '../types/github';
+import { BaseCreatableSelect } from './form/BaseSelect';
 
 interface GitHubWebhook {
   id: number;
@@ -39,7 +39,6 @@ interface WebhookAutomationProps {
 }
 
 export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationProps) {
-  const { isDark } = useApp();
   const [repoOwner, setRepoOwner] = useState('');
   const [repoName, setRepoName] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
@@ -267,13 +266,13 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Repository Owner
             </label>
-            <CreatableSelect
+            <BaseCreatableSelect<{ value: string; label: string }>
               value={repoOwner ? { value: repoOwner, label: repoOwner } : null}
-              onChange={option => {
-                setRepoOwner(option?.value || '');
+              onChange={(option: SingleValue<{ value: string; label: string }>) => {
+                setRepoOwner(option?.value ?? '');
                 setRepoName(''); // Reset repo name when owner changes
               }}
-              onCreateOption={inputValue => {
+              onCreateOption={(inputValue: string) => {
                 setRepoOwner(inputValue);
                 setRepoName('');
               }}
@@ -285,91 +284,18 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
               isClearable
               placeholder="Select or type owner..."
               className="react-select-container"
-              classNamePrefix="react-select"
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  height: '40px',
-                  minHeight: '40px',
-                  backgroundColor: isDark ? '#111827' : 'white',
-                  borderColor: isDark ? '#374151' : '#d1d5db',
-                  borderRadius: '0.5rem',
-                  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-                  fontSize: '1rem',
-                  color: isDark ? '#f9fafb' : '#111827',
-                  padding: '0 1rem',
-                  transition: 'all 150ms ease-in-out',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    borderColor: isDark ? '#4b5563' : '#9ca3af',
-                  },
-                  '&:focus-within': {
-                    borderColor: isDark ? '#3b82f6' : '#6b7280',
-                    boxShadow: `0 0 0 2px ${isDark ? '#3b82f6' : '#e5e7eb'}`,
-                  },
-                  opacity: state.isDisabled ? 0.5 : 1,
-                }),
-                menu: base => ({
-                  ...base,
-                  backgroundColor: isDark ? '#111827' : 'white',
-                  border: `1px solid ${isDark ? '#374151' : '#d1d5db'}`,
-                  borderRadius: '0.5rem',
-                  marginTop: '0.25rem',
-                  boxShadow:
-                    '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isFocused
-                    ? isDark
-                      ? '#374151'
-                      : '#f9fafb'
-                    : isDark
-                      ? '#111827'
-                      : 'white',
-                  color: isDark ? '#f9fafb' : '#111827',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  '&:hover': {
-                    backgroundColor: isDark ? '#374151' : '#f9fafb',
-                  },
-                }),
-                singleValue: base => ({
-                  ...base,
-                  color: isDark ? '#f9fafb' : '#111827',
-                  fontSize: '1rem',
-                }),
-                placeholder: base => ({
-                  ...base,
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                  fontSize: '1rem',
-                }),
-                input: base => ({
-                  ...base,
-                  color: isDark ? '#f9fafb' : '#111827',
-                  fontSize: '1rem',
-                }),
-                dropdownIndicator: base => ({
-                  ...base,
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                }),
-                indicatorSeparator: base => ({
-                  ...base,
-                  backgroundColor: isDark ? '#374151' : '#d1d5db',
-                }),
-              }}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Repository Name
             </label>
-            <CreatableSelect
+            <BaseCreatableSelect<{ value: string; label: string }>
               value={repoName ? { value: repoName, label: repoName } : null}
-              onChange={option => {
-                setRepoName(option?.value || '');
+              onChange={(option: SingleValue<{ value: string; label: string }>) => {
+                setRepoName(option?.value ?? '');
               }}
-              onCreateOption={inputValue => {
+              onCreateOption={(inputValue: string) => {
                 setRepoName(inputValue);
               }}
               options={gitHubRepos
@@ -380,79 +306,6 @@ export function WebhookAutomation({ className, tunnelUrl }: WebhookAutomationPro
               isDisabled={!repoOwner}
               placeholder={repoOwner ? 'Select or type repository...' : 'Select owner first...'}
               className="react-select-container"
-              classNamePrefix="react-select"
-              styles={{
-                control: (base, state) => ({
-                  ...base,
-                  height: '40px',
-                  minHeight: '40px',
-                  backgroundColor: isDark ? '#111827' : 'white',
-                  borderColor: isDark ? '#374151' : '#d1d5db',
-                  borderRadius: '0.5rem',
-                  fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-                  fontSize: '1rem',
-                  color: isDark ? '#f9fafb' : '#111827',
-                  padding: '0 1rem',
-                  transition: 'all 150ms ease-in-out',
-                  boxShadow: 'none',
-                  '&:hover': {
-                    borderColor: isDark ? '#4b5563' : '#9ca3af',
-                  },
-                  '&:focus-within': {
-                    borderColor: isDark ? '#3b82f6' : '#6b7280',
-                    boxShadow: `0 0 0 2px ${isDark ? '#3b82f6' : '#e5e7eb'}`,
-                  },
-                  opacity: state.isDisabled ? 0.5 : 1,
-                }),
-                menu: base => ({
-                  ...base,
-                  backgroundColor: isDark ? '#111827' : 'white',
-                  border: `1px solid ${isDark ? '#374151' : '#d1d5db'}`,
-                  borderRadius: '0.5rem',
-                  marginTop: '0.25rem',
-                  boxShadow:
-                    '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isFocused
-                    ? isDark
-                      ? '#374151'
-                      : '#f9fafb'
-                    : isDark
-                      ? '#111827'
-                      : 'white',
-                  color: isDark ? '#f9fafb' : '#111827',
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  '&:hover': {
-                    backgroundColor: isDark ? '#374151' : '#f9fafb',
-                  },
-                }),
-                singleValue: base => ({
-                  ...base,
-                  color: isDark ? '#f9fafb' : '#111827',
-                  fontSize: '1rem',
-                }),
-                placeholder: base => ({
-                  ...base,
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                  fontSize: '1rem',
-                }),
-                input: base => ({
-                  ...base,
-                  color: isDark ? '#f9fafb' : '#111827',
-                  fontSize: '1rem',
-                }),
-                dropdownIndicator: base => ({
-                  ...base,
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                }),
-                indicatorSeparator: base => ({
-                  ...base,
-                  backgroundColor: isDark ? '#374151' : '#d1d5db',
-                }),
-              }}
             />
             {gitHubRepos.length > 0 && (
               <p className="text-sm text-muted-foreground mt-1">

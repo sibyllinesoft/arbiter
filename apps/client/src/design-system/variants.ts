@@ -8,32 +8,32 @@ export function cn(...inputs: any[]) {
 export const inputVariants = {
   default: cn(
     'border border-gray-200 dark:border-gray-700',
-    'bg-white dark:bg-graphite-900',
-    'text-gray-900 dark:text-graphite-100',
+    'bg-white dark:bg-graphite-950',
+    'text-gray-900 dark:text-graphite-50',
     'hover:border-graphite-400 dark:hover:border-graphite-500',
     'focus:border-blue-500 dark:focus:border-blue-400',
     'focus:ring-blue-500 dark:focus:ring-blue-400'
   ),
   error: cn(
     'border border-red-300 dark:border-red-400',
-    'bg-white dark:bg-graphite-900',
-    'text-gray-900 dark:text-graphite-100',
+    'bg-white dark:bg-graphite-950',
+    'text-gray-900 dark:text-graphite-50',
     'hover:border-red-400 dark:hover:border-red-500',
     'focus:border-red-500 dark:focus:border-red-400',
     'focus:ring-red-500 dark:focus:ring-red-400'
   ),
   success: cn(
     'border border-emerald-300 dark:border-emerald-400',
-    'bg-white dark:bg-graphite-900',
-    'text-gray-900 dark:text-graphite-100',
+    'bg-white dark:bg-graphite-950',
+    'text-gray-900 dark:text-graphite-50',
     'hover:border-emerald-400 dark:hover:border-emerald-500',
     'focus:border-emerald-500 dark:focus:border-emerald-400',
     'focus:ring-emerald-500 dark:focus:ring-emerald-400'
   ),
   warning: cn(
     'border border-amber-300 dark:border-amber-400',
-    'bg-white dark:bg-graphite-900',
-    'text-gray-900 dark:text-graphite-100',
+    'bg-white dark:bg-graphite-950',
+    'text-gray-900 dark:text-graphite-50',
     'hover:border-amber-400 dark:hover:border-amber-500',
     'focus:border-amber-500 dark:focus:border-amber-400',
     'focus:ring-amber-500 dark:focus:ring-amber-400'
@@ -114,10 +114,10 @@ export const buttonVariants = {
     'bg-blue-600 text-white hover:bg-blue-700/90 dark:bg-blue-500 dark:text-white dark:hover:bg-blue-600/90',
   destructive: 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700/90 dark:hover:bg-red-600/90',
   outline:
-    'border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-graphite-700 dark:bg-graphite-800 dark:hover:bg-graphite-700 dark:text-graphite-100',
+    'border border-input bg-background hover:bg-accent hover:text-accent-foreground dark:border-graphite-700 dark:bg-graphite-950 dark:hover:bg-graphite-700 dark:text-graphite-50',
   secondary:
-    'bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-graphite-700 dark:text-graphite-100 dark:hover:bg-graphite-600',
+    'bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-graphite-700 dark:text-graphite-50 dark:hover:bg-graphite-600',
   ghost:
-    'text-gray-900 dark:text-graphite-100 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-graphite-800 dark:hover:text-graphite-100',
+    'text-gray-900 dark:text-graphite-50 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-graphite-800 dark:hover:text-graphite-100',
   link: 'text-primary underline-offset-4 hover:underline dark:text-blue-400',
 } as const;

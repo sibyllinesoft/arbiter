@@ -1,0 +1,35 @@
+.react-select__control {
+  min-height: 40px;
+  height: 40px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.react-select__control.react-select__control--is-focused {
+  box-shadow: none;
+}
+
+.react-select__menu {
+  border-radius: 8px;
+  box-shadow: none;
+  z-index: 2147483647 !important;
+}
+
+.react-select__menu-list {
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #6b7280 transparent;
+}
+
+.react-select__menu-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.react-select__menu-list::-webkit-scrollbar-thumb {
+  background-color: #6b7280;
+  border-radius: 9999px;
+}
+
+.react-select__menu-list::-webkit-scrollbar-track {
+  background: transparent !important;
+}

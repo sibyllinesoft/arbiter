@@ -52,11 +52,10 @@ export type LeftTab = 'source';
 export type RightTab =
   | 'flow'
   | 'site'
-  | 'fsm'
   | 'view'
-  | 'gaps'
-  | 'resolved'
   | 'architecture'
+  | 'services'
+  | 'tasks'
   | 'webhooks'
   | 'events'
   | 'handlers';

@@ -12,7 +12,6 @@ import {
 } from '../../test/cue-samples';
 import { CueViewer } from './CueViewer';
 import { DataViewer } from './DataViewer';
-import ResolvedViewer from './ResolvedViewer';
 
 interface CueShowcaseProps {
   className?: string;

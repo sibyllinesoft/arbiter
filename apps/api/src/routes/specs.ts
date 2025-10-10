@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import { Hono } from 'hono';
 import ts from 'typescript';
+import { buildEpicTaskSpec } from '../utils';
 
 const HTTP_METHOD_DECORATORS = new Map<string, string>([
   ['Get', 'GET'],
@@ -1223,6 +1224,19 @@ export function createSpecsRouter(deps: Dependencies) {
 
       const routes = Array.from(routeMap.values());
 
+      const { epics, tasks } = buildEpicTaskSpec(artifacts);
+
+      const flows =
+        Object.keys(services).length > 0
+          ? [
+              {
+                id: 'service-flow',
+                name: 'Service Integration Flow',
+                steps: [{ visit: '/' }, { expect_api: { method: 'GET', path: '/health' } }],
+              },
+            ]
+          : [];
+
       return c.json({
         success: true,
         projectId,
@@ -1237,6 +1251,8 @@ export function createSpecsRouter(deps: Dependencies) {
             detectedDatabases: databaseArtifacts.length,
             totalArtifacts: artifacts.length,
           },
+          epics,
+          tasks,
           spec: {
             services,
             databases,
@@ -1247,19 +1263,15 @@ export function createSpecsRouter(deps: Dependencies) {
             ui: {
               routes,
             },
-            flows: [
-              {
-                id: 'service-flow',
-                name: 'Service Integration Flow',
-                steps: [{ visit: '/' }, { expect_api: { method: 'GET', path: '/health' } }],
-              },
-            ],
+            flows,
             capabilities: {
               'read-data': {
                 name: 'Read Data',
                 description: 'Capability to read application data',
               },
             },
+            epics,
+            tasks,
           },
         },
       });

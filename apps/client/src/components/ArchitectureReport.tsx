@@ -2,12 +2,12 @@
  * ArchitectureReport - Standalone architecture diagram report component
  */
 
-import React, { useCallback, useMemo, useState } from "react";
-import { ArchitectureDiagram } from "./diagrams";
-import type { ArchitectureEntityModalRequest } from "./diagrams/ArchitectureDiagram/types";
-import { AddEntityModal, type FieldValue } from "./modals/AddEntityModal";
-import { CapabilityModal } from "./modals/CapabilityModal";
-import EndpointModal from "./modals/EndpointModal";
+import React, { useCallback, useMemo, useState } from 'react';
+import { ArchitectureDiagram } from './diagrams';
+import type { ArchitectureEntityModalRequest } from './diagrams/ArchitectureDiagram/types';
+import { AddEntityModal, type FieldValue } from './modals/AddEntityModal';
+import { CapabilityModal } from './modals/CapabilityModal';
+import EndpointModal from './modals/EndpointModal';
 
 interface ArchitectureReportProps {
   projectId: string;
@@ -32,7 +32,7 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       }
       await modalRequest.onSubmit(payload);
     },
-    [modalRequest],
+    [modalRequest]
   );
 
   const modalContent = useMemo(() => {
@@ -40,12 +40,12 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       return null;
     }
 
-    if (modalRequest.type === "capability") {
+    if (modalRequest.type === 'capability') {
       return (
         <CapabilityModal
           open
           onClose={handleCloseModal}
-          onSubmit={async (payload) => {
+          onSubmit={async payload => {
             await handleSubmit(payload);
           }}
           groupLabel={modalRequest.label}
@@ -53,15 +53,17 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       );
     }
 
-    if (modalRequest.type === "route") {
+    if (modalRequest.type === 'route') {
       return (
         <EndpointModal
           open
           onClose={handleCloseModal}
-          onSubmit={async (payload) => {
+          onSubmit={async payload => {
             await handleSubmit(payload);
           }}
           groupLabel={modalRequest.label}
+          mode={modalRequest.mode ?? 'create'}
+          initialValues={modalRequest.initialValues ?? null}
         />
       );
     }
@@ -73,7 +75,13 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
         groupLabel={modalRequest.label}
         optionCatalog={modalRequest.optionCatalog ?? { epicTaskOptions: [] }}
         onClose={handleCloseModal}
-        onSubmit={async (payload) => {
+        {...(modalRequest.initialValues ? { initialValues: modalRequest.initialValues } : {})}
+        {...(modalRequest.titleOverride ? { titleOverride: modalRequest.titleOverride } : {})}
+        {...(modalRequest.descriptionOverride
+          ? { descriptionOverride: modalRequest.descriptionOverride }
+          : {})}
+        mode={modalRequest.mode ?? 'create'}
+        onSubmit={async payload => {
           await handleSubmit(payload);
         }}
       />
@@ -81,7 +89,7 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
   }, [modalRequest, handleCloseModal, handleSubmit]);
 
   return (
-    <div className={`h-full ${className || ""}`}>
+    <div className={`h-full ${className || ''}`}>
       <ArchitectureDiagram projectId={projectId} onOpenEntityModal={handleOpenEntityModal} />
       {modalContent}
     </div>

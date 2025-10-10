@@ -6,11 +6,9 @@ import {
   ArchitectureReport,
   EventsReport,
   FlowReport,
-  FsmReport,
-  GapsReport,
   HandlersReport,
-  ResolvedReport,
-  SiteReport,
+  ServicesReport,
+  TasksReport,
   ViewReport,
   WebhooksReport,
 } from '@/components/index';
@@ -33,24 +31,6 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'site',
-      label: 'Site',
-      content: project ? (
-        <SiteReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Site DAG" />
-      ),
-    },
-    {
-      id: 'fsm',
-      label: 'FSM',
-      content: project ? (
-        <FsmReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="FSM Diagram" />
-      ),
-    },
-    {
       id: 'view',
       label: 'View',
       content: project ? (
@@ -60,30 +40,30 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'gaps',
-      label: 'Gaps',
-      content: project ? (
-        <GapsReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Gaps Checklist" />
-      ),
-    },
-    {
-      id: 'resolved',
-      label: 'Resolved',
-      content: project ? (
-        <ResolvedReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Resolved JSON" />
-      ),
-    },
-    {
       id: 'architecture',
       label: 'Sources',
       content: project ? (
         <ArchitectureReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="System Architecture" />
+      ),
+    },
+    {
+      id: 'services',
+      label: 'Services',
+      content: project ? (
+        <ServicesReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Service Catalog" />
+      ),
+    },
+    {
+      id: 'tasks',
+      label: 'Tasks',
+      content: project ? (
+        <TasksReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Epic Tasks" />
       ),
     },
     {

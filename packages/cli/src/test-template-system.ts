@@ -168,5 +168,10 @@ function handleTestFailure(error: unknown): void {
   process.exit(1);
 }
 
-// Run the test
-testTemplateSystem().catch(console.error);
+// Only run the template system check when executed directly, not during bun test discovery.
+if (import.meta.main) {
+  testTemplateSystem().catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
+}

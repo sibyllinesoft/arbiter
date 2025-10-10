@@ -254,12 +254,9 @@ export class ApiService {
     return (response.options ?? {}) as UIOptionCatalog;
   }
 
-  async createProjectEntity(
-    projectId: string,
-    payload: { type: string; values: Record<string, unknown> }
-  ) {
-    const normalizedValues = Object.fromEntries(
-      Object.entries(payload.values).map(([key, value]) => {
+  private normalizeEntityValues(values: Record<string, unknown>): Record<string, unknown> {
+    return Object.fromEntries(
+      Object.entries(values).map(([key, value]) => {
         if (Array.isArray(value)) {
           return [key, value];
         }
@@ -272,9 +269,36 @@ export class ApiService {
         return [key, typeof value === 'string' ? value : String(value ?? '')];
       })
     );
+  }
+
+  async createProjectEntity(
+    projectId: string,
+    payload: { type: string; values: Record<string, unknown> }
+  ) {
+    const normalizedValues = this.normalizeEntityValues(payload.values);
 
     return this.request(`/api/projects/${projectId}/entities`, {
       method: 'POST',
+      body: JSON.stringify({
+        type: payload.type,
+        values: normalizedValues,
+      }),
+    });
+  }
+
+  async updateProjectEntity(
+    projectId: string,
+    artifactId: string,
+    payload: { type: string; values: Record<string, unknown> }
+  ) {
+    if (!artifactId) {
+      throw new Error('artifactId is required to update a project entity');
+    }
+
+    const normalizedValues = this.normalizeEntityValues(payload.values);
+
+    return this.request(`/api/projects/${projectId}/entities/${artifactId}`, {
+      method: 'PUT',
       body: JSON.stringify({
         type: payload.type,
         values: normalizedValues,

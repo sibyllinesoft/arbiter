@@ -4,6 +4,7 @@ import '@uiw/react-markdown-preview/markdown.css';
 import MarkdownPreview from '@uiw/react-markdown-preview';
 import MDEditor, { commands } from '@uiw/react-md-editor';
 import { clsx } from 'clsx';
+import { Eye, Pencil } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 
 export interface MarkdownFieldProps {
@@ -60,8 +61,14 @@ export const MarkdownField: React.FC<MarkdownFieldProps> = ({
   const displayValue = useMemo(() => value ?? '', [value]);
   const showEmptyState = !displayValue.trim();
 
-  const handleToggleMode = () => {
-    setMode(prev => (prev === 'preview' ? 'edit' : 'preview'));
+  useEffect(() => {
+    if (!displayValue.trim() && mode !== 'edit') {
+      setMode('edit');
+    }
+  }, [displayValue, mode]);
+
+  const handleSelectMode = (nextMode: 'preview' | 'edit') => {
+    setMode(nextMode);
   };
 
   const handleChange = (nextValue?: string) => {
@@ -78,20 +85,48 @@ export const MarkdownField: React.FC<MarkdownFieldProps> = ({
           {label}
           {required && <span className="ml-1 text-red-500">*</span>}
         </label>
-        <button
-          type="button"
-          onClick={handleToggleMode}
-          className="text-xs font-medium text-blue-600 hover:text-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-1 dark:text-blue-300"
-        >
-          {mode === 'preview' ? 'Edit Markdown' : 'Preview Markdown'}
-        </button>
+        <div role="tablist" aria-label="Toggle markdown view" className="flex items-center gap-1">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'edit'}
+            onClick={() => handleSelectMode('edit')}
+            className={clsx(
+              'flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
+              mode === 'edit'
+                ? 'text-blue-600 dark:text-blue-300'
+                : 'text-graphite-400 hover:text-blue-600 dark:text-graphite-500 dark:hover:text-blue-300'
+            )}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'preview'}
+            onClick={() => handleSelectMode('preview')}
+            disabled={!displayValue.trim()}
+            className={clsx(
+              'flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors',
+              !displayValue.trim()
+                ? 'text-graphite-300 dark:text-graphite-600 cursor-not-allowed'
+                : mode === 'preview'
+                  ? 'text-blue-600 dark:text-blue-300'
+                  : 'text-graphite-400 hover:text-blue-600 dark:text-graphite-500 dark:hover:text-blue-300'
+            )}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span>View</span>
+          </button>
+        </div>
       </div>
 
       {mode === 'preview' ? (
         <div
           id={id}
           className={clsx(
-            'rounded-md border border-gray-200 bg-white p-4 shadow-sm transition-colors',
+            'rounded-md border border-gray-200 bg-white shadow-sm transition-colors',
             'dark:border-graphite-600 dark:bg-graphite-900'
           )}
         >
@@ -102,7 +137,8 @@ export const MarkdownField: React.FC<MarkdownFieldProps> = ({
           ) : (
             <MarkdownPreview
               className={clsx(
-                '[&>*]:prose [&>*]:max-w-none prose-sm prose-slate dark:prose-invert'
+                'p-4 [&>*]:my-0 [&>*:not(:first-child)]:mt-4 [&>*:not(:last-child)]:mb-4',
+                'prose-sm prose-slate dark:prose-invert'
               )}
               source={displayValue}
             />

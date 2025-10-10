@@ -1,3 +1,6 @@
+import { MonacoEditor } from '@/components/Editor/MonacoEditor';
+import { ContentTypeSelect } from '@/components/form/ContentTypeSelect';
+import { MarkdownField } from '@/components/form/MarkdownField';
 import Button from '@/design-system/components/Button';
 import Checkbox from '@/design-system/components/Checkbox';
 import Input from '@/design-system/components/Input';
@@ -18,6 +21,8 @@ interface EndpointModalProps {
     values: Record<string, FieldValue>;
   }) => Promise<void> | void;
   groupLabel?: string;
+  mode?: 'create' | 'edit';
+  initialValues?: Record<string, FieldValue> | null;
 }
 
 interface ParameterFormState {
@@ -41,7 +46,6 @@ interface ResponseFormState {
 }
 
 interface RequestBodyState {
-  enabled: boolean;
   description: string;
   required: boolean;
   contentType: string;
@@ -74,9 +78,8 @@ const PARAM_LOCATION_OPTIONS: SelectOption[] = PARAM_LOCATION_VALUES.map(locatio
 }));
 
 const DEFAULT_REQUEST_BODY: RequestBodyState = {
-  enabled: false,
   description: '',
-  required: true,
+  required: false,
   contentType: 'application/json',
   schemaRef: '',
   example: '',
@@ -84,6 +87,10 @@ const DEFAULT_REQUEST_BODY: RequestBodyState = {
 
 const INPUT_SURFACE_CLASSES =
   'bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700';
+const CHECKBOX_SURFACE_CLASSES =
+  'bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700';
+const JSON_EDITOR_CONTAINER_CLASSES =
+  'h-40 rounded-md border border-graphite-500 bg-graphite-200 dark:border-graphite-700 dark:bg-graphite-950 overflow-hidden shadow-inner';
 
 const PARAMETER_NEW_OPTION_VALUE = '__new-parameter__';
 const PARAMETER_DIVIDER_VALUE = '__parameter-divider__';
@@ -134,18 +141,49 @@ function buildSchemaObject(schemaType: string, schemaRef: string, example?: stri
   return Object.keys(schema).length > 0 ? schema : undefined;
 }
 
-export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointModalProps) {
-  const [form, setForm] = useState<EndpointFormState>(() => ({
-    path: '/',
-    method: 'GET',
-    summary: '',
-    description: '',
-    operationId: '',
-    tags: '',
-    requestBody: { ...DEFAULT_REQUEST_BODY },
-    parameters: [],
-    responses: [createResponse()],
-  }));
+export function EndpointModal({
+  open,
+  onClose,
+  onSubmit,
+  groupLabel,
+  mode = 'create',
+  initialValues = null,
+}: EndpointModalProps) {
+  const buildInitialForm = useCallback((): EndpointFormState => {
+    const initialPath =
+      typeof initialValues?.path === 'string' && initialValues.path.trim().length > 0
+        ? initialValues.path.trim()
+        : '/';
+    const initialMethod =
+      typeof initialValues?.method === 'string' &&
+      HTTP_METHOD_VALUES.includes(initialValues.method as HttpMethod)
+        ? (initialValues.method as HttpMethod)
+        : 'GET';
+    const initialSummary = typeof initialValues?.summary === 'string' ? initialValues.summary : '';
+    const initialDescription =
+      typeof initialValues?.description === 'string' ? initialValues.description : '';
+    const initialOperationId =
+      typeof initialValues?.operationId === 'string' ? initialValues.operationId : '';
+    const initialTags = Array.isArray(initialValues?.tags)
+      ? (initialValues?.tags as string[]).join(', ')
+      : typeof initialValues?.tags === 'string'
+        ? (initialValues.tags as string)
+        : '';
+
+    return {
+      path: initialPath,
+      method: initialMethod,
+      summary: initialSummary,
+      description: initialDescription,
+      operationId: initialOperationId,
+      tags: initialTags,
+      requestBody: { ...DEFAULT_REQUEST_BODY },
+      parameters: [],
+      responses: [createResponse()],
+    };
+  }, [initialValues]);
+
+  const [form, setForm] = useState<EndpointFormState>(buildInitialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -154,28 +192,22 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
   const [expandedSection, setExpandedSection] = useState<
     'endpoint' | 'request' | 'parameters' | 'responses'
   >('endpoint');
+  const [isDarkMode, setIsDarkMode] = useState(() =>
+    typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+  );
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
-    setForm({
-      path: '/',
-      method: 'GET',
-      summary: '',
-      description: '',
-      operationId: '',
-      tags: '',
-      requestBody: { ...DEFAULT_REQUEST_BODY },
-      parameters: [],
-      responses: [createResponse()],
-    });
+    setForm(buildInitialForm());
     setErrors({});
     setSubmitError(null);
     setActiveParameterId(null);
     setActiveResponseId(null);
-  }, [open]);
+    setExpandedSection('endpoint');
+  }, [open, buildInitialForm]);
 
   useEffect(() => {
     if (form.parameters.length === 0) {
@@ -205,16 +237,35 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
     });
   }, [form.responses]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const updateTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+
+    updateTheme();
+
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
+
   const modalTitle = useMemo(() => {
+    const fallback = mode === 'edit' ? 'Endpoint' : 'Endpoint';
     if (!groupLabel) {
-      return 'Add Endpoint';
+      return mode === 'edit' ? `Update ${fallback}` : `Add ${fallback}`;
     }
     const trimmed = groupLabel.trim();
     if (!trimmed) {
-      return 'Add Endpoint';
+      return mode === 'edit' ? `Update ${fallback}` : `Add ${fallback}`;
     }
-    return trimmed.toLowerCase().endsWith('s') ? `Add ${trimmed.slice(0, -1)}` : `Add ${trimmed}`;
-  }, [groupLabel]);
+    const singular = trimmed.endsWith('s') ? trimmed.slice(0, -1) : trimmed;
+    return mode === 'edit' ? `Update ${singular}` : `Add ${singular}`;
+  }, [groupLabel, mode]);
 
   const updateForm = useCallback(
     <K extends keyof EndpointFormState>(key: K, value: EndpointFormState[K]) => {
@@ -317,8 +368,13 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
   const isParametersOpen = expandedSection === 'parameters';
   const isResponsesOpen = expandedSection === 'responses';
   const endpointSummary = `${form.method} ${form.path || '/'}`;
-  const requestSummary = form.requestBody.enabled
-    ? form.requestBody.contentType || 'Content type required'
+  const hasRequestBodyContent =
+    form.requestBody.contentType.trim().length > 0 ||
+    form.requestBody.description.trim().length > 0 ||
+    form.requestBody.schemaRef.trim().length > 0 ||
+    form.requestBody.example.trim().length > 0;
+  const requestSummary = hasRequestBodyContent
+    ? form.requestBody.contentType.trim() || 'Optional request body'
     : 'No request body';
   const parameterSummary =
     form.parameters.length === 0
@@ -328,6 +384,20 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
     form.responses.length === 0
       ? 'No responses yet'
       : `${form.responses.length} ${form.responses.length === 1 ? 'response' : 'responses'}`;
+  const jsonEditorOptions = useMemo(
+    () => ({
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      glyphMargin: false,
+      lineNumbers: 'off' as const,
+      wordWrap: 'on' as const,
+      readOnly: submitting,
+      padding: { top: 8, bottom: 8 },
+      automaticLayout: true,
+    }),
+    [submitting]
+  );
+  const monacoTheme = isDarkMode ? 'vs-dark' : 'vs';
 
   const renderAccordionHeader = (
     id: 'endpoint' | 'request' | 'parameters' | 'responses',
@@ -443,7 +513,12 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
       nextErrors.responses = 'Each response must include a status code';
     }
 
-    if (form.requestBody.enabled && !form.requestBody.contentType.trim()) {
+    const requestBodyContentType = form.requestBody.contentType.trim();
+    const requestBodyHasAdditionalFields =
+      form.requestBody.description.trim().length > 0 ||
+      form.requestBody.schemaRef.trim().length > 0 ||
+      form.requestBody.example.trim().length > 0;
+    if (requestBodyHasAdditionalFields && !requestBodyContentType) {
       nextErrors.requestBody = 'Request body requires a content type';
     }
 
@@ -468,28 +543,31 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
       });
 
     const requestBody = (() => {
-      if (!form.requestBody.enabled) {
-        return undefined;
-      }
       const contentType = form.requestBody.contentType.trim();
-      if (!contentType) {
+      const description = form.requestBody.description.trim();
+      const schemaRef = form.requestBody.schemaRef.trim();
+      const exampleValue = form.requestBody.example.trim();
+
+      if (!contentType && !description && !schemaRef && !exampleValue) {
         return undefined;
       }
+
       const schema = buildSchemaObject('', form.requestBody.schemaRef, form.requestBody.example);
       const mediaObject: Record<string, unknown> = {};
       if (schema) {
         mediaObject.schema = schema;
       }
-      const example = form.requestBody.example.trim();
-      if (example) {
-        mediaObject.example = example;
+      if (exampleValue) {
+        mediaObject.example = exampleValue;
       }
       return {
-        description: form.requestBody.description.trim() || undefined,
+        description: description || undefined,
         required: form.requestBody.required,
-        content: {
-          [contentType]: Object.keys(mediaObject).length > 0 ? mediaObject : {},
-        },
+        content: contentType
+          ? {
+              [contentType]: Object.keys(mediaObject).length > 0 ? mediaObject : {},
+            }
+          : undefined,
       };
     })();
 
@@ -542,15 +620,19 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
     try {
       setSubmitting(true);
       setSubmitError(null);
+      const normalizedPath = form.path.trim() || '/';
+      const normalizedSummary = form.summary.trim();
+      const normalizedDescription = form.description.trim();
+      const normalizedOperationId = form.operationId.trim();
       await onSubmit({
         entityType: 'route',
         values: {
-          name: form.summary.trim() || `${form.method} ${form.path}`,
-          path: form.path,
+          name: normalizedSummary || `${form.method} ${normalizedPath}`,
+          path: normalizedPath,
           method: form.method,
-          summary: form.summary.trim(),
-          description: form.description.trim(),
-          operationId: form.operationId.trim(),
+          summary: normalizedSummary,
+          description: normalizedDescription,
+          operationId: normalizedOperationId,
           tags,
           operations: {
             [methodKey]: operation,
@@ -559,7 +641,9 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
       });
       onClose();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create endpoint';
+      const fallbackMessage =
+        mode === 'edit' ? 'Failed to update endpoint' : 'Failed to create endpoint';
+      const message = error instanceof Error ? error.message : fallbackMessage;
       setSubmitError(message);
     } finally {
       setSubmitting(false);
@@ -575,7 +659,11 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
         }
       }}
       title={modalTitle}
-      description="Define the HTTP endpoint and provide request/response details for OpenAPI generation."
+      description={
+        mode === 'edit'
+          ? 'Review and update the HTTP endpoint definition.'
+          : 'Define the HTTP endpoint and provide request/response details for OpenAPI generation.'
+      }
       size="3xl"
       showDefaultFooter={false}
       className="bg-white text-graphite-900 dark:bg-graphite-900 dark:text-graphite-50 border border-graphite-200 dark:border-graphite-700 shadow-2xl dark:[&_label]:text-graphite-100 dark:[&_p]:text-graphite-300 dark:[&_h3]:text-graphite-50 dark:[&_h4]:text-graphite-100"
@@ -644,18 +732,13 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
                   </div>
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-graphite-700 dark:text-graphite-100">
-                    Description
-                  </label>
-                  <textarea
-                    value={form.description}
-                    onChange={event => updateForm('description', event.target.value)}
-                    placeholder="Detailed description of the endpoint behaviour."
-                    className="w-full rounded-md border border-graphite-500 bg-graphite-200 text-sm text-graphite-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[96px]"
-                    disabled={submitting}
-                  />
-                </div>
+                <MarkdownField
+                  id="endpoint-description"
+                  label="Description"
+                  value={form.description}
+                  onChange={value => updateForm('description', value)}
+                  placeholder="Document business context, side-effects, or considerations for this endpoint."
+                />
 
                 <div>
                   <label className="mb-1 block text-sm font-medium text-graphite-700 dark:text-graphite-100">
@@ -677,122 +760,95 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
             {renderAccordionHeader('request', 'Request Body', requestSummary, isRequestOpen)}
             {isRequestOpen && (
               <div className="space-y-4 border-l border-graphite-200 pl-4 dark:border-graphite-700">
-                <div className="flex items-center gap-3">
-                  <Checkbox
-                    checked={form.requestBody.enabled}
-                    onChange={event =>
-                      updateForm('requestBody', {
-                        ...form.requestBody,
-                        enabled: event.target.checked,
-                      })
-                    }
-                    disabled={submitting}
-                  />
-                  <span className="text-xs text-graphite-500 dark:text-graphite-300">
-                    Include request body
-                  </span>
-                </div>
-
-                {form.requestBody.enabled ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
-                          Content Type
-                        </label>
-                        <Input
-                          className={INPUT_SURFACE_CLASSES}
-                          value={form.requestBody.contentType}
-                          onChange={event =>
-                            updateForm('requestBody', {
-                              ...form.requestBody,
-                              contentType: event.target.value,
-                            })
-                          }
-                          disabled={submitting}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          checked={form.requestBody.required}
-                          onChange={event =>
-                            updateForm('requestBody', {
-                              ...form.requestBody,
-                              required: event.target.checked,
-                            })
-                          }
-                          disabled={submitting}
-                        />
-                        <span className="text-xs text-graphite-500 dark:text-graphite-300">
-                          Required
-                        </span>
-                      </div>
-                    </div>
-
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-3">
                     <div>
                       <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
-                        Description
+                        Content Type
                       </label>
-                      <textarea
-                        value={form.requestBody.description}
+                      <ContentTypeSelect
+                        className="w-full"
+                        value={form.requestBody.contentType}
+                        onChange={nextValue =>
+                          updateForm('requestBody', {
+                            ...form.requestBody,
+                            contentType: nextValue,
+                          })
+                        }
+                        isDisabled={submitting}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        className={CHECKBOX_SURFACE_CLASSES}
+                        checked={form.requestBody.required}
                         onChange={event =>
                           updateForm('requestBody', {
                             ...form.requestBody,
-                            description: event.target.value,
+                            required: event.target.checked,
                           })
                         }
-                        className="w-full rounded-md border border-graphite-500 bg-graphite-200 text-sm text-graphite-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100 dark:focus:border-blue-400 dark:focus:ring-blue-500/40"
                         disabled={submitting}
-                        rows={2}
                       />
+                      <span className="text-xs text-graphite-500 dark:text-graphite-300">
+                        Required
+                      </span>
                     </div>
-
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
-                          Schema Reference
-                        </label>
-                        <Input
-                          className={INPUT_SURFACE_CLASSES}
-                          value={form.requestBody.schemaRef}
-                          onChange={event =>
-                            updateForm('requestBody', {
-                              ...form.requestBody,
-                              schemaRef: event.target.value,
-                            })
-                          }
-                          placeholder="#/components/schemas/User"
-                          disabled={submitting}
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
-                          Example (JSON)
-                        </label>
-                        <textarea
-                          value={form.requestBody.example}
-                          onChange={event =>
-                            updateForm('requestBody', {
-                              ...form.requestBody,
-                              example: event.target.value,
-                            })
-                          }
-                          className="w-full rounded-md border border-graphite-500 bg-graphite-200 text-sm text-graphite-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100 dark:focus:border-blue-400 dark:focus:ring-blue-500/40"
-                          disabled={submitting}
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-
-                    {errors.requestBody && (
-                      <p className="text-xs text-red-500">{errors.requestBody}</p>
-                    )}
                   </div>
-                ) : (
-                  <p className="text-xs text-graphite-500 dark:text-graphite-300">
-                    Enable the request body to configure content and schema.
-                  </p>
-                )}
+                  <div>
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
+                      Schema Reference
+                    </label>
+                    <Input
+                      className={INPUT_SURFACE_CLASSES}
+                      value={form.requestBody.schemaRef}
+                      onChange={event =>
+                        updateForm('requestBody', {
+                          ...form.requestBody,
+                          schemaRef: event.target.value,
+                        })
+                      }
+                      placeholder="#/components/schemas/User"
+                      disabled={submitting}
+                    />
+                  </div>
+                </div>
+
+                <MarkdownField
+                  id="request-body-description"
+                  label="Description"
+                  value={form.requestBody.description}
+                  onChange={value =>
+                    updateForm('requestBody', {
+                      ...form.requestBody,
+                      description: value,
+                    })
+                  }
+                  placeholder="Explain the structure, usage, or nuances of the request payload."
+                />
+
+                <div>
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
+                    Example (JSON)
+                  </label>
+                  <div className={JSON_EDITOR_CONTAINER_CLASSES}>
+                    <MonacoEditor
+                      value={form.requestBody.example}
+                      onChange={value =>
+                        updateForm('requestBody', {
+                          ...form.requestBody,
+                          example: value ?? '',
+                        })
+                      }
+                      language="json"
+                      theme={monacoTheme}
+                      options={jsonEditorOptions}
+                      className="h-full"
+                    />
+                  </div>
+                </div>
+
+                {errors.requestBody && <p className="text-xs text-red-500">{errors.requestBody}</p>}
               </div>
             )}
           </div>
@@ -868,6 +924,7 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
                       </div>
                       <div className="flex items-center gap-2 pt-6 sm:justify-end">
                         <Checkbox
+                          className={CHECKBOX_SURFACE_CLASSES}
                           checked={selectedParameter.required}
                           onChange={event =>
                             updateParameter(selectedParameter.id, {
@@ -1026,14 +1083,14 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
                         <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
                           Content Type
                         </label>
-                        <Input
-                          className={INPUT_SURFACE_CLASSES}
+                        <ContentTypeSelect
+                          className="w-full"
                           value={selectedResponse.contentType}
-                          onChange={event =>
-                            updateResponse(selectedResponse.id, { contentType: event.target.value })
+                          onChange={nextValue =>
+                            updateResponse(selectedResponse.id, { contentType: nextValue })
                           }
-                          placeholder="application/json"
-                          disabled={submitting}
+                          placeholder="Select content type..."
+                          isDisabled={submitting}
                         />
                       </div>
                       <div>
@@ -1056,15 +1113,18 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
                         Example (JSON)
                       </label>
-                      <textarea
-                        value={selectedResponse.example}
-                        onChange={event =>
-                          updateResponse(selectedResponse.id, { example: event.target.value })
-                        }
-                        className="w-full rounded-md border border-graphite-500 bg-graphite-200 text-sm text-graphite-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100 dark:focus:border-blue-400 dark:focus:ring-blue-500/40"
-                        rows={3}
-                        disabled={submitting}
-                      />
+                      <div className={JSON_EDITOR_CONTAINER_CLASSES}>
+                        <MonacoEditor
+                          value={selectedResponse.example}
+                          onChange={value =>
+                            updateResponse(selectedResponse.id, { example: value ?? '' })
+                          }
+                          language="json"
+                          theme={monacoTheme}
+                          options={jsonEditorOptions}
+                          className="h-full"
+                        />
+                      </div>
                     </div>
 
                     {errors.responses && <p className="text-xs text-red-500">{errors.responses}</p>}
@@ -1089,7 +1149,13 @@ export function EndpointModal({ open, onClose, onSubmit, groupLabel }: EndpointM
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Save Endpoint'}
+            {submitting
+              ? mode === 'edit'
+                ? 'Updating…'
+                : 'Adding…'
+              : mode === 'edit'
+                ? 'Update Endpoint'
+                : 'Add Endpoint'}
           </Button>
         </div>
       </form>

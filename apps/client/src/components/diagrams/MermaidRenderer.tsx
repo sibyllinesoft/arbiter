@@ -48,20 +48,33 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   }, []);
 
   const renderChart = async () => {
-    if (!containerRef.current || !chart) return;
+    const container = containerRef.current;
+    if (!container) {
+      requestAnimationFrame(() => {
+        void renderChart();
+      });
+      return;
+    }
+
+    const chartSource = chart?.trim();
+    if (!chartSource) {
+      container.innerHTML = '';
+      setIsLoading(false);
+      return;
+    }
 
     try {
       setIsLoading(true);
       setError(null);
 
       // Sanitize chart input to prevent malicious content
-      const sanitizedChart = chart
+      const sanitizedChart = chartSource
         .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
         .replace(/javascript:/gi, '') // Remove javascript: URLs
         .replace(/on\w+\s*=/gi, ''); // Remove event handlers like onclick=
 
       // Clear previous content
-      containerRef.current.innerHTML = '';
+      container.innerHTML = '';
 
       // Generate unique ID for this diagram
       const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -69,22 +82,11 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
       // Render the diagram with sanitized input
       const { svg } = await mermaid.render(diagramId, sanitizedChart);
 
-      // Safely insert the SVG into the container
-      // Parse SVG as XML to avoid script execution
-      const parser = new DOMParser();
-      const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
-      const svgElement = svgDoc.documentElement;
-
-      // Clear previous content and append the SVG element
-      containerRef.current.innerHTML = '';
-      if (svgElement && svgElement.nodeName === 'svg') {
-        containerRef.current.appendChild(svgElement);
-      } else {
-        throw new Error('Invalid SVG content received from mermaid');
-      }
+      // Clear previous content and append the SVG markup
+      container.innerHTML = svg;
 
       // Make sure the SVG is responsive
-      const responsiveSvg = containerRef.current.querySelector('svg');
+      const responsiveSvg = container.querySelector('svg');
       if (responsiveSvg) {
         responsiveSvg.style.maxWidth = '100%';
         responsiveSvg.style.height = 'auto';
@@ -106,17 +108,6 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   const handleRetry = () => {
     renderChart();
   };
-
-  if (isLoading) {
-    return (
-      <div className={`flex items-center justify-center min-h-[200px] ${className}`}>
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
-          <p className="text-gray-600">Rendering diagram...</p>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -140,10 +131,17 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   return (
     <div className={className}>
       {title && <h4 className="text-sm font-semibold text-gray-700 mb-4 text-center">{title}</h4>}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="relative bg-white rounded-lg border border-gray-200 p-4">
+        {isLoading && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-white/80 dark:bg-graphite-950/80">
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mb-2" />
+            <p className="text-gray-600 dark:text-graphite-300">Rendering diagram...</p>
+          </div>
+        )}
         <div
           ref={containerRef}
           className="mermaid-container flex items-center justify-center min-h-[200px]"
+          aria-busy={isLoading}
         />
       </div>
     </div>
