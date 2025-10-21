@@ -2,6 +2,7 @@
  * Integration tests for API endpoints with real server instance
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { SpecWorkbenchDB } from "../../db.ts";
 import { SpecWorkbenchServer } from "../../server.ts";
 import type { CreateFragmentRequest, ServerConfig, ValidationRequest } from "../../types.ts";
 import { generateId } from "../../utils.ts";
@@ -38,6 +39,7 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
 }
 
 (process.env.ARBITER_FULL_API === "1" ? describe : describe.skip)("API Integration Tests", () => {
+  let db: SpecWorkbenchDB;
   let server: SpecWorkbenchServer;
   let baseUrl: string;
   let testConfig: ServerConfig;
@@ -67,7 +69,8 @@ async function waitForServerReady(baseUrl: string, timeoutMs = 10000): Promise<v
       },
     };
 
-    server = new SpecWorkbenchServer(testConfig);
+    db = await SpecWorkbenchDB.create(testConfig);
+    server = new SpecWorkbenchServer(testConfig, db);
     baseUrl = `http://localhost:${port}`;
 
     // Start server

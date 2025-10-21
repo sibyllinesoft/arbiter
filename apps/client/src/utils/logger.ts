@@ -31,12 +31,12 @@ export const LogLevel = {
 export type LogLevel = (typeof LogLevel)[keyof typeof LogLevel];
 
 export const LogLevelNames = {
-  [LogLevel.SILENT]: 'SILENT',
-  [LogLevel.ERROR]: 'ERROR',
-  [LogLevel.WARN]: 'WARN',
-  [LogLevel.INFO]: 'INFO',
-  [LogLevel.DEBUG]: 'DEBUG',
-  [LogLevel.TRACE]: 'TRACE',
+  [LogLevel.SILENT]: "SILENT",
+  [LogLevel.ERROR]: "ERROR",
+  [LogLevel.WARN]: "WARN",
+  [LogLevel.INFO]: "INFO",
+  [LogLevel.DEBUG]: "DEBUG",
+  [LogLevel.TRACE]: "TRACE",
 } as const;
 
 export interface LoggerConfig {
@@ -86,14 +86,14 @@ class Logger {
 
     if (this.config.enableColors) {
       const colors = {
-        ERROR: '\x1b[31m', // red
-        WARN: '\x1b[33m', // yellow
-        INFO: '\x1b[36m', // cyan
-        DEBUG: '\x1b[32m', // green
-        TRACE: '\x1b[35m', // magenta
-        RESET: '\x1b[0m',
+        ERROR: "\x1b[31m", // red
+        WARN: "\x1b[33m", // yellow
+        INFO: "\x1b[36m", // cyan
+        DEBUG: "\x1b[32m", // green
+        TRACE: "\x1b[35m", // magenta
+        RESET: "\x1b[0m",
       };
-      parts.push(`${colors[level as keyof typeof colors] || ''}[${level}]${colors.RESET}`);
+      parts.push(`${colors[level as keyof typeof colors] || ""}[${level}]${colors.RESET}`);
     } else {
       parts.push(`[${level}]`);
     }
@@ -104,69 +104,69 @@ class Logger {
 
     parts.push(message);
 
-    return [parts.join(' '), ...args];
+    return [parts.join(" "), ...args];
   }
 
   error(category: string, message: string, ...args: any[]) {
     if (this.config.level >= LogLevel.ERROR) {
-      console.error(...this.formatMessage('ERROR', category, message, ...args));
+      console.error(...this.formatMessage("ERROR", category, message, ...args));
     }
   }
 
   warn(category: string, message: string, ...args: any[]) {
     if (this.config.level >= LogLevel.WARN) {
-      console.warn(...this.formatMessage('WARN', category, message, ...args));
+      console.warn(...this.formatMessage("WARN", category, message, ...args));
     }
   }
 
   info(category: string, message: string, ...args: any[]) {
     if (this.config.level >= LogLevel.INFO) {
-      console.info(...this.formatMessage('INFO', category, message, ...args));
+      console.info(...this.formatMessage("INFO", category, message, ...args));
     }
   }
 
   debug(category: string, message: string, ...args: any[]) {
     if (this.config.level >= LogLevel.DEBUG) {
-      console.log(...this.formatMessage('DEBUG', category, message, ...args));
+      console.log(...this.formatMessage("DEBUG", category, message, ...args));
     }
   }
 
   trace(category: string, message: string, ...args: any[]) {
     if (this.config.level >= LogLevel.TRACE) {
-      console.log(...this.formatMessage('TRACE', category, message, ...args));
+      console.log(...this.formatMessage("TRACE", category, message, ...args));
     }
   }
 
   // Convenience methods for common logging patterns
   wsEvent(event: any) {
-    this.debug('WebSocket', 'Event received:', event);
+    this.debug("WebSocket", "Event received:", event);
   }
 
-  wsConnection(status: 'connected' | 'disconnected' | 'reconnecting', details?: any) {
-    this.info('WebSocket', `Connection ${status}`, details);
+  wsConnection(status: "connected" | "disconnected" | "reconnecting", details?: any) {
+    this.info("WebSocket", `Connection ${status}`, details);
   }
 
   wsError(message: string, error?: any) {
-    this.error('WebSocket', message, error);
+    this.error("WebSocket", message, error);
   }
 
   appInit(step: string, data?: any) {
-    this.debug('App', `Initialization: ${step}`, data);
+    this.debug("App", `Initialization: ${step}`, data);
   }
 
   editorSetup(message: string, data?: any) {
-    this.debug('Editor', message, data);
+    this.debug("Editor", message, data);
   }
 
   apiRequest(method: string, url: string, data?: any) {
-    this.trace('API', `${method.toUpperCase()} ${url}`, data);
+    this.trace("API", `${method.toUpperCase()} ${url}`, data);
   }
 
   apiResponse(method: string, url: string, status: number, data?: any) {
     if (status >= 400) {
-      this.error('API', `${method.toUpperCase()} ${url} - ${status}`, data);
+      this.error("API", `${method.toUpperCase()} ${url} - ${status}`, data);
     } else {
-      this.trace('API', `${method.toUpperCase()} ${url} - ${status}`, data);
+      this.trace("API", `${method.toUpperCase()} ${url} - ${status}`, data);
     }
   }
 }
@@ -189,11 +189,11 @@ export function createLogger(category: string) {
 export type CategoryLogger = ReturnType<typeof createLogger>;
 
 // Development helper: Add to window object for runtime control
-if (import.meta.env.DEV && typeof window !== 'undefined') {
+if (import.meta.env.DEV && typeof window !== "undefined") {
   (window as any).__arbiterLogger = {
     setLevel: (level: string | number) => {
       const logLevel =
-        typeof level === 'string' ? LogLevel[level.toUpperCase() as keyof typeof LogLevel] : level;
+        typeof level === "string" ? LogLevel[level.toUpperCase() as keyof typeof LogLevel] : level;
       if (logLevel !== undefined) {
         logger.setLevel(logLevel as LogLevel);
         console.log(`Log level set to: ${LogLevelNames[logLevel as LogLevel]}`);

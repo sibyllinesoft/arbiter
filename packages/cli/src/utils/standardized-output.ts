@@ -1,15 +1,15 @@
-import { createWriteStream } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import chalk from 'chalk';
+import { createWriteStream } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import chalk from "chalk";
 
 /**
  * Standardized output system for Arbiter CLI
  * Implements section 11 requirements: standardized files and NDJSON streaming
  */
 
-export const API_VERSION = 'arbiter.dev/v2' as const;
+export const API_VERSION = "arbiter.dev/v2" as const;
 
 /**
  * Standard output file formats with apiVersion stamping
@@ -26,11 +26,11 @@ export interface StandardizedOutput {
  * Plan output format for deterministic planning
  */
 export interface PlanOutput extends StandardizedOutput {
-  kind: 'Plan';
+  kind: "Plan";
   plan: Array<{
     id: string;
-    type: 'file' | 'directory' | 'command' | 'validation';
-    action: 'create' | 'update' | 'delete' | 'execute' | 'validate';
+    type: "file" | "directory" | "command" | "validation";
+    action: "create" | "update" | "delete" | "execute" | "validate";
     target: string;
     content?: string;
     dependencies?: string[];
@@ -38,7 +38,7 @@ export interface PlanOutput extends StandardizedOutput {
   }>;
   guards: Array<{
     id: string;
-    type: 'constraint' | 'validation' | 'security' | 'performance';
+    type: "constraint" | "validation" | "security" | "performance";
     description: string;
     required: boolean;
   }>;
@@ -54,12 +54,12 @@ export interface PlanOutput extends StandardizedOutput {
  * Execution report format
  */
 export interface ExecutionReport extends StandardizedOutput {
-  kind: 'ExecutionReport';
+  kind: "ExecutionReport";
   applied: Array<{
     id: string;
     action: string;
     target: string;
-    status: 'success' | 'failed' | 'skipped';
+    status: "success" | "failed" | "skipped";
     error?: string;
     duration?: number;
   }>;
@@ -103,7 +103,7 @@ export interface JUnitTestSuite {
  * Surface extraction output format
  */
 export interface SurfaceOutput extends StandardizedOutput {
-  kind: 'Surface';
+  kind: "Surface";
   language: string;
   surface: {
     symbols: Array<{
@@ -129,7 +129,7 @@ export interface SurfaceOutput extends StandardizedOutput {
     modified: number;
     removed: number;
     breaking: boolean;
-    requiredBump: 'MAJOR' | 'MINOR' | 'PATCH';
+    requiredBump: "MAJOR" | "MINOR" | "PATCH";
   };
 }
 
@@ -137,7 +137,7 @@ export interface SurfaceOutput extends StandardizedOutput {
  * Trace output for requirements → spec → tests → code traceability
  */
 export interface TraceOutput extends StandardizedOutput {
-  kind: 'Trace';
+  kind: "Trace";
   links: {
     requirements: Array<{
       id: string;
@@ -145,7 +145,7 @@ export interface TraceOutput extends StandardizedOutput {
       linkedSpecs: string[];
       linkedTests: string[];
       linkedCode: string[];
-      coverage: 'complete' | 'partial' | 'missing';
+      coverage: "complete" | "partial" | "missing";
     }>;
     specs: Array<{
       id: string;
@@ -196,7 +196,7 @@ export interface TraceOutput extends StandardizedOutput {
 export interface NDJSONEvent {
   phase: string;
   timestamp: number;
-  status: 'start' | 'progress' | 'complete' | 'error';
+  status: "start" | "progress" | "complete" | "error";
   data?: Record<string, unknown>;
   error?: string;
 }
@@ -206,19 +206,19 @@ export interface NDJSONEvent {
  */
 export type PhaseEvent =
   | {
-      phase: 'validate';
-      status: 'start' | 'complete';
+      phase: "validate";
+      status: "start" | "complete";
       data?: { files?: string[]; valid?: boolean; errors?: number };
     }
   | {
-      phase: 'validate';
-      status: 'error';
+      phase: "validate";
+      status: "error";
       error: string;
       data?: { files?: string[]; valid?: boolean; errors?: number };
     }
   | {
-      phase: 'surface';
-      status: 'start' | 'complete';
+      phase: "surface";
+      status: "start" | "complete";
       data?: {
         language?: string;
         symbols?: number;
@@ -228,8 +228,8 @@ export type PhaseEvent =
       };
     }
   | {
-      phase: 'surface';
-      status: 'error';
+      phase: "surface";
+      status: "error";
       error: string;
       data?: {
         language?: string;
@@ -240,41 +240,41 @@ export type PhaseEvent =
       };
     }
   | {
-      phase: 'plan';
-      status: 'start' | 'complete';
+      phase: "plan";
+      status: "start" | "complete";
       data?: { actions?: number; guards?: number };
     }
   | {
-      phase: 'plan';
-      status: 'error';
+      phase: "plan";
+      status: "error";
       error: string;
       data?: { actions?: number; guards?: number };
     }
   | {
-      phase: 'execute';
-      status: 'start' | 'progress' | 'complete';
+      phase: "execute";
+      status: "start" | "progress" | "complete";
       data?: { action?: string; progress?: number; total?: number };
     }
   | {
-      phase: 'execute';
-      status: 'error';
+      phase: "execute";
+      status: "error";
       error: string;
       data?: { action?: string; progress?: number; total?: number };
     }
   | {
-      phase: 'test';
-      status: 'start' | 'complete';
+      phase: "test";
+      status: "start" | "complete";
       data?: { tests?: number; passed?: number; failed?: number };
     }
   | {
-      phase: 'test';
-      status: 'error';
+      phase: "test";
+      status: "error";
       error: string;
       data?: { tests?: number; passed?: number; failed?: number };
     }
   | {
-      phase: 'watch';
-      status: 'start' | 'progress' | 'complete';
+      phase: "watch";
+      status: "start" | "progress" | "complete";
       data?: {
         changed?: string[];
         validate?: unknown;
@@ -291,8 +291,8 @@ export type PhaseEvent =
       };
     }
   | {
-      phase: 'watch';
-      status: 'error';
+      phase: "watch";
+      status: "error";
       error: string;
       data?: {
         changed?: string[];
@@ -347,14 +347,14 @@ export class StandardizedOutputManager {
       // Try to find package.json by walking up from current file
       const currentDir = dirname(fileURLToPath(import.meta.url));
       const packagePaths = [
-        join(currentDir, '../../package.json'), // cli package
-        join(currentDir, '../../../package.json'), // root package
+        join(currentDir, "../../package.json"), // cli package
+        join(currentDir, "../../../package.json"), // root package
       ];
 
       for (const packagePath of packagePaths) {
         try {
-          const fs = require('fs');
-          const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+          const fs = require("fs");
+          const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
           if (packageJson.version) {
             return packageJson.version;
           }
@@ -366,22 +366,22 @@ export class StandardizedOutputManager {
       // Fallback if version detection fails
     }
 
-    return '0.1.0'; // Fallback version
+    return "0.1.0"; // Fallback version
   }
 
   /**
    * Write plan.json file
    */
   async writePlanFile(
-    plan: PlanOutput['plan'],
-    guards: PlanOutput['guards'],
-    diff: PlanOutput['diff'],
-    outputPath = 'plan.json',
-    metadata?: Record<string, unknown>
+    plan: PlanOutput["plan"],
+    guards: PlanOutput["guards"],
+    diff: PlanOutput["diff"],
+    outputPath = "plan.json",
+    metadata?: Record<string, unknown>,
   ): Promise<void> {
     const output: PlanOutput = {
       ...this.createBaseOutput(),
-      kind: 'Plan',
+      kind: "Plan",
       plan,
       guards,
       diff,
@@ -398,7 +398,7 @@ export class StandardizedOutputManager {
   /**
    * Write diff.txt file
    */
-  async writeDiffFile(diff: string, outputPath = 'diff.txt'): Promise<void> {
+  async writeDiffFile(diff: string, outputPath = "diff.txt"): Promise<void> {
     const header = `# Diff Report\n# Generated by Arbiter CLI v${API_VERSION}\n# Timestamp: ${new Date().toISOString()}\n# Command: ${this.command}\n\n`;
 
     await writeFile(outputPath, header + diff);
@@ -411,7 +411,7 @@ export class StandardizedOutputManager {
   /**
    * Write junit.xml file
    */
-  async writeJUnitFile(testSuite: JUnitTestSuite, outputPath = 'junit.xml'): Promise<void> {
+  async writeJUnitFile(testSuite: JUnitTestSuite, outputPath = "junit.xml"): Promise<void> {
     const xml = this.generateJUnitXML(testSuite);
     await writeFile(outputPath, xml);
 
@@ -423,7 +423,7 @@ export class StandardizedOutputManager {
   /**
    * Write report.json file
    */
-  async writeReportFile(report: ExecutionReport, outputPath = 'report.json'): Promise<void> {
+  async writeReportFile(report: ExecutionReport, outputPath = "report.json"): Promise<void> {
     await writeFile(outputPath, JSON.stringify(report, null, 2));
 
     if (!this.agentMode) {
@@ -434,7 +434,7 @@ export class StandardizedOutputManager {
   /**
    * Write TRACE.json file
    */
-  async writeTraceFile(trace: TraceOutput, outputPath = 'TRACE.json'): Promise<void> {
+  async writeTraceFile(trace: TraceOutput, outputPath = "TRACE.json"): Promise<void> {
     await writeFile(outputPath, JSON.stringify(trace, null, 2));
 
     if (!this.agentMode) {
@@ -445,7 +445,7 @@ export class StandardizedOutputManager {
   /**
    * Write surface.json file
    */
-  async writeSurfaceFile(surface: SurfaceOutput, outputPath = 'surface.json'): Promise<void> {
+  async writeSurfaceFile(surface: SurfaceOutput, outputPath = "surface.json"): Promise<void> {
     await writeFile(outputPath, JSON.stringify(surface, null, 2));
 
     if (!this.agentMode) {
@@ -488,8 +488,8 @@ export class StandardizedOutputManager {
    */
   private generateJUnitXML(testSuite: JUnitTestSuite): string {
     const testCasesXml = testSuite.testcases
-      .map(testcase => {
-        let testCaseContent = '';
+      .map((testcase) => {
+        let testCaseContent = "";
 
         if (testcase.failure) {
           testCaseContent += `    <failure message="${this.escapeXml(testcase.failure.message)}" type="${this.escapeXml(testcase.failure.type)}">${this.escapeXml(testcase.failure.content)}</failure>\n`;
@@ -502,7 +502,7 @@ export class StandardizedOutputManager {
         return `  <testcase classname="${this.escapeXml(testcase.classname)}" name="${this.escapeXml(testcase.name)}" time="${testcase.time}">
 ${testCaseContent}  </testcase>`;
       })
-      .join('\n');
+      .join("\n");
 
     return `<?xml version="1.0" encoding="UTF-8"?>
 <!-- Generated by Arbiter CLI ${API_VERSION} -->
@@ -516,11 +516,11 @@ ${testCasesXml}
    */
   private escapeXml(text: string): string {
     return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#x27;');
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#x27;");
   }
 }
 
@@ -530,7 +530,7 @@ ${testCasesXml}
 export function createOutputManager(
   command: string,
   agentMode = false,
-  ndjsonOutput?: string
+  ndjsonOutput?: string,
 ): StandardizedOutputManager {
   return new StandardizedOutputManager(command, agentMode, ndjsonOutput);
 }
@@ -539,8 +539,8 @@ export function createOutputManager(
  * Helper function to add --agent-mode flag to commands
  */
 export function addAgentModeOption(command: any): void {
-  command.option('--agent-mode', 'output NDJSON events for agent consumption');
-  command.option('--ndjson-output <file>', 'write NDJSON events to file instead of stdout');
+  command.option("--agent-mode", "output NDJSON events for agent consumption");
+  command.option("--ndjson-output <file>", "write NDJSON events to file instead of stdout");
 }
 
 /**

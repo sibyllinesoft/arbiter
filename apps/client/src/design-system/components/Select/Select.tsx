@@ -14,9 +14,9 @@ import {
   Loader2,
   Search,
   X,
-} from 'lucide-react';
-import { type KeyboardEvent, type ReactNode, forwardRef, useEffect, useRef, useState } from 'react';
-import { cn } from '../../variants';
+} from "lucide-react";
+import { type KeyboardEvent, type ReactNode, forwardRef, useEffect, useRef, useState } from "react";
+import { cn } from "../../variants";
 
 export interface SelectOption {
   /** Unique value for the option */
@@ -71,10 +71,10 @@ export interface SelectProps {
   success?: string;
 
   /** Select variant */
-  variant?: 'default' | 'error' | 'success' | 'warning';
+  variant?: "default" | "error" | "success" | "warning";
 
   /** Select size */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Whether the select should take full width */
   fullWidth?: boolean;
@@ -124,15 +124,15 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       defaultValue,
       onChange,
       multiple = false,
-      placeholder = multiple ? 'Select options...' : 'Select an option...',
+      placeholder = multiple ? "Select options..." : "Select an option...",
       label,
       helperText,
       description,
       error,
       warning,
       success,
-      variant = 'default',
-      size = 'md',
+      variant = "default",
+      size = "md",
       fullWidth = true,
       searchable = false,
       disabled = false,
@@ -148,11 +148,11 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       dropdownClassName,
       ...props
     },
-    ref
+    ref,
   ) => {
     // State management
     const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState("");
     const [focusedIndex, setFocusedIndex] = useState(-1);
     const [selectedValues, setSelectedValues] = useState<string[]>(() => {
       if (value !== undefined) {
@@ -180,16 +180,16 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Determine actual variant based on state props
-    const actualVariant = error ? 'error' : warning ? 'warning' : success ? 'success' : variant;
+    const actualVariant = error ? "error" : warning ? "warning" : success ? "success" : variant;
     const actualHelperText = error || warning || success || helperText;
 
     // Filter options based on search term
     const filteredOptions =
       searchable && searchTerm
         ? options.filter(
-            option =>
+            (option) =>
               option.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              option.description?.toLowerCase().includes(searchTerm.toLowerCase())
+              option.description?.toLowerCase().includes(searchTerm.toLowerCase()),
           )
         : options;
 
@@ -208,8 +208,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
 
     // Get selected option labels
     const getSelectedLabels = () => {
-      return selectedValues.map(val => {
-        const option = options.find(opt => opt.value === val);
+      return selectedValues.map((val) => {
+        const option = options.find((opt) => opt.value === val);
         return option?.label || val;
       });
     };
@@ -220,7 +220,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
 
       if (multiple) {
         if (selectedValues.includes(optionValue)) {
-          newValues = selectedValues.filter(val => val !== optionValue);
+          newValues = selectedValues.filter((val) => val !== optionValue);
         } else {
           newValues = [...selectedValues, optionValue];
         }
@@ -241,24 +241,24 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       if (disabled) return;
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           if (!isOpen) {
             setIsOpen(true);
           } else {
-            setFocusedIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
+            setFocusedIndex((prev) => (prev < filteredOptions.length - 1 ? prev + 1 : 0));
           }
           break;
 
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           if (isOpen) {
-            setFocusedIndex(prev => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
+            setFocusedIndex((prev) => (prev > 0 ? prev - 1 : filteredOptions.length - 1));
           }
           break;
 
-        case 'Enter':
-        case ' ':
+        case "Enter":
+        case " ":
           e.preventDefault();
           if (!isOpen) {
             setIsOpen(true);
@@ -270,12 +270,12 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           }
           break;
 
-        case 'Escape':
+        case "Escape":
           setIsOpen(false);
           setFocusedIndex(-1);
           break;
 
-        case 'Tab':
+        case "Tab":
           setIsOpen(false);
           break;
       }
@@ -289,8 +289,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         }
       };
 
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
     // Focus search input when dropdown opens
@@ -306,60 +306,60 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
     // Component classes
     const selectClasses = cn(
       // Base styles
-      'relative flex items-center justify-between w-full cursor-pointer',
-      'font-sans transition-all duration-150 ease-in-out',
-      'focus:outline-none focus:ring-2 focus:ring-offset-0',
+      "relative flex items-center justify-between w-full cursor-pointer",
+      "font-sans transition-all duration-150 ease-in-out",
+      "focus:outline-none focus:ring-2 focus:ring-offset-0",
 
       // Size styles
-      size === 'sm' && 'px-3 py-1.5 text-sm rounded',
-      size === 'md' && 'px-3 py-2 text-base rounded',
-      size === 'lg' && 'px-4 py-3 text-lg rounded-lg',
+      size === "sm" && "px-3 py-1.5 text-sm rounded",
+      size === "md" && "px-3 py-2 text-base rounded",
+      size === "lg" && "px-4 py-3 text-lg rounded-lg",
 
       // Variant styles
-      actualVariant === 'default' &&
+      actualVariant === "default" &&
         cn(
-          'bg-white border border-graphite-300 text-graphite-900',
-          'hover:border-graphite-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
-          'dark:bg-graphite-950 dark:border-graphite-600 dark:text-graphite-50',
-          'dark:hover:border-graphite-500 dark:focus:border-blue-400 dark:focus:ring-blue-400'
+          "bg-white border border-graphite-300 text-graphite-900",
+          "hover:border-graphite-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500",
+          "dark:bg-graphite-950 dark:border-graphite-600 dark:text-graphite-50",
+          "dark:hover:border-graphite-500 dark:focus:border-blue-400 dark:focus:ring-blue-400",
         ),
-      actualVariant === 'error' &&
+      actualVariant === "error" &&
         cn(
-          'bg-white border border-red-300 text-graphite-900',
-          'hover:border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500',
-          'dark:bg-graphite-950 dark:border-red-500/60 dark:text-graphite-50',
-          'dark:hover:border-red-500 dark:focus:border-red-400 dark:focus:ring-red-400'
+          "bg-white border border-red-300 text-graphite-900",
+          "hover:border-red-400 focus:border-red-500 focus:ring-1 focus:ring-red-500",
+          "dark:bg-graphite-950 dark:border-red-500/60 dark:text-graphite-50",
+          "dark:hover:border-red-500 dark:focus:border-red-400 dark:focus:ring-red-400",
         ),
-      actualVariant === 'warning' &&
+      actualVariant === "warning" &&
         cn(
-          'bg-white border border-amber-300 text-graphite-900',
-          'hover:border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500',
-          'dark:bg-graphite-950 dark:border-amber-500/60 dark:text-graphite-50',
-          'dark:hover:border-amber-500 dark:focus:border-amber-400 dark:focus:ring-amber-400'
+          "bg-white border border-amber-300 text-graphite-900",
+          "hover:border-amber-400 focus:border-amber-500 focus:ring-1 focus:ring-amber-500",
+          "dark:bg-graphite-950 dark:border-amber-500/60 dark:text-graphite-50",
+          "dark:hover:border-amber-500 dark:focus:border-amber-400 dark:focus:ring-amber-400",
         ),
-      actualVariant === 'success' &&
+      actualVariant === "success" &&
         cn(
-          'bg-white border border-emerald-300 text-graphite-900',
-          'hover:border-emerald-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500',
-          'dark:bg-graphite-950 dark:border-emerald-500/60 dark:text-graphite-50',
-          'dark:hover:border-emerald-500 dark:focus:border-emerald-400 dark:focus:ring-emerald-400'
+          "bg-white border border-emerald-300 text-graphite-900",
+          "hover:border-emerald-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500",
+          "dark:bg-graphite-950 dark:border-emerald-500/60 dark:text-graphite-50",
+          "dark:hover:border-emerald-500 dark:focus:border-emerald-400 dark:focus:ring-emerald-400",
         ),
 
       // Disabled styles
       disabled &&
-        'bg-graphite-50 text-graphite-500 cursor-not-allowed border-graphite-200 dark:bg-graphite-800 dark:text-graphite-500 dark:border-graphite-700',
+        "bg-graphite-50 text-graphite-500 cursor-not-allowed border-graphite-200 dark:bg-graphite-800 dark:text-graphite-500 dark:border-graphite-700",
 
       // Open state
-      isOpen && 'border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400',
+      isOpen && "border-blue-500 ring-1 ring-blue-500 dark:border-blue-400 dark:ring-blue-400",
 
-      className
+      className,
     );
 
     const wrapperClasses = cn(
-      'space-y-1',
-      !fullWidth && 'inline-block',
-      disabled && 'opacity-60',
-      wrapperClassName
+      "space-y-1",
+      !fullWidth && "inline-block",
+      disabled && "opacity-60",
+      wrapperClassName,
     );
 
     return (
@@ -387,14 +387,14 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             <label
               htmlFor={selectId}
               className={cn(
-                'absolute left-3 transition-all duration-150 pointer-events-none',
-                'text-sm font-medium',
+                "absolute left-3 transition-all duration-150 pointer-events-none",
+                "text-sm font-medium",
                 selectedValues.length > 0 || isOpen
-                  ? 'top-2 text-xs text-graphite-600'
-                  : 'top-1/2 -translate-y-1/2 text-graphite-500',
-                actualVariant === 'error' && 'text-red-600',
-                actualVariant === 'warning' && 'text-amber-600',
-                actualVariant === 'success' && 'text-green-600'
+                  ? "top-2 text-xs text-graphite-600"
+                  : "top-1/2 -translate-y-1/2 text-graphite-500",
+                actualVariant === "error" && "text-red-600",
+                actualVariant === "warning" && "text-amber-600",
+                actualVariant === "success" && "text-green-600",
               )}
             >
               {label}
@@ -415,22 +415,22 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             aria-expanded={isOpen}
             aria-describedby={cn(
               actualHelperText && `${selectId}-description`,
-              description && `${selectId}-desc`
+              description && `${selectId}-desc`,
             )}
             {...props}
           >
             {/* Selected values / placeholder */}
             <div
               className={cn(
-                'flex-1 text-left truncate',
-                floatingLabel && selectedValues.length > 0 && 'pt-4',
-                selectedValues.length === 0 && 'text-graphite-400 dark:text-graphite-400'
+                "flex-1 text-left truncate",
+                floatingLabel && selectedValues.length > 0 && "pt-4",
+                selectedValues.length === 0 && "text-graphite-400 dark:text-graphite-400",
               )}
             >
               {selectedValues.length > 0 ? (
                 multiple && selectedValues.length > 1 ? (
                   <span className="flex items-center gap-1">
-                    {getSelectedLabels().slice(0, 2).join(', ')}
+                    {getSelectedLabels().slice(0, 2).join(", ")}
                     {selectedValues.length > 2 && (
                       <span className="bg-graphite-100 text-graphite-700 px-1.5 py-0.5 rounded text-xs">
                         +{selectedValues.length - 2}
@@ -438,7 +438,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                     )}
                   </span>
                 ) : (
-                  getSelectedLabels().join(', ')
+                  getSelectedLabels().join(", ")
                 )
               ) : (
                 placeholder
@@ -457,7 +457,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               {multiple && selectedValues.length > 0 && !disabled && !loading && (
                 <button
                   type="button"
-                  onClick={e => {
+                  onClick={(e) => {
                     e.stopPropagation();
                     setSelectedValues([]);
                     onChange && onChange([]);
@@ -484,11 +484,11 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
             <div
               ref={dropdownRef}
               className={cn(
-                'absolute z-50 w-full mt-1',
-                'bg-white border border-graphite-300 rounded-lg shadow-lg',
-                'dark:bg-graphite-950 dark:border-graphite-700 dark:shadow-black/20',
-                'animate-in fade-in-0 zoom-in-95 duration-100',
-                dropdownClassName
+                "absolute z-50 w-full mt-1",
+                "bg-white border border-graphite-300 rounded-lg shadow-lg",
+                "dark:bg-graphite-950 dark:border-graphite-700 dark:shadow-black/20",
+                "animate-in fade-in-0 zoom-in-95 duration-100",
+                dropdownClassName,
               )}
               style={{ maxHeight }}
             >
@@ -501,7 +501,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                       ref={searchRef}
                       type="text"
                       value={searchTerm}
-                      onChange={e => setSearchTerm(e.target.value)}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Search options..."
                       className="w-full pl-10 pr-3 py-2 text-sm border border-graphite-300 rounded focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-graphite-50 dark:placeholder:text-graphite-400"
                     />
@@ -513,7 +513,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
               <div className="max-h-60 overflow-y-auto">
                 {filteredOptions.length === 0 ? (
                   <div className="p-3 text-sm text-graphite-500 dark:text-graphite-300 text-center">
-                    {searchTerm ? 'No options match your search' : 'No options available'}
+                    {searchTerm ? "No options match your search" : "No options available"}
                   </div>
                 ) : (
                   filteredOptions.map((option, index) => (
@@ -523,15 +523,15 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                       disabled={option.disabled}
                       onClick={() => !option.disabled && handleSelect(option.value)}
                       className={cn(
-                        'w-full px-3 py-2 text-left flex items-center gap-3',
-                        'text-graphite-900 dark:text-graphite-50',
-                        'hover:bg-graphite-50 focus:bg-graphite-50 focus:outline-none',
-                        'dark:hover:bg-graphite-800 dark:focus:bg-graphite-800',
-                        'transition-colors duration-100',
-                        index === focusedIndex && 'bg-graphite-50 dark:bg-graphite-800',
-                        option.disabled && 'opacity-50 cursor-not-allowed',
+                        "w-full px-3 py-2 text-left flex items-center gap-3",
+                        "text-graphite-900 dark:text-graphite-50",
+                        "hover:bg-graphite-50 focus:bg-graphite-50 focus:outline-none",
+                        "dark:hover:bg-graphite-800 dark:focus:bg-graphite-800",
+                        "transition-colors duration-100",
+                        index === focusedIndex && "bg-graphite-50 dark:bg-graphite-800",
+                        option.disabled && "opacity-50 cursor-not-allowed",
                         selectedValues.includes(option.value) &&
-                          'bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200'
+                          "bg-blue-50 text-blue-700 dark:bg-blue-500/20 dark:text-blue-200",
                       )}
                       onMouseEnter={() => setFocusedIndex(index)}
                     >
@@ -576,11 +576,11 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           <p
             id={`${selectId}-description`}
             className={cn(
-              'text-sm flex items-start gap-1',
-              actualVariant === 'error' && 'text-red-600',
-              actualVariant === 'warning' && 'text-amber-600',
-              actualVariant === 'success' && 'text-green-600',
-              actualVariant === 'default' && 'text-graphite-600'
+              "text-sm flex items-start gap-1",
+              actualVariant === "error" && "text-red-600",
+              actualVariant === "warning" && "text-amber-600",
+              actualVariant === "success" && "text-green-600",
+              actualVariant === "default" && "text-graphite-600",
             )}
           >
             {actualHelperText}
@@ -588,9 +588,9 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
-Select.displayName = 'Select';
+Select.displayName = "Select";
 
 export default Select;

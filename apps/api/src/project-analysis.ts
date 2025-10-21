@@ -1,11 +1,11 @@
-import { createHash } from 'node:crypto';
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import YAML from 'js-yaml';
-import ts from 'typescript';
-import type { ContentFetcher } from './content-fetcher';
-import { FetchQueue } from './fetch-queue';
-import type { ProjectStructure } from './git-scanner.types';
+import { createHash } from "node:crypto";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import YAML from "js-yaml";
+import ts from "typescript";
+import type { ContentFetcher } from "./content-fetcher";
+import { FetchQueue } from "./fetch-queue";
+import type { ProjectStructure } from "./git-scanner.types";
 
 export interface ArtifactLink {
   type: string;
@@ -16,7 +16,7 @@ export interface ArtifactLink {
 export interface AnalyzedArtifact {
   id: string;
   name: string;
-  type: 'service' | 'database' | 'infrastructure' | 'config' | 'tool' | 'module' | 'frontend';
+  type: "service" | "database" | "infrastructure" | "config" | "tool" | "module" | "frontend";
   description: string;
   language: string | null;
   framework: string | null;
@@ -37,79 +37,79 @@ interface StructureMetrics {
   usedGitLsFiles?: boolean;
 }
 
-const DOCKER_COMPOSE_FILES = new Set(['docker-compose.yml', 'docker-compose.yaml']);
-const PACKAGE_MANIFESTS = new Set(['package.json', 'bunfig.toml']);
+const DOCKER_COMPOSE_FILES = new Set(["docker-compose.yml", "docker-compose.yaml"]);
+const PACKAGE_MANIFESTS = new Set(["package.json", "bunfig.toml"]);
 const DATABASE_HINTS = [
-  'schema.prisma',
-  'schema.sql',
-  'migration.sql',
-  'docker-compose.db',
-  'docker-compose.database',
+  "schema.prisma",
+  "schema.sql",
+  "migration.sql",
+  "docker-compose.db",
+  "docker-compose.database",
 ];
 const KUBERNETES_KEYWORDS = [
-  'deployment',
-  'statefulset',
-  'daemonset',
-  'service',
-  'configmap',
-  'secret',
-  'ingress',
-  'namespace',
+  "deployment",
+  "statefulset",
+  "daemonset",
+  "service",
+  "configmap",
+  "secret",
+  "ingress",
+  "namespace",
 ];
 
 const ROUTE_HINT_PATTERN = /<Route\s|createBrowserRouter|createRoutesFromElements|react-router/;
 
 const NODE_WEB_FRAMEWORKS = [
-  'express',
-  'fastify',
-  'koa',
-  'hapi',
-  'nest',
-  'adonis',
-  'meteor',
-  'sails',
-  'loopback',
-  'restify',
-  'hono',
+  "express",
+  "fastify",
+  "koa",
+  "hapi",
+  "nest",
+  "adonis",
+  "meteor",
+  "sails",
+  "loopback",
+  "restify",
+  "hono",
 ];
 
 const NODE_FRONTEND_FRAMEWORKS = [
-  'react',
-  'react-dom',
-  'next',
-  'vue',
-  'angular',
-  'svelte',
-  'solid-js',
-  'preact',
-  'nuxt',
-  'gatsby',
+  "react",
+  "react-dom",
+  "next",
+  "vue",
+  "angular",
+  "svelte",
+  "solid-js",
+  "preact",
+  "nuxt",
+  "gatsby",
 ];
 
-const NODE_CLI_FRAMEWORKS = ['commander', 'yargs', 'inquirer', 'oclif', 'meow', 'cac', 'clipanion'];
+const NODE_CLI_FRAMEWORKS = ["commander", "yargs", "inquirer", "oclif", "meow", "cac", "clipanion"];
 
-const TYPESCRIPT_SIGNALS = ['typescript', 'ts-node', 'ts-node-dev', 'tsx', 'tsup', '@swc/core'];
+const TYPESCRIPT_SIGNALS = ["typescript", "ts-node", "ts-node-dev", "tsx", "tsup", "@swc/core"];
 
 const TSOA_ROUTE_PATTERN = /controller|route|api/i;
 
 const RUST_WEB_FRAMEWORKS = [
-  'axum',
-  'warp',
-  'actix-web',
-  'rocket',
-  'tide',
-  'gotham',
-  'nickel',
-  'hyper',
-  'poem',
-  'salvo',
-  'tower-web',
+  "axum",
+  "warp",
+  "actix-web",
+  "rocket",
+  "tide",
+  "gotham",
+  "nickel",
+  "hyper",
+  "poem",
+  "salvo",
+  "tower-web",
 ];
 
-const RUST_CLI_FRAMEWORKS = ['clap', 'structopt', 'argh', 'gumdrop'];
+const RUST_CLI_FRAMEWORKS = ["clap", "structopt", "argh", "gumdrop"];
 
 function normalizeSlashes(value: string): string {
-  return value.replace(/\\+/g, '/');
+  return value.replace(/\\+/g, "/");
 }
 
 function collectPackageDependencies(pkg: any): Record<string, string> {
@@ -123,83 +123,115 @@ function collectPackageDependencies(pkg: any): Record<string, string> {
 
 function detectPackageFrameworks(pkg: any): string[] {
   const deps = collectPackageDependencies(pkg);
-  return NODE_WEB_FRAMEWORKS.filter(dep => Boolean(deps[dep]));
+  return NODE_WEB_FRAMEWORKS.filter((dep) => Boolean(deps[dep]));
 }
 
 function packageUsesTypeScript(pkg: any): boolean {
   const deps = collectPackageDependencies(pkg);
-  if (TYPESCRIPT_SIGNALS.some(signal => Boolean(deps[signal]))) {
+  if (TYPESCRIPT_SIGNALS.some((signal) => Boolean(deps[signal]))) {
     return true;
   }
 
-  if (typeof pkg.types === 'string' || typeof pkg.typings === 'string') {
+  if (typeof pkg.types === "string" || typeof pkg.typings === "string") {
     return true;
   }
 
   const scripts = pkg.scripts || {};
-  const scriptSignals = ['ts-node', 'tsx', 'ts-node-dev', 'tsup', 'tsc'];
+  const scriptSignals = ["ts-node", "tsx", "ts-node-dev", "tsup", "tsc"];
   return Object.values(scripts)
-    .filter((command): command is string => typeof command === 'string')
-    .some(command => scriptSignals.some(signal => command.includes(signal)));
+    .filter((command): command is string => typeof command === "string")
+    .some((command) => scriptSignals.some((signal) => command.includes(signal)));
 }
 
 function classifyPackageManifest(pkg: any): {
-  type: 'service' | 'frontend' | 'tool' | 'module';
+  type: "service" | "frontend" | "tool" | "module";
   detectedType: string;
   reason: string;
 } {
   const deps = collectPackageDependencies(pkg);
-  const depNames = Object.keys(deps).map(dep => dep.toLowerCase());
-  const hasDependency = (candidates: string[]) =>
-    candidates.some(candidate => depNames.includes(candidate));
+  const depNames = Object.keys(deps).map((dep) => dep.toLowerCase());
+  const runtimeDepNames = new Set<string>([
+    ...Object.keys(pkg.dependencies || {}).map((dep) => dep.toLowerCase()),
+    ...Object.keys(pkg.optionalDependencies || {}).map((dep) => dep.toLowerCase()),
+    ...Object.keys(pkg.peerDependencies || {}).map((dep) => dep.toLowerCase()),
+  ]);
 
-  if (hasDependency(NODE_WEB_FRAMEWORKS)) {
+  const hasRuntimeDependency = (candidates: string[]) =>
+    candidates.some((candidate) => runtimeDepNames.has(candidate));
+  const hasDependency = (candidates: string[]) =>
+    candidates.some((candidate) => depNames.includes(candidate));
+
+  if (hasRuntimeDependency(NODE_WEB_FRAMEWORKS)) {
     return {
-      type: 'service',
-      detectedType: 'web_service',
-      reason: 'web-framework',
+      type: "service",
+      detectedType: "web_service",
+      reason: "web-framework",
     };
   }
 
-  const hasFrontendFramework = hasDependency(NODE_FRONTEND_FRAMEWORKS) || Boolean(pkg.browserslist);
+  const hasFrontendFramework =
+    hasRuntimeDependency(NODE_FRONTEND_FRAMEWORKS) || Boolean(pkg.browserslist);
   if (hasFrontendFramework) {
     return {
-      type: 'frontend',
-      detectedType: 'frontend',
-      reason: 'frontend-framework',
+      type: "frontend",
+      detectedType: "frontend",
+      reason: "frontend-framework",
     };
   }
 
   const hasBin = Boolean(
-    typeof pkg.bin === 'string' || (pkg.bin && Object.keys(pkg.bin).length > 0)
+    typeof pkg.bin === "string" || (pkg.bin && Object.keys(pkg.bin).length > 0),
   );
   const hasCliDependency = hasDependency(NODE_CLI_FRAMEWORKS);
   if (hasBin || hasCliDependency) {
     return {
-      type: 'tool',
-      detectedType: 'tool',
-      reason: hasBin ? 'manifest-bin' : 'cli-dependency',
+      type: "tool",
+      detectedType: "tool",
+      reason: hasBin ? "manifest-bin" : "cli-dependency",
     };
   }
 
   return {
-    type: 'module',
-    detectedType: 'module',
-    reason: 'default-module',
+    type: "module",
+    detectedType: "module",
+    reason: "default-module",
   };
 }
 
+function detectNodePackageLanguage(pkg: any): string | null {
+  const deps = collectPackageDependencies(pkg);
+  const depNames = new Set<string>(Object.keys(deps).map((dep) => dep.toLowerCase()));
+  const scripts = Object.values(pkg.scripts || {}).filter(
+    (value): value is string => typeof value === "string",
+  );
+  const scriptBlob = scripts.join(" ").toLowerCase();
+
+  const hasTypeScriptSignal =
+    TYPESCRIPT_SIGNALS.some((signal) => depNames.has(signal)) ||
+    /(?:\btsc\b|ts-node|tsx|typescript)/.test(scriptBlob) ||
+    (typeof pkg.types === "string" && pkg.types.endsWith(".d.ts")) ||
+    (typeof pkg.typings === "string" && pkg.typings.endsWith(".d.ts")) ||
+    (typeof pkg.main === "string" && pkg.main.endsWith(".ts")) ||
+    (typeof pkg.module === "string" && pkg.module.endsWith(".ts"));
+
+  if (hasTypeScriptSignal) {
+    return "TypeScript";
+  }
+
+  return null;
+}
+
 function normalizeCargoDependencyName(name: string): string {
-  return name.toLowerCase().replace(/_/g, '-');
+  return name.toLowerCase().replace(/_/g, "-");
 }
 
 function collectCargoDependencyNames(cargo: any): string[] {
-  const sections = ['dependencies', 'dev-dependencies', 'build-dependencies'];
+  const sections = ["dependencies", "dev-dependencies", "build-dependencies"];
   const names = new Set<string>();
 
   for (const section of sections) {
     const deps = cargo?.[section];
-    if (!deps || typeof deps !== 'object') continue;
+    if (!deps || typeof deps !== "object") continue;
     for (const key of Object.keys(deps)) {
       names.add(normalizeCargoDependencyName(key));
     }
@@ -213,9 +245,9 @@ function extractCargoBinaryNames(binSection: unknown): string[] {
 
   if (Array.isArray(binSection)) {
     return binSection
-      .map(entry => {
-        if (typeof entry === 'string') return entry;
-        if (entry && typeof entry === 'object' && typeof (entry as any).name === 'string') {
+      .map((entry) => {
+        if (typeof entry === "string") return entry;
+        if (entry && typeof entry === "object" && typeof (entry as any).name === "string") {
           return (entry as any).name as string;
         }
         return null;
@@ -223,9 +255,9 @@ function extractCargoBinaryNames(binSection: unknown): string[] {
       .filter((value): value is string => Boolean(value));
   }
 
-  if (typeof binSection === 'object') {
+  if (typeof binSection === "object") {
     const name = (binSection as Record<string, unknown>).name;
-    if (typeof name === 'string') {
+    if (typeof name === "string") {
       return [name];
     }
   }
@@ -238,8 +270,8 @@ function classifyCargoManifest(options: {
   hasBinaries: boolean;
   hasLibrary: boolean;
 }): {
-  type: 'service' | 'module' | 'tool';
-  detectedType: 'service' | 'module' | 'binary';
+  type: "service" | "module" | "tool";
+  detectedType: "service" | "module" | "binary";
   reason: string;
   framework?: string;
 } {
@@ -247,15 +279,15 @@ function classifyCargoManifest(options: {
   const normalizedDeps = dependencyNames.map(normalizeCargoDependencyName);
 
   const findMatch = (candidates: string[]): string | undefined => {
-    return candidates.find(candidate => normalizedDeps.includes(candidate));
+    return candidates.find((candidate) => normalizedDeps.includes(candidate));
   };
 
   const webFramework = findMatch(RUST_WEB_FRAMEWORKS);
   if (webFramework) {
     return {
-      type: 'service',
-      detectedType: 'service',
-      reason: 'web-framework',
+      type: "service",
+      detectedType: "service",
+      reason: "web-framework",
       framework: webFramework,
     };
   }
@@ -263,17 +295,17 @@ function classifyCargoManifest(options: {
   if (hasBinaries) {
     const cliFramework = findMatch(RUST_CLI_FRAMEWORKS);
     return {
-      type: 'tool',
-      detectedType: 'binary',
-      reason: cliFramework ? 'cli-binary' : 'binary-target',
+      type: "tool",
+      detectedType: "binary",
+      reason: cliFramework ? "cli-binary" : "binary-target",
       framework: cliFramework,
     };
   }
 
   return {
-    type: 'module',
-    detectedType: 'module',
-    reason: options.hasLibrary ? 'library-target' : 'default-module',
+    type: "module",
+    detectedType: "module",
+    reason: options.hasLibrary ? "library-target" : "default-module",
   };
 }
 
@@ -282,7 +314,7 @@ function stripPackageRoot(filePath: string, packageRoot: string): string {
     return filePath;
   }
   if (filePath === packageRoot) {
-    return '';
+    return "";
   }
   if (filePath.startsWith(`${packageRoot}/`)) {
     return filePath.slice(packageRoot.length + 1);
@@ -293,7 +325,7 @@ function stripPackageRoot(filePath: string, packageRoot: string): string {
 function buildTsoaAnalysisFromPackage(
   packageJsonPath: string,
   pkg: any,
-  allFiles: string[]
+  allFiles: string[],
 ): {
   root: string;
   frameworks: string[];
@@ -315,42 +347,42 @@ function buildTsoaAnalysisFromPackage(
   }
 
   const packageDir = normalizeSlashes(path.dirname(packageJsonPath));
-  const normalizedRoot = packageDir === '.' ? '' : packageDir;
+  const normalizedRoot = packageDir === "." ? "" : packageDir;
   const deps = collectPackageDependencies(pkg);
   const hasTsoaDependency = Boolean(deps.tsoa);
   const scripts = pkg.scripts || {};
 
   const relevantFiles = allFiles
     .map(normalizeSlashes)
-    .filter(file => {
-      if (file.endsWith('.d.ts')) return false;
+    .filter((file) => {
+      if (file.endsWith(".d.ts")) return false;
       if (!normalizedRoot) {
-        return !file.startsWith('node_modules/');
+        return !file.startsWith("node_modules/");
       }
       return file === normalizedRoot || file.startsWith(`${normalizedRoot}/`);
     })
-    .map(file => stripPackageRoot(file, normalizedRoot))
-    .filter(rel => rel && !rel.startsWith('node_modules/'));
+    .map((file) => stripPackageRoot(file, normalizedRoot))
+    .filter((rel) => rel && !rel.startsWith("node_modules/"));
 
   if (relevantFiles.length === 0) {
     return null;
   }
 
-  const tsFiles = relevantFiles.filter(rel => /\.(ts|tsx)$/i.test(rel));
+  const tsFiles = relevantFiles.filter((rel) => /\.(ts|tsx)$/i.test(rel));
   if (tsFiles.length === 0) {
     return null;
   }
 
   const controllerCandidates = tsFiles
-    .filter(rel => TSOA_ROUTE_PATTERN.test(rel))
-    .filter(rel => !/\.d\.ts$/i.test(rel))
-    .filter(rel => !/\btests?\//i.test(rel) && !/__tests__\//i.test(rel))
+    .filter((rel) => TSOA_ROUTE_PATTERN.test(rel))
+    .filter((rel) => !/\.d\.ts$/i.test(rel))
+    .filter((rel) => !/\btests?\//i.test(rel) && !/__tests__\//i.test(rel))
     .slice(0, 50);
 
-  const configFiles = relevantFiles.filter(rel => /tsoa\.json$/i.test(rel)).slice(0, 10);
+  const configFiles = relevantFiles.filter((rel) => /tsoa\.json$/i.test(rel)).slice(0, 10);
 
   const scriptsUsingTsoa = Object.entries(scripts)
-    .filter(([, command]) => typeof command === 'string' && command.includes('tsoa'))
+    .filter(([, command]) => typeof command === "string" && command.includes("tsoa"))
     .map(([name]) => name);
 
   if (controllerCandidates.length === 0 && configFiles.length === 0 && !hasTsoaDependency) {
@@ -358,7 +390,7 @@ function buildTsoaAnalysisFromPackage(
   }
 
   return {
-    root: normalizedRoot || '.',
+    root: normalizedRoot || ".",
     frameworks,
     usesTypeScript: true,
     hasTsoaDependency,
@@ -367,14 +399,14 @@ function buildTsoaAnalysisFromPackage(
     configFiles,
     scriptsUsingTsoa,
     recommendedCommands: hasTsoaDependency
-      ? ['npx tsoa spec', 'npx tsoa routes']
-      : ['npm install --save-dev tsoa', 'npx tsoa spec', 'npx tsoa routes'],
+      ? ["npx tsoa spec", "npx tsoa routes"]
+      : ["npm install --save-dev tsoa", "npx tsoa spec", "npx tsoa routes"],
   };
 }
 
 export function buildProjectStructure(
   files: string[],
-  metrics?: StructureMetrics
+  metrics?: StructureMetrics,
 ): ProjectStructure {
   const structure: ProjectStructure = {
     hasPackageJson: false,
@@ -394,26 +426,26 @@ export function buildProjectStructure(
     if (PACKAGE_MANIFESTS.has(base)) {
       structure.hasPackageJson = true;
       structure.importableFiles.push(file);
-    } else if (base === 'cargo.toml') {
+    } else if (base === "cargo.toml") {
       structure.hasCargoToml = true;
       structure.importableFiles.push(file);
-    } else if (base === 'dockerfile' || base.startsWith('dockerfile.')) {
+    } else if (base === "dockerfile" || base.startsWith("dockerfile.")) {
       structure.hasDockerfile = true;
       structure.importableFiles.push(file);
-    } else if (ext === '.cue') {
+    } else if (ext === ".cue") {
       structure.hasCueFiles = true;
       structure.importableFiles.push(file);
-    } else if (ext === '.yaml' || ext === '.yml') {
+    } else if (ext === ".yaml" || ext === ".yml") {
       structure.hasYamlFiles = true;
       if (isInfrastructureYaml(base)) {
         structure.importableFiles.push(file);
       }
-    } else if (ext === '.json') {
+    } else if (ext === ".json") {
       structure.hasJsonFiles = true;
       if (isConfigJson(base)) {
         structure.importableFiles.push(file);
       }
-    } else if (ext === '.tf' || ext === '.tf.json') {
+    } else if (ext === ".tf" || ext === ".tf.json") {
       structure.importableFiles.push(file);
     }
   }
@@ -443,7 +475,7 @@ export async function analyzeProjectFiles(
   projectId: string,
   projectName: string,
   files: string[],
-  options: AnalysisOptions = {}
+  options: AnalysisOptions = {},
 ): Promise<TreeAnalysisResult> {
   const structure = options.structure ?? buildProjectStructure(files);
   const artifacts: AnalyzedArtifact[] = [];
@@ -457,7 +489,7 @@ export async function analyzeProjectFiles(
       ...classified,
       metadata: {
         ...classified.metadata,
-        detectedBy: 'tree-analysis',
+        detectedBy: "tree-analysis",
       },
     } satisfies AnalyzedArtifact;
 
@@ -467,19 +499,19 @@ export async function analyzeProjectFiles(
 
   if (options.fetcher) {
     const queue = new FetchQueue(
-      path => options.fetcher!.fetchText(path),
-      options.maxConcurrency ?? 4
+      (path) => options.fetcher!.fetchText(path),
+      options.maxConcurrency ?? 4,
     );
     const parseTargets = collectParserTargets(files);
-    const parsePromises = parseTargets.map(target =>
-      queue.enqueue(target.path, target.priority).then(async content => {
+    const parsePromises = parseTargets.map((target) =>
+      queue.enqueue(target.path, target.priority).then(async (content) => {
         if (!content) return;
         await target.parser.parse(content, {
           projectId,
           projectName,
           filePath: target.path,
           artifact: artifactsByPath.get(target.path),
-          addArtifact: artifact => {
+          addArtifact: (artifact) => {
             artifacts.push(artifact);
             if (artifact.filePath) {
               artifactsByPath.set(artifact.filePath, artifact);
@@ -488,7 +520,7 @@ export async function analyzeProjectFiles(
           structure,
           allFiles: files,
         });
-      })
+      }),
     );
 
     await Promise.all(parsePromises);
@@ -513,7 +545,7 @@ export async function analyzeProjectFiles(
       artifactsByName,
       options.projectRoot,
       projectName,
-      files
+      files,
     );
   }
 
@@ -526,8 +558,8 @@ export async function analyzeProjectFiles(
     }
   }
 
-  const serviceCount = artifacts.filter(a => a.type === 'service').length;
-  const databaseCount = artifacts.filter(a => a.type === 'database').length;
+  const serviceCount = artifacts.filter((a) => a.type === "service").length;
+  const databaseCount = artifacts.filter((a) => a.type === "database").length;
 
   return {
     structure,
@@ -551,13 +583,13 @@ async function annotateFrontendRoutes(
   artifactsByName: Map<string, AnalyzedArtifact>,
   projectRoot: string,
   projectName: string,
-  files: string[]
+  files: string[],
 ): Promise<void> {
   try {
     const normalizedFiles = files.map(normalizeRelativePath);
 
     for (const artifact of artifacts) {
-      const packageJsonPath = artifact.filePath?.endsWith('package.json')
+      const packageJsonPath = artifact.filePath?.endsWith("package.json")
         ? path.resolve(projectRoot, artifact.filePath)
         : null;
 
@@ -571,14 +603,14 @@ async function annotateFrontendRoutes(
 
       const packageRoot = path.dirname(packageJsonPath);
       const packageRelativeRoot = normalizeRelativePath(path.relative(projectRoot, packageRoot));
-      const packageFiles = normalizedFiles.filter(relative => {
-        if (!packageRelativeRoot || packageRelativeRoot === '.') {
-          return !relative.includes('node_modules/') && /\.(tsx?|jsx?)$/i.test(relative);
+      const packageFiles = normalizedFiles.filter((relative) => {
+        if (!packageRelativeRoot || packageRelativeRoot === ".") {
+          return !relative.includes("node_modules/") && /\.(tsx?|jsx?)$/i.test(relative);
         }
         return relative === packageRelativeRoot || relative.startsWith(`${packageRelativeRoot}/`);
       });
 
-      const candidateRelativeFiles = packageFiles.filter(relative => {
+      const candidateRelativeFiles = packageFiles.filter((relative) => {
         if (!/\.(tsx?|jsx?)$/i.test(relative)) return false;
         if (shouldIgnoreFrontendFile(relative)) return false;
         return true;
@@ -592,7 +624,7 @@ async function annotateFrontendRoutes(
         const absolutePath = path.resolve(projectRoot, relativePath);
         let content: string;
         try {
-          content = await fs.readFile(absolutePath, 'utf-8');
+          content = await fs.readFile(absolutePath, "utf-8");
         } catch {
           continue;
         }
@@ -613,7 +645,7 @@ async function annotateFrontendRoutes(
       const frameworks = detectFrontendFrameworks(pkg);
       const routeTree = buildRouteTree(pkg.name ?? artifact.name, uniqueRoutes);
 
-      const normalizedRoutes = uniqueRoutes.map(route => ({
+      const normalizedRoutes = uniqueRoutes.map((route) => ({
         path: route.path,
         filePath: route.filePath,
         routerType: route.routerType,
@@ -621,9 +653,9 @@ async function annotateFrontendRoutes(
         metadata: route.metadata,
       }));
 
-      const routerTypeSummary = normalizedRoutes.some(route => route.routerType === 'next')
-        ? 'next'
-        : 'react-router';
+      const routerTypeSummary = normalizedRoutes.some((route) => route.routerType === "next")
+        ? "next"
+        : "react-router";
 
       const analysis = {
         packageName: pkg.name ?? artifact.name,
@@ -638,18 +670,18 @@ async function annotateFrontendRoutes(
         ],
         routeTree,
         scannedAt: new Date().toISOString(),
-        source: 'static-frontend-scanner',
+        source: "static-frontend-scanner",
       };
 
       const existingMetadata = artifact.metadata ?? {};
-      artifact.type = 'frontend';
+      artifact.type = "frontend";
       artifact.metadata = {
         ...existingMetadata,
         frontendAnalysis: analysis,
-        detectedType: existingMetadata.detectedType ?? 'frontend',
+        detectedType: existingMetadata.detectedType ?? "frontend",
         classification: existingMetadata.classification ?? {
-          source: 'manifest',
-          reason: 'frontend-detection',
+          source: "manifest",
+          reason: "frontend-detection",
         },
       };
 
@@ -659,20 +691,20 @@ async function annotateFrontendRoutes(
       }
     }
   } catch (error) {
-    console.warn('[project-analysis] frontend route enrichment failed', error);
+    console.warn("[project-analysis] frontend route enrichment failed", error);
   }
 }
 
 function normalizeRelativePath(value: string): string {
-  return value.replace(/\\+/g, '/');
+  return value.replace(/\\+/g, "/");
 }
 
 async function readPackageManifest(packageJsonPath: string): Promise<any | null> {
   try {
-    const raw = await fs.readFile(packageJsonPath, 'utf-8');
+    const raw = await fs.readFile(packageJsonPath, "utf-8");
     return JSON.parse(raw);
   } catch (error) {
-    console.warn('[project-analysis] failed to read package manifest', {
+    console.warn("[project-analysis] failed to read package manifest", {
       packageJsonPath,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -681,12 +713,12 @@ async function readPackageManifest(packageJsonPath: string): Promise<any | null>
 }
 
 function isFrontendArtifact(artifact: AnalyzedArtifact, pkg: any): boolean {
-  const explicitType = (artifact.type || '').toLowerCase();
-  if (explicitType === 'frontend') {
+  const explicitType = (artifact.type || "").toLowerCase();
+  if (explicitType === "frontend") {
     return true;
   }
-  const detectedType = String(artifact.metadata?.detectedType || '').toLowerCase();
-  if (detectedType === 'frontend') {
+  const detectedType = String(artifact.metadata?.detectedType || "").toLowerCase();
+  if (detectedType === "frontend") {
     return true;
   }
 
@@ -696,19 +728,19 @@ function isFrontendArtifact(artifact: AnalyzedArtifact, pkg: any): boolean {
   }
 
   const scripts = Object.keys(pkg.scripts || {});
-  return scripts.some(script =>
-    /next|vite|react-scripts|storybook|webpack-dev-server/i.test(script)
+  return scripts.some((script) =>
+    /next|vite|react-scripts|storybook|webpack-dev-server/i.test(script),
   );
 }
 
 function detectFrontendFrameworks(pkg: any): string[] {
   const frameworks = new Set<string>();
   const deps = collectDependencies(pkg);
-  if (deps.has('next')) frameworks.add('next');
-  if (deps.has('react')) frameworks.add('react');
-  if (deps.has('react-router') || deps.has('react-router-dom')) frameworks.add('react-router');
-  if (deps.has('vue') || deps.has('nuxt') || deps.has('@vue/runtime-dom')) frameworks.add('vue');
-  if (deps.has('svelte') || deps.has('@sveltejs/kit')) frameworks.add('svelte');
+  if (deps.has("next")) frameworks.add("next");
+  if (deps.has("react")) frameworks.add("react");
+  if (deps.has("react-router") || deps.has("react-router-dom")) frameworks.add("react-router");
+  if (deps.has("vue") || deps.has("nuxt") || deps.has("@vue/runtime-dom")) frameworks.add("vue");
+  if (deps.has("svelte") || deps.has("@sveltejs/kit")) frameworks.add("svelte");
   return Array.from(frameworks);
 }
 
@@ -720,7 +752,7 @@ function collectDependencies(pkg: any): Set<string> {
     pkg.optionalDependencies,
   ];
   const deps = new Set<string>();
-  depSources.forEach(source => {
+  depSources.forEach((source) => {
     if (!source) return;
     for (const key of Object.keys(source)) {
       deps.add(key.toLowerCase());
@@ -740,13 +772,13 @@ const FRONTEND_FILE_IGNORE_PATTERNS = [
 ];
 
 function shouldIgnoreFrontendFile(relativePath: string): boolean {
-  return FRONTEND_FILE_IGNORE_PATTERNS.some(pattern => pattern.test(relativePath));
+  return FRONTEND_FILE_IGNORE_PATTERNS.some((pattern) => pattern.test(relativePath));
 }
 
 function extractNextRoutes(packageRelativeRoot: string, files: string[]): FrontendRouteInfo[] {
   const routes: FrontendRouteInfo[] = [];
   const prefix =
-    packageRelativeRoot && packageRelativeRoot !== '.' ? `${packageRelativeRoot}/` : '';
+    packageRelativeRoot && packageRelativeRoot !== "." ? `${packageRelativeRoot}/` : "";
 
   const seen = new Set<string>();
 
@@ -755,34 +787,34 @@ function extractNextRoutes(packageRelativeRoot: string, files: string[]): Fronte
     const withinPackage = prefix ? relative.slice(prefix.length) : relative;
     const normalized = normalizeRelativePath(withinPackage);
 
-    if (normalized.startsWith('node_modules/')) continue;
+    if (normalized.startsWith("node_modules/")) continue;
 
-    if (normalized.startsWith('pages/')) {
+    if (normalized.startsWith("pages/")) {
       const routeInfo = deriveNextPagesRoute(normalized);
       if (routeInfo && !seen.has(routeInfo.key)) {
         seen.add(routeInfo.key);
         routes.push({
           path: routeInfo.path,
           filePath: prefix ? `${prefix}${routeInfo.relativeFile}` : routeInfo.relativeFile,
-          routerType: 'next',
+          routerType: "next",
           component: routeInfo.component,
           metadata: {
-            kind: 'next-pages',
+            kind: "next-pages",
             dynamic: routeInfo.dynamicSegments,
           },
         });
       }
-    } else if (normalized.startsWith('app/')) {
+    } else if (normalized.startsWith("app/")) {
       const routeInfo = deriveNextAppRoute(normalized);
       if (routeInfo && !seen.has(routeInfo.key)) {
         seen.add(routeInfo.key);
         routes.push({
           path: routeInfo.path,
           filePath: prefix ? `${prefix}${routeInfo.relativeFile}` : routeInfo.relativeFile,
-          routerType: 'next',
+          routerType: "next",
           component: routeInfo.component,
           metadata: {
-            kind: 'next-app',
+            kind: "next-app",
             dynamic: routeInfo.dynamicSegments,
             segment: routeInfo.segment,
           },
@@ -802,26 +834,26 @@ function deriveNextPagesRoute(relativeFile: string): {
   dynamicSegments: string[];
 } | null {
   if (!/\.(tsx|ts|jsx|js)$/i.test(relativeFile)) return null;
-  if (relativeFile.endsWith('.d.ts')) return null;
+  if (relativeFile.endsWith(".d.ts")) return null;
 
-  const withoutPrefix = relativeFile.replace(/^pages\//, '');
-  const withoutExt = withoutPrefix.replace(/\.(tsx|ts|jsx|js)$/i, '');
+  const withoutPrefix = relativeFile.replace(/^pages\//, "");
+  const withoutExt = withoutPrefix.replace(/\.(tsx|ts|jsx|js)$/i, "");
 
-  if (withoutExt === '_app' || withoutExt === '_document') return null;
+  if (withoutExt === "_app" || withoutExt === "_document") return null;
 
-  const segments = withoutExt.split('/').filter(Boolean);
+  const segments = withoutExt.split("/").filter(Boolean);
   const dynamicSegments: string[] = [];
-  const transformedSegments = segments.map(segment =>
-    transformNextSegment(segment, dynamicSegments)
+  const transformedSegments = segments.map((segment) =>
+    transformNextSegment(segment, dynamicSegments),
   );
-  const joined = transformedSegments.join('/');
+  const joined = transformedSegments.join("/");
   const pathValue =
-    joined === '' || joined === 'index' ? '/' : `/${joined.replace(/\/?index$/, '')}`;
+    joined === "" || joined === "index" ? "/" : `/${joined.replace(/\/?index$/, "")}`;
 
   return {
     key: `${pathValue}@pages`,
     path: pathValue,
-    component: withoutExt || 'IndexPage',
+    component: withoutExt || "IndexPage",
     relativeFile,
     dynamicSegments,
   };
@@ -836,41 +868,41 @@ function deriveNextAppRoute(relativeFile: string): {
   segment: string;
 } | null {
   if (!/\.(tsx|ts|jsx|js)$/i.test(relativeFile)) return null;
-  if (!relativeFile.endsWith('/page.tsx') && !relativeFile.endsWith('/page.ts')) return null;
+  if (!relativeFile.endsWith("/page.tsx") && !relativeFile.endsWith("/page.ts")) return null;
 
-  const withoutPrefix = relativeFile.replace(/^app\//, '');
-  const withoutSuffix = withoutPrefix.replace(/\/page\.(tsx|ts)$/i, '');
-  const segments = withoutSuffix.split('/').filter(Boolean);
+  const withoutPrefix = relativeFile.replace(/^app\//, "");
+  const withoutSuffix = withoutPrefix.replace(/\/page\.(tsx|ts)$/i, "");
+  const segments = withoutSuffix.split("/").filter(Boolean);
   const dynamicSegments: string[] = [];
-  const transformedSegments = segments.map(segment =>
-    transformNextSegment(segment, dynamicSegments)
+  const transformedSegments = segments.map((segment) =>
+    transformNextSegment(segment, dynamicSegments),
   );
-  const joined = transformedSegments.join('/');
-  const pathValue = joined ? `/${joined}` : '/';
+  const joined = transformedSegments.join("/");
+  const pathValue = joined ? `/${joined}` : "/";
 
   return {
     key: `${pathValue}@app`,
     path: pathValue,
-    component: segments.length ? segments[segments.length - 1] : 'page',
+    component: segments.length ? segments[segments.length - 1] : "page",
     relativeFile,
     dynamicSegments,
-    segment: withoutSuffix || 'root',
+    segment: withoutSuffix || "root",
   };
 }
 
 function transformNextSegment(segment: string, dynamicSegments: string[]): string {
   if (!segment) return segment;
-  if (segment.startsWith('[[...') && segment.endsWith(']]')) {
+  if (segment.startsWith("[[...") && segment.endsWith("]]")) {
     const name = segment.slice(4, -2);
     dynamicSegments.push(name);
     return `:${name}*?`;
   }
-  if (segment.startsWith('[...') && segment.endsWith(']')) {
+  if (segment.startsWith("[...") && segment.endsWith("]")) {
     const name = segment.slice(4, -1);
     dynamicSegments.push(name);
     return `:${name}*`;
   }
-  if (segment.startsWith('[') && segment.endsWith(']')) {
+  if (segment.startsWith("[") && segment.endsWith("]")) {
     const name = segment.slice(1, -1);
     dynamicSegments.push(name);
     return `:${name}`;
@@ -884,7 +916,7 @@ function extractReactRouterRoutes(content: string, relativePath: string): Fronte
     content,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TSX
+    ts.ScriptKind.TSX,
   );
   const routes: FrontendRouteInfo[] = [];
   const seen = new Set<string>();
@@ -892,16 +924,16 @@ function extractReactRouterRoutes(content: string, relativePath: string): Fronte
   const recordRoute = (
     pathValue: string | undefined,
     component?: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ) => {
     if (!pathValue) return;
     let normalized = pathValue.trim();
     if (!normalized) return;
-    if (normalized === 'index') {
-      normalized = '/';
+    if (normalized === "index") {
+      normalized = "/";
     }
-    if (!normalized.startsWith('/')) {
-      normalized = `/${normalized.replace(/^\//, '')}`;
+    if (!normalized.startsWith("/")) {
+      normalized = `/${normalized.replace(/^\//, "")}`;
     }
     const key = `${relativePath}:${normalized}`;
     if (seen.has(key)) return;
@@ -910,11 +942,11 @@ function extractReactRouterRoutes(content: string, relativePath: string): Fronte
     routes.push({
       path: normalized,
       filePath: relativePath,
-      routerType: 'react-router',
+      routerType: "react-router",
       component: component?.trim(),
       metadata: {
         ...metadata,
-        source: 'react-router-jsx',
+        source: "react-router-jsx",
       },
     });
   };
@@ -922,13 +954,13 @@ function extractReactRouterRoutes(content: string, relativePath: string): Fronte
   const visit = (node: ts.Node) => {
     if (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) {
       const tagName = node.tagName.getText(sourceFile);
-      if (tagName === 'Route') {
+      if (tagName === "Route") {
         const { path, component, meta } = extractRouteFromJsx(node, sourceFile);
         recordRoute(path, component, meta);
       }
     } else if (ts.isJsxElement(node)) {
       const tagName = node.openingElement.tagName.getText(sourceFile);
-      if (tagName === 'Route') {
+      if (tagName === "Route") {
         const { path, component, meta } = extractRouteFromJsx(node.openingElement, sourceFile);
         recordRoute(path, component, meta);
       }
@@ -937,7 +969,7 @@ function extractReactRouterRoutes(content: string, relativePath: string): Fronte
       if (objectRoute) {
         recordRoute(objectRoute.path, objectRoute.component, {
           ...objectRoute.metadata,
-          source: 'react-router-config',
+          source: "react-router-config",
         });
       }
     }
@@ -952,22 +984,22 @@ function extractReactRouterRoutes(content: string, relativePath: string): Fronte
 
 function extractRouteFromJsx(
   element: ts.JsxOpeningLikeElement,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
 ): { path?: string; component?: string; meta: Record<string, unknown> } {
   const attributes = element.attributes.properties;
   const meta: Record<string, unknown> = {};
   let pathValue: string | undefined;
   let componentName: string | undefined;
 
-  attributes.forEach(attr => {
+  attributes.forEach((attr) => {
     if (!ts.isJsxAttribute(attr)) return;
     const attrName = attr.name.getText(sourceFile);
-    if (attrName === 'path') {
+    if (attrName === "path") {
       pathValue = extractStringFromAttribute(attr, sourceFile);
-    } else if (attrName === 'index') {
-      pathValue = pathValue ?? 'index';
+    } else if (attrName === "index") {
+      pathValue = pathValue ?? "index";
       meta.index = true;
-    } else if (attrName === 'element' || attrName === 'Component' || attrName === 'component') {
+    } else if (attrName === "element" || attrName === "Component" || attrName === "component") {
       componentName = extractComponentName(attr, sourceFile);
     } else if (attr.initializer) {
       const rawValue = attr.initializer.getText(sourceFile);
@@ -980,13 +1012,13 @@ function extractRouteFromJsx(
 
 function extractRouteFromObjectLiteral(
   node: ts.ObjectLiteralExpression,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
 ): { path?: string; component?: string; metadata: Record<string, unknown> } | null {
   let pathValue: string | undefined;
   let componentName: string | undefined;
   const metadata: Record<string, unknown> = {};
 
-  node.properties.forEach(property => {
+  node.properties.forEach((property) => {
     if (!ts.isPropertyAssignment(property)) return;
     const name =
       property.name && ts.isIdentifier(property.name)
@@ -994,9 +1026,9 @@ function extractRouteFromObjectLiteral(
         : property.name?.getText(sourceFile);
     if (!name) return;
 
-    if (name === 'path') {
+    if (name === "path") {
       pathValue = extractStringFromExpression(property.initializer, sourceFile);
-    } else if (name === 'element' || name === 'Component' || name === 'component') {
+    } else if (name === "element" || name === "Component" || name === "component") {
       componentName = extractComponentFromExpression(property.initializer, sourceFile);
     } else {
       metadata[name] = property.initializer.getText(sourceFile);
@@ -1012,7 +1044,7 @@ function extractRouteFromObjectLiteral(
 
 function extractStringFromAttribute(
   attr: ts.JsxAttribute,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
 ): string | undefined {
   if (!attr.initializer) return undefined;
   if (ts.isStringLiteral(attr.initializer)) {
@@ -1026,7 +1058,7 @@ function extractStringFromAttribute(
 
 function extractStringFromExpression(
   expression: ts.Expression,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
 ): string | undefined {
   if (ts.isStringLiteral(expression)) {
     return expression.text;
@@ -1045,7 +1077,7 @@ function extractStringFromExpression(
 
 function extractComponentName(
   attr: ts.JsxAttribute,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
 ): string | undefined {
   if (!attr.initializer || !ts.isJsxExpression(attr.initializer)) return undefined;
   if (!attr.initializer.expression) return undefined;
@@ -1054,7 +1086,7 @@ function extractComponentName(
 
 function extractComponentFromExpression(
   exp: ts.Expression,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
 ): string | undefined {
   if (ts.isJsxElement(exp)) {
     return exp.openingElement.tagName.getText(sourceFile);
@@ -1073,7 +1105,7 @@ function extractComponentFromExpression(
 
 function deduplicateRoutes(routes: FrontendRouteInfo[]): FrontendRouteInfo[] {
   const map = new Map<string, FrontendRouteInfo>();
-  routes.forEach(route => {
+  routes.forEach((route) => {
     const key = `${route.path}::${route.filePath}`;
     if (!map.has(key)) {
       map.set(key, route);
@@ -1085,7 +1117,7 @@ function deduplicateRoutes(routes: FrontendRouteInfo[]): FrontendRouteInfo[] {
 function buildRouteTree(packageName: string, routes: FrontendRouteInfo[]) {
   return {
     name: packageName,
-    children: routes.map(route => ({
+    children: routes.map((route) => ({
       id: `${packageName}:${route.path}`,
       label: route.path,
       routerType: route.routerType,
@@ -1103,46 +1135,46 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
   const name = prettifyName(filePath);
   const id = makeArtifactId(projectId, filePath);
 
-  if (base === 'package.json') {
+  if (base === "package.json") {
     return {
       id,
       name: `${name}-service`,
-      type: 'service',
-      description: 'Node.js service detected from package.json manifest.',
-      language: 'nodejs',
+      type: "service",
+      description: "Node.js service detected from package.json manifest.",
+      language: "nodejs",
       framework: null,
       metadata: {
         filePath,
-        manifest: 'package.json',
+        manifest: "package.json",
       },
       filePath,
       links: [],
     };
   }
 
-  if (base === 'cargo.toml') {
+  if (base === "cargo.toml") {
     return {
       id,
       name: `${name}-module`,
-      type: 'module',
-      description: 'Rust crate detected from Cargo manifest.',
-      language: 'rust',
+      type: "module",
+      description: "Rust crate detected from Cargo manifest.",
+      language: "rust",
       framework: null,
       metadata: {
         filePath,
-        manifest: 'cargo.toml',
+        manifest: "cargo.toml",
       },
       filePath,
       links: [],
     };
   }
 
-  if (base === 'dockerfile' || base.startsWith('dockerfile.')) {
+  if (base === "dockerfile" || base.startsWith("dockerfile.")) {
     return {
       id,
       name: `${name}-container`,
-      type: 'service',
-      description: 'Dockerfile detected for containerized service.',
+      type: "service",
+      description: "Dockerfile detected for containerized service.",
       language: null,
       framework: null,
       metadata: {
@@ -1159,7 +1191,7 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
     return {
       id,
       name: displayName,
-      type: 'infrastructure',
+      type: "infrastructure",
       description: `Docker Compose configuration detected in ${displayName}.`,
       language: null,
       framework: null,
@@ -1172,12 +1204,12 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
     };
   }
 
-  if (ext === '.cue') {
+  if (ext === ".cue") {
     return {
       id,
       name: `${name}-cue`,
-      type: 'config',
-      description: 'CUE configuration file detected.',
+      type: "config",
+      description: "CUE configuration file detected.",
       language: null,
       framework: null,
       metadata: {
@@ -1189,12 +1221,12 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
     };
   }
 
-  if ((ext === '.yaml' || ext === '.yml') && isInfrastructureYaml(base)) {
+  if ((ext === ".yaml" || ext === ".yml") && isInfrastructureYaml(base)) {
     return {
       id,
       name: `${name}-k8s`,
-      type: 'infrastructure',
-      description: 'Infrastructure definition detected from YAML.',
+      type: "infrastructure",
+      description: "Infrastructure definition detected from YAML.",
       language: null,
       framework: null,
       metadata: {
@@ -1206,12 +1238,12 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
     };
   }
 
-  if (ext === '.tf' || ext === '.tf.json') {
+  if (ext === ".tf" || ext === ".tf.json") {
     return {
       id,
       name: `${name}-terraform`,
-      type: 'infrastructure',
-      description: 'Terraform IaC file detected.',
+      type: "infrastructure",
+      description: "Terraform IaC file detected.",
       language: null,
       framework: null,
       metadata: {
@@ -1223,17 +1255,17 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
     };
   }
 
-  if (DATABASE_HINTS.some(hint => lower.includes(hint))) {
+  if (DATABASE_HINTS.some((hint) => lower.includes(hint))) {
     return {
       id,
       name: `${name}-database`,
-      type: 'database',
-      description: 'Database-related definition detected.',
+      type: "database",
+      description: "Database-related definition detected.",
       language: null,
       framework: null,
       metadata: {
         filePath,
-        hint: 'database-file-name',
+        hint: "database-file-name",
       },
       filePath,
       links: [],
@@ -1244,18 +1276,18 @@ function classifyFile(projectId: string, filePath: string): AnalyzedArtifact | n
 }
 
 function makeArtifactId(projectId: string, filePath: string): string {
-  const hash = createHash('sha1').update(`${projectId}:${filePath}`).digest('hex');
+  const hash = createHash("sha1").update(`${projectId}:${filePath}`).digest("hex");
   return `artifact-${hash}`;
 }
 
 function prettifyName(filePath: string): string {
   const base = path.basename(filePath);
-  const withoutExt = base.replace(path.extname(base), '');
+  const withoutExt = base.replace(path.extname(base), "");
   return (
     withoutExt
-      .replace(/[^a-z0-9]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase() || 'artifact'
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-+|-+$/g, "")
+      .toLowerCase() || "artifact"
   );
 }
 
@@ -1264,11 +1296,11 @@ function isInfrastructureYaml(base: string): boolean {
     return true;
   }
 
-  return KUBERNETES_KEYWORDS.some(keyword => base.includes(keyword));
+  return KUBERNETES_KEYWORDS.some((keyword) => base.includes(keyword));
 }
 
 function isConfigJson(base: string): boolean {
-  return base === 'package.json' || base.endsWith('config.json') || base.includes('manifest');
+  return base === "package.json" || base.endsWith("config.json") || base.includes("manifest");
 }
 
 interface ParserContext {
@@ -1290,8 +1322,8 @@ interface ParserDefinition {
 
 const PARSERS: ParserDefinition[] = [
   {
-    name: 'dockerfile',
-    matches: filePath => path.basename(filePath).toLowerCase().startsWith('dockerfile'),
+    name: "dockerfile",
+    matches: (filePath) => path.basename(filePath).toLowerCase().startsWith("dockerfile"),
     priority: 10,
     parse: (content, context) => {
       const artifact = context.artifact;
@@ -1305,15 +1337,15 @@ const PARSERS: ParserDefinition[] = [
         metadata.dockerfileContent = normalizedContent;
       }
 
-      const fromLine = lines.find(line => /^\s*FROM\s+/i.test(line));
+      const fromLine = lines.find((line) => /^\s*FROM\s+/i.test(line));
       if (fromLine) {
-        const baseImage = fromLine.replace(/^\s*FROM\s+/i, '').split('s')[0];
+        const baseImage = fromLine.replace(/^\s*FROM\s+/i, "").split("s")[0];
         metadata.baseImage = baseImage;
       }
 
       const exposePorts = lines
-        .filter(line => /^\s*EXPOSE\s+/i.test(line))
-        .flatMap(line => line.replace(/^\s*EXPOSE\s+/i, '').split(/\s+/))
+        .filter((line) => /^\s*EXPOSE\s+/i.test(line))
+        .flatMap((line) => line.replace(/^\s*EXPOSE\s+/i, "").split(/\s+/))
         .filter(Boolean);
 
       if (exposePorts.length > 0) {
@@ -1324,8 +1356,8 @@ const PARSERS: ParserDefinition[] = [
     },
   },
   {
-    name: 'docker-compose',
-    matches: filePath => DOCKER_COMPOSE_FILES.has(path.basename(filePath).toLowerCase()),
+    name: "docker-compose",
+    matches: (filePath) => DOCKER_COMPOSE_FILES.has(path.basename(filePath).toLowerCase()),
     priority: 9,
     parse: (content, context) => {
       let parsedYaml: any;
@@ -1338,10 +1370,10 @@ const PARSERS: ParserDefinition[] = [
       const artifact = context.artifact;
       if (!artifact) return;
 
-      if (typeof parsedYaml !== 'object' || parsedYaml === null) return;
+      if (typeof parsedYaml !== "object" || parsedYaml === null) return;
 
       const servicesSection = parsedYaml.services;
-      if (!servicesSection || typeof servicesSection !== 'object') return;
+      if (!servicesSection || typeof servicesSection !== "object") return;
 
       const serviceKeys = Object.keys(servicesSection);
       const composeServices: Array<Record<string, unknown>> = [];
@@ -1349,7 +1381,7 @@ const PARSERS: ParserDefinition[] = [
 
       for (const serviceName of serviceKeys) {
         const service = servicesSection[serviceName];
-        if (!service || typeof service !== 'object') continue;
+        if (!service || typeof service !== "object") continue;
 
         let serviceYaml: string | undefined;
         try {
@@ -1361,7 +1393,7 @@ const PARSERS: ParserDefinition[] = [
         const serviceArtifact: AnalyzedArtifact = {
           id: makeArtifactId(context.projectId, `${context.filePath}#${serviceName}`),
           name: serviceName,
-          type: 'service',
+          type: "service",
           description: `Service defined in docker-compose file ${context.filePath}`,
           language: null,
           framework: null,
@@ -1379,7 +1411,7 @@ const PARSERS: ParserDefinition[] = [
           filePath: context.filePath,
           links: [
             {
-              type: 'defined_in',
+              type: "defined_in",
               target: context.filePath,
             },
           ],
@@ -1406,13 +1438,13 @@ const PARSERS: ParserDefinition[] = [
         services: composeServices,
         composeServicesDetailed,
         composeYaml:
-          typeof content === 'string' ? content.trim() : YAML.dump(parsedYaml, { indent: 2 }),
+          typeof content === "string" ? content.trim() : YAML.dump(parsedYaml, { indent: 2 }),
       };
     },
   },
   {
-    name: 'package-json',
-    matches: filePath => path.basename(filePath).toLowerCase() === 'package.json',
+    name: "package-json",
+    matches: (filePath) => path.basename(filePath).toLowerCase() === "package.json",
     priority: 8,
     parse: (content, context) => {
       const artifact = context.artifact;
@@ -1421,8 +1453,8 @@ const PARSERS: ParserDefinition[] = [
       try {
         const pkg = JSON.parse(content);
         const manifestDescription =
-          typeof pkg.description === 'string' ? pkg.description.trim() : '';
-        const manifestVersion = typeof pkg.version === 'string' ? pkg.version.trim() : '';
+          typeof pkg.description === "string" ? pkg.description.trim() : "";
+        const manifestVersion = typeof pkg.version === "string" ? pkg.version.trim() : "";
         artifact.metadata = {
           ...artifact.metadata,
           package: {
@@ -1435,22 +1467,27 @@ const PARSERS: ParserDefinition[] = [
           },
         };
 
-        if (typeof pkg.name === 'string') {
+        if (typeof pkg.name === "string") {
           artifact.name = pkg.name;
         }
         if (manifestDescription) {
           artifact.description = manifestDescription;
         }
         if (pkg.dependencies) {
-          if (pkg.dependencies.express) artifact.framework = 'express';
-          if (pkg.dependencies.fastify) artifact.framework = 'fastify';
-          if (pkg.dependencies.nestjs) artifact.framework = 'nestjs';
+          if (pkg.dependencies.express) artifact.framework = "express";
+          if (pkg.dependencies.fastify) artifact.framework = "fastify";
+          if (pkg.dependencies.nestjs) artifact.framework = "nestjs";
         }
 
-        console.log('[project-analysis] parsed package manifest', {
+        console.log("[project-analysis] parsed package manifest", {
           path: context.filePath,
           originalType: artifact.type,
         });
+
+        const detectedLanguage = detectNodePackageLanguage(pkg);
+        if (detectedLanguage) {
+          artifact.language = detectedLanguage;
+        }
 
         const classification = classifyPackageManifest(pkg);
         if (classification) {
@@ -1460,15 +1497,15 @@ const PARSERS: ParserDefinition[] = [
             ...artifact.metadata,
             detectedType: classification.detectedType,
             classification: {
-              source: 'manifest',
+              source: "manifest",
               reason: classification.reason,
               previousType,
             },
           };
-          if (classification.type === 'tool' && !artifact.framework) {
-            artifact.framework = 'cli';
+          if (classification.type === "tool" && !artifact.framework) {
+            artifact.framework = "cli";
           }
-          console.log('[project-analysis] classified package', {
+          console.log("[project-analysis] classified package", {
             path: context.filePath,
             name: pkg.name,
             type: artifact.type,
@@ -1490,16 +1527,16 @@ const PARSERS: ParserDefinition[] = [
     },
   },
   {
-    name: 'cargo-toml',
-    matches: filePath => path.basename(filePath).toLowerCase() === 'cargo.toml',
+    name: "cargo-toml",
+    matches: (filePath) => path.basename(filePath).toLowerCase() === "cargo.toml",
     priority: 8,
     parse: (content, context) => {
       const artifact = context.artifact;
       if (!artifact) return;
 
       const tomlParser = (globalThis as unknown as { Bun?: typeof Bun }).Bun?.TOML;
-      if (!tomlParser || typeof tomlParser.parse !== 'function') {
-        console.warn('[project-analysis] TOML parser not available in runtime');
+      if (!tomlParser || typeof tomlParser.parse !== "function") {
+        console.warn("[project-analysis] TOML parser not available in runtime");
         return;
       }
 
@@ -1507,24 +1544,24 @@ const PARSERS: ParserDefinition[] = [
       try {
         cargo = tomlParser.parse(content) as Record<string, any>;
       } catch (error) {
-        console.warn('[project-analysis] failed to parse Cargo manifest', {
+        console.warn("[project-analysis] failed to parse Cargo manifest", {
           path: context.filePath,
           error,
         });
         return;
       }
 
-      if (!cargo || typeof cargo !== 'object') {
+      if (!cargo || typeof cargo !== "object") {
         return;
       }
 
       const packageSection = cargo.package ?? {};
       const manifestName =
-        typeof packageSection.name === 'string' ? packageSection.name.trim() : '';
+        typeof packageSection.name === "string" ? packageSection.name.trim() : "";
       const manifestDescription =
-        typeof packageSection.description === 'string' ? packageSection.description.trim() : '';
+        typeof packageSection.description === "string" ? packageSection.description.trim() : "";
       const manifestVersion =
-        typeof packageSection.version === 'string' ? packageSection.version.trim() : '';
+        typeof packageSection.version === "string" ? packageSection.version.trim() : "";
 
       if (manifestName) {
         artifact.name = manifestName;
@@ -1533,19 +1570,19 @@ const PARSERS: ParserDefinition[] = [
         artifact.description = manifestDescription;
       }
 
-      artifact.language = 'rust';
+      artifact.language = "rust";
 
       const runtimeDeps = Object.keys((cargo.dependencies as Record<string, unknown>) ?? {});
-      const devDeps = Object.keys((cargo['dev-dependencies'] as Record<string, unknown>) ?? {});
-      const buildDeps = Object.keys((cargo['build-dependencies'] as Record<string, unknown>) ?? {});
+      const devDeps = Object.keys((cargo["dev-dependencies"] as Record<string, unknown>) ?? {});
+      const buildDeps = Object.keys((cargo["build-dependencies"] as Record<string, unknown>) ?? {});
       const dependencyNames = collectCargoDependencyNames(cargo);
 
-      const rawBin = cargo.bin ?? cargo.binaries ?? cargo['bin'];
+      const rawBin = cargo.bin ?? cargo.binaries ?? cargo["bin"];
       const cargoBinaries = extractCargoBinaryNames(rawBin);
       const hasBinaries =
         cargoBinaries.length > 0 ||
-        Boolean(packageSection['default-run']) ||
-        Boolean(packageSection['default_bin']);
+        Boolean(packageSection["default-run"]) ||
+        Boolean(packageSection["default_bin"]);
       const hasLibrary = Boolean(cargo.lib);
 
       const classification = classifyCargoManifest({
@@ -1561,7 +1598,7 @@ const PARSERS: ParserDefinition[] = [
 
       artifact.type = classification.type;
 
-      if (classification.type === 'tool' && cargoBinaries.length > 0) {
+      if (classification.type === "tool" && cargoBinaries.length > 0) {
         artifact.name = cargoBinaries[0];
       }
 
@@ -1569,7 +1606,7 @@ const PARSERS: ParserDefinition[] = [
         ...artifact.metadata,
         detectedType: classification.detectedType,
         classification: {
-          source: 'cargo-manifest',
+          source: "cargo-manifest",
           reason: classification.reason,
           previousType,
         },
@@ -1592,31 +1629,31 @@ const PARSERS: ParserDefinition[] = [
     },
   },
   {
-    name: 'prisma',
-    matches: filePath => path.basename(filePath).toLowerCase().includes('schema.prisma'),
+    name: "prisma",
+    matches: (filePath) => path.basename(filePath).toLowerCase().includes("schema.prisma"),
     priority: 6,
     parse: (content, context) => {
       const artifact = context.artifact;
       if (!artifact) return;
 
       const datasourceMatch = content.match(
-        /datasource\s+\w+\s+\{[\s\S]*?provider\s*=\s*"([^"]+)"/
+        /datasource\s+\w+\s+\{[\s\S]*?provider\s*=\s*"([^"]+)"/,
       );
       if (datasourceMatch) {
         artifact.metadata = {
           ...artifact.metadata,
           prismaProvider: datasourceMatch[1],
         };
-        artifact.type = 'database';
+        artifact.type = "database";
         artifact.description = `Database schema (provider: ${datasourceMatch[1]})`;
       }
     },
   },
   {
-    name: 'kubernetes',
-    matches: filePath => {
+    name: "kubernetes",
+    matches: (filePath) => {
       const base = path.basename(filePath).toLowerCase();
-      if (!(base.endsWith('.yaml') || base.endsWith('.yml'))) return false;
+      if (!(base.endsWith(".yaml") || base.endsWith(".yml"))) return false;
       return isInfrastructureYaml(base);
     },
     priority: 5,
@@ -1627,8 +1664,8 @@ const PARSERS: ParserDefinition[] = [
       try {
         const documents = YAML.loadAll(content).filter(Boolean) as any[];
         const summaries = documents
-          .filter(doc => typeof doc === 'object')
-          .map(doc => ({
+          .filter((doc) => typeof doc === "object")
+          .map((doc) => ({
             kind: doc.kind,
             name: doc.metadata?.name,
           }));
@@ -1645,10 +1682,10 @@ const PARSERS: ParserDefinition[] = [
     },
   },
   {
-    name: 'terraform',
-    matches: filePath => {
+    name: "terraform",
+    matches: (filePath) => {
       const base = path.basename(filePath).toLowerCase();
-      return base.endsWith('.tf') || base.endsWith('.tf.json');
+      return base.endsWith(".tf") || base.endsWith(".tf.json");
     },
     priority: 4,
     parse: (content, context) => {

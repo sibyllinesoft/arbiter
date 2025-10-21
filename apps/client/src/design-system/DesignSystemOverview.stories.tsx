@@ -4,7 +4,7 @@
  * Professional developer tool interface patterns and components
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   AlertTriangle,
   ArrowRight,
@@ -34,32 +34,32 @@ import {
   Trash2,
   Users,
   XCircle,
-} from 'lucide-react';
+} from "lucide-react";
 
-import Breadcrumbs from './components/Breadcrumbs';
+import Breadcrumbs from "./components/Breadcrumbs";
 // Import all design system components
-import Button from './components/Button';
-import Card from './components/Card';
-import Checkbox from './components/Checkbox';
-import Dialog from './components/Dialog';
-import Input from './components/Input';
-import Modal from './components/Modal';
-import NavItem from './components/NavItem';
-import Radio from './components/Radio';
-import Select from './components/Select';
-import Sidebar from './components/Sidebar';
-import StatusBadge from './components/StatusBadge';
-import Tabs from './components/Tabs';
-import Toast from './components/Toast';
+import Button from "./components/Button";
+import Card from "./components/Card";
+import Checkbox from "./components/Checkbox";
+import Dialog from "./components/Dialog";
+import Input from "./components/Input";
+import Modal from "./components/Modal";
+import NavItem from "./components/NavItem";
+import Radio from "./components/Radio";
+import Select from "./components/Select";
+import Sidebar from "./components/Sidebar";
+import StatusBadge from "./components/StatusBadge";
+import Tabs from "./components/Tabs";
+import Toast from "./components/Toast";
 
 // Import data and tokens
-import { storybookData } from '../test/storybook-data';
-import { colors, spacing, typography } from './tokens';
+import { storybookData } from "../test/storybook-data";
+import { colors, spacing, typography } from "./tokens";
 
 const meta = {
-  title: 'Design System/Overview',
+  title: "Design System/Overview",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component: `
@@ -87,7 +87,7 @@ The Graphite design system prioritizes:
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 } satisfies Meta;
 
 export default meta;
@@ -149,9 +149,9 @@ export const ApplicationShowcase: Story = {
         <div className="mb-6">
           <Breadcrumbs
             items={[
-              { id: 'projects', label: 'Projects', href: '#' },
-              { id: 'ecommerce-platform', label: 'E-commerce Platform', href: '#' },
-              { id: 'dashboard', label: 'Dashboard', href: '#', current: true },
+              { id: "projects", label: "Projects", href: "#" },
+              { id: "ecommerce-platform", label: "E-commerce Platform", href: "#" },
+              { id: "dashboard", label: "Dashboard", href: "#", current: true },
             ]}
           />
         </div>
@@ -257,19 +257,19 @@ export const ApplicationShowcase: Story = {
                       <div
                         className={`w-10 h-10 ${
                           index === 0
-                            ? 'bg-blue-100'
+                            ? "bg-blue-100"
                             : index === 1
-                              ? 'bg-green-100'
-                              : 'bg-purple-100'
+                              ? "bg-green-100"
+                              : "bg-purple-100"
                         } rounded-lg flex items-center justify-center`}
                       >
                         <Code
                           className={`h-5 w-5 ${
                             index === 0
-                              ? 'text-blue-600'
+                              ? "text-blue-600"
                               : index === 1
-                                ? 'text-green-600'
-                                : 'text-purple-600'
+                                ? "text-green-600"
+                                : "text-purple-600"
                           }`}
                         />
                       </div>
@@ -282,10 +282,10 @@ export const ApplicationShowcase: Story = {
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge
-                        variant={index === 0 ? 'success' : index === 1 ? 'pending' : 'warning'}
+                        variant={index === 0 ? "success" : index === 1 ? "pending" : "warning"}
                         size="xs"
                       >
-                        {index === 0 ? 'Active' : index === 1 ? 'Building' : 'Issues'}
+                        {index === 0 ? "Active" : index === 1 ? "Building" : "Issues"}
                       </StatusBadge>
                       <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4" />
@@ -374,14 +374,14 @@ export const ApplicationShowcase: Story = {
                     </div>
                     <StatusBadge
                       variant={
-                        member.status === 'online'
-                          ? 'active'
-                          : member.status === 'away'
-                            ? 'warning'
-                            : 'inactive'
+                        member.status === "online"
+                          ? "active"
+                          : member.status === "away"
+                            ? "warning"
+                            : "inactive"
                       }
                       size="xs"
-                      pulse={member.status === 'online'}
+                      pulse={member.status === "online"}
                     >
                       {member.status}
                     </StatusBadge>
@@ -803,9 +803,9 @@ export const ComponentShowcase: Story = {
                   label="Environment"
                   placeholder="Select environment"
                   options={[
-                    { value: 'dev', label: 'Development' },
-                    { value: 'staging', label: 'Staging' },
-                    { value: 'prod', label: 'Production' },
+                    { value: "dev", label: "Development" },
+                    { value: "staging", label: "Staging" },
+                    { value: "prod", label: "Production" },
                   ]}
                 />
               </div>

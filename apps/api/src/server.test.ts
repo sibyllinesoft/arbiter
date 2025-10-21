@@ -2,11 +2,13 @@
  * Basic tests for the Spec Workbench server
  */
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { SpecWorkbenchDB } from "./db.ts";
 import { SpecWorkbenchServer } from "./server.ts";
 import type { ServerConfig } from "./types.ts";
 
 describe("SpecWorkbenchServer", () => {
   let server: SpecWorkbenchServer;
+  let db: SpecWorkbenchDB;
   let testConfig: ServerConfig;
 
   beforeAll(async () => {
@@ -30,7 +32,8 @@ describe("SpecWorkbenchServer", () => {
       },
     };
 
-    server = new SpecWorkbenchServer(testConfig);
+    db = await SpecWorkbenchDB.create(testConfig);
+    server = new SpecWorkbenchServer(testConfig, db);
   });
 
   afterAll(async () => {

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'bun:test';
-import os from 'node:os';
-import path from 'node:path';
-import fs from 'fs-extra';
-import { GoPlugin } from '../go.js';
+import { describe, expect, it } from "bun:test";
+import os from "node:os";
+import path from "node:path";
+import fs from "fs-extra";
+import { GoPlugin } from "../go.js";
 import {
   type BuildConfig,
   type ComponentConfig,
@@ -16,31 +16,31 @@ import {
   initializeProject,
   registerPlugin,
   registry,
-} from '../index.js';
-import { PythonPlugin } from '../python.js';
-import { RustPlugin } from '../rust.js';
-import { TypeScriptPlugin } from '../typescript.js';
+} from "../index.js";
+import { PythonPlugin } from "../python.js";
+import { RustPlugin } from "../rust.js";
+import { TypeScriptPlugin } from "../typescript.js";
 
-describe('Language Plugin System', () => {
-  describe('LanguageRegistry', () => {
-    it('should create a new registry', () => {
+describe("Language Plugin System", () => {
+  describe("LanguageRegistry", () => {
+    it("should create a new registry", () => {
       const reg = new LanguageRegistry();
       expect(reg).toBeDefined();
       expect(reg.list()).toHaveLength(0);
     });
 
-    it('should register and retrieve plugins', () => {
+    it("should register and retrieve plugins", () => {
       const reg = new LanguageRegistry();
       const plugin = new TypeScriptPlugin();
 
       reg.register(plugin);
 
-      expect(reg.get('typescript')).toBe(plugin);
-      expect(reg.get('TypeScript')).toBe(plugin); // Case insensitive
+      expect(reg.get("typescript")).toBe(plugin);
+      expect(reg.get("TypeScript")).toBe(plugin); // Case insensitive
       expect(reg.list()).toHaveLength(1);
     });
 
-    it('should list all plugins', () => {
+    it("should list all plugins", () => {
       const reg = new LanguageRegistry();
       const tsPlugin = new TypeScriptPlugin();
       const pyPlugin = new PythonPlugin();
@@ -54,7 +54,7 @@ describe('Language Plugin System', () => {
       expect(plugins).toContain(pyPlugin);
     });
 
-    it('should get supported languages', () => {
+    it("should get supported languages", () => {
       const reg = new LanguageRegistry();
       const tsPlugin = new TypeScriptPlugin();
       const pyPlugin = new PythonPlugin();
@@ -63,45 +63,45 @@ describe('Language Plugin System', () => {
       reg.register(pyPlugin);
 
       const languages = reg.getSupportedLanguages();
-      expect(languages).toContain('typescript');
-      expect(languages).toContain('python');
+      expect(languages).toContain("typescript");
+      expect(languages).toContain("python");
     });
 
-    it('should check feature support', () => {
+    it("should check feature support", () => {
       const reg = new LanguageRegistry();
       const tsPlugin = new TypeScriptPlugin();
 
       reg.register(tsPlugin);
 
-      expect(reg.hasSupport('typescript', 'components')).toBe(true);
-      expect(reg.hasSupport('typescript', 'unknown-feature')).toBe(false);
-      expect(reg.hasSupport('unknown-language', 'components')).toBe(false);
+      expect(reg.hasSupport("typescript", "components")).toBe(true);
+      expect(reg.hasSupport("typescript", "unknown-feature")).toBe(false);
+      expect(reg.hasSupport("unknown-language", "components")).toBe(false);
     });
 
-    it('should return undefined for unregistered languages', () => {
+    it("should return undefined for unregistered languages", () => {
       const reg = new LanguageRegistry();
-      expect(reg.get('unknown')).toBeUndefined();
+      expect(reg.get("unknown")).toBeUndefined();
     });
   });
 
-  describe('Global registry', () => {
-    it('should have all plugins auto-registered', () => {
+  describe("Global registry", () => {
+    it("should have all plugins auto-registered", () => {
       const languages = registry.getSupportedLanguages();
-      expect(languages).toContain('typescript');
-      expect(languages).toContain('python');
-      expect(languages).toContain('go');
-      expect(languages).toContain('rust');
+      expect(languages).toContain("typescript");
+      expect(languages).toContain("python");
+      expect(languages).toContain("go");
+      expect(languages).toContain("rust");
     });
 
-    it('should allow registering new plugins', () => {
+    it("should allow registering new plugins", () => {
       const originalCount = registry.list().length;
 
       const mockPlugin: LanguagePlugin = {
-        name: 'Mock Plugin',
-        language: 'mock',
-        version: '1.0.0',
-        description: 'Test plugin',
-        supportedFeatures: ['test'],
+        name: "Mock Plugin",
+        language: "mock",
+        version: "1.0.0",
+        description: "Test plugin",
+        supportedFeatures: ["test"],
         generateService: async () => ({ files: [] }),
         initializeProject: async () => ({ files: [] }),
         generateBuildConfig: async () => ({ files: [] }),
@@ -110,27 +110,27 @@ describe('Language Plugin System', () => {
       registerPlugin(mockPlugin);
 
       expect(registry.list()).toHaveLength(originalCount + 1);
-      expect(registry.get('mock')).toBe(mockPlugin);
+      expect(registry.get("mock")).toBe(mockPlugin);
     });
   });
 
-  describe('TypeScript Plugin', () => {
+  describe("TypeScript Plugin", () => {
     const plugin = new TypeScriptPlugin();
 
-    it('should have correct metadata', () => {
-      expect(plugin.name).toBe('TypeScript Plugin');
-      expect(plugin.language).toBe('typescript');
-      expect(plugin.version).toBe('1.1.0');
-      expect(plugin.description).toContain('TypeScript');
-      expect(plugin.supportedFeatures).toContain('components');
-      expect(plugin.supportedFeatures).toContain('testing');
+    it("should have correct metadata", () => {
+      expect(plugin.name).toBe("TypeScript Plugin");
+      expect(plugin.language).toBe("typescript");
+      expect(plugin.version).toBe("1.1.0");
+      expect(plugin.description).toContain("TypeScript");
+      expect(plugin.supportedFeatures).toContain("components");
+      expect(plugin.supportedFeatures).toContain("testing");
     });
 
-    it('should generate components', async () => {
+    it("should generate components", async () => {
       const config: ComponentConfig = {
-        name: 'TestComponent',
-        type: 'component',
-        props: [{ name: 'message', type: 'string', required: true }],
+        name: "TestComponent",
+        type: "component",
+        props: [{ name: "message", type: "string", required: true }],
         styles: true,
         tests: true,
       };
@@ -141,16 +141,16 @@ describe('Language Plugin System', () => {
       expect(result.files.length).toBeGreaterThan(0);
 
       // Should include component file
-      const componentFile = result.files.find(f => f.path.includes('TestComponent.tsx'));
+      const componentFile = result.files.find((f) => f.path.includes("TestComponent.tsx"));
       expect(componentFile).toBeDefined();
-      expect(componentFile!.content).toContain('TestComponent');
+      expect(componentFile!.content).toContain("TestComponent");
     });
 
-    it('should generate services', async () => {
+    it("should generate services", async () => {
       const config: ServiceConfig = {
-        name: 'UserService',
-        type: 'api',
-        endpoints: ['/users', '/users/:id'],
+        name: "UserService",
+        type: "api",
+        endpoints: ["/users", "/users/:id"],
         auth: true,
         validation: true,
       };
@@ -161,15 +161,15 @@ describe('Language Plugin System', () => {
       expect(result.files.length).toBeGreaterThan(0);
 
       // Should include service file
-      const serviceFile = result.files.find(f => f.path.includes('UserService'));
+      const serviceFile = result.files.find((f) => f.path.includes("UserService"));
       expect(serviceFile).toBeDefined();
     });
 
-    it('should initialize projects', async () => {
+    it("should initialize projects", async () => {
       const config: ProjectConfig = {
-        name: 'test-app',
-        description: 'Test application',
-        features: ['react', 'typescript', 'vite'],
+        name: "test-app",
+        description: "Test application",
+        features: ["react", "typescript", "vite"],
         testing: true,
         docker: false,
       };
@@ -182,14 +182,14 @@ describe('Language Plugin System', () => {
       expect(result.scripts).toBeDefined();
 
       // Should include package.json
-      const packageFile = result.files.find(f => f.path === 'package.json');
+      const packageFile = result.files.find((f) => f.path === "package.json");
       expect(packageFile).toBeDefined();
-      expect(packageFile!.content).toContain('test-app');
+      expect(packageFile!.content).toContain("test-app");
     });
 
-    it('should generate build config', async () => {
+    it("should generate build config", async () => {
       const config: BuildConfig = {
-        target: 'production',
+        target: "production",
         optimization: true,
         bundling: true,
         typeChecking: true,
@@ -201,65 +201,67 @@ describe('Language Plugin System', () => {
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should honor Next.js framework configuration', async () => {
+    it("should honor Next.js framework configuration", async () => {
       const configuredPlugin = new TypeScriptPlugin();
-      configuredPlugin.configure({ pluginConfig: { framework: 'nextjs' } });
+      configuredPlugin.configure({ pluginConfig: { framework: "nextjs" } });
 
       const result = await configuredPlugin.initializeProject({
-        name: 'next-app',
-        description: 'Next.js application',
+        name: "next-app",
+        description: "Next.js application",
         features: [],
       });
 
-      const fileNames = result.files.map(file => file.path);
-      expect(fileNames).toContain('next.config.js');
-      expect(fileNames).toContain('app/page.tsx');
-      expect(fileNames).not.toContain('vite.config.ts');
-      expect(result.dependencies).toContain('next');
+      const fileNames = result.files.map((file) => file.path);
+      expect(fileNames).toContain("next.config.js");
+      expect(fileNames).toContain("app/page.tsx");
+      expect(fileNames).not.toContain("vite.config.ts");
+      expect(result.dependencies).toContain("next");
     });
 
-    it('should load component templates from override directory', async () => {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ts-plugin-'));
-      const overrideDir = path.join(tmpDir, 'typescript');
+    it("should load component templates from override directory", async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ts-plugin-"));
+      const overrideDir = path.join(tmpDir, "typescript");
       fs.ensureDirSync(overrideDir);
-      const overridePath = path.join(overrideDir, 'component.tsx.tpl');
+      const overridePath = path.join(overrideDir, "component.tsx.tpl");
       fs.writeFileSync(
         overridePath,
-        '/* override */\nexport const {{componentName}} = () => null;\n'
+        "/* override */\nexport const {{componentName}} = () => null;\n",
       );
 
       const configuredPlugin = new TypeScriptPlugin();
       configuredPlugin.configure({ templateOverrides: [overrideDir] });
 
       const result = await configuredPlugin.generateComponent!({
-        name: 'OverrideComponent',
-        type: 'component',
+        name: "OverrideComponent",
+        type: "component",
       });
 
-      const componentFile = result.files.find(file => file.path.endsWith('OverrideComponent.tsx'));
-      expect(componentFile?.content).toContain('/* override */');
+      const componentFile = result.files.find((file) =>
+        file.path.endsWith("OverrideComponent.tsx"),
+      );
+      expect(componentFile?.content).toContain("/* override */");
 
       fs.removeSync(tmpDir);
     });
   });
 
-  describe('Python Plugin', () => {
+  describe("Python Plugin", () => {
     const plugin = new PythonPlugin();
 
-    it('should have correct metadata', () => {
-      expect(plugin.name).toBe('Python Plugin');
-      expect(plugin.language).toBe('python');
-      expect(plugin.version).toBe('1.0.0');
-      expect(plugin.description).toContain('Python');
-      expect(plugin.supportedFeatures).toContain('api');
-      expect(plugin.supportedFeatures).toContain('async-services');
+    it("should have correct metadata", () => {
+      expect(plugin.name).toBe("Python Plugin");
+      expect(plugin.language).toBe("python");
+      expect(plugin.version).toBe("1.0.0");
+      expect(plugin.description).toContain("Python");
+      expect(plugin.supportedFeatures).toContain("api");
+      expect(plugin.supportedFeatures).toContain("async-services");
     });
 
-    it('should generate services', async () => {
+    it("should generate services", async () => {
       const config: ServiceConfig = {
-        name: 'UserAPI',
-        type: 'api',
-        endpoints: ['GET /users', 'GET /users/{id}'],
+        name: "UserAPI",
+        type: "api",
+        endpoints: ["GET /users", "GET /users/{id}"],
         database: true,
         auth: true,
       };
@@ -270,18 +272,18 @@ describe('Language Plugin System', () => {
       expect(result.files.length).toBeGreaterThan(0);
 
       const serviceFile = result.files.find(
-        f => f.path.includes('UserAPI') || f.path.includes('user') || f.path.includes('main')
+        (f) => f.path.includes("UserAPI") || f.path.includes("user") || f.path.includes("main"),
       );
       expect(serviceFile).toBeDefined();
-      expect(serviceFile!.content).toContain('FastAPI');
+      expect(serviceFile!.content).toContain("FastAPI");
     });
 
-    it('should initialize projects', async () => {
+    it("should initialize projects", async () => {
       const config: ProjectConfig = {
-        name: 'python-api',
-        description: 'Python API project',
-        features: ['fastapi', 'async', 'database'],
-        database: 'postgres',
+        name: "python-api",
+        description: "Python API project",
+        features: ["fastapi", "async", "database"],
+        database: "postgres",
         testing: true,
       };
 
@@ -290,13 +292,13 @@ describe('Language Plugin System', () => {
       expect(result.files).toBeDefined();
       expect(result.dependencies).toBeDefined();
 
-      const reqFile = result.files.find(f => f.path.includes('requirements'));
+      const reqFile = result.files.find((f) => f.path.includes("requirements"));
       expect(reqFile).toBeDefined();
     });
 
-    it('should generate build config', async () => {
+    it("should generate build config", async () => {
       const config: BuildConfig = {
-        target: 'production',
+        target: "production",
         optimization: true,
       };
 
@@ -307,23 +309,23 @@ describe('Language Plugin System', () => {
     });
   });
 
-  describe('Go Plugin', () => {
+  describe("Go Plugin", () => {
     const plugin = new GoPlugin();
 
-    it('should have correct metadata', () => {
-      expect(plugin.name).toBe('Go Plugin');
-      expect(plugin.language).toBe('go');
-      expect(plugin.version).toBe('1.0.0');
-      expect(plugin.description).toContain('Go');
-      expect(plugin.supportedFeatures).toContain('api');
-      expect(plugin.supportedFeatures).toContain('microservices');
+    it("should have correct metadata", () => {
+      expect(plugin.name).toBe("Go Plugin");
+      expect(plugin.language).toBe("go");
+      expect(plugin.version).toBe("1.0.0");
+      expect(plugin.description).toContain("Go");
+      expect(plugin.supportedFeatures).toContain("api");
+      expect(plugin.supportedFeatures).toContain("microservices");
     });
 
-    it('should generate services', async () => {
+    it("should generate services", async () => {
       const config: ServiceConfig = {
-        name: 'UserService',
-        type: 'api',
-        endpoints: ['/users', '/users/{id}'],
+        name: "UserService",
+        type: "api",
+        endpoints: ["/users", "/users/{id}"],
         database: true,
       };
 
@@ -333,12 +335,12 @@ describe('Language Plugin System', () => {
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should initialize projects', async () => {
+    it("should initialize projects", async () => {
       const config: ProjectConfig = {
-        name: 'go-service',
-        description: 'Go microservice',
-        features: ['gin', 'gorm', 'testing'],
-        database: 'postgres',
+        name: "go-service",
+        description: "Go microservice",
+        features: ["gin", "gorm", "testing"],
+        database: "postgres",
         testing: true,
       };
 
@@ -347,29 +349,29 @@ describe('Language Plugin System', () => {
       expect(result.files).toBeDefined();
       expect(result.dependencies).toBeDefined();
 
-      const goModFile = result.files.find(f => f.path === 'go.mod');
+      const goModFile = result.files.find((f) => f.path === "go.mod");
       expect(goModFile).toBeDefined();
-      expect(goModFile!.content).toContain('go-service');
+      expect(goModFile!.content).toContain("go-service");
     });
   });
 
-  describe('Rust Plugin', () => {
+  describe("Rust Plugin", () => {
     const plugin = new RustPlugin();
 
-    it('should have correct metadata', () => {
-      expect(plugin.name).toBe('Rust Plugin');
-      expect(plugin.language).toBe('rust');
-      expect(plugin.version).toBe('1.0.0');
-      expect(plugin.description).toContain('Rust');
-      expect(plugin.supportedFeatures).toContain('performance');
-      expect(plugin.supportedFeatures).toContain('memory-safety');
+    it("should have correct metadata", () => {
+      expect(plugin.name).toBe("Rust Plugin");
+      expect(plugin.language).toBe("rust");
+      expect(plugin.version).toBe("1.0.0");
+      expect(plugin.description).toContain("Rust");
+      expect(plugin.supportedFeatures).toContain("performance");
+      expect(plugin.supportedFeatures).toContain("memory-safety");
     });
 
-    it('should generate services', async () => {
+    it("should generate services", async () => {
       const config: ServiceConfig = {
-        name: 'UserService',
-        type: 'api',
-        endpoints: ['/users', '/users/{id}'],
+        name: "UserService",
+        type: "api",
+        endpoints: ["/users", "/users/{id}"],
         database: true,
       };
 
@@ -379,12 +381,12 @@ describe('Language Plugin System', () => {
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should initialize projects', async () => {
+    it("should initialize projects", async () => {
       const config: ProjectConfig = {
-        name: 'rust-api',
-        description: 'Rust API service',
-        features: ['axum', 'sqlx', 'tokio'],
-        database: 'postgres',
+        name: "rust-api",
+        description: "Rust API service",
+        features: ["axum", "sqlx", "tokio"],
+        database: "postgres",
         testing: true,
       };
 
@@ -393,126 +395,126 @@ describe('Language Plugin System', () => {
       expect(result.files).toBeDefined();
       expect(result.dependencies).toBeDefined();
 
-      const cargoFile = result.files.find(f => f.path === 'Cargo.toml');
+      const cargoFile = result.files.find((f) => f.path === "Cargo.toml");
       expect(cargoFile).toBeDefined();
-      expect(cargoFile!.content).toContain('rust-api');
+      expect(cargoFile!.content).toContain("rust-api");
     });
   });
 
-  describe('Convenience functions', () => {
-    it('should generate components via convenience function', async () => {
+  describe("Convenience functions", () => {
+    it("should generate components via convenience function", async () => {
       const config: ComponentConfig = {
-        name: 'TestButton',
-        type: 'component',
-        props: { label: 'string', onClick: 'function' },
+        name: "TestButton",
+        type: "component",
+        props: { label: "string", onClick: "function" },
       };
 
-      const result = await generateComponent('typescript', config);
+      const result = await generateComponent("typescript", config);
 
       expect(result.files).toBeDefined();
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should throw error for unsupported language', async () => {
+    it("should throw error for unsupported language", async () => {
       const config: ComponentConfig = {
-        name: 'TestComponent',
-        type: 'component',
+        name: "TestComponent",
+        type: "component",
       };
 
-      expect(generateComponent('unknown-language', config)).rejects.toThrow(
-        'No plugin found for language: unknown-language'
+      expect(generateComponent("unknown-language", config)).rejects.toThrow(
+        "No plugin found for language: unknown-language",
       );
     });
 
-    it('should throw error for unsupported feature', async () => {
+    it("should throw error for unsupported feature", async () => {
       const config: ComponentConfig = {
-        name: 'TestComponent',
-        type: 'component',
+        name: "TestComponent",
+        type: "component",
       };
 
       // Python doesn't support component generation
-      expect(generateComponent('python', config)).rejects.toThrow(
-        'Component generation not supported for Python'
+      expect(generateComponent("python", config)).rejects.toThrow(
+        "Component generation not supported for Python",
       );
     });
 
-    it('should generate services via convenience function', async () => {
+    it("should generate services via convenience function", async () => {
       const config: ServiceConfig = {
-        name: 'TestService',
-        type: 'api',
-        endpoints: ['GET /test'],
+        name: "TestService",
+        type: "api",
+        endpoints: ["GET /test"],
       };
 
-      const result = await generateService('python', config);
+      const result = await generateService("python", config);
 
       expect(result.files).toBeDefined();
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should initialize projects via convenience function', async () => {
+    it("should initialize projects via convenience function", async () => {
       const config: ProjectConfig = {
-        name: 'test-project',
-        features: ['basic'],
+        name: "test-project",
+        features: ["basic"],
       };
 
-      const result = await initializeProject('go', config);
+      const result = await initializeProject("go", config);
 
       expect(result.files).toBeDefined();
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should generate build config via convenience function', async () => {
+    it("should generate build config via convenience function", async () => {
       const config: BuildConfig = {
-        target: 'development',
+        target: "development",
       };
 
-      const result = await generateBuildConfig('typescript', config);
+      const result = await generateBuildConfig("typescript", config);
 
       expect(result.files).toBeDefined();
       expect(result.files.length).toBeGreaterThan(0);
     });
 
-    it('should throw error for unknown language in service generation', async () => {
+    it("should throw error for unknown language in service generation", async () => {
       const config: ServiceConfig = {
-        name: 'TestService',
-        type: 'api',
+        name: "TestService",
+        type: "api",
       };
 
-      expect(generateService('unknown', config)).rejects.toThrow(
-        'No plugin found for language: unknown'
+      expect(generateService("unknown", config)).rejects.toThrow(
+        "No plugin found for language: unknown",
       );
     });
 
-    it('should throw error for unknown language in project initialization', async () => {
+    it("should throw error for unknown language in project initialization", async () => {
       const config: ProjectConfig = {
-        name: 'test-project',
+        name: "test-project",
         features: [],
       };
 
-      expect(initializeProject('unknown', config)).rejects.toThrow(
-        'No plugin found for language: unknown'
+      expect(initializeProject("unknown", config)).rejects.toThrow(
+        "No plugin found for language: unknown",
       );
     });
 
-    it('should throw error for unknown language in build config', async () => {
+    it("should throw error for unknown language in build config", async () => {
       const config: BuildConfig = {
-        target: 'production',
+        target: "production",
       };
 
-      expect(generateBuildConfig('unknown', config)).rejects.toThrow(
-        'No plugin found for language: unknown'
+      expect(generateBuildConfig("unknown", config)).rejects.toThrow(
+        "No plugin found for language: unknown",
       );
     });
   });
 
-  describe('Edge cases and error handling', () => {
-    it('should handle empty feature arrays', () => {
+  describe("Edge cases and error handling", () => {
+    it("should handle empty feature arrays", () => {
       const reg = new LanguageRegistry();
       const mockPlugin: LanguagePlugin = {
-        name: 'Empty Plugin',
-        language: 'empty',
-        version: '1.0.0',
-        description: 'Plugin with no features',
+        name: "Empty Plugin",
+        language: "empty",
+        version: "1.0.0",
+        description: "Plugin with no features",
         supportedFeatures: [],
         generateService: async () => ({ files: [] }),
         initializeProject: async () => ({ files: [] }),
@@ -521,17 +523,17 @@ describe('Language Plugin System', () => {
 
       reg.register(mockPlugin);
 
-      expect(reg.hasSupport('empty', 'any-feature')).toBe(false);
+      expect(reg.hasSupport("empty", "any-feature")).toBe(false);
     });
 
-    it('should handle plugin registration overwrites', () => {
+    it("should handle plugin registration overwrites", () => {
       const reg = new LanguageRegistry();
 
       const plugin1: LanguagePlugin = {
-        name: 'Plugin 1',
-        language: 'test',
-        version: '1.0.0',
-        description: 'First plugin',
+        name: "Plugin 1",
+        language: "test",
+        version: "1.0.0",
+        description: "First plugin",
         supportedFeatures: [],
         generateService: async () => ({ files: [] }),
         initializeProject: async () => ({ files: [] }),
@@ -539,10 +541,10 @@ describe('Language Plugin System', () => {
       };
 
       const plugin2: LanguagePlugin = {
-        name: 'Plugin 2',
-        language: 'test',
-        version: '2.0.0',
-        description: 'Second plugin',
+        name: "Plugin 2",
+        language: "test",
+        version: "2.0.0",
+        description: "Second plugin",
         supportedFeatures: [],
         generateService: async () => ({ files: [] }),
         initializeProject: async () => ({ files: [] }),
@@ -553,41 +555,41 @@ describe('Language Plugin System', () => {
       reg.register(plugin2);
 
       expect(reg.list()).toHaveLength(1);
-      expect(reg.get('test')).toBe(plugin2);
+      expect(reg.get("test")).toBe(plugin2);
     });
 
-    it('should handle complex component configurations', async () => {
+    it("should handle complex component configurations", async () => {
       const config: ComponentConfig = {
-        name: 'ComplexComponent',
-        type: 'component',
+        name: "ComplexComponent",
+        type: "component",
         props: {
-          title: 'string',
-          count: 'number',
-          items: 'array',
-          onItemClick: 'function',
+          title: "string",
+          count: "number",
+          items: "array",
+          onItemClick: "function",
         },
-        dependencies: ['react', 'lodash'],
+        dependencies: ["react", "lodash"],
         styles: true,
         tests: true,
       };
 
-      const result = await generateComponent('typescript', config);
+      const result = await generateComponent("typescript", config);
 
       expect(result.files).toBeDefined();
       expect(result.files.length).toBeGreaterThan(1); // Should have multiple files for complex component
     });
 
-    it('should handle complex service configurations', async () => {
+    it("should handle complex service configurations", async () => {
       const config: ServiceConfig = {
-        name: 'ComplexAPI',
-        type: 'api',
-        endpoints: ['GET /users', 'GET /users/{id}', 'GET /users/{id}/posts'],
+        name: "ComplexAPI",
+        type: "api",
+        endpoints: ["GET /users", "GET /users/{id}", "GET /users/{id}/posts"],
         database: true,
         auth: true,
         validation: true,
       };
 
-      const result = await generateService('python', config);
+      const result = await generateService("python", config);
 
       expect(result.files).toBeDefined();
       expect(result.files.length).toBeGreaterThan(0);

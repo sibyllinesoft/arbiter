@@ -1,7 +1,7 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import chalk from 'chalk';
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import chalk from "chalk";
 
 export interface ImportOptions {
   global?: boolean;
@@ -37,9 +37,9 @@ export interface ImportRegistry {
  */
 function getRegistryPath(global = false): string {
   if (global) {
-    return path.join(os.homedir(), '.arbiter', 'imports.json');
+    return path.join(os.homedir(), ".arbiter", "imports.json");
   }
-  return path.join(process.cwd(), '.arbiter', 'imports.json');
+  return path.join(process.cwd(), ".arbiter", "imports.json");
 }
 
 /**
@@ -56,12 +56,12 @@ async function loadImportRegistry(global = false): Promise<ImportRegistry> {
   const registryPath = getRegistryPath(global);
 
   try {
-    const content = await fs.readFile(registryPath, 'utf-8');
+    const content = await fs.readFile(registryPath, "utf-8");
     return JSON.parse(content) as ImportRegistry;
   } catch (_error) {
     // Return default registry if file doesn't exist
     return {
-      version: '1.0.0',
+      version: "1.0.0",
       last_updated: new Date().toISOString(),
       allowed_imports: {},
       blocked_imports: {},
@@ -83,7 +83,7 @@ async function saveImportRegistry(registry: ImportRegistry, global = false): Pro
   registry.last_updated = new Date().toISOString();
 
   // Save registry
-  await fs.writeFile(registryPath, JSON.stringify(registry, null, 2), 'utf-8');
+  await fs.writeFile(registryPath, JSON.stringify(registry, null, 2), "utf-8");
 }
 
 /**
@@ -112,7 +112,7 @@ function isImportAllowed(importPath: string, registry: ImportRegistry): boolean 
  */
 function matchesPattern(importPath: string, pattern: string): boolean {
   // Convert pattern to regex
-  const regexPattern = pattern.replace(/\*/g, '.*').replace(/\?/g, '.').replace(/\./g, '\\.');
+  const regexPattern = pattern.replace(/\*/g, ".*").replace(/\?/g, ".").replace(/\./g, "\\.");
 
   const regex = new RegExp(`^${regexPattern}$`);
   return regex.test(importPath);
@@ -122,8 +122,8 @@ function matchesPattern(importPath: string, pattern: string): boolean {
  * Parse import pattern with optional version
  */
 function parseImportPattern(pattern: string): { name: string; version?: string } {
-  const atIndex = pattern.lastIndexOf('@');
-  if (atIndex > 0 && pattern.substring(0, atIndex).includes('/')) {
+  const atIndex = pattern.lastIndexOf("@");
+  if (atIndex > 0 && pattern.substring(0, atIndex).includes("/")) {
     // Pattern like @org/pkg@version
     return {
       name: pattern.substring(0, atIndex),
@@ -141,7 +141,7 @@ export async function listImports(options: ImportOptions = {}): Promise<number> 
   try {
     const registry = await loadImportRegistry(options.global);
 
-    console.log(chalk.cyan('Import Registry'));
+    console.log(chalk.cyan("Import Registry"));
     console.log(chalk.dim(`Location: ${getRegistryPath(options.global)}`));
     console.log(chalk.dim(`Last updated: ${registry.last_updated}`));
     console.log();
@@ -156,17 +156,17 @@ export async function listImports(options: ImportOptions = {}): Promise<number> 
           console.log(chalk.dim(`    ${info.description}`));
         }
         if (info.versions && info.versions.length > 0) {
-          console.log(chalk.dim(`    Versions: ${info.versions.join(', ')}`));
+          console.log(chalk.dim(`    Versions: ${info.versions.join(", ")}`));
         }
         console.log(chalk.dim(`    Added: ${info.added_date} by ${info.added_by}`));
         if (info.security_reviewed) {
-          console.log(chalk.dim(`    ${chalk.green('✓')} Security reviewed`));
+          console.log(chalk.dim(`    ${chalk.green("✓")} Security reviewed`));
         }
         console.log();
       }
     } else {
-      console.log(chalk.yellow('No allowed imports configured'));
-      console.log(chalk.dim('Use `arbiter import add <pattern>` to allow imports'));
+      console.log(chalk.yellow("No allowed imports configured"));
+      console.log(chalk.dim("Use `arbiter import add <pattern>` to allow imports"));
     }
 
     // Show blocked imports
@@ -185,8 +185,8 @@ export async function listImports(options: ImportOptions = {}): Promise<number> 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('Error listing imports:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Error listing imports:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -199,14 +199,14 @@ export async function addImport(pattern: string, options: ImportOptions = {}): P
   try {
     const registry = await loadImportRegistry(options.global);
     const parsed = parseImportPattern(pattern);
-    const currentUser = process.env.USER || process.env.USERNAME || 'unknown';
+    const currentUser = process.env.USER || process.env.USERNAME || "unknown";
 
     // Check if already in blocked list
     if (registry.blocked_imports[parsed.name]) {
       console.error(
         chalk.red(
-          `Import '${parsed.name}' is blocked: ${registry.blocked_imports[parsed.name].reason}`
-        )
+          `Import '${parsed.name}' is blocked: ${registry.blocked_imports[parsed.name].reason}`,
+        ),
       );
       return 1;
     }
@@ -238,8 +238,8 @@ export async function addImport(pattern: string, options: ImportOptions = {}): P
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('Error adding import:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Error adding import:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -268,8 +268,8 @@ export async function removeImport(pattern: string, options: ImportOptions = {})
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('Error removing import:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Error removing import:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -281,12 +281,12 @@ export async function removeImport(pattern: string, options: ImportOptions = {})
 export async function blockImport(
   pattern: string,
   reason: string,
-  options: ImportOptions = {}
+  options: ImportOptions = {},
 ): Promise<number> {
   try {
     const registry = await loadImportRegistry(options.global);
     const parsed = parseImportPattern(pattern);
-    const currentUser = process.env.USER || process.env.USERNAME || 'unknown';
+    const currentUser = process.env.USER || process.env.USERNAME || "unknown";
 
     // Remove from allowed list if present
     if (registry.allowed_imports[parsed.name]) {
@@ -309,8 +309,8 @@ export async function blockImport(
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('Error blocking import:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Error blocking import:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -321,25 +321,25 @@ export async function blockImport(
  */
 export async function validateImports(
   files: string[],
-  options: ImportOptions = {}
+  options: ImportOptions = {},
 ): Promise<number> {
   try {
     const registry = await loadImportRegistry(options.global);
     let hasErrors = false;
 
-    console.log(chalk.cyan('Validating imports against registry...'));
+    console.log(chalk.cyan("Validating imports against registry..."));
     console.log(chalk.dim(`Registry: ${getRegistryPath(options.global)}`));
     console.log();
 
     for (const file of files) {
       try {
-        const content = await fs.readFile(file, 'utf-8');
+        const content = await fs.readFile(file, "utf-8");
         const imports = extractImportsFromCue(content);
 
         console.log(chalk.bold(`${file}:`));
 
         if (imports.length === 0) {
-          console.log(chalk.dim('  No imports found'));
+          console.log(chalk.dim("  No imports found"));
           continue;
         }
 
@@ -347,9 +347,9 @@ export async function validateImports(
           const isAllowed = isImportAllowed(importPath, registry);
 
           if (isAllowed) {
-            console.log(`  ${chalk.green('✓')} ${importPath}`);
+            console.log(`  ${chalk.green("✓")} ${importPath}`);
           } else {
-            console.log(`  ${chalk.red('✗')} ${importPath} ${chalk.dim('(not allowed)')}`);
+            console.log(`  ${chalk.red("✗")} ${importPath} ${chalk.dim("(not allowed)")}`);
             hasErrors = true;
           }
         }
@@ -357,23 +357,23 @@ export async function validateImports(
         console.log();
       } catch (error) {
         console.error(
-          `  ${chalk.red('Error reading file:')} ${error instanceof Error ? error.message : String(error)}`
+          `  ${chalk.red("Error reading file:")} ${error instanceof Error ? error.message : String(error)}`,
         );
         hasErrors = true;
       }
     }
 
     if (hasErrors) {
-      console.log(chalk.red('Import validation failed'));
-      console.log(chalk.dim('Use `arbiter import add <pattern>` to allow imports'));
+      console.log(chalk.red("Import validation failed"));
+      console.log(chalk.dim("Use `arbiter import add <pattern>` to allow imports"));
       return 1;
     }
-    console.log(chalk.green('✓ All imports are allowed'));
+    console.log(chalk.green("✓ All imports are allowed"));
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('Error validating imports:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Error validating imports:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -384,7 +384,7 @@ export async function validateImports(
  */
 function extractImportsFromCue(content: string): string[] {
   const imports: string[] = [];
-  const lines = content.split('\n');
+  const lines = content.split("\n");
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -406,7 +406,7 @@ function extractImportsFromCue(content: string): string[] {
     // Match imports in multi-line import blocks
     if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
       const importPath = trimmed.slice(1, -1);
-      if (importPath && !importPath.includes(' ')) {
+      if (importPath && !importPath.includes(" ")) {
         imports.push(importPath);
       }
     }
@@ -426,63 +426,63 @@ export async function initImportRegistry(options: ImportOptions = {}): Promise<n
     try {
       await fs.access(registryPath);
       console.log(chalk.yellow(`Import registry already exists at ${registryPath}`));
-      console.log(chalk.dim('Use --force to overwrite'));
+      console.log(chalk.dim("Use --force to overwrite"));
       return 1;
     } catch {
       // Registry doesn't exist, proceed with creation
     }
 
-    const currentUser = process.env.USER || process.env.USERNAME || 'system';
+    const currentUser = process.env.USER || process.env.USERNAME || "system";
     const defaultRegistry: ImportRegistry = {
-      version: '1.0.0',
+      version: "1.0.0",
       last_updated: new Date().toISOString(),
       allowed_imports: {
         strings: {
-          description: 'CUE standard library - string manipulation',
+          description: "CUE standard library - string manipulation",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
         list: {
-          description: 'CUE standard library - list operations',
+          description: "CUE standard library - list operations",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
         math: {
-          description: 'CUE standard library - mathematical operations',
+          description: "CUE standard library - mathematical operations",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
-        'encoding/json': {
-          description: 'CUE standard library - JSON encoding/decoding',
+        "encoding/json": {
+          description: "CUE standard library - JSON encoding/decoding",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
-        'encoding/yaml': {
-          description: 'CUE standard library - YAML encoding/decoding',
+        "encoding/yaml": {
+          description: "CUE standard library - YAML encoding/decoding",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
         time: {
-          description: 'CUE standard library - time and date operations',
+          description: "CUE standard library - time and date operations",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
-        '@valhalla/*': {
-          description: 'Valhalla project imports - trusted internal organization',
+        "@valhalla/*": {
+          description: "Valhalla project imports - trusted internal organization",
           added_date: new Date().toISOString(),
           added_by: currentUser,
           security_reviewed: true,
         },
       },
       blocked_imports: {
-        'unsafe/*': {
-          reason: 'Potentially unsafe operations',
+        "unsafe/*": {
+          reason: "Potentially unsafe operations",
           blocked_date: new Date().toISOString(),
           blocked_by: currentUser,
         },
@@ -491,24 +491,24 @@ export async function initImportRegistry(options: ImportOptions = {}): Promise<n
 
     await saveImportRegistry(defaultRegistry, options.global);
 
-    console.log(chalk.green('✓ Import registry initialized'));
+    console.log(chalk.green("✓ Import registry initialized"));
     console.log(chalk.dim(`Location: ${registryPath}`));
     console.log();
-    console.log(chalk.bold('Default allowed imports:'));
+    console.log(chalk.bold("Default allowed imports:"));
     for (const pattern of Object.keys(defaultRegistry.allowed_imports)) {
-      console.log(`  ${chalk.green('✓')} ${pattern}`);
+      console.log(`  ${chalk.green("✓")} ${pattern}`);
     }
     console.log();
-    console.log(chalk.bold('Default blocked imports:'));
+    console.log(chalk.bold("Default blocked imports:"));
     for (const pattern of Object.keys(defaultRegistry.blocked_imports)) {
-      console.log(`  ${chalk.red('✗')} ${pattern}`);
+      console.log(`  ${chalk.red("✗")} ${pattern}`);
     }
 
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('Error initializing import registry:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Error initializing import registry:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -520,48 +520,48 @@ export async function initImportRegistry(options: ImportOptions = {}): Promise<n
 export async function importCommand(
   action: string,
   pattern?: string,
-  options: ImportOptions = {}
+  options: ImportOptions = {},
 ): Promise<number> {
   switch (action) {
-    case 'init':
+    case "init":
       return await initImportRegistry(options);
 
-    case 'list':
+    case "list":
       return await listImports(options);
 
-    case 'add':
+    case "add":
       if (!pattern) {
-        console.error(chalk.red('Import pattern is required for add command'));
+        console.error(chalk.red("Import pattern is required for add command"));
         return 1;
       }
       return await addImport(pattern, options);
 
-    case 'remove':
+    case "remove":
       if (!pattern) {
-        console.error(chalk.red('Import pattern is required for remove command'));
+        console.error(chalk.red("Import pattern is required for remove command"));
         return 1;
       }
       return await removeImport(pattern, options);
 
-    case 'block': {
+    case "block": {
       if (!pattern) {
-        console.error(chalk.red('Import pattern is required for block command'));
+        console.error(chalk.red("Import pattern is required for block command"));
         return 1;
       }
-      const reason = options.allow?.[0] || 'Security policy violation';
+      const reason = options.allow?.[0] || "Security policy violation";
       return await blockImport(pattern, reason, options);
     }
 
-    case 'validate':
+    case "validate":
       if (!options.allow || options.allow.length === 0) {
-        console.error(chalk.red('File patterns are required for validate command'));
+        console.error(chalk.red("File patterns are required for validate command"));
         return 1;
       }
       return await validateImports(options.allow, options);
 
     default:
       console.error(chalk.red(`Unknown import action: ${action}`));
-      console.log(chalk.dim('Available actions: init, list, add, remove, block, validate'));
+      console.log(chalk.dim("Available actions: init, list, add, remove, block, validate"));
       return 1;
   }
 }

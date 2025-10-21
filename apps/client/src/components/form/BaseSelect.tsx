@@ -1,5 +1,5 @@
-import { clsx } from 'clsx';
-import { useEffect, useMemo, useState } from 'react';
+import { clsx } from "clsx";
+import { useEffect, useMemo, useState } from "react";
 import Select, {
   type CSSObjectWithLabel,
   type ControlProps,
@@ -10,35 +10,35 @@ import Select, {
   type Theme,
   type ThemeConfig,
   mergeStyles,
-} from 'react-select';
-import CreatableSelect, { type CreatableProps } from 'react-select/creatable';
+} from "react-select";
+import CreatableSelect, { type CreatableProps } from "react-select/creatable";
 
-import '@/styles/react-select.css';
+import "@/styles/react-select.css";
 
 export const SELECT_PALETTES = {
   dark: {
-    controlBg: '#0F1115', // graphite-950
-    menuBg: '#141821', // graphite-900
-    border: '#2F394B', // graphite-600
-    borderHover: '#3B475C', // graphite-500
-    focusBorder: '#50617A', // graphite-400
-    text: '#EEF1F5', // graphite-25
-    placeholder: '#8C97AA', // graphite-200
-    optionHover: '#1B2130', // graphite-800
-    optionSelected: '#242B3A', // graphite-700
-    indicator: '#6B7A92', // graphite-300
+    controlBg: "#0F1115", // graphite-950
+    menuBg: "#141821", // graphite-900
+    border: "#2F394B", // graphite-600
+    borderHover: "#3B475C", // graphite-500
+    focusBorder: "#50617A", // graphite-400
+    text: "#EEF1F5", // graphite-25
+    placeholder: "#8C97AA", // graphite-200
+    optionHover: "#1B2130", // graphite-800
+    optionSelected: "#242B3A", // graphite-700
+    indicator: "#6B7A92", // graphite-300
   },
   light: {
-    controlBg: '#FFFFFF',
-    menuBg: '#FFFFFF',
-    border: '#D1D5DB',
-    borderHover: '#9CA3AF',
-    focusBorder: '#4B5563',
-    text: '#111827',
-    placeholder: '#6B7280',
-    optionHover: '#F3F4F6',
-    optionSelected: '#E5E7EB',
-    indicator: '#6B7280',
+    controlBg: "#FFFFFF",
+    menuBg: "#FFFFFF",
+    border: "#D1D5DB",
+    borderHover: "#9CA3AF",
+    focusBorder: "#4B5563",
+    text: "#111827",
+    placeholder: "#6B7280",
+    optionHover: "#F3F4F6",
+    optionSelected: "#E5E7EB",
+    indicator: "#6B7280",
   },
 } as const;
 
@@ -46,22 +46,22 @@ type Palette = (typeof SELECT_PALETTES)[keyof typeof SELECT_PALETTES];
 
 function useIsDarkMode() {
   const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+    typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false,
   );
 
   useEffect(() => {
-    if (typeof document === 'undefined') {
+    if (typeof document === "undefined") {
       return;
     }
 
     const updateTheme = () => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
     };
 
     updateTheme();
 
     const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     return () => observer.disconnect();
   }, []);
@@ -74,25 +74,25 @@ function getPalette(isDarkMode: boolean): Palette {
 }
 
 function buildBaseStyles<Option, IsMulti extends boolean, Group extends GroupBase<Option>>(
-  palette: Palette
+  palette: Palette,
 ): StylesConfig<Option, IsMulti, Group> {
   const styles = {
     control: (base: CSSObjectWithLabel, state: ControlProps<Option, IsMulti, Group>) => ({
       ...base,
       backgroundColor: palette.controlBg,
       borderColor: state.isFocused ? palette.focusBorder : palette.border,
-      boxShadow: 'none',
+      boxShadow: "none",
       minHeight: 40,
       borderRadius: 8,
       color: palette.text,
-      transition: 'border-color 120ms ease, box-shadow 120ms ease',
-      ':hover': {
+      transition: "border-color 120ms ease, box-shadow 120ms ease",
+      ":hover": {
         borderColor: palette.borderHover,
       },
     }),
     valueContainer: (base: CSSObjectWithLabel) => ({
       ...base,
-      padding: '0 0.5rem',
+      padding: "0 0.5rem",
     }),
     input: (base: CSSObjectWithLabel) => ({
       ...base,
@@ -111,7 +111,7 @@ function buildBaseStyles<Option, IsMulti extends boolean, Group extends GroupBas
       backgroundColor: palette.menuBg,
       border: `1px solid ${palette.border}`,
       borderRadius: 8,
-      overflow: 'hidden',
+      overflow: "hidden",
       zIndex: 2147483647,
     }),
     menuPortal: (base: CSSObjectWithLabel) => ({
@@ -128,24 +128,24 @@ function buildBaseStyles<Option, IsMulti extends boolean, Group extends GroupBas
         ? palette.optionSelected
         : state.isFocused
           ? palette.optionHover
-          : 'transparent',
+          : "transparent",
       color: palette.text,
-      cursor: 'pointer',
+      cursor: "pointer",
     }),
     dropdownIndicator: (base: CSSObjectWithLabel) => ({
       ...base,
       color: palette.indicator,
-      ':hover': {
+      ":hover": {
         color: palette.text,
       },
     }),
     indicatorSeparator: () => ({
-      display: 'none',
+      display: "none",
     }),
     clearIndicator: (base: CSSObjectWithLabel) => ({
       ...base,
       color: palette.indicator,
-      ':hover': {
+      ":hover": {
         color: palette.text,
       },
     }),
@@ -160,7 +160,7 @@ function buildBaseStyles<Option, IsMulti extends boolean, Group extends GroupBas
     multiValueRemove: (base: CSSObjectWithLabel) => ({
       ...base,
       color: palette.indicator,
-      ':hover': {
+      ":hover": {
         backgroundColor: palette.optionHover,
         color: palette.text,
       },
@@ -196,7 +196,7 @@ function buildTheme(palette: Palette): ThemeConfig {
 }
 
 const toThemeFunction = (config: ThemeConfig): ((theme: Theme) => Theme) => {
-  if (typeof config === 'function') {
+  if (typeof config === "function") {
     return config;
   }
 
@@ -228,7 +228,7 @@ const useSelectPalette = () => {
 
 const useMergedStyles = <Option, IsMulti extends boolean, Group extends GroupBase<Option>>(
   palette: Palette,
-  stylesProp: StylesConfig<Option, IsMulti, Group> | undefined
+  stylesProp: StylesConfig<Option, IsMulti, Group> | undefined,
 ) => {
   const baseStyles = useMemo(() => buildBaseStyles<Option, IsMulti, Group>(palette), [palette]);
 
@@ -250,7 +250,7 @@ const useMenuPortalTarget = (menuPortalTarget: HTMLElement | null | undefined) =
     if (menuPortalTarget !== undefined) {
       return menuPortalTarget;
     }
-    if (typeof document === 'undefined') {
+    if (typeof document === "undefined") {
       return undefined;
     }
     return document.body;
@@ -261,9 +261,9 @@ export const BaseSelect = <
   IsMulti extends boolean = false,
   Group extends GroupBase<Option> = GroupBase<Option>,
 >(
-  props: SelectProps<Option, IsMulti, Group>
+  props: SelectProps<Option, IsMulti, Group>,
 ) => {
-  const { className = '', styles: stylesProp, theme: themeProp, menuPortalTarget, ...rest } = props;
+  const { className = "", styles: stylesProp, theme: themeProp, menuPortalTarget, ...rest } = props;
 
   const palette = useSelectPalette();
   const styles = useMergedStyles<Option, IsMulti, Group>(palette, stylesProp);
@@ -273,7 +273,7 @@ export const BaseSelect = <
   return (
     <Select<Option, IsMulti, Group>
       {...rest}
-      className={clsx('w-full', className)}
+      className={clsx("w-full", className)}
       classNamePrefix="react-select"
       styles={styles}
       theme={theme}
@@ -287,9 +287,9 @@ export const BaseCreatableSelect = <
   IsMulti extends boolean = false,
   Group extends GroupBase<Option> = GroupBase<Option>,
 >(
-  props: CreatableProps<Option, IsMulti, Group>
+  props: CreatableProps<Option, IsMulti, Group>,
 ) => {
-  const { className = '', styles: stylesProp, theme: themeProp, menuPortalTarget, ...rest } = props;
+  const { className = "", styles: stylesProp, theme: themeProp, menuPortalTarget, ...rest } = props;
 
   const palette = useSelectPalette();
   const styles = useMergedStyles<Option, IsMulti, Group>(palette, stylesProp);
@@ -299,7 +299,7 @@ export const BaseCreatableSelect = <
   return (
     <CreatableSelect<Option, IsMulti, Group>
       {...rest}
-      className={clsx('w-full', className)}
+      className={clsx("w-full", className)}
       classNamePrefix="react-select"
       styles={styles}
       theme={theme}

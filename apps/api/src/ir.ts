@@ -1,8 +1,8 @@
 /**
  * Intermediate Representation (IR) generator for diagrams and visualizations
  */
-import type { IRKind, IRResponse } from './types.ts';
-import { getCurrentTimestamp, logger } from './utils.ts';
+import type { IRKind, IRResponse } from "./types.ts";
+import { getCurrentTimestamp, logger } from "./utils.ts";
 
 export class IRGenerator {
   /**
@@ -15,28 +15,28 @@ export class IRGenerator {
       let data: Record<string, unknown>;
 
       switch (kind) {
-        case 'flow':
+        case "flow":
           data = this.generateFlowIR(resolved);
           break;
-        case 'fsm':
+        case "fsm":
           data = this.generateFsmIR(resolved);
           break;
-        case 'view':
+        case "view":
           data = this.generateViewIR(resolved);
           break;
-        case 'site':
+        case "site":
           data = this.generateSiteIR(resolved);
           break;
-        case 'capabilities':
+        case "capabilities":
           data = this.generateCapabilitiesIR(resolved);
           break;
-        case 'flows':
+        case "flows":
           data = this.generateFlowsIR(resolved);
           break;
-        case 'dependencies':
+        case "dependencies":
           data = this.generateDependenciesIR(resolved);
           break;
-        case 'coverage':
+        case "coverage":
           data = this.generateCoverageIR(resolved);
           break;
         default:
@@ -58,10 +58,10 @@ export class IRGenerator {
         generated_at: getCurrentTimestamp(),
       };
     } catch (error) {
-      logger.error('IR generation failed', error instanceof Error ? error : undefined, { kind });
+      logger.error("IR generation failed", error instanceof Error ? error : undefined, { kind });
 
       throw new Error(
-        `Failed to generate ${kind} IR: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to generate ${kind} IR: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
@@ -95,7 +95,7 @@ export class IRGenerator {
               edges.push({
                 from: depId,
                 to: nodeId,
-                label: step.transition || '',
+                label: step.transition || "",
               });
             });
           }
@@ -129,7 +129,7 @@ export class IRGenerator {
     Object.entries(stateModels).forEach(([fsmId, model]) => {
       const states: Record<string, any> = {};
 
-      if (model.states && typeof model.states === 'object') {
+      if (model.states && typeof model.states === "object") {
         Object.entries(model.states).forEach(([stateId, state]: [string, any]) => {
           states[stateId] = {
             actions: state.actions || [],
@@ -141,7 +141,7 @@ export class IRGenerator {
       fsms.push({
         id: fsmId,
         name: model.name || fsmId,
-        initial: model.initialState || model.initial || 'idle',
+        initial: model.initialState || model.initial || "idle",
         states,
       });
     });
@@ -167,21 +167,21 @@ export class IRGenerator {
       // Extract widgets from route components and map with locators
       if (route.components && Array.isArray(route.components)) {
         route.components.forEach((component: any) => {
-          if (component.type === 'button' && component.token) {
+          if (component.type === "button" && component.token) {
             widgets.push({
-              type: 'button',
+              type: "button",
               token: component.token,
               text: component.text || component.token,
             });
-          } else if (component.type === 'input' && component.token) {
+          } else if (component.type === "input" && component.token) {
             widgets.push({
-              type: 'input',
+              type: "input",
               token: component.token,
               label: component.label || component.token,
             });
-          } else if (component.type === 'table' && component.token) {
+          } else if (component.type === "table" && component.token) {
             widgets.push({
-              type: 'table',
+              type: "table",
               token: component.token,
               columns: component.columns || [],
             });
@@ -191,17 +191,17 @@ export class IRGenerator {
 
       // Also extract widgets from referenced locators
       Object.entries(locators).forEach(([token, _selector]) => {
-        if (token.startsWith('btn:')) {
+        if (token.startsWith("btn:")) {
           widgets.push({
-            type: 'button',
+            type: "button",
             token,
-            text: token.replace('btn:', ''),
+            text: token.replace("btn:", ""),
           });
-        } else if (token.startsWith('input:')) {
+        } else if (token.startsWith("input:")) {
           widgets.push({
-            type: 'input',
+            type: "input",
             token,
-            label: token.replace('input:', ''),
+            label: token.replace("input:", ""),
           });
         }
       });
@@ -249,7 +249,7 @@ export class IRGenerator {
       routes.forEach((otherRoute: any, otherIndex: number) => {
         if (index !== otherIndex && route.capabilities && otherRoute.capabilities) {
           const sharedCaps = route.capabilities.filter((cap: string) =>
-            otherRoute.capabilities.includes(cap)
+            otherRoute.capabilities.includes(cap),
           );
 
           if (sharedCaps.length > 0) {
@@ -257,8 +257,8 @@ export class IRGenerator {
             edges.push({
               from: routeId,
               to: otherRouteId,
-              label: sharedCaps.join(', '),
-              type: 'capability',
+              label: sharedCaps.join(", "),
+              type: "capability",
             });
           }
         }
@@ -289,12 +289,12 @@ export class IRGenerator {
     if (step.type) return step.type;
 
     // Fallback to legacy test format
-    if (step.visit) return 'visit';
-    if (step.click) return 'click';
-    if (step.fill) return 'fill';
-    if (step.expect) return 'expect';
-    if (step.expect_api) return 'expect_api';
-    return 'process';
+    if (step.visit) return "visit";
+    if (step.click) return "click";
+    if (step.fill) return "fill";
+    if (step.expect) return "expect";
+    if (step.expect_api) return "expect_api";
+    return "process";
   }
 
   private getFlowStepLabel(step: any, index: number): string {
@@ -321,7 +321,7 @@ export class IRGenerator {
   private generateCapabilitiesIR(resolved: Record<string, unknown>): Record<string, unknown> {
     const capabilities =
       resolved.capabilities &&
-      typeof resolved.capabilities === 'object' &&
+      typeof resolved.capabilities === "object" &&
       !Array.isArray(resolved.capabilities)
         ? (resolved.capabilities as Record<string, any>)
         : {};
@@ -332,18 +332,18 @@ export class IRGenerator {
 
     // Process capabilities into nodes
     Object.entries(capabilities).forEach(([capId, capability]) => {
-      const domain = capId.split('.')[0];
+      const domain = capId.split(".")[0];
       domains.add(domain);
 
       nodes.push({
         id: capId,
         label: capability.name || capId,
-        type: 'capability',
+        type: "capability",
         domain: domain,
         properties: {
-          complexity: capability.complexity || 'medium',
-          priority: capability.priority || 'medium',
-          owner: capability.owner || 'unknown',
+          complexity: capability.complexity || "medium",
+          priority: capability.priority || "medium",
+          owner: capability.owner || "unknown",
         },
       });
 
@@ -353,29 +353,29 @@ export class IRGenerator {
           edges.push({
             source: depId,
             target: capId,
-            type: 'dependency',
+            type: "dependency",
           });
         });
       }
     });
 
     // Create domain groups
-    domains.forEach(domain => {
-      const domainNodes = nodes.filter(n => n.domain === domain);
+    domains.forEach((domain) => {
+      const domainNodes = nodes.filter((n) => n.domain === domain);
       groups.push({
         id: domain,
         label: domain.charAt(0).toUpperCase() + domain.slice(1),
-        nodeIds: domainNodes.map(n => n.id),
+        nodeIds: domainNodes.map((n) => n.id),
       });
     });
 
     return {
-      type: 'directed_graph',
+      type: "directed_graph",
       nodes,
       edges,
       groups,
       layout: {
-        algorithm: 'hierarchical',
+        algorithm: "hierarchical",
       },
       metadata: {
         totalCapabilities: nodes.length,
@@ -390,7 +390,7 @@ export class IRGenerator {
    */
   private generateFlowsIR(resolved: Record<string, unknown>): Record<string, unknown> {
     const flows =
-      resolved.flows && typeof resolved.flows === 'object' && !Array.isArray(resolved.flows)
+      resolved.flows && typeof resolved.flows === "object" && !Array.isArray(resolved.flows)
         ? (resolved.flows as Record<string, any>)
         : {};
     const flowList: any[] = [];
@@ -419,7 +419,7 @@ export class IRGenerator {
         nodes.push({
           id: nodeId,
           label: step.name || `Step ${index + 1}`,
-          type: 'process',
+          type: "process",
           properties: {
             action: step.action,
             actor: step.actor,
@@ -433,7 +433,7 @@ export class IRGenerator {
           edges.push({
             source: `${flowId}.${index - 1}`,
             target: nodeId,
-            type: 'sequence',
+            type: "sequence",
           });
         }
 
@@ -446,7 +446,7 @@ export class IRGenerator {
             nodes.push({
               id: decisionNodeId,
               label: branch.name || branch.condition,
-              type: 'decision',
+              type: "decision",
               properties: {
                 condition: branch.condition,
                 description: branch.description,
@@ -456,7 +456,7 @@ export class IRGenerator {
             edges.push({
               source: nodeId,
               target: decisionNodeId,
-              type: 'branch',
+              type: "branch",
               label: branch.condition,
             });
           });
@@ -465,12 +465,12 @@ export class IRGenerator {
     });
 
     return {
-      type: 'flowchart',
+      type: "flowchart",
       nodes,
       edges,
       flows: flowList,
       layout: {
-        algorithm: 'dagre',
+        algorithm: "dagre",
       },
       metadata: {
         totalFlows: flowList.length,
@@ -486,13 +486,13 @@ export class IRGenerator {
   private generateDependenciesIR(resolved: Record<string, unknown>): Record<string, unknown> {
     const capabilities =
       resolved.capabilities &&
-      typeof resolved.capabilities === 'object' &&
+      typeof resolved.capabilities === "object" &&
       !Array.isArray(resolved.capabilities)
         ? (resolved.capabilities as Record<string, any>)
         : {};
     const services =
       resolved.services &&
-      typeof resolved.services === 'object' &&
+      typeof resolved.services === "object" &&
       !Array.isArray(resolved.services)
         ? (resolved.services as Record<string, any>)
         : {};
@@ -507,7 +507,7 @@ export class IRGenerator {
       nodes.push({
         id: capId,
         label: capability.name || capId,
-        type: 'capability',
+        type: "capability",
         properties: {
           dependencies: capability.depends_on || [],
         },
@@ -519,7 +519,7 @@ export class IRGenerator {
           edges.push({
             source: depId,
             target: capId,
-            type: 'depends',
+            type: "depends",
           });
         });
       }
@@ -530,7 +530,7 @@ export class IRGenerator {
       nodes.push({
         id: serviceId,
         label: service.name || serviceId,
-        type: 'service',
+        type: "service",
         properties: {
           technology: service.technology,
           environment: service.environment,
@@ -544,39 +544,39 @@ export class IRGenerator {
           edges.push({
             source: serviceId,
             target: capId,
-            type: 'implements',
+            type: "implements",
           });
         });
       }
     });
 
     // Create logical layers (capabilities and services)
-    const capabilityNodes = nodes.filter(n => n.type === 'capability');
-    const serviceNodes = nodes.filter(n => n.type === 'service');
+    const capabilityNodes = nodes.filter((n) => n.type === "capability");
+    const serviceNodes = nodes.filter((n) => n.type === "service");
 
     if (capabilityNodes.length > 0) {
       layers.push({
-        id: 'business',
-        label: 'Business Layer',
-        nodeIds: capabilityNodes.map(n => n.id),
+        id: "business",
+        label: "Business Layer",
+        nodeIds: capabilityNodes.map((n) => n.id),
       });
     }
 
     if (serviceNodes.length > 0) {
       layers.push({
-        id: 'application',
-        label: 'Application Layer',
-        nodeIds: serviceNodes.map(n => n.id),
+        id: "application",
+        label: "Application Layer",
+        nodeIds: serviceNodes.map((n) => n.id),
       });
     }
 
     return {
-      type: 'layered_graph',
+      type: "layered_graph",
       nodes,
       edges,
       layers,
       layout: {
-        algorithm: 'layered',
+        algorithm: "layered",
       },
     };
   }
@@ -587,17 +587,17 @@ export class IRGenerator {
   private generateCoverageIR(resolved: Record<string, unknown>): Record<string, unknown> {
     const capabilities =
       resolved.capabilities &&
-      typeof resolved.capabilities === 'object' &&
+      typeof resolved.capabilities === "object" &&
       !Array.isArray(resolved.capabilities)
         ? (resolved.capabilities as Record<string, any>)
         : {};
     const tests =
-      resolved.tests && typeof resolved.tests === 'object' && !Array.isArray(resolved.tests)
+      resolved.tests && typeof resolved.tests === "object" && !Array.isArray(resolved.tests)
         ? (resolved.tests as Record<string, any>)
         : {};
     const requirements =
       resolved.requirements &&
-      typeof resolved.requirements === 'object' &&
+      typeof resolved.requirements === "object" &&
       !Array.isArray(resolved.requirements)
         ? (resolved.requirements as Record<string, any>)
         : {};
@@ -639,7 +639,7 @@ export class IRGenerator {
       nodes.push({
         id: capId,
         label: capability.name || capId,
-        type: 'capability',
+        type: "capability",
         properties: {
           testCount,
           requirementCount,
@@ -662,7 +662,7 @@ export class IRGenerator {
       nodes.push({
         id: testId,
         label: test.name || testId,
-        type: 'test',
+        type: "test",
         properties: {
           covers: test.covers || [],
         },
@@ -674,7 +674,7 @@ export class IRGenerator {
           edges.push({
             source: testId,
             target: capId,
-            type: 'covers',
+            type: "covers",
           });
         });
       }
@@ -685,7 +685,7 @@ export class IRGenerator {
       nodes.push({
         id: reqId,
         label: req.name || reqId,
-        type: 'requirement',
+        type: "requirement",
         properties: {
           capability: req.capability,
         },
@@ -696,7 +696,7 @@ export class IRGenerator {
         edges.push({
           source: reqId,
           target: req.capability,
-          type: 'specifies',
+          type: "specifies",
         });
       }
     });
@@ -708,7 +708,7 @@ export class IRGenerator {
         : 0;
 
     return {
-      type: 'coverage_graph',
+      type: "coverage_graph",
       nodes,
       edges,
       coverage: {
@@ -719,7 +719,7 @@ export class IRGenerator {
         details: coverage,
       },
       layout: {
-        algorithm: 'force',
+        algorithm: "force",
       },
       metadata: {
         totalCapabilities,

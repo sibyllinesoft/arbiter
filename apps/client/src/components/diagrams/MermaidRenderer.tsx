@@ -1,6 +1,6 @@
-import { AlertCircle, RefreshCw } from 'lucide-react';
-import mermaid from 'mermaid';
-import React, { useEffect, useRef, useState } from 'react';
+import { AlertCircle, RefreshCw } from "lucide-react";
+import mermaid from "mermaid";
+import React, { useEffect, useRef, useState } from "react";
 
 interface MermaidRendererProps {
   chart: string;
@@ -10,7 +10,7 @@ interface MermaidRendererProps {
 
 export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
   chart,
-  className = '',
+  className = "",
   title,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -21,13 +21,13 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
     // Initialize mermaid with modern configuration and security
     mermaid.initialize({
       startOnLoad: true,
-      theme: 'default',
-      securityLevel: 'strict', // Use strict security to prevent XSS
-      fontFamily: 'Inter, system-ui, sans-serif',
+      theme: "default",
+      securityLevel: "strict", // Use strict security to prevent XSS
+      fontFamily: "Inter, system-ui, sans-serif",
       flowchart: {
         useMaxWidth: true,
         htmlLabels: true,
-        curve: 'basis',
+        curve: "basis",
         padding: 20,
       },
       sequence: {
@@ -58,7 +58,7 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
 
     const chartSource = chart?.trim();
     if (!chartSource) {
-      container.innerHTML = '';
+      container.innerHTML = "";
       setIsLoading(false);
       return;
     }
@@ -69,12 +69,12 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
 
       // Sanitize chart input to prevent malicious content
       const sanitizedChart = chartSource
-        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
-        .replace(/javascript:/gi, '') // Remove javascript: URLs
-        .replace(/on\w+\s*=/gi, ''); // Remove event handlers like onclick=
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "") // Remove script tags
+        .replace(/javascript:/gi, "") // Remove javascript: URLs
+        .replace(/on\w+\s*=/gi, ""); // Remove event handlers like onclick=
 
       // Clear previous content
-      container.innerHTML = '';
+      container.innerHTML = "";
 
       // Generate unique ID for this diagram
       const diagramId = `mermaid-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -86,16 +86,16 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({
       container.innerHTML = svg;
 
       // Make sure the SVG is responsive
-      const responsiveSvg = container.querySelector('svg');
+      const responsiveSvg = container.querySelector("svg");
       if (responsiveSvg) {
-        responsiveSvg.style.maxWidth = '100%';
-        responsiveSvg.style.height = 'auto';
-        responsiveSvg.style.display = 'block';
-        responsiveSvg.style.margin = '0 auto';
+        responsiveSvg.style.maxWidth = "100%";
+        responsiveSvg.style.height = "auto";
+        responsiveSvg.style.display = "block";
+        responsiveSvg.style.margin = "0 auto";
       }
     } catch (err) {
-      console.error('Failed to render mermaid diagram:', err);
-      setError(err instanceof Error ? err.message : 'Failed to render diagram');
+      console.error("Failed to render mermaid diagram:", err);
+      setError(err instanceof Error ? err.message : "Failed to render diagram");
     } finally {
       setIsLoading(false);
     }

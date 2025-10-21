@@ -1,7 +1,7 @@
-import { AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Hash, Loader2 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../../services/api';
-import type { ResolvedSpecResponse } from '../../types/api';
+import { AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Hash, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { apiService } from "../../services/api";
+import type { ResolvedSpecResponse } from "../../types/api";
 
 interface PrettyCueDiagramProps {
   /** Project ID to fetch resolved spec data */
@@ -22,14 +22,14 @@ interface AccordionSection {
 
 export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
   projectId,
-  className = '',
-  title = 'CUE Specification Overview',
+  className = "",
+  title = "CUE Specification Overview",
 }) => {
   const [resolvedData, setResolvedData] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  const [specHash, setSpecHash] = useState<string>('');
+  const [specHash, setSpecHash] = useState<string>("");
 
   useEffect(() => {
     const fetchResolvedSpec = async () => {
@@ -40,8 +40,8 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
         setResolvedData(response.resolved);
         setSpecHash(response.spec_hash);
       } catch (err) {
-        console.error('Failed to fetch resolved spec:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load specification data');
+        console.error("Failed to fetch resolved spec:", err);
+        setError(err instanceof Error ? err.message : "Failed to load specification data");
       } finally {
         setLoading(false);
       }
@@ -53,7 +53,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
   }, [projectId]);
 
   const toggleSection = (sectionKey: string) => {
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(sectionKey)) {
         newSet.delete(sectionKey);
@@ -73,19 +73,19 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
       return <span className="text-gray-400 italic">undefined</span>;
     }
 
-    if (typeof value === 'boolean') {
+    if (typeof value === "boolean") {
       return (
-        <span className={`font-mono ${value ? 'text-green-600' : 'text-red-600'}`}>
+        <span className={`font-mono ${value ? "text-green-600" : "text-red-600"}`}>
           {String(value)}
         </span>
       );
     }
 
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return <span className="font-mono text-blue-600">{value}</span>;
     }
 
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return <span className="font-mono text-purple-600">"{value}"</span>;
     }
 
@@ -111,7 +111,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
       );
     }
 
-    if (typeof value === 'object' && value !== null) {
+    if (typeof value === "object" && value !== null) {
       const entries = Object.entries(value);
       if (entries.length === 0) {
         return <span className="text-gray-400 italic">{}</span>;
@@ -153,7 +153,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
     const hasContent =
       value !== null &&
       value !== undefined &&
-      (typeof value !== 'object' ||
+      (typeof value !== "object" ||
         (Array.isArray(value) && value.length > 0) ||
         (!Array.isArray(value) && Object.keys(value as object).length > 0));
 
@@ -283,7 +283,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
             Collapse All
           </button>
           <button
-            onClick={() => setExpandedSections(new Set(sections.map(s => s.key)))}
+            onClick={() => setExpandedSections(new Set(sections.map((s) => s.key)))}
             className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
             disabled={expandedCount === totalSections}
           >
@@ -293,7 +293,7 @@ export const PrettyCueDiagram: React.FC<PrettyCueDiagramProps> = ({
       </div>
 
       {/* Content */}
-      <div className="space-y-3">{sections.map(section => renderAccordionSection(section))}</div>
+      <div className="space-y-3">{sections.map((section) => renderAccordionSection(section))}</div>
     </div>
   );
 };

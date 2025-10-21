@@ -11,7 +11,7 @@ export class FetchQueue {
 
   constructor(
     private readonly fetcher: (path: string) => Promise<string | null>,
-    private readonly maxConcurrent = 4
+    private readonly maxConcurrent = 4,
   ) {}
 
   enqueue(path: string, priority = 0): Promise<string | null> {
@@ -35,10 +35,10 @@ export class FetchQueue {
     this.inFlight++;
 
     this.fetcher(task.path)
-      .then(result => {
+      .then((result) => {
         task.resolve(result);
       })
-      .catch(error => {
+      .catch((error) => {
         task.reject(error);
       })
       .finally(() => {

@@ -1,8 +1,8 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import chalk from 'chalk';
-import { glob } from 'glob';
-import type { CLIConfig } from '../types.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import chalk from "chalk";
+import { glob } from "glob";
+import type { CLIConfig } from "../types.js";
 
 /**
  * Revolutionary test scaffolding and coverage system
@@ -10,7 +10,7 @@ import type { CLIConfig } from '../types.js';
  */
 
 export interface TestsOptions {
-  language?: 'python' | 'typescript' | 'rust' | 'go' | 'bash';
+  language?: "python" | "typescript" | "rust" | "go" | "bash";
   framework?: string;
   property?: boolean;
   output?: string;
@@ -72,38 +72,38 @@ type LanguageConfig = {
  */
 const LANGUAGE_CONFIGS = {
   typescript: {
-    framework: 'vitest + fast-check',
-    extension: '.test.ts',
-    dependencies: ['vitest', 'fast-check', '@types/node'],
-    template: 'vitest',
-    propertyTestLib: 'fast-check',
+    framework: "vitest + fast-check",
+    extension: ".test.ts",
+    dependencies: ["vitest", "fast-check", "@types/node"],
+    template: "vitest",
+    propertyTestLib: "fast-check",
   },
   python: {
-    framework: 'pytest + hypothesis',
-    extension: '_test.py',
-    dependencies: ['pytest', 'hypothesis'],
-    template: 'pytest',
-    propertyTestLib: 'hypothesis',
+    framework: "pytest + hypothesis",
+    extension: "_test.py",
+    dependencies: ["pytest", "hypothesis"],
+    template: "pytest",
+    propertyTestLib: "hypothesis",
   },
   rust: {
-    framework: 'cargo test + proptest',
-    extension: '.rs',
-    dependencies: ['proptest'],
-    template: 'cargo-test',
-    propertyTestLib: 'proptest',
+    framework: "cargo test + proptest",
+    extension: ".rs",
+    dependencies: ["proptest"],
+    template: "cargo-test",
+    propertyTestLib: "proptest",
   },
   go: {
-    framework: 'go test',
-    extension: '_test.go',
+    framework: "go test",
+    extension: "_test.go",
     dependencies: [],
-    template: 'go-test',
-    propertyTestLib: 'quick',
+    template: "go-test",
+    propertyTestLib: "quick",
   },
   bash: {
-    framework: 'bats',
-    extension: '.bats',
-    dependencies: ['bats-core'],
-    template: 'bats',
+    framework: "bats",
+    extension: ".bats",
+    dependencies: ["bats-core"],
+    template: "bats",
     propertyTestLib: null,
   },
 } as const satisfies Record<string, LanguageConfig>;
@@ -115,14 +115,14 @@ type SupportedTestLanguage = keyof typeof LANGUAGE_CONFIGS;
  */
 async function parseInvariants(assemblyPath: string): Promise<Invariant[]> {
   try {
-    const content = await fs.readFile(assemblyPath, 'utf-8');
+    const content = await fs.readFile(assemblyPath, "utf-8");
 
     // Extract invariants section using regex
     // This is a simplified parser - in production, we'd use proper CUE parsing
     const invariantsMatch = content.match(/invariants:\s*\[([\s\S]*?)\n\s*\]/);
 
     if (!invariantsMatch || !invariantsMatch[1]) {
-      throw new Error('No invariants section found in assembly file');
+      throw new Error("No invariants section found in assembly file");
     }
 
     const invariantsText = invariantsMatch[1];
@@ -154,7 +154,7 @@ async function parseInvariants(assemblyPath: string): Promise<Invariant[]> {
     return invariants;
   } catch (error) {
     throw new Error(
-      `Failed to parse invariants: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to parse invariants: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -185,7 +185,7 @@ function extractParametersFromFormula(formula: string): string[] {
  */
 function isFormulaTestable(formula: string): boolean {
   // Formulas with universal quantifiers are typically testable
-  if (formula.includes('∀')) return true;
+  if (formula.includes("∀")) return true;
 
   // Comparison operators suggest testable properties
   if (/[≤≥=<>]/.test(formula)) return true;
@@ -194,7 +194,7 @@ function isFormulaTestable(formula: string): boolean {
   if (/[∧∨¬]/.test(formula)) return true;
 
   // Negated existential quantifiers are often testable
-  if (formula.includes('¬∃')) return true;
+  if (formula.includes("¬∃")) return true;
 
   return false;
 }
@@ -205,24 +205,24 @@ function isFormulaTestable(formula: string): boolean {
 function generateTestTemplate(invariant: Invariant, language: SupportedTestLanguage): TestTemplate {
   const config = LANGUAGE_CONFIGS[language];
   const timestamp = new Date().toISOString();
-  const marker = `ARBITER_INVARIANT_${invariant.name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+  const marker = `ARBITER_INVARIANT_${invariant.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
 
   let content: string;
 
   switch (language) {
-    case 'typescript':
+    case "typescript":
       content = generateTypeScriptTest(invariant, marker, timestamp);
       break;
-    case 'python':
+    case "python":
       content = generatePythonTest(invariant, marker, timestamp);
       break;
-    case 'rust':
+    case "rust":
       content = generateRustTest(invariant, marker, timestamp);
       break;
-    case 'go':
+    case "go":
       content = generateGoTest(invariant, marker, timestamp);
       break;
-    case 'bash':
+    case "bash":
       content = generateBashTest(invariant, marker, timestamp);
       break;
     default:
@@ -230,7 +230,7 @@ function generateTestTemplate(invariant: Invariant, language: SupportedTestLangu
   }
 
   return {
-    filename: `${invariant.name.replace(/[^a-zA-Z0-9]/g, '_')}${config.extension}`,
+    filename: `${invariant.name.replace(/[^a-zA-Z0-9]/g, "_")}${config.extension}`,
     content,
     framework: config.framework,
     language,
@@ -270,7 +270,7 @@ describe('${invariant.name}', () => {
 /**
  * Test implementation for: ${invariant.formula}
  */
-function testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}(${invariant.parameters?.join(': any, ') || ''}): boolean {
+function testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}(${invariant.parameters?.join(": any, ") || ""}): boolean {
   // TODO: Implement test logic for ${invariant.description}
   return true; // Placeholder
 }
@@ -283,7 +283,7 @@ function testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}(${invariant
 function generatePropertyTest(invariant: Invariant): string {
   const params = invariant.parameters || [];
 
-  if (invariant.formula.includes('f(f(x)) = f(x)')) {
+  if (invariant.formula.includes("f(f(x)) = f(x)")) {
     // Idempotent property
     return `
     fc.assert(fc.property(
@@ -297,7 +297,7 @@ function generatePropertyTest(invariant: Invariant): string {
     ));`;
   }
 
-  if (invariant.formula.includes('f(x) = f(x)')) {
+  if (invariant.formula.includes("f(x) = f(x)")) {
     // Deterministic property
     return `
     fc.assert(fc.property(
@@ -311,7 +311,7 @@ function generatePropertyTest(invariant: Invariant): string {
     ));`;
   }
 
-  if (invariant.formula.includes('duration') && invariant.formula.includes('≤')) {
+  if (invariant.formula.includes("duration") && invariant.formula.includes("≤")) {
     // Duration constraint
     return `
     fc.assert(fc.property(
@@ -329,7 +329,7 @@ function generatePropertyTest(invariant: Invariant): string {
     ));`;
   }
 
-  if (invariant.formula.includes('coverage_ratio')) {
+  if (invariant.formula.includes("coverage_ratio")) {
     // Coverage threshold
     return `
     const coverageData = await getCoverageData();
@@ -339,10 +339,10 @@ function generatePropertyTest(invariant: Invariant): string {
   // Generic property test
   return `
     fc.assert(fc.property(
-      ${params.map(p => `fc.string() // ${p}`).join(',\n      ')},
-      (${params.join(', ')}) => {
+      ${params.map((p) => `fc.string() // ${p}`).join(",\n      ")},
+      (${params.join(", ")}) => {
         // TODO: Implement property test for: ${invariant.formula}
-        expect(testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}(${params.join(', ')})).toBe(true);
+        expect(testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}(${params.join(", ")})).toBe(true);
       }
     ));`;
 }
@@ -353,7 +353,7 @@ function generatePropertyTest(invariant: Invariant): string {
 function generateUnitTest(invariant: Invariant): string {
   return `
     // Unit test for: ${invariant.formula}
-    const result = testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}();
+    const result = testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}();
     expect(result).toBe(true);`;
 }
 
@@ -371,28 +371,28 @@ import pytest
 from hypothesis import given, strategies as st
 
 
-class Test${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}:
+class Test${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}:
     """Test suite for ${invariant.description}"""
     
-    def test_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}(self):
+    def test_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}(self):
         """Test: ${invariant.formula}"""
         # TODO: Implement test logic
         assert True  # Placeholder
     
     @given(st.text())
-    def test_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_property(self, input_data):
+    def test_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}_property(self, input_data):
         """Property test for ${invariant.description}"""
         # TODO: Implement property test for ${invariant.formula}
-        result = test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}(input_data)
+        result = test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}(input_data)
         assert result is True
 
 
-def test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}(${invariant.parameters?.join(', ') || 'data'}):
+def test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}(${invariant.parameters?.join(", ") || "data"}):
     """
     Test implementation for: ${invariant.formula}
     
     Args:
-        ${invariant.parameters?.map(p => `${p}: Input parameter`).join('\n        ') || 'data: Input data'}
+        ${invariant.parameters?.map((p) => `${p}: Input parameter`).join("\n        ") || "data: Input data"}
     
     Returns:
         bool: True if invariant holds
@@ -415,11 +415,11 @@ function generateRustTest(invariant: Invariant, marker: string, timestamp: strin
 use proptest::prelude::*;
 
 #[cfg(test)]
-mod ${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_tests {
+mod ${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}_tests {
     use super::*;
     
     #[test]
-    fn test_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}() {
+    fn test_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}() {
         // Test: ${invariant.formula}
         // TODO: Implement test logic
         assert!(true); // Placeholder
@@ -427,19 +427,19 @@ mod ${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_tests {
     
     proptest! {
         #[test]
-        fn test_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}_property(
+        fn test_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}_property(
             input in ".*"
         ) {
             // Property test for: ${invariant.description}
             // Formula: ${invariant.formula}
-            let result = test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}(&input);
+            let result = test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}(&input);
             prop_assert!(result);
         }
     }
 }
 
 /// Test implementation for: ${invariant.formula}
-fn test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}(${invariant.parameters?.join(': &str, ') || 'data: &str'}): bool {
+fn test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}(${invariant.parameters?.join(": &str, ") || "data: &str"}): bool {
     // TODO: Implement actual test logic for ${invariant.description}
     true // Placeholder
 }
@@ -463,18 +463,18 @@ import (
     "testing/quick"
 )
 
-func Test${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}(t *testing.T) {
+func Test${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}(t *testing.T) {
     // Test: ${invariant.formula}
-    result := testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}("")
+    result := testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}("")
     if !result {
         t.Errorf("Invariant failed: %s", "${invariant.description}")
     }
 }
 
-func Test${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}Property(t *testing.T) {
+func Test${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}Property(t *testing.T) {
     // Property test for: ${invariant.description}
     f := func(input string) bool {
-        return testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}(input)
+        return testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}(input)
     }
     
     if err := quick.Check(f, nil); err != nil {
@@ -482,8 +482,8 @@ func Test${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}Property(t *testing.T) {
     }
 }
 
-// testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')} tests: ${invariant.formula}
-func testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, '')}(${invariant.parameters?.join(' string, ') || 'data string'}) bool {
+// testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")} tests: ${invariant.formula}
+func testInvariant${invariant.name.replace(/[^a-zA-Z0-9]/g, "")}(${invariant.parameters?.join(" string, ") || "data string"}) bool {
     // TODO: Implement actual test logic for ${invariant.description}
     return true // Placeholder
 }
@@ -506,7 +506,7 @@ load 'test_helper/bats-assert/load'
 
 @test "${invariant.name}: ${invariant.description}" {
     # Test: ${invariant.formula}
-    run test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}
+    run test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}
     assert_success
 }
 
@@ -518,7 +518,7 @@ load 'test_helper/bats-assert/load'
 }
 
 # Test implementation for: ${invariant.formula}
-test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}() {
+test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()}() {
     # TODO: Implement actual test logic for ${invariant.description}
     return 0 # Placeholder
 }
@@ -530,17 +530,17 @@ test_invariant_${invariant.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}() {
  */
 async function checkExistingTests(
   testTemplates: TestTemplate[],
-  outputDir: string
+  outputDir: string,
 ): Promise<string[]> {
   const existing: string[] = [];
 
   for (const template of testTemplates) {
     const filePath = path.join(outputDir, template.filename);
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fs.readFile(filePath, "utf-8");
       if (
         content.includes(
-          `ARBITER_INVARIANT_${template.invariantName.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`
+          `ARBITER_INVARIANT_${template.invariantName.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`,
         )
       ) {
         existing.push(filePath);
@@ -558,10 +558,10 @@ async function checkExistingTests(
  */
 async function analyzeCoverage(
   invariants: Invariant[],
-  testPaths: string[]
+  testPaths: string[],
 ): Promise<CoverageReport> {
   const timestamp = new Date().toISOString();
-  const testFiles: CoverageReport['test_files'] = [];
+  const testFiles: CoverageReport["test_files"] = [];
   const invariantCoverage: Map<
     string,
     { covered: boolean; test_files: string[]; test_count: number }
@@ -575,14 +575,14 @@ async function analyzeCoverage(
   // Analyze test files
   for (const testPath of testPaths) {
     try {
-      const content = await fs.readFile(testPath, 'utf-8');
+      const content = await fs.readFile(testPath, "utf-8");
       const language = detectLanguage(testPath);
       const framework = detectFramework(content, language);
       const invariantsCovered: string[] = [];
 
       // Look for Arbiter invariant markers
       for (const invariant of invariants) {
-        const marker = `ARBITER_INVARIANT_${invariant.name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
+        const marker = `ARBITER_INVARIANT_${invariant.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
         if (content.includes(marker)) {
           invariantsCovered.push(invariant.name);
           const coverage = invariantCoverage.get(invariant.name)!;
@@ -604,7 +604,7 @@ async function analyzeCoverage(
   }
 
   // Calculate coverage metrics
-  const coveredCount = Array.from(invariantCoverage.values()).filter(c => c.covered).length;
+  const coveredCount = Array.from(invariantCoverage.values()).filter((c) => c.covered).length;
   const coverage_ratio = invariants.length > 0 ? coveredCount / invariants.length : 0;
 
   return {
@@ -614,7 +614,7 @@ async function analyzeCoverage(
     coverage_ratio,
     threshold: 0.8, // Default threshold
     passed: coverage_ratio >= 0.8,
-    invariants: invariants.map(inv => ({
+    invariants: invariants.map((inv) => ({
       name: inv.name,
       description: inv.description,
       formula: inv.formula,
@@ -630,23 +630,23 @@ async function analyzeCoverage(
 function detectLanguage(filePath: string): string {
   const ext = path.extname(filePath);
   switch (ext) {
-    case '.ts':
-    case '.tsx':
-      return 'typescript';
-    case '.py':
-      return 'python';
-    case '.rs':
-      return 'rust';
-    case '.go':
-      return 'go';
-    case '.bats':
-    case '.sh':
-      return 'bash';
-    case '.js':
-    case '.jsx':
-      return 'javascript';
+    case ".ts":
+    case ".tsx":
+      return "typescript";
+    case ".py":
+      return "python";
+    case ".rs":
+      return "rust";
+    case ".go":
+      return "go";
+    case ".bats":
+    case ".sh":
+      return "bash";
+    case ".js":
+    case ".jsx":
+      return "javascript";
     default:
-      return 'unknown';
+      return "unknown";
   }
 }
 
@@ -654,14 +654,14 @@ function detectLanguage(filePath: string): string {
  * Detect test framework from file content
  */
 function detectFramework(content: string, language: string): string {
-  if (content.includes('vitest') || content.includes('import { test')) return 'vitest';
-  if (content.includes('jest')) return 'jest';
-  if (content.includes('pytest') || content.includes('import pytest')) return 'pytest';
-  if (content.includes('proptest')) return 'proptest';
-  if (content.includes('@test') && language === 'go') return 'go test';
-  if (content.includes('#!/usr/bin/env bats')) return 'bats';
+  if (content.includes("vitest") || content.includes("import { test")) return "vitest";
+  if (content.includes("jest")) return "jest";
+  if (content.includes("pytest") || content.includes("import pytest")) return "pytest";
+  if (content.includes("proptest")) return "proptest";
+  if (content.includes("@test") && language === "go") return "go test";
+  if (content.includes("#!/usr/bin/env bats")) return "bats";
 
-  return 'unknown';
+  return "unknown";
 }
 
 /**
@@ -671,21 +671,21 @@ function countTests(content: string, language: string): number {
   let count = 0;
 
   switch (language) {
-    case 'typescript':
-    case 'javascript':
+    case "typescript":
+    case "javascript":
       count += (content.match(/test\s*\(/g) || []).length;
       count += (content.match(/it\s*\(/g) || []).length;
       break;
-    case 'python':
+    case "python":
       count += (content.match(/def test_\w+/g) || []).length;
       break;
-    case 'rust':
+    case "rust":
       count += (content.match(/#\[test\]/g) || []).length;
       break;
-    case 'go':
+    case "go":
       count += (content.match(/func Test\w+/g) || []).length;
       break;
-    case 'bash':
+    case "bash":
       count += (content.match(/@test/g) || []).length;
       break;
   }
@@ -699,15 +699,15 @@ function countTests(content: string, language: string): number {
 function generateJUnitXML(report: CoverageReport): string {
   const testcases = report.invariants
     .map(
-      inv => `
+      (inv) => `
     <testcase 
       classname="ContractCoverage" 
       name="${inv.name}" 
       time="0">
-      ${inv.covered ? '' : `<failure message="Invariant not covered by tests">${inv.formula}</failure>`}
-    </testcase>`
+      ${inv.covered ? "" : `<failure message="Invariant not covered by tests">${inv.formula}</failure>`}
+    </testcase>`,
     )
-    .join('');
+    .join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites tests="${report.total_invariants}" failures="${report.total_invariants - report.covered_invariants}" time="0">
@@ -731,13 +731,13 @@ async function initializeScaffoldSession(): Promise<{
   assemblyPath: string;
   invariants: Invariant[];
 } | null> {
-  console.log(chalk.blue('🧪 Generating test scaffolds from invariants...'));
+  console.log(chalk.blue("🧪 Generating test scaffolds from invariants..."));
 
   // Find assembly file
-  const assemblyFiles = await glob('.arbiter/**/assembly.cue');
+  const assemblyFiles = await glob(".arbiter/**/assembly.cue");
   if (assemblyFiles.length === 0) {
-    console.error(chalk.red('❌ No assembly specification found in .arbiter/'));
-    console.log(chalk.dim('Run this command in a project with an Arbiter specification'));
+    console.error(chalk.red("❌ No assembly specification found in .arbiter/"));
+    console.log(chalk.dim("Run this command in a project with an Arbiter specification"));
     return null;
   }
 
@@ -749,7 +749,7 @@ async function initializeScaffoldSession(): Promise<{
   console.log(chalk.cyan(`🔍 Found ${invariants.length} invariants`));
 
   if (invariants.length === 0) {
-    console.log(chalk.yellow('No invariants found to generate tests from'));
+    console.log(chalk.yellow("No invariants found to generate tests from"));
     return null;
   }
 
@@ -762,11 +762,11 @@ async function initializeScaffoldSession(): Promise<{
 function displayInvariantsIfVerbose(invariants: Invariant[], verbose: boolean): void {
   if (!verbose) return;
 
-  console.log(chalk.cyan('\nInvariants found:'));
+  console.log(chalk.cyan("\nInvariants found:"));
   for (const inv of invariants) {
     console.log(chalk.dim(`  • ${inv.name}: ${inv.description}`));
     console.log(chalk.dim(`    Formula: ${inv.formula}`));
-    console.log(chalk.dim(`    Testable: ${inv.testable ? '✅' : '❌'}`));
+    console.log(chalk.dim(`    Testable: ${inv.testable ? "✅" : "❌"}`));
   }
 }
 
@@ -775,7 +775,7 @@ function displayInvariantsIfVerbose(invariants: Invariant[], verbose: boolean): 
  */
 function generateTestTemplatesFromInvariants(
   invariants: Invariant[],
-  language: SupportedTestLanguage
+  language: SupportedTestLanguage,
 ): { testTemplates: TestTemplate[]; skipped: string[] } {
   const testTemplates: TestTemplate[] = [];
   const skipped: string[] = [];
@@ -805,7 +805,7 @@ async function writeTestFiles(
   testTemplates: TestTemplate[],
   outputDir: string,
   existingTests: string[],
-  force: boolean
+  force: boolean,
 ): Promise<{ generated: number; updated: number }> {
   let generated = 0;
   let updated = 0;
@@ -819,7 +819,7 @@ async function writeTestFiles(
     }
 
     try {
-      await fs.writeFile(filePath, template.content, 'utf-8');
+      await fs.writeFile(filePath, template.content, "utf-8");
 
       if (exists) {
         updated++;
@@ -845,9 +845,9 @@ function displayScaffoldSummary(
   existingTests: string[],
   language: SupportedTestLanguage,
   outputDir: string,
-  skipped: string[]
+  skipped: string[],
 ): void {
-  console.log(chalk.blue('\n📊 Scaffold Summary:'));
+  console.log(chalk.blue("\n📊 Scaffold Summary:"));
   console.log(`  Generated: ${chalk.green(generated)} new test files`);
   console.log(`  Updated: ${chalk.yellow(updated)} existing test files`);
   console.log(`  Skipped: ${chalk.dim(existingTests.length - updated)} existing test files`);
@@ -855,22 +855,22 @@ function displayScaffoldSummary(
   console.log(`  Output: ${outputDir}`);
 
   if (skipped.length > 0) {
-    console.log(chalk.dim(`\nNon-testable invariants: ${skipped.join(', ')}`));
+    console.log(chalk.dim(`\nNon-testable invariants: ${skipped.join(", ")}`));
   }
 
   // Installation hints
   const deps = LANGUAGE_CONFIGS[language].dependencies;
   if (deps.length > 0) {
-    console.log(chalk.cyan('\n💡 Installation hint:'));
+    console.log(chalk.cyan("\n💡 Installation hint:"));
     switch (language) {
-      case 'typescript':
-        console.log(chalk.dim(`  npm install --save-dev ${deps.join(' ')}`));
+      case "typescript":
+        console.log(chalk.dim(`  npm install --save-dev ${deps.join(" ")}`));
         break;
-      case 'python':
-        console.log(chalk.dim(`  pip install ${deps.join(' ')}`));
+      case "python":
+        console.log(chalk.dim(`  pip install ${deps.join(" ")}`));
         break;
-      case 'rust':
-        console.log(chalk.dim(`  cargo add --dev ${deps.join(' ')}`));
+      case "rust":
+        console.log(chalk.dim(`  cargo add --dev ${deps.join(" ")}`));
         break;
     }
   }
@@ -884,7 +884,7 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
     const language = determineTargetLanguage(options);
     const { testTemplates, skipped } = generateTestTemplatesFromInvariants(
       context.invariants,
-      language
+      language,
     );
 
     if (testTemplates.length === 0) {
@@ -897,7 +897,7 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
       testTemplates,
       outputDir,
       existingTests,
-      options.force
+      options.force,
     );
 
     displayScaffoldSummary(
@@ -906,13 +906,13 @@ export async function scaffoldCommand(options: TestsOptions, _config: CLIConfig)
       existingTests,
       language,
       outputDir,
-      skipped
+      skipped,
     );
     return 0;
   } catch (error) {
     console.error(
-      chalk.red('❌ Scaffold failed:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("❌ Scaffold failed:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -932,15 +932,15 @@ async function initializeScaffoldContext(options: TestsOptions): Promise<Scaffol
 }
 
 function determineTargetLanguage(options: TestsOptions): SupportedTestLanguage {
-  const language = options.language ?? 'typescript';
+  const language = options.language ?? "typescript";
   console.log(chalk.blue(`🎯 Generating tests for: ${language}`));
   return language;
 }
 
 function handleNoTestableInvariants(skipped: string[]): number {
-  console.log(chalk.yellow('No testable invariants found'));
+  console.log(chalk.yellow("No testable invariants found"));
   if (skipped.length > 0) {
-    console.log(chalk.dim(`Skipped: ${skipped.join(', ')}`));
+    console.log(chalk.dim(`Skipped: ${skipped.join(", ")}`));
   }
   return 0;
 }
@@ -953,7 +953,7 @@ function prepareOutputDirectory(options: TestsOptions, language: SupportedTestLa
 async function processExistingTests(
   testTemplates: TestTemplate[],
   outputDir: string,
-  force?: boolean
+  force?: boolean,
 ): Promise<string[]> {
   await fs.mkdir(outputDir, { recursive: true });
   const existingTests = await checkExistingTests(testTemplates, outputDir);
@@ -963,7 +963,7 @@ async function processExistingTests(
     for (const existing of existingTests) {
       console.log(chalk.dim(`  • ${path.relative(process.cwd(), existing)}`));
     }
-    console.log(chalk.dim('Use --force to regenerate existing tests'));
+    console.log(chalk.dim("Use --force to regenerate existing tests"));
   }
 
   return existingTests;
@@ -973,7 +973,7 @@ async function executeTestFileGeneration(
   testTemplates: TestTemplate[],
   outputDir: string,
   existingTests: string[],
-  force?: boolean
+  force?: boolean,
 ): Promise<{ generated: number; updated: number }> {
   return await writeTestFiles(testTemplates, outputDir, existingTests, force || false);
 }
@@ -983,12 +983,12 @@ async function executeTestFileGeneration(
  */
 export async function coverCommand(options: TestsOptions, _config: CLIConfig): Promise<number> {
   try {
-    console.log(chalk.blue('📊 Computing contract coverage...'));
+    console.log(chalk.blue("📊 Computing contract coverage..."));
 
     // Find assembly file
-    const assemblyFiles = await glob('.arbiter/**/assembly.cue');
+    const assemblyFiles = await glob(".arbiter/**/assembly.cue");
     if (assemblyFiles.length === 0) {
-      console.error(chalk.red('❌ No assembly specification found in .arbiter/'));
+      console.error(chalk.red("❌ No assembly specification found in .arbiter/"));
       return 1;
     }
 
@@ -998,18 +998,18 @@ export async function coverCommand(options: TestsOptions, _config: CLIConfig): P
 
     // Find test files
     const testPatterns = [
-      '**/*.test.ts',
-      '**/*.test.js',
-      '**/*_test.py',
-      '**/test_*.py',
-      '**/*.rs',
-      '**/*_test.go',
-      '**/*.bats',
+      "**/*.test.ts",
+      "**/*.test.js",
+      "**/*_test.py",
+      "**/test_*.py",
+      "**/*.rs",
+      "**/*_test.go",
+      "**/*.bats",
     ];
 
     const testFiles: string[] = [];
     for (const pattern of testPatterns) {
-      const files = await glob(pattern, { ignore: ['node_modules/**', 'target/**', '.git/**'] });
+      const files = await glob(pattern, { ignore: ["node_modules/**", "target/**", ".git/**"] });
       testFiles.push(...files);
     }
 
@@ -1022,41 +1022,41 @@ export async function coverCommand(options: TestsOptions, _config: CLIConfig): P
     report.passed = report.coverage_ratio >= threshold;
 
     // Display results
-    console.log(chalk.blue('\n📈 Contract Coverage Report:'));
+    console.log(chalk.blue("\n📈 Contract Coverage Report:"));
     console.log(`  Total invariants: ${report.total_invariants}`);
     console.log(`  Covered invariants: ${chalk.green(report.covered_invariants)}`);
     console.log(
-      `  Coverage ratio: ${report.coverage_ratio >= threshold ? chalk.green : chalk.red}${(report.coverage_ratio * 100).toFixed(1)}%`
+      `  Coverage ratio: ${report.coverage_ratio >= threshold ? chalk.green : chalk.red}${(report.coverage_ratio * 100).toFixed(1)}%`,
     );
     console.log(`  Threshold: ${(threshold * 100).toFixed(1)}%`);
-    console.log(`  Status: ${report.passed ? chalk.green('✅ PASSED') : chalk.red('❌ FAILED')}`);
+    console.log(`  Status: ${report.passed ? chalk.green("✅ PASSED") : chalk.red("❌ FAILED")}`);
 
     // Detailed breakdown
     if (options.verbose) {
-      console.log(chalk.cyan('\n📋 Invariant Details:'));
+      console.log(chalk.cyan("\n📋 Invariant Details:"));
       for (const inv of report.invariants) {
-        const status = inv.covered ? chalk.green('✅') : chalk.red('❌');
+        const status = inv.covered ? chalk.green("✅") : chalk.red("❌");
         console.log(`  ${status} ${inv.name}`);
         console.log(`      ${chalk.dim(inv.description)}`);
         if (inv.covered && inv.test_files.length > 0) {
           console.log(
-            `      ${chalk.dim(`Tests: ${inv.test_files.map(f => path.relative(process.cwd(), f)).join(', ')}`)}`
+            `      ${chalk.dim(`Tests: ${inv.test_files.map((f) => path.relative(process.cwd(), f)).join(", ")}`)}`,
           );
         }
       }
 
-      console.log(chalk.cyan('\n📁 Test Files:'));
+      console.log(chalk.cyan("\n📁 Test Files:"));
       for (const file of report.test_files) {
         console.log(`  • ${path.relative(process.cwd(), file.path)} (${file.language})`);
         if (file.invariants_covered.length > 0) {
-          console.log(`    ${chalk.dim(`Covers: ${file.invariants_covered.join(', ')}`)}`);
+          console.log(`    ${chalk.dim(`Covers: ${file.invariants_covered.join(", ")}`)}`);
         }
       }
     }
 
     // Write JSON report
-    const outputDir = (options as any).outputDir || '.';
-    const reportFilename = options.output || 'coverage-report.json';
+    const outputDir = (options as any).outputDir || ".";
+    const reportFilename = options.output || "coverage-report.json";
     const reportPath = path.isAbsolute(reportFilename)
       ? reportFilename
       : path.join(outputDir, reportFilename);
@@ -1084,8 +1084,8 @@ export async function coverCommand(options: TestsOptions, _config: CLIConfig): P
     return report.passed ? 0 : 1;
   } catch (error) {
     console.error(
-      chalk.red('❌ Coverage analysis failed:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("❌ Coverage analysis failed:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -1096,18 +1096,18 @@ export async function coverCommand(options: TestsOptions, _config: CLIConfig): P
  */
 function getDefaultTestDir(language: string): string {
   switch (language) {
-    case 'typescript':
-    case 'javascript':
-      return 'tests';
-    case 'python':
-      return 'tests';
-    case 'rust':
-      return 'src';
-    case 'go':
-      return '.';
-    case 'bash':
-      return 'tests';
+    case "typescript":
+    case "javascript":
+      return "tests";
+    case "python":
+      return "tests";
+    case "rust":
+      return "src";
+    case "go":
+      return ".";
+    case "bash":
+      return "tests";
     default:
-      return 'tests';
+      return "tests";
   }
 }

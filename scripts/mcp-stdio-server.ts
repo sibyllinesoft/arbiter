@@ -6,31 +6,31 @@
  * Arbiter HTTP API server running on localhost:5050.
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-const API_BASE_URL = 'http://localhost:5050';
+const API_BASE_URL = "http://localhost:5050";
 
 // Create MCP server
 const server = new McpServer(
   {
-    name: 'arbiter-stdio',
-    version: '1.0.0',
+    name: "arbiter-stdio",
+    version: "1.0.0",
   },
   {
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 // Helper function to call the HTTP API
-async function callAPI(endpoint: string, method: string = 'GET', body?: any) {
+async function callAPI(endpoint: string, method: string = "GET", body?: any) {
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -47,112 +47,112 @@ async function callAPI(endpoint: string, method: string = 'GET', body?: any) {
 
 // Register health check tool
 server.registerTool(
-  'check_health',
+  "check_health",
   {
-    title: 'Health Check',
-    description: 'Check the health status of the Arbiter API server',
+    title: "Health Check",
+    description: "Check the health status of the Arbiter API server",
     inputSchema: {},
   },
   async () => {
-    const health = await callAPI('/health');
+    const health = await callAPI("/health");
     return {
       content: [
         {
-          type: 'text',
+          type: "text",
           text: JSON.stringify(health, null, 2),
         },
       ],
     };
-  }
+  },
 );
 
 // Register create project tool
 server.registerTool(
-  'create_project',
+  "create_project",
   {
-    title: 'Create Project',
-    description: 'Initialize a new Arbiter project with specified template',
+    title: "Create Project",
+    description: "Initialize a new Arbiter project with specified template",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
         name: {
-          type: 'string',
-          description: 'Name of the project to create',
+          type: "string",
+          description: "Name of the project to create",
         },
         options: {
-          type: 'object',
+          type: "object",
           properties: {
             template: {
-              type: 'string',
-              enum: ['basic', 'kubernetes', 'api'],
-              description: 'Project template to use',
+              type: "string",
+              enum: ["basic", "kubernetes", "api"],
+              description: "Project template to use",
             },
             directory: {
-              type: 'string',
-              description: 'Directory to create the project in',
+              type: "string",
+              description: "Directory to create the project in",
             },
             force: {
-              type: 'boolean',
-              description: 'Force overwrite existing directory',
+              type: "boolean",
+              description: "Force overwrite existing directory",
             },
           },
         },
       },
-      required: ['name'],
+      required: ["name"],
     },
   },
   async ({ name, options = {} }) => {
-    const result = await callAPI('/api/create', 'POST', { name, options });
+    const result = await callAPI("/api/create", "POST", { name, options });
     return {
       content: [
         {
-          type: 'text',
+          type: "text",
           text: JSON.stringify(result, null, 2),
         },
       ],
     };
-  }
+  },
 );
 
 // Register all add commands
 const addCommands = [
-  'service',
-  'database',
-  'cache',
-  'load-balancer',
-  'endpoint',
-  'route',
-  'schema',
-  'flow',
-  'locator',
-  'package',
-  'component',
-  'module',
+  "service",
+  "database",
+  "cache",
+  "load-balancer",
+  "endpoint",
+  "route",
+  "schema",
+  "flow",
+  "locator",
+  "package",
+  "component",
+  "module",
 ];
 
 for (const command of addCommands) {
   server.registerTool(
-    `add_${command.replace('-', '_')}`,
+    `add_${command.replace("-", "_")}`,
     {
       title: `Add ${command.charAt(0).toUpperCase() + command.slice(1)}`,
       description: `Add a ${command} to the Arbiter specification`,
       inputSchema: {
-        type: 'object',
+        type: "object",
         properties: {
           name: {
-            type: 'string',
+            type: "string",
             description: `Name of the ${command} to add`,
           },
           options: {
-            type: 'object',
+            type: "object",
             description: `Options for the ${command}`,
           },
         },
-        required: ['name'],
+        required: ["name"],
       },
     },
     async ({ name, options = {} }) => {
-      const result = await callAPI('/api/add', 'POST', {
+      const result = await callAPI("/api/add", "POST", {
         subcommand: command,
         name,
         options,
@@ -160,12 +160,12 @@ for (const command of addCommands) {
       return {
         content: [
           {
-            type: 'text',
+            type: "text",
             text: JSON.stringify(result, null, 2),
           },
         ],
       };
-    }
+    },
   );
 }
 
@@ -173,7 +173,7 @@ for (const command of addCommands) {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error('Arbiter MCP Server (stdio) running...');
+  console.error("Arbiter MCP Server (stdio) running...");
 }
 
 main().catch(console.error);

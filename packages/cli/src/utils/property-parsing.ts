@@ -16,14 +16,14 @@ export interface ParsedProperties {
  * - Mixed: "intent,size=lg,loading"
  */
 export function parseProperties(input: string): ParsedProperties {
-  if (!input || input.trim() === '') {
+  if (!input || input.trim() === "") {
     return {};
   }
 
   const trimmed = input.trim();
 
   // Try to parse as JSON first
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
     try {
       return JSON.parse(trimmed);
     } catch (error) {
@@ -42,16 +42,16 @@ function parseCommaDelimitedProperties(input: string): ParsedProperties {
   const properties: ParsedProperties = {};
 
   // Split by comma, but respect quoted values
-  const parts = smartSplit(input, ',');
+  const parts = smartSplit(input, ",");
 
   for (const part of parts) {
     const trimmedPart = part.trim();
     if (!trimmedPart) continue;
 
-    if (trimmedPart.includes('=')) {
+    if (trimmedPart.includes("=")) {
       // Key=value pair
-      const [key, ...valueParts] = trimmedPart.split('=');
-      const value = valueParts.join('='); // Handle cases where value contains '='
+      const [key, ...valueParts] = trimmedPart.split("=");
+      const value = valueParts.join("="); // Handle cases where value contains '='
 
       if (!key.trim()) {
         throw new Error(`Invalid property format: "${trimmedPart}" (missing key)`);
@@ -82,12 +82,12 @@ function parsePropertyValue(value: string): any {
   }
 
   // Boolean values
-  if (trimmed === 'true') return true;
-  if (trimmed === 'false') return false;
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
 
   // Null/undefined
-  if (trimmed === 'null') return null;
-  if (trimmed === 'undefined') return undefined;
+  if (trimmed === "null") return null;
+  if (trimmed === "undefined") return undefined;
 
   // Numbers
   if (/^-?\d+$/.test(trimmed)) {
@@ -98,18 +98,18 @@ function parsePropertyValue(value: string): any {
   }
 
   // Arrays (simple format: [item1,item2,item3])
-  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
     try {
       return JSON.parse(trimmed);
     } catch {
       // Fallback: split by comma
       const inner = trimmed.slice(1, -1);
-      return smartSplit(inner, ',').map(item => parsePropertyValue(item));
+      return smartSplit(inner, ",").map((item) => parsePropertyValue(item));
     }
   }
 
   // Objects (JSON format)
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
     try {
       return JSON.parse(trimmed);
     } catch (error) {
@@ -126,9 +126,9 @@ function parsePropertyValue(value: string): any {
  */
 function smartSplit(input: string, delimiter: string): string[] {
   const parts: string[] = [];
-  let current = '';
+  let current = "";
   let inQuotes = false;
-  let quoteChar = '';
+  let quoteChar = "";
   let depth = 0;
 
   for (let i = 0; i < input.length; i++) {
@@ -140,17 +140,17 @@ function smartSplit(input: string, delimiter: string): string[] {
       current += char;
     } else if (inQuotes && char === quoteChar) {
       inQuotes = false;
-      quoteChar = '';
+      quoteChar = "";
       current += char;
-    } else if (!inQuotes && (char === '{' || char === '[')) {
+    } else if (!inQuotes && (char === "{" || char === "[")) {
       depth++;
       current += char;
-    } else if (!inQuotes && (char === '}' || char === ']')) {
+    } else if (!inQuotes && (char === "}" || char === "]")) {
       depth--;
       current += char;
     } else if (!inQuotes && depth === 0 && char === delimiter) {
       parts.push(current);
-      current = '';
+      current = "";
     } else {
       current += char;
     }
@@ -168,13 +168,13 @@ function smartSplit(input: string, delimiter: string): string[] {
  * Supports comma-separated values with enhanced ergonomics
  */
 export function parseListOption(input: string | undefined): string[] {
-  if (!input || input.trim() === '') {
+  if (!input || input.trim() === "") {
     return [];
   }
 
-  return smartSplit(input.trim(), ',')
-    .map(item => item.trim())
-    .filter(item => item.length > 0);
+  return smartSplit(input.trim(), ",")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
 }
 
 /**
@@ -184,17 +184,17 @@ export function formatProperties(properties: ParsedProperties): string {
   const entries = Object.entries(properties);
 
   if (entries.length === 0) {
-    return '(none)';
+    return "(none)";
   }
 
   return entries
     .map(([key, value]) => {
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         return `${key}: "${value}"`;
       }
       return `${key}: ${JSON.stringify(value)}`;
     })
-    .join(', ');
+    .join(", ");
 }
 
 /**
@@ -202,7 +202,7 @@ export function formatProperties(properties: ParsedProperties): string {
  */
 export function validatePropertyNames(
   properties: ParsedProperties,
-  allowedPatterns: string[] = []
+  allowedPatterns: string[] = [],
 ): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
@@ -214,9 +214,9 @@ export function validatePropertyNames(
 
     // Check against allowed patterns if provided
     if (allowedPatterns.length > 0) {
-      const matches = allowedPatterns.some(pattern => {
-        if (pattern.includes('*')) {
-          const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+      const matches = allowedPatterns.some((pattern) => {
+        if (pattern.includes("*")) {
+          const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
           return regex.test(key);
         }
         return pattern === key;
@@ -224,7 +224,7 @@ export function validatePropertyNames(
 
       if (!matches) {
         errors.push(
-          `Property "${key}" not allowed. Allowed patterns: ${allowedPatterns.join(', ')}`
+          `Property "${key}" not allowed. Allowed patterns: ${allowedPatterns.join(", ")}`,
         );
       }
     }
@@ -261,7 +261,7 @@ export const PropertyFormatters = {
   toKeyValue(properties: ParsedProperties): string {
     return Object.entries(properties)
       .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
-      .join(',');
+      .join(",");
   },
 
   /**
@@ -271,7 +271,7 @@ export const PropertyFormatters = {
     return Object.entries(properties)
       .filter(([_, value]) => value === true)
       .map(([key]) => key)
-      .join(',');
+      .join(",");
   },
 
   /**

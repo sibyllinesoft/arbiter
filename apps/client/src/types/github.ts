@@ -4,7 +4,7 @@
 
 export interface GitHubOwner {
   login: string;
-  type: 'User' | 'Organization';
+  type: "User" | "Organization";
   avatar_url: string;
 }
 

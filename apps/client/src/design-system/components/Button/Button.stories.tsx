@@ -3,49 +3,49 @@
  * Comprehensive documentation and examples for the Button component
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { ArrowRight, Download, Loader2, Plus, Save, Trash2 } from 'lucide-react';
-import Button from './Button';
+import type { Meta, StoryObj } from "@storybook/react";
+import { ArrowRight, Download, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import Button from "./Button";
 
 const meta = {
-  title: 'Design System/Button',
+  title: "Design System/Button",
   component: Button,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional button component with comprehensive variants, sizes, and states. Designed for developer tools with a sophisticated graphite theme.',
+          "Professional button component with comprehensive variants, sizes, and states. Designed for developer tools with a sophisticated graphite theme.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['primary', 'secondary', 'ghost', 'danger'],
-      description: 'Visual variant of the button',
+      control: { type: "select" },
+      options: ["primary", "secondary", "ghost", "danger"],
+      description: "Visual variant of the button",
     },
     size: {
-      control: { type: 'select' },
-      options: ['xs', 'sm', 'md', 'lg', 'xl'],
-      description: 'Size of the button affecting padding and font size',
+      control: { type: "select" },
+      options: ["xs", "sm", "md", "lg", "xl"],
+      description: "Size of the button affecting padding and font size",
     },
     fullWidth: {
-      control: { type: 'boolean' },
-      description: 'Whether the button should take full width of container',
+      control: { type: "boolean" },
+      description: "Whether the button should take full width of container",
     },
     loading: {
-      control: { type: 'boolean' },
-      description: 'Whether the button is in a loading state',
+      control: { type: "boolean" },
+      description: "Whether the button is in a loading state",
     },
     disabled: {
-      control: { type: 'boolean' },
-      description: 'Whether the button is disabled',
+      control: { type: "boolean" },
+      description: "Whether the button is disabled",
     },
     children: {
-      control: { type: 'text' },
-      description: 'Button content',
+      control: { type: "text" },
+      description: "Button content",
     },
   },
 } satisfies Meta<typeof Button>;
@@ -56,7 +56,7 @@ type Story = StoryObj<typeof meta>;
 // Default button
 export const Default: Story = {
   args: {
-    children: 'Button',
+    children: "Button",
   },
 };
 
@@ -74,7 +74,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'The four main button variants: Primary for main actions, Secondary for secondary actions, Ghost for subtle actions, and Danger for destructive actions.',
+          "The four main button variants: Primary for main actions, Secondary for secondary actions, Ghost for subtle actions, and Danger for destructive actions.",
       },
     },
   },
@@ -94,7 +94,7 @@ export const Sizes: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Buttons come in five sizes from xs to xl. Medium (md) is the default size.',
+        story: "Buttons come in five sizes from xs to xl. Medium (md) is the default size.",
       },
     },
   },
@@ -121,7 +121,7 @@ export const WithIcons: Story = {
     docs: {
       description: {
         story:
-          'Buttons can include icons on the left, right, or both sides. Icons automatically scale with button size.',
+          "Buttons can include icons on the left, right, or both sides. Icons automatically scale with button size.",
       },
     },
   },
@@ -147,7 +147,7 @@ export const Loading: Story = {
     docs: {
       description: {
         story:
-          'Loading buttons show a spinner and are automatically disabled. The text becomes transparent while preserving button dimensions.',
+          "Loading buttons show a spinner and are automatically disabled. The text becomes transparent while preserving button dimensions.",
       },
     },
   },
@@ -176,7 +176,7 @@ export const Disabled: Story = {
     docs: {
       description: {
         story:
-          'Disabled buttons have reduced opacity and are not interactive. All variants support disabled state.',
+          "Disabled buttons have reduced opacity and are not interactive. All variants support disabled state.",
       },
     },
   },
@@ -199,7 +199,7 @@ export const FullWidth: Story = {
     docs: {
       description: {
         story:
-          'Full width buttons stretch to fill their container width. Useful in forms and narrow layouts.',
+          "Full width buttons stretch to fill their container width. Useful in forms and narrow layouts.",
       },
     },
   },
@@ -319,7 +319,7 @@ export const DeveloperToolExamples: Story = {
     docs: {
       description: {
         story:
-          'Comprehensive examples showing buttons in realistic developer tool contexts: project management, build/deploy workflows, editors, and dangerous operations.',
+          "Comprehensive examples showing buttons in realistic developer tool contexts: project management, build/deploy workflows, editors, and dangerous operations.",
       },
     },
   },
@@ -328,9 +328,9 @@ export const DeveloperToolExamples: Story = {
 // Interactive playground
 export const Interactive: Story = {
   args: {
-    variant: 'primary',
-    size: 'md',
-    children: 'Interactive Button',
+    variant: "primary",
+    size: "md",
+    children: "Interactive Button",
     fullWidth: false,
     loading: false,
     disabled: false,
@@ -339,7 +339,7 @@ export const Interactive: Story = {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all button props. Use the controls panel below to test different combinations.',
+          "Interactive playground to experiment with all button props. Use the controls panel below to test different combinations.",
       },
     },
   },

@@ -2,8 +2,8 @@
  * HandlersReport - Standalone handlers report component
  */
 
-import React from 'react';
-import { Handlers } from './Handlers/Handlers';
+import React from "react";
+import { Handlers } from "./Handlers/Handlers";
 
 interface HandlersReportProps {
   className?: string;
@@ -11,7 +11,7 @@ interface HandlersReportProps {
 
 export function HandlersReport({ className }: HandlersReportProps) {
   return (
-    <div className={`h-full ${className || ''}`}>
+    <div className={`h-full ${className || ""}`}>
       <Handlers />
     </div>
   );

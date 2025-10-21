@@ -16,17 +16,17 @@ import {
   Server,
   Settings,
   Zap,
-} from 'lucide-react';
-import React, { useState, useEffect, useRef } from 'react';
-import { Button, Card, StatusBadge, cn } from '../design-system';
+} from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Button, Card, StatusBadge, cn } from "../design-system";
 
 interface ActionLogEntry {
   id: string;
   timestamp: string;
-  type: 'service' | 'database' | 'infrastructure' | 'webhook' | 'validation' | 'deployment';
+  type: "service" | "database" | "infrastructure" | "webhook" | "validation" | "deployment";
   action: string;
   details: string;
-  status: 'success' | 'warning' | 'error' | 'info';
+  status: "success" | "warning" | "error" | "info";
   metadata?: Record<string, any>;
 }
 
@@ -38,7 +38,7 @@ interface ActionLogProps {
 
 export function ActionLog({ projectId, lastWebSocketMessage, className }: ActionLogProps) {
   const [entries, setEntries] = useState<ActionLogEntry[]>([]);
-  const [filter, setFilter] = useState<'all' | ActionLogEntry['type']>('all');
+  const [filter, setFilter] = useState<"all" | ActionLogEntry["type"]>("all");
   const [autoScroll, setAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -56,75 +56,75 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
     let newEntry: ActionLogEntry | null = null;
 
     switch (type) {
-      case 'webhook_received':
+      case "webhook_received":
         newEntry = {
           id: `ws_${Date.now()}`,
           timestamp,
-          type: 'webhook',
-          action: 'Webhook Received',
+          type: "webhook",
+          action: "Webhook Received",
           details: `${payload.provider} ${payload.event} event received`,
-          status: 'info',
+          status: "info",
           metadata: payload,
         };
         break;
 
-      case 'handler_executed': {
-        const handlerName = payload?.handlerName || 'Handler';
+      case "handler_executed": {
+        const handlerName = payload?.handlerName || "Handler";
         const success = Boolean(payload?.success);
         const details =
           payload?.message ||
-          `${handlerName} ${success ? 'completed successfully' : 'encountered an error'}`;
+          `${handlerName} ${success ? "completed successfully" : "encountered an error"}`;
         newEntry = {
           id: `ws_${Date.now()}`,
           timestamp,
-          type: 'webhook',
-          action: 'Handler Executed',
+          type: "webhook",
+          action: "Handler Executed",
           details,
-          status: success ? 'success' : 'error',
+          status: success ? "success" : "error",
           metadata: payload,
         };
         break;
       }
 
-      case 'validation_completed':
+      case "validation_completed":
         newEntry = {
           id: `ws_${Date.now()}`,
           timestamp,
-          type: 'validation',
-          action: 'Validation Completed',
-          details: `Specification validation ${payload.success ? 'passed' : 'failed'}`,
-          status: payload.success ? 'success' : 'error',
+          type: "validation",
+          action: "Validation Completed",
+          details: `Specification validation ${payload.success ? "passed" : "failed"}`,
+          status: payload.success ? "success" : "error",
           metadata: payload,
         };
         break;
 
-      case 'service_added':
+      case "service_added":
         newEntry = {
           id: `ws_${Date.now()}`,
           timestamp,
-          type: 'service',
-          action: 'Service Added',
+          type: "service",
+          action: "Service Added",
           details: `Service "${payload.name}" added to specification`,
-          status: 'success',
+          status: "success",
           metadata: payload,
         };
         break;
 
-      case 'database_added':
+      case "database_added":
         newEntry = {
           id: `ws_${Date.now()}`,
           timestamp,
-          type: 'database',
-          action: 'Database Added',
+          type: "database",
+          action: "Database Added",
           details: `Database "${payload.name}" configured`,
-          status: 'success',
+          status: "success",
           metadata: payload,
         };
         break;
     }
 
     if (newEntry) {
-      setEntries(prev => [newEntry!, ...prev]);
+      setEntries((prev) => [newEntry!, ...prev]);
     }
   }, [lastWebSocketMessage, projectId]);
 
@@ -135,56 +135,56 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
     }
   }, [entries, autoScroll]);
 
-  const getTypeIcon = (type: ActionLogEntry['type']) => {
+  const getTypeIcon = (type: ActionLogEntry["type"]) => {
     switch (type) {
-      case 'service':
+      case "service":
         return <Server className="w-4 h-4" />;
-      case 'database':
+      case "database":
         return <Database className="w-4 h-4" />;
-      case 'infrastructure':
+      case "infrastructure":
         return <Layers className="w-4 h-4" />;
-      case 'webhook':
+      case "webhook":
         return <Zap className="w-4 h-4" />;
-      case 'validation':
+      case "validation":
         return <CheckCircle className="w-4 h-4" />;
-      case 'deployment':
+      case "deployment":
         return <GitCommit className="w-4 h-4" />;
       default:
         return <Activity className="w-4 h-4" />;
     }
   };
 
-  const getStatusIcon = (status: ActionLogEntry['status']) => {
+  const getStatusIcon = (status: ActionLogEntry["status"]) => {
     switch (status) {
-      case 'success':
+      case "success":
         return <CheckCircle className="w-4 h-4" />;
-      case 'error':
+      case "error":
         return <AlertCircle className="w-4 h-4" />;
-      case 'warning':
+      case "warning":
         return <AlertCircle className="w-4 h-4" />;
-      case 'info':
+      case "info":
         return <Info className="w-4 h-4" />;
       default:
         return <Info className="w-4 h-4" />;
     }
   };
 
-  const getTypeColor = (type: ActionLogEntry['type']) => {
+  const getTypeColor = (type: ActionLogEntry["type"]) => {
     switch (type) {
-      case 'service':
-        return 'text-blue-600 bg-blue-50';
-      case 'database':
-        return 'text-green-600 bg-green-50';
-      case 'infrastructure':
-        return 'text-purple-600 bg-purple-50';
-      case 'webhook':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'validation':
-        return 'text-indigo-600 bg-indigo-50';
-      case 'deployment':
-        return 'text-red-600 bg-red-50';
+      case "service":
+        return "text-blue-600 bg-blue-50";
+      case "database":
+        return "text-green-600 bg-green-50";
+      case "infrastructure":
+        return "text-purple-600 bg-purple-50";
+      case "webhook":
+        return "text-yellow-600 bg-yellow-50";
+      case "validation":
+        return "text-indigo-600 bg-indigo-50";
+      case "deployment":
+        return "text-red-600 bg-red-50";
       default:
-        return 'text-gray-600 bg-gray-50';
+        return "text-gray-600 bg-gray-50";
     }
   };
 
@@ -194,35 +194,35 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
     return date.toLocaleDateString();
   };
 
   const filteredEntries =
-    filter === 'all' ? entries : entries.filter(entry => entry.type === filter);
+    filter === "all" ? entries : entries.filter((entry) => entry.type === filter);
 
   const clearLog = () => {
     setEntries([]);
   };
 
   return (
-    <Card className={cn('h-full', className)}>
+    <Card className={cn("h-full", className)}>
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Activity className="w-5 h-5 text-gray-600" />
             <h2 className="text-lg font-semibold text-gray-900">Action Log</h2>
             <StatusBadge variant="info" size="sm">
-              {filteredEntries.length} {filter === 'all' ? 'activities' : `${filter} activities`}
+              {filteredEntries.length} {filter === "all" ? "activities" : `${filter} activities`}
             </StatusBadge>
           </div>
 
           <div className="flex items-center gap-2">
             <select
               value={filter}
-              onChange={e => setFilter(e.target.value as any)}
+              onChange={(e) => setFilter(e.target.value as any)}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Activities</option>
@@ -261,12 +261,12 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredEntries.map(entry => (
+            {filteredEntries.map((entry) => (
               <div
                 key={entry.id}
                 className="flex gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <div className={cn('p-2 rounded-lg', getTypeColor(entry.type))}>
+                <div className={cn("p-2 rounded-lg", getTypeColor(entry.type))}>
                   {getTypeIcon(entry.type)}
                 </div>
 

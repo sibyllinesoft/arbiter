@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Bell,
   Bookmark,
@@ -19,31 +19,31 @@ import {
   Star,
   Trash,
   Users,
-} from 'lucide-react';
-import React from 'react';
-import { NavGroup, NavItem } from './NavItem';
+} from "lucide-react";
+import React from "react";
+import { NavGroup, NavItem } from "./NavItem";
 
 const meta: Meta<typeof NavItem> = {
-  title: 'Design System/Navigation/NavItem',
+  title: "Design System/Navigation/NavItem",
   component: NavItem,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Flexible navigation item component for various navigation contexts. Supports different variants, sizes, and interactive states.',
+          "Flexible navigation item component for various navigation contexts. Supports different variants, sizes, and interactive states.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['default', 'subtle', 'ghost'],
+      control: { type: "select" },
+      options: ["default", "subtle", "ghost"],
     },
     size: {
-      control: { type: 'select' },
-      options: ['sm', 'md', 'lg'],
+      control: { type: "select" },
+      options: ["sm", "md", "lg"],
     },
   },
 };
@@ -53,11 +53,11 @@ type Story = StoryObj<typeof NavItem>;
 
 export const Default: Story = {
   args: {
-    children: 'Dashboard',
+    children: "Dashboard",
     icon: <Home className="h-4 w-4" />,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -67,12 +67,12 @@ export const Default: Story = {
 
 export const Active: Story = {
   args: {
-    children: 'Dashboard',
+    children: "Dashboard",
     icon: <Home className="h-4 w-4" />,
     active: true,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -82,12 +82,12 @@ export const Active: Story = {
 
 export const WithBadge: Story = {
   args: {
-    children: 'Notifications',
+    children: "Notifications",
     icon: <Bell className="h-4 w-4" />,
-    badge: '12',
+    badge: "12",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -97,12 +97,12 @@ export const WithBadge: Story = {
 
 export const WithEndIcon: Story = {
   args: {
-    children: 'Settings',
+    children: "Settings",
     icon: <Settings className="h-4 w-4" />,
     endIcon: <ChevronRight className="h-4 w-4" />,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -112,12 +112,12 @@ export const WithEndIcon: Story = {
 
 export const WithShortcut: Story = {
   args: {
-    children: 'Search',
+    children: "Search",
     icon: <Search className="h-4 w-4" />,
-    shortcut: '⌘K',
+    shortcut: "⌘K",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -127,13 +127,13 @@ export const WithShortcut: Story = {
 
 export const ExternalLinkExample: Story = {
   args: {
-    children: 'Documentation',
+    children: "Documentation",
     icon: <ExternalLink className="h-4 w-4" />,
-    href: 'https://docs.example.com',
+    href: "https://docs.example.com",
     external: true,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -143,13 +143,13 @@ export const ExternalLinkExample: Story = {
 
 export const Disabled: Story = {
   args: {
-    children: 'Admin Panel',
+    children: "Admin Panel",
     icon: <Settings className="h-4 w-4" />,
     disabled: true,
-    badge: 'Pro',
+    badge: "Pro",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-64 p-4 bg-white rounded-lg border">
         <Story />
       </div>
@@ -209,7 +209,7 @@ export const Variants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different visual variants of the NavItem component.',
+        story: "Different visual variants of the NavItem component.",
       },
     },
   },
@@ -258,7 +258,7 @@ export const SizeVariants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different size variants of the NavItem component.',
+        story: "Different size variants of the NavItem component.",
       },
     },
   },
@@ -293,7 +293,7 @@ export const NavigationGroups: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Using NavGroup to organize related navigation items with section headers.',
+        story: "Using NavGroup to organize related navigation items with section headers.",
       },
     },
   },
@@ -329,7 +329,7 @@ export const CollapsibleGroups: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Collapsible navigation groups that can be expanded and collapsed by users.',
+        story: "Collapsible navigation groups that can be expanded and collapsed by users.",
       },
     },
   },
@@ -374,7 +374,7 @@ export const ActionItems: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'NavItem used for various action-oriented navigation scenarios.',
+        story: "NavItem used for various action-oriented navigation scenarios.",
       },
     },
   },
@@ -382,7 +382,7 @@ export const ActionItems: Story = {
 
 export const InteractiveExample: Story = {
   render: () => {
-    const [activeItem, setActiveItem] = React.useState('dashboard');
+    const [activeItem, setActiveItem] = React.useState("dashboard");
 
     const handleItemClick = (id: string) => {
       setActiveItem(id);
@@ -395,39 +395,39 @@ export const InteractiveExample: Story = {
           <NavGroup title="Interactive Demo">
             <NavItem
               icon={<Home className="h-4 w-4" />}
-              active={activeItem === 'dashboard'}
-              onClick={() => handleItemClick('dashboard')}
+              active={activeItem === "dashboard"}
+              onClick={() => handleItemClick("dashboard")}
             >
               Dashboard
             </NavItem>
             <NavItem
               icon={<Users className="h-4 w-4" />}
               badge="12"
-              active={activeItem === 'team'}
-              onClick={() => handleItemClick('team')}
+              active={activeItem === "team"}
+              onClick={() => handleItemClick("team")}
             >
               Team
             </NavItem>
             <NavItem
               icon={<Folder className="h-4 w-4" />}
-              active={activeItem === 'projects'}
-              onClick={() => handleItemClick('projects')}
+              active={activeItem === "projects"}
+              onClick={() => handleItemClick("projects")}
             >
               Projects
             </NavItem>
             <NavItem
               icon={<Search className="h-4 w-4" />}
               shortcut="⌘K"
-              active={activeItem === 'search'}
-              onClick={() => handleItemClick('search')}
+              active={activeItem === "search"}
+              onClick={() => handleItemClick("search")}
             >
               Search
             </NavItem>
             <NavItem
               icon={<Settings className="h-4 w-4" />}
               endIcon={<ChevronRight className="h-4 w-4" />}
-              active={activeItem === 'settings'}
-              onClick={() => handleItemClick('settings')}
+              active={activeItem === "settings"}
+              onClick={() => handleItemClick("settings")}
             >
               Settings
             </NavItem>
@@ -448,7 +448,7 @@ export const InteractiveExample: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive NavItem example with state management and click handling.',
+        story: "Interactive NavItem example with state management and click handling.",
       },
     },
   },

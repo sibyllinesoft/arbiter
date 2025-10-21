@@ -1,10 +1,10 @@
-import { GherkinEditor } from '@/components/Editor/GherkinEditor';
-import { MarkdownField } from '@/components/form/MarkdownField';
-import Button from '@/design-system/components/Button';
-import Input from '@/design-system/components/Input';
-import Modal from '@/design-system/components/Modal';
-import React, { useEffect, useMemo, useState } from 'react';
-import type { FieldValue } from './AddEntityModal';
+import { GherkinEditor } from "@/components/Editor/GherkinEditor";
+import { MarkdownField } from "@/components/form/MarkdownField";
+import Button from "@/design-system/components/Button";
+import Input from "@/design-system/components/Input";
+import Modal from "@/design-system/components/Modal";
+import React, { useEffect, useMemo, useState } from "react";
+import type { FieldValue } from "./AddEntityModal";
 
 interface CapabilityModalProps {
   open: boolean;
@@ -24,7 +24,7 @@ interface CapabilityFormState {
 }
 
 const buildDefaultSpec = (name: string) =>
-  `Feature: ${name || 'Describe capability behaviour'}
+  `Feature: ${name || "Describe capability behaviour"}
   Scenario: Provide a meaningful outcome
     Given a relevant precondition
     When an action occurs
@@ -33,10 +33,10 @@ const buildDefaultSpec = (name: string) =>
 
 export function CapabilityModal({ open, onClose, onSubmit, groupLabel }: CapabilityModalProps) {
   const [form, setForm] = useState<CapabilityFormState>(() => ({
-    name: '',
-    owner: '',
-    description: '',
-    gherkin: buildDefaultSpec('New Capability'),
+    name: "",
+    owner: "",
+    description: "",
+    gherkin: buildDefaultSpec("New Capability"),
   }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -48,10 +48,10 @@ export function CapabilityModal({ open, onClose, onSubmit, groupLabel }: Capabil
     }
 
     setForm({
-      name: '',
-      owner: '',
-      description: '',
-      gherkin: buildDefaultSpec('New Capability'),
+      name: "",
+      owner: "",
+      description: "",
+      gherkin: buildDefaultSpec("New Capability"),
     });
     setErrors({});
     setSubmitError(null);
@@ -59,26 +59,26 @@ export function CapabilityModal({ open, onClose, onSubmit, groupLabel }: Capabil
 
   const modalTitle = useMemo(() => {
     if (!groupLabel) {
-      return 'Add Capability';
+      return "Add Capability";
     }
-    return `Add ${groupLabel.endsWith('s') ? groupLabel.slice(0, -1) : groupLabel}`;
+    return `Add ${groupLabel.endsWith("s") ? groupLabel.slice(0, -1) : groupLabel}`;
   }, [groupLabel]);
 
   const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
-    setForm(prev => ({ ...prev, name: value }));
+    setForm((prev) => ({ ...prev, name: value }));
   };
 
   const handleOwnerChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setForm(prev => ({ ...prev, owner: event.target.value }));
+    setForm((prev) => ({ ...prev, owner: event.target.value }));
   };
 
   const handleDescriptionChange = (value: string) => {
-    setForm(prev => ({ ...prev, description: value }));
+    setForm((prev) => ({ ...prev, description: value }));
   };
 
   const handleGherkinChange = (value: string) => {
-    setForm(prev => ({ ...prev, gherkin: value }));
+    setForm((prev) => ({ ...prev, gherkin: value }));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -86,12 +86,12 @@ export function CapabilityModal({ open, onClose, onSubmit, groupLabel }: Capabil
     const nextErrors: Record<string, string> = {};
 
     if (!form.name.trim()) {
-      nextErrors.name = 'Name is required';
+      nextErrors.name = "Name is required";
     }
 
     const gherkinSpec = form.gherkin.trim();
     if (!gherkinSpec) {
-      nextErrors.gherkin = 'Gherkin specification is required';
+      nextErrors.gherkin = "Gherkin specification is required";
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -114,10 +114,10 @@ export function CapabilityModal({ open, onClose, onSubmit, groupLabel }: Capabil
     try {
       setSubmitting(true);
       setSubmitError(null);
-      await onSubmit({ entityType: 'capability', values });
+      await onSubmit({ entityType: "capability", values });
       onClose();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to save capability';
+      const message = error instanceof Error ? error.message : "Failed to save capability";
       setSubmitError(message);
     } finally {
       setSubmitting(false);
@@ -218,7 +218,7 @@ export function CapabilityModal({ open, onClose, onSubmit, groupLabel }: Capabil
             Cancel
           </Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Save Capability'}
+            {submitting ? "Saving…" : "Save Capability"}
           </Button>
         </div>
       </form>

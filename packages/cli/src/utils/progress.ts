@@ -1,6 +1,6 @@
-import chalk from 'chalk';
-import ora, { type Ora } from 'ora';
-import type { ProgressBarOptions, ProgressOptions, StepProgressOptions } from '../types.js';
+import chalk from "chalk";
+import ora, { type Ora } from "ora";
+import type { ProgressBarOptions, ProgressOptions, StepProgressOptions } from "../types.js";
 
 /**
  * Enhanced progress indicator utility class with step-by-step tracking
@@ -10,7 +10,7 @@ export class Progress {
   private startTime: number;
   private steps: Array<{
     name: string;
-    status: 'pending' | 'running' | 'completed' | 'failed';
+    status: "pending" | "running" | "completed" | "failed";
     startTime?: number;
     endTime?: number;
   }>;
@@ -20,8 +20,8 @@ export class Progress {
   constructor(options: ProgressOptions) {
     this.spinner = ora({
       text: options.text,
-      color: options.color || 'blue',
-      spinner: options.spinner || 'dots',
+      color: options.color || "blue",
+      spinner: options.spinner || "dots",
     });
     this.startTime = Date.now();
     this.steps = [];
@@ -31,7 +31,7 @@ export class Progress {
    * Initialize steps for step-by-step progress tracking
    */
   addSteps(stepNames: string[]): void {
-    this.steps = stepNames.map(name => ({ name, status: 'pending' }));
+    this.steps = stepNames.map((name) => ({ name, status: "pending" }));
     this.totalSteps = this.steps.length;
   }
 
@@ -48,14 +48,14 @@ export class Progress {
   nextStep(stepName?: string): void {
     // Complete previous step if any
     if (this.currentStep >= 0 && this.currentStep < this.steps.length) {
-      this.steps[this.currentStep].status = 'completed';
+      this.steps[this.currentStep].status = "completed";
       this.steps[this.currentStep].endTime = Date.now();
     }
 
     // Move to next step
     this.currentStep++;
     if (this.currentStep < this.steps.length) {
-      this.steps[this.currentStep].status = 'running';
+      this.steps[this.currentStep].status = "running";
       this.steps[this.currentStep].startTime = Date.now();
 
       const currentStepName = stepName || this.steps[this.currentStep].name;
@@ -69,11 +69,11 @@ export class Progress {
    */
   failCurrentStep(error?: string): void {
     if (this.currentStep >= 0 && this.currentStep < this.steps.length) {
-      this.steps[this.currentStep].status = 'failed';
+      this.steps[this.currentStep].status = "failed";
       this.steps[this.currentStep].endTime = Date.now();
 
       const stepName = this.steps[this.currentStep].name;
-      const errorMsg = error ? `: ${error}` : '';
+      const errorMsg = error ? `: ${error}` : "";
       this.fail(`${stepName} failed${errorMsg}`);
     }
   }
@@ -92,7 +92,7 @@ export class Progress {
     const _elapsed = this.getElapsed();
     const estimate = this.getEstimatedTimeRemaining();
     const estimateText =
-      estimate > 0 ? chalk.dim(` ~${Math.round(estimate / 1000)}s remaining`) : '';
+      estimate > 0 ? chalk.dim(` ~${Math.round(estimate / 1000)}s remaining`) : "";
     this.spinner.text = `${text}${estimateText}`;
   }
 
@@ -102,13 +102,13 @@ export class Progress {
   succeed(text?: string): void {
     // Complete current step if any
     if (this.currentStep >= 0 && this.currentStep < this.steps.length) {
-      this.steps[this.currentStep].status = 'completed';
+      this.steps[this.currentStep].status = "completed";
       this.steps[this.currentStep].endTime = Date.now();
     }
 
     const elapsed = Date.now() - this.startTime;
     const message = text || this.spinner.text;
-    const stepsSummary = this.totalSteps > 0 ? this.getStepsSummary() : '';
+    const stepsSummary = this.totalSteps > 0 ? this.getStepsSummary() : "";
     this.spinner.succeed(`${message} ${chalk.dim(`(${elapsed}ms)`)}${stepsSummary}`);
   }
 
@@ -118,7 +118,7 @@ export class Progress {
   fail(text?: string): void {
     const elapsed = Date.now() - this.startTime;
     const message = text || this.spinner.text;
-    const stepsSummary = this.totalSteps > 0 ? this.getStepsSummary() : '';
+    const stepsSummary = this.totalSteps > 0 ? this.getStepsSummary() : "";
     this.spinner.fail(`${message} ${chalk.dim(`(${elapsed}ms)`)}${stepsSummary}`);
   }
 
@@ -128,7 +128,7 @@ export class Progress {
   warn(text?: string): void {
     const elapsed = Date.now() - this.startTime;
     const message = text || this.spinner.text;
-    const stepsSummary = this.totalSteps > 0 ? this.getStepsSummary() : '';
+    const stepsSummary = this.totalSteps > 0 ? this.getStepsSummary() : "";
     this.spinner.warn(`${message} ${chalk.dim(`(${elapsed}ms)`)}${stepsSummary}`);
   }
 
@@ -152,7 +152,7 @@ export class Progress {
   getEstimatedTimeRemaining(): number {
     if (this.totalSteps === 0 || this.currentStep < 0) return 0;
 
-    const completedSteps = this.steps.filter(step => step.status === 'completed');
+    const completedSteps = this.steps.filter((step) => step.status === "completed");
     if (completedSteps.length === 0) return 0;
 
     const avgTimePerStep =
@@ -168,10 +168,10 @@ export class Progress {
    * Get a summary of completed steps
    */
   getStepsSummary(): string {
-    if (this.totalSteps === 0) return '';
+    if (this.totalSteps === 0) return "";
 
-    const completed = this.steps.filter(s => s.status === 'completed').length;
-    const failed = this.steps.filter(s => s.status === 'failed').length;
+    const completed = this.steps.filter((s) => s.status === "completed").length;
+    const failed = this.steps.filter((s) => s.status === "failed").length;
 
     if (failed > 0) {
       return chalk.dim(` [${completed}/${this.totalSteps} completed, ${failed} failed]`);
@@ -183,24 +183,24 @@ export class Progress {
    * Get detailed steps report for debugging
    */
   getStepsReport(): string {
-    if (this.totalSteps === 0) return '';
+    if (this.totalSteps === 0) return "";
 
     return `\n${this.steps
       .map((step, _index) => {
         const icon =
-          step.status === 'completed'
-            ? '✓'
-            : step.status === 'failed'
-              ? '✗'
-              : step.status === 'running'
-                ? '⚬'
-                : '○';
+          step.status === "completed"
+            ? "✓"
+            : step.status === "failed"
+              ? "✗"
+              : step.status === "running"
+                ? "⚬"
+                : "○";
         const color =
-          step.status === 'completed'
+          step.status === "completed"
             ? chalk.green
-            : step.status === 'failed'
+            : step.status === "failed"
               ? chalk.red
-              : step.status === 'running'
+              : step.status === "running"
                 ? chalk.yellow
                 : chalk.dim;
 
@@ -209,11 +209,11 @@ export class Progress {
             ? ` (${step.endTime - step.startTime}ms)`
             : step.startTime && !step.endTime
               ? ` (${Date.now() - step.startTime}ms ongoing)`
-              : '';
+              : "";
 
         return `  ${color(icon)} ${step.name}${chalk.dim(duration)}`;
       })
-      .join('\n')}`;
+      .join("\n")}`;
   }
 }
 
@@ -270,7 +270,7 @@ export class ProgressBar {
     if (!process.stdout.isTTY) {
       // Simple text progress for non-TTY environments
       const percent = Math.round((this.current / this.total) * 100);
-      console.log(`${this.title}: ${percent}% ${message || ''}`);
+      console.log(`${this.title}: ${percent}% ${message || ""}`);
       return;
     }
 
@@ -279,15 +279,15 @@ export class ProgressBar {
     const filled = Math.round((width * percent) / 100);
     const empty = width - filled;
 
-    const bar = '█'.repeat(filled) + '░'.repeat(empty);
+    const bar = "█".repeat(filled) + "░".repeat(empty);
     const percentText = `${Math.round(percent).toString().padStart(3)}%`;
-    const progressText = message ? ` ${message}` : '';
+    const progressText = message ? ` ${message}` : "";
     const elapsed = Math.round((Date.now() - this.startTime) / 1000);
     const timeText = ` (${elapsed}s)`;
 
     // Clear line and render progress
     process.stdout.write(
-      `\r${this.title}: [${chalk.cyan(bar)}] ${percentText}${progressText}${chalk.dim(timeText)}`
+      `\r${this.title}: [${chalk.cyan(bar)}] ${percentText}${progressText}${chalk.dim(timeText)}`,
     );
   }
 }
@@ -318,7 +318,7 @@ export class MultiProgress {
    * Update all progress indicators
    */
   updateAll(text: string): void {
-    this.progresses.forEach(progress => {
+    this.progresses.forEach((progress) => {
       progress.update(text);
     });
   }
@@ -327,7 +327,7 @@ export class MultiProgress {
    * Stop all progress indicators
    */
   stopAll(): void {
-    this.progresses.forEach(progress => {
+    this.progresses.forEach((progress) => {
       progress.stop();
     });
     this.progresses.clear();
@@ -337,7 +337,7 @@ export class MultiProgress {
    * Mark all as successful
    */
   succeedAll(text?: string): void {
-    this.progresses.forEach(progress => {
+    this.progresses.forEach((progress) => {
       progress.succeed(text);
     });
     this.progresses.clear();
@@ -347,7 +347,7 @@ export class MultiProgress {
    * Mark all as failed
    */
   failAll(text?: string): void {
-    this.progresses.forEach(progress => {
+    this.progresses.forEach((progress) => {
       progress.fail(text);
     });
     this.progresses.clear();
@@ -444,7 +444,7 @@ export function createProgressBar(options: ProgressBarOptions): ProgressBar {
  */
 export async function withProgress<T>(
   options: ProgressOptions,
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
 ): Promise<T> {
   const progress = createProgress(options);
 
@@ -482,7 +482,7 @@ export async function withProgress<T>(
  */
 export async function withStepProgress<T>(
   options: StepProgressOptions,
-  operation: (progress: Progress | SimpleProgress) => Promise<T>
+  operation: (progress: Progress | SimpleProgress) => Promise<T>,
 ): Promise<T> {
   const progress = createStepProgress(options);
 
@@ -520,7 +520,7 @@ export async function withStepProgress<T>(
  */
 export async function withProgressBar<T>(
   options: ProgressBarOptions,
-  operation: (progressBar: ProgressBar) => Promise<T>
+  operation: (progressBar: ProgressBar) => Promise<T>,
 ): Promise<T> {
   const progressBar = createProgressBar(options);
 

@@ -3,27 +3,27 @@
  * Comprehensive documentation for the editor pane container that combines file tree and Monaco editor
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { useEffect } from 'react';
-import { AppProvider, useApp } from '../../contexts/AppContext';
-import type { Fragment, Project } from '../../types/api';
-import EditorPane from './EditorPane';
+import type { Meta, StoryObj } from "@storybook/react";
+import { useEffect } from "react";
+import { AppProvider, useApp } from "../../contexts/AppContext";
+import type { Fragment, Project } from "../../types/api";
+import EditorPane from "./EditorPane";
 
 // Sample data
 const mockProject: Project = {
-  id: 'demo-project',
-  name: 'E-commerce API Specification',
+  id: "demo-project",
+  name: "E-commerce API Specification",
   description:
-    'Complete API specification for an e-commerce platform with user management, product catalog, and payment processing.',
-  created_at: '2024-01-15T10:00:00Z',
-  updated_at: '2024-01-15T10:30:00Z',
+    "Complete API specification for an e-commerce platform with user management, product catalog, and payment processing.",
+  created_at: "2024-01-15T10:00:00Z",
+  updated_at: "2024-01-15T10:30:00Z",
 };
 
 const mockFragments: Fragment[] = [
   {
-    id: '1',
-    project_id: 'demo-project',
-    path: 'main.cue',
+    id: "1",
+    project_id: "demo-project",
+    path: "main.cue",
     content: `// E-commerce API Specification
 package main
 
@@ -63,13 +63,13 @@ database: {
 		timeout: int & >0 | *30
 	}
 }`,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:30:00Z',
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-01-15T10:30:00Z",
   },
   {
-    id: '2',
-    project_id: 'demo-project',
-    path: 'api/products.cue',
+    id: "2",
+    project_id: "demo-project",
+    path: "api/products.cue",
     content: `// Product API Specification
 package api
 
@@ -142,13 +142,13 @@ products: {
 		response: #Product
 	}
 }`,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:15:00Z',
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-01-15T10:15:00Z",
   },
   {
-    id: '3',
-    project_id: 'demo-project',
-    path: 'api/users.cue',
+    id: "3",
+    project_id: "demo-project",
+    path: "api/users.cue",
     content: `// User Management API
 package api
 
@@ -192,13 +192,13 @@ package api
 	updated_at: string
 	last_login?: string
 }`,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:20:00Z',
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-01-15T10:20:00Z",
   },
   {
-    id: '4',
-    project_id: 'demo-project',
-    path: 'api/orders.cue',
+    id: "4",
+    project_id: "demo-project",
+    path: "api/orders.cue",
     content: `// Order Management API
 package api
 
@@ -242,13 +242,13 @@ package api
 	created_at: string
 	updated_at: string
 }`,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:25:00Z',
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-01-15T10:25:00Z",
   },
   {
-    id: '5',
-    project_id: 'demo-project',
-    path: 'config/environments/production.cue',
+    id: "5",
+    project_id: "demo-project",
+    path: "config/environments/production.cue",
     content: `// Production Environment Configuration
 package config
 
@@ -296,8 +296,8 @@ production: {
 		health_endpoint:  "/health"
 	}
 }`,
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z',
+    created_at: "2024-01-15T10:00:00Z",
+    updated_at: "2024-01-15T10:00:00Z",
   },
 ];
 
@@ -328,15 +328,15 @@ const StoryContextInitializer = ({
   useEffect(() => {
     // Initialize the context with story data
     if (project) {
-      dispatch({ type: 'SET_PROJECT', payload: project });
+      dispatch({ type: "SET_PROJECT", payload: project });
     }
 
     if (fragments) {
-      dispatch({ type: 'SET_FRAGMENTS', payload: fragments });
+      dispatch({ type: "SET_FRAGMENTS", payload: fragments });
     }
 
     if (activeFragmentId) {
-      dispatch({ type: 'SET_ACTIVE_FRAGMENT', payload: activeFragmentId });
+      dispatch({ type: "SET_ACTIVE_FRAGMENT", payload: activeFragmentId });
     }
 
     if (error) {
@@ -353,7 +353,7 @@ const StoryContextInitializer = ({
     });
 
     // Set up unsaved changes
-    unsavedChanges.forEach(id => {
+    unsavedChanges.forEach((id) => {
       markUnsaved(id);
     });
   }, [
@@ -375,18 +375,18 @@ const StoryContextInitializer = ({
 };
 
 const meta = {
-  title: 'Editor/EditorPane',
+  title: "Editor/EditorPane",
   component: EditorPane,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component:
-          'The main editor pane that combines a file tree browser and Monaco code editor in a resizable split layout. Provides a complete development environment for editing CUE specifications.',
+          "The main editor pane that combines a file tree browser and Monaco code editor in a resizable split layout. Provides a complete development environment for editing CUE specifications.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   decorators: [
     (Story, context) => (
       <AppProvider>
@@ -400,8 +400,8 @@ const meta = {
   ],
   argTypes: {
     className: {
-      control: { type: 'text' },
-      description: 'Additional CSS classes',
+      control: { type: "text" },
+      description: "Additional CSS classes",
     },
   },
 } satisfies Meta<typeof EditorPane>;
@@ -415,9 +415,9 @@ export const Default: Story = {
     mockContext: {
       project: mockProject,
       fragments: mockFragments,
-      activeFragmentId: '1', // main.cue
+      activeFragmentId: "1", // main.cue
       editorContent: {
-        '1': mockFragments[0].content, // Load the content in editor
+        "1": mockFragments[0].content, // Load the content in editor
       },
     },
   },
@@ -425,7 +425,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          'Default editor pane with file tree on top and Monaco editor below. Shows the main.cue file loaded and ready for editing.',
+          "Default editor pane with file tree on top and Monaco editor below. Shows the main.cue file loaded and ready for editing.",
       },
     },
   },
@@ -443,7 +443,7 @@ export const NoProject: Story = {
     docs: {
       description: {
         story:
-          'Editor pane when no project is selected. Shows an empty state prompting the user to select a project.',
+          "Editor pane when no project is selected. Shows an empty state prompting the user to select a project.",
       },
     },
   },
@@ -461,7 +461,7 @@ export const EmptyProject: Story = {
     docs: {
       description: {
         story:
-          'Editor pane with an empty project. File tree shows empty state, editor shows welcome message.',
+          "Editor pane with an empty project. File tree shows empty state, editor shows welcome message.",
       },
     },
   },
@@ -473,10 +473,10 @@ export const WithUnsavedChanges: Story = {
     mockContext: {
       project: mockProject,
       fragments: mockFragments,
-      activeFragmentId: '2', // api/products.cue
-      unsavedChanges: new Set(['2']),
+      activeFragmentId: "2", // api/products.cue
+      unsavedChanges: new Set(["2"]),
       editorContent: {
-        '2':
+        "2":
           mockFragments[1].content +
           "\n\n// Modified content\n// This change hasn't been saved yet",
       },
@@ -486,7 +486,7 @@ export const WithUnsavedChanges: Story = {
     docs: {
       description: {
         story:
-          'Editor pane showing a file with unsaved changes. Notice the modified indicator in the header and the amber styling.',
+          "Editor pane showing a file with unsaved changes. Notice the modified indicator in the header and the amber styling.",
       },
     },
   },
@@ -498,12 +498,12 @@ export const MultipleUnsavedFiles: Story = {
     mockContext: {
       project: mockProject,
       fragments: mockFragments,
-      activeFragmentId: '3', // api/users.cue
-      unsavedChanges: new Set(['1', '2', '3']),
+      activeFragmentId: "3", // api/users.cue
+      unsavedChanges: new Set(["1", "2", "3"]),
       editorContent: {
-        '1': mockFragments[0].content + '\n// Updated main config',
-        '2': mockFragments[1].content + '\n// Updated products API',
-        '3': mockFragments[2].content + '\n// Updated users API',
+        "1": mockFragments[0].content + "\n// Updated main config",
+        "2": mockFragments[1].content + "\n// Updated products API",
+        "3": mockFragments[2].content + "\n// Updated users API",
       },
     },
   },
@@ -511,7 +511,7 @@ export const MultipleUnsavedFiles: Story = {
     docs: {
       description: {
         story:
-          'Editor pane with multiple files having unsaved changes. File tree shows amber indicators for all modified files.',
+          "Editor pane with multiple files having unsaved changes. File tree shows amber indicators for all modified files.",
       },
     },
   },
@@ -523,72 +523,72 @@ export const LargeProject: Story = {
     mockContext: {
       project: {
         ...mockProject,
-        name: 'Enterprise E-commerce Platform',
+        name: "Enterprise E-commerce Platform",
         description:
-          'Complete microservices architecture specification for a large-scale e-commerce platform',
+          "Complete microservices architecture specification for a large-scale e-commerce platform",
       },
       fragments: [
         ...mockFragments,
         {
-          id: '6',
-          project_id: 'demo-project',
-          path: 'api/auth/jwt.cue',
-          content: '// JWT authentication configuration',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "6",
+          project_id: "demo-project",
+          path: "api/auth/jwt.cue",
+          content: "// JWT authentication configuration",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '7',
-          project_id: 'demo-project',
-          path: 'api/auth/oauth.cue',
-          content: '// OAuth2 authentication configuration',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "7",
+          project_id: "demo-project",
+          path: "api/auth/oauth.cue",
+          content: "// OAuth2 authentication configuration",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '8',
-          project_id: 'demo-project',
-          path: 'api/payments/stripe.cue',
-          content: '// Stripe payment integration',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "8",
+          project_id: "demo-project",
+          path: "api/payments/stripe.cue",
+          content: "// Stripe payment integration",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '9',
-          project_id: 'demo-project',
-          path: 'api/payments/paypal.cue',
-          content: '// PayPal payment integration',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "9",
+          project_id: "demo-project",
+          path: "api/payments/paypal.cue",
+          content: "// PayPal payment integration",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '10',
-          project_id: 'demo-project',
-          path: 'database/migrations/001_initial.sql',
-          content: '-- Initial database schema',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "10",
+          project_id: "demo-project",
+          path: "database/migrations/001_initial.sql",
+          content: "-- Initial database schema",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '11',
-          project_id: 'demo-project',
-          path: 'config/environments/staging.cue',
-          content: '// Staging environment configuration',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "11",
+          project_id: "demo-project",
+          path: "config/environments/staging.cue",
+          content: "// Staging environment configuration",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '12',
-          project_id: 'demo-project',
-          path: 'docs/api-reference.md',
-          content: '# API Reference Documentation',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          id: "12",
+          project_id: "demo-project",
+          path: "docs/api-reference.md",
+          content: "# API Reference Documentation",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
       ],
-      activeFragmentId: '8', // api/payments/stripe.cue
+      activeFragmentId: "8", // api/payments/stripe.cue
       editorContent: {
-        '8': `// Stripe Payment Integration
+        "8": `// Stripe Payment Integration
 package payments
 
 // Stripe configuration
@@ -624,7 +624,7 @@ stripe: {
     docs: {
       description: {
         story:
-          'Editor pane with a large, complex project structure showing deep folder nesting and various file types.',
+          "Editor pane with a large, complex project structure showing deep folder nesting and various file types.",
       },
     },
   },
@@ -643,7 +643,7 @@ export const Loading: Story = {
     docs: {
       description: {
         story:
-          'Editor pane in loading state. Shows loading indicators while project data is being fetched.',
+          "Editor pane in loading state. Shows loading indicators while project data is being fetched.",
       },
     },
   },
@@ -656,15 +656,15 @@ export const WithError: Story = {
       project: mockProject,
       fragments: mockFragments,
       error:
-        'Failed to save fragment: Network connection lost. Please check your internet connection and try again.',
-      activeFragmentId: '1',
+        "Failed to save fragment: Network connection lost. Please check your internet connection and try again.",
+      activeFragmentId: "1",
     },
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Editor pane showing an error state. Error messages are displayed to inform users of issues.',
+          "Editor pane showing an error state. Error messages are displayed to inform users of issues.",
       },
     },
   },
@@ -677,36 +677,36 @@ export const DifferentFileTypes: Story = {
       project: mockProject,
       fragments: [
         {
-          id: '1',
-          project_id: 'demo-project',
-          path: 'config.cue',
+          id: "1",
+          project_id: "demo-project",
+          path: "config.cue",
           content:
             '// CUE configuration\npackage config\n\napp: {\n  name: "demo"\n  version: "1.0.0"\n}',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '2',
-          project_id: 'demo-project',
-          path: 'package.json',
+          id: "2",
+          project_id: "demo-project",
+          path: "package.json",
           content:
             '{\n  "name": "ecommerce-api",\n  "version": "1.0.0",\n  "description": "E-commerce API",\n  "main": "index.js"\n}',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
         {
-          id: '3',
-          project_id: 'demo-project',
-          path: 'README.md',
+          id: "3",
+          project_id: "demo-project",
+          path: "README.md",
           content:
-            '# E-commerce API\n\nThis is a comprehensive API specification for an e-commerce platform.\n\n## Features\n\n- User management\n- Product catalog\n- Order processing\n- Payment integration',
-          created_at: '2024-01-15T10:00:00Z',
-          updated_at: '2024-01-15T10:00:00Z',
+            "# E-commerce API\n\nThis is a comprehensive API specification for an e-commerce platform.\n\n## Features\n\n- User management\n- Product catalog\n- Order processing\n- Payment integration",
+          created_at: "2024-01-15T10:00:00Z",
+          updated_at: "2024-01-15T10:00:00Z",
         },
       ],
-      activeFragmentId: '2', // package.json
+      activeFragmentId: "2", // package.json
       editorContent: {
-        '2': '{\n  "name": "ecommerce-api",\n  "version": "1.0.0",\n  "description": "E-commerce API",\n  "main": "index.js"\n}',
+        "2": '{\n  "name": "ecommerce-api",\n  "version": "1.0.0",\n  "description": "E-commerce API",\n  "main": "index.js"\n}',
       },
     },
   },
@@ -714,7 +714,7 @@ export const DifferentFileTypes: Story = {
     docs: {
       description: {
         story:
-          'Editor pane showing different file types: CUE, JSON, and Markdown. Each file type gets appropriate syntax highlighting.',
+          "Editor pane showing different file types: CUE, JSON, and Markdown. Each file type gets appropriate syntax highlighting.",
       },
     },
   },
@@ -726,19 +726,19 @@ export const CustomStyling: Story = {
     mockContext: {
       project: mockProject,
       fragments: mockFragments,
-      activeFragmentId: '1',
+      activeFragmentId: "1",
       editorContent: {
-        '1': mockFragments[0].content,
+        "1": mockFragments[0].content,
       },
     },
     className:
-      'border-2 border-purple-200 rounded-xl shadow-xl bg-gradient-to-br from-purple-50 to-blue-50',
+      "border-2 border-purple-200 rounded-xl shadow-xl bg-gradient-to-br from-purple-50 to-blue-50",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Editor pane with custom styling applied. Shows how the component can be themed for different design contexts.',
+          "Editor pane with custom styling applied. Shows how the component can be themed for different design contexts.",
       },
     },
   },
@@ -746,14 +746,14 @@ export const CustomStyling: Story = {
 
 // Interactive demo
 export const Interactive: Story = {
-  render: args => {
+  render: (args) => {
     return (
       <AppProvider>
         <StoryContextInitializer
           project={mockProject}
           fragments={mockFragments}
           activeFragmentId="1"
-          editorContent={{ '1': mockFragments[0].content }}
+          editorContent={{ "1": mockFragments[0].content }}
         >
           <div className="h-screen w-full">
             <EditorPane {...args} />
@@ -763,13 +763,13 @@ export const Interactive: Story = {
     );
   },
   args: {
-    className: '',
+    className: "",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Interactive editor pane demo. Try clicking on different files, editing content, and using keyboard shortcuts like Ctrl+S to save.',
+          "Interactive editor pane demo. Try clicking on different files, editing content, and using keyboard shortcuts like Ctrl+S to save.",
       },
     },
   },

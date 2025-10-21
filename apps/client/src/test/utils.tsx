@@ -1,20 +1,20 @@
-import type { RenderOptions } from '@testing-library/react';
-import { render } from '@testing-library/react';
-import { type ReactElement } from 'react';
-import { vi } from 'vitest';
+import type { RenderOptions } from "@testing-library/react";
+import { render } from "@testing-library/react";
+import { type ReactElement } from "react";
+import { vi } from "vitest";
 
 // Mock contexts that might be needed for component testing
 const MockAppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
+const customRender = (ui: ReactElement, options?: Omit<RenderOptions, "wrapper">) =>
   render(ui, {
     wrapper: MockAppProvider,
     ...options,
   });
 
-export * from '@testing-library/react';
+export * from "@testing-library/react";
 export { customRender as render };
 
 // Common test utilities
@@ -42,7 +42,7 @@ export const mockWebSocket = () => {
 
 export const mockMonacoEditor = () => {
   return {
-    getValue: vi.fn(() => ''),
+    getValue: vi.fn(() => ""),
     setValue: vi.fn(),
     getModel: vi.fn(),
     setModel: vi.fn(),

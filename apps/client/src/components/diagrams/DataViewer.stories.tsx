@@ -1,17 +1,17 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   assemblySpecCue,
   basicRequirementsCue,
   complexTypescriptProjectCue,
   sampleResolvedData,
-} from '../../test/cue-samples';
-import { DataViewer } from './DataViewer';
+} from "../../test/cue-samples";
+import { DataViewer } from "./DataViewer";
 
 const meta: Meta<typeof DataViewer> = {
-  title: 'Components/CUE Visualization/DataViewer',
+  title: "Components/CUE Visualization/DataViewer",
   component: DataViewer,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
     docs: {
       description: {
         component: `
@@ -50,24 +50,24 @@ The component automatically handles object serialization to JSON and provides ap
   },
   argTypes: {
     language: {
-      control: 'select',
-      options: ['cue', 'json', 'yaml', 'javascript', 'typescript'],
-      description: 'Programming language for syntax highlighting',
+      control: "select",
+      options: ["cue", "json", "yaml", "javascript", "typescript"],
+      description: "Programming language for syntax highlighting",
     },
     data: {
-      control: 'object',
-      description: 'Data to display (string or object)',
+      control: "object",
+      description: "Data to display (string or object)",
     },
     title: {
-      control: 'text',
-      description: 'Optional title for the viewer',
+      control: "text",
+      description: "Optional title for the viewer",
     },
     showCopyButton: {
-      control: 'boolean',
-      description: 'Show copy to clipboard button',
+      control: "boolean",
+      description: "Show copy to clipboard button",
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -79,9 +79,9 @@ type Story = StoryObj<typeof DataViewer>;
  */
 export const CueRequirements: Story = {
   args: {
-    title: 'CUE Requirements Specification',
+    title: "CUE Requirements Specification",
     data: basicRequirementsCue,
-    language: 'cue',
+    language: "cue",
     showCopyButton: true,
   },
 };
@@ -91,9 +91,9 @@ export const CueRequirements: Story = {
  */
 export const CueAssembly: Story = {
   args: {
-    title: 'CUE Assembly Specification',
+    title: "CUE Assembly Specification",
     data: assemblySpecCue,
-    language: 'cue',
+    language: "cue",
     showCopyButton: true,
   },
 };
@@ -103,9 +103,9 @@ export const CueAssembly: Story = {
  */
 export const CueTypeScriptProject: Story = {
   args: {
-    title: 'TypeScript Project in CUE',
+    title: "TypeScript Project in CUE",
     data: complexTypescriptProjectCue,
-    language: 'cue',
+    language: "cue",
     showCopyButton: true,
   },
 };
@@ -115,9 +115,9 @@ export const CueTypeScriptProject: Story = {
  */
 export const JsonData: Story = {
   args: {
-    title: 'Resolved Specification Data',
+    title: "Resolved Specification Data",
     data: sampleResolvedData,
-    language: 'json',
+    language: "json",
     showCopyButton: true,
   },
 };
@@ -127,68 +127,68 @@ export const JsonData: Story = {
  */
 export const ComplexJsonData: Story = {
   args: {
-    title: 'Complex Project Configuration',
+    title: "Complex Project Configuration",
     data: {
       project: {
-        name: 'Advanced TypeScript Microservice',
-        version: 'v3.2.1',
-        language: 'TypeScript',
-        runtime: 'Node.js',
+        name: "Advanced TypeScript Microservice",
+        version: "v3.2.1",
+        language: "TypeScript",
+        runtime: "Node.js",
       },
       services: {
         auth_service: {
-          name: 'Authentication Service',
-          version: 'v2.1.0',
-          status: 'production',
+          name: "Authentication Service",
+          version: "v2.1.0",
+          status: "production",
           endpoints: [
-            { path: '/login', method: 'POST' },
-            { path: '/logout', method: 'POST' },
-            { path: '/refresh', method: 'POST' },
-            { path: '/forgot-password', method: 'POST' },
+            { path: "/login", method: "POST" },
+            { path: "/logout", method: "POST" },
+            { path: "/refresh", method: "POST" },
+            { path: "/forgot-password", method: "POST" },
           ],
           database: {
-            type: 'PostgreSQL',
-            version: '15',
-            schemas: ['users', 'sessions', 'audit_logs'],
+            type: "PostgreSQL",
+            version: "15",
+            schemas: ["users", "sessions", "audit_logs"],
           },
-          dependencies: ['redis', 'vault', 'sendgrid'],
+          dependencies: ["redis", "vault", "sendgrid"],
         },
         user_service: {
-          name: 'User Management Service',
-          version: 'v1.8.2',
-          status: 'production',
-          depends_on: ['auth_service'],
+          name: "User Management Service",
+          version: "v1.8.2",
+          status: "production",
+          depends_on: ["auth_service"],
           endpoints: [
-            { path: '/profile', methods: ['GET', 'PUT'] },
-            { path: '/settings', methods: ['GET', 'PUT'] },
-            { path: '/delete', method: 'DELETE' },
-            { path: '/export', method: 'GET' },
+            { path: "/profile", methods: ["GET", "PUT"] },
+            { path: "/settings", methods: ["GET", "PUT"] },
+            { path: "/delete", method: "DELETE" },
+            { path: "/export", method: "GET" },
           ],
         },
       },
       infrastructure: {
         kubernetes: {
-          version: '1.28',
+          version: "1.28",
           nodes: {
             min: 2,
             max: 10,
-            machine_type: 'e2-standard-4',
+            machine_type: "e2-standard-4",
           },
         },
         databases: {
           postgres: {
-            tier: 'db-custom-2-8192',
-            storage: '100GB',
-            backup_retention: '7 days',
+            tier: "db-custom-2-8192",
+            storage: "100GB",
+            backup_retention: "7 days",
           },
           redis: {
-            memory_size: '4GB',
+            memory_size: "4GB",
             replicas: 2,
           },
         },
       },
     },
-    language: 'json',
+    language: "json",
     showCopyButton: true,
   },
 };
@@ -198,7 +198,7 @@ export const ComplexJsonData: Story = {
  */
 export const YamlConfig: Story = {
   args: {
-    title: 'Kubernetes Deployment Configuration',
+    title: "Kubernetes Deployment Configuration",
     data: `apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -250,7 +250,7 @@ spec:
             port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5`,
-    language: 'yaml',
+    language: "yaml",
     showCopyButton: true,
   },
 };
@@ -260,7 +260,7 @@ spec:
  */
 export const TypeScriptCode: Story = {
   args: {
-    title: 'TypeScript Interface Definition',
+    title: "TypeScript Interface Definition",
     data: `interface ServiceConfiguration {
   name: string;
   version: string;
@@ -303,7 +303,6 @@ class ServiceManager {
   async initialize(): Promise<void> {
     await this.connectToDatabase();
     await this.setupMonitoring();
-    console.log(\`Service \${this.config.name} initialized\`);
   }
   
   private async connectToDatabase(): Promise<void> {
@@ -314,7 +313,7 @@ class ServiceManager {
     // Monitoring setup logic
   }
 }`,
-    language: 'typescript',
+    language: "typescript",
     showCopyButton: true,
   },
 };
@@ -324,7 +323,7 @@ class ServiceManager {
  */
 export const JavaScriptCode: Story = {
   args: {
-    title: 'JavaScript Configuration Module',
+    title: "JavaScript Configuration Module",
     data: `const config = {
   development: {
     api: {
@@ -366,7 +365,7 @@ function getConfig(environment = 'development') {
 }
 
 module.exports = { getConfig };`,
-    language: 'javascript',
+    language: "javascript",
     showCopyButton: true,
   },
 };
@@ -377,17 +376,17 @@ module.exports = { getConfig };`,
 export const Compact: Story = {
   args: {
     data: {
-      status: 'success',
+      status: "success",
       data: {
         users: 1250,
         active_sessions: 324,
         api_calls_today: 15678,
       },
-      timestamp: '2024-01-15T10:30:00Z',
+      timestamp: "2024-01-15T10:30:00Z",
     },
-    language: 'json',
+    language: "json",
     showCopyButton: false,
-    className: 'max-w-md',
+    className: "max-w-md",
   },
 };
 
@@ -396,24 +395,24 @@ export const Compact: Story = {
  */
 export const LargeFormat: Story = {
   args: {
-    title: 'Large Format CUE Specification',
+    title: "Large Format CUE Specification",
     data: complexTypescriptProjectCue,
-    language: 'cue',
+    language: "cue",
     showCopyButton: true,
-    className: 'text-base max-h-screen',
+    className: "text-base max-h-screen",
   },
   parameters: {
     viewport: {
       viewports: {
         largeDesktop: {
-          name: 'Large Desktop',
+          name: "Large Desktop",
           styles: {
-            width: '1440px',
-            height: '900px',
+            width: "1440px",
+            height: "900px",
           },
         },
       },
-      defaultViewport: 'largeDesktop',
+      defaultViewport: "largeDesktop",
     },
   },
 };

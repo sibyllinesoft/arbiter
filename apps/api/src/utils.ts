@@ -1,9 +1,9 @@
 /**
  * Utility functions for Spec Workbench backend
  */
-import { createHash } from 'node:crypto';
-import { isAbsolute, normalize, resolve, sep } from 'node:path';
-import type { ExternalToolResult, ProblemDetails, RateLimitBucket } from './types.ts';
+import { createHash } from "node:crypto";
+import { isAbsolute, normalize, resolve, sep } from "node:path";
+import type { ExternalToolResult, ProblemDetails, RateLimitBucket } from "./types.ts";
 
 /**
  * Generate a unique ID using crypto.randomUUID()
@@ -16,7 +16,7 @@ export function generateId(): string {
  * Compute SHA256 hash of a string
  */
 export function computeSpecHash(content: string): string {
-  return createHash('sha256').update(content).digest('hex');
+  return createHash("sha256").update(content).digest("hex");
 }
 
 /**
@@ -29,7 +29,7 @@ export async function executeCommand(
     cwd?: string;
     timeout?: number;
     env?: Record<string, string>;
-  } = {}
+  } = {},
 ): Promise<ExternalToolResult> {
   const startTime = Date.now();
   const timeoutMs = options.timeout ?? 10000; // 10s default
@@ -38,8 +38,8 @@ export async function executeCommand(
     const proc = Bun.spawn([command, ...args], {
       cwd: options.cwd,
       env: { ...process.env, ...options.env },
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: "pipe",
+      stderr: "pipe",
     });
 
     // Set up timeout
@@ -69,8 +69,8 @@ export async function executeCommand(
     const duration = Date.now() - startTime;
     return {
       success: false,
-      stdout: '',
-      stderr: error instanceof Error ? error.message : 'Unknown error',
+      stdout: "",
+      stderr: error instanceof Error ? error.message : "Unknown error",
       exitCode: -1,
       durationMs: duration,
     };
@@ -82,7 +82,7 @@ export async function executeCommand(
  */
 export async function formatCUE(
   content: string,
-  cueBinaryPath = 'cue'
+  cueBinaryPath = "cue",
 ): Promise<{ formatted: string; success: boolean; error?: string }> {
   // Write content to temporary file
   const tempFile = `/tmp/temp_${generateId()}.cue`;
@@ -90,7 +90,7 @@ export async function formatCUE(
   try {
     await Bun.write(tempFile, content);
 
-    const result = await executeCommand(cueBinaryPath, ['fmt', tempFile], {
+    const result = await executeCommand(cueBinaryPath, ["fmt", tempFile], {
       timeout: 5000,
     });
 
@@ -101,18 +101,18 @@ export async function formatCUE(
     return {
       formatted: content,
       success: false,
-      error: result.stderr || 'Failed to format CUE content',
+      error: result.stderr || "Failed to format CUE content",
     };
   } catch (error) {
     return {
       formatted: content,
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   } finally {
     // Clean up temp file
     try {
-      (await Bun.file(tempFile).exists()) && (await Bun.write(tempFile, ''));
+      (await Bun.file(tempFile).exists()) && (await Bun.write(tempFile, ""));
     } catch {
       // Ignore cleanup errors
     }
@@ -128,7 +128,7 @@ export function createProblemDetails(
   detail?: string,
   type?: string,
   instance?: string,
-  extensions?: Record<string, unknown>
+  extensions?: Record<string, unknown>,
 ): ProblemDetails {
   return {
     type: type ?? `https://httpstatuses.com/${status}`,
@@ -149,7 +149,7 @@ export class TokenBucket {
   constructor(
     private maxTokens = 10,
     private refillRate = 1, // tokens per second
-    private windowMs = 10000 // 10 seconds
+    private windowMs = 10000, // 10 seconds
   ) {}
 
   /**
@@ -225,7 +225,7 @@ export async function ensureDir(path: string): Promise<void> {
   try {
     const stat = await Bun.file(path).exists();
     if (!stat) {
-      await Bun.spawn(['mkdir', '-p', path]).exited;
+      await Bun.spawn(["mkdir", "-p", path]).exited;
     }
   } catch (error) {
     throw new Error(`Failed to create directory ${path}: ${error}`);
@@ -236,7 +236,7 @@ export async function ensureDir(path: string): Promise<void> {
  * Safe JSON parsing with error handling
  */
 export function safeJsonParse<T = any>(
-  json: string
+  json: string,
 ): { success: true; data: T } | { success: false; error: string } {
   try {
     const data = JSON.parse(json);
@@ -244,7 +244,7 @@ export function safeJsonParse<T = any>(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Invalid JSON',
+      error: error instanceof Error ? error.message : "Invalid JSON",
     };
   }
 }
@@ -257,18 +257,18 @@ export function validatePath(targetPath: string, baseDir: string = process.cwd()
     return false;
   }
 
-  if (targetPath.includes('\0')) {
+  if (targetPath.includes("\0")) {
     return false;
   }
 
-  const sanitised = targetPath.replace(/\\+/g, '/');
-  const normalisedInput = normalize(sanitised).replace(/\\+/g, '/');
+  const sanitised = targetPath.replace(/\\+/g, "/");
+  const normalisedInput = normalize(sanitised).replace(/\\+/g, "/");
 
   // Reject absolute paths or attempts to traverse up the directory tree
   if (
     isAbsolute(normalisedInput) ||
-    normalisedInput.startsWith('..') ||
-    normalisedInput.includes('/../')
+    normalisedInput.startsWith("..") ||
+    normalisedInput.includes("/../")
   ) {
     return false;
   }
@@ -300,47 +300,47 @@ export const logger = {
   info: (message: string, meta?: Record<string, unknown>) => {
     console.log(
       JSON.stringify({
-        level: 'info',
+        level: "info",
         message,
         timestamp: getCurrentTimestamp(),
         ...meta,
-      })
+      }),
     );
   },
 
   warn: (message: string, meta?: Record<string, unknown>) => {
     console.warn(
       JSON.stringify({
-        level: 'warn',
+        level: "warn",
         message,
         timestamp: getCurrentTimestamp(),
         ...meta,
-      })
+      }),
     );
   },
 
   error: (message: string, error?: Error, meta?: Record<string, unknown>) => {
     console.error(
       JSON.stringify({
-        level: 'error',
+        level: "error",
         message,
         error: error?.message,
         stack: error?.stack,
         timestamp: getCurrentTimestamp(),
         ...meta,
-      })
+      }),
     );
   },
 
   debug: (message: string, meta?: Record<string, unknown>) => {
-    if (process.env.NODE_ENV === 'development') {
+    if (process.env.NODE_ENV === "development") {
       console.debug(
         JSON.stringify({
-          level: 'debug',
+          level: "debug",
           message,
           timestamp: getCurrentTimestamp(),
           ...meta,
-        })
+        }),
       );
     }
   },
@@ -350,33 +350,33 @@ export const logger = {
  * Parse bearer token from Authorization header
  */
 export function parseBearerToken(authHeader: string | undefined): string | null {
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
   }
   return authHeader.slice(7).trim();
 }
 
 const COMPLETED_STATUS_TOKENS = new Set([
-  'done',
-  'complete',
-  'completed',
-  'closed',
-  'resolved',
-  'shipped',
+  "done",
+  "complete",
+  "completed",
+  "closed",
+  "resolved",
+  "shipped",
 ]);
 
-const AFFIRMATIVE_TOKENS = new Set(['true', 'yes', 'y', '1', 'complete', 'completed', 'done']);
-const NEGATIVE_TOKENS = new Set(['false', 'no', 'n', '0']);
+const AFFIRMATIVE_TOKENS = new Set(["true", "yes", "y", "1", "complete", "completed", "done"]);
+const NEGATIVE_TOKENS = new Set(["false", "no", "n", "0"]);
 
 const slugifyValue = (value: string | undefined | null, fallback: string): string => {
-  const base = value ?? '';
+  const base = value ?? "";
   const source = base.trim().length > 0 ? base : fallback;
   const sanitized = source
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 
   if (sanitized.length > 0) {
     return sanitized;
@@ -385,11 +385,11 @@ const slugifyValue = (value: string | undefined | null, fallback: string): strin
   const fallbackSanitized = fallback
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 
-  return fallbackSanitized.length > 0 ? fallbackSanitized : 'item';
+  return fallbackSanitized.length > 0 ? fallbackSanitized : "item";
 };
 
 const normalizeCandidate = (value?: string | null): string | null => {
@@ -401,7 +401,7 @@ const normalizeCandidate = (value?: string | null): string | null => {
 };
 
 const toOptionalString = (value: unknown): string | undefined => {
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : undefined;
   }
@@ -409,10 +409,10 @@ const toOptionalString = (value: unknown): string | undefined => {
 };
 
 const toOptionalNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
     const parsed = Number.parseFloat(trimmed);
@@ -424,10 +424,10 @@ const toOptionalNumber = (value: unknown): number | undefined => {
 };
 
 const toOptionalBoolean = (value: unknown): boolean | undefined => {
-  if (typeof value === 'boolean') {
+  if (typeof value === "boolean") {
     return value;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
     if (AFFIRMATIVE_TOKENS.has(normalized)) {
       return true;
@@ -436,7 +436,7 @@ const toOptionalBoolean = (value: unknown): boolean | undefined => {
       return false;
     }
   }
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     if (value === 1) return true;
     if (value === 0) return false;
   }
@@ -446,14 +446,14 @@ const toOptionalBoolean = (value: unknown): boolean | undefined => {
 export const coerceStringArray = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value
-      .map(item => (typeof item === 'string' ? item.trim() : ''))
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
       .filter((item): item is string => item.length > 0);
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value
-      .split(',')
-      .map(item => item.trim())
+      .split(",")
+      .map((item) => item.trim())
       .filter((item): item is string => item.length > 0);
   }
 
@@ -463,30 +463,30 @@ export const coerceStringArray = (value: unknown): string[] => {
 const collectAliasKeys = (value: unknown): string[] => {
   if (Array.isArray(value)) {
     return value
-      .map(entry => (typeof entry === 'string' ? entry.trim() : ''))
+      .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
       .filter((entry): entry is string => entry.length > 0);
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value
-      .split(',')
-      .map(entry => entry.trim())
+      .split(",")
+      .map((entry) => entry.trim())
       .filter((entry): entry is string => entry.length > 0);
   }
   return [];
 };
 
 const sortTasks = (a: any, b: any): number => {
-  const nameA = toOptionalString(a.name) ?? '';
-  const nameB = toOptionalString(b.name) ?? '';
+  const nameA = toOptionalString(a.name) ?? "";
+  const nameB = toOptionalString(b.name) ?? "";
   return nameA.localeCompare(nameB);
 };
 
 const registerKeys = (
   map: Map<string, any>,
   keys: Array<string | undefined | null>,
-  target: any
+  target: any,
 ) => {
-  keys.forEach(key => {
+  keys.forEach((key) => {
     const normalized = normalizeCandidate(key ?? undefined);
     if (normalized && !map.has(normalized)) {
       map.set(normalized, target);
@@ -496,10 +496,10 @@ const registerKeys = (
 
 export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[] } {
   const epicArtifacts = artifacts.filter(
-    (artifact: any) => artifact && typeof artifact === 'object' && artifact.type === 'epic'
+    (artifact: any) => artifact && typeof artifact === "object" && artifact.type === "epic",
   );
   const taskArtifacts = artifacts.filter(
-    (artifact: any) => artifact && typeof artifact === 'object' && artifact.type === 'task'
+    (artifact: any) => artifact && typeof artifact === "object" && artifact.type === "task",
   );
 
   const epics: any[] = [];
@@ -514,7 +514,7 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
 
     const slug = slugifyValue(
       toOptionalString(metadata.slug) ?? artifact.name,
-      `epic-${artifact.id}`
+      `epic-${artifact.id}`,
     );
     const id = toOptionalString(metadata.id) ?? slug;
 
@@ -527,7 +527,7 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
     const owner = toOptionalString(metadata.owner ?? metadata.assignee);
     const referencedTasks = Array.isArray(metadata.tasks)
       ? metadata.tasks
-          .map(task => (typeof task === 'string' ? task.trim() : ''))
+          .map((task) => (typeof task === "string" ? task.trim() : ""))
           .filter((task): task is string => task.length > 0)
       : coerceStringArray(metadata.tasks);
 
@@ -549,7 +549,7 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
     registerKeys(
       epicMatchMap,
       [id, slug, artifact.name, metadata.slug as string, metadata.id as string],
-      epic
+      epic,
     );
     registerKeys(epicMatchMap, collectAliasKeys(metadata.aliases), epic);
     registerKeys(epicMatchMap, referencedTasks, epic);
@@ -562,7 +562,7 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
 
     const slug = slugifyValue(
       toOptionalString(metadata.slug) ?? artifact.name,
-      `task-${artifact.id}`
+      `task-${artifact.id}`,
     );
     const id = toOptionalString(metadata.id) ?? slug;
 
@@ -584,9 +584,9 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
     const dependsOn = Array.from(
       new Set(
         dependencyCandidates
-          .flatMap(entry => coerceStringArray(entry))
-          .filter((dep): dep is string => dep.length > 0)
-      )
+          .flatMap((entry) => coerceStringArray(entry))
+          .filter((dep): dep is string => dep.length > 0),
+      ),
     );
 
     const epicCandidates = [
@@ -631,15 +631,15 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
         epicName,
         ...epicCandidates,
       ],
-      task
+      task,
     );
-    if ('order' in metadata) {
+    if ("order" in metadata) {
       delete metadata.order;
     }
     registerKeys(taskMatchMap, collectAliasKeys(metadata.aliases), task);
   });
 
-  tasks.forEach(task => {
+  tasks.forEach((task) => {
     const metadata = (task.metadata ?? {}) as Record<string, unknown>;
     const candidates = [
       task.epicId,
@@ -669,9 +669,9 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
   });
 
   const taskMatchKeys = new Map<string, any>();
-  tasks.forEach(task => {
+  tasks.forEach((task) => {
     const keys = [task.id, task.slug, task.name, task.epicId, task.epicName];
-    keys.forEach(key => {
+    keys.forEach((key) => {
       const normalized = normalizeCandidate(key);
       if (normalized && !taskMatchKeys.has(normalized)) {
         taskMatchKeys.set(normalized, task);
@@ -681,15 +681,15 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
     registerKeys(taskMatchKeys, collectAliasKeys(metadata.aliases), task);
   });
 
-  epics.forEach(epic => {
+  epics.forEach((epic) => {
     const metadata = (epic.metadata ?? {}) as Record<string, unknown>;
     const referenced = Array.isArray(metadata.tasks)
       ? metadata.tasks
-          .map(task => (typeof task === 'string' ? task.trim() : ''))
+          .map((task) => (typeof task === "string" ? task.trim() : ""))
           .filter((task): task is string => task.length > 0)
       : coerceStringArray(metadata.tasks);
 
-    referenced.forEach(ref => {
+    referenced.forEach((ref) => {
       const normalized = normalizeCandidate(ref);
       if (!normalized) return;
       const task = taskMatchKeys.get(normalized) ?? taskMatchMap.get(normalized);
@@ -708,8 +708,8 @@ export function buildEpicTaskSpec(artifacts: any[]): { epics: any[]; tasks: any[
   });
 
   epics.sort((a, b) => {
-    const nameA = toOptionalString(a.name) ?? '';
-    const nameB = toOptionalString(b.name) ?? '';
+    const nameA = toOptionalString(a.name) ?? "";
+    const nameB = toOptionalString(b.name) ?? "";
     return nameA.localeCompare(nameB);
   });
 

@@ -28,3 +28,5 @@ node_modules/
 .tunnel-url
 
 .env
+*.tsbuildinfo
+deploy/cloudflare/wrangler.toml

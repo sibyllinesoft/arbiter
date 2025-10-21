@@ -10,6 +10,7 @@ API without leaving a terminal session.
 - Fast validation and IR (intermediate representation) retrieval against the
   Spec Workbench API
 - Deterministic artifact generation driven by language plugins and templates
+- Offline CUE authoring mode (`--local`) that skips all Arbiter service calls
 - Epic and task orchestration with sharded CUE storage helpers
 - GitHub synchronisation utilities and template management
 - Extensible configuration supporting project-specific hooks and UI options
@@ -47,6 +48,16 @@ Configuration is resolved via `src/config.ts`. The loader merges default values,
 project-local overrides, and UI option catalog data sourced from
 `@arbiter/shared`. Hooks and generator overrides can be configured through this
 module when extending the CLI.
+
+### Local Mode
+
+Pass the `--local` flag to the top-level CLI to work entirely from the local
+`.arbiter/assembly.cue` file. In this mode the CLI never contacts the Arbiter
+service—commands such as `arbiter add …`, `arbiter remove …`, `arbiter check`,
+`arbiter watch`, `arbiter list`, `arbiter status`, and `arbiter generate`
+operate purely on local CUE files, making it easy to script specification
+authoring in disconnected environments (the constrained check variant also
+switches to the local toolchain automatically).
 
 ### Sharded Storage
 

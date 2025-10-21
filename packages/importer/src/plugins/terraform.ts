@@ -1,5 +1,5 @@
-import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as path from "path";
+import * as fs from "fs-extra";
 import type {
   ConfidenceScore,
   Evidence,
@@ -8,7 +8,7 @@ import type {
   InferredArtifact,
   ParseContext,
   Provenance,
-} from '../types';
+} from "../types";
 
 export interface TerraformData {
   name?: string;
@@ -20,42 +20,42 @@ export interface TerraformData {
 
 export class TerraformPlugin implements ImporterPlugin {
   name(): string {
-    return 'terraform';
+    return "terraform";
   }
 
   supports(filePath: string): boolean {
     const basename = path.basename(filePath).toLowerCase();
     const relative = path.relative(process.cwd(), filePath).toLowerCase();
     return (
-      basename.endsWith('.tf') ||
-      basename === '.terraform.lock.hcl' ||
-      relative.includes('terraform')
+      basename.endsWith(".tf") ||
+      basename === ".terraform.lock.hcl" ||
+      relative.includes("terraform")
     );
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
     if (!fileContent) {
-      throw new Error('File content required for Terraform parsing');
+      throw new Error("File content required for Terraform parsing");
     }
 
     const evidence: Evidence[] = [];
     const basename = path.basename(filePath).toLowerCase();
 
     try {
-      if (basename === '.terraform.lock.hcl') {
+      if (basename === ".terraform.lock.hcl") {
         // Parse lockfile for providers and modules
         const lockEvidence = this.parseTerraformLock(
           fileContent,
           filePath,
-          context?.projectRoot || '/'
+          context?.projectRoot || "/",
         );
         evidence.push(...lockEvidence);
-      } else if (basename.endsWith('.tf')) {
+      } else if (basename.endsWith(".tf")) {
         // Parse .tf files for resources, providers, etc.
         const tfEvidence = this.parseTerraformFile(
           fileContent,
           filePath,
-          context?.projectRoot || '/'
+          context?.projectRoot || "/",
         );
         evidence.push(...tfEvidence);
       }
@@ -71,14 +71,14 @@ export class TerraformPlugin implements ImporterPlugin {
 
     // Simple parsing for lockfile - look for provider blocks
     const providerMatches = content.match(
-      /provider\s+"([^"]+)"\s+\(\n\s+version\s+=\s+"([^"]+)"\n\s+\)/g
+      /provider\s+"([^"]+)"\s+\(\n\s+version\s+=\s+"([^"]+)"\n\s+\)/g,
     );
     if (providerMatches) {
       providerMatches.forEach((match, index) => {
         const providerName = match.match(/provider\s+"([^"]+)"/)?.[1];
         const data: TerraformData = {
           name: `provider`,
-          type: 'provider',
+          type: "provider",
           provider: providerName,
           filePath,
         };
@@ -87,7 +87,7 @@ export class TerraformPlugin implements ImporterPlugin {
         evidence.push({
           id: evidenceId,
           source: this.name(),
-          type: 'infrastructure',
+          type: "infrastructure",
           filePath,
           data,
           metadata: {
@@ -113,7 +113,7 @@ export class TerraformPlugin implements ImporterPlugin {
 
         const data: TerraformData = {
           name,
-          type: 'resource',
+          type: "resource",
           provider,
           filePath,
         };
@@ -122,7 +122,7 @@ export class TerraformPlugin implements ImporterPlugin {
         evidence.push({
           id: evidenceId,
           source: this.name(),
-          type: 'infrastructure',
+          type: "infrastructure",
           filePath,
           data,
           metadata: {
@@ -141,7 +141,7 @@ export class TerraformPlugin implements ImporterPlugin {
 
         const data: TerraformData = {
           name: `${providerName}`,
-          type: 'provider',
+          type: "provider",
           provider: providerName,
           filePath,
         };
@@ -150,7 +150,7 @@ export class TerraformPlugin implements ImporterPlugin {
         evidence.push({
           id: evidenceId,
           source: this.name(),
-          type: 'infrastructure',
+          type: "infrastructure",
           filePath,
           data,
           metadata: {
@@ -169,44 +169,44 @@ export class TerraformPlugin implements ImporterPlugin {
 
     // Filter Terraform evidence
     const tfEvidence = evidence.filter(
-      e => e.source === this.name() && e.type === 'infrastructure'
+      (e) => e.source === this.name() && e.type === "infrastructure",
     );
 
     if (tfEvidence.length === 0) return artifacts;
 
     // Find directories with .terraform.lock.hcl as root
     const lockFilePaths = tfEvidence
-      .filter(e => e.filePath.endsWith('.terraform.lock.hcl'))
-      .map(e => path.dirname(e.filePath));
+      .filter((e) => e.filePath.endsWith(".terraform.lock.hcl"))
+      .map((e) => path.dirname(e.filePath));
     if (lockFilePaths.length === 0) return artifacts;
 
     for (const lockDir of lockFilePaths) {
       // Collect all tf files in this directory tree
       const tfFilesInDir = tfEvidence
-        .filter(e => e.filePath.startsWith(lockDir) && e.filePath.endsWith('.tf'))
-        .map(e => e.filePath);
+        .filter((e) => e.filePath.startsWith(lockDir) && e.filePath.endsWith(".tf"))
+        .map((e) => e.filePath);
 
       if (tfFilesInDir.length === 0) continue;
 
       // Extract resources from evidence in this group
-      const groupEvidence = tfEvidence.filter(e => e.filePath.startsWith(lockDir));
+      const groupEvidence = tfEvidence.filter((e) => e.filePath.startsWith(lockDir));
       const resources = groupEvidence
-        .filter(e => e.data.type === 'resource')
-        .map(e => {
+        .filter((e) => e.data.type === "resource")
+        .map((e) => {
           const data = e.data as TerraformData;
-          return { kind: data.type || 'resource', name: data.name, apiVersion: data.provider };
+          return { kind: data.type || "resource", name: data.name, apiVersion: data.provider };
         });
 
       const artifact = {
         id: `${path.basename(lockDir)}`,
-        type: 'infrastructure' as const,
+        type: "infrastructure" as const,
         name: `Terraform Infrastructure (${path.basename(lockDir)})`,
         description: `Terraform configurations in ${lockDir}`,
-        tags: ['terraform', 'infrastructure'],
+        tags: ["terraform", "infrastructure"],
         metadata: {
           root: lockDir,
-          files: [...tfFilesInDir, path.join(lockDir, '.terraform.lock.hcl')],
-          kind: 'terraform' as const,
+          files: [...tfFilesInDir, path.join(lockDir, ".terraform.lock.hcl")],
+          kind: "terraform" as const,
           resources,
         },
       };
@@ -214,11 +214,11 @@ export class TerraformPlugin implements ImporterPlugin {
       artifacts.push({
         artifact,
         provenance: {
-          evidence: groupEvidence.map(e => e.id),
-          plugins: ['terraform'],
-          rules: ['tf-grouping', 'lockfile-detection'],
+          evidence: groupEvidence.map((e) => e.id),
+          plugins: ["terraform"],
+          rules: ["tf-grouping", "lockfile-detection"],
           timestamp: Date.now(),
-          pipelineVersion: '1.0.0',
+          pipelineVersion: "1.0.0",
         },
         relationships: [],
       });

@@ -3,7 +3,7 @@
  * Tests for responsive behavior, mobile compatibility, and viewport adaptations
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 import {
   BasePage,
   DiagramPage,
@@ -14,9 +14,9 @@ import {
   TabsPage,
   TopBarPage,
   mockApiResponses,
-} from './test-utils';
+} from "./test-utils";
 
-test.describe('Responsive Design - Viewport Tests', () => {
+test.describe("Responsive Design - Viewport Tests", () => {
   let storybookHelper: StorybookHelper;
   let basePage: BasePage;
   let topBarPage: TopBarPage;
@@ -34,17 +34,17 @@ test.describe('Responsive Design - Viewport Tests', () => {
   });
 
   const viewports = [
-    { name: 'Desktop Large', ...TEST_CONFIG.VIEWPORT.DESKTOP, width: 1920, height: 1080 },
-    { name: 'Desktop Standard', ...TEST_CONFIG.VIEWPORT.DESKTOP },
-    { name: 'Laptop', width: 1366, height: 768 },
-    { name: 'Tablet Landscape', width: 1024, height: 768 },
-    { name: 'Tablet Portrait', ...TEST_CONFIG.VIEWPORT.TABLET },
-    { name: 'Mobile Large', width: 414, height: 896 },
-    { name: 'Mobile Standard', ...TEST_CONFIG.VIEWPORT.MOBILE },
-    { name: 'Mobile Small', width: 320, height: 568 },
+    { name: "Desktop Large", ...TEST_CONFIG.VIEWPORT.DESKTOP, width: 1920, height: 1080 },
+    { name: "Desktop Standard", ...TEST_CONFIG.VIEWPORT.DESKTOP },
+    { name: "Laptop", width: 1366, height: 768 },
+    { name: "Tablet Landscape", width: 1024, height: 768 },
+    { name: "Tablet Portrait", ...TEST_CONFIG.VIEWPORT.TABLET },
+    { name: "Mobile Large", width: 414, height: 896 },
+    { name: "Mobile Standard", ...TEST_CONFIG.VIEWPORT.MOBILE },
+    { name: "Mobile Small", width: 320, height: 568 },
   ];
 
-  test('should adapt TopBar layout across all viewports', async ({ page }) => {
+  test("should adapt TopBar layout across all viewports", async ({ page }) => {
     for (const viewport of viewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.waitForTimeout(500);
@@ -85,10 +85,10 @@ test.describe('Responsive Design - Viewport Tests', () => {
       }
 
       // Take screenshot for visual verification
-      await basePage.takeScreenshot(`topbar-${viewport.name.toLowerCase().replace(/\s+/g, '-')}`);
+      await basePage.takeScreenshot(`topbar-${viewport.name.toLowerCase().replace(/\s+/g, "-")}`);
 
       console.log(
-        `TopBar responsive test passed for ${viewport.name} (${viewport.width}x${viewport.height})`
+        `TopBar responsive test passed for ${viewport.name} (${viewport.width}x${viewport.height})`,
       );
     }
 
@@ -96,7 +96,7 @@ test.describe('Responsive Design - Viewport Tests', () => {
     await page.setViewportSize(TEST_CONFIG.VIEWPORT.DESKTOP);
   });
 
-  test('should handle tab navigation on different screen sizes', async ({ page }) => {
+  test("should handle tab navigation on different screen sizes", async ({ page }) => {
     for (const viewport of viewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.waitForTimeout(500);
@@ -113,18 +113,18 @@ test.describe('Responsive Design - Viewport Tests', () => {
         expect(tabsBox.width).toBeLessThanOrEqual(viewport.width);
 
         // Test tab switching
-        const tabNames = await tabsPage.getAllTabNames('right');
+        const tabNames = await tabsPage.getAllTabNames("right");
 
         if (tabNames.length > 0) {
           // Test first few tabs
           const tabsToTest = tabNames.slice(0, Math.min(3, tabNames.length));
 
           for (const tabName of tabsToTest) {
-            await tabsPage.clickTab(tabName, 'right');
+            await tabsPage.clickTab(tabName, "right");
             await basePage.waitForLoadingComplete();
 
             // Verify tab is active
-            const activeTab = await tabsPage.getActiveTab('right');
+            const activeTab = await tabsPage.getActiveTab("right");
             expect(activeTab.toLowerCase()).toContain(tabName.toLowerCase());
           }
         }
@@ -135,9 +135,9 @@ test.describe('Responsive Design - Viewport Tests', () => {
         const leftTabs = await tabsPage.getLeftTabs();
         await expect(leftTabs).toBeVisible();
 
-        const leftTabNames = await tabsPage.getAllTabNames('left');
+        const leftTabNames = await tabsPage.getAllTabNames("left");
         if (leftTabNames.length > 0) {
-          await tabsPage.clickTab(leftTabNames[0], 'left');
+          await tabsPage.clickTab(leftTabNames[0], "left");
           await basePage.waitForLoadingComplete();
         }
       }
@@ -148,13 +148,13 @@ test.describe('Responsive Design - Viewport Tests', () => {
     await page.setViewportSize(TEST_CONFIG.VIEWPORT.DESKTOP);
   });
 
-  test('should maintain content area proportions', async ({ page }) => {
+  test("should maintain content area proportions", async ({ page }) => {
     for (const viewport of viewports) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.waitForTimeout(500);
 
       // Measure main content area
-      const contentArea = page.locator('.main-content, .app-content, .flex-1').first();
+      const contentArea = page.locator(".main-content, .app-content, .flex-1").first();
 
       if (await contentArea.isVisible()) {
         const contentBox = await contentArea.boundingBox();
@@ -170,7 +170,7 @@ test.describe('Responsive Design - Viewport Tests', () => {
       }
 
       // Check for split pane behavior
-      const splitPane = page.locator('.split-pane, .pane-container').first();
+      const splitPane = page.locator(".split-pane, .pane-container").first();
 
       if (await splitPane.isVisible()) {
         const splitBox = await splitPane.boundingBox();
@@ -192,19 +192,19 @@ test.describe('Responsive Design - Viewport Tests', () => {
     await page.setViewportSize(TEST_CONFIG.VIEWPORT.DESKTOP);
   });
 
-  test('should handle text scaling and readability', async ({ page }) => {
+  test("should handle text scaling and readability", async ({ page }) => {
     const textScales = [0.85, 1.0, 1.15, 1.3];
 
     for (const scale of textScales) {
       // Simulate text scaling (browser zoom)
-      await page.evaluate(zoomLevel => {
+      await page.evaluate((zoomLevel) => {
         document.body.style.zoom = zoomLevel.toString();
       }, scale);
 
       await page.waitForTimeout(300);
 
       // Check that text is still readable
-      const textElements = page.locator('button, .tab-button, .status-badge');
+      const textElements = page.locator("button, .tab-button, .status-badge");
       const count = await textElements.count();
 
       for (let i = 0; i < Math.min(count, 5); i++) {
@@ -228,19 +228,19 @@ test.describe('Responsive Design - Viewport Tests', () => {
       }
 
       // Take screenshot at this scale
-      await basePage.takeScreenshot(`text-scale-${scale.toString().replace('.', '-')}`);
+      await basePage.takeScreenshot(`text-scale-${scale.toString().replace(".", "-")}`);
 
       console.log(`Text scaling test passed for ${scale}x scale`);
     }
 
     // Reset zoom
     await page.evaluate(() => {
-      document.body.style.zoom = '1';
+      document.body.style.zoom = "1";
     });
   });
 });
 
-test.describe('Mobile-Specific Behavior', () => {
+test.describe("Mobile-Specific Behavior", () => {
   let storybookHelper: StorybookHelper;
   let basePage: BasePage;
   let topBarPage: TopBarPage;
@@ -262,7 +262,7 @@ test.describe('Mobile-Specific Behavior', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should provide touch-friendly interface on mobile', async ({ page }) => {
+  test("should provide touch-friendly interface on mobile", async ({ page }) => {
     // Check minimum touch target sizes (44px recommended)
     const touchTargets = page.locator('button, [role="button"], .tab-button, select');
     const count = await touchTargets.count();
@@ -286,12 +286,12 @@ test.describe('Mobile-Specific Behavior', () => {
       }
     }
 
-    console.log('Touch target sizes validated');
+    console.log("Touch target sizes validated");
   });
 
-  test('should handle mobile tab interactions', async ({ page }) => {
+  test("should handle mobile tab interactions", async ({ page }) => {
     // Test tab tapping on mobile
-    const rightTabNames = await tabsPage.getAllTabNames('right');
+    const rightTabNames = await tabsPage.getAllTabNames("right");
 
     for (let i = 0; i < Math.min(rightTabNames.length, 3); i++) {
       const tabName = rightTabNames[i];
@@ -308,16 +308,16 @@ test.describe('Mobile-Specific Behavior', () => {
           await basePage.waitForLoadingComplete();
 
           // Verify tab switch
-          const activeTab = await tabsPage.getActiveTab('right');
+          const activeTab = await tabsPage.getActiveTab("right");
           expect(activeTab.toLowerCase()).toContain(tabName.toLowerCase());
         }
       }
     }
 
-    console.log('Mobile tab interactions validated');
+    console.log("Mobile tab interactions validated");
   });
 
-  test('should handle mobile scrolling behavior', async ({ page }) => {
+  test("should handle mobile scrolling behavior", async ({ page }) => {
     // Test vertical scrolling
     await page.mouse.move(200, 400);
 
@@ -342,12 +342,12 @@ test.describe('Mobile-Specific Behavior', () => {
       await page.waitForTimeout(200);
     }
 
-    console.log('Mobile scrolling behavior validated');
+    console.log("Mobile scrolling behavior validated");
   });
 
-  test('should provide mobile-optimized editor experience', async ({ page }) => {
+  test("should provide mobile-optimized editor experience", async ({ page }) => {
     // Switch to Source tab
-    await tabsPage.clickTab('Source', 'left');
+    await tabsPage.clickTab("Source", "left");
     await basePage.waitForLoadingComplete();
 
     if (await basePage.elementExists(SELECTORS.MONACO_EDITOR)) {
@@ -366,18 +366,18 @@ test.describe('Mobile-Specific Behavior', () => {
         await page.waitForTimeout(200);
 
         // Try typing (mobile keyboard simulation)
-        await page.keyboard.type('// Mobile test');
+        await page.keyboard.type("// Mobile test");
 
         // Verify content was added
         const content = await editorPage.getEditorContent();
-        expect(content).toContain('Mobile test');
+        expect(content).toContain("Mobile test");
       }
     }
 
-    console.log('Mobile editor experience validated');
+    console.log("Mobile editor experience validated");
   });
 
-  test('should handle mobile orientation changes', async ({ page }) => {
+  test("should handle mobile orientation changes", async ({ page }) => {
     // Test landscape orientation
     await page.setViewportSize({ width: 667, height: 375 }); // iPhone landscape
     await page.waitForTimeout(500);
@@ -387,7 +387,7 @@ test.describe('Mobile-Specific Behavior', () => {
     await expect(topBar).toBeVisible();
 
     // Take screenshot in landscape
-    await basePage.takeScreenshot('mobile-landscape');
+    await basePage.takeScreenshot("mobile-landscape");
 
     // Switch back to portrait
     await page.setViewportSize(TEST_CONFIG.VIEWPORT.MOBILE);
@@ -397,12 +397,12 @@ test.describe('Mobile-Specific Behavior', () => {
     await expect(topBar).toBeVisible();
 
     // Take screenshot in portrait
-    await basePage.takeScreenshot('mobile-portrait');
+    await basePage.takeScreenshot("mobile-portrait");
 
-    console.log('Mobile orientation changes handled');
+    console.log("Mobile orientation changes handled");
   });
 
-  test('should provide mobile-appropriate dropdown behavior', async ({ page }) => {
+  test("should provide mobile-appropriate dropdown behavior", async ({ page }) => {
     // Test project selector dropdown on mobile
     const projectSelector = await topBarPage.getProjectSelector();
 
@@ -426,7 +426,7 @@ test.describe('Mobile-Specific Behavior', () => {
         }
 
         // Close dropdown
-        await page.keyboard.press('Escape');
+        await page.keyboard.press("Escape");
       }
     }
 
@@ -442,12 +442,12 @@ test.describe('Mobile-Specific Behavior', () => {
       }
     }
 
-    console.log('Mobile dropdown behavior validated');
+    console.log("Mobile dropdown behavior validated");
   });
 });
 
-test.describe('Cross-Browser Responsive Compatibility', () => {
-  test('should maintain responsive behavior across different browsers', async ({
+test.describe("Cross-Browser Responsive Compatibility", () => {
+  test("should maintain responsive behavior across different browsers", async ({
     page,
     browserName,
   }) => {
@@ -470,7 +470,7 @@ test.describe('Cross-Browser Responsive Compatibility', () => {
       await page.waitForTimeout(500);
 
       // Check that app loads and renders correctly
-      await expect(page.locator('body')).toBeVisible();
+      await expect(page.locator("body")).toBeVisible();
 
       // Check for horizontal overflow
       const hasHorizontalScroll = await page.evaluate(() => {
@@ -495,7 +495,7 @@ test.describe('Cross-Browser Responsive Compatibility', () => {
   });
 });
 
-test.describe('Accessibility in Responsive Design', () => {
+test.describe("Accessibility in Responsive Design", () => {
   let storybookHelper: StorybookHelper;
   let basePage: BasePage;
 
@@ -508,7 +508,7 @@ test.describe('Accessibility in Responsive Design', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should maintain accessibility at different viewport sizes', async ({ page }) => {
+  test("should maintain accessibility at different viewport sizes", async ({ page }) => {
     const viewports = [
       TEST_CONFIG.VIEWPORT.DESKTOP,
       TEST_CONFIG.VIEWPORT.TABLET,
@@ -520,7 +520,7 @@ test.describe('Accessibility in Responsive Design', () => {
       await page.waitForTimeout(500);
 
       // Check focus visibility
-      await page.keyboard.press('Tab');
+      await page.keyboard.press("Tab");
       await page.waitForTimeout(100);
 
       const focusedElement = await page.evaluate(() => {
@@ -533,8 +533,8 @@ test.describe('Accessibility in Responsive Design', () => {
         return {
           tagName: focused.tagName,
           visible: rect.width > 0 && rect.height > 0,
-          hasOutline: style.outline !== 'none' && style.outline !== '',
-          hasFocusStyle: style.boxShadow.includes('focus') || style.border.includes('focus'),
+          hasOutline: style.outline !== "none" && style.outline !== "",
+          hasFocusStyle: style.boxShadow.includes("focus") || style.border.includes("focus"),
         };
       });
 
@@ -551,10 +551,10 @@ test.describe('Accessibility in Responsive Design', () => {
     }
   });
 
-  test('should support keyboard navigation at all viewport sizes', async ({ page }) => {
+  test("should support keyboard navigation at all viewport sizes", async ({ page }) => {
     const viewports = [
-      { name: 'Desktop', ...TEST_CONFIG.VIEWPORT.DESKTOP },
-      { name: 'Mobile', ...TEST_CONFIG.VIEWPORT.MOBILE },
+      { name: "Desktop", ...TEST_CONFIG.VIEWPORT.DESKTOP },
+      { name: "Mobile", ...TEST_CONFIG.VIEWPORT.MOBILE },
     ];
 
     for (const viewport of viewports) {
@@ -566,7 +566,7 @@ test.describe('Accessibility in Responsive Design', () => {
       const maxTabs = 10;
 
       while (tabCount < maxTabs) {
-        await page.keyboard.press('Tab');
+        await page.keyboard.press("Tab");
         tabCount++;
 
         const focusedElement = await page.evaluate(() => {
@@ -588,10 +588,10 @@ test.describe('Accessibility in Responsive Design', () => {
       }
 
       // Test escape key
-      await page.keyboard.press('Escape');
+      await page.keyboard.press("Escape");
 
       // Test enter key on focused element
-      await page.keyboard.press('Enter');
+      await page.keyboard.press("Enter");
       await page.waitForTimeout(200);
 
       console.log(`Keyboard navigation test completed for ${viewport.name}`);

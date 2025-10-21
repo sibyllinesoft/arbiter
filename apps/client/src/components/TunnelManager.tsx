@@ -13,11 +13,11 @@ import {
   PowerOff,
   RefreshCw,
   Terminal,
-} from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
-import { Button, Card, Input, StatusBadge, cn } from '../design-system';
-import { apiService } from '../services/api';
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
+import { Button, Card, Input, StatusBadge, cn } from "../design-system";
+import { apiService } from "../services/api";
 
 interface TunnelInfo {
   tunnelId: string;
@@ -25,7 +25,7 @@ interface TunnelInfo {
   hostname: string;
   url: string;
   configPath: string;
-  status: 'running' | 'stopped';
+  status: "running" | "stopped";
   hookId?: string;
 }
 
@@ -37,10 +37,10 @@ interface TunnelManagerProps {
 export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerProps) {
   const [tunnelInfo, setTunnelInfo] = useState<TunnelInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<'webhook-only' | 'full-api' | 'custom'>(
-    'webhook-only'
+  const [selectedMode, setSelectedMode] = useState<"webhook-only" | "full-api" | "custom">(
+    "webhook-only",
   );
-  const [customConfig, setCustomConfig] = useState('');
+  const [customConfig, setCustomConfig] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
@@ -51,7 +51,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const maxReconnectAttempts = 5;
   const baseReconnectDelay = 1000;
 
-  const isTunnelRunning = tunnelInfo?.status === 'running';
+  const isTunnelRunning = tunnelInfo?.status === "running";
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -60,7 +60,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         setTunnelInfo(response.tunnel || null);
       }
     } catch (error) {
-      console.error('Failed to refresh tunnel status:', error);
+      console.error("Failed to refresh tunnel status:", error);
     }
   }, []);
 
@@ -95,8 +95,8 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     try {
       await refreshStatus();
     } catch (error) {
-      console.error('Failed to load tunnel status:', error);
-      toast.error('Failed to load tunnel status');
+      console.error("Failed to load tunnel status:", error);
+      toast.error("Failed to load tunnel status");
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +109,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
 
   // WebSocket for real-time tunnel logs
   useEffect(() => {
-    if (!tunnelInfo || tunnelInfo.status !== 'running') {
+    if (!tunnelInfo || tunnelInfo.status !== "running") {
       // Close WS if not needed
       if (wsRef.current) {
         wsRef.current.close();
@@ -124,7 +124,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       return;
     }
 
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host;
     const wsUrl = `${protocol}//${host}/events`;
 
@@ -134,7 +134,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       setWs(socket);
 
       socket.onopen = () => {
-        console.log('Tunnel logs WS connected');
+        setLogs((prev) => [...prev, "Tunnel log stream connected"]);
         reconnectAttemptsRef.current = 0;
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
@@ -143,43 +143,47 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
 
         // Subscribe to tunnel logs
         const subscriptionMessage = {
-          type: 'event',
+          type: "event",
           data: {
-            action: 'subscribe',
-            channel: 'tunnel-logs',
+            action: "subscribe",
+            channel: "tunnel-logs",
           },
         };
         socket.send(JSON.stringify(subscriptionMessage));
       };
 
-      socket.onmessage = event => {
+      socket.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          if (message.type === 'event' && message.data.event_type === 'tunnel_log') {
-            setLogs(prev => [...prev, message.data.log]);
-          } else if (message.type === 'event' && message.data.event_type === 'tunnel_error') {
-            setLogs(prev => [...prev, message.data.log]);
+          if (message.type === "event" && message.data.event_type === "tunnel_log") {
+            setLogs((prev) => [...prev, message.data.log]);
+          } else if (message.type === "event" && message.data.event_type === "tunnel_error") {
+            setLogs((prev) => [...prev, message.data.log]);
           }
         } catch (e) {
-          console.error('Failed to parse WS message', e);
+          console.error("Failed to parse WS message", e);
         }
       };
 
-      socket.onclose = event => {
-        console.log('Tunnel logs WS closed', event.code, event.reason);
+      socket.onclose = (event) => {
+        const reason = event.reason ? `: ${event.reason}` : "";
+        setLogs((prev) => [...prev, `Tunnel log stream closed (${event.code}${reason})`]);
         wsRef.current = null;
         setWs(null);
 
         if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
           const delay = baseReconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
           reconnectAttemptsRef.current++;
-          console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current})`);
+          setLogs((prev) => [
+            ...prev,
+            `Reconnecting to tunnel logs in ${delay}ms (attempt ${reconnectAttemptsRef.current})`,
+          ]);
           reconnectTimeoutRef.current = setTimeout(connect, delay);
         }
       };
 
-      socket.onerror = error => {
-        console.error('Tunnel logs WS error', error);
+      socket.onerror = (error) => {
+        console.error("Tunnel logs WS error", error);
         socket.close();
       };
     };
@@ -208,18 +212,18 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     setIsLoading(true);
     try {
       const response = await apiService.setupTunnel({
-        zone: 'sibylline.dev',
+        zone: "sibylline.dev",
         localPort: 5050,
       });
       if (response.success && response.tunnel) {
         setTunnelInfo(response.tunnel);
-        toast.success('Tunnel started successfully');
+        toast.success("Tunnel started successfully");
       } else {
-        toast.error(response.error || 'Failed to start tunnel');
+        toast.error(response.error || "Failed to start tunnel");
       }
     } catch (error) {
-      toast.error('Failed to start tunnel');
-      console.error('Tunnel start error:', error);
+      toast.error("Failed to start tunnel");
+      console.error("Tunnel start error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -231,15 +235,15 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       const response = await apiService.stopTunnel();
       if (response.success) {
         setTunnelInfo(null);
-        toast.success(response.message || 'Tunnel stopped successfully');
+        toast.success(response.message || "Tunnel stopped successfully");
         // Refresh status after stopping
         await refreshStatus();
       } else {
-        toast.error(response.error || 'Failed to stop tunnel');
+        toast.error(response.error || "Failed to stop tunnel");
       }
     } catch (error) {
-      toast.error('Failed to stop tunnel');
-      console.error('Tunnel stop error:', error);
+      toast.error("Failed to stop tunnel");
+      console.error("Tunnel stop error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -251,15 +255,15 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
       if (response.success) {
         const rawLogs = Array.isArray(response.logs)
           ? response.logs
-          : typeof response.logs === 'string'
-            ? response.logs.split('\n')
+          : typeof response.logs === "string"
+            ? response.logs.split("\n")
             : [];
-        setLogs(rawLogs.filter(line => line.trim().length > 0));
+        setLogs(rawLogs.filter((line) => line.trim().length > 0));
       } else if (response.error) {
-        console.warn('Failed to load tunnel logs:', response.error);
+        console.warn("Failed to load tunnel logs:", response.error);
       }
     } catch (error) {
-      console.error('Failed to load tunnel logs:', error);
+      console.error("Failed to load tunnel logs:", error);
     }
   };
 
@@ -280,7 +284,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
   const copyTunnelUrl = () => {
     if (tunnelInfo?.url) {
       navigator.clipboard.writeText(tunnelInfo.url);
-      toast.success('Tunnel URL copied to clipboard');
+      toast.success("Tunnel URL copied to clipboard");
     }
   };
 
@@ -290,16 +294,16 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
     }
 
     switch (tunnelInfo?.status) {
-      case 'running':
+      case "running":
         return <CheckCircle className="w-5 h-5 text-green-600" />;
-      case 'stopped':
+      case "stopped":
       default:
         return <Power className="w-5 h-5 text-gray-400" />;
     }
   };
 
   return (
-    <Card className={cn('p-6', className)}>
+    <Card className={cn("p-6", className)}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Globe className="w-6 h-6 text-gray-600" />
@@ -308,7 +312,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
           </h2>
         </div>
         <Button
-          variant={isTunnelRunning ? 'secondary' : 'primary'}
+          variant={isTunnelRunning ? "secondary" : "primary"}
           leftIcon={
             isTunnelRunning ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />
           }
@@ -317,11 +321,11 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         >
           {isLoading
             ? isTunnelRunning
-              ? 'Stopping...'
-              : 'Starting...'
+              ? "Stopping..."
+              : "Starting..."
             : isTunnelRunning
-              ? 'Stop Tunnel'
-              : 'Start Tunnel'}
+              ? "Stop Tunnel"
+              : "Start Tunnel"}
         </Button>
       </div>
 
@@ -332,12 +336,12 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
             {getStatusIcon()}
             <div>
               <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                {isTunnelRunning ? 'Tunnel Active' : 'Tunnel Inactive'}
+                {isTunnelRunning ? "Tunnel Active" : "Tunnel Inactive"}
               </h3>
               <p className="text-sm text-gray-500">
                 {isTunnelRunning
-                  ? 'Your tunnel is running and accepting connections'
-                  : 'Start a tunnel to enable webhook connectivity'}
+                  ? "Your tunnel is running and accepting connections"
+                  : "Start a tunnel to enable webhook connectivity"}
               </p>
             </div>
           </div>
@@ -385,32 +389,32 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
           <div className="grid grid-cols-3 gap-2">
             {[
               {
-                value: 'webhook-only',
-                label: 'Webhook Only',
-                title: 'Secure mode - only webhook endpoints exposed (recommended)',
+                value: "webhook-only",
+                label: "Webhook Only",
+                title: "Secure mode - only webhook endpoints exposed (recommended)",
               },
               {
-                value: 'full-api',
-                label: 'Full API',
-                title: 'Development mode - all API endpoints accessible',
+                value: "full-api",
+                label: "Full API",
+                title: "Development mode - all API endpoints accessible",
               },
               {
-                value: 'custom',
-                label: 'Custom',
-                title: 'Advanced configuration with custom settings',
+                value: "custom",
+                label: "Custom",
+                title: "Advanced configuration with custom settings",
               },
-            ].map(mode => (
+            ].map((mode) => (
               <button
                 key={mode.value}
                 onClick={() => setSelectedMode(mode.value as any)}
                 disabled={isTunnelRunning}
                 title={mode.title}
                 className={cn(
-                  'p-3 text-left border rounded-lg transition-colors',
+                  "p-3 text-left border rounded-lg transition-colors",
                   selectedMode === mode.value
-                    ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
-                    : 'border-gray-200 dark:border-graphite-700 hover:border-gray-300 dark:hover:border-graphite-600 text-gray-900 dark:text-gray-100',
-                  isTunnelRunning && 'opacity-50 cursor-not-allowed'
+                    ? "border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300"
+                    : "border-gray-200 dark:border-graphite-700 hover:border-gray-300 dark:hover:border-graphite-600 text-gray-900 dark:text-gray-100",
+                  isTunnelRunning && "opacity-50 cursor-not-allowed",
                 )}
               >
                 <div className="font-medium text-sm">{mode.label}</div>
@@ -420,14 +424,14 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
         </div>
 
         {/* Custom Configuration */}
-        {selectedMode === 'custom' && (
+        {selectedMode === "custom" && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Custom Configuration
             </label>
             <textarea
               value={customConfig}
-              onChange={e => setCustomConfig(e.target.value)}
+              onChange={(e) => setCustomConfig(e.target.value)}
               placeholder="Enter custom tunnel configuration..."
               className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
               disabled={isTunnelRunning}
@@ -469,7 +473,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
             {logs.length > 0 ? (
               <div ref={logsRef} className="max-h-96 overflow-auto">
                 <pre className="text-xs font-mono bg-gray-900 text-green-400 rounded-lg whitespace-pre-wrap px-4 py-3">
-                  {logs.join('\n')}
+                  {logs.join("\n")}
                 </pre>
               </div>
             ) : (

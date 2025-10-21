@@ -4,12 +4,12 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
-import { AlertTriangle, CheckCircle, Info, Loader2, X, XCircle } from 'lucide-react';
-import { type KeyboardEvent, type MouseEvent, type ReactNode, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { cn } from '../variants';
-import Button from './Button';
+import { clsx } from "clsx";
+import { AlertTriangle, CheckCircle, Info, Loader2, X, XCircle } from "lucide-react";
+import { type KeyboardEvent, type MouseEvent, type ReactNode, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { cn } from "../variants";
+import Button from "./Button";
 
 export interface ModalProps {
   /** Whether the modal is open */
@@ -25,10 +25,10 @@ export interface ModalProps {
   description?: string;
 
   /** Modal size */
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | 'full';
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "full";
 
   /** Modal variant */
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info';
+  variant?: "default" | "success" | "warning" | "error" | "info";
 
   /** Whether the modal is in loading state */
   loading?: boolean;
@@ -68,14 +68,14 @@ export interface ModalProps {
 }
 
 const sizeClasses = {
-  xs: 'max-w-xs',
-  sm: 'max-w-sm',
-  md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-xl',
-  '2xl': 'max-w-2xl',
-  '3xl': 'max-w-3xl',
-  full: 'max-w-full mx-4',
+  xs: "max-w-xs",
+  sm: "max-w-sm",
+  md: "max-w-md",
+  lg: "max-w-lg",
+  xl: "max-w-xl",
+  "2xl": "max-w-2xl",
+  "3xl": "max-w-3xl",
+  full: "max-w-full mx-4",
 } as const;
 
 const variantIcons = {
@@ -87,19 +87,19 @@ const variantIcons = {
 } as const;
 
 const variantClasses = {
-  default: '',
-  success: 'border-l-4 border-green-500',
-  warning: 'border-l-4 border-yellow-500',
-  error: 'border-l-4 border-red-500',
-  info: 'border-l-4 border-blue-500',
+  default: "",
+  success: "border-l-4 border-green-500",
+  warning: "border-l-4 border-yellow-500",
+  error: "border-l-4 border-red-500",
+  info: "border-l-4 border-blue-500",
 } as const;
 
 const variantIconClasses = {
-  default: '',
-  success: 'text-green-500',
-  warning: 'text-yellow-500',
-  error: 'text-red-500',
-  info: 'text-blue-500',
+  default: "",
+  success: "text-green-500",
+  warning: "text-yellow-500",
+  error: "text-red-500",
+  info: "text-blue-500",
 } as const;
 
 export function Modal({
@@ -107,8 +107,8 @@ export function Modal({
   onClose,
   title,
   description,
-  size = 'md',
-  variant = 'default',
+  size = "md",
+  variant = "default",
   loading = false,
   showCloseButton = true,
   closeOnBackdropClick = true,
@@ -157,13 +157,13 @@ export function Modal({
     if (!open || !closeOnEscape) return;
 
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape as any);
-    return () => document.removeEventListener('keydown', handleEscape as any);
+    document.addEventListener("keydown", handleEscape as any);
+    return () => document.removeEventListener("keydown", handleEscape as any);
   }, [open, closeOnEscape, onClose]);
 
   // Handle backdrop click
@@ -178,7 +178,7 @@ export function Modal({
     if (!open) return;
 
     const originalStyle = window.getComputedStyle(document.body).overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = originalStyle;
     };
@@ -186,12 +186,12 @@ export function Modal({
 
   // Trap focus within modal
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Tab') {
+    if (event.key === "Tab") {
       const modal = modalRef.current;
       if (!modal) return;
 
       const focusableElements = modal.querySelectorAll(
-        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])'
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]):not([disabled])',
       ) as NodeListOf<HTMLElement>;
 
       const firstElement = focusableElements[0];
@@ -216,7 +216,7 @@ export function Modal({
   const VariantIcon = variantIcons[variant];
 
   const modal = (
-    <div className={cn('fixed inset-0', `z-${zIndex}`)}>
+    <div className={cn("fixed inset-0", `z-${zIndex}`)}>
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-graphite-900/50 backdrop-blur-sm transition-opacity"
@@ -227,20 +227,20 @@ export function Modal({
       {/* Modal container */}
       <div
         className={cn(
-          'fixed inset-0 flex p-4',
-          centered ? 'items-center justify-center' : 'items-start justify-center pt-16',
-          containerClassName
+          "fixed inset-0 flex p-4",
+          centered ? "items-center justify-center" : "items-start justify-center pt-16",
+          containerClassName,
         )}
       >
         <div
           ref={modalRef}
           className={cn(
             // Base styles
-            'relative bg-white rounded-xl shadow-2xl border border-graphite-200',
-            'transform transition-all',
-            'animate-in fade-in zoom-in-95 duration-200',
-            'w-full max-h-[90vh] overflow-y-auto',
-            'focus:outline-none',
+            "relative bg-white rounded-xl shadow-2xl border border-graphite-200",
+            "transform transition-all",
+            "animate-in fade-in zoom-in-95 duration-200",
+            "w-full max-h-[90vh] overflow-y-auto",
+            "focus:outline-none",
 
             // Size classes
             sizeClasses[size],
@@ -249,15 +249,15 @@ export function Modal({
             variantClasses[variant],
 
             // Loading state
-            loading && 'pointer-events-none',
+            loading && "pointer-events-none",
 
             // Custom className
-            className
+            className,
           )}
           role="dialog"
           aria-modal="true"
-          aria-labelledby={title ? 'modal-title' : undefined}
-          aria-describedby={description ? 'modal-description' : undefined}
+          aria-labelledby={title ? "modal-title" : undefined}
+          aria-describedby={description ? "modal-description" : undefined}
           tabIndex={-1}
           onKeyDown={handleKeyDown}
         >
@@ -275,7 +275,7 @@ export function Modal({
           {(title || showCloseButton) && (
             <div className="flex items-start gap-4 p-6 border-graphite-200">
               {VariantIcon && (
-                <div className={cn('flex-shrink-0 mt-1', variantIconClasses[variant])}>
+                <div className={cn("flex-shrink-0 mt-1", variantIconClasses[variant])}>
                   <VariantIcon className="h-6 w-6" />
                 </div>
               )}
@@ -300,9 +300,9 @@ export function Modal({
                 <button
                   type="button"
                   className={cn(
-                    'flex-shrink-0 rounded-md p-2 transition-colors',
-                    'text-graphite-400 hover:text-graphite-600 hover:bg-graphite-100',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+                    "flex-shrink-0 rounded-md p-2 transition-colors",
+                    "text-graphite-400 hover:text-graphite-600 hover:bg-graphite-100",
+                    "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1",
                   )}
                   onClick={onClose}
                   aria-label="Close modal"
@@ -316,9 +316,9 @@ export function Modal({
           {/* Content */}
           <div
             className={cn(
-              'px-6',
-              title || showCloseButton ? 'pt-2 pb-4' : 'pt-6',
-              footer || showDefaultFooter ? 'pb-4' : 'pb-6'
+              "px-6",
+              title || showCloseButton ? "pt-2 pb-4" : "pt-6",
+              footer || showDefaultFooter ? "pb-4" : "pb-6",
             )}
           >
             {children}

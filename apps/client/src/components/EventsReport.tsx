@@ -5,6 +5,7 @@ import type { Event } from "@/types/api";
 import {
   ChevronDown,
   ChevronRight,
+  History,
   Info,
   Pencil,
   PlusCircle,
@@ -1471,42 +1472,65 @@ export function EventsReport({ projectId }: EventsReportProps) {
   const stackCount = groupedEvents.length;
 
   if (isLoading && eventLog.length === 0) {
-    return <div className="p-4 text-sm text-gray-500">Loading event log…</div>;
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-50 text-sm text-gray-500 dark:bg-graphite-950 dark:text-graphite-300">
+        Loading event log…
+      </div>
+    );
   }
 
   if ((isError && eventLog.length === 0) || (!data && eventLog.length === 0)) {
-    return <div className="p-4 text-sm text-red-500">Failed to load events. Please retry.</div>;
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-50 text-sm text-red-500 dark:bg-graphite-950">
+        Failed to load events. Please retry.
+      </div>
+    );
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex flex-col gap-4 border-b border-gray-200 bg-white p-4 dark:border-graphite-700 dark:bg-graphite-950">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-graphite-300">
-          <span>
-            Events: <strong>{eventLog.length}</strong>
-          </span>
-          <span>
-            Active: <strong>{activeCount}</strong>
-          </span>
-          <span>
-            Reverted: <strong>{danglingCount}</strong>
-          </span>
-          <span>
-            Stacks: <strong>{stackCount}</strong>
-          </span>
-        </div>
-        <div className="text-xs text-gray-500 dark:text-graphite-400">
-          Events are grouped by their target entity. Expand a stack to inspect previous states.
+    <div className="flex h-full flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
+      <div className="border-b border-gray-200 bg-white px-6 py-6 dark:border-graphite-800 dark:bg-graphite-900">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shadow-sm dark:bg-amber-900/30 dark:text-amber-200">
+              <History className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
+                Event Log
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-graphite-300">
+                Monitor project activity, drill into changes, and restore earlier states when
+                necessary.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 dark:text-graphite-300">
+            <span>
+              Events:{" "}
+              <strong className="text-gray-900 dark:text-graphite-25">{eventLog.length}</strong>
+            </span>
+            <span>
+              Active: <strong className="text-gray-900 dark:text-graphite-25">{activeCount}</strong>
+            </span>
+            <span>
+              Reverted:{" "}
+              <strong className="text-gray-900 dark:text-graphite-25">{danglingCount}</strong>
+            </span>
+            <span>
+              Stacks: <strong className="text-gray-900 dark:text-graphite-25">{stackCount}</strong>
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-graphite-950">
+      <div className="flex-1 overflow-hidden px-6 py-6">
         {eventLog.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-graphite-400">
+          <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-graphite-300">
             No events recorded yet.
           </div>
         ) : (
-          <div className="space-y-6 p-4">
+          <div className="space-y-6 overflow-y-auto">
             {groupedEvents.map((group) => (
               <EventGroupCard
                 key={group.target.key}

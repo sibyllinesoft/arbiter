@@ -14,17 +14,17 @@ import {
   Save,
   Sun,
   User,
-} from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { useApp, useCueFileState, useValidationState } from '../../contexts/AppContext';
-import { useCurrentProject } from '../../contexts/ProjectContext';
-import { Button, StatusBadge, cn } from '../../design-system';
-import { apiService } from '../../services/api';
-import { createLogger } from '../../utils/logger';
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { useApp, useCueFileState, useValidationState } from "../../contexts/AppContext";
+import { useCurrentProject } from "../../contexts/ProjectContext";
+import { Button, StatusBadge, cn } from "../../design-system";
+import { apiService } from "../../services/api";
+import { createLogger } from "../../utils/logger";
 
-const log = createLogger('TopBar');
+const log = createLogger("TopBar");
 
 export interface TopBarProps {
   className?: string;
@@ -48,7 +48,7 @@ export function TopBar({ className }: TopBarProps) {
   useEffect(() => {
     if (!selectedCueFile && availableCueFiles.length > 0) {
       setSelectedCueFile(availableCueFiles[0]!);
-      log.debug('Auto-selected first CUE file:', availableCueFiles[0]!);
+      log.debug("Auto-selected first CUE file:", availableCueFiles[0]!);
     }
   }, [selectedCueFile, availableCueFiles, setSelectedCueFile]);
 
@@ -61,11 +61,11 @@ export function TopBar({ className }: TopBarProps) {
     };
 
     if (showDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showDropdown]);
 
@@ -77,25 +77,25 @@ export function TopBar({ className }: TopBarProps) {
 
     setIsSaving(true);
     try {
-      const savePromises = Array.from(state.unsavedChanges).map(async fragmentId => {
+      const savePromises = Array.from(state.unsavedChanges).map(async (fragmentId) => {
         const content = state.editorContent[fragmentId];
         if (content !== undefined) {
           await apiService.updateFragment(currentProject.id, fragmentId, content);
-          dispatch({ type: 'MARK_SAVED', payload: fragmentId });
+          dispatch({ type: "MARK_SAVED", payload: fragmentId });
         }
       });
 
       await Promise.all(savePromises);
 
       toast.success(`Saved ${savePromises.length} fragment(s)`, {
-        position: 'top-right',
+        position: "top-right",
         autoClose: 2000,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to save fragments';
+      const message = error instanceof Error ? error.message : "Failed to save fragments";
       setError(message);
       toast.error(message, {
-        position: 'top-right',
+        position: "top-right",
         autoClose: 5000,
       });
     } finally {
@@ -109,7 +109,7 @@ export function TopBar({ className }: TopBarProps) {
 
     setLoading(true);
     dispatch({
-      type: 'SET_VALIDATION_STATE',
+      type: "SET_VALIDATION_STATE",
       payload: {
         errors: [],
         warnings: [],
@@ -123,7 +123,7 @@ export function TopBar({ className }: TopBarProps) {
       const result = await apiService.validateProject(currentProject.id, { force: true });
 
       dispatch({
-        type: 'SET_VALIDATION_STATE',
+        type: "SET_VALIDATION_STATE",
         payload: {
           errors: result.errors,
           warnings: result.warnings,
@@ -134,25 +134,25 @@ export function TopBar({ className }: TopBarProps) {
       });
 
       if (result.success) {
-        toast.success('Validation completed successfully', {
-          position: 'top-right',
+        toast.success("Validation completed successfully", {
+          position: "top-right",
           autoClose: 3000,
         });
       } else {
         toast.warning(
           `Validation found ${result.errors.length} errors and ${result.warnings.length} warnings`,
           {
-            position: 'top-right',
+            position: "top-right",
             autoClose: 5000,
-          }
+          },
         );
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Validation failed';
+      const message = error instanceof Error ? error.message : "Validation failed";
       setError(message);
 
       dispatch({
-        type: 'SET_VALIDATION_STATE',
+        type: "SET_VALIDATION_STATE",
         payload: {
           errors: [],
           warnings: [],
@@ -163,7 +163,7 @@ export function TopBar({ className }: TopBarProps) {
       });
 
       toast.error(message, {
-        position: 'top-right',
+        position: "top-right",
         autoClose: 5000,
       });
     } finally {
@@ -175,14 +175,14 @@ export function TopBar({ className }: TopBarProps) {
   const handleFreeze = useCallback(async () => {
     if (!currentProject) return;
 
-    const versionName = prompt('Enter version name:');
+    const versionName = prompt("Enter version name:");
     if (!versionName) return;
 
-    const descriptionInput = prompt('Enter description (optional):');
+    const descriptionInput = prompt("Enter description (optional):");
     const freezePayload: { version_name: string; description?: string } = {
       version_name: versionName,
     };
-    if (descriptionInput !== null && descriptionInput.trim() !== '') {
+    if (descriptionInput !== null && descriptionInput.trim() !== "") {
       freezePayload.description = descriptionInput.trim();
     }
 
@@ -191,16 +191,16 @@ export function TopBar({ className }: TopBarProps) {
       const result = await apiService.freezeVersion(currentProject.id, freezePayload);
 
       toast.success(`Version "${versionName}" frozen successfully`, {
-        position: 'top-right',
+        position: "top-right",
         autoClose: 3000,
       });
 
-      log.debug('Version frozen:', result);
+      log.debug("Version frozen:", result);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to freeze version';
+      const message = error instanceof Error ? error.message : "Failed to freeze version";
       setError(message);
       toast.error(message, {
-        position: 'top-right',
+        position: "top-right",
         autoClose: 5000,
       });
     } finally {
@@ -213,35 +213,35 @@ export function TopBar({ className }: TopBarProps) {
     (fileName: string) => {
       try {
         setSelectedCueFile(fileName);
-        log.debug('CUE file changed to:', fileName);
+        log.debug("CUE file changed to:", fileName);
 
         // Optionally trigger re-validation when CUE file changes
         if (currentProject && fileName) {
           toast.info(`Switched to ${fileName}`, {
-            position: 'top-right',
+            position: "top-right",
             autoClose: 2000,
           });
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to change CUE file';
+        const message = error instanceof Error ? error.message : "Failed to change CUE file";
         setError(message);
-        log.error('Failed to change CUE file:', error);
+        log.error("Failed to change CUE file:", error);
       }
     },
-    [setSelectedCueFile, currentProject, setError]
+    [setSelectedCueFile, currentProject, setError],
   );
 
   // Get validation status
   const getValidationStatus = () => {
     if (isValidating) {
-      return { icon: Loader2, text: 'Validating...', color: 'text-blue-600', spinning: true };
+      return { icon: Loader2, text: "Validating...", color: "text-blue-600", spinning: true };
     }
 
     if (errors.length > 0) {
       return {
         icon: AlertCircle,
-        text: `${errors.length} error${errors.length > 1 ? 's' : ''}`,
-        color: 'text-red-600',
+        text: `${errors.length} error${errors.length > 1 ? "s" : ""}`,
+        color: "text-red-600",
         spinning: false,
       };
     }
@@ -249,16 +249,16 @@ export function TopBar({ className }: TopBarProps) {
     if (warnings.length > 0) {
       return {
         icon: AlertCircle,
-        text: `${warnings.length} warning${warnings.length > 1 ? 's' : ''}`,
-        color: 'text-yellow-600',
+        text: `${warnings.length} warning${warnings.length > 1 ? "s" : ""}`,
+        color: "text-yellow-600",
         spinning: false,
       };
     }
 
     return {
       icon: CheckCircle,
-      text: 'Valid',
-      color: 'text-green-600',
+      text: "Valid",
+      color: "text-green-600",
       spinning: false,
     };
   };
@@ -269,11 +269,11 @@ export function TopBar({ className }: TopBarProps) {
   return (
     <div
       className={cn(
-        'flex items-center justify-between h-16 px-6',
-        'bg-white dark:bg-graphite-950',
-        'border-b border-graphite-200 dark:border-graphite-700 shadow-sm',
-        'backdrop-blur-sm relative z-30',
-        className
+        "flex items-center justify-between h-16 px-6",
+        "bg-white dark:bg-graphite-950",
+        "border-b border-graphite-200 dark:border-graphite-700 shadow-sm",
+        "backdrop-blur-sm relative z-30",
+        className,
       )}
     >
       {/* Subtle top accent line */}
@@ -290,9 +290,9 @@ export function TopBar({ className }: TopBarProps) {
             <button
               onClick={() => setShowDropdown(!showDropdown)}
               className={cn(
-                'flex items-center gap-2 px-3 py-2 font-semibold text-graphite-800 hover:text-graphite-900',
-                'hover:bg-graphite-100 border border-transparent hover:border-graphite-200',
-                'transition-all duration-200 rounded-lg bg-transparent'
+                "flex items-center gap-2 px-3 py-2 font-semibold text-graphite-800 hover:text-graphite-900",
+                "hover:bg-graphite-100 border border-transparent hover:border-graphite-200",
+                "transition-all duration-200 rounded-lg bg-transparent",
               )}
             >
               {currentProject ? (
@@ -301,12 +301,12 @@ export function TopBar({ className }: TopBarProps) {
                   <span className="text-xs text-graphite-500 font-normal">spec</span>
                 </span>
               ) : (
-                'Select Project'
+                "Select Project"
               )}
               <ChevronDown
                 className={cn(
-                  'h-4 w-4 text-graphite-500 transition-transform duration-200',
-                  showDropdown && 'rotate-180'
+                  "h-4 w-4 text-graphite-500 transition-transform duration-200",
+                  showDropdown && "rotate-180",
                 )}
               />
             </button>
@@ -318,19 +318,19 @@ export function TopBar({ className }: TopBarProps) {
                     Available Projects ({state.projects.length})
                   </div>
                   {state.projects.length > 0 ? (
-                    state.projects.map(project => (
+                    state.projects.map((project) => (
                       <button
                         key={project.id}
                         onClick={() => {
                           navigate(`/project/${project.id}`);
                           setShowDropdown(false);
-                          log.debug('Selected project:', project.name);
+                          log.debug("Selected project:", project.name);
                         }}
                         className={cn(
-                          'group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-gray-100',
+                          "group flex w-full items-center rounded-md px-3 py-2 text-sm transition-colors hover:bg-gray-100",
                           currentProject?.id === project.id
-                            ? 'bg-blue-50 text-blue-700'
-                            : 'text-gray-700'
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-gray-700",
                         )}
                       >
                         <div className="flex items-center justify-between w-full">
@@ -357,15 +357,15 @@ export function TopBar({ className }: TopBarProps) {
         <div className="flex items-center gap-3 pl-6 border-l border-graphite-200">
           <span className="text-sm font-medium text-graphite-600">CUE:</span>
           <select
-            value={selectedCueFile || ''}
-            onChange={e => handleCueFileChange(e.target.value)}
+            value={selectedCueFile || ""}
+            onChange={(e) => handleCueFileChange(e.target.value)}
             className="px-3 py-1.5 text-sm border border-graphite-200 rounded-md bg-white hover:border-graphite-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
             disabled={!currentProject}
           >
             {availableCueFiles.length === 0 ? (
               <option value="">No CUE files available</option>
             ) : (
-              availableCueFiles.map(fileName => (
+              availableCueFiles.map((fileName) => (
                 <option key={fileName} value={fileName}>
                   {fileName}
                 </option>
@@ -374,7 +374,7 @@ export function TopBar({ className }: TopBarProps) {
           </select>
           {selectedCueFile && (
             <div className="text-xs text-graphite-400 font-mono bg-graphite-50 px-2 py-1 rounded border">
-              {selectedCueFile.split('.')[0]}
+              {selectedCueFile.split(".")[0]}
             </div>
           )}
         </div>
@@ -387,12 +387,12 @@ export function TopBar({ className }: TopBarProps) {
           <StatusBadge
             variant={
               isValidating
-                ? 'info'
+                ? "info"
                 : errors.length > 0
-                  ? 'error'
+                  ? "error"
                   : warnings.length > 0
-                    ? 'warning'
-                    : 'success'
+                    ? "warning"
+                    : "success"
             }
             size="sm"
             icon={
@@ -422,7 +422,7 @@ export function TopBar({ className }: TopBarProps) {
         {/* Action buttons - Enhanced layout */}
         <div className="flex items-center gap-3 pl-6 border-l border-graphite-200">
           <Button
-            variant={hasUnsavedChanges ? 'primary' : 'secondary'}
+            variant={hasUnsavedChanges ? "primary" : "secondary"}
             size="sm"
             leftIcon={
               isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
@@ -430,11 +430,11 @@ export function TopBar({ className }: TopBarProps) {
             onClick={handleSave}
             disabled={!hasUnsavedChanges || isSaving}
             className={cn(
-              'min-w-[88px] font-medium transition-all duration-200',
-              hasUnsavedChanges && 'shadow-sm shadow-blue-500/20'
+              "min-w-[88px] font-medium transition-all duration-200",
+              hasUnsavedChanges && "shadow-sm shadow-blue-500/20",
             )}
           >
-            Save{' '}
+            Save{" "}
             {hasUnsavedChanges && (
               <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">
                 {state.unsavedChanges.size}
@@ -472,10 +472,10 @@ export function TopBar({ className }: TopBarProps) {
             onClick={handleFreeze}
             disabled={isFreezing || !currentProject || errors.length > 0}
             className={cn(
-              'font-medium',
+              "font-medium",
               errors.length === 0 &&
                 !isFreezing &&
-                'hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700'
+                "hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700",
             )}
           >
             Freeze

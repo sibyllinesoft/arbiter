@@ -8,22 +8,22 @@ import {
   type DiagramConnection,
   type DiagramLayer,
   type LayoutAlgorithm,
-} from '../types/architecture';
+} from "../types/architecture";
 
 export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
-  name = 'layered';
+  name = "layered";
 
   calculate(
     components: DiagramComponent[],
-    connections: DiagramConnection[]
+    connections: DiagramConnection[],
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     // Define layer ordering
     const layerOrder: DiagramLayer[] = [
-      'presentation',
-      'application',
-      'service',
-      'data',
-      'external',
+      "presentation",
+      "application",
+      "service",
+      "data",
+      "external",
     ];
 
     // Group components by layer
@@ -40,16 +40,16 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
 
   private groupByLayer(
     components: DiagramComponent[],
-    layerOrder: DiagramLayer[]
+    layerOrder: DiagramLayer[],
   ): Map<DiagramLayer, DiagramComponent[]> {
     const groups = new Map<DiagramLayer, DiagramComponent[]>();
 
     // Initialize groups
-    layerOrder.forEach(layer => groups.set(layer, []));
+    layerOrder.forEach((layer) => groups.set(layer, []));
 
     // Group components
-    components.forEach(component => {
-      const layer = component.layer || 'service';
+    components.forEach((component) => {
+      const layer = component.layer || "service";
       if (!groups.has(layer)) {
         groups.set(layer, []);
       }
@@ -61,14 +61,14 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
 
   private positionComponentsByLayer(
     layerGroups: Map<DiagramLayer, DiagramComponent[]>,
-    layerOrder: DiagramLayer[]
+    layerOrder: DiagramLayer[],
   ): DiagramComponent[] {
     const positioned: DiagramComponent[] = [];
     const layerHeight = 200;
     const componentSpacing = 20;
     let currentY = 60; // Start below header
 
-    layerOrder.forEach(layer => {
+    layerOrder.forEach((layer) => {
       const components = layerGroups.get(layer) || [];
       if (components.length === 0) return;
 
@@ -80,7 +80,7 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
       // Center the layer horizontally
       let currentX = Math.max(50, (800 - layerWidth) / 2);
 
-      components.forEach(component => {
+      components.forEach((component) => {
         positioned.push({
           ...component,
           position: { x: currentX, y: currentY },
@@ -100,8 +100,8 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
     }
 
     const padding = 50;
-    const maxX = Math.max(...components.map(c => c.position.x + c.size.width));
-    const maxY = Math.max(...components.map(c => c.position.y + c.size.height));
+    const maxX = Math.max(...components.map((c) => c.position.x + c.size.width));
+    const maxY = Math.max(...components.map((c) => c.position.y + c.size.height));
 
     return {
       width: Math.max(800, maxX + padding),
@@ -111,11 +111,11 @@ export class LayeredLayoutAlgorithm implements LayoutAlgorithm {
 }
 
 export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
-  name = 'force_directed';
+  name = "force_directed";
 
   calculate(
     components: DiagramComponent[],
-    connections: DiagramConnection[]
+    connections: DiagramConnection[],
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     // Simple force-directed layout using basic physics simulation
     const positioned = [...components];
@@ -125,7 +125,7 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
     const damping = 0.9;
 
     // Initialize random positions if not set
-    positioned.forEach(component => {
+    positioned.forEach((component) => {
       if (component.position.x === 0 && component.position.y === 0) {
         component.position = {
           x: Math.random() * 600 + 100,
@@ -136,14 +136,14 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
 
     // Track velocities
     const velocities = new Map<string, { x: number; y: number }>();
-    positioned.forEach(comp => {
+    positioned.forEach((comp) => {
       velocities.set(comp.id, { x: 0, y: 0 });
     });
 
     // Simulation iterations
     for (let iter = 0; iter < iterations; iter++) {
       // Reset forces
-      positioned.forEach(comp => {
+      positioned.forEach((comp) => {
         const vel = velocities.get(comp.id)!;
         vel.x *= damping;
         vel.y *= damping;
@@ -174,9 +174,9 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
       }
 
       // Attraction forces (connected components pull each other)
-      connections.forEach(connection => {
-        const comp1 = positioned.find(c => c.id === connection.from.componentId);
-        const comp2 = positioned.find(c => c.id === connection.to.componentId);
+      connections.forEach((connection) => {
+        const comp1 = positioned.find((c) => c.id === connection.from.componentId);
+        const comp2 = positioned.find((c) => c.id === connection.to.componentId);
 
         if (comp1 && comp2) {
           const vel1 = velocities.get(comp1.id)!;
@@ -198,7 +198,7 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
       });
 
       // Apply velocities
-      positioned.forEach(comp => {
+      positioned.forEach((comp) => {
         const vel = velocities.get(comp.id)!;
         comp.position.x += vel.x;
         comp.position.y += vel.y;
@@ -219,8 +219,8 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
     }
 
     const padding = 100;
-    const maxX = Math.max(...components.map(c => c.position.x + c.size.width));
-    const maxY = Math.max(...components.map(c => c.position.y + c.size.height));
+    const maxX = Math.max(...components.map((c) => c.position.x + c.size.width));
+    const maxY = Math.max(...components.map((c) => c.position.y + c.size.height));
 
     return {
       width: Math.max(800, maxX + padding),
@@ -230,11 +230,11 @@ export class ForceDirectedLayoutAlgorithm implements LayoutAlgorithm {
 }
 
 export class FlowLayoutAlgorithm implements LayoutAlgorithm {
-  name = 'flow';
+  name = "flow";
 
   calculate(
     components: DiagramComponent[],
-    connections: DiagramConnection[]
+    connections: DiagramConnection[],
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     // Organize components based on flow connections
     const positioned = [...components];
@@ -242,11 +242,11 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
     // Find starting components (no incoming flow connections)
     const hasIncoming = new Set<string>();
     connections
-      .filter(conn => ['user_navigation', 'user_interaction'].includes(conn.type))
-      .forEach(conn => hasIncoming.add(conn.to.componentId));
+      .filter((conn) => ["user_navigation", "user_interaction"].includes(conn.type))
+      .forEach((conn) => hasIncoming.add(conn.to.componentId));
 
-    const startComponents = positioned.filter(comp => !hasIncoming.has(comp.id));
-    const remainingComponents = positioned.filter(comp => hasIncoming.has(comp.id));
+    const startComponents = positioned.filter((comp) => !hasIncoming.has(comp.id));
+    const remainingComponents = positioned.filter((comp) => hasIncoming.has(comp.id));
 
     // Layout in flow order
     let currentX = 50;
@@ -260,7 +260,7 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
     });
 
     // Position remaining components based on flow order
-    const positioned_ids = new Set(startComponents.map(c => c.id));
+    const positioned_ids = new Set(startComponents.map((c) => c.id));
     let currentStep = 1;
 
     while (positioned_ids.size < positioned.length && currentStep < 10) {
@@ -268,18 +268,18 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
       let yOffset = 0;
 
       // Find components that can be positioned in this step
-      const canPosition = remainingComponents.filter(comp => {
+      const canPosition = remainingComponents.filter((comp) => {
         if (positioned_ids.has(comp.id)) return false;
 
         // Check if all predecessors are positioned
         const predecessors = connections
-          .filter(conn => conn.to.componentId === comp.id)
-          .map(conn => conn.from.componentId);
+          .filter((conn) => conn.to.componentId === comp.id)
+          .map((conn) => conn.from.componentId);
 
-        return predecessors.length === 0 || predecessors.every(id => positioned_ids.has(id));
+        return predecessors.length === 0 || predecessors.every((id) => positioned_ids.has(id));
       });
 
-      canPosition.forEach(comp => {
+      canPosition.forEach((comp) => {
         comp.position = { x: currentX, y: currentY + yOffset };
         positioned_ids.add(comp.id);
         yOffset += stepHeight;
@@ -290,7 +290,7 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
 
     // Position any remaining components
     remainingComponents
-      .filter(comp => !positioned_ids.has(comp.id))
+      .filter((comp) => !positioned_ids.has(comp.id))
       .forEach((comp, index) => {
         comp.position = {
           x: currentX + stepWidth,
@@ -308,8 +308,8 @@ export class FlowLayoutAlgorithm implements LayoutAlgorithm {
     }
 
     const padding = 100;
-    const maxX = Math.max(...components.map(c => c.position.x + c.size.width));
-    const maxY = Math.max(...components.map(c => c.position.y + c.size.height));
+    const maxX = Math.max(...components.map((c) => c.position.x + c.size.width));
+    const maxY = Math.max(...components.map((c) => c.position.y + c.size.height));
 
     return {
       width: Math.max(1000, maxX + padding),
@@ -322,9 +322,9 @@ export class DiagramLayoutEngine {
   private algorithms: Map<string, LayoutAlgorithm> = new Map();
 
   constructor() {
-    this.algorithms.set('layered', new LayeredLayoutAlgorithm());
-    this.algorithms.set('force_directed', new ForceDirectedLayoutAlgorithm());
-    this.algorithms.set('flow', new FlowLayoutAlgorithm());
+    this.algorithms.set("layered", new LayeredLayoutAlgorithm());
+    this.algorithms.set("force_directed", new ForceDirectedLayoutAlgorithm());
+    this.algorithms.set("flow", new FlowLayoutAlgorithm());
   }
 
   /**
@@ -333,13 +333,13 @@ export class DiagramLayoutEngine {
   applyLayout(
     components: DiagramComponent[],
     connections: DiagramConnection[],
-    layoutType = 'layered'
+    layoutType = "layered",
   ): { components: DiagramComponent[]; viewport: { width: number; height: number } } {
     const algorithm = this.algorithms.get(layoutType);
 
     if (!algorithm) {
       console.warn(`Unknown layout algorithm: ${layoutType}, falling back to layered`);
-      return this.algorithms.get('layered')!.calculate(components, connections);
+      return this.algorithms.get("layered")!.calculate(components, connections);
     }
 
     return algorithm.calculate(components, connections);
@@ -350,22 +350,22 @@ export class DiagramLayoutEngine {
    */
   suggestLayout(components: DiagramComponent[], connections: DiagramConnection[]): string {
     // Check for flow-based connections
-    const hasFlowConnections = connections.some(conn =>
-      ['user_navigation', 'user_interaction'].includes(conn.type)
+    const hasFlowConnections = connections.some((conn) =>
+      ["user_navigation", "user_interaction"].includes(conn.type),
     );
 
     if (hasFlowConnections) {
-      return 'flow';
+      return "flow";
     }
 
     // Check for clear layer separation
-    const layers = new Set(components.map(c => c.layer));
+    const layers = new Set(components.map((c) => c.layer));
     if (layers.size >= 3) {
-      return 'layered';
+      return "layered";
     }
 
     // Default to force-directed for complex interconnections
-    return 'force_directed';
+    return "force_directed";
   }
 
   /**

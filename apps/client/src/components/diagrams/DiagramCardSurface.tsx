@@ -1,5 +1,5 @@
-import { clsx } from 'clsx';
-import React from 'react';
+import { clsx } from "clsx";
+import React from "react";
 
 type DivProps = React.HTMLAttributes<HTMLDivElement>;
 
@@ -8,9 +8,9 @@ export interface DiagramCardSurfaceProps extends DivProps {
 }
 
 const BASE_CLASSES =
-  'relative overflow-hidden rounded-lg border p-3 transition-all duration-150 ease-out';
+  "relative overflow-hidden rounded-lg border p-3 transition-all duration-150 ease-out";
 const INTERACTIVE_CLASSES =
-  'cursor-pointer hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-0';
+  "cursor-pointer hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-0";
 
 export const DiagramCardSurface = React.forwardRef<HTMLDivElement, DiagramCardSurfaceProps>(
   ({ className, interactive = false, children, tabIndex, ...rest }, ref) => {
@@ -26,9 +26,9 @@ export const DiagramCardSurface = React.forwardRef<HTMLDivElement, DiagramCardSu
         {children}
       </div>
     );
-  }
+  },
 );
 
-DiagramCardSurface.displayName = 'DiagramCardSurface';
+DiagramCardSurface.displayName = "DiagramCardSurface";
 
 export default DiagramCardSurface;

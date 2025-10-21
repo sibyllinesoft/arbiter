@@ -6,6 +6,6 @@
  * analysing existing repositories.
  */
 
-export * from './types';
-export * from './scanner';
-export * from './plugins';
+export * from "./types";
+export * from "./scanner";
+export * from "./plugins";

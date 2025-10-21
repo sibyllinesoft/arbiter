@@ -5,42 +5,42 @@
  * and validates invariants hold across many test cases
  */
 
-import { describe, expect, it } from 'bun:test';
-import { formatWarnings, validateSpecification } from '../warnings.js';
+import { describe, expect, it } from "bun:test";
+import { formatWarnings, validateSpecification } from "../warnings.js";
 
-describe('Validation Warning System - Property Tests', () => {
+describe("Validation Warning System - Property Tests", () => {
   // Property: validation should never throw errors
-  describe('Robustness Properties', () => {
-    it('should never throw exceptions with any input structure', () => {
+  describe("Robustness Properties", () => {
+    it("should never throw exceptions with any input structure", () => {
       const testCases = generateRandomSpecs(100);
 
       testCases.forEach((spec, index) => {
         expect(() => {
           const result = validateSpecification(spec);
           expect(result).toBeDefined();
-          expect(typeof result.hasWarnings).toBe('boolean');
-          expect(typeof result.hasErrors).toBe('boolean');
+          expect(typeof result.hasWarnings).toBe("boolean");
+          expect(typeof result.hasErrors).toBe("boolean");
           expect(Array.isArray(result.warnings)).toBe(true);
           expect(Array.isArray(result.errors)).toBe(true);
         }).not.toThrow(`Test case ${index} should not throw`);
       });
     });
 
-    it('should always return consistent structure', () => {
+    it("should always return consistent structure", () => {
       const testCases = generateRandomSpecs(50);
 
-      testCases.forEach(spec => {
+      testCases.forEach((spec) => {
         const result = validateSpecification(spec);
 
         // Structure invariants
-        expect(result).toHaveProperty('hasWarnings');
-        expect(result).toHaveProperty('hasErrors');
-        expect(result).toHaveProperty('warnings');
-        expect(result).toHaveProperty('errors');
+        expect(result).toHaveProperty("hasWarnings");
+        expect(result).toHaveProperty("hasErrors");
+        expect(result).toHaveProperty("warnings");
+        expect(result).toHaveProperty("errors");
 
         // Type invariants
-        expect(typeof result.hasWarnings).toBe('boolean');
-        expect(typeof result.hasErrors).toBe('boolean');
+        expect(typeof result.hasWarnings).toBe("boolean");
+        expect(typeof result.hasErrors).toBe("boolean");
         expect(Array.isArray(result.warnings)).toBe(true);
         expect(Array.isArray(result.errors)).toBe(true);
 
@@ -49,15 +49,15 @@ describe('Validation Warning System - Property Tests', () => {
         expect(result.hasErrors).toBe(result.errors.length > 0);
 
         // Warning structure invariants
-        result.warnings.forEach(warning => {
-          expect(warning).toHaveProperty('category');
-          expect(warning).toHaveProperty('severity');
-          expect(warning).toHaveProperty('message');
-          expect(warning).toHaveProperty('suggestion');
-          expect(typeof warning.category).toBe('string');
-          expect(['warning', 'error']).toContain(warning.severity);
-          expect(typeof warning.message).toBe('string');
-          expect(typeof warning.suggestion).toBe('string');
+        result.warnings.forEach((warning) => {
+          expect(warning).toHaveProperty("category");
+          expect(warning).toHaveProperty("severity");
+          expect(warning).toHaveProperty("message");
+          expect(warning).toHaveProperty("suggestion");
+          expect(typeof warning.category).toBe("string");
+          expect(["warning", "error"]).toContain(warning.severity);
+          expect(typeof warning.message).toBe("string");
+          expect(typeof warning.suggestion).toBe("string");
           expect(warning.category.length).toBeGreaterThan(0);
           expect(warning.message.length).toBeGreaterThan(0);
           expect(warning.suggestion.length).toBeGreaterThan(0);
@@ -65,10 +65,10 @@ describe('Validation Warning System - Property Tests', () => {
       });
     });
 
-    it('should handle deeply nested null/undefined values', () => {
+    it("should handle deeply nested null/undefined values", () => {
       const nullSpecs = generateNullSpecs(25);
 
-      nullSpecs.forEach(spec => {
+      nullSpecs.forEach((spec) => {
         expect(() => {
           const result = validateSpecification(spec);
           expect(result).toBeDefined();
@@ -78,8 +78,8 @@ describe('Validation Warning System - Property Tests', () => {
   });
 
   // Property: more complete specs should have fewer warnings
-  describe('Completeness Properties', () => {
-    it('should produce fewer warnings as specs become more complete', () => {
+  describe("Completeness Properties", () => {
+    it("should produce fewer warnings as specs become more complete", () => {
       const progressiveSpecs = generateProgressiveSpecs();
       let lastWarningCount = Number.POSITIVE_INFINITY;
 
@@ -92,10 +92,10 @@ describe('Validation Warning System - Property Tests', () => {
       });
     });
 
-    it('should validate complete specs without warnings', () => {
+    it("should validate complete specs without warnings", () => {
       const completeSpecs = generateCompleteSpecs(10);
 
-      completeSpecs.forEach(spec => {
+      completeSpecs.forEach((spec) => {
         const result = validateSpecification(spec);
         expect(result.hasWarnings).toBe(false);
         expect(result.hasErrors).toBe(false);
@@ -106,14 +106,14 @@ describe('Validation Warning System - Property Tests', () => {
   });
 
   // Property: validation categories should be mutually exclusive
-  describe('Category Properties', () => {
-    it('should produce distinct warning categories', () => {
+  describe("Category Properties", () => {
+    it("should produce distinct warning categories", () => {
       const testSpecs = generateRandomSpecs(20);
       const allCategories = new Set<string>();
 
-      testSpecs.forEach(spec => {
+      testSpecs.forEach((spec) => {
         const result = validateSpecification(spec);
-        result.warnings.forEach(warning => {
+        result.warnings.forEach((warning) => {
           allCategories.add(warning.category);
         });
       });
@@ -122,7 +122,7 @@ describe('Validation Warning System - Property Tests', () => {
       expect(allCategories.size).toBeGreaterThan(5);
 
       // Categories should be meaningful strings
-      allCategories.forEach(category => {
+      allCategories.forEach((category) => {
         expect(category.length).toBeGreaterThan(2);
         expect(category).toMatch(/^[A-Za-z\s]+$/);
       });
@@ -130,39 +130,39 @@ describe('Validation Warning System - Property Tests', () => {
   });
 
   // Property: format function should always produce valid output
-  describe('Formatting Properties', () => {
-    it('should format any validation result without errors', () => {
+  describe("Formatting Properties", () => {
+    it("should format any validation result without errors", () => {
       const testCases = generateRandomSpecs(30);
 
-      testCases.forEach(spec => {
+      testCases.forEach((spec) => {
         const result = validateSpecification(spec);
 
         expect(() => {
           const formatted = formatWarnings(result);
-          expect(typeof formatted).toBe('string');
+          expect(typeof formatted).toBe("string");
         }).not.toThrow();
       });
     });
 
-    it('should include required elements when warnings/errors present', () => {
+    it("should include required elements when warnings/errors present", () => {
       const incompleteSpecs = generateIncompleteSpecs(15);
 
-      incompleteSpecs.forEach(spec => {
+      incompleteSpecs.forEach((spec) => {
         const result = validateSpecification(spec);
 
         if (result.hasWarnings || result.hasErrors) {
           const formatted = formatWarnings(result);
 
           // Should include AI agent prompts
-          expect(formatted).toContain('AI AGENTS');
-          expect(formatted).toContain('PRODUCT OWNER');
+          expect(formatted).toContain("AI AGENTS");
+          expect(formatted).toContain("PRODUCT OWNER");
 
           if (result.hasErrors) {
-            expect(formatted).toContain('ERRORS');
+            expect(formatted).toContain("ERRORS");
           }
 
           if (result.hasWarnings) {
-            expect(formatted).toContain('WARNINGS');
+            expect(formatted).toContain("WARNINGS");
           }
         }
       });
@@ -170,11 +170,11 @@ describe('Validation Warning System - Property Tests', () => {
   });
 
   // Property: performance should be consistent regardless of spec size
-  describe('Performance Properties', () => {
-    it('should validate large specs in reasonable time', () => {
+  describe("Performance Properties", () => {
+    it("should validate large specs in reasonable time", () => {
       const largeSizes = [10, 50, 100, 200];
 
-      largeSizes.forEach(size => {
+      largeSizes.forEach((size) => {
         const largeSpec = generateLargeSpec(size);
 
         const startTime = performance.now();
@@ -189,7 +189,7 @@ describe('Validation Warning System - Property Tests', () => {
 
         // Should still produce valid results
         expect(result).toBeDefined();
-        expect(typeof result.hasWarnings).toBe('boolean');
+        expect(typeof result.hasWarnings).toBe("boolean");
       });
     });
   });
@@ -235,30 +235,30 @@ function generateRandomSpecs(count: number): any[] {
       security:
         Math.random() > 0.8
           ? {
-              authentication: { type: 'oauth2' },
+              authentication: { type: "oauth2" },
             }
           : undefined,
 
       performance:
         Math.random() > 0.8
           ? {
-              sla: { responseTime: '< 200ms' },
+              sla: { responseTime: "< 200ms" },
             }
           : undefined,
 
       observability:
         Math.random() > 0.8
           ? {
-              logging: { level: 'info' },
-              monitoring: { metrics: ['response_time'] },
+              logging: { level: "info" },
+              monitoring: { metrics: ["response_time"] },
             }
           : undefined,
 
       environments:
         Math.random() > 0.8
           ? {
-              development: { name: 'dev' },
-              production: { name: 'prod' },
+              development: { name: "dev" },
+              production: { name: "prod" },
             }
           : undefined,
     });
@@ -284,15 +284,15 @@ function generateNullSpecs(count: number): any[] {
           ? undefined
           : {
               name: Math.random() > 0.5 ? undefined : randomString(),
-              version: Math.random() > 0.5 ? null : '1.0.0',
+              version: Math.random() > 0.5 ? null : "1.0.0",
             },
       services:
         Math.random() > 0.5
           ? null
           : {
               test: {
-                serviceType: Math.random() > 0.5 ? null : 'bespoke',
-                language: Math.random() > 0.5 ? undefined : 'typescript',
+                serviceType: Math.random() > 0.5 ? null : "bespoke",
+                language: Math.random() > 0.5 ? undefined : "typescript",
                 ports: Math.random() > 0.5 ? null : [],
               },
             },
@@ -311,8 +311,8 @@ function generateNullSpecs(count: number): any[] {
 
 function generateProgressiveSpecs(): any[] {
   const baseSpec: any = {
-    product: { name: 'Progressive Test' },
-    metadata: { name: 'progressive', version: '1.0.0' },
+    product: { name: "Progressive Test" },
+    metadata: { name: "progressive", version: "1.0.0" },
     services: {},
     ui: { routes: [] },
   };
@@ -325,8 +325,8 @@ function generateProgressiveSpecs(): any[] {
     {
       ...baseSpec,
       product: {
-        name: 'Progressive Test',
-        goals: ['Goal 1', 'Goal 2'],
+        name: "Progressive Test",
+        goals: ["Goal 1", "Goal 2"],
       },
     },
 
@@ -334,13 +334,13 @@ function generateProgressiveSpecs(): any[] {
     {
       ...baseSpec,
       product: {
-        name: 'Progressive Test',
-        goals: ['Goal 1', 'Goal 2'],
+        name: "Progressive Test",
+        goals: ["Goal 1", "Goal 2"],
       },
       metadata: {
-        name: 'progressive',
-        version: '1.0.0',
-        description: 'A progressive test project',
+        name: "progressive",
+        version: "1.0.0",
+        description: "A progressive test project",
       },
     },
 
@@ -348,18 +348,18 @@ function generateProgressiveSpecs(): any[] {
     {
       ...baseSpec,
       product: {
-        name: 'Progressive Test',
-        goals: ['Goal 1', 'Goal 2'],
+        name: "Progressive Test",
+        goals: ["Goal 1", "Goal 2"],
       },
       metadata: {
-        name: 'progressive',
-        version: '1.0.0',
-        description: 'A progressive test project',
+        name: "progressive",
+        version: "1.0.0",
+        description: "A progressive test project",
       },
       tests: [
-        { name: 'Unit', type: 'unit', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'Integration', type: 'integration', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'E2E', type: 'e2e', cases: [{ name: 'test', assertion: 'works' }] },
+        { name: "Unit", type: "unit", cases: [{ name: "test", assertion: "works" }] },
+        { name: "Integration", type: "integration", cases: [{ name: "test", assertion: "works" }] },
+        { name: "E2E", type: "e2e", cases: [{ name: "test", assertion: "works" }] },
       ],
     },
 
@@ -367,21 +367,21 @@ function generateProgressiveSpecs(): any[] {
     {
       ...baseSpec,
       product: {
-        name: 'Progressive Test',
-        goals: ['Goal 1', 'Goal 2'],
+        name: "Progressive Test",
+        goals: ["Goal 1", "Goal 2"],
       },
       metadata: {
-        name: 'progressive',
-        version: '1.0.0',
-        description: 'A progressive test project',
+        name: "progressive",
+        version: "1.0.0",
+        description: "A progressive test project",
       },
       tests: [
-        { name: 'Unit', type: 'unit', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'Integration', type: 'integration', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'E2E', type: 'e2e', cases: [{ name: 'test', assertion: 'works' }] },
+        { name: "Unit", type: "unit", cases: [{ name: "test", assertion: "works" }] },
+        { name: "Integration", type: "integration", cases: [{ name: "test", assertion: "works" }] },
+        { name: "E2E", type: "e2e", cases: [{ name: "test", assertion: "works" }] },
       ],
       security: {
-        authentication: { type: 'oauth2' },
+        authentication: { type: "oauth2" },
         authorization: { rbac: true },
       },
     },
@@ -390,33 +390,33 @@ function generateProgressiveSpecs(): any[] {
     {
       ...baseSpec,
       product: {
-        name: 'Progressive Test',
-        goals: ['Goal 1', 'Goal 2'],
+        name: "Progressive Test",
+        goals: ["Goal 1", "Goal 2"],
       },
       metadata: {
-        name: 'progressive',
-        version: '1.0.0',
-        description: 'A progressive test project',
+        name: "progressive",
+        version: "1.0.0",
+        description: "A progressive test project",
       },
       tests: [
-        { name: 'Unit', type: 'unit', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'Integration', type: 'integration', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'E2E', type: 'e2e', cases: [{ name: 'test', assertion: 'works' }] },
+        { name: "Unit", type: "unit", cases: [{ name: "test", assertion: "works" }] },
+        { name: "Integration", type: "integration", cases: [{ name: "test", assertion: "works" }] },
+        { name: "E2E", type: "e2e", cases: [{ name: "test", assertion: "works" }] },
       ],
       security: {
-        authentication: { type: 'oauth2' },
+        authentication: { type: "oauth2" },
         authorization: { rbac: true },
       },
       performance: {
-        sla: { responseTime: '< 200ms', availability: '99.9%' },
+        sla: { responseTime: "< 200ms", availability: "99.9%" },
       },
       observability: {
-        logging: { level: 'info', format: 'json' },
-        monitoring: { metrics: ['response_time', 'error_rate'] },
+        logging: { level: "info", format: "json" },
+        monitoring: { metrics: ["response_time", "error_rate"] },
       },
       environments: {
-        development: { name: 'dev' },
-        production: { name: 'prod' },
+        development: { name: "dev" },
+        production: { name: "prod" },
       },
     },
   ];
@@ -429,34 +429,34 @@ function generateCompleteSpecs(count: number): any[] {
     specs.push({
       product: {
         name: `Complete Project ${i}`,
-        goals: ['Goal A', 'Goal B'],
+        goals: ["Goal A", "Goal B"],
       },
       metadata: {
         name: `complete-${i}`,
-        version: '1.0.0',
+        version: "1.0.0",
         description: `Complete project number ${i}`,
       },
       services: {},
       ui: { routes: [] },
       tests: [
-        { name: 'Unit', type: 'unit', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'Integration', type: 'integration', cases: [{ name: 'test', assertion: 'works' }] },
-        { name: 'E2E', type: 'e2e', cases: [{ name: 'test', assertion: 'works' }] },
+        { name: "Unit", type: "unit", cases: [{ name: "test", assertion: "works" }] },
+        { name: "Integration", type: "integration", cases: [{ name: "test", assertion: "works" }] },
+        { name: "E2E", type: "e2e", cases: [{ name: "test", assertion: "works" }] },
       ],
       security: {
-        authentication: { type: 'oauth2' },
+        authentication: { type: "oauth2" },
         authorization: { rbac: true },
       },
       performance: {
-        sla: { responseTime: '< 200ms', availability: '99.9%' },
+        sla: { responseTime: "< 200ms", availability: "99.9%" },
       },
       observability: {
-        logging: { level: 'info', format: 'json' },
-        monitoring: { metrics: ['response_time', 'error_rate'] },
+        logging: { level: "info", format: "json" },
+        monitoring: { metrics: ["response_time", "error_rate"] },
       },
       environments: {
-        development: { name: 'dev' },
-        production: { name: 'prod' },
+        development: { name: "dev" },
+        production: { name: "prod" },
       },
     });
   }
@@ -475,14 +475,14 @@ function generateIncompleteSpecs(count: number): any[] {
       },
       metadata: {
         name: `incomplete-${i}`,
-        version: '1.0.0',
+        version: "1.0.0",
         // Missing description
       },
       services: {
         [`service-${i}`]: {
-          serviceType: 'bespoke',
-          language: 'typescript',
-          type: 'deployment',
+          serviceType: "bespoke",
+          language: "typescript",
+          type: "deployment",
           // Missing ports, healthCheck, resources, env
         },
       },
@@ -510,14 +510,14 @@ function generateLargeSpec(serviceCount: number): any {
   // Generate many services
   for (let i = 0; i < serviceCount; i++) {
     services[`service-${i}`] = {
-      serviceType: 'bespoke',
-      language: 'typescript',
-      type: 'deployment',
-      ports: [{ name: 'http', port: 3000 + i }],
-      healthCheck: { path: '/health', port: 3000 + i },
+      serviceType: "bespoke",
+      language: "typescript",
+      type: "deployment",
+      ports: [{ name: "http", port: 3000 + i }],
+      healthCheck: { path: "/health", port: 3000 + i },
       resources: {
-        limits: { cpu: '1000m', memory: '512Mi' },
-        requests: { cpu: '100m', memory: '128Mi' },
+        limits: { cpu: "1000m", memory: "512Mi" },
+        requests: { cpu: "100m", memory: "128Mi" },
       },
       env: { SERVICE_ID: `service-${i}` },
     };
@@ -525,7 +525,7 @@ function generateLargeSpec(serviceCount: number): any {
     routes.push({
       id: `route-${i}`,
       path: `/route-${i}`,
-      capabilities: ['view'],
+      capabilities: ["view"],
       components: [`Component${i}`],
       requiresAuth: i % 2 === 0,
     });
@@ -539,7 +539,7 @@ function generateLargeSpec(serviceCount: number): any {
           {
             id: `task-${i}-1`,
             name: `Task ${i}-1`,
-            type: 'feature',
+            type: "feature",
           },
         ],
       });
@@ -548,39 +548,39 @@ function generateLargeSpec(serviceCount: number): any {
 
   return {
     product: {
-      name: 'Large Test Project',
-      goals: ['Handle scale', 'Maintain performance'],
+      name: "Large Test Project",
+      goals: ["Handle scale", "Maintain performance"],
     },
     metadata: {
-      name: 'large-project',
-      version: '1.0.0',
-      description: 'A large scale test project',
+      name: "large-project",
+      version: "1.0.0",
+      description: "A large scale test project",
     },
     services,
     ui: { routes },
     tests: [
-      { name: 'Unit', type: 'unit', cases: [{ name: 'test', assertion: 'works' }] },
-      { name: 'Integration', type: 'integration', cases: [{ name: 'test', assertion: 'works' }] },
-      { name: 'E2E', type: 'e2e', cases: [{ name: 'test', assertion: 'works' }] },
+      { name: "Unit", type: "unit", cases: [{ name: "test", assertion: "works" }] },
+      { name: "Integration", type: "integration", cases: [{ name: "test", assertion: "works" }] },
+      { name: "E2E", type: "e2e", cases: [{ name: "test", assertion: "works" }] },
     ],
     epics,
     security: {
-      authentication: { type: 'oauth2' },
+      authentication: { type: "oauth2" },
       authorization: { rbac: true },
     },
     performance: {
-      sla: { responseTime: '< 200ms', availability: '99.9%' },
+      sla: { responseTime: "< 200ms", availability: "99.9%" },
     },
     observability: {
-      logging: { level: 'info', format: 'json' },
-      monitoring: { metrics: ['response_time', 'error_rate'] },
+      logging: { level: "info", format: "json" },
+      monitoring: { metrics: ["response_time", "error_rate"] },
     },
     environments: {
-      development: { name: 'dev' },
-      production: { name: 'prod' },
+      development: { name: "dev" },
+      production: { name: "prod" },
     },
     locators: {
-      'main-nav': "[data-testid='main-nav']",
+      "main-nav": "[data-testid='main-nav']",
     },
   };
 }
@@ -592,11 +592,11 @@ function generateRandomServices(): Record<string, any> {
   for (let i = 0; i < serviceCount; i++) {
     const serviceName = `service-${i}`;
     services[serviceName] = {
-      serviceType: Math.random() > 0.5 ? 'bespoke' : 'container',
+      serviceType: Math.random() > 0.5 ? "bespoke" : "container",
       language: Math.random() > 0.5 ? randomLanguage() : undefined,
-      type: 'deployment',
+      type: "deployment",
       image: Math.random() > 0.7 ? `${randomString()}:latest` : undefined,
-      ports: Math.random() > 0.3 ? [{ name: 'http', port: 3000 + i }] : undefined,
+      ports: Math.random() > 0.3 ? [{ name: "http", port: 3000 + i }] : undefined,
     };
   }
 
@@ -611,7 +611,7 @@ function generateRandomRoutes(): any[] {
     routes.push({
       id: `route-${i}`,
       path: `/route-${i}`,
-      capabilities: Math.random() > 0.5 ? ['view'] : undefined,
+      capabilities: Math.random() > 0.5 ? ["view"] : undefined,
       components: Math.random() > 0.5 ? [`Component${i}`] : undefined,
       requiresAuth: Math.random() > 0.5,
     });
@@ -622,14 +622,14 @@ function generateRandomRoutes(): any[] {
 
 function generateRandomTests(): any[] {
   const tests: any[] = [];
-  const testTypes = ['unit', 'integration', 'e2e'];
+  const testTypes = ["unit", "integration", "e2e"];
 
   testTypes.forEach((type, i) => {
     if (Math.random() > 0.3) {
       tests.push({
         name: `${type} Tests`,
         type,
-        cases: Math.random() > 0.5 ? [{ name: `${type} test`, assertion: 'works' }] : [],
+        cases: Math.random() > 0.5 ? [{ name: `${type} test`, assertion: "works" }] : [],
       });
     }
   });
@@ -652,7 +652,7 @@ function generateRandomEpics(): any[] {
               {
                 id: `task-${i}`,
                 name: `Task ${i}`,
-                type: 'feature',
+                type: "feature",
               },
             ]
           : [],
@@ -663,9 +663,9 @@ function generateRandomEpics(): any[] {
 }
 
 function randomString(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  const chars = "abcdefghijklmnopqrstuvwxyz";
   const length = 5 + Math.floor(Math.random() * 10);
-  let result = '';
+  let result = "";
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
@@ -677,6 +677,6 @@ function randomVersion(): string {
 }
 
 function randomLanguage(): string {
-  const languages = ['typescript', 'python', 'rust', 'go', 'java'];
+  const languages = ["typescript", "python", "rust", "go", "java"];
   return languages[Math.floor(Math.random() * languages.length)];
 }

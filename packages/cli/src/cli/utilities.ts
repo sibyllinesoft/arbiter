@@ -2,22 +2,22 @@
  * Utilities commands module - Import, testing, and other utility commands
  */
 
-import chalk from 'chalk';
-import { Command } from 'commander';
-import { importCommand } from '../commands/import.js';
-import { testCommand } from '../commands/test.js';
-import { coverCommand, scaffoldCommand } from '../commands/tests.js';
+import chalk from "chalk";
+import { Command } from "commander";
+import { importCommand } from "../commands/import.js";
+import { testCommand } from "../commands/test.js";
+import { coverCommand, scaffoldCommand } from "../commands/tests.js";
 
 export function createUtilitiesCommands(program: Command): void {
   // Import command
   const importCmd = program
-    .command('import')
-    .description('manage trusted import registry for CUE files');
+    .command("import")
+    .description("manage trusted import registry for CUE files");
 
   importCmd
-    .command('validate <files...>')
-    .description('validate imports in CUE files against registry')
-    .option('-g, --global', 'use global registry')
+    .command("validate <files...>")
+    .description("validate imports in CUE files against registry")
+    .option("-g, --global", "use global registry")
     .action(async (files: string[], options: { global?: boolean }, _command) => {
       try {
         const importOptions = {
@@ -25,12 +25,12 @@ export function createUtilitiesCommands(program: Command): void {
           files,
         };
 
-        const exitCode = await importCommand('validate', undefined, importOptions);
+        const exitCode = await importCommand("validate", undefined, importOptions);
         process.exit(exitCode);
       } catch (error) {
         console.error(
-          chalk.red('Command failed:'),
-          error instanceof Error ? error.message : String(error)
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
         );
         process.exit(2);
       }
@@ -38,50 +38,50 @@ export function createUtilitiesCommands(program: Command): void {
 
   // Tests command
   const testsCmd = program
-    .command('tests')
-    .description('test management, scaffolding, and coverage analysis');
+    .command("tests")
+    .description("test management, scaffolding, and coverage analysis");
 
   testsCmd
-    .command('scaffold')
-    .description('generate test scaffolding from CUE specifications')
-    .option('--output <dir>', 'output directory for test files', './tests')
-    .option('--format <format>', 'test format (jest, vitest, pytest)', 'jest')
-    .option('--include-integration', 'include integration test templates')
-    .option('--include-e2e', 'include end-to-end test templates')
-    .option('--migration', 'generate migration guide for breaking changes')
-    .option('--epic <epic>', 'epic file containing test configuration')
-    .option('--force', 'overwrite existing test files')
+    .command("scaffold")
+    .description("generate test scaffolding from CUE specifications")
+    .option("--output <dir>", "output directory for test files", "./tests")
+    .option("--format <format>", "test format (jest, vitest, pytest)", "jest")
+    .option("--include-integration", "include integration test templates")
+    .option("--include-e2e", "include end-to-end test templates")
+    .option("--migration", "generate migration guide for breaking changes")
+    .option("--epic <epic>", "epic file containing test configuration")
+    .option("--force", "overwrite existing test files")
     .action(async (options, command) => {
       try {
         const config = command.parent?.parent?.config;
         if (!config) {
-          throw new Error('Configuration not loaded');
+          throw new Error("Configuration not loaded");
         }
 
         const exitCode = await scaffoldCommand(options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
-          chalk.red('Command failed:'),
-          error instanceof Error ? error.message : String(error)
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
         );
         process.exit(2);
       }
     });
 
   testsCmd
-    .command('cover')
-    .description('analyze test coverage and generate reports')
-    .option('--threshold <percentage>', 'minimum coverage threshold', '80')
-    .option('--format <format>', 'report format (lcov, json, text)', 'text')
-    .option('--output <file>', 'output file for coverage report')
-    .option('--include-branches', 'include branch coverage analysis')
-    .option('--framework <name>', 'test framework override')
+    .command("cover")
+    .description("analyze test coverage and generate reports")
+    .option("--threshold <percentage>", "minimum coverage threshold", "80")
+    .option("--format <format>", "report format (lcov, json, text)", "text")
+    .option("--output <file>", "output file for coverage report")
+    .option("--include-branches", "include branch coverage analysis")
+    .option("--framework <name>", "test framework override")
     .action(async (options, command) => {
       try {
         const config = command.parent?.parent?.config;
         if (!config) {
-          throw new Error('Configuration not loaded');
+          throw new Error("Configuration not loaded");
         }
 
         const testsOptions = {
@@ -96,8 +96,8 @@ export function createUtilitiesCommands(program: Command): void {
         process.exit(exitCode);
       } catch (error) {
         console.error(
-          chalk.red('Command failed:'),
-          error instanceof Error ? error.message : String(error)
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
         );
         process.exit(2);
       }

@@ -4,7 +4,7 @@
  * Shows complete workflows and component integration
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Activity,
   AlertTriangle,
@@ -34,35 +34,35 @@ import {
   Trash2,
   User,
   XCircle,
-} from 'lucide-react';
-import { useState } from 'react';
+} from "lucide-react";
+import { useState } from "react";
 
-import Breadcrumbs from '../design-system/components/Breadcrumbs';
+import Breadcrumbs from "../design-system/components/Breadcrumbs";
 // Import components
-import Button from '../design-system/components/Button';
-import Card from '../design-system/components/Card';
-import Input from '../design-system/components/Input';
-import NavItem from '../design-system/components/NavItem';
-import StatusBadge from '../design-system/components/StatusBadge';
-import Tabs from '../design-system/components/Tabs';
+import Button from "../design-system/components/Button";
+import Card from "../design-system/components/Card";
+import Input from "../design-system/components/Input";
+import NavItem from "../design-system/components/NavItem";
+import StatusBadge from "../design-system/components/StatusBadge";
+import Tabs from "../design-system/components/Tabs";
 
-import ProjectBrowser from './Layout/ProjectBrowser';
-import SplitPane from './Layout/SplitPane';
+import ProjectBrowser from "./Layout/ProjectBrowser";
+import SplitPane from "./Layout/SplitPane";
 // Import layout components
-import TopBar from './Layout/TopBar';
+import TopBar from "./Layout/TopBar";
 
-import EditorPane from './Editor/EditorPane';
+import EditorPane from "./Editor/EditorPane";
 // Import editor components
-import FileTree from './Editor/FileTree';
-import MonacoEditor from './Editor/MonacoEditor';
+import FileTree from "./Editor/FileTree";
+import MonacoEditor from "./Editor/MonacoEditor";
 
 // Import realistic data
-import { storybookData } from '../test/storybook-data';
+import { storybookData } from "../test/storybook-data";
 
 const meta = {
-  title: 'Project/Complete Showcase',
+  title: "Project/Complete Showcase",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component: `
@@ -91,7 +91,7 @@ to provide a professional specification workbench experience.
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 } satisfies Meta;
 
 export default meta;
@@ -100,9 +100,10 @@ type Story = StoryObj<typeof meta>;
 // Complete application interface
 export const CompleteInterface: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('editor');
-    const [activeFile, setActiveFile] = useState('/specs/authentication.yml');
+    const [activeTab, setActiveTab] = useState("editor");
+    const [activeFile, setActiveFile] = useState("/specs/authentication.yml");
     const [sidebarExpanded, setSidebarExpanded] = useState(true);
+    const [editorValue, setEditorValue] = useState(storybookData.code.yaml);
 
     return (
       <div className="h-screen bg-gray-50 flex flex-col">
@@ -110,8 +111,8 @@ export const CompleteInterface: Story = {
         <TopBar
           projectName={storybookData.projects[0].name}
           user={storybookData.users.currentUser}
-          onSave={() => console.log('Save clicked')}
-          onExport={() => console.log('Export clicked')}
+          onSave={() => {}}
+          onExport={() => {}}
           buildStatus="success"
           hasUnsavedChanges={true}
         />
@@ -120,7 +121,7 @@ export const CompleteInterface: Story = {
         <div className="flex-1 flex">
           {/* Left Sidebar */}
           <div
-            className={`${sidebarExpanded ? 'w-80' : 'w-12'} transition-all duration-200 bg-white border-r border-gray-200`}
+            className={`${sidebarExpanded ? "w-80" : "w-12"} transition-all duration-200 bg-white border-r border-gray-200`}
           >
             <div className="h-full flex flex-col">
               {sidebarExpanded && (
@@ -145,21 +146,21 @@ export const CompleteInterface: Story = {
                     <div className="flex space-x-1">
                       <button
                         className={`px-3 py-2 text-sm rounded-md ${
-                          activeTab === 'files'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'text-gray-600 hover:text-gray-900'
+                          activeTab === "files"
+                            ? "bg-blue-100 text-blue-700"
+                            : "text-gray-600 hover:text-gray-900"
                         }`}
-                        onClick={() => setActiveTab('files')}
+                        onClick={() => setActiveTab("files")}
                       >
                         Files
                       </button>
                       <button
                         className={`px-3 py-2 text-sm rounded-md ${
-                          activeTab === 'projects'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'text-gray-600 hover:text-gray-900'
+                          activeTab === "projects"
+                            ? "bg-blue-100 text-blue-700"
+                            : "text-gray-600 hover:text-gray-900"
                         }`}
-                        onClick={() => setActiveTab('projects')}
+                        onClick={() => setActiveTab("projects")}
                       >
                         Projects
                       </button>
@@ -168,14 +169,16 @@ export const CompleteInterface: Story = {
 
                   {/* Content Area */}
                   <div className="flex-1 overflow-auto">
-                    {activeTab === 'files' && (
+                    {activeTab === "files" && (
                       <div className="p-4">
                         <FileTree
                           fragments={storybookData.fragments}
                           activeFragmentId={storybookData.fragments[0]?.id}
                           unsavedChanges={new Set([storybookData.fragments[0]?.id])}
-                          onFileSelect={fragmentId => {
-                            const fragment = storybookData.fragments.find(f => f.id === fragmentId);
+                          onFileSelect={(fragmentId) => {
+                            const fragment = storybookData.fragments.find(
+                              (f) => f.id === fragmentId,
+                            );
                             if (fragment) {
                               setActiveFile(fragment.path);
                             }
@@ -184,15 +187,10 @@ export const CompleteInterface: Story = {
                       </div>
                     )}
 
-                    {activeTab === 'projects' && (
+                    {activeTab === "projects" && (
                       <div className="p-4 space-y-3">
-                        {storybookData.projects.map(project => (
-                          <Card
-                            key={project.id}
-                            variant="interactive"
-                            size="sm"
-                            onClick={() => console.log('Project selected:', project.name)}
-                          >
+                        {storybookData.projects.map((project) => (
+                          <Card key={project.id} variant="interactive" size="sm">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -227,7 +225,7 @@ export const CompleteInterface: Story = {
                   onClick={() => setSidebarExpanded(!sidebarExpanded)}
                   className="w-full"
                 >
-                  {sidebarExpanded ? '←' : '→'}
+                  {sidebarExpanded ? "←" : "→"}
                 </Button>
               </div>
             </div>
@@ -252,17 +250,17 @@ export const CompleteInterface: Story = {
             {/* Editor Content */}
             <div className="flex-1 bg-gray-900">
               <MonacoEditor
-                value={storybookData.code.yaml}
+                value={editorValue}
                 language="yaml"
                 theme="vs-dark"
                 options={{
                   fontSize: 14,
-                  lineNumbers: 'on',
+                  lineNumbers: "on",
                   minimap: { enabled: true },
                   folding: true,
-                  wordWrap: 'on',
+                  wordWrap: "on",
                 }}
-                onChange={value => console.log('Editor changed:', value?.substring(0, 50))}
+                onChange={(value) => setEditorValue(value ?? "")}
               />
             </div>
           </div>
@@ -376,7 +374,7 @@ export const CompleteInterface: Story = {
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                {storybookData.users.teamMembers.slice(0, 3).map(user => (
+                {storybookData.users.teamMembers.slice(0, 3).map((user) => (
                   <div key={user.id} className="flex items-center gap-1">
                     <img
                       src={user.avatar}
@@ -525,34 +523,30 @@ export const DashboardView: Story = {
         {/* Projects Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {storybookData.projects.map((project, index) => (
-            <Card
-              key={project.id}
-              variant="interactive"
-              onClick={() => console.log('Project clicked:', project.name)}
-            >
+            <Card key={project.id} variant="interactive">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div
                       className={`w-10 h-10 ${
                         index === 0
-                          ? 'bg-blue-100'
+                          ? "bg-blue-100"
                           : index === 1
-                            ? 'bg-green-100'
+                            ? "bg-green-100"
                             : index === 2
-                              ? 'bg-purple-100'
-                              : 'bg-amber-100'
+                              ? "bg-purple-100"
+                              : "bg-amber-100"
                       } rounded-lg flex items-center justify-center`}
                     >
                       <Code
                         className={`h-5 w-5 ${
                           index === 0
-                            ? 'text-blue-600'
+                            ? "text-blue-600"
                             : index === 1
-                              ? 'text-green-600'
+                              ? "text-green-600"
                               : index === 2
-                                ? 'text-purple-600'
-                                : 'text-amber-600'
+                                ? "text-purple-600"
+                                : "text-amber-600"
                         }`}
                       />
                     </div>
@@ -566,22 +560,22 @@ export const DashboardView: Story = {
                   <StatusBadge
                     variant={
                       index === 0
-                        ? 'success'
+                        ? "success"
                         : index === 1
-                          ? 'pending'
+                          ? "pending"
                           : index === 2
-                            ? 'warning'
-                            : 'active'
+                            ? "warning"
+                            : "active"
                     }
                     size="xs"
                   >
                     {index === 0
-                      ? 'Active'
+                      ? "Active"
                       : index === 1
-                        ? 'Building'
+                        ? "Building"
                         : index === 2
-                          ? 'Issues'
-                          : 'Ready'}
+                          ? "Issues"
+                          : "Ready"}
                   </StatusBadge>
                 </div>
 
@@ -599,7 +593,7 @@ export const DashboardView: Story = {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-gray-600">Contributors:</span>
                     <div className="flex -space-x-1">
-                      {storybookData.users.teamMembers.slice(0, 3).map(user => (
+                      {storybookData.users.teamMembers.slice(0, 3).map((user) => (
                         <img
                           key={user.id}
                           src={user.avatar}

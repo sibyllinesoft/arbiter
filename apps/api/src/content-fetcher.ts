@@ -1,5 +1,5 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
+import { promises as fs } from "node:fs";
+import path from "node:path";
 
 export interface ContentFetcher {
   fetchText(filePath: string): Promise<string | null>;
@@ -7,13 +7,13 @@ export interface ContentFetcher {
 
 export function createLocalContentFetcher(
   projectRoot: string,
-  maxSize = 256 * 1024
+  maxSize = 256 * 1024,
 ): ContentFetcher {
   const root = path.resolve(projectRoot);
   return {
     async fetchText(filePath: string): Promise<string | null> {
       const normalized = path.normalize(filePath);
-      if (normalized.startsWith('..')) {
+      if (normalized.startsWith("..")) {
         return null;
       }
       const absolutePath = path.join(root, normalized);
@@ -22,7 +22,7 @@ export function createLocalContentFetcher(
         if (!stat.isFile() || stat.size > maxSize) {
           return null;
         }
-        return await fs.readFile(absolutePath, 'utf-8');
+        return await fs.readFile(absolutePath, "utf-8");
       } catch {
         return null;
       }
@@ -46,26 +46,26 @@ export function createGithubContentFetcher(options: GithubFetcherOptions): Conte
     ref,
     token,
     maxSize = 256 * 1024,
-    baseUrl = 'https://raw.githubusercontent.com',
+    baseUrl = "https://raw.githubusercontent.com",
   } = options;
 
   return {
     async fetchText(filePath: string): Promise<string | null> {
-      const normalized = filePath.replace(/^\/+/, '');
+      const normalized = filePath.replace(/^\/+/, "");
       const url = `${baseUrl}/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${encodeURIComponent(ref)}/${normalized
-        .split('/')
-        .map(segment => encodeURIComponent(segment))
-        .join('/')}`;
+        .split("/")
+        .map((segment) => encodeURIComponent(segment))
+        .join("/")}`;
 
       try {
         const response = await fetch(url, {
           headers: token
             ? {
                 Authorization: `Bearer ${token}`,
-                Accept: 'application/vnd.github.raw',
+                Accept: "application/vnd.github.raw",
               }
             : {
-                Accept: 'application/vnd.github.raw',
+                Accept: "application/vnd.github.raw",
               },
         });
 
@@ -73,7 +73,7 @@ export function createGithubContentFetcher(options: GithubFetcherOptions): Conte
           return null;
         }
 
-        const contentLength = response.headers.get('content-length');
+        const contentLength = response.headers.get("content-length");
         if (contentLength && Number(contentLength) > maxSize) {
           return null;
         }

@@ -2,7 +2,7 @@
  * Project browser with elegant card-based layout - Enhanced with Graphite Design System
  */
 
-import { clsx } from 'clsx';
+import { clsx } from "clsx";
 import {
   Activity,
   AlertCircle,
@@ -25,20 +25,20 @@ import {
   StarOff,
   Trash2,
   Users,
-} from 'lucide-react';
-import React, { useState, useCallback } from 'react';
-import { Button, Card, Input, StatusBadge, cn } from '../../design-system';
+} from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { Button, Card, Input, StatusBadge, cn } from "../../design-system";
 
 export interface Project {
   id: string;
   name: string;
   description?: string;
-  status: 'active' | 'draft' | 'archived' | 'error';
+  status: "active" | "draft" | "archived" | "error";
   lastModified: string;
   fragmentCount: number;
   collaborators: string[];
   starred: boolean;
-  validationStatus: 'valid' | 'warnings' | 'errors' | 'pending';
+  validationStatus: "valid" | "warnings" | "errors" | "pending";
   tags: string[];
 }
 
@@ -65,19 +65,19 @@ export function ProjectBrowser({
   onToggleStar,
   loading = false,
 }: ProjectBrowserProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   // Filter projects based on search and status
-  const filteredProjects = projects.filter(project => {
+  const filteredProjects = projects.filter((project) => {
     const matchesSearch =
       !searchQuery ||
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
 
-    const matchesStatus = filterStatus === 'all' || project.status === filterStatus;
+    const matchesStatus = filterStatus === "all" || project.status === filterStatus;
 
     return matchesSearch && matchesStatus;
   });
@@ -86,33 +86,33 @@ export function ProjectBrowser({
     (project: Project) => {
       onSelectProject?.(project);
     },
-    [onSelectProject]
+    [onSelectProject],
   );
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'active';
-      case 'draft':
-        return 'warning';
-      case 'archived':
-        return 'inactive';
-      case 'error':
-        return 'error';
+      case "active":
+        return "active";
+      case "draft":
+        return "warning";
+      case "archived":
+        return "inactive";
+      case "error":
+        return "error";
       default:
-        return 'neutral';
+        return "neutral";
     }
   };
 
   const getValidationIcon = (status: string) => {
     switch (status) {
-      case 'valid':
+      case "valid":
         return <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
-      case 'warnings':
+      case "warnings":
         return <AlertCircle className="w-4 h-4 text-amber-500" />;
-      case 'errors':
+      case "errors":
         return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'pending':
+      case "pending":
         return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
       default:
         return null;
@@ -124,15 +124,15 @@ export function ProjectBrowser({
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
 
-    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 1) return "Just now";
     if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
     if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d ago`;
-    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString([], { month: "short", day: "numeric" });
   };
 
   if (loading) {
     return (
-      <div className={cn('h-full flex items-center justify-center bg-graphite-25', className)}>
+      <div className={cn("h-full flex items-center justify-center bg-graphite-25", className)}>
         <div className="text-center p-8">
           <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
             <Activity className="w-6 h-6 text-blue-600 animate-pulse" />
@@ -144,14 +144,14 @@ export function ProjectBrowser({
   }
 
   return (
-    <div className={cn('h-full flex flex-col bg-graphite-25', className)}>
+    <div className={cn("h-full flex flex-col bg-graphite-25", className)}>
       {/* Header */}
       <div className="flex-none p-6 bg-white border-b border-graphite-200">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-graphite-900 tracking-tight">Projects</h1>
             <p className="text-graphite-600 mt-1">
-              {projects.length} specification{projects.length !== 1 ? 's' : ''} workspace
+              {projects.length} specification{projects.length !== 1 ? "s" : ""} workspace
             </p>
           </div>
           <Button
@@ -171,7 +171,7 @@ export function ProjectBrowser({
             <Input
               placeholder="Search projects, descriptions, or tags..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -179,7 +179,7 @@ export function ProjectBrowser({
           <div className="flex items-center gap-2">
             <select
               value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value)}
               className="px-3 py-2 bg-white border border-graphite-300 rounded-lg text-sm text-graphite-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">All Status</option>
@@ -203,7 +203,7 @@ export function ProjectBrowser({
       <div className="flex-1 overflow-hidden">
         {filteredProjects.length === 0 ? (
           <div className="h-full flex items-center justify-center">
-            {searchQuery || filterStatus !== 'all' ? (
+            {searchQuery || filterStatus !== "all" ? (
               // No results state
               <div className="text-center p-8 max-w-md">
                 <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-graphite-100 to-graphite-200 flex items-center justify-center">
@@ -216,8 +216,8 @@ export function ProjectBrowser({
                 <Button
                   variant="secondary"
                   onClick={() => {
-                    setSearchQuery('');
-                    setFilterStatus('all');
+                    setSearchQuery("");
+                    setFilterStatus("all");
                   }}
                 >
                   Clear filters
@@ -252,14 +252,14 @@ export function ProjectBrowser({
           // Projects grid
           <div className="h-full overflow-auto p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProjects.map(project => (
+              {filteredProjects.map((project) => (
                 <Card
                   key={project.id}
                   className={cn(
-                    'group cursor-pointer transition-all duration-200',
-                    'hover:shadow-lg hover:shadow-graphite-200/50 hover:-translate-y-1',
-                    'border-2 hover:border-blue-200',
-                    selectedProject?.id === project.id && 'ring-2 ring-blue-500 border-blue-300'
+                    "group cursor-pointer transition-all duration-200",
+                    "hover:shadow-lg hover:shadow-graphite-200/50 hover:-translate-y-1",
+                    "border-2 hover:border-blue-200",
+                    selectedProject?.id === project.id && "ring-2 ring-blue-500 border-blue-300",
                   )}
                   onClick={() => handleProjectClick(project)}
                 >
@@ -277,7 +277,7 @@ export function ProjectBrowser({
 
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             onToggleStar?.(project);
                           }}
@@ -291,7 +291,7 @@ export function ProjectBrowser({
                         </button>
 
                         <button
-                          onClick={e => {
+                          onClick={(e) => {
                             e.stopPropagation();
                             // Show context menu
                           }}

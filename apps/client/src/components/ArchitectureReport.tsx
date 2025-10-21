@@ -2,12 +2,14 @@
  * ArchitectureReport - Standalone architecture diagram report component
  */
 
-import React, { useCallback, useMemo, useState } from 'react';
-import { ArchitectureDiagram } from './diagrams';
-import type { ArchitectureEntityModalRequest } from './diagrams/ArchitectureDiagram/types';
-import { AddEntityModal, type FieldValue } from './modals/AddEntityModal';
-import { CapabilityModal } from './modals/CapabilityModal';
-import EndpointModal from './modals/EndpointModal';
+import clsx from "clsx";
+import { Network } from "lucide-react";
+import React, { useCallback, useMemo, useState } from "react";
+import { ArchitectureDiagram } from "./diagrams";
+import type { ArchitectureEntityModalRequest } from "./diagrams/ArchitectureDiagram/types";
+import { AddEntityModal, type FieldValue } from "./modals/AddEntityModal";
+import { CapabilityModal } from "./modals/CapabilityModal";
+import EndpointModal from "./modals/EndpointModal";
 
 interface ArchitectureReportProps {
   projectId: string;
@@ -32,7 +34,7 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       }
       await modalRequest.onSubmit(payload);
     },
-    [modalRequest]
+    [modalRequest],
   );
 
   const modalContent = useMemo(() => {
@@ -40,12 +42,12 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       return null;
     }
 
-    if (modalRequest.type === 'capability') {
+    if (modalRequest.type === "capability") {
       return (
         <CapabilityModal
           open
           onClose={handleCloseModal}
-          onSubmit={async payload => {
+          onSubmit={async (payload) => {
             await handleSubmit(payload);
           }}
           groupLabel={modalRequest.label}
@@ -53,16 +55,16 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       );
     }
 
-    if (modalRequest.type === 'route') {
+    if (modalRequest.type === "route") {
       return (
         <EndpointModal
           open
           onClose={handleCloseModal}
-          onSubmit={async payload => {
+          onSubmit={async (payload) => {
             await handleSubmit(payload);
           }}
           groupLabel={modalRequest.label}
-          mode={modalRequest.mode ?? 'create'}
+          mode={modalRequest.mode ?? "create"}
           initialValues={modalRequest.initialValues ?? null}
         />
       );
@@ -80,8 +82,8 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
         {...(modalRequest.descriptionOverride
           ? { descriptionOverride: modalRequest.descriptionOverride }
           : {})}
-        mode={modalRequest.mode ?? 'create'}
-        onSubmit={async payload => {
+        mode={modalRequest.mode ?? "create"}
+        onSubmit={async (payload) => {
           await handleSubmit(payload);
         }}
       />
@@ -89,8 +91,32 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
   }, [modalRequest, handleCloseModal, handleSubmit]);
 
   return (
-    <div className={`h-full ${className || ''}`}>
-      <ArchitectureDiagram projectId={projectId} onOpenEntityModal={handleOpenEntityModal} />
+    <div className={clsx("h-full flex flex-col bg-gray-50 dark:bg-graphite-950", className)}>
+      <div className="border-b border-gray-200 bg-white px-6 py-6 dark:border-graphite-800 dark:bg-graphite-900">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shadow-sm dark:bg-indigo-900/30 dark:text-indigo-200">
+              <Network className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
+                System Architecture
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-graphite-300">
+                Visualize services, data stores, and infrastructure relationships across your
+                project.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-hidden px-6 py-6">
+        <div className="h-full rounded-xl border border-gray-200 bg-white/60 shadow-sm dark:border-graphite-700 dark:bg-graphite-900/40">
+          <ArchitectureDiagram projectId={projectId} onOpenEntityModal={handleOpenEntityModal} />
+        </div>
+      </div>
+
       {modalContent}
     </div>
   );

@@ -2,8 +2,8 @@
  * TypeScript Language Plugin - React + Vite + Next.js support with template overrides
  */
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
   BuildConfig,
   ComponentConfig,
@@ -13,12 +13,12 @@ import type {
   LanguagePluginConfigureOptions,
   ProjectConfig,
   ServiceConfig,
-} from './index.js';
-import { TemplateResolver } from './template-resolver.js';
+} from "./index.js";
+import { TemplateResolver } from "./template-resolver.js";
 
-type FrameworkOption = 'vite' | 'nextjs';
-type StylingOption = 'css-modules' | 'tailwind' | 'styled-components';
-type TestRunnerOption = 'vitest' | 'jest';
+type FrameworkOption = "vite" | "nextjs";
+type StylingOption = "css-modules" | "tailwind" | "styled-components";
+type TestRunnerOption = "vitest" | "jest";
 
 interface TypeScriptRuntimeOptions {
   framework: FrameworkOption;
@@ -65,20 +65,20 @@ interface NextProjectTemplateContext extends Record<string, unknown> {
 }
 
 export class TypeScriptPlugin implements LanguagePlugin {
-  readonly name = 'TypeScript Plugin';
-  readonly language = 'typescript';
-  readonly version = '1.1.0';
-  readonly description = 'Modern TypeScript with React, Vite, and Next.js support';
+  readonly name = "TypeScript Plugin";
+  readonly language = "typescript";
+  readonly version = "1.1.0";
+  readonly description = "Modern TypeScript with React, Vite, and Next.js support";
   readonly supportedFeatures = [
-    'components',
-    'hooks',
-    'api',
-    'routing',
-    'state-management',
-    'testing',
-    'styling',
-    'build-optimization',
-    'type-safety',
+    "components",
+    "hooks",
+    "api",
+    "routing",
+    "state-management",
+    "testing",
+    "styling",
+    "build-optimization",
+    "type-safety",
   ];
   readonly capabilities = {
     components: true,
@@ -91,14 +91,14 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   constructor() {
     const templateResolver = new TemplateResolver({
-      language: 'typescript',
+      language: "typescript",
       defaultDirectories: TypeScriptPlugin.resolveDefaultTemplateDirectories(),
     });
 
     this.runtime = {
-      framework: 'vite',
-      styling: 'css-modules',
-      testRunner: 'vitest',
+      framework: "vite",
+      styling: "css-modules",
+      testRunner: "vitest",
       templateResolver,
     };
   }
@@ -126,9 +126,9 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const context = this.buildComponentContext(config);
 
     const componentContent = await this.runtime.templateResolver.renderTemplate(
-      'component.tsx.tpl',
+      "component.tsx.tpl",
       context,
-      this.getDefaultComponentTemplate(context)
+      this.getDefaultComponentTemplate(context),
     );
 
     files.push({
@@ -137,9 +137,9 @@ export class TypeScriptPlugin implements LanguagePlugin {
     });
 
     const typesContent = await this.runtime.templateResolver.renderTemplate(
-      'component.types.ts.tpl',
+      "component.types.ts.tpl",
       context,
-      this.getDefaultComponentTypesTemplate(context)
+      this.getDefaultComponentTypesTemplate(context),
     );
 
     files.push({
@@ -149,9 +149,9 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
     if (config.styles) {
       const stylesContent = await this.runtime.templateResolver.renderTemplate(
-        'component.module.css.tpl',
+        "component.module.css.tpl",
         context,
-        this.getDefaultComponentStylesTemplate(context)
+        this.getDefaultComponentStylesTemplate(context),
       );
       files.push({
         path: `src/components/${config.name}/${config.name}.module.css`,
@@ -161,15 +161,15 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
     if (config.tests) {
       const testContent = await this.runtime.templateResolver.renderTemplate(
-        'component.test.tsx.tpl',
+        "component.test.tsx.tpl",
         context,
-        this.getDefaultComponentTestTemplate(context)
+        this.getDefaultComponentTestTemplate(context),
       );
       files.push({
         path: `src/components/${config.name}/${config.name}.test.tsx`,
         content: testContent,
       });
-      dependencies.push('@testing-library/react', '@testing-library/jest-dom');
+      dependencies.push("@testing-library/react", "@testing-library/jest-dom");
     }
 
     files.push({
@@ -189,34 +189,34 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
-    const dependencies: string[] = ['express', '@types/express'];
+    const dependencies: string[] = ["express", "@types/express"];
 
     const context = this.buildServiceContext(config);
 
     switch (config.type) {
-      case 'api': {
+      case "api": {
         const apiContent = await this.runtime.templateResolver.renderTemplate(
-          'service.api.ts.tpl',
+          "service.api.ts.tpl",
           context,
-          this.getDefaultApiServiceTemplate(context)
+          this.getDefaultApiServiceTemplate(context),
         );
         files.push({ path: `src/api/${config.name}.ts`, content: apiContent });
         break;
       }
-      case 'service': {
+      case "service": {
         const serviceContent = await this.runtime.templateResolver.renderTemplate(
-          'service.class.ts.tpl',
+          "service.class.ts.tpl",
           context,
-          this.getDefaultBusinessServiceTemplate(context)
+          this.getDefaultBusinessServiceTemplate(context),
         );
         files.push({ path: `src/services/${config.name}.service.ts`, content: serviceContent });
         break;
       }
-      case 'handler': {
+      case "handler": {
         const handlerContent = await this.runtime.templateResolver.renderTemplate(
-          'service.handler.ts.tpl',
+          "service.handler.ts.tpl",
           context,
-          this.getDefaultHandlerTemplate(context)
+          this.getDefaultHandlerTemplate(context),
         );
         files.push({ path: `src/handlers/${config.name}.handler.ts`, content: handlerContent });
         break;
@@ -227,19 +227,19 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
     if (config.validation) {
       const schemaContent = await this.runtime.templateResolver.renderTemplate(
-        'service.schema.ts.tpl',
+        "service.schema.ts.tpl",
         context,
-        this.getDefaultSchemaTemplate(context)
+        this.getDefaultSchemaTemplate(context),
       );
       files.push({ path: `src/schemas/${config.name}.schema.ts`, content: schemaContent });
-      dependencies.push('zod');
+      dependencies.push("zod");
     }
 
     return { files, dependencies };
   }
 
   async initializeProject(config: ProjectConfig): Promise<GenerationResult> {
-    if (this.runtime.framework === 'nextjs') {
+    if (this.runtime.framework === "nextjs") {
       return this.initializeNextProject(config);
     }
 
@@ -247,17 +247,17 @@ export class TypeScriptPlugin implements LanguagePlugin {
   }
 
   async generateBuildConfig(config: BuildConfig): Promise<GenerationResult> {
-    if (this.runtime.framework === 'nextjs') {
+    if (this.runtime.framework === "nextjs") {
       const nextConfig = await this.runtime.templateResolver.renderTemplate(
-        'project/nextjs/next.config.js.tpl',
+        "project/nextjs/next.config.js.tpl",
         {},
-        `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  reactStrictMode: true,\n  experimental: {\n    appDir: true,\n  },\n};\n\nexport default nextConfig;\n`
+        `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  reactStrictMode: true,\n  experimental: {\n    appDir: true,\n  },\n};\n\nexport default nextConfig;\n`,
       );
 
       return {
         files: [
           {
-            path: 'next.config.js',
+            path: "next.config.js",
             content: nextConfig,
           },
         ],
@@ -266,68 +266,68 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
     const additional = config.optimization
       ? `\n    rollupOptions: {\n      output: {\n        manualChunks: {\n          vendor: ['react', 'react-dom'],\n        },\n      },\n    },`
-      : '';
+      : "";
 
     const templateContext: ViteProjectTemplateContext = {
-      packageJson: '',
-      tsconfig: '',
-      tsconfigBuild: '',
-      projectName: '',
-      projectDescription: '',
+      packageJson: "",
+      tsconfig: "",
+      tsconfigBuild: "",
+      projectName: "",
+      projectDescription: "",
       devServerPort: 3000,
       additionalBuildConfig: additional
-        ? `\n    minify: '${config.target === 'production' ? 'terser' : 'esbuild'}',${additional}`
-        : `\n    minify: '${config.target === 'production' ? 'terser' : 'esbuild'}',`,
+        ? `\n    minify: '${config.target === "production" ? "terser" : "esbuild"}',${additional}`
+        : `\n    minify: '${config.target === "production" ? "terser" : "esbuild"}',`,
     };
 
     const content = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/vite.config.ts.tpl',
+      "project/vite/vite.config.ts.tpl",
       templateContext,
-      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${templateContext.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['./src/test-setup.ts'],\n  },\n});\n`
+      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${templateContext.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['./src/test-setup.ts'],\n  },\n});\n`,
     );
 
-    const files: GeneratedFile[] = [{ path: 'vite.config.ts', content }];
+    const files: GeneratedFile[] = [{ path: "vite.config.ts", content }];
 
-    if (config.target === 'production') {
+    if (config.target === "production") {
       const tsconfigBuild = await this.runtime.templateResolver.renderTemplate(
-        'project/vite/tsconfig.build.json.tpl',
+        "project/vite/tsconfig.build.json.tpl",
         {
-          packageJson: '',
-          tsconfig: '',
+          packageJson: "",
+          tsconfig: "",
           tsconfigBuild: JSON.stringify(
             {
-              extends: './tsconfig.json',
+              extends: "./tsconfig.json",
               compilerOptions: {
                 noEmit: false,
                 declaration: true,
-                outDir: './dist',
+                outDir: "./dist",
               },
-              exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+              exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
             },
             null,
-            2
+            2,
           ),
-          projectName: '',
-          projectDescription: '',
+          projectName: "",
+          projectDescription: "",
           devServerPort: 3000,
-          additionalBuildConfig: '',
+          additionalBuildConfig: "",
         },
         JSON.stringify(
           {
-            extends: './tsconfig.json',
+            extends: "./tsconfig.json",
             compilerOptions: {
               noEmit: false,
               declaration: true,
-              outDir: './dist',
+              outDir: "./dist",
             },
-            exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+            exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
           },
           null,
-          2
-        )
+          2,
+        ),
       );
 
-      files.push({ path: 'tsconfig.build.json', content: tsconfigBuild });
+      files.push({ path: "tsconfig.build.json", content: tsconfigBuild });
     }
 
     return { files };
@@ -336,8 +336,8 @@ export class TypeScriptPlugin implements LanguagePlugin {
   private static resolveDefaultTemplateDirectories(): string[] {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
     return [
-      path.resolve(moduleDir, '../templates/typescript'),
-      path.resolve(moduleDir, '../../templates/typescript'),
+      path.resolve(moduleDir, "../templates/typescript"),
+      path.resolve(moduleDir, "../../templates/typescript"),
     ];
   }
 
@@ -345,27 +345,27 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const hasProps = Array.isArray(config.props) && config.props.length > 0;
     const propsInterface = hasProps
       ? config
-          .props!.map(prop => `  ${prop.name}${prop.required ? '' : '?'}: ${prop.type};`)
-          .join('\n')
-      : '  // No props defined';
+          .props!.map((prop) => `  ${prop.name}${prop.required ? "" : "?"}: ${prop.type};`)
+          .join("\n")
+      : "  // No props defined";
 
     return {
       componentName: config.name,
-      componentDescription: config.type === 'page' ? 'Page component' : 'Reusable UI component',
-      propsImport: hasProps ? `import type { ${config.name}Props } from './types';` : '',
-      cssImport: config.styles ? `import styles from './${config.name}.module.css';` : '',
-      propsParam: hasProps ? `props: ${config.name}Props` : '',
-      containerClass: config.styles ? ' className={styles.container}' : '',
+      componentDescription: config.type === "page" ? "Page component" : "Reusable UI component",
+      propsImport: hasProps ? `import type { ${config.name}Props } from './types';` : "",
+      cssImport: config.styles ? `import styles from './${config.name}.module.css';` : "",
+      propsParam: hasProps ? `props: ${config.name}Props` : "",
+      containerClass: config.styles ? " className={styles.container}" : "",
       propsInterface,
-      testProps: '',
+      testProps: "",
       hasProps,
     };
   }
 
   private getDefaultComponentTemplate(context: ComponentTemplateContext): string {
-    const imports = [context.propsImport, context.cssImport].filter(Boolean).join('\n');
-    const importBlock = imports ? `${imports}\n\n` : '';
-    const signature = context.hasProps ? `(${context.propsParam})` : '()';
+    const imports = [context.propsImport, context.cssImport].filter(Boolean).join("\n");
+    const importBlock = imports ? `${imports}\n\n` : "";
+    const signature = context.hasProps ? `(${context.propsParam})` : "()";
 
     return `${importBlock}/**\n * ${context.componentName} Component\n * ${context.componentDescription}\n */\nexport function ${context.componentName}${signature} {\n  return (\n    <div${context.containerClass}>\n      <h1>${context.componentName}</h1>\n      {/* Component content */}\n    </div>\n  );\n}\n\n${context.componentName}.displayName = '${context.componentName}';\n`;
   }
@@ -425,80 +425,80 @@ export class TypeScriptPlugin implements LanguagePlugin {
       projectName: config.name,
       projectDescription: config.description || `A modern TypeScript project: ${config.name}`,
       devServerPort: 3000,
-      additionalBuildConfig: '',
+      additionalBuildConfig: "",
     };
 
     const packageContent = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/package.json.tpl',
+      "project/vite/package.json.tpl",
       context,
-      packageJson
+      packageJson,
     );
-    files.push({ path: 'package.json', content: packageContent });
+    files.push({ path: "package.json", content: packageContent });
 
     const viteConfig = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/vite.config.ts.tpl',
+      "project/vite/vite.config.ts.tpl",
       context,
-      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${context.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['./src/test-setup.ts'],\n  },\n});\n`
+      `import { defineConfig } from 'vite';\nimport react from '@vitejs/plugin-react';\n\nexport default defineConfig({\n  plugins: [react()],\n  server: {\n    port: 3000,\n  },\n  build: {\n    target: 'es2022',\n    sourcemap: true${context.additionalBuildConfig}\n  },\n  test: {\n    globals: true,\n    environment: 'jsdom',\n    setupFiles: ['./src/test-setup.ts'],\n  },\n});\n`,
     );
-    files.push({ path: 'vite.config.ts', content: viteConfig });
+    files.push({ path: "vite.config.ts", content: viteConfig });
 
     const tsconfigContent = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/tsconfig.json.tpl',
+      "project/vite/tsconfig.json.tpl",
       context,
-      tsconfig
+      tsconfig,
     );
-    files.push({ path: 'tsconfig.json', content: tsconfigContent });
+    files.push({ path: "tsconfig.json", content: tsconfigContent });
 
     const tsconfigBuildContent = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/tsconfig.build.json.tpl',
+      "project/vite/tsconfig.build.json.tpl",
       context,
-      tsconfigBuild
+      tsconfigBuild,
     );
-    files.push({ path: 'tsconfig.build.json', content: tsconfigBuildContent });
+    files.push({ path: "tsconfig.build.json", content: tsconfigBuildContent });
 
     const appContent = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/App.tsx.tpl',
+      "project/vite/App.tsx.tpl",
       context,
-      `import { BrowserRouter } from 'react-router-dom';\nimport { Suspense } from 'react';\nimport { routes } from './routes';\nimport { AppRoutes } from './routes/AppRoutes';\nimport './App.css';\n\nexport function App() {\n  return (\n    <BrowserRouter>\n      <Suspense fallback={<div>Loading...</div>}>\n        <AppRoutes routes={routes} />\n      </Suspense>\n    </BrowserRouter>\n  );\n}\n\nexport default App;\n`
+      `import { BrowserRouter } from 'react-router-dom';\nimport { Suspense } from 'react';\nimport { routes } from './routes';\nimport { AppRoutes } from './routes/AppRoutes';\nimport './App.css';\n\nexport function App() {\n  return (\n    <BrowserRouter>\n      <Suspense fallback={<div>Loading...</div>}>\n        <AppRoutes routes={routes} />\n      </Suspense>\n    </BrowserRouter>\n  );\n}\n\nexport default App;\n`,
     );
-    files.push({ path: 'src/App.tsx', content: appContent });
+    files.push({ path: "src/App.tsx", content: appContent });
 
     const mainContent = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/main.tsx.tpl',
+      "project/vite/main.tsx.tpl",
       context,
-      `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport { App } from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`
+      `import React from 'react';\nimport ReactDOM from 'react-dom/client';\nimport { App } from './App';\nimport './index.css';\n\nReactDOM.createRoot(document.getElementById('root')!).render(\n  <React.StrictMode>\n    <App />\n  </React.StrictMode>\n);\n`,
     );
-    files.push({ path: 'src/main.tsx', content: mainContent });
+    files.push({ path: "src/main.tsx", content: mainContent });
 
     const indexHtml = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/index.html.tpl',
+      "project/vite/index.html.tpl",
       context,
-      `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <link rel="icon" type="image/svg+xml" href="/vite.svg" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${config.name}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>\n`
+      `<!DOCTYPE html>\n<html lang="en">\n  <head>\n    <meta charset="UTF-8" />\n    <link rel="icon" type="image/svg+xml" href="/vite.svg" />\n    <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n    <title>${config.name}</title>\n  </head>\n  <body>\n    <div id="root"></div>\n    <script type="module" src="/src/main.tsx"></script>\n  </body>\n</html>\n`,
     );
-    files.push({ path: 'index.html', content: indexHtml });
+    files.push({ path: "index.html", content: indexHtml });
 
-    files.push({ path: 'src/vite-env.d.ts', content: '/// <reference types="vite/client" />' });
+    files.push({ path: "src/vite-env.d.ts", content: '/// <reference types="vite/client" />' });
 
     const testSetup = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/test-setup.ts.tpl',
+      "project/vite/test-setup.ts.tpl",
       context,
-      `import '@testing-library/jest-dom';\n`
+      `import '@testing-library/jest-dom';\n`,
     );
-    files.push({ path: 'src/test-setup.ts', content: testSetup });
+    files.push({ path: "src/test-setup.ts", content: testSetup });
 
     const appCss = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/App.css.tpl',
+      "project/vite/App.css.tpl",
       context,
-      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n`
+      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n`,
     );
-    files.push({ path: 'src/App.css', content: appCss });
+    files.push({ path: "src/App.css", content: appCss });
 
     const indexCss = await this.runtime.templateResolver.renderTemplate(
-      'project/vite/index.css.tpl',
+      "project/vite/index.css.tpl",
       context,
-      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n`
+      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n}\n\nbody {\n  margin: 0;\n}\n`,
     );
-    files.push({ path: 'src/index.css', content: indexCss });
+    files.push({ path: "src/index.css", content: indexCss });
 
     return {
       files,
@@ -522,53 +522,53 @@ export class TypeScriptPlugin implements LanguagePlugin {
     };
 
     const packageContent = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/package.json.tpl',
+      "project/nextjs/package.json.tpl",
       context,
-      packageJson
+      packageJson,
     );
-    files.push({ path: 'package.json', content: packageContent });
+    files.push({ path: "package.json", content: packageContent });
 
     const nextConfig = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/next.config.js.tpl',
+      "project/nextjs/next.config.js.tpl",
       context,
-      `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  reactStrictMode: true,\n  experimental: {\n    appDir: true,\n  },\n};\n\nexport default nextConfig;\n`
+      `/** @type {import('next').NextConfig} */\nconst nextConfig = {\n  reactStrictMode: true,\n  experimental: {\n    appDir: true,\n  },\n};\n\nexport default nextConfig;\n`,
     );
-    files.push({ path: 'next.config.js', content: nextConfig });
+    files.push({ path: "next.config.js", content: nextConfig });
 
     const tsconfigContent = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/tsconfig.json.tpl',
+      "project/nextjs/tsconfig.json.tpl",
       context,
-      tsconfig
+      tsconfig,
     );
-    files.push({ path: 'tsconfig.json', content: tsconfigContent });
+    files.push({ path: "tsconfig.json", content: tsconfigContent });
 
     const nextEnv = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/next-env.d.ts.tpl',
+      "project/nextjs/next-env.d.ts.tpl",
       context,
-      `/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n\n// NOTE: This file should not be edited\n// see https://nextjs.org/docs/basic-features/typescript for more information.\n`
+      `/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n\n// NOTE: This file should not be edited\n// see https://nextjs.org/docs/basic-features/typescript for more information.\n`,
     );
-    files.push({ path: 'next-env.d.ts', content: nextEnv });
+    files.push({ path: "next-env.d.ts", content: nextEnv });
 
     const layoutContent = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/app/layout.tsx.tpl',
+      "project/nextjs/app/layout.tsx.tpl",
       context,
-      `import './globals.css';\nimport type { Metadata } from 'next';\n\nexport const metadata: Metadata = {\n  title: '${context.projectName}',\n  description: '${context.projectDescription}',\n};\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>{children}</body>\n    </html>\n  );\n}\n`
+      `import './globals.css';\nimport type { Metadata } from 'next';\n\nexport const metadata: Metadata = {\n  title: '${context.projectName}',\n  description: '${context.projectDescription}',\n};\n\nexport default function RootLayout({ children }: { children: React.ReactNode }) {\n  return (\n    <html lang="en">\n      <body>{children}</body>\n    </html>\n  );\n}\n`,
     );
-    files.push({ path: 'app/layout.tsx', content: layoutContent });
+    files.push({ path: "app/layout.tsx", content: layoutContent });
 
     const pageContent = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/app/page.tsx.tpl',
+      "project/nextjs/app/page.tsx.tpl",
       context,
-      `export default function Home() {\n  return (\n    <main>\n      <h1>${context.projectName}</h1>\n      <p>Welcome to your Next.js project generated by Arbiter.</p>\n    </main>\n  );\n}\n`
+      `export default function Home() {\n  return (\n    <main>\n      <h1>${context.projectName}</h1>\n      <p>Welcome to your Next.js project generated by Arbiter.</p>\n    </main>\n  );\n}\n`,
     );
-    files.push({ path: 'app/page.tsx', content: pageContent });
+    files.push({ path: "app/page.tsx", content: pageContent });
 
     const globalsCss = await this.runtime.templateResolver.renderTemplate(
-      'project/nextjs/app/globals.css.tpl',
+      "project/nextjs/app/globals.css.tpl",
       context,
-      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n  margin: 0;\n  padding: 0;\n}\n\nbody {\n  margin: 0;\n}\n`
+      `:root {\n  color-scheme: light dark;\n  font-family: system-ui, sans-serif;\n  margin: 0;\n  padding: 0;\n}\n\nbody {\n  margin: 0;\n}\n`,
     );
-    files.push({ path: 'app/globals.css', content: globalsCss });
+    files.push({ path: "app/globals.css", content: globalsCss });
 
     return {
       files,
@@ -579,36 +579,36 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   private collectViteDependencies(): string[] {
     const deps = new Set<string>([
-      'react',
-      'react-dom',
-      '@types/react',
-      '@types/react-dom',
-      'typescript',
-      'vite',
-      '@vitejs/plugin-react',
-      'react-router-dom',
-      '@types/react-router-dom',
+      "react",
+      "react-dom",
+      "@types/react",
+      "@types/react-dom",
+      "typescript",
+      "vite",
+      "@vitejs/plugin-react",
+      "react-router-dom",
+      "@types/react-router-dom",
     ]);
 
-    if (this.runtime.testRunner === 'vitest') {
-      deps.add('vitest');
-      deps.add('@testing-library/react');
-      deps.add('@testing-library/jest-dom');
+    if (this.runtime.testRunner === "vitest") {
+      deps.add("vitest");
+      deps.add("@testing-library/react");
+      deps.add("@testing-library/jest-dom");
     } else {
-      deps.add('jest');
-      deps.add('@types/jest');
-      deps.add('ts-jest');
+      deps.add("jest");
+      deps.add("@types/jest");
+      deps.add("ts-jest");
     }
 
     switch (this.runtime.styling) {
-      case 'tailwind':
-        deps.add('tailwindcss');
-        deps.add('postcss');
-        deps.add('autoprefixer');
+      case "tailwind":
+        deps.add("tailwindcss");
+        deps.add("postcss");
+        deps.add("autoprefixer");
         break;
-      case 'styled-components':
-        deps.add('styled-components');
-        deps.add('@types/styled-components');
+      case "styled-components":
+        deps.add("styled-components");
+        deps.add("@types/styled-components");
         break;
       default:
         break;
@@ -616,11 +616,11 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
     if (this.runtime.stateManagement) {
       const lower = this.runtime.stateManagement.toLowerCase();
-      if (lower === 'redux') {
-        deps.add('@reduxjs/toolkit');
-        deps.add('react-redux');
-      } else if (lower === 'zustand') {
-        deps.add('zustand');
+      if (lower === "redux") {
+        deps.add("@reduxjs/toolkit");
+        deps.add("react-redux");
+      } else if (lower === "zustand") {
+        deps.add("zustand");
       }
     }
 
@@ -629,41 +629,41 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   private collectNextDependencies(): string[] {
     const deps = new Set<string>([
-      'next',
-      'react',
-      'react-dom',
-      'typescript',
-      '@types/react',
-      '@types/node',
-      'eslint',
+      "next",
+      "react",
+      "react-dom",
+      "typescript",
+      "@types/react",
+      "@types/node",
+      "eslint",
     ]);
 
-    if (this.runtime.testRunner === 'jest') {
-      deps.add('jest');
-      deps.add('@types/jest');
-      deps.add('ts-jest');
+    if (this.runtime.testRunner === "jest") {
+      deps.add("jest");
+      deps.add("@types/jest");
+      deps.add("ts-jest");
     } else {
-      deps.add('vitest');
-      deps.add('@testing-library/react');
-      deps.add('@testing-library/jest-dom');
+      deps.add("vitest");
+      deps.add("@testing-library/react");
+      deps.add("@testing-library/jest-dom");
     }
 
-    if (this.runtime.styling === 'styled-components') {
-      deps.add('styled-components');
-      deps.add('@types/styled-components');
-    } else if (this.runtime.styling === 'tailwind') {
-      deps.add('tailwindcss');
-      deps.add('postcss');
-      deps.add('autoprefixer');
+    if (this.runtime.styling === "styled-components") {
+      deps.add("styled-components");
+      deps.add("@types/styled-components");
+    } else if (this.runtime.styling === "tailwind") {
+      deps.add("tailwindcss");
+      deps.add("postcss");
+      deps.add("autoprefixer");
     }
 
     if (this.runtime.stateManagement) {
       const lower = this.runtime.stateManagement.toLowerCase();
-      if (lower === 'redux') {
-        deps.add('@reduxjs/toolkit');
-        deps.add('react-redux');
-      } else if (lower === 'zustand') {
-        deps.add('zustand');
+      if (lower === "redux") {
+        deps.add("@reduxjs/toolkit");
+        deps.add("react-redux");
+      } else if (lower === "zustand") {
+        deps.add("zustand");
       }
     }
 
@@ -676,14 +676,14 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const packageJson = pruneUndefined({
       name: config.name,
       private: true,
-      version: '0.0.0',
-      type: 'module',
+      version: "0.0.0",
+      type: "module",
       description: config.description || `A modern TypeScript project: ${config.name}`,
       scripts,
       dependencies: {},
       devDependencies: {},
       engines: {
-        node: '>=18.0.0',
+        node: ">=18.0.0",
       },
     });
 
@@ -694,7 +694,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
     return pruneUndefined({
       name: config.name,
       private: true,
-      version: '0.0.0',
+      version: "0.0.0",
       description: config.description || `A Next.js project: ${config.name}`,
       scripts: this.createNextScripts(),
       dependencies: {},
@@ -705,109 +705,109 @@ export class TypeScriptPlugin implements LanguagePlugin {
   private createViteTsconfig(): Record<string, unknown> {
     return {
       compilerOptions: {
-        target: 'ES2022',
-        lib: ['ES2023', 'DOM', 'DOM.Iterable'],
-        module: 'ESNext',
+        target: "ES2022",
+        lib: ["ES2023", "DOM", "DOM.Iterable"],
+        module: "ESNext",
         skipLibCheck: true,
-        moduleResolution: 'bundler',
+        moduleResolution: "bundler",
         allowImportingTsExtensions: true,
         resolveJsonModule: true,
         isolatedModules: true,
         noEmit: true,
-        jsx: 'react-jsx',
+        jsx: "react-jsx",
         strict: true,
         noUnusedLocals: true,
         noUnusedParameters: true,
         noFallthroughCasesInSwitch: true,
       },
-      include: ['src'],
-      references: [{ path: './tsconfig.node.json' }],
+      include: ["src"],
+      references: [{ path: "./tsconfig.node.json" }],
     };
   }
 
   private createViteBuildTsconfig(): Record<string, unknown> {
     return {
-      extends: './tsconfig.json',
+      extends: "./tsconfig.json",
       compilerOptions: {
         noEmit: false,
         declaration: true,
-        outDir: './dist',
+        outDir: "./dist",
       },
-      exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+      exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
     };
   }
 
   private createNextTsconfig(): Record<string, unknown> {
     return {
       compilerOptions: {
-        target: 'ES2022',
-        lib: ['DOM', 'DOM.Iterable', 'ESNext'],
+        target: "ES2022",
+        lib: ["DOM", "DOM.Iterable", "ESNext"],
         allowJs: false,
         skipLibCheck: true,
         strict: true,
         forceConsistentCasingInFileNames: true,
         noEmit: true,
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
+        module: "ESNext",
+        moduleResolution: "Bundler",
         resolveJsonModule: true,
         isolatedModules: true,
-        jsx: 'preserve',
+        jsx: "preserve",
         incremental: true,
-        plugins: [{ name: 'next' }],
+        plugins: [{ name: "next" }],
       },
-      include: ['next-env.d.ts', '**/*.ts', '**/*.tsx'],
-      exclude: ['node_modules'],
+      include: ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+      exclude: ["node_modules"],
     };
   }
 
   private createViteScripts(): Record<string, string | undefined> {
     return pruneUndefined({
-      dev: 'vite',
-      build: 'tsc && vite build',
-      preview: 'vite preview',
-      test: this.runtime.testRunner === 'vitest' ? 'vitest' : 'jest',
-      'test:ui': this.runtime.testRunner === 'vitest' ? 'vitest --ui' : undefined,
-      lint: 'eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0',
-      'type-check': 'tsc --noEmit',
+      dev: "vite",
+      build: "tsc && vite build",
+      preview: "vite preview",
+      test: this.runtime.testRunner === "vitest" ? "vitest" : "jest",
+      "test:ui": this.runtime.testRunner === "vitest" ? "vitest --ui" : undefined,
+      lint: "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+      "type-check": "tsc --noEmit",
     });
   }
 
   private createNextScripts(): Record<string, string | undefined> {
     return pruneUndefined({
-      dev: 'next dev',
-      build: 'next build',
-      start: 'next start',
-      lint: 'next lint',
+      dev: "next dev",
+      build: "next build",
+      start: "next start",
+      lint: "next lint",
       test:
-        this.runtime.testRunner === 'jest' ? 'jest' : 'vitest --run --environment=jsdom --globals',
+        this.runtime.testRunner === "jest" ? "jest" : "vitest --run --environment=jsdom --globals",
     });
   }
 
   private normalizeFramework(config: Record<string, unknown>): FrameworkOption {
-    const value = typeof config.framework === 'string' ? config.framework.toLowerCase() : '';
-    if (value === 'next' || value === 'nextjs') {
-      return 'nextjs';
+    const value = typeof config.framework === "string" ? config.framework.toLowerCase() : "";
+    if (value === "next" || value === "nextjs") {
+      return "nextjs";
     }
-    return 'vite';
+    return "vite";
   }
 
   private normalizeStyling(config: Record<string, unknown>): StylingOption {
-    const value = typeof config.styling === 'string' ? config.styling.toLowerCase() : '';
-    if (value === 'tailwind') return 'tailwind';
-    if (value === 'styled-components' || value === 'styledcomponents') {
-      return 'styled-components';
+    const value = typeof config.styling === "string" ? config.styling.toLowerCase() : "";
+    if (value === "tailwind") return "tailwind";
+    if (value === "styled-components" || value === "styledcomponents") {
+      return "styled-components";
     }
-    return 'css-modules';
+    return "css-modules";
   }
 
   private normalizeStateManagement(config: Record<string, unknown>): string | undefined {
-    const value = typeof config.stateManagement === 'string' ? config.stateManagement.trim() : '';
+    const value = typeof config.stateManagement === "string" ? config.stateManagement.trim() : "";
     return value ? value : undefined;
   }
 
   private normalizeTestRunner(config: Record<string, unknown>): TestRunnerOption {
-    const value = typeof config.testRunner === 'string' ? config.testRunner.toLowerCase() : '';
-    return value === 'jest' ? 'jest' : 'vitest';
+    const value = typeof config.testRunner === "string" ? config.testRunner.toLowerCase() : "";
+    return value === "jest" ? "jest" : "vitest";
   }
 }
 

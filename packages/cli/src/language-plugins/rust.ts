@@ -11,23 +11,23 @@ import type {
   LanguagePlugin,
   ProjectConfig,
   ServiceConfig,
-} from './index.js';
+} from "./index.js";
 
 export class RustPlugin implements LanguagePlugin {
-  readonly name = 'Rust Plugin';
-  readonly language = 'rust';
-  readonly version = '1.0.0';
-  readonly description = 'Modern Rust with Axum, SQLx, and zero-cost abstractions';
+  readonly name = "Rust Plugin";
+  readonly language = "rust";
+  readonly version = "1.0.0";
+  readonly description = "Modern Rust with Axum, SQLx, and zero-cost abstractions";
   readonly supportedFeatures = [
-    'web-server',
-    'api',
-    'database',
-    'async-runtime',
-    'memory-safety',
-    'performance',
-    'testing',
-    'serialization',
-    'error-handling',
+    "web-server",
+    "api",
+    "database",
+    "async-runtime",
+    "memory-safety",
+    "performance",
+    "testing",
+    "serialization",
+    "error-handling",
   ];
   readonly capabilities = {
     services: true,
@@ -37,7 +37,7 @@ export class RustPlugin implements LanguagePlugin {
 
   // Rust doesn't have UI components like frontend frameworks
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
-    throw new Error('Component generation not supported for Rust. Use generateService instead.');
+    throw new Error("Component generation not supported for Rust. Use generateService instead.");
   }
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
@@ -45,7 +45,7 @@ export class RustPlugin implements LanguagePlugin {
     const dependencies: string[] = [];
 
     switch (config.type) {
-      case 'api':
+      case "api":
         files.push({
           path: `src/handlers/${config.name.toLowerCase()}.rs`,
           content: this.generateAPIHandler(config),
@@ -54,22 +54,22 @@ export class RustPlugin implements LanguagePlugin {
           path: `src/routes/${config.name.toLowerCase()}.rs`,
           content: this.generateRoutes(config),
         });
-        dependencies.push('axum', 'tokio', 'serde');
+        dependencies.push("axum", "tokio", "serde");
         break;
-      case 'service':
+      case "service":
         files.push({
           path: `src/services/${config.name.toLowerCase()}.rs`,
           content: this.generateBusinessService(config),
         });
         break;
-      case 'model':
+      case "model":
         files.push({
           path: `src/models/${config.name.toLowerCase()}.rs`,
           content: this.generateModel(config),
         });
-        dependencies.push('sqlx', 'serde', 'uuid');
+        dependencies.push("sqlx", "serde", "uuid");
         break;
-      case 'middleware':
+      case "middleware":
         files.push({
           path: `src/middleware/${config.name.toLowerCase()}.rs`,
           content: this.generateMiddleware(config),
@@ -78,11 +78,11 @@ export class RustPlugin implements LanguagePlugin {
     }
 
     if (config.validation) {
-      dependencies.push('validator');
+      dependencies.push("validator");
     }
 
     if (config.database) {
-      dependencies.push('sqlx', 'uuid');
+      dependencies.push("sqlx", "uuid");
     }
 
     return { files, dependencies };
@@ -91,110 +91,110 @@ export class RustPlugin implements LanguagePlugin {
   async initializeProject(config: ProjectConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
     const dependencies = [
-      'axum',
-      'tokio',
-      'serde',
-      'serde_json',
-      'tracing',
-      'tracing-subscriber',
-      'tower',
-      'tower-http',
+      "axum",
+      "tokio",
+      "serde",
+      "serde_json",
+      "tracing",
+      "tracing-subscriber",
+      "tower",
+      "tower-http",
     ];
 
     // Cargo.toml
     files.push({
-      path: 'Cargo.toml',
+      path: "Cargo.toml",
       content: this.generateCargoToml(config),
     });
 
     // Main application
     files.push({
-      path: 'src/main.rs',
+      path: "src/main.rs",
       content: this.generateMainApp(config),
     });
 
     // Application state and configuration
     files.push({
-      path: 'src/config.rs',
+      path: "src/config.rs",
       content: this.generateConfig(config),
     });
 
     files.push({
-      path: 'src/app.rs',
+      path: "src/app.rs",
       content: this.generateAppState(config),
     });
 
     // Database setup (if needed)
     if (config.database) {
       files.push({
-        path: 'src/database.rs',
+        path: "src/database.rs",
         content: this.generateDatabase(config),
       });
-      dependencies.push('sqlx');
+      dependencies.push("sqlx");
     }
 
     // Error handling
     files.push({
-      path: 'src/errors.rs',
+      path: "src/errors.rs",
       content: this.generateErrors(),
     });
 
     // Models module
     files.push({
-      path: 'src/models/mod.rs',
+      path: "src/models/mod.rs",
       content: this.generateModelsModule(),
     });
 
     // Services module
     files.push({
-      path: 'src/services/mod.rs',
+      path: "src/services/mod.rs",
       content: this.generateServicesModule(),
     });
 
     // Handlers module
     files.push({
-      path: 'src/handlers/mod.rs',
+      path: "src/handlers/mod.rs",
       content: this.generateHandlersModule(),
     });
 
     // Routes module
     files.push({
-      path: 'src/routes/mod.rs',
+      path: "src/routes/mod.rs",
       content: this.generateRoutesModule(config),
     });
 
     // Middleware module
     files.push({
-      path: 'src/middleware/mod.rs',
+      path: "src/middleware/mod.rs",
       content: this.generateMiddlewareModule(),
     });
 
     // Health check
     files.push({
-      path: 'src/handlers/health.rs',
+      path: "src/handlers/health.rs",
       content: this.generateHealthHandler(),
     });
 
     // Library file
     files.push({
-      path: 'src/lib.rs',
+      path: "src/lib.rs",
       content: this.generateLibFile(config),
     });
 
     // Environment file
     files.push({
-      path: '.env.example',
+      path: ".env.example",
       content: this.generateEnvExample(config),
     });
 
     // Testing setup (if requested)
     if (config.testing) {
       files.push({
-        path: 'src/tests/mod.rs',
+        path: "src/tests/mod.rs",
         content: this.generateTestModule(),
       });
       files.push({
-        path: 'src/tests/integration.rs',
+        path: "src/tests/integration.rs",
         content: this.generateIntegrationTests(config),
       });
     }
@@ -202,18 +202,18 @@ export class RustPlugin implements LanguagePlugin {
     // Docker setup (if requested)
     if (config.docker) {
       files.push({
-        path: 'Dockerfile',
+        path: "Dockerfile",
         content: this.generateDockerfile(config),
       });
       files.push({
-        path: 'docker-compose.yml',
+        path: "docker-compose.yml",
         content: this.generateDockerCompose(config),
       });
     }
 
     // Justfile for common tasks
     files.push({
-      path: 'justfile',
+      path: "justfile",
       content: this.generateJustfile(config),
     });
 
@@ -221,13 +221,13 @@ export class RustPlugin implements LanguagePlugin {
       files,
       dependencies,
       scripts: {
-        dev: 'cargo watch -x run',
-        build: 'cargo build --release',
-        test: 'cargo test',
-        'test:coverage': 'cargo tarpaulin --out html',
-        lint: 'cargo clippy -- -D warnings',
-        format: 'cargo fmt',
-        check: 'cargo check',
+        dev: "cargo watch -x run",
+        build: "cargo build --release",
+        test: "cargo test",
+        "test:coverage": "cargo tarpaulin --out html",
+        lint: "cargo clippy -- -D warnings",
+        format: "cargo fmt",
+        check: "cargo check",
       },
     };
   }
@@ -236,22 +236,22 @@ export class RustPlugin implements LanguagePlugin {
     const files: GeneratedFile[] = [];
 
     // Production dockerfile
-    if (config.target === 'production') {
+    if (config.target === "production") {
       files.push({
-        path: 'Dockerfile.prod',
+        path: "Dockerfile.prod",
         content: this.generateProductionDockerfile(config),
       });
     }
 
     // CI/CD configuration
     files.push({
-      path: '.github/workflows/rust.yml',
+      path: ".github/workflows/rust.yml",
       content: this.generateGitHubActions(config),
     });
 
     // Cargo configuration
     files.push({
-      path: '.cargo/config.toml',
+      path: ".cargo/config.toml",
       content: this.generateCargoConfig(config),
     });
 
@@ -302,7 +302,7 @@ pub async fn get_all_${moduleName}(
     let page = params.page.unwrap_or(1);
     let limit = params.limit.unwrap_or(20);
     
-    let service = ${structName}Service::new(${config.database ? '&app_state.db_pool' : ''});
+    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
     
     let (items, total) = service.get_all(page, limit).await?;
     
@@ -323,7 +323,7 @@ pub async fn get_${moduleName}_by_id(
 ) -> Result<Json<${structName}>, AppError> {
     info!("Fetching ${config.name} with ID: {}", id);
     
-    let service = ${structName}Service::new(${config.database ? '&app_state.db_pool' : ''});
+    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
     let item = service.get_by_id(id).await?;
     
     Ok(Json(item))
@@ -337,9 +337,9 @@ pub async fn create_${moduleName}(
     info!("Creating new ${config.name}");
     
     // Validate payload if validation is enabled
-    ${config.validation ? 'payload.validate()?;' : ''}
+    ${config.validation ? "payload.validate()?;" : ""}
     
-    let service = ${structName}Service::new(${config.database ? '&app_state.db_pool' : ''});
+    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
     let item = service.create(payload).await?;
     
     Ok((StatusCode::CREATED, Json(item)))
@@ -354,9 +354,9 @@ pub async fn update_${moduleName}(
     info!("Updating ${config.name} with ID: {}", id);
     
     // Validate payload if validation is enabled
-    ${config.validation ? 'payload.validate()?;' : ''}
+    ${config.validation ? "payload.validate()?;" : ""}
     
-    let service = ${structName}Service::new(${config.database ? '&app_state.db_pool' : ''});
+    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
     let item = service.update(id, payload).await?;
     
     Ok(Json(item))
@@ -369,7 +369,7 @@ pub async fn delete_${moduleName}(
 ) -> Result<StatusCode, AppError> {
     info!("Deleting ${config.name} with ID: {}", id);
     
-    let service = ${structName}Service::new(${config.database ? '&app_state.db_pool' : ''});
+    let service = ${structName}Service::new(${config.database ? "&app_state.db_pool" : ""});
     service.delete(id).await?;
     
     Ok(StatusCode::NO_CONTENT)
@@ -411,7 +411,7 @@ pub fn create_${moduleName}_routes() -> Router<AppState> {
 
     return `use uuid::Uuid;
 use tracing::{info, error};
-${config.database ? 'use sqlx::{PgPool, Row};' : ''}
+${config.database ? "use sqlx::{PgPool, Row};" : ""}
 
 use crate::{
     errors::AppError,
@@ -419,15 +419,15 @@ use crate::{
 };
 
 /// Service for ${config.name} business logic
-pub struct ${structName}Service${config.database ? "<'a>" : ''} {
-    ${config.database ? "db_pool: &'a PgPool," : ''}
+pub struct ${structName}Service${config.database ? "<'a>" : ""} {
+    ${config.database ? "db_pool: &'a PgPool," : ""}
 }
 
-impl${config.database ? "<'a>" : ''} ${structName}Service${config.database ? "<'a>" : ''} {
+impl${config.database ? "<'a>" : ""} ${structName}Service${config.database ? "<'a>" : ""} {
     /// Create a new service instance
-    pub fn new(${config.database ? "db_pool: &'a PgPool" : ''}) -> Self {
+    pub fn new(${config.database ? "db_pool: &'a PgPool" : ""}) -> Self {
         Self {
-            ${config.database ? 'db_pool,' : ''}
+            ${config.database ? "db_pool," : ""}
         }
     }
 
@@ -648,11 +648,11 @@ impl${config.database ? "<'a>" : ''} ${structName}Service${config.database ? "<'
     return `use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
-${config.validation ? 'use validator::Validate;' : ''}
+${config.validation ? "use validator::Validate;" : ""}
 
 /// ${structName} model
 #[derive(Debug, Clone, Serialize, Deserialize)]
-${config.database ? '#[derive(sqlx::FromRow)]' : ''}
+${config.database ? "#[derive(sqlx::FromRow)]" : ""}
 pub struct ${structName} {
     pub id: Uuid,
     pub name: String,
@@ -663,20 +663,20 @@ pub struct ${structName} {
 }
 
 /// Request payload for creating a ${structName}
-#[derive(Debug, Deserialize${config.validation ? ', Validate' : ''})]
+#[derive(Debug, Deserialize${config.validation ? ", Validate" : ""})]
 pub struct Create${structName}Request {
-    ${config.validation ? '#[validate(length(min = 1, max = 100))]' : ''}
+    ${config.validation ? "#[validate(length(min = 1, max = 100))]" : ""}
     pub name: String,
-    ${config.validation ? '#[validate(length(max = 500))]' : ''}
+    ${config.validation ? "#[validate(length(max = 500))]" : ""}
     pub description: Option<String>,
 }
 
 /// Request payload for updating a ${structName}
-#[derive(Debug, Deserialize${config.validation ? ', Validate' : ''})]
+#[derive(Debug, Deserialize${config.validation ? ", Validate" : ""})]
 pub struct Update${structName}Request {
-    ${config.validation ? '#[validate(length(min = 1, max = 100))]' : ''}
+    ${config.validation ? "#[validate(length(min = 1, max = 100))]" : ""}
     pub name: Option<String>,
-    ${config.validation ? '#[validate(length(max = 500))]' : ''}
+    ${config.validation ? "#[validate(length(max = 500))]" : ""}
     pub description: Option<String>,
     pub is_active: Option<bool>,
 }
@@ -794,38 +794,38 @@ pub async fn ${config.name.toLowerCase()}_middleware(
     type CargoDependency = string | { version: string; features?: string[] };
 
     const dependencies: Record<string, CargoDependency> = {
-      axum: '0.7',
-      tokio: { version: '1.0', features: ['full'] },
-      serde: { version: '1.0', features: ['derive'] },
-      serde_json: '1.0',
-      tracing: '0.1',
-      'tracing-subscriber': { version: '0.3', features: ['env-filter'] },
-      tower: '0.4',
-      'tower-http': { version: '0.5', features: ['cors', 'trace'] },
-      uuid: { version: '1.0', features: ['v4', 'serde'] },
-      chrono: { version: '0.4', features: ['serde'] },
-      anyhow: '1.0',
-      thiserror: '1.0',
+      axum: "0.7",
+      tokio: { version: "1.0", features: ["full"] },
+      serde: { version: "1.0", features: ["derive"] },
+      serde_json: "1.0",
+      tracing: "0.1",
+      "tracing-subscriber": { version: "0.3", features: ["env-filter"] },
+      tower: "0.4",
+      "tower-http": { version: "0.5", features: ["cors", "trace"] },
+      uuid: { version: "1.0", features: ["v4", "serde"] },
+      chrono: { version: "0.4", features: ["serde"] },
+      anyhow: "1.0",
+      thiserror: "1.0",
     };
 
     if (config.database) {
       dependencies.sqlx = {
-        version: '0.7',
-        features: ['runtime-tokio-rustls', 'postgres', 'uuid', 'chrono', 'macros'],
+        version: "0.7",
+        features: ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "macros"],
       };
     }
 
     if (config.auth) {
-      dependencies.jsonwebtoken = '9.0';
-      dependencies.bcrypt = '0.15';
+      dependencies.jsonwebtoken = "9.0";
+      dependencies.bcrypt = "0.15";
     }
 
     if (config.testing) {
-      dependencies['tokio-test'] = '0.4';
+      dependencies["tokio-test"] = "0.4";
     }
 
     return `[package]
-name = "${config.name.toLowerCase().replace(/[^a-z0-9-_]/g, '-')}"
+name = "${config.name.toLowerCase().replace(/[^a-z0-9-_]/g, "-")}"
 version = "0.1.0"
 edition = "2021"
 description = "${config.description || `Modern Rust application: ${config.name}`}"
@@ -833,22 +833,22 @@ description = "${config.description || `Modern Rust application: ${config.name}`
 [dependencies]
 ${Object.entries(dependencies)
   .map(([name, version]) => {
-    if (typeof version === 'string') {
+    if (typeof version === "string") {
       return `${name} = "${version}"`;
     }
-    const versionStr = version.version ? `version = "${version.version}"` : '';
+    const versionStr = version.version ? `version = "${version.version}"` : "";
     const featuresStr = version.features
-      ? `features = [${version.features.map((f: string) => `"${f}"`).join(', ')}]`
-      : '';
+      ? `features = [${version.features.map((f: string) => `"${f}"`).join(", ")}]`
+      : "";
     const parts = [versionStr, featuresStr].filter(Boolean);
-    return `${name} = { ${parts.join(', ')} }`;
+    return `${name} = { ${parts.join(", ")} }`;
   })
-  .join('\n')}
+  .join("\n")}
 
 [dev-dependencies]
 tower-test = "0.4"
 hyper = { version = "1.0", features = ["full"] }
-${config.testing ? `tokio-test = "0.4"` : ''}
+${config.testing ? `tokio-test = "0.4"` : ""}
 
 [[bin]]
 name = "${config.name.toLowerCase()}"
@@ -869,10 +869,10 @@ use axum::Server;
 use tracing::{info, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use ${config.name.toLowerCase().replace(/[^a-z0-9_]/g, '_')}::{
+use ${config.name.toLowerCase().replace(/[^a-z0-9_]/g, "_")}::{
     app::create_app,
     config::Config,
-    ${config.database ? 'database::create_pool,' : ''}
+    ${config.database ? "database::create_pool," : ""}
 };
 
 #[tokio::main]
@@ -906,11 +906,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             e
         })?;
     info!("Database migrations completed");`
-        : ''
+        : ""
     }
 
     // Create application
-    let app = create_app(${config.database ? 'db_pool' : ''}).await?;
+    let app = create_app(${config.database ? "db_pool" : ""}).await?;
 
     // Setup server
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
@@ -938,8 +938,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 pub struct Config {
     pub port: u16,
     pub environment: String,
-    ${config.database ? 'pub database_url: String,' : ''}
-    ${config.auth ? 'pub jwt_secret: String,' : ''}
+    ${config.database ? "pub database_url: String," : ""}
+    ${config.auth ? "pub jwt_secret: String," : ""}
     pub log_level: String,
 }
 
@@ -958,14 +958,14 @@ impl Config {
           config.database
             ? `let database_url = env::var("DATABASE_URL")
             .unwrap_or_else(|_| "postgres://user:password@localhost:5432/${config.name.toLowerCase()}".to_string());`
-            : ''
+            : ""
         }
 
         ${
           config.auth
             ? `let jwt_secret = env::var("JWT_SECRET")
             .unwrap_or_else(|_| "your-secret-key".to_string());`
-            : ''
+            : ""
         }
 
         let log_level = env::var("LOG_LEVEL")
@@ -974,8 +974,8 @@ impl Config {
         Ok(Self {
             port,
             environment,
-            ${config.database ? 'database_url,' : ''}
-            ${config.auth ? 'jwt_secret,' : ''}
+            ${config.database ? "database_url," : ""}
+            ${config.auth ? "jwt_secret," : ""}
             log_level,
         })
     }
@@ -1006,7 +1006,7 @@ use tower_http::{
     cors::CorsLayer,
     trace::TraceLayer,
 };
-${config.database ? 'use sqlx::PgPool;' : ''}
+${config.database ? "use sqlx::PgPool;" : ""}
 
 use crate::{
     routes::create_routes,
@@ -1016,22 +1016,22 @@ use crate::{
 /// Application state
 #[derive(Clone)]
 pub struct AppState {
-    ${config.database ? 'pub db_pool: PgPool,' : ''}
+    ${config.database ? "pub db_pool: PgPool," : ""}
 }
 
 impl AppState {
     /// Create new application state
-    pub fn new(${config.database ? 'db_pool: PgPool' : ''}) -> Self {
+    pub fn new(${config.database ? "db_pool: PgPool" : ""}) -> Self {
         Self {
-            ${config.database ? 'db_pool,' : ''}
+            ${config.database ? "db_pool," : ""}
         }
     }
 }
 
 /// Create the main application with all routes and middleware
-pub async fn create_app(${config.database ? 'db_pool: PgPool' : ''}) -> Result<Router, AppError> {
+pub async fn create_app(${config.database ? "db_pool: PgPool" : ""}) -> Result<Router, AppError> {
     // Create application state
-    let app_state = AppState::new(${config.database ? 'db_pool' : ''});
+    let app_state = AppState::new(${config.database ? "db_pool" : ""});
 
     // Create CORS layer
     let cors = CorsLayer::new()
@@ -1056,8 +1056,8 @@ pub async fn create_app(${config.database ? 'db_pool: PgPool' : ''}) -> Result<R
   }
 
   private generateDatabase(config: ProjectConfig): string {
-    if (config.database !== 'postgres') {
-      return '// Database configuration not implemented for this database type';
+    if (config.database !== "postgres") {
+      return "// Database configuration not implemented for this database type";
     }
 
     return `use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -1101,7 +1101,7 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, AppError> {
 };
 use serde_json::json;
 use thiserror::Error;
-${this.supportedFeatures.includes('validation') ? 'use validator::ValidationErrors;' : ''}
+${this.supportedFeatures.includes("validation") ? "use validator::ValidationErrors;" : ""}
 
 /// Application error types
 #[derive(Error, Debug)]
@@ -1125,10 +1125,10 @@ pub enum AppError {
     DatabaseError(String),
 
     ${
-      this.supportedFeatures.includes('validation')
+      this.supportedFeatures.includes("validation")
         ? `#[error("Validation error")]
     ValidationError(#[from] ValidationErrors),`
-        : ''
+        : ""
     }
 
     #[error("Serialization error: {0}")]
@@ -1147,12 +1147,12 @@ impl IntoResponse for AppError {
                 "Database error occurred".to_string(),
             ),
             ${
-              this.supportedFeatures.includes('validation')
+              this.supportedFeatures.includes("validation")
                 ? `AppError::ValidationError(errors) => (
                 StatusCode::BAD_REQUEST,
                 format!("Validation error: {}", errors),
             ),`
-                : ''
+                : ""
             }
             AppError::SerializationError(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -1311,11 +1311,11 @@ mod tests {
   }
 
   private generateLibFile(config: ProjectConfig): string {
-    return `//! ${config.name} - ${config.description || 'A modern Rust application'}
+    return `//! ${config.name} - ${config.description || "A modern Rust application"}
 
 pub mod app;
 pub mod config;
-${config.database ? 'pub mod database;' : ''}
+${config.database ? "pub mod database;" : ""}
 pub mod errors;
 pub mod handlers;
 pub mod middleware;
@@ -1324,7 +1324,7 @@ pub mod routes;
 pub mod services;
 
 pub use config::Config;
-${config.database ? 'pub use database::create_pool;' : ''}
+${config.database ? "pub use database::create_pool;" : ""}
 pub use errors::AppError;
 
 // Re-export commonly used types
@@ -1349,14 +1349,14 @@ ${
   config.database
     ? `# Database Configuration
 DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}`
-    : ''
+    : ""
 }
 
 ${
   config.auth
     ? `# Authentication
 JWT_SECRET=your-super-secret-jwt-key-change-in-production`
-    : ''
+    : ""
 }
 
 # Additional configuration as needed
@@ -1372,25 +1372,25 @@ mod integration;
 // Test utilities
 pub mod common {
     use axum_test::TestServer;
-    ${this.supportedFeatures.includes('database') ? 'use sqlx::PgPool;' : ''}
+    ${this.supportedFeatures.includes("database") ? "use sqlx::PgPool;" : ""}
 
     use crate::app::create_app;
 
     /// Create a test server for integration testing
-    pub async fn create_test_server(${this.supportedFeatures.includes('database') ? 'db_pool: PgPool' : ''}) -> TestServer {
-        let app = create_app(${this.supportedFeatures.includes('database') ? 'db_pool' : ''}).await.unwrap();
+    pub async fn create_test_server(${this.supportedFeatures.includes("database") ? "db_pool: PgPool" : ""}) -> TestServer {
+        let app = create_app(${this.supportedFeatures.includes("database") ? "db_pool" : ""}).await.unwrap();
         TestServer::new(app).unwrap()
     }
 
     ${
-      this.supportedFeatures.includes('database')
+      this.supportedFeatures.includes("database")
         ? `/// Create a test database pool
     pub async fn create_test_db_pool() -> PgPool {
         // Implementation would create a test database connection
         // This is a placeholder
         todo!("Implement test database setup")
     }`
-        : ''
+        : ""
     }
 }
 `;
@@ -1399,14 +1399,14 @@ pub mod common {
   private generateIntegrationTests(config: ProjectConfig): string {
     return `use axum::http::StatusCode;
 use axum_test::TestServer;
-${config.database ? 'use sqlx::PgPool;' : ''}
+${config.database ? "use sqlx::PgPool;" : ""}
 
-use crate::tests::common::{create_test_server${config.database ? ', create_test_db_pool' : ''}};
+use crate::tests::common::{create_test_server${config.database ? ", create_test_db_pool" : ""}};
 
 #[tokio::test]
 async fn test_health_endpoint() {
-    ${config.database ? 'let db_pool = create_test_db_pool().await;' : ''}
-    let server = create_test_server(${config.database ? 'db_pool' : ''}).await;
+    ${config.database ? "let db_pool = create_test_db_pool().await;" : ""}
+    let server = create_test_server(${config.database ? "db_pool" : ""}).await;
 
     let response = server.get("/health").await;
     
@@ -1418,8 +1418,8 @@ async fn test_health_endpoint() {
 
 #[tokio::test]
 async fn test_ping_endpoint() {
-    ${config.database ? 'let db_pool = create_test_db_pool().await;' : ''}
-    let server = create_test_server(${config.database ? 'db_pool' : ''}).await;
+    ${config.database ? "let db_pool = create_test_db_pool().await;" : ""}
+    let server = create_test_server(${config.database ? "db_pool" : ""}).await;
 
     let response = server.get("/api/v1/ping").await;
     
@@ -1429,8 +1429,8 @@ async fn test_ping_endpoint() {
 
 #[tokio::test]
 async fn test_not_found() {
-    ${config.database ? 'let db_pool = create_test_db_pool().await;' : ''}
-    let server = create_test_server(${config.database ? 'db_pool' : ''}).await;
+    ${config.database ? "let db_pool = create_test_db_pool().await;" : ""}
+    let server = create_test_server(${config.database ? "db_pool" : ""}).await;
 
     let response = server.get("/nonexistent").await;
     
@@ -1500,7 +1500,7 @@ migrate-create name:
 # Revert the last migration
 migrate-revert:
     sqlx migrate revert`
-    : ''
+    : ""
 }
 
 ${
@@ -1520,7 +1520,7 @@ docker-up:
 # Stop Docker Compose
 docker-down:
     docker-compose down`
-    : ''
+    : ""
 }
 
 # Run all checks (format, lint, test)
@@ -1583,7 +1583,7 @@ CMD ["app"]
 
   private generateDockerCompose(config: ProjectConfig): string {
     const dbService =
-      config.database === 'postgres'
+      config.database === "postgres"
         ? `
   database:
     image: postgres:15-alpine
@@ -1600,7 +1600,7 @@ CMD ["app"]
       interval: 10s
       timeout: 5s
       retries: 5`
-        : '';
+        : "";
 
     return `version: '3.8'
 
@@ -1611,22 +1611,22 @@ services:
       - "3000:3000"
     environment:
       - ENVIRONMENT=development
-      ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ''}
+      ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ""}
     ${
       config.database
         ? `depends_on:
       database:
         condition: service_healthy`
-        : ''
+        : ""
     }
     restart: unless-stopped
 ${dbService}
 
 ${
-  config.database === 'postgres'
+  config.database === "postgres"
     ? `volumes:
   postgres_data:`
-    : ''
+    : ""
 }
 `;
   }
@@ -1732,7 +1732,7 @@ jobs:
       run: cargo test --verbose
 
   ${
-    config.target === 'production'
+    config.target === "production"
       ? `build:
     needs: test
     runs-on: ubuntu-latest
@@ -1750,23 +1750,23 @@ jobs:
     - name: Build Docker image
       run: |
         docker build -f Dockerfile.prod -t your-registry/app:$` +
-        '{{ github.sha }}' +
+        "{{ github.sha }}" +
         ` .
         docker tag your-registry/app:$` +
-        '{{ github.sha }}' +
+        "{{ github.sha }}" +
         ` your-registry/app:latest
     
     - name: Push Docker image
       run: |
         echo "$` +
-        '{{ secrets.DOCKER_PASSWORD }}' +
+        "{{ secrets.DOCKER_PASSWORD }}" +
         `" | docker login -u "$` +
-        '{{ secrets.DOCKER_USERNAME }}' +
+        "{{ secrets.DOCKER_USERNAME }}" +
         `" --password-stdin
         docker push your-registry/app:$` +
         `{{ github.sha }}
         docker push your-registry/app:latest`
-      : ''
+      : ""
   }
 
   security-audit:
@@ -1800,7 +1800,7 @@ codegen-units = 1
 panic = "abort"
 strip = true
 opt-level = 3`
-    : ''
+    : ""
 }
 `;
   }

@@ -320,6 +320,176 @@ export class CUEManipulator {
   }
 
   /**
+   * Remove a service from the specification
+   */
+  async removeService(content: string, serviceName: string): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+      if (!ast.services || !Object.prototype.hasOwnProperty.call(ast.services, serviceName)) {
+        return content;
+      }
+
+      delete ast.services[serviceName];
+
+      if (ast.services && Object.keys(ast.services).length === 0) {
+        delete ast.services;
+      }
+
+      return await this.serialize(ast, content);
+    } catch {
+      return content;
+    }
+  }
+
+  /**
+   * Remove an endpoint or method from the specification
+   */
+  async removeEndpoint(content: string, endpoint: string, method?: string): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+      if (!ast.paths || !ast.paths[endpoint]) {
+        return content;
+      }
+
+      if (method) {
+        const methodKey = method.toLowerCase();
+        if (!ast.paths[endpoint][methodKey]) {
+          return content;
+        }
+        delete ast.paths[endpoint][methodKey];
+        if (Object.keys(ast.paths[endpoint]).length === 0) {
+          delete ast.paths[endpoint];
+        }
+      } else {
+        delete ast.paths[endpoint];
+      }
+
+      if (ast.paths && Object.keys(ast.paths).length === 0) {
+        delete ast.paths;
+      }
+
+      return await this.serialize(ast, content);
+    } catch {
+      return content;
+    }
+  }
+
+  /**
+   * Remove an item from an array-based section
+   */
+  async removeFromArray(
+    content: string,
+    section: string,
+    predicate: (item: any) => boolean,
+  ): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+      const segments = section.split(".");
+      let parent: any = ast;
+
+      for (let i = 0; i < segments.length - 1; i += 1) {
+        const segment = segments[i];
+        if (!parent || typeof parent !== "object" || !(segment in parent)) {
+          return content;
+        }
+        parent = parent[segment];
+      }
+
+      const key = segments[segments.length - 1];
+      const target = parent?.[key];
+      if (!Array.isArray(target)) {
+        return content;
+      }
+
+      const filtered = target.filter((item: any) => !predicate(item));
+      if (filtered.length === target.length) {
+        return content;
+      }
+
+      parent[key] = filtered;
+
+      if (Array.isArray(parent[key]) && parent[key].length === 0) {
+        this.cleanupEmptyContainers(segments, ast);
+      }
+
+      return await this.serialize(ast, content);
+    } catch {
+      return content;
+    }
+  }
+
+  /**
+   * Remove a UI route by identifier
+   */
+  async removeRoute(content: string, identifier: { id?: string; path?: string }): Promise<string> {
+    const hasIdentifier = Boolean(identifier.id || identifier.path);
+    if (!hasIdentifier) {
+      return content;
+    }
+
+    return await this.removeFromArray(content, "ui.routes", (route) => {
+      const matchesId = identifier.id ? route.id === identifier.id : false;
+      const matchesPath = identifier.path ? route.path === identifier.path : false;
+
+      if (identifier.id && identifier.path) {
+        return matchesId || matchesPath;
+      }
+      if (identifier.id) {
+        return matchesId;
+      }
+      return matchesPath;
+    });
+  }
+
+  /**
+   * Remove a flow by identifier
+   */
+  async removeFlow(content: string, flowId: string): Promise<string> {
+    if (!flowId) {
+      return content;
+    }
+
+    return await this.removeFromArray(content, "flows", (flow) => flow.id === flowId);
+  }
+
+  /**
+   * Remove a key from a specific section
+   */
+  async removeFromSection(content: string, section: string, key: string): Promise<string> {
+    try {
+      const ast = await this.parse(content);
+      const segments = section.split(".");
+      const pathStack: Array<{ parent: any; key: string }> = [];
+      let current: any = ast;
+
+      for (const segment of segments) {
+        if (!current || typeof current !== "object" || !(segment in current)) {
+          return content;
+        }
+        pathStack.push({ parent: current, key: segment });
+        current = current[segment];
+      }
+
+      if (!current || typeof current !== "object" || !(key in current)) {
+        return content;
+      }
+
+      delete current[key];
+
+      if (typeof current === "object" && current && Object.keys(current).length === 0) {
+        this.cleanupEmptyContainers(
+          pathStack.map(({ key }) => key),
+          ast,
+        );
+      }
+
+      return await this.serialize(ast, content);
+    } catch {
+      return content;
+    }
+  }
+
+  /**
    * Serialize a JavaScript object back to formatted CUE
    */
   async serialize(ast: any, originalContent?: string): Promise<string> {
@@ -631,6 +801,38 @@ export class CUEManipulator {
         return {
           DATABASE_URL: `${serviceType}://${dbName}`,
         };
+    }
+  }
+
+  /**
+   * Cleanup temporary files
+   */
+  private cleanupEmptyContainers(segments: string[], ast: any): void {
+    const stack: Array<{ parent: any; key: string }> = [];
+    let current = ast;
+
+    for (const segment of segments) {
+      if (!current || typeof current !== "object" || !(segment in current)) {
+        return;
+      }
+      stack.push({ parent: current, key: segment });
+      current = current[segment];
+    }
+
+    for (let i = stack.length - 1; i >= 0; i -= 1) {
+      const { parent, key } = stack[i];
+      const value = parent[key];
+
+      if (
+        value &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        Object.keys(value).length === 0
+      ) {
+        delete parent[key];
+      } else {
+        break;
+      }
     }
   }
 

@@ -5,15 +5,13 @@
 import {
   ArchitectureReport,
   EventsReport,
-  FlowReport,
   HandlersReport,
   ServicesReport,
   TasksReport,
-  ViewReport,
   WebhooksReport,
-} from '@/components/index';
-import type { Project } from '@/types/api';
-import { DiagramPlaceholder } from './DiagramPlaceholder';
+} from "@/components/index";
+import type { Project } from "@/types/api";
+import { DiagramPlaceholder } from "./DiagramPlaceholder";
 
 interface DiagramTabsProps {
   project: Project | null;
@@ -22,26 +20,8 @@ interface DiagramTabsProps {
 export function useDiagramTabs({ project }: DiagramTabsProps) {
   const diagramTabs = [
     {
-      id: 'flow',
-      label: 'Flow',
-      content: project ? (
-        <FlowReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Flow Diagram" />
-      ),
-    },
-    {
-      id: 'view',
-      label: 'View',
-      content: project ? (
-        <ViewReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="View Wireframes" />
-      ),
-    },
-    {
-      id: 'architecture',
-      label: 'Sources',
+      id: "architecture",
+      label: "Sources",
       content: project ? (
         <ArchitectureReport projectId={project.id} />
       ) : (
@@ -49,8 +29,8 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'services',
-      label: 'Services',
+      id: "services",
+      label: "Services",
       content: project ? (
         <ServicesReport projectId={project.id} />
       ) : (
@@ -58,8 +38,8 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'tasks',
-      label: 'Tasks',
+      id: "tasks",
+      label: "Tasks",
       content: project ? (
         <TasksReport projectId={project.id} />
       ) : (
@@ -67,8 +47,8 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'events',
-      label: 'Events',
+      id: "events",
+      label: "Events",
       content: project ? (
         <EventsReport projectId={project.id} />
       ) : (
@@ -76,8 +56,8 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'webhooks',
-      label: 'Webhooks',
+      id: "webhooks",
+      label: "Webhooks",
       content: project ? (
         <WebhooksReport projectId={project.id} />
       ) : (
@@ -85,8 +65,8 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ),
     },
     {
-      id: 'handlers',
-      label: 'Handlers',
+      id: "handlers",
+      label: "Handlers",
       content: <HandlersReport />,
     },
   ];

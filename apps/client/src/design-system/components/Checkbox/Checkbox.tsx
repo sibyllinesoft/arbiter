@@ -4,16 +4,16 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { clsx } from 'clsx';
-import { AlertCircle, AlertTriangle, Check, CheckCircle, Loader2, Minus } from 'lucide-react';
-import { type InputHTMLAttributes, type ReactNode, forwardRef, useEffect, useId } from 'react';
+import { clsx } from "clsx";
+import { AlertCircle, AlertTriangle, Check, CheckCircle, Loader2, Minus } from "lucide-react";
+import { type InputHTMLAttributes, type ReactNode, forwardRef, useEffect, useId } from "react";
 
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   /** Checkbox variant determines the visual style */
-  variant?: 'default' | 'error' | 'success' | 'warning';
+  variant?: "default" | "error" | "success" | "warning";
 
   /** Checkbox size affects the checkbox and font size */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Label text for the checkbox */
   label?: string;
@@ -58,8 +58,8 @@ export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement
 export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
   (
     {
-      variant = 'default',
-      size = 'md',
+      variant = "default",
+      size = "md",
       label,
       description,
       helperText,
@@ -78,17 +78,17 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       id,
       ...props
     },
-    ref
+    ref,
   ) => {
     // Determine actual variant based on state props
-    const actualVariant = error ? 'error' : warning ? 'warning' : success ? 'success' : variant;
+    const actualVariant = error ? "error" : warning ? "warning" : success ? "success" : variant;
     const actualHelperText = error || warning || success || helperText;
 
     // Generate unique ID
     const checkboxId = id || useId();
 
     useEffect(() => {
-      if (ref && typeof ref !== 'function' && 'current' in ref) {
+      if (ref && typeof ref !== "function" && "current" in ref) {
         const input = (ref as React.MutableRefObject<HTMLInputElement | null>).current;
         if (input) {
           input.indeterminate = indeterminate && !checked;
@@ -112,22 +112,22 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     // Checkbox size classes
     const sizeClasses = {
       sm: {
-        checkbox: 'h-4 w-4',
-        text: 'text-sm',
-        icon: 'h-2.5 w-2.5',
-        gap: 'gap-2',
+        checkbox: "h-4 w-4",
+        text: "text-sm",
+        icon: "h-2.5 w-2.5",
+        gap: "gap-2",
       },
       md: {
-        checkbox: 'h-5 w-5',
-        text: 'text-base',
-        icon: 'h-3 w-3',
-        gap: 'gap-3',
+        checkbox: "h-5 w-5",
+        text: "text-base",
+        icon: "h-3 w-3",
+        gap: "gap-3",
       },
       lg: {
-        checkbox: 'h-6 w-6',
-        text: 'text-lg',
-        icon: 'h-4 w-4',
-        gap: 'gap-3',
+        checkbox: "h-6 w-6",
+        text: "text-lg",
+        icon: "h-4 w-4",
+        gap: "gap-3",
       },
     };
 
@@ -136,36 +136,36 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     // Checkbox variant classes
     const variantClasses = {
       default: clsx(
-        'border-graphite-300 text-blue-600 focus:ring-blue-500',
-        'checked:bg-blue-600 checked:border-blue-600',
-        'hover:border-graphite-400',
-        'disabled:bg-graphite-50 disabled:border-graphite-200 disabled:text-graphite-400'
+        "border-graphite-300 text-blue-600 focus:ring-blue-500",
+        "checked:bg-blue-600 checked:border-blue-600",
+        "hover:border-graphite-400",
+        "disabled:bg-graphite-50 disabled:border-graphite-200 disabled:text-graphite-400",
       ),
       error: clsx(
-        'border-red-300 text-red-600 focus:ring-red-500',
-        'checked:bg-red-600 checked:border-red-600',
-        'hover:border-red-400',
-        'disabled:bg-red-50 disabled:border-red-200 disabled:text-red-300'
+        "border-red-300 text-red-600 focus:ring-red-500",
+        "checked:bg-red-600 checked:border-red-600",
+        "hover:border-red-400",
+        "disabled:bg-red-50 disabled:border-red-200 disabled:text-red-300",
       ),
       warning: clsx(
-        'border-amber-300 text-amber-600 focus:ring-amber-500',
-        'checked:bg-amber-600 checked:border-amber-600',
-        'hover:border-amber-400',
-        'disabled:bg-amber-50 disabled:border-amber-200 disabled:text-amber-300'
+        "border-amber-300 text-amber-600 focus:ring-amber-500",
+        "checked:bg-amber-600 checked:border-amber-600",
+        "hover:border-amber-400",
+        "disabled:bg-amber-50 disabled:border-amber-200 disabled:text-amber-300",
       ),
       success: clsx(
-        'border-emerald-300 text-emerald-600 focus:ring-emerald-500',
-        'checked:bg-emerald-600 checked:border-emerald-600',
-        'hover:border-emerald-400',
-        'disabled:bg-emerald-50 disabled:border-emerald-200 disabled:text-emerald-300'
+        "border-emerald-300 text-emerald-600 focus:ring-emerald-500",
+        "checked:bg-emerald-600 checked:border-emerald-600",
+        "hover:border-emerald-400",
+        "disabled:bg-emerald-50 disabled:border-emerald-200 disabled:text-emerald-300",
       ),
     };
 
     const checkboxClasses = clsx(
       // Base styles
-      'relative rounded border-2 transition-all duration-150 ease-in-out',
-      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50',
-      'disabled:cursor-not-allowed',
+      "relative rounded border-2 transition-all duration-150 ease-in-out",
+      "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50",
+      "disabled:cursor-not-allowed",
 
       // Size
       sizeClass.checkbox,
@@ -174,24 +174,24 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       variantClasses[actualVariant],
 
       // Loading state
-      loading && 'cursor-wait',
+      loading && "cursor-wait",
 
-      className
+      className,
     );
 
-    const wrapperClasses = clsx(wrapperClassName, disabled && 'opacity-60');
+    const wrapperClasses = clsx(wrapperClassName, disabled && "opacity-60");
 
-    const labelClasses = clsx('cursor-pointer select-none', labelClassName);
+    const labelClasses = clsx("cursor-pointer select-none", sizeClass.text, labelClassName);
 
     const contentClasses = clsx(
-      'flex-1',
+      "flex-1",
       sizeClass.text,
-      'text-graphite-900 dark:text-gray-100 font-medium',
-      actualVariant === 'error' && 'text-red-900 dark:text-red-300',
-      actualVariant === 'warning' && 'text-amber-900 dark:text-amber-300',
-      actualVariant === 'success' && 'text-emerald-900 dark:text-emerald-300',
-      disabled && 'text-graphite-500 dark:text-gray-400',
-      labelClassName
+      "text-graphite-900 dark:text-gray-100 font-medium",
+      actualVariant === "error" && "text-red-900 dark:text-red-300",
+      actualVariant === "warning" && "text-amber-900 dark:text-amber-300",
+      actualVariant === "success" && "text-emerald-900 dark:text-emerald-300",
+      disabled && "text-graphite-500 dark:text-gray-400",
+      labelClassName,
     );
 
     return (
@@ -206,12 +206,12 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             className="sr-only"
             aria-describedby={clsx(
               actualHelperText && `${checkboxId}-description`,
-              description && `${checkboxId}-desc`
+              description && `${checkboxId}-desc`,
             )}
             {...props}
           />
           <label htmlFor={checkboxId} className={labelClasses}>
-            <div className={clsx('flex items-start', sizeClass.gap)}>
+            <div className={clsx("flex items-start", sizeClass.gap)}>
               <div className="relative flex-shrink-0">
                 <div className={checkboxClasses}>
                   {/* Loading spinner */}
@@ -220,7 +220,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                       <Loader2
                         className={clsx(
                           sizeClass.icon,
-                          'animate-spin text-graphite-400 dark:text-gray-500'
+                          "animate-spin text-graphite-400 dark:text-gray-500",
                         )}
                       />
                     </div>
@@ -246,8 +246,8 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
                     <p
                       id={`${checkboxId}-desc`}
                       className={clsx(
-                        'text-sm text-graphite-600 dark:text-gray-400',
-                        disabled && 'text-graphite-400 dark:text-gray-500'
+                        "text-sm text-graphite-600 dark:text-gray-400",
+                        disabled && "text-graphite-400 dark:text-gray-500",
                       )}
                     >
                       {description}
@@ -264,11 +264,11 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
           <p
             id={`${checkboxId}-description`}
             className={clsx(
-              'text-sm ml-7 flex items-center gap-1',
-              actualVariant === 'error' && 'text-red-600 dark:text-red-400',
-              actualVariant === 'warning' && 'text-amber-600 dark:text-amber-400',
-              actualVariant === 'success' && 'text-green-600 dark:text-green-400',
-              actualVariant === 'default' && 'text-graphite-600 dark:text-gray-400'
+              "text-sm ml-7 flex items-center gap-1",
+              actualVariant === "error" && "text-red-600 dark:text-red-400",
+              actualVariant === "warning" && "text-amber-600 dark:text-amber-400",
+              actualVariant === "success" && "text-green-600 dark:text-green-400",
+              actualVariant === "default" && "text-graphite-600 dark:text-gray-400",
             )}
           >
             {validationIcon}
@@ -277,9 +277,9 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
-Checkbox.displayName = 'Checkbox';
+Checkbox.displayName = "Checkbox";
 
 export default Checkbox;

@@ -1308,36 +1308,36 @@ export const combinedProjectData = {
  * Sample resolved data (what would come from the CUE evaluation)
  */
 export const sampleResolvedData = {
-  spec_hash: 'sha256:a1b2c3d4e5f6789...',
+  spec_hash: "sha256:a1b2c3d4e5f6789...",
   last_updated: new Date().toISOString(),
   resolved: {
     project: {
-      name: 'Advanced TypeScript Microservice',
-      version: 'v3.2.1',
-      language: 'TypeScript',
-      runtime: 'Node.js',
+      name: "Advanced TypeScript Microservice",
+      version: "v3.2.1",
+      language: "TypeScript",
+      runtime: "Node.js",
     },
     services: {
       auth_service: {
-        name: 'Authentication Service',
-        version: 'v2.1.0',
-        status: 'production',
+        name: "Authentication Service",
+        version: "v2.1.0",
+        status: "production",
         endpoints: 4,
-        dependencies: ['redis', 'vault', 'sendgrid'],
+        dependencies: ["redis", "vault", "sendgrid"],
       },
       user_service: {
-        name: 'User Management Service',
-        version: 'v1.8.2',
-        status: 'production',
+        name: "User Management Service",
+        version: "v1.8.2",
+        status: "production",
         endpoints: 4,
-        depends_on: ['auth_service'],
+        depends_on: ["auth_service"],
       },
       notification_service: {
-        name: 'Notification Service',
-        version: 'v0.9.1',
-        status: 'staging',
+        name: "Notification Service",
+        version: "v0.9.1",
+        status: "staging",
         endpoints: 6,
-        depends_on: ['auth_service', 'user_service'],
+        depends_on: ["auth_service", "user_service"],
       },
     },
     requirements: {
@@ -1346,7 +1346,7 @@ export const sampleResolvedData = {
       compliance: 1,
       total: 6,
     },
-    validation_status: 'passed',
+    validation_status: "passed",
     deployment_ready: true,
   },
 };

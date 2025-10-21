@@ -11,23 +11,23 @@ import type {
   LanguagePlugin,
   ProjectConfig,
   ServiceConfig,
-} from './index.js';
+} from "./index.js";
 
 export class PythonPlugin implements LanguagePlugin {
-  readonly name = 'Python Plugin';
-  readonly language = 'python';
-  readonly version = '1.0.0';
-  readonly description = 'Modern Python with FastAPI, SQLAlchemy 2.0+, and async best practices';
+  readonly name = "Python Plugin";
+  readonly language = "python";
+  readonly version = "1.0.0";
+  readonly description = "Modern Python with FastAPI, SQLAlchemy 2.0+, and async best practices";
   readonly supportedFeatures = [
-    'api',
-    'async-services',
-    'database-orm',
-    'validation',
-    'authentication',
-    'testing',
-    'dependency-injection',
-    'background-tasks',
-    'websockets',
+    "api",
+    "async-services",
+    "database-orm",
+    "validation",
+    "authentication",
+    "testing",
+    "dependency-injection",
+    "background-tasks",
+    "websockets",
   ];
   readonly capabilities = {
     services: true,
@@ -37,7 +37,7 @@ export class PythonPlugin implements LanguagePlugin {
 
   // Python doesn't have UI components like frontend frameworks
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
-    throw new Error('Component generation not supported for Python. Use generateService instead.');
+    throw new Error("Component generation not supported for Python. Use generateService instead.");
   }
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
@@ -45,27 +45,27 @@ export class PythonPlugin implements LanguagePlugin {
     const dependencies: string[] = [];
 
     switch (config.type) {
-      case 'api':
+      case "api":
         files.push({
           path: `app/routers/${config.name}.py`,
           content: this.generateAPIRouter(config),
         });
-        dependencies.push('fastapi', 'uvicorn');
+        dependencies.push("fastapi", "uvicorn");
         break;
-      case 'service':
+      case "service":
         files.push({
           path: `app/services/${config.name}_service.py`,
           content: this.generateBusinessService(config),
         });
         break;
-      case 'model':
+      case "model":
         files.push({
           path: `app/models/${config.name}.py`,
           content: this.generateModel(config),
         });
-        dependencies.push('sqlalchemy');
+        dependencies.push("sqlalchemy");
         break;
-      case 'handler':
+      case "handler":
         files.push({
           path: `app/handlers/${config.name}_handler.py`,
           content: this.generateHandler(config),
@@ -74,7 +74,7 @@ export class PythonPlugin implements LanguagePlugin {
     }
 
     if (config.validation) {
-      dependencies.push('pydantic');
+      dependencies.push("pydantic");
       files.push({
         path: `app/schemas/${config.name}_schema.py`,
         content: this.generatePydanticSchema(config),
@@ -82,7 +82,7 @@ export class PythonPlugin implements LanguagePlugin {
     }
 
     if (config.database) {
-      dependencies.push('sqlalchemy', 'asyncpg');
+      dependencies.push("sqlalchemy", "asyncpg");
     }
 
     return { files, dependencies };
@@ -91,85 +91,85 @@ export class PythonPlugin implements LanguagePlugin {
   async initializeProject(config: ProjectConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
     const dependencies = [
-      'fastapi>=0.100.0',
-      'uvicorn[standard]>=0.22.0',
-      'pydantic>=2.0.0',
-      'python-multipart>=0.0.6',
+      "fastapi>=0.100.0",
+      "uvicorn[standard]>=0.22.0",
+      "pydantic>=2.0.0",
+      "python-multipart>=0.0.6",
     ];
 
     // Requirements file
     files.push({
-      path: 'requirements.txt',
+      path: "requirements.txt",
       content: this.generateRequirements(config, dependencies),
     });
 
     // Development requirements
     files.push({
-      path: 'requirements-dev.txt',
+      path: "requirements-dev.txt",
       content: this.generateDevRequirements(config),
     });
 
     // Main application file
     files.push({
-      path: 'app/main.py',
+      path: "app/main.py",
       content: this.generateMainApp(config),
     });
 
     // Application configuration
     files.push({
-      path: 'app/core/config.py',
+      path: "app/core/config.py",
       content: this.generateConfig(config),
     });
 
     // Core package init
     files.push({
-      path: 'app/__init__.py',
-      content: '',
+      path: "app/__init__.py",
+      content: "",
     });
 
     files.push({
-      path: 'app/core/__init__.py',
-      content: '',
+      path: "app/core/__init__.py",
+      content: "",
     });
 
     // Database setup (if needed)
     if (config.database) {
       files.push({
-        path: 'app/core/database.py',
+        path: "app/core/database.py",
         content: this.generateDatabase(config),
       });
       files.push({
-        path: 'app/models/__init__.py',
-        content: '',
+        path: "app/models/__init__.py",
+        content: "",
       });
-      dependencies.push('sqlalchemy>=2.0.0', 'asyncpg>=0.28.0');
+      dependencies.push("sqlalchemy>=2.0.0", "asyncpg>=0.28.0");
     }
 
     // Authentication setup (if needed)
     if (config.auth) {
       files.push({
-        path: 'app/core/security.py',
+        path: "app/core/security.py",
         content: this.generateSecurity(config),
       });
       files.push({
-        path: 'app/core/auth.py',
+        path: "app/core/auth.py",
         content: this.generateAuth(config),
       });
-      dependencies.push('python-jose[cryptography]', 'passlib[bcrypt]');
+      dependencies.push("python-jose[cryptography]", "passlib[bcrypt]");
     }
 
     // Testing setup
     if (config.testing) {
       files.push({
-        path: 'tests/__init__.py',
-        content: '',
+        path: "tests/__init__.py",
+        content: "",
       });
       files.push({
-        path: 'tests/conftest.py',
+        path: "tests/conftest.py",
         content: this.generateTestConfig(config),
       });
       files.push({
-        path: 'tests/test_main.py',
+        path: "tests/test_main.py",
         content: this.generateMainTest(config),
       });
     }
@@ -177,18 +177,18 @@ export class PythonPlugin implements LanguagePlugin {
     // Docker setup (if requested)
     if (config.docker) {
       files.push({
-        path: 'Dockerfile',
+        path: "Dockerfile",
         content: this.generateDockerfile(config),
       });
       files.push({
-        path: 'docker-compose.yml',
+        path: "docker-compose.yml",
         content: this.generateDockerCompose(config),
       });
     }
 
     // Project metadata
     files.push({
-      path: 'pyproject.toml',
+      path: "pyproject.toml",
       content: this.generatePyprojectToml(config),
     });
 
@@ -196,13 +196,13 @@ export class PythonPlugin implements LanguagePlugin {
       files,
       dependencies,
       scripts: {
-        dev: 'uvicorn app.main:app --reload --host 0.0.0.0 --port 8000',
-        start: 'uvicorn app.main:app --host 0.0.0.0 --port 8000',
-        test: 'pytest',
-        'test:watch': 'pytest --watch',
-        format: 'black . && isort .',
-        lint: 'flake8 app tests',
-        'type-check': 'mypy app',
+        dev: "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+        start: "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+        test: "pytest",
+        "test:watch": "pytest --watch",
+        format: "black . && isort .",
+        lint: "flake8 app tests",
+        "type-check": "mypy app",
       },
     };
   }
@@ -211,16 +211,16 @@ export class PythonPlugin implements LanguagePlugin {
     const files: GeneratedFile[] = [];
 
     // Production dockerfile
-    if (config.target === 'production') {
+    if (config.target === "production") {
       files.push({
-        path: 'Dockerfile.prod',
+        path: "Dockerfile.prod",
         content: this.generateProductionDockerfile(config),
       });
     }
 
     // CI/CD configuration
     files.push({
-      path: '.github/workflows/python-app.yml',
+      path: ".github/workflows/python-app.yml",
       content: this.generateGitHubActions(config),
     });
 
@@ -229,26 +229,26 @@ export class PythonPlugin implements LanguagePlugin {
 
   private generateAPIRouter(config: ServiceConfig): string {
     const endpoints = config.endpoints || [
-      'GET /',
-      'POST /',
-      'GET /{id}',
-      'PUT /{id}',
-      'DELETE /{id}',
+      "GET /",
+      "POST /",
+      "GET /{id}",
+      "PUT /{id}",
+      "DELETE /{id}",
     ];
     const routerMethods = endpoints
-      .map(endpoint => {
-        const [method, path] = endpoint.split(' ');
+      .map((endpoint) => {
+        const [method, path] = endpoint.split(" ");
         const methodName = method.toLowerCase();
-        const safePath = path.replace('{', '{').replace('}', '}'); // Ensure proper formatting
+        const safePath = path.replace("{", "{").replace("}", "}"); // Ensure proper formatting
 
         return `
 @router.${methodName}("${safePath}")
-async def ${methodName}_${config.name}(${path.includes('{id}') ? 'id: int' : ''}):
+async def ${methodName}_${config.name}(${path.includes("{id}") ? "id: int" : ""}):
     """${method} ${path} endpoint for ${config.name}"""
     # TODO: Implement endpoint logic
-    return {"message": "${method} ${config.name} endpoint", ${path.includes('{id}') ? '"id": id' : ''}}`;
+    return {"message": "${method} ${config.name} endpoint", ${path.includes("{id}") ? '"id": id' : ""}}`;
       })
-      .join('\n');
+      .join("\n");
 
     return `"""
 ${config.name} Router
@@ -256,8 +256,8 @@ FastAPI router for ${config.name} endpoints
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List, Optional
-${config.database ? 'from app.core.database import get_db_session' : ''}
-${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ''}
+${config.database ? "from app.core.database import get_db_session" : ""}
+${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ""}
 
 router = APIRouter(
     prefix="/${config.name.toLowerCase()}",
@@ -276,8 +276,8 @@ Business logic for ${config.name} operations
 """
 from typing import List, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-${config.database ? 'from app.core.database import get_db_session' : ''}
-${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ''}
+${config.database ? "from app.core.database import get_db_session" : ""}
+${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ""}
 import logging
 
 logger = logging.getLogger(__name__)
@@ -286,31 +286,31 @@ logger = logging.getLogger(__name__)
 class ${config.name}Service:
     """Service class for ${config.name} business logic"""
 
-    async def get_all(self${config.database ? ', db: AsyncSession' : ''}) -> List[Any]:
+    async def get_all(self${config.database ? ", db: AsyncSession" : ""}) -> List[Any]:
         """Get all ${config.name} items"""
         logger.info(f"Fetching all ${config.name} items")
         # TODO: Implement get_all logic
         return []
 
-    async def get_by_id(self, item_id: int${config.database ? ', db: AsyncSession' : ''}) -> Optional[Any]:
+    async def get_by_id(self, item_id: int${config.database ? ", db: AsyncSession" : ""}) -> Optional[Any]:
         """Get ${config.name} by ID"""
         logger.info(f"Fetching ${config.name} with ID: {item_id}")
         # TODO: Implement get_by_id logic
         return None
 
-    async def create(self, item_data: Any${config.database ? ', db: AsyncSession' : ''}) -> Any:
+    async def create(self, item_data: Any${config.database ? ", db: AsyncSession" : ""}) -> Any:
         """Create new ${config.name}"""
         logger.info(f"Creating new ${config.name}")
         # TODO: Implement create logic
         return item_data
 
-    async def update(self, item_id: int, item_data: Any${config.database ? ', db: AsyncSession' : ''}) -> Optional[Any]:
+    async def update(self, item_id: int, item_data: Any${config.database ? ", db: AsyncSession" : ""}) -> Optional[Any]:
         """Update ${config.name} by ID"""
         logger.info(f"Updating ${config.name} with ID: {item_id}")
         # TODO: Implement update logic
         return item_data
 
-    async def delete(self, item_id: int${config.database ? ', db: AsyncSession' : ''}) -> bool:
+    async def delete(self, item_id: int${config.database ? ", db: AsyncSession" : ""}) -> bool:
         """Delete ${config.name} by ID"""
         logger.info(f"Deleting ${config.name} with ID: {item_id}")
         # TODO: Implement delete logic
@@ -359,8 +359,8 @@ HTTP request handlers for ${config.name}
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-${config.database ? 'from app.core.database import get_db_session' : ''}
-${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ''}
+${config.database ? "from app.core.database import get_db_session" : ""}
+${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ""}
 from app.services.${config.name}_service import ${config.name.toLowerCase()}_service
 import logging
 
@@ -370,18 +370,18 @@ logger = logging.getLogger(__name__)
 class ${config.name}Handler:
     """Handler class for ${config.name} HTTP operations"""
 
-    async def handle_get_all(self${config.database ? ', db: AsyncSession = Depends(get_db_session)' : ''}) -> List[Any]:
+    async def handle_get_all(self${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> List[Any]:
         """Handle GET request for all ${config.name} items"""
         try:
-            return await ${config.name.toLowerCase()}_service.get_all(${config.database ? 'db=db' : ''})
+            return await ${config.name.toLowerCase()}_service.get_all(${config.database ? "db=db" : ""})
         except Exception as e:
             logger.error(f"Error fetching all ${config.name}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_get_by_id(self, item_id: int${config.database ? ', db: AsyncSession = Depends(get_db_session)' : ''}) -> Any:
+    async def handle_get_by_id(self, item_id: int${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> Any:
         """Handle GET request for ${config.name} by ID"""
         try:
-            item = await ${config.name.toLowerCase()}_service.get_by_id(item_id${config.database ? ', db=db' : ''})
+            item = await ${config.name.toLowerCase()}_service.get_by_id(item_id${config.database ? ", db=db" : ""})
             if not item:
                 raise HTTPException(status_code=404, detail="${config.name} not found")
             return item
@@ -391,18 +391,18 @@ class ${config.name}Handler:
             logger.error(f"Error fetching ${config.name} {item_id}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_create(self, item_data: Any${config.database ? ', db: AsyncSession = Depends(get_db_session)' : ''}) -> Any:
+    async def handle_create(self, item_data: Any${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> Any:
         """Handle POST request to create ${config.name}"""
         try:
-            return await ${config.name.toLowerCase()}_service.create(item_data${config.database ? ', db=db' : ''})
+            return await ${config.name.toLowerCase()}_service.create(item_data${config.database ? ", db=db" : ""})
         except Exception as e:
             logger.error(f"Error creating ${config.name}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_update(self, item_id: int, item_data: Any${config.database ? ', db: AsyncSession = Depends(get_db_session)' : ''}) -> Any:
+    async def handle_update(self, item_id: int, item_data: Any${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> Any:
         """Handle PUT request to update ${config.name}"""
         try:
-            item = await ${config.name.toLowerCase()}_service.update(item_id, item_data${config.database ? ', db=db' : ''})
+            item = await ${config.name.toLowerCase()}_service.update(item_id, item_data${config.database ? ", db=db" : ""})
             if not item:
                 raise HTTPException(status_code=404, detail="${config.name} not found")
             return item
@@ -412,10 +412,10 @@ class ${config.name}Handler:
             logger.error(f"Error updating ${config.name} {item_id}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_delete(self, item_id: int${config.database ? ', db: AsyncSession = Depends(get_db_session)' : ''}) -> dict:
+    async def handle_delete(self, item_id: int${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> dict:
         """Handle DELETE request for ${config.name}"""
         try:
-            success = await ${config.name.toLowerCase()}_service.delete(item_id${config.database ? ', db=db' : ''})
+            success = await ${config.name.toLowerCase()}_service.delete(item_id${config.database ? ", db=db" : ""})
             if not success:
                 raise HTTPException(status_code=404, detail="${config.name} not found")
             return {"message": "${config.name} deleted successfully"}
@@ -475,10 +475,10 @@ class ${config.name}InDB(${config.name}Schema):
   }
 
   private generateMainApp(config: ProjectConfig): string {
-    const corsImport = config.features.includes('cors')
-      ? 'from fastapi.middleware.cors import CORSMiddleware'
-      : '';
-    const corsSetup = config.features.includes('cors')
+    const corsImport = config.features.includes("cors")
+      ? "from fastapi.middleware.cors import CORSMiddleware"
+      : "";
+    const corsSetup = config.features.includes("cors")
       ? `
 app.add_middleware(
     CORSMiddleware,
@@ -487,7 +487,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )`
-      : '';
+      : "";
 
     return `"""
 ${config.name} FastAPI Application
@@ -502,7 +502,7 @@ import logging
 import time
 
 from app.core.config import settings
-${config.database ? 'from app.core.database import init_db' : ''}
+${config.database ? "from app.core.database import init_db" : ""}
 
 # Configure logging
 logging.basicConfig(
@@ -517,7 +517,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     logger.info("Starting up ${config.name}")
-    ${config.database ? 'await init_db()' : ''}
+    ${config.database ? "await init_db()" : ""}
     
     yield
     
@@ -528,7 +528,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI instance
 app = FastAPI(
     title="${config.name}",
-    description="${config.description || 'A modern FastAPI application'}",
+    description="${config.description || "A modern FastAPI application"}",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -627,7 +627,7 @@ class Settings(BaseSettings):
     
     # Security settings
     ${
-      config.auth === 'jwt'
+      config.auth === "jwt"
         ? `SECRET_KEY: str = Field(default="your-secret-key-change-in-production", description="JWT secret key")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="Access token expiration time")`
         : '# SECRET_KEY: str = Field(default="your-secret-key")'
@@ -650,7 +650,7 @@ settings = Settings()
   }
 
   private generateDatabase(config: ProjectConfig): string {
-    const dbType = config.database || 'postgres';
+    const dbType = config.database || "postgres";
 
     return `"""
 Database Configuration
@@ -721,7 +721,7 @@ async def close_db() -> None:
   }
 
   private generateSecurity(config: ProjectConfig): string {
-    if (config.auth !== 'jwt') return '';
+    if (config.auth !== "jwt") return "";
 
     return `"""
 Security Utilities
@@ -781,7 +781,7 @@ def get_password_hash(password: str) -> str:
   }
 
   private generateAuth(config: ProjectConfig): string {
-    if (config.auth !== 'jwt') return '';
+    if (config.auth !== "jwt") return "";
 
     return `"""
 Authentication Dependencies
@@ -853,34 +853,34 @@ async def get_current_active_user(
     const deps = [...baseDeps];
 
     if (config.database) {
-      deps.push('sqlalchemy>=2.0.0', 'asyncpg>=0.28.0');
+      deps.push("sqlalchemy>=2.0.0", "asyncpg>=0.28.0");
     }
-    if (config.auth === 'jwt') {
-      deps.push('python-jose[cryptography]>=3.3.0', 'passlib[bcrypt]>=1.7.4');
+    if (config.auth === "jwt") {
+      deps.push("python-jose[cryptography]>=3.3.0", "passlib[bcrypt]>=1.7.4");
     }
-    if (config.features.includes('cors')) {
+    if (config.features.includes("cors")) {
       // CORS support is built into FastAPI
     }
 
-    return deps.sort().join('\n');
+    return deps.sort().join("\n");
   }
 
   private generateDevRequirements(config: ProjectConfig): string {
     const devDeps = [
-      'pytest>=7.0.0',
-      'pytest-asyncio>=0.21.0',
-      'httpx>=0.24.0',
-      'black>=23.0.0',
-      'isort>=5.12.0',
-      'flake8>=6.0.0',
-      'mypy>=1.0.0',
+      "pytest>=7.0.0",
+      "pytest-asyncio>=0.21.0",
+      "httpx>=0.24.0",
+      "black>=23.0.0",
+      "isort>=5.12.0",
+      "flake8>=6.0.0",
+      "mypy>=1.0.0",
     ];
 
     if (config.testing) {
-      devDeps.push('pytest-cov>=4.0.0', 'factory-boy>=3.2.0');
+      devDeps.push("pytest-cov>=4.0.0", "factory-boy>=3.2.0");
     }
 
-    return devDeps.sort().join('\n');
+    return devDeps.sort().join("\n");
   }
 
   private generateTestConfig(config: ProjectConfig): string {
@@ -896,7 +896,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from app.main import app
-${config.database ? 'from app.core.database import get_db_session, Base' : ''}
+${config.database ? "from app.core.database import get_db_session, Base" : ""}
 
 
 @pytest.fixture(scope="session")
@@ -941,7 +941,7 @@ def override_get_db(db_session):
     app.dependency_overrides[get_db_session] = _override_get_db
     yield
     app.dependency_overrides.clear()`
-    : ''
+    : ""
 }
 
 
@@ -1053,7 +1053,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
   private generateDockerCompose(config: ProjectConfig): string {
     const dbService =
-      config.database === 'postgres'
+      config.database === "postgres"
         ? `
   database:
     image: postgres:15-alpine
@@ -1070,7 +1070,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
       interval: 10s
       timeout: 5s
       retries: 5`
-        : '';
+        : "";
 
     return `version: '3.8'
 
@@ -1081,13 +1081,13 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=true
-      ${config.database ? `- DATABASE_URL=postgresql+asyncpg://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ''}
+      ${config.database ? `- DATABASE_URL=postgresql+asyncpg://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ""}
     ${
       config.database
         ? `depends_on:
       database:
         condition: service_healthy`
-        : ''
+        : ""
     }
     volumes:
       - .:/app
@@ -1095,10 +1095,10 @@ services:
 ${dbService}
 
 ${
-  config.database === 'postgres'
+  config.database === "postgres"
     ? `volumes:
   postgres_data:`
-    : ''
+    : ""
 }
 `;
   }
@@ -1109,7 +1109,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "${config.name.toLowerCase().replace(/[^a-z0-9-]/g, '-')}"
+name = "${config.name.toLowerCase().replace(/[^a-z0-9-]/g, "-")}"
 version = "1.0.0"
 description = "${config.description || `Modern FastAPI application: ${config.name}`}"
 authors = [
@@ -1291,7 +1291,7 @@ jobs:
         name: codecov-umbrella
 
   ${
-    config.target === 'production'
+    config.target === "production"
       ? `deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -1305,11 +1305,11 @@ jobs:
         DOCKER_REGISTRY: your-registry.com
       run: |
         docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:$` +
-        '{{ github.sha }}' +
+        "{{ github.sha }}" +
         ` .
         docker push $DOCKER_REGISTRY/your-app:$` +
-        '{{ github.sha }}'
-      : ''
+        "{{ github.sha }}"
+      : ""
   }
 `;
   }

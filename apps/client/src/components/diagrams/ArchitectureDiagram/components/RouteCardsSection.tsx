@@ -1,13 +1,13 @@
-import StatusBadge from '@/design-system/components/StatusBadge';
-import { clsx } from 'clsx';
-import React, { useEffect, useMemo, useState } from 'react';
+import StatusBadge from "@/design-system/components/StatusBadge";
+import { clsx } from "clsx";
+import React, { useEffect, useMemo, useState } from "react";
 import type {
   FrontendPackage,
   RouteEndpoint,
   RouteEndpointDocumentation,
   RouteEndpointParameter,
   RouteEndpointResponse,
-} from './FrontendTree';
+} from "./FrontendTree";
 
 interface RouteCardsSectionProps {
   title: string;
@@ -15,25 +15,25 @@ interface RouteCardsSectionProps {
 }
 
 const METHOD_STYLES: Record<string, string> = {
-  GET: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
-  POST: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
-  PUT: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
-  PATCH: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
-  DELETE: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
-  OPTIONS: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
-  HEAD: 'bg-graphite-900 text-graphite-200 border border-graphite-600',
+  GET: "bg-graphite-900 text-graphite-200 border border-graphite-600",
+  POST: "bg-graphite-900 text-graphite-200 border border-graphite-600",
+  PUT: "bg-graphite-900 text-graphite-200 border border-graphite-600",
+  PATCH: "bg-graphite-900 text-graphite-200 border border-graphite-600",
+  DELETE: "bg-graphite-900 text-graphite-200 border border-graphite-600",
+  OPTIONS: "bg-graphite-900 text-graphite-200 border border-graphite-600",
+  HEAD: "bg-graphite-900 text-graphite-200 border border-graphite-600",
 };
-const DEFAULT_METHOD_STYLE = 'bg-graphite-900 text-graphite-200 border border-graphite-600';
+const DEFAULT_METHOD_STYLE = "bg-graphite-900 text-graphite-200 border border-graphite-600";
 
 const formatMethods = (methods: string[] | undefined) =>
   (methods ?? [])
-    .map(method => method.trim().toUpperCase())
+    .map((method) => method.trim().toUpperCase())
     .filter((method, index, self) => method.length > 0 && self.indexOf(method) === index);
 
 const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }) => {
   const initialExpandedPackages = useMemo(() => {
     const defaults: Record<string, boolean> = {};
-    packages.forEach(pkg => {
+    packages.forEach((pkg) => {
       defaults[pkg.packageName] = true;
     });
     return defaults;
@@ -47,7 +47,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
   }, [initialExpandedPackages]);
 
   const togglePackage = (pkgName: string) => {
-    setExpandedPackages(prev => ({
+    setExpandedPackages((prev) => ({
       ...prev,
       [pkgName]: !(prev[pkgName] ?? true),
     }));
@@ -68,7 +68,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
       </div>
 
       <div className="divide-y divide-gray-200 dark:divide-graphite-800">
-        {packages.map(pkg => {
+        {packages.map((pkg) => {
           const packageExpanded = expandedPackages[pkg.packageName] ?? true;
           const routeCount = pkg.routes?.length ?? 0;
 
@@ -89,7 +89,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                   </span>
                   {pkg.frameworks.length > 0 && (
                     <span className="text-xs text-gray-500 dark:text-graphite-400">
-                      {pkg.frameworks.join(', ')}
+                      {pkg.frameworks.join(", ")}
                     </span>
                   )}
                 </div>
@@ -104,8 +104,8 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                   </StatusBadge>
                   <svg
                     className={clsx(
-                      'w-4 h-4 text-gray-400 dark:text-graphite-400 transition-transform',
-                      packageExpanded ? 'rotate-180' : ''
+                      "w-4 h-4 text-gray-400 dark:text-graphite-400 transition-transform",
+                      packageExpanded ? "rotate-180" : "",
                     )}
                     fill="none"
                     stroke="currentColor"
@@ -123,22 +123,22 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
 
               <div
                 className={clsx(
-                  'grid transition-[grid-template-rows] duration-300 ease-out',
-                  packageExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  "grid transition-[grid-template-rows] duration-300 ease-out",
+                  packageExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
                 )}
                 aria-hidden={!packageExpanded}
               >
                 <div
                   className={clsx(
-                    'overflow-hidden transition-opacity duration-200 ease-out',
-                    packageExpanded ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'
+                    "overflow-hidden transition-opacity duration-200 ease-out",
+                    packageExpanded ? "opacity-100 delay-100" : "opacity-0 pointer-events-none",
                   )}
                 >
                   <div className="divide-y divide-gray-100 dark:divide-graphite-800">
                     {(pkg.routes ?? []).map((route, index) => {
                       const routeKey = `${pkg.packageName}-${route.path || route.displayLabel || index}`;
                       const methods = formatMethods(
-                        route.httpMethods ?? route.metadata?.httpMethods
+                        route.httpMethods ?? route.metadata?.httpMethods,
                       );
                       const metadata = route.metadata ?? {};
                       const endpoints: RouteEndpoint[] = Array.isArray(route.endpoints)
@@ -157,7 +157,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex flex-col text-left">
                               <span className="text-sm font-medium text-gray-900 dark:text-graphite-25">
-                                {route.displayLabel || route.path || 'Route'}
+                                {route.displayLabel || route.path || "Route"}
                                 {route.isBaseRoute && (
                                   <span className="ml-2 text-[11px] font-normal text-gray-500 dark:text-graphite-400">
                                     (base route)
@@ -176,12 +176,12 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                               )}
                             </div>
                             <div className="flex flex-wrap gap-1 justify-end">
-                              {(methods.length ? methods : ['ANY']).map(method => (
+                              {(methods.length ? methods : ["ANY"]).map((method) => (
                                 <span
                                   key={`${routeKey}-${method}`}
                                   className={clsx(
-                                    'px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase',
-                                    METHOD_STYLES[method] ?? DEFAULT_METHOD_STYLE
+                                    "px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase",
+                                    METHOD_STYLES[method] ?? DEFAULT_METHOD_STYLE,
                                   )}
                                 >
                                   {method}
@@ -236,7 +236,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                     const documentation: RouteEndpointDocumentation =
                                       endpoint.documentation ?? {};
                                     const hasDescription = Boolean(
-                                      documentation.description || documentation.summary
+                                      documentation.description || documentation.summary,
                                     );
 
                                     return (
@@ -246,12 +246,12 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                       >
                                         <div className="flex flex-wrap items-center justify-between gap-2">
                                           <div className="flex flex-wrap items-center gap-2">
-                                            {endpointMethods.map(method => (
+                                            {endpointMethods.map((method) => (
                                               <span
                                                 key={`${routeKey}-endpoint-${idx}-${method}`}
                                                 className={clsx(
-                                                  'px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase',
-                                                  METHOD_STYLES[method] ?? DEFAULT_METHOD_STYLE
+                                                  "px-1.5 py-0.5 rounded-full text-[10px] font-semibold uppercase",
+                                                  METHOD_STYLES[method] ?? DEFAULT_METHOD_STYLE,
                                                 )}
                                               >
                                                 {method}
@@ -262,7 +262,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                                 ? endpoint.fullPath
                                                 : endpoint.path && endpoint.path.length > 0
                                                   ? endpoint.path
-                                                  : '/'}
+                                                  : "/"}
                                             </span>
                                           </div>
                                           <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-400 dark:text-graphite-400">
@@ -310,10 +310,10 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                                   <div className="flex flex-wrap items-center gap-1">
                                                     <span className="font-mono text-[10px] text-gray-700 dark:text-graphite-200">
                                                       {param.name}
-                                                      {param.optional ? '?' : ''}
-                                                      {param.type ? `: ${param.type}` : ''}
+                                                      {param.optional ? "?" : ""}
+                                                      {param.type ? `: ${param.type}` : ""}
                                                     </span>
-                                                    {param.decorators?.map(dec => (
+                                                    {param.decorators?.map((dec) => (
                                                       <span
                                                         key={`${routeKey}-endpoint-${idx}-param-${param.name}-${dec}`}
                                                         className="px-1.5 py-[1px] rounded-full bg-gray-200/80 text-gray-600 dark:bg-graphite-700 dark:text-graphite-200 text-[9px] uppercase tracking-wide"
@@ -354,14 +354,14 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                                   {responses.map(
                                                     (
                                                       response: RouteEndpointResponse,
-                                                      responseIdx
+                                                      responseIdx,
                                                     ) => (
                                                       <li
                                                         key={`${routeKey}-endpoint-${idx}-response-${responseIdx}`}
                                                         className="flex items-baseline gap-1"
                                                       >
                                                         <span className="font-mono text-[10px] text-gray-700 dark:text-graphite-200">
-                                                          {response.status ?? '—'}
+                                                          {response.status ?? "—"}
                                                         </span>
                                                         {response.description && (
                                                           <span className="text-[10px] text-gray-500 dark:text-graphite-400">
@@ -369,7 +369,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                                           </span>
                                                         )}
                                                       </li>
-                                                    )
+                                                    ),
                                                   )}
                                                 </ul>
                                               </div>
@@ -380,9 +380,9 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                         {documentation.deprecated && (
                                           <div className="text-[10px] text-amber-600 dark:text-amber-400">
                                             Deprecated
-                                            {typeof documentation.deprecated === 'string'
+                                            {typeof documentation.deprecated === "string"
                                               ? `: ${documentation.deprecated}`
-                                              : ''}
+                                              : ""}
                                           </div>
                                         )}
                                       </li>
@@ -407,7 +407,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                                   TSOA Config Files
                                 </span>
                                 <ul className="mt-1 space-y-1">
-                                  {configFiles.map(file => (
+                                  {configFiles.map((file) => (
                                     <li
                                       key={`${routeKey}-cfg-${file}`}
                                       className="font-mono text-[11px] text-gray-600 dark:text-graphite-300"

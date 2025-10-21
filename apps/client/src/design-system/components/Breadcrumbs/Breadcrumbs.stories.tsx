@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Code,
   Database,
@@ -9,30 +9,30 @@ import {
   Home,
   Settings,
   Users,
-} from 'lucide-react';
-import { type BreadcrumbItem, Breadcrumbs, breadcrumbIcons } from './Breadcrumbs';
+} from "lucide-react";
+import { type BreadcrumbItem, Breadcrumbs, breadcrumbIcons } from "./Breadcrumbs";
 
 const meta: Meta<typeof Breadcrumbs> = {
-  title: 'Design System/Navigation/Breadcrumbs',
+  title: "Design System/Navigation/Breadcrumbs",
   component: Breadcrumbs,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional breadcrumb navigation for hierarchical content. Supports collapsing, custom separators, and various size variants.',
+          "Professional breadcrumb navigation for hierarchical content. Supports collapsing, custom separators, and various size variants.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     separator: {
-      control: { type: 'select' },
-      options: ['chevron', 'slash', 'dot'],
+      control: { type: "select" },
+      options: ["chevron", "slash", "dot"],
     },
     size: {
-      control: { type: 'select' },
-      options: ['sm', 'md', 'lg'],
+      control: { type: "select" },
+      options: ["sm", "md", "lg"],
     },
   },
 };
@@ -43,61 +43,61 @@ type Story = StoryObj<typeof Breadcrumbs>;
 // Sample breadcrumb data
 const basicItems: BreadcrumbItem[] = [
   {
-    id: 'home',
-    label: 'Home',
-    href: '/',
+    id: "home",
+    label: "Home",
+    href: "/",
   },
   {
-    id: 'projects',
-    label: 'Projects',
-    href: '/projects',
+    id: "projects",
+    label: "Projects",
+    href: "/projects",
   },
   {
-    id: 'spec-workbench',
-    label: 'Spec Workbench',
-    href: '/projects/spec-workbench',
+    id: "spec-workbench",
+    label: "Spec Workbench",
+    href: "/projects/spec-workbench",
   },
   {
-    id: 'components',
-    label: 'Components',
+    id: "components",
+    label: "Components",
     current: true,
   },
 ];
 
 const fileSystemItems: BreadcrumbItem[] = [
   {
-    id: 'home',
-    label: 'Home',
+    id: "home",
+    label: "Home",
     icon: <Home className="h-4 w-4" />,
-    href: '/',
+    href: "/",
   },
   {
-    id: 'projects',
-    label: 'Projects',
+    id: "projects",
+    label: "Projects",
     icon: <Folder className="h-4 w-4" />,
-    href: '/projects',
+    href: "/projects",
   },
   {
-    id: 'spec-workbench',
-    label: 'Spec Workbench',
+    id: "spec-workbench",
+    label: "Spec Workbench",
     icon: <FolderOpen className="h-4 w-4" />,
-    href: '/projects/spec-workbench',
+    href: "/projects/spec-workbench",
   },
   {
-    id: 'src',
-    label: 'src',
+    id: "src",
+    label: "src",
     icon: <Folder className="h-4 w-4" />,
-    href: '/projects/spec-workbench/src',
+    href: "/projects/spec-workbench/src",
   },
   {
-    id: 'components',
-    label: 'components',
+    id: "components",
+    label: "components",
     icon: <Folder className="h-4 w-4" />,
-    href: '/projects/spec-workbench/src/components',
+    href: "/projects/spec-workbench/src/components",
   },
   {
-    id: 'button-tsx',
-    label: 'Button.tsx',
+    id: "button-tsx",
+    label: "Button.tsx",
     icon: <File className="h-4 w-4" />,
     current: true,
   },
@@ -105,56 +105,56 @@ const fileSystemItems: BreadcrumbItem[] = [
 
 const deepNestedItems: BreadcrumbItem[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: "dashboard",
+    label: "Dashboard",
     icon: <Home className="h-4 w-4" />,
-    href: '/dashboard',
+    href: "/dashboard",
   },
   {
-    id: 'development',
-    label: 'Development',
+    id: "development",
+    label: "Development",
     icon: <Code className="h-4 w-4" />,
-    href: '/dashboard/development',
+    href: "/dashboard/development",
   },
   {
-    id: 'repositories',
-    label: 'Repositories',
+    id: "repositories",
+    label: "Repositories",
     icon: <GitBranch className="h-4 w-4" />,
-    href: '/dashboard/development/repositories',
+    href: "/dashboard/development/repositories",
   },
   {
-    id: 'spec-workbench',
-    label: 'Spec Workbench',
+    id: "spec-workbench",
+    label: "Spec Workbench",
     icon: <Folder className="h-4 w-4" />,
-    href: '/dashboard/development/repositories/spec-workbench',
+    href: "/dashboard/development/repositories/spec-workbench",
   },
   {
-    id: 'frontend',
-    label: 'frontend',
+    id: "frontend",
+    label: "frontend",
     icon: <Folder className="h-4 w-4" />,
-    href: '/dashboard/development/repositories/spec-workbench/frontend',
+    href: "/dashboard/development/repositories/spec-workbench/frontend",
   },
   {
-    id: 'src',
-    label: 'src',
+    id: "src",
+    label: "src",
     icon: <Folder className="h-4 w-4" />,
-    href: '/dashboard/development/repositories/spec-workbench/frontend/src',
+    href: "/dashboard/development/repositories/spec-workbench/frontend/src",
   },
   {
-    id: 'design-system',
-    label: 'design-system',
+    id: "design-system",
+    label: "design-system",
     icon: <Folder className="h-4 w-4" />,
-    href: '/dashboard/development/repositories/spec-workbench/frontend/src/design-system',
+    href: "/dashboard/development/repositories/spec-workbench/frontend/src/design-system",
   },
   {
-    id: 'components',
-    label: 'components',
+    id: "components",
+    label: "components",
     icon: <Folder className="h-4 w-4" />,
-    href: '/dashboard/development/repositories/spec-workbench/frontend/src/design-system/components',
+    href: "/dashboard/development/repositories/spec-workbench/frontend/src/design-system/components",
   },
   {
-    id: 'breadcrumbs-tsx',
-    label: 'Breadcrumbs.tsx',
+    id: "breadcrumbs-tsx",
+    label: "Breadcrumbs.tsx",
     icon: <File className="h-4 w-4" />,
     current: true,
   },
@@ -162,26 +162,26 @@ const deepNestedItems: BreadcrumbItem[] = [
 
 const adminPanelItems: BreadcrumbItem[] = [
   {
-    id: 'admin',
-    label: 'Admin Panel',
+    id: "admin",
+    label: "Admin Panel",
     icon: <Settings className="h-4 w-4" />,
-    href: '/admin',
+    href: "/admin",
   },
   {
-    id: 'users',
-    label: 'User Management',
+    id: "users",
+    label: "User Management",
     icon: <Users className="h-4 w-4" />,
-    href: '/admin/users',
+    href: "/admin/users",
   },
   {
-    id: 'database',
-    label: 'Database',
+    id: "database",
+    label: "Database",
     icon: <Database className="h-4 w-4" />,
-    href: '/admin/users/database',
+    href: "/admin/users/database",
   },
   {
-    id: 'migrations',
-    label: 'Migrations',
+    id: "migrations",
+    label: "Migrations",
     current: true,
   },
 ];
@@ -191,7 +191,7 @@ export const Default: Story = {
     items: basicItems,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -205,7 +205,7 @@ export const WithIcons: Story = {
     showHomeIcon: true,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -216,10 +216,10 @@ export const WithIcons: Story = {
 export const ChevronSeparator: Story = {
   args: {
     items: basicItems,
-    separator: 'chevron',
+    separator: "chevron",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -230,10 +230,10 @@ export const ChevronSeparator: Story = {
 export const SlashSeparator: Story = {
   args: {
     items: fileSystemItems,
-    separator: 'slash',
+    separator: "slash",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -244,10 +244,10 @@ export const SlashSeparator: Story = {
 export const DotSeparator: Story = {
   args: {
     items: adminPanelItems,
-    separator: 'dot',
+    separator: "dot",
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -261,7 +261,7 @@ export const CustomSeparator: Story = {
     separator: <span className="text-blue-500 font-bold">→</span>,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -275,7 +275,7 @@ export const CollapsedBreadcrumbs: Story = {
     maxItems: 4,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="w-full max-w-4xl p-8 bg-white rounded-lg border">
         <Story />
       </div>
@@ -311,7 +311,7 @@ export const SizeVariants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different size variants of the breadcrumb component.',
+        story: "Different size variants of the breadcrumb component.",
       },
     },
   },
@@ -320,7 +320,7 @@ export const SizeVariants: Story = {
 export const InteractiveExample: Story = {
   render: () => {
     const handleItemClick = (item: BreadcrumbItem) => {
-      alert(`Navigated to: ${item.label} (${item.href || 'current page'})`);
+      alert(`Navigated to: ${item.label} (${item.href || "current page"})`);
     };
 
     return (
@@ -362,7 +362,7 @@ export const InteractiveExample: Story = {
     docs: {
       description: {
         story:
-          'Interactive breadcrumbs with click handlers and different configurations for various use cases.',
+          "Interactive breadcrumbs with click handlers and different configurations for various use cases.",
       },
     },
   },
@@ -389,7 +389,7 @@ export const ResponsiveBreadcrumbs: Story = {
     docs: {
       description: {
         story:
-          'Responsive breadcrumb behavior with different maxItems values for different screen sizes.',
+          "Responsive breadcrumb behavior with different maxItems values for different screen sizes.",
       },
     },
   },

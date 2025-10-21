@@ -6,12 +6,12 @@
  * so we can test detection logic changes without re-scanning.
  */
 
-import * as path from 'path';
-import * as fs from 'fs-extra';
-import { glob } from 'glob';
-import { NodeJSPlugin } from './plugins/nodejs';
-import type { PackageJsonData } from './plugins/nodejs';
-import type { InferenceContext } from './types';
+import * as path from "path";
+import * as fs from "fs-extra";
+import { glob } from "glob";
+import { NodeJSPlugin } from "./plugins/nodejs";
+import type { PackageJsonData } from "./plugins/nodejs";
+import type { InferenceContext } from "./types";
 
 interface DetectionData {
   projectPath: string;
@@ -32,9 +32,9 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
   console.log(`📦 Scanning project: ${projectName} at ${projectPath}`);
 
   // Find all package.json files
-  const packageJsonPaths = await glob('**/package.json', {
+  const packageJsonPaths = await glob("**/package.json", {
     cwd: projectPath,
-    ignore: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.next/**'],
+    ignore: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.next/**"],
     absolute: false,
   });
 
@@ -49,9 +49,9 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
       const packageJson = await fs.readJson(fullPath);
 
       // Get file patterns in the package directory - use projectPath as cwd
-      const filePatterns = await glob('**/*.{js,jsx,ts,tsx,mjs,cjs}', {
+      const filePatterns = await glob("**/*.{js,jsx,ts,tsx,mjs,cjs}", {
         cwd: packageDir,
-        ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+        ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
         absolute: false,
       });
 
@@ -62,12 +62,12 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
         directories: new Map(),
         timestamp: Date.now(),
       };
-      const sourceFiles = await glob('**/*.{js,jsx,ts,tsx,mjs,cjs}', {
+      const sourceFiles = await glob("**/*.{js,jsx,ts,tsx,mjs,cjs}", {
         cwd: packageDir,
-        ignore: ['**/node_modules/**', '**/dist/**', '**/build/**'],
+        ignore: ["**/node_modules/**", "**/dist/**", "**/build/**"],
         absolute: false,
       });
-      sourceFiles.forEach(relPath => {
+      sourceFiles.forEach((relPath) => {
         const absPath = path.join(packageDir, relPath);
         fileIndex.files.set(absPath, {
           path: absPath,
@@ -76,7 +76,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
           lastModified: Date.now(),
           extension: path.extname(relPath),
           isBinary: false,
-          hash: '',
+          hash: "",
           language: undefined,
           metadata: {},
         });
@@ -85,14 +85,14 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
       // Create mock evidence for detection
       const evidence = [
         {
-          id: 'test-package',
-          source: 'nodejs',
-          type: 'config' as const,
+          id: "test-package",
+          source: "nodejs",
+          type: "config" as const,
           filePath: pkgPath,
           data: {
             name: packageJson.name,
             description: packageJson.description,
-            type: 'module',
+            type: "module",
             filePath: pkgPath,
           },
           confidence: 0.95,
@@ -136,7 +136,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
         packageJson: {
           name: packageJson.name,
           description: packageJson.description,
-          type: 'module',
+          type: "module",
           filePath: pkgPath,
         },
         filePatterns: filePatterns.slice(0, 20), // Limit to first 20 files for brevity
@@ -144,7 +144,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
       });
 
       console.log(
-        `  ✅ ${packageJson.name || path.basename(packageDir)}: ${detectedType} (found ${filePatterns.length} source files)`
+        `  ✅ ${packageJson.name || path.basename(packageDir)}: ${detectedType} (found ${filePatterns.length} source files)`,
       );
     } catch (error) {
       console.error(`  ❌ Error processing ${pkgPath}:`, error);
@@ -159,7 +159,7 @@ async function scanProject(projectPath: string): Promise<DetectionData> {
 }
 
 async function main() {
-  const projects = ['/home/nathan/Projects/arbiter', '/home/nathan/Projects/smith'];
+  const projects = ["/home/nathan/Projects/arbiter", "/home/nathan/Projects/smith"];
 
   const allData: DetectionData[] = [];
 
@@ -173,12 +173,12 @@ async function main() {
   }
 
   // Save the detection data
-  const outputPath = '/home/nathan/Projects/arbiter/detection-test-data.json';
+  const outputPath = "/home/nathan/Projects/arbiter/detection-test-data.json";
   await fs.writeJson(outputPath, allData, { spaces: 2 });
   console.log(`\n💾 Detection data saved to: ${outputPath}`);
 
   // Summary
-  console.log('\n📊 Summary:');
+  console.log("\n📊 Summary:");
   for (const project of allData) {
     console.log(`\n${project.projectName}:`);
     const typeCounts: Record<string, number> = {};

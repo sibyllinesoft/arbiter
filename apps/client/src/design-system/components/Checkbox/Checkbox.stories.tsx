@@ -4,77 +4,77 @@
  * Showcasing professional form controls with sophisticated graphite theme
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { Database, Globe, Settings, Shield, Users, Zap } from 'lucide-react';
-import Checkbox from './Checkbox';
+import type { Meta, StoryObj } from "@storybook/react";
+import { Database, Globe, Settings, Shield, Users, Zap } from "lucide-react";
+import Checkbox from "./Checkbox";
 
 const meta = {
-  title: 'Design System/Checkbox',
+  title: "Design System/Checkbox",
   component: Checkbox,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional checkbox component with comprehensive states, validation, indeterminate support, and accessibility features. Designed for developer tools with sophisticated graphite theme.',
+          "Professional checkbox component with comprehensive states, validation, indeterminate support, and accessibility features. Designed for developer tools with sophisticated graphite theme.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['default', 'error', 'success', 'warning'],
-      description: 'Visual variant of the checkbox',
+      control: { type: "select" },
+      options: ["default", "error", "success", "warning"],
+      description: "Visual variant of the checkbox",
     },
     size: {
-      control: { type: 'select' },
-      options: ['sm', 'md', 'lg'],
-      description: 'Size of the checkbox affecting size and font',
+      control: { type: "select" },
+      options: ["sm", "md", "lg"],
+      description: "Size of the checkbox affecting size and font",
     },
     label: {
-      control: { type: 'text' },
-      description: 'Label text for the checkbox',
+      control: { type: "text" },
+      description: "Label text for the checkbox",
     },
     description: {
-      control: { type: 'text' },
-      description: 'Additional description text',
+      control: { type: "text" },
+      description: "Additional description text",
     },
     helperText: {
-      control: { type: 'text' },
-      description: 'Helper text below the checkbox',
+      control: { type: "text" },
+      description: "Helper text below the checkbox",
     },
     error: {
-      control: { type: 'text' },
-      description: 'Error message (sets variant to error automatically)',
+      control: { type: "text" },
+      description: "Error message (sets variant to error automatically)",
     },
     warning: {
-      control: { type: 'text' },
-      description: 'Warning message (sets variant to warning automatically)',
+      control: { type: "text" },
+      description: "Warning message (sets variant to warning automatically)",
     },
     success: {
-      control: { type: 'text' },
-      description: 'Success message (sets variant to success automatically)',
+      control: { type: "text" },
+      description: "Success message (sets variant to success automatically)",
     },
     indeterminate: {
-      control: { type: 'boolean' },
-      description: 'Whether the checkbox is in an indeterminate state',
+      control: { type: "boolean" },
+      description: "Whether the checkbox is in an indeterminate state",
     },
     loading: {
-      control: { type: 'boolean' },
-      description: 'Whether the checkbox is in a loading state',
+      control: { type: "boolean" },
+      description: "Whether the checkbox is in a loading state",
     },
     showValidationIcon: {
-      control: { type: 'boolean' },
-      description: 'Whether to show validation icons automatically',
+      control: { type: "boolean" },
+      description: "Whether to show validation icons automatically",
     },
     disabled: {
-      control: { type: 'boolean' },
-      description: 'Whether the checkbox is disabled',
+      control: { type: "boolean" },
+      description: "Whether the checkbox is disabled",
     },
     checked: {
-      control: { type: 'boolean' },
-      description: 'Whether the checkbox is checked',
+      control: { type: "boolean" },
+      description: "Whether the checkbox is checked",
     },
   },
 } satisfies Meta<typeof Checkbox>;
@@ -85,8 +85,8 @@ type Story = StoryObj<typeof meta>;
 // Default checkbox
 export const Default: Story = {
   args: {
-    label: 'Enable notifications',
-    helperText: 'Receive email notifications for important updates',
+    label: "Enable notifications",
+    helperText: "Receive email notifications for important updates",
   },
 };
 
@@ -113,7 +113,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'Checkbox variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.',
+          "Checkbox variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.",
       },
     },
   },
@@ -131,7 +131,7 @@ export const Sizes: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Checkbox sizes with proper scaling of the checkbox, icons, and text.',
+        story: "Checkbox sizes with proper scaling of the checkbox, icons, and text.",
       },
     },
   },
@@ -168,7 +168,7 @@ export const IndeterminateState: Story = {
     docs: {
       description: {
         story:
-          'Indeterminate state for parent checkboxes that have some but not all child options selected.',
+          "Indeterminate state for parent checkboxes that have some but not all child options selected.",
       },
     },
   },
@@ -203,7 +203,7 @@ export const LoadingStates: Story = {
     docs: {
       description: {
         story:
-          'Loading states with animated spinner, showing the checkbox is processing an action.',
+          "Loading states with animated spinner, showing the checkbox is processing an action.",
       },
     },
   },
@@ -239,7 +239,7 @@ export const CustomContent: Story = {
     docs: {
       description: {
         story:
-          'Checkboxes with custom content using icons and complex layouts through the children prop.',
+          "Checkboxes with custom content using icons and complex layouts through the children prop.",
       },
     },
   },
@@ -408,7 +408,7 @@ export const DeveloperToolExamples: Story = {
     docs: {
       description: {
         story:
-          'Real-world examples of checkboxes in developer tools: build configuration, deployment settings, team permissions, and feature flags.',
+          "Real-world examples of checkboxes in developer tools: build configuration, deployment settings, team permissions, and feature flags.",
       },
     },
   },
@@ -445,7 +445,7 @@ export const DisabledStates: Story = {
     docs: {
       description: {
         story:
-          'Comprehensive disabled states showing how all variants and features behave when disabled.',
+          "Comprehensive disabled states showing how all variants and features behave when disabled.",
       },
     },
   },
@@ -454,11 +454,11 @@ export const DisabledStates: Story = {
 // Interactive playground
 export const Interactive: Story = {
   args: {
-    label: 'Interactive Checkbox',
-    description: 'This is a description',
-    helperText: 'This is helper text',
-    size: 'md',
-    variant: 'default',
+    label: "Interactive Checkbox",
+    description: "This is a description",
+    helperText: "This is helper text",
+    size: "md",
+    variant: "default",
     checked: false,
     indeterminate: false,
     loading: false,
@@ -469,7 +469,7 @@ export const Interactive: Story = {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all checkbox props. Use the controls panel below to test different combinations.',
+          "Interactive playground to experiment with all checkbox props. Use the controls panel below to test different combinations.",
       },
     },
   },

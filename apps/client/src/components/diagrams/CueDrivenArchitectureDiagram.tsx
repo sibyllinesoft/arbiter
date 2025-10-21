@@ -9,11 +9,11 @@ import {
   type DiagramConnection,
   type DiagramTheme,
   type DiagramType,
-} from '@/types/architecture';
-import { CueArchitectureParser } from '@/utils/cueArchitectureParser';
-import { DiagramLayoutEngine } from '@/utils/diagramLayout';
-import { clsx } from 'clsx';
-import React, { useState, useEffect, useMemo } from 'react';
+} from "@/types/architecture";
+import { CueArchitectureParser } from "@/utils/cueArchitectureParser";
+import { DiagramLayoutEngine } from "@/utils/diagramLayout";
+import { clsx } from "clsx";
+import React, { useState, useEffect, useMemo } from "react";
 
 interface CueDrivenArchitectureDiagramProps {
   /** CUE specification data */
@@ -36,42 +36,42 @@ interface CueDrivenArchitectureDiagramProps {
 
 // Default theme configuration
 const DEFAULT_THEME: DiagramTheme = {
-  name: 'default',
+  name: "default",
   layers: {
     presentation: {
-      background: '#dbeafe',
-      border: '#3b82f6',
-      text: '#1e40af',
+      background: "#dbeafe",
+      border: "#3b82f6",
+      text: "#1e40af",
     },
     application: {
-      background: '#dcfce7',
-      border: '#22c55e',
-      text: '#15803d',
+      background: "#dcfce7",
+      border: "#22c55e",
+      text: "#15803d",
     },
     service: {
-      background: '#fef3c7',
-      border: '#f59e0b',
-      text: '#d97706',
+      background: "#fef3c7",
+      border: "#f59e0b",
+      text: "#d97706",
     },
     data: {
-      background: '#f3e8ff',
-      border: '#a855f7',
-      text: '#7c3aed',
+      background: "#f3e8ff",
+      border: "#a855f7",
+      text: "#7c3aed",
     },
     external: {
-      background: '#fee2e2',
-      border: '#ef4444',
-      text: '#dc2626',
+      background: "#fee2e2",
+      border: "#ef4444",
+      text: "#dc2626",
     },
   },
   connections: {
-    user_navigation: { color: '#3b82f6', width: 2, style: 'solid' },
-    user_interaction: { color: '#10b981', width: 2, style: 'dashed' },
-    api_call: { color: '#f59e0b', width: 2, style: 'solid' },
-    capability_usage: { color: '#8b5cf6', width: 1.5, style: 'dotted' },
-    state_transition: { color: '#ef4444', width: 2, style: 'solid' },
-    data_flow: { color: '#6b7280', width: 1, style: 'solid' },
-    dependency: { color: '#374151', width: 1, style: 'dashed' },
+    user_navigation: { color: "#3b82f6", width: 2, style: "solid" },
+    user_interaction: { color: "#10b981", width: 2, style: "dashed" },
+    api_call: { color: "#f59e0b", width: 2, style: "solid" },
+    capability_usage: { color: "#8b5cf6", width: 1.5, style: "dotted" },
+    state_transition: { color: "#ef4444", width: 2, style: "solid" },
+    data_flow: { color: "#6b7280", width: 1, style: "solid" },
+    dependency: { color: "#374151", width: 1, style: "dashed" },
   },
   components: {
     defaultSize: { width: 150, height: 80 },
@@ -82,42 +82,42 @@ const DEFAULT_THEME: DiagramTheme = {
 };
 
 const DARK_THEME: DiagramTheme = {
-  name: 'dark',
+  name: "dark",
   layers: {
     presentation: {
-      background: '#334155',
-      border: '#60a5fa',
-      text: '#bfdbfe',
+      background: "#334155",
+      border: "#60a5fa",
+      text: "#bfdbfe",
     },
     application: {
-      background: '#166534',
-      border: '#4ade80',
-      text: '#dcfce7',
+      background: "#166534",
+      border: "#4ade80",
+      text: "#dcfce7",
     },
     service: {
-      background: '#713f12',
-      border: '#f59e0b',
-      text: '#fcd34d',
+      background: "#713f12",
+      border: "#f59e0b",
+      text: "#fcd34d",
     },
     data: {
-      background: '#581c87',
-      border: '#c084fc',
-      text: '#e9d5ff',
+      background: "#581c87",
+      border: "#c084fc",
+      text: "#e9d5ff",
     },
     external: {
-      background: '#991b1b',
-      border: '#f87171',
-      text: '#fecaca',
+      background: "#991b1b",
+      border: "#f87171",
+      text: "#fecaca",
     },
   },
   connections: {
-    user_navigation: { color: '#60a5fa', width: 2, style: 'solid' },
-    user_interaction: { color: '#4ade80', width: 2, style: 'dashed' },
-    api_call: { color: '#f59e0b', width: 2, style: 'solid' },
-    capability_usage: { color: '#c084fc', width: 1.5, style: 'dotted' },
-    state_transition: { color: '#f87171', width: 2, style: 'solid' },
-    data_flow: { color: '#9ca3af', width: 1, style: 'solid' },
-    dependency: { color: '#6b7280', width: 1, style: 'dashed' },
+    user_navigation: { color: "#60a5fa", width: 2, style: "solid" },
+    user_interaction: { color: "#4ade80", width: 2, style: "dashed" },
+    api_call: { color: "#f59e0b", width: 2, style: "solid" },
+    capability_usage: { color: "#c084fc", width: 1.5, style: "dotted" },
+    state_transition: { color: "#f87171", width: 2, style: "solid" },
+    data_flow: { color: "#9ca3af", width: 1, style: "solid" },
+    dependency: { color: "#6b7280", width: 1, style: "dashed" },
   },
   components: {
     defaultSize: { width: 150, height: 80 },
@@ -129,10 +129,10 @@ const DARK_THEME: DiagramTheme = {
 
 export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagramProps> = ({
   cueData,
-  diagramType = 'system_overview',
+  diagramType = "system_overview",
   layoutType,
   theme = {},
-  className = '',
+  className = "",
   interactive = true,
   onComponentSelect,
   onConnectionSelect,
@@ -145,14 +145,14 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
   // Detect dark mode
   useEffect(() => {
     const updateTheme = () => {
-      setIsDark(document.documentElement.classList.contains('dark'));
+      setIsDark(document.documentElement.classList.contains("dark"));
     };
 
     updateTheme();
     const observer = new MutationObserver(updateTheme);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: ["class"],
     });
     return () => observer.disconnect();
   }, []);
@@ -184,41 +184,41 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     let filteredConnections = parsed.connections;
 
     switch (diagramType) {
-      case 'user_journey':
-        filteredComponents = parsed.components.filter(c =>
-          ['route', 'capability'].includes(c.type)
+      case "user_journey":
+        filteredComponents = parsed.components.filter((c) =>
+          ["route", "capability"].includes(c.type),
         );
-        filteredConnections = parsed.connections.filter(c =>
-          ['user_navigation', 'user_interaction', 'capability_usage'].includes(c.type)
-        );
-        break;
-
-      case 'service_topology':
-        filteredComponents = parsed.components.filter(c =>
-          ['service', 'api_endpoint', 'external_system'].includes(c.type)
-        );
-        filteredConnections = parsed.connections.filter(c =>
-          ['api_call', 'dependency'].includes(c.type)
+        filteredConnections = parsed.connections.filter((c) =>
+          ["user_navigation", "user_interaction", "capability_usage"].includes(c.type),
         );
         break;
 
-      case 'capability_map':
-        filteredComponents = parsed.components.filter(c =>
-          ['capability', 'route'].includes(c.type)
+      case "service_topology":
+        filteredComponents = parsed.components.filter((c) =>
+          ["service", "api_endpoint", "external_system"].includes(c.type),
         );
-        filteredConnections = parsed.connections.filter(c => c.type === 'capability_usage');
+        filteredConnections = parsed.connections.filter((c) =>
+          ["api_call", "dependency"].includes(c.type),
+        );
         break;
 
-      case 'state_diagram':
-        filteredComponents = parsed.components.filter(c => c.type === 'state_machine');
-        filteredConnections = parsed.connections.filter(c => c.type === 'state_transition');
+      case "capability_map":
+        filteredComponents = parsed.components.filter((c) =>
+          ["capability", "route"].includes(c.type),
+        );
+        filteredConnections = parsed.connections.filter((c) => c.type === "capability_usage");
         break;
 
-      case 'api_surface':
-        filteredComponents = parsed.components.filter(c =>
-          ['api_endpoint', 'service'].includes(c.type)
+      case "state_diagram":
+        filteredComponents = parsed.components.filter((c) => c.type === "state_machine");
+        filteredConnections = parsed.connections.filter((c) => c.type === "state_transition");
+        break;
+
+      case "api_surface":
+        filteredComponents = parsed.components.filter((c) =>
+          ["api_endpoint", "service"].includes(c.type),
         );
-        filteredConnections = parsed.connections.filter(c => c.type === 'api_call');
+        filteredConnections = parsed.connections.filter((c) => c.type === "api_call");
         break;
     }
 
@@ -268,8 +268,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     const isHovered = hoveredElement === component.id;
 
     // Dynamic hover detail colors
-    const hoverFill = isDark ? '#1f2937' : 'white';
-    const hoverText = isDark ? '#d1d5db' : '#374151';
+    const hoverFill = isDark ? "#1f2937" : "white";
+    const hoverText = isDark ? "#d1d5db" : "#374151";
 
     return (
       <g
@@ -278,7 +278,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         onMouseEnter={() => setHoveredElement(component.id)}
         onMouseLeave={() => setHoveredElement(null)}
         onClick={() => handleComponentClick(component)}
-        className={interactive ? 'cursor-pointer' : ''}
+        className={interactive ? "cursor-pointer" : ""}
       >
         {/* Component rectangle */}
         <rect
@@ -290,9 +290,9 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
           stroke={layerStyle.border}
           strokeWidth={isSelected ? 3 : isHovered ? 2 : 1}
           className={clsx(
-            'transition-all duration-200',
-            isHovered && 'drop-shadow-lg',
-            isSelected && 'drop-shadow-xl'
+            "transition-all duration-200",
+            isHovered && "drop-shadow-lg",
+            isSelected && "drop-shadow-xl",
           )}
         />
 
@@ -323,14 +323,14 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         </foreignObject>
 
         {/* Ports */}
-        {component.ports?.map(port => (
+        {component.ports?.map((port) => (
           <circle
             key={port.id}
             cx={port.position.x}
             cy={port.position.y}
             r={3}
             fill={layerStyle.border}
-            stroke={isDark ? '#374151' : 'white'}
+            stroke={isDark ? "#374151" : "white"}
             strokeWidth={1}
           />
         ))}
@@ -348,18 +348,18 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     const iconY = 8;
 
     const iconPaths = {
-      route: 'M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z',
-      service: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z',
+      route: "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z",
+      service: "M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z",
       capability:
-        'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
+        "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
       api_endpoint:
-        'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z',
-      state_machine: 'M4 12a8 8 0 018-8V0l4 4-4 4V4a6 6 0 100 12 6 6 0 000-12z',
+        "M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z",
+      state_machine: "M4 12a8 8 0 018-8V0l4 4-4 4V4a6 6 0 100 12 6 6 0 000-12z",
       external_system:
-        'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z',
-      flow: 'M9 5v2h6V5H9zm0 4v2h6V9H9zm0 4v2h6v-2H9zm0 4v2h6v-2H9z',
-      component: 'M3 3h18v18H3V3z',
-      data_store: 'M4 4h16v2H4V4zm0 4h16v2H4V8zm0 4h16v2H4v-2zm0 4h16v2H4v-2z',
+        "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5z",
+      flow: "M9 5v2h6V5H9zm0 4v2h6V9H9zm0 4v2h6v-2H9zm0 4v2h6v-2H9z",
+      component: "M3 3h18v18H3V3z",
+      data_store: "M4 4h16v2H4V4zm0 4h16v2H4V8zm0 4h16v2H4v-2zm0 4h16v2H4v-2z",
     };
 
     const path = iconPaths[component.type] || iconPaths.service;
@@ -378,7 +378,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     component: DiagramComponent,
     layerStyle: any,
     hoverFill: string,
-    hoverText: string
+    hoverText: string,
   ) => {
     const details = [];
 
@@ -391,7 +391,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     }
 
     if (component.capabilities?.length) {
-      details.push(`Caps: ${component.capabilities.slice(0, 2).join(', ')}`);
+      details.push(`Caps: ${component.capabilities.slice(0, 2).join(", ")}`);
     }
 
     if (details.length === 0) return null;
@@ -430,8 +430,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
 
   // Render a single connection
   const renderConnection = (connection: DiagramConnection) => {
-    const fromComponent = layoutedComponents.find(c => c.id === connection.from.componentId);
-    const toComponent = layoutedComponents.find(c => c.id === connection.to.componentId);
+    const fromComponent = layoutedComponents.find((c) => c.id === connection.from.componentId);
+    const toComponent = layoutedComponents.find((c) => c.id === connection.to.componentId);
 
     if (!fromComponent || !toComponent) return null;
 
@@ -455,7 +455,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         onMouseEnter={() => setHoveredElement(connection.id)}
         onMouseLeave={() => setHoveredElement(null)}
         onClick={() => handleConnectionClick(connection)}
-        className={interactive ? 'cursor-pointer' : ''}
+        className={interactive ? "cursor-pointer" : ""}
       >
         {/* Connection path */}
         <path
@@ -463,11 +463,11 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
           stroke={connectionStyle.color}
           strokeWidth={isSelected || isHovered ? connectionStyle.width + 1 : connectionStyle.width}
           strokeDasharray={
-            connectionStyle.style === 'dashed'
-              ? '5,5'
-              : connectionStyle.style === 'dotted'
-                ? '2,2'
-                : 'none'
+            connectionStyle.style === "dashed"
+              ? "5,5"
+              : connectionStyle.style === "dotted"
+                ? "2,2"
+                : "none"
           }
           fill="none"
           markerEnd="url(#arrowhead)"
@@ -484,8 +484,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
             fill={connectionStyle.color}
             fontWeight="500"
             style={{
-              fontSize: isHovered || isSelected ? '11px' : '10px',
-              fontWeight: isHovered || isSelected ? '600' : '500',
+              fontSize: isHovered || isSelected ? "11px" : "10px",
+              fontWeight: isHovered || isSelected ? "600" : "500",
             }}
           >
             {connection.label}
@@ -504,8 +504,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     return (
       <div
         className={clsx(
-          'flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg',
-          className
+          "flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg",
+          className,
         )}
       >
         <div className="text-center">
@@ -537,8 +537,8 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
     return (
       <div
         className={clsx(
-          'flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg',
-          className
+          "flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg",
+          className,
         )}
       >
         <div className="text-center">
@@ -567,7 +567,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
   }
 
   return (
-    <div className={clsx('h-full flex flex-col bg-gray-50 dark:bg-gray-900', className)}>
+    <div className={clsx("h-full flex flex-col bg-gray-50 dark:bg-gray-900", className)}>
       {/* Header */}
       <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
@@ -576,7 +576,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
               CUE-Driven Architecture Diagram
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Generated from {cueData.metadata?.name || 'CUE specification'} •{' '}
+              Generated from {cueData.metadata?.name || "CUE specification"} •{" "}
               {layoutedComponents.length} components • {connections.length} connections
             </p>
           </div>
@@ -587,14 +587,14 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">View:</label>
               <select
                 value={diagramType}
-                onChange={e => {
+                onChange={(e) => {
                   /* Handle diagram type change */
                 }}
                 className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded px-2 py-1"
               >
-                {suggestedTypes.map(type => (
+                {suggestedTypes.map((type) => (
                   <option key={type} value={type}>
-                    {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {type.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                   </option>
                 ))}
               </select>
@@ -605,7 +605,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         {/* Legend */}
         <div className="mt-3 flex flex-wrap gap-4 text-xs">
           {Object.entries(effectiveTheme.layers).map(([layer, style]) => {
-            const hasComponents = layoutedComponents.some(c => c.layer === layer);
+            const hasComponents = layoutedComponents.some((c) => c.layer === layer);
             if (!hasComponents) return null;
 
             return (
@@ -615,7 +615,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
                   style={{ backgroundColor: style.background, borderColor: style.border }}
                 />
                 <span className="capitalize font-medium text-gray-700 dark:text-gray-300">
-                  {layer.replace('_', ' ')}
+                  {layer.replace("_", " ")}
                 </span>
               </div>
             );
@@ -628,7 +628,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
         <svg
           viewBox={`0 0 ${viewport.width} ${viewport.height}`}
           className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg"
-          style={{ minHeight: '400px' }}
+          style={{ minHeight: "400px" }}
         >
           {/* Arrow marker definition */}
           <defs>
@@ -640,7 +640,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
               refY="3.5"
               orient="auto"
             >
-              <polygon points="0 0, 10 3.5, 0 7" fill={isDark ? '#9ca3af' : '#6b7280'} />
+              <polygon points="0 0, 10 3.5, 0 7" fill={isDark ? "#9ca3af" : "#6b7280"} />
             </marker>
           </defs>
 
@@ -656,7 +656,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
       {selectedComponent && (
         <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
           {(() => {
-            const component = layoutedComponents.find(c => c.id === selectedComponent);
+            const component = layoutedComponents.find((c) => c.id === selectedComponent);
             if (!component) return null;
 
             return (
@@ -687,13 +687,13 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
                   <div>
                     <span className="font-medium text-gray-700 dark:text-gray-300">Type:</span>
                     <span className="ml-2 text-gray-600 dark:text-gray-400">
-                      {component.type.replace('_', ' ')}
+                      {component.type.replace("_", " ")}
                     </span>
                   </div>
                   <div>
                     <span className="font-medium text-gray-700 dark:text-gray-300">Layer:</span>
                     <span className="ml-2 text-gray-600 dark:text-gray-400">
-                      {component.layer.replace('_', ' ')}
+                      {component.layer.replace("_", " ")}
                     </span>
                   </div>
                   {component.technology && (
@@ -724,7 +724,7 @@ export const CueDrivenArchitectureDiagram: React.FC<CueDrivenArchitectureDiagram
                       Capabilities:
                     </span>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {component.capabilities.map(cap => (
+                      {component.capabilities.map((cap) => (
                         <span
                           key={cap}
                           className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md"

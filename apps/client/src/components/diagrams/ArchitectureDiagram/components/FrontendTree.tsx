@@ -1,6 +1,6 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { clsx } from 'clsx';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { clsx } from "clsx";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 interface RouteEndpointDocumentation {
   summary?: string;
@@ -22,7 +22,7 @@ interface RouteEndpointParameter {
 interface RouteEndpointResponse {
   status?: string;
   description?: string;
-  decorator: 'SuccessResponse' | 'Response';
+  decorator: "SuccessResponse" | "Response";
 }
 
 interface RouteEndpoint {
@@ -73,10 +73,10 @@ interface FrontendPackage {
 interface FrontendTreeProps {
   title: string;
   packages: FrontendPackage[];
-  mode: 'components' | 'routes';
+  mode: "components" | "routes";
 }
 
-type TreeNodeType = 'package' | 'folder' | 'item';
+type TreeNodeType = "package" | "folder" | "item";
 
 interface TreeNode {
   id: string;
@@ -104,10 +104,10 @@ const collapseSingleChildFolders = (node: TreeNode): TreeNode => {
 
   const collapsedChildren = new Map<string, TreeNode>();
 
-  node.children.forEach(child => {
+  node.children.forEach((child) => {
     let collapsed = collapseSingleChildFolders(child);
 
-    while (collapsed.type === 'folder' && collapsed.children && collapsed.children.size === 1) {
+    while (collapsed.type === "folder" && collapsed.children && collapsed.children.size === 1) {
       const [grandChild] = Array.from(collapsed.children.values());
       if (!grandChild) break;
 
@@ -116,7 +116,7 @@ const collapseSingleChildFolders = (node: TreeNode): TreeNode => {
       const mergedFilePath =
         grandChild.filePath && collapsed.filePath
           ? `${collapsed.filePath}/${grandChild.filePath}`
-          : grandChild.filePath || collapsed.filePath || '';
+          : grandChild.filePath || collapsed.filePath || "";
 
       collapsed = {
         ...grandChild,
@@ -136,14 +136,14 @@ const collapseSingleChildFolders = (node: TreeNode): TreeNode => {
   };
 };
 
-const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'routes'): TreeNode[] => {
-  return packages.map(pkg => {
+const buildHierarchy = (packages: FrontendPackage[], mode: "components" | "routes"): TreeNode[] => {
+  return packages.map((pkg) => {
     const rootId = `${mode}-${pkg.packageName}`;
     const rootNode: TreeNode = {
       id: rootId,
       label: pkg.packageName,
       depth: 0,
-      type: 'package',
+      type: "package",
       packageName: pkg.packageName,
       extra: {
         frameworks: pkg.frameworks,
@@ -153,10 +153,10 @@ const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'route
     };
 
     const insertNode = (relPath: string, displayLabel: string, extra: Record<string, any>) => {
-      const normalized = relPath.replace(/\\/g, '/');
-      const segments = normalized === '' ? [] : normalized.split('/').filter(Boolean);
+      const normalized = relPath.replace(/\\/g, "/");
+      const segments = normalized === "" ? [] : normalized.split("/").filter(Boolean);
 
-      if (mode === 'routes' && segments.length === 0) {
+      if (mode === "routes" && segments.length === 0) {
         rootNode.extra = {
           ...(rootNode.extra || {}),
           ...extra,
@@ -177,9 +177,9 @@ const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'route
             id: key,
             label: segment,
             depth: current.depth + 1,
-            type: index === segments.length - 1 && mode === 'components' ? 'item' : 'folder',
+            type: index === segments.length - 1 && mode === "components" ? "item" : "folder",
             packageName: pkg.packageName,
-            filePath: segments.slice(0, index + 1).join('/'),
+            filePath: segments.slice(0, index + 1).join("/"),
             children: new Map(),
           });
         }
@@ -195,7 +195,7 @@ const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'route
           id: syntheticId,
           label: displayLabel,
           depth: current.depth + 1,
-          type: 'item',
+          type: "item",
           packageName: pkg.packageName,
           filePath: relPath,
           extra,
@@ -203,20 +203,20 @@ const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'route
         return;
       }
 
-      if (mode === 'routes' && current) {
-        current.type = 'item';
+      if (mode === "routes" && current) {
+        current.type = "item";
       }
 
       current.extra = {
         ...(current.extra || {}),
         ...extra,
       };
-      current.filePath = segments.join('/');
+      current.filePath = segments.join("/");
     };
 
-    if (mode === 'components') {
-      (pkg.components ?? []).forEach(component => {
-        insertNode(component.filePath ?? '', component.name, {
+    if (mode === "components") {
+      (pkg.components ?? []).forEach((component) => {
+        insertNode(component.filePath ?? "", component.name, {
           componentName: component.name,
           description: component.description,
           framework: component.framework,
@@ -224,10 +224,10 @@ const buildHierarchy = (packages: FrontendPackage[], mode: 'components' | 'route
         });
       });
     } else {
-      (pkg.routes ?? []).forEach(route => {
-        const treeTarget = route.treePath ?? route.path ?? route.filePath ?? '';
-        const labelCandidate = route.displayLabel || route.path || route.filePath || '';
-        const displayLabel = labelCandidate && labelCandidate.length > 0 ? labelCandidate : 'route';
+      (pkg.routes ?? []).forEach((route) => {
+        const treeTarget = route.treePath ?? route.path ?? route.filePath ?? "";
+        const labelCandidate = route.displayLabel || route.path || route.filePath || "";
+        const displayLabel = labelCandidate && labelCandidate.length > 0 ? labelCandidate : "route";
         insertNode(treeTarget, displayLabel, {
           routePath: route.path,
           routerType: route.routerType,
@@ -250,33 +250,33 @@ const flattenTree = (roots: TreeNode[], expanded: Set<string>): FlattenedNode[] 
 
   const processNode = (node: TreeNode) => {
     const childrenArray = node.children ? Array.from(node.children.values()) : [];
-    const isLeaf = childrenArray.length === 0 || node.type === 'item';
+    const isLeaf = childrenArray.length === 0 || node.type === "item";
     result.push({ node, depth: node.depth, isLeaf });
 
     if (!isLeaf && expanded.has(node.id)) {
       childrenArray
         .sort((a, b) => a.label.localeCompare(b.label))
-        .forEach(child => processNode(child));
+        .forEach((child) => processNode(child));
     }
   };
 
-  roots.forEach(root => processNode(root));
+  roots.forEach((root) => processNode(root));
   return result;
 };
 
 const hasChildren = (node: TreeNode): boolean => {
-  if (node.type === 'item') return false;
+  if (node.type === "item") return false;
   return (node.children && node.children.size > 0) ?? false;
 };
 
-const getNodeLabel = (node: TreeNode, mode: 'components' | 'routes'): string => {
-  if (node.type === 'package') {
+const getNodeLabel = (node: TreeNode, mode: "components" | "routes"): string => {
+  if (node.type === "package") {
     const frameworks = (node.extra?.frameworks as string[]) || [];
-    return frameworks.length ? `${node.label} (${frameworks.join(', ')})` : node.label;
+    return frameworks.length ? `${node.label} (${frameworks.join(", ")})` : node.label;
   }
 
-  if (node.type === 'item') {
-    if (mode === 'components') {
+  if (node.type === "item") {
+    if (mode === "components") {
       return (node.extra?.componentName as string) || node.label;
     }
     return (node.extra?.displayLabel as string) || (node.extra?.routePath as string) || node.label;
@@ -292,8 +292,8 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
   useEffect(() => {
     const initial = new Set<string>();
     const autoExpand = (nodes: TreeNode[]) => {
-      nodes.forEach(node => {
-        if (node.type !== 'item') {
+      nodes.forEach((node) => {
+        if (node.type !== "item") {
           initial.add(node.id);
         }
         if (node.children) {
@@ -316,7 +316,7 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
   });
 
   const toggleNode = (nodeId: string) => {
-    setExpanded(prev => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(nodeId)) {
         next.delete(nodeId);
@@ -341,8 +341,8 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
       </div>
 
       <div ref={parentRef} className="max-h-72 overflow-auto scrollbar-transparent">
-        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
-          {rowVirtualizer.getVirtualItems().map(virtualRow => {
+        <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const item = flattened[virtualRow.index];
             if (!item) {
               return null;
@@ -360,10 +360,10 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
                 key={node.id}
                 className="px-4 flex items-center gap-2 text-sm text-gray-700 dark:text-graphite-200"
                 style={{
-                  position: 'absolute',
+                  position: "absolute",
                   top: 0,
                   left: 0,
-                  width: '100%',
+                  width: "100%",
                   transform: `translateY(${offset}px)`,
                   height: `${virtualRow.size}px`,
                 }}
@@ -379,7 +379,7 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
                       className="inline-flex items-center justify-center w-5 h-5 rounded hover:bg-gray-200 text-gray-600"
                     >
                       <svg
-                        className={clsx('w-3 h-3 transition-transform', isExpanded && 'rotate-90')}
+                        className={clsx("w-3 h-3 transition-transform", isExpanded && "rotate-90")}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -397,23 +397,23 @@ export const FrontendTreeSection: React.FC<FrontendTreeProps> = ({ title, packag
                   )}
 
                   <span
-                    className={clsx('truncate', {
-                      'font-semibold text-gray-900 dark:text-graphite-25': node.type === 'package',
-                      'text-gray-700 dark:text-graphite-200': node.type === 'folder',
-                      'text-gray-600 dark:text-graphite-300': node.type === 'item',
+                    className={clsx("truncate", {
+                      "font-semibold text-gray-900 dark:text-graphite-25": node.type === "package",
+                      "text-gray-700 dark:text-graphite-200": node.type === "folder",
+                      "text-gray-600 dark:text-graphite-300": node.type === "item",
                     })}
                     title={label}
                   >
                     {label}
                   </span>
 
-                  {node.type === 'item' &&
-                    mode === 'routes' &&
+                  {node.type === "item" &&
+                    mode === "routes" &&
                     routerType &&
-                    routerType !== 'tsoa' &&
+                    routerType !== "tsoa" &&
                     null}
 
-                  {node.type === 'item' && mode === 'components' && framework && (
+                  {node.type === "item" && mode === "components" && framework && (
                     <span className="text-xs text-gray-400 dark:text-graphite-400">
                       ({framework})
                     </span>

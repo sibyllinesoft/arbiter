@@ -7,9 +7,9 @@ import {
   Copy,
   Info,
   XCircle,
-} from 'lucide-react';
-import React, { useState, useMemo } from 'react';
-import { MonacoEditor } from '../Editor/MonacoEditor';
+} from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { MonacoEditor } from "../Editor/MonacoEditor";
 
 interface CueViewerProps {
   /** CUE source code to display */
@@ -29,7 +29,7 @@ interface CueViewerProps {
   /** Callback when CUE content changes */
   onChange?: (content: string) => void;
   /** Display mode */
-  mode?: 'view' | 'edit' | 'split';
+  mode?: "view" | "edit" | "split";
   /** Optional resolved data to show alongside */
   resolvedData?: any;
 }
@@ -38,19 +38,19 @@ interface ValidationError {
   line: number;
   column: number;
   message: string;
-  severity: 'error' | 'warning' | 'info';
+  severity: "error" | "warning" | "info";
 }
 
 export const CueViewer: React.FC<CueViewerProps> = ({
   cueSource,
   title,
-  className = '',
+  className = "",
   showCopyButton = true,
   showLineNumbers = true,
   validationErrors = [],
   editable = false,
   onChange,
-  mode = 'view',
+  mode = "view",
   resolvedData,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -63,7 +63,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -74,26 +74,26 @@ export const CueViewer: React.FC<CueViewerProps> = ({
 
   // Analyze CUE content for metadata
   const cueMetadata = useMemo(() => {
-    const lines = currentContent.split('\n');
-    const packageMatch = lines.find(line => line.startsWith('package '));
-    const importLines = lines.filter(line => line.trim().startsWith('import '));
-    const commentLines = lines.filter(line => line.trim().startsWith('//'));
+    const lines = currentContent.split("\n");
+    const packageMatch = lines.find((line) => line.startsWith("package "));
+    const importLines = lines.filter((line) => line.trim().startsWith("import "));
+    const commentLines = lines.filter((line) => line.trim().startsWith("//"));
 
     // Count top-level definitions
-    const definitions = lines.filter(line => {
+    const definitions = lines.filter((line) => {
       const trimmed = line.trim();
       return (
         trimmed &&
-        !trimmed.startsWith('//') &&
-        !trimmed.startsWith('import ') &&
-        !trimmed.startsWith('package ') &&
-        trimmed.includes(':') &&
-        !trimmed.includes(':{')
+        !trimmed.startsWith("//") &&
+        !trimmed.startsWith("import ") &&
+        !trimmed.startsWith("package ") &&
+        trimmed.includes(":") &&
+        !trimmed.includes(":{")
       );
     }).length;
 
     return {
-      package: packageMatch?.replace('package ', '').trim(),
+      package: packageMatch?.replace("package ", "").trim(),
       imports: importLines.length,
       comments: commentLines.length,
       definitions,
@@ -102,9 +102,9 @@ export const CueViewer: React.FC<CueViewerProps> = ({
   }, [currentContent]);
 
   const validationSummary = useMemo(() => {
-    const errors = validationErrors.filter(e => e.severity === 'error').length;
-    const warnings = validationErrors.filter(e => e.severity === 'warning').length;
-    const info = validationErrors.filter(e => e.severity === 'info').length;
+    const errors = validationErrors.filter((e) => e.severity === "error").length;
+    const warnings = validationErrors.filter((e) => e.severity === "warning").length;
+    const info = validationErrors.filter((e) => e.severity === "info").length;
 
     return { errors, warnings, info, total: validationErrors.length };
   }, [validationErrors]);
@@ -160,11 +160,11 @@ export const CueViewer: React.FC<CueViewerProps> = ({
               {validationErrors.map((error, index) => (
                 <div key={index} className="flex items-start space-x-2 text-xs">
                   <div className="flex-shrink-0 mt-0.5">
-                    {error.severity === 'error' && <XCircle className="w-3 h-3 text-red-500" />}
-                    {error.severity === 'warning' && (
+                    {error.severity === "error" && <XCircle className="w-3 h-3 text-red-500" />}
+                    {error.severity === "warning" && (
                       <AlertTriangle className="w-3 h-3 text-yellow-500" />
                     )}
-                    {error.severity === 'info' && <Info className="w-3 h-3 text-blue-500" />}
+                    {error.severity === "info" && <Info className="w-3 h-3 text-blue-500" />}
                   </div>
                   <div className="flex-1">
                     <div className="font-mono text-gray-500">
@@ -188,7 +188,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
       <div className="grid grid-cols-2 gap-4 text-xs">
         <div>
           <div className="text-gray-500">Package</div>
-          <div className="font-mono text-blue-600">{cueMetadata.package || 'none'}</div>
+          <div className="font-mono text-blue-600">{cueMetadata.package || "none"}</div>
         </div>
         <div>
           <div className="text-gray-500">Lines</div>
@@ -217,11 +217,11 @@ export const CueViewer: React.FC<CueViewerProps> = ({
           language="cue"
           theme="cue-light"
           options={{
-            lineNumbers: showLineNumbers ? 'on' : 'off',
+            lineNumbers: showLineNumbers ? "on" : "off",
             minimap: { enabled: false },
             scrollBeyondLastLine: false,
             readOnly: !editable,
-            wordWrap: 'on',
+            wordWrap: "on",
           }}
         />
       ) : (
@@ -232,11 +232,11 @@ export const CueViewer: React.FC<CueViewerProps> = ({
             language="cue"
             theme="cue-dark"
             options={{
-              lineNumbers: showLineNumbers ? 'on' : 'off',
+              lineNumbers: showLineNumbers ? "on" : "off",
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               readOnly: true,
-              wordWrap: 'on',
+              wordWrap: "on",
             }}
           />
         </div>
@@ -273,7 +273,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
             <span>CUE Specification</span>
             {cueMetadata.package && (
               <span>
-                Package:{' '}
+                Package:{" "}
                 <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
                   {cueMetadata.package}
                 </code>
@@ -287,7 +287,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
             <button
               onClick={handleCopy}
               className="flex items-center gap-2 px-3 py-1 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-              title={copied ? 'Copied!' : 'Copy CUE source'}
+              title={copied ? "Copied!" : "Copy CUE source"}
             >
               {copied ? (
                 <>
@@ -306,7 +306,7 @@ export const CueViewer: React.FC<CueViewerProps> = ({
       </div>
 
       {/* Content */}
-      {mode === 'split' ? (
+      {mode === "split" ? (
         <div className="grid grid-cols-2 gap-4 h-96">
           <div className="space-y-4">
             <MetadataPanel />

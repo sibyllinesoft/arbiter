@@ -3,7 +3,7 @@
  * Tests for diagram rendering, interactions, and visual components
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 import {
   BasePage,
   DiagramPage,
@@ -13,9 +13,9 @@ import {
   TabsPage,
   TopBarPage,
   mockApiResponses,
-} from './test-utils';
+} from "./test-utils";
 
-test.describe('Diagram Rendering', () => {
+test.describe("Diagram Rendering", () => {
   let storybookHelper: StorybookHelper;
   let diagramPage: DiagramPage;
   let topBarPage: TopBarPage;
@@ -38,9 +38,9 @@ test.describe('Diagram Rendering', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should render Flow diagram', async ({ page }) => {
+  test("should render Flow diagram", async ({ page }) => {
     // Switch to Flow tab
-    await tabsPage.clickTab('Flow', 'right');
+    await tabsPage.clickTab("Flow", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for diagram to render
@@ -52,26 +52,26 @@ test.describe('Diagram Rendering', () => {
 
     // Check for diagram content
     const hasVisualContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
       // Look for SVG, Canvas, or other visual elements
-      return container.querySelector('svg, canvas, .diagram-content, .flow-diagram') !== null;
+      return container.querySelector("svg, canvas, .diagram-content, .flow-diagram") !== null;
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('flow-diagram');
+    await basePage.takeScreenshot("flow-diagram");
 
-    console.log('Flow diagram rendered:', hasVisualContent);
+    console.log("Flow diagram rendered:", hasVisualContent);
 
     // Check diagram type
     const diagramType = await diagramPage.getDiagramType();
-    expect(['flow', 'unknown']).toContain(diagramType);
+    expect(["flow", "unknown"]).toContain(diagramType);
   });
 
-  test('should render Site diagram', async ({ page }) => {
+  test("should render Site diagram", async ({ page }) => {
     // Switch to Site tab
-    await tabsPage.clickTab('Site', 'right');
+    await tabsPage.clickTab("Site", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for diagram to render
@@ -83,27 +83,27 @@ test.describe('Diagram Rendering', () => {
 
     // Look for site-specific content
     const hasSiteContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
       // Look for site diagram indicators
-      const text = container.textContent || '';
+      const text = container.textContent || "";
       return (
-        text.includes('Site') ||
-        text.includes('DAG') ||
-        container.querySelector('.site-diagram, .dag-diagram') !== null
+        text.includes("Site") ||
+        text.includes("DAG") ||
+        container.querySelector(".site-diagram, .dag-diagram") !== null
       );
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('site-diagram');
+    await basePage.takeScreenshot("site-diagram");
 
-    console.log('Site diagram content found:', hasSiteContent);
+    console.log("Site diagram content found:", hasSiteContent);
   });
 
-  test('should render FSM diagram', async ({ page }) => {
+  test("should render FSM diagram", async ({ page }) => {
     // Switch to FSM tab
-    await tabsPage.clickTab('FSM', 'right');
+    await tabsPage.clickTab("FSM", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for diagram to render
@@ -115,26 +115,26 @@ test.describe('Diagram Rendering', () => {
 
     // Look for FSM-specific content
     const hasFsmContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
-      const text = container.textContent || '';
+      const text = container.textContent || "";
       return (
-        text.includes('FSM') ||
-        text.includes('State') ||
-        container.querySelector('.fsm-diagram, .state-diagram') !== null
+        text.includes("FSM") ||
+        text.includes("State") ||
+        container.querySelector(".fsm-diagram, .state-diagram") !== null
       );
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('fsm-diagram');
+    await basePage.takeScreenshot("fsm-diagram");
 
-    console.log('FSM diagram content found:', hasFsmContent);
+    console.log("FSM diagram content found:", hasFsmContent);
   });
 
-  test('should render View diagram', async ({ page }) => {
+  test("should render View diagram", async ({ page }) => {
     // Switch to View tab
-    await tabsPage.clickTab('View', 'right');
+    await tabsPage.clickTab("View", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for diagram to render
@@ -146,26 +146,26 @@ test.describe('Diagram Rendering', () => {
 
     // Look for view/wireframe content
     const hasViewContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
-      const text = container.textContent || '';
+      const text = container.textContent || "";
       return (
-        text.includes('View') ||
-        text.includes('Wireframe') ||
-        container.querySelector('.view-diagram, .wireframe') !== null
+        text.includes("View") ||
+        text.includes("Wireframe") ||
+        container.querySelector(".view-diagram, .wireframe") !== null
       );
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('view-diagram');
+    await basePage.takeScreenshot("view-diagram");
 
-    console.log('View diagram content found:', hasViewContent);
+    console.log("View diagram content found:", hasViewContent);
   });
 
-  test('should render Architecture diagram', async ({ page }) => {
+  test("should render Architecture diagram", async ({ page }) => {
     // Switch to Architecture tab
-    await tabsPage.clickTab('Architecture', 'right');
+    await tabsPage.clickTab("Architecture", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for diagram to render
@@ -177,26 +177,26 @@ test.describe('Diagram Rendering', () => {
 
     // Look for architecture content
     const hasArchContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
-      const text = container.textContent || '';
+      const text = container.textContent || "";
       return (
-        text.includes('Architecture') ||
-        text.includes('System') ||
-        container.querySelector('.architecture-diagram, .system-diagram') !== null
+        text.includes("Architecture") ||
+        text.includes("System") ||
+        container.querySelector(".architecture-diagram, .system-diagram") !== null
       );
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('architecture-diagram');
+    await basePage.takeScreenshot("architecture-diagram");
 
-    console.log('Architecture diagram content found:', hasArchContent);
+    console.log("Architecture diagram content found:", hasArchContent);
   });
 
-  test('should display Gaps checklist', async ({ page }) => {
+  test("should display Gaps checklist", async ({ page }) => {
     // Switch to Gaps tab
-    await tabsPage.clickTab('Gaps', 'right');
+    await tabsPage.clickTab("Gaps", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for content to load
@@ -208,39 +208,39 @@ test.describe('Diagram Rendering', () => {
 
     // Look for gaps/checklist content
     const hasGapsContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
-      const text = container.textContent || '';
+      const text = container.textContent || "";
       return (
-        text.includes('Gaps') ||
-        text.includes('missing') ||
-        text.includes('coverage') ||
-        container.querySelector('.gaps-checklist, .checklist') !== null ||
-        container.querySelector('ul, ol, .list') !== null
+        text.includes("Gaps") ||
+        text.includes("missing") ||
+        text.includes("coverage") ||
+        container.querySelector(".gaps-checklist, .checklist") !== null ||
+        container.querySelector("ul, ol, .list") !== null
       );
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('gaps-checklist');
+    await basePage.takeScreenshot("gaps-checklist");
 
-    console.log('Gaps checklist content found:', hasGapsContent);
+    console.log("Gaps checklist content found:", hasGapsContent);
 
     // Check if there's a badge indicating number of gaps
     const tabButton = page.locator('[role="tab"]:has-text("Gaps")');
     const hasBadge = await tabButton
-      .locator('.badge, .count')
+      .locator(".badge, .count")
       .isVisible()
       .catch(() => false);
 
     if (hasBadge) {
-      console.log('Gaps tab has badge indicator');
+      console.log("Gaps tab has badge indicator");
     }
   });
 
-  test('should display Resolved JSON viewer', async ({ page }) => {
+  test("should display Resolved JSON viewer", async ({ page }) => {
     // Switch to Resolved tab
-    await tabsPage.clickTab('Resolved', 'right');
+    await tabsPage.clickTab("Resolved", "right");
     await basePage.waitForLoadingComplete();
 
     // Wait for content to load
@@ -252,26 +252,26 @@ test.describe('Diagram Rendering', () => {
 
     // Look for JSON or resolved data content
     const hasResolvedContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       if (!container) return false;
 
-      const text = container.textContent || '';
+      const text = container.textContent || "";
       return (
-        text.includes('Resolved') ||
-        text.includes('{') || // JSON content
-        text.includes('[') || // Array content
-        container.querySelector('.json-viewer, .code-block, pre') !== null
+        text.includes("Resolved") ||
+        text.includes("{") || // JSON content
+        text.includes("[") || // Array content
+        container.querySelector(".json-viewer, .code-block, pre") !== null
       );
     });
 
     // Take screenshot
-    await basePage.takeScreenshot('resolved-viewer');
+    await basePage.takeScreenshot("resolved-viewer");
 
-    console.log('Resolved JSON content found:', hasResolvedContent);
+    console.log("Resolved JSON content found:", hasResolvedContent);
   });
 });
 
-test.describe('Diagram Interactions', () => {
+test.describe("Diagram Interactions", () => {
   let storybookHelper: StorybookHelper;
   let diagramPage: DiagramPage;
   let tabsPage: TabsPage;
@@ -288,18 +288,18 @@ test.describe('Diagram Interactions', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should handle tab switching between diagrams', async ({ page }) => {
-    const diagramTabs = ['Flow', 'Site', 'FSM', 'View', 'Architecture'];
+  test("should handle tab switching between diagrams", async ({ page }) => {
+    const diagramTabs = ["Flow", "Site", "FSM", "View", "Architecture"];
 
     for (let i = 0; i < diagramTabs.length; i++) {
       const tabName = diagramTabs[i];
 
       // Switch to tab
-      await tabsPage.clickTab(tabName, 'right');
+      await tabsPage.clickTab(tabName, "right");
       await basePage.waitForLoadingComplete();
 
       // Verify active tab
-      const activeTab = await tabsPage.getActiveTab('right');
+      const activeTab = await tabsPage.getActiveTab("right");
       expect(activeTab.toLowerCase()).toContain(tabName.toLowerCase());
 
       // Wait for diagram to render
@@ -312,9 +312,9 @@ test.describe('Diagram Interactions', () => {
       // Test rapid switching (not on first iteration)
       if (i > 0) {
         const prevTab = diagramTabs[i - 1];
-        await tabsPage.clickTab(prevTab, 'right');
+        await tabsPage.clickTab(prevTab, "right");
         await page.waitForTimeout(200);
-        await tabsPage.clickTab(tabName, 'right');
+        await tabsPage.clickTab(tabName, "right");
         await basePage.waitForLoadingComplete();
       }
 
@@ -322,11 +322,11 @@ test.describe('Diagram Interactions', () => {
     }
   });
 
-  test('should check for diagram interactivity', async ({ page }) => {
-    const interactiveTabs = ['Flow', 'Site', 'FSM', 'Architecture'];
+  test("should check for diagram interactivity", async ({ page }) => {
+    const interactiveTabs = ["Flow", "Site", "FSM", "Architecture"];
 
     for (const tabName of interactiveTabs) {
-      await tabsPage.clickTab(tabName, 'right');
+      await tabsPage.clickTab(tabName, "right");
       await basePage.waitForLoadingComplete();
       await diagramPage.waitForDiagramToRender();
 
@@ -346,7 +346,7 @@ test.describe('Diagram Interactions', () => {
 
       // Check for tooltips, popups, or other interactive feedback
       const hasTooltip = await page
-        .locator('.tooltip, .popup, .overlay')
+        .locator(".tooltip, .popup, .overlay")
         .isVisible()
         .catch(() => false);
       if (hasTooltip) {
@@ -355,9 +355,9 @@ test.describe('Diagram Interactions', () => {
     }
   });
 
-  test('should handle diagram zoom and pan (if available)', async ({ page }) => {
+  test("should handle diagram zoom and pan (if available)", async ({ page }) => {
     // Test on Flow diagram which is most likely to have zoom/pan
-    await tabsPage.clickTab('Flow', 'right');
+    await tabsPage.clickTab("Flow", "right");
     await basePage.waitForLoadingComplete();
     await diagramPage.waitForDiagramToRender();
 
@@ -380,25 +380,25 @@ test.describe('Diagram Interactions', () => {
       await page.mouse.up();
       await page.waitForTimeout(200);
 
-      console.log('Zoom and pan interactions tested');
+      console.log("Zoom and pan interactions tested");
     }
 
     // Take screenshot after interactions
-    await basePage.takeScreenshot('diagram-interactions');
+    await basePage.takeScreenshot("diagram-interactions");
   });
 
-  test('should update diagrams when validation changes', async ({ page }) => {
+  test("should update diagrams when validation changes", async ({ page }) => {
     const topBarPage = new TopBarPage(page);
 
     // Start with Flow diagram
-    await tabsPage.clickTab('Flow', 'right');
+    await tabsPage.clickTab("Flow", "right");
     await basePage.waitForLoadingComplete();
     await diagramPage.waitForDiagramToRender();
 
     // Get initial diagram state
     const initialContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
-      return container ? container.innerHTML : '';
+      const container = document.querySelector(".diagram-container");
+      return container ? container.innerHTML : "";
     });
 
     // Trigger validation
@@ -410,19 +410,19 @@ test.describe('Diagram Interactions', () => {
 
     // Check if diagram content changed
     const updatedContent = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
-      return container ? container.innerHTML : '';
+      const container = document.querySelector(".diagram-container");
+      return container ? container.innerHTML : "";
     });
 
     // Content might change or stay the same depending on implementation
-    console.log('Diagram content changed after validation:', initialContent !== updatedContent);
+    console.log("Diagram content changed after validation:", initialContent !== updatedContent);
 
     // Take screenshots before and after
-    await basePage.takeScreenshot('diagram-after-validation');
+    await basePage.takeScreenshot("diagram-after-validation");
   });
 });
 
-test.describe('Diagram Error Handling', () => {
+test.describe("Diagram Error Handling", () => {
   let storybookHelper: StorybookHelper;
   let diagramPage: DiagramPage;
   let tabsPage: TabsPage;
@@ -435,11 +435,11 @@ test.describe('Diagram Error Handling', () => {
     basePage = new BasePage(page);
 
     // Mock API with potential errors
-    await page.route('**/api/projects/*/diagrams/**', route => {
+    await page.route("**/api/projects/*/diagrams/**", (route) => {
       route.fulfill({
         status: 500,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Diagram generation failed' }),
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Diagram generation failed" }),
       });
     });
 
@@ -447,21 +447,21 @@ test.describe('Diagram Error Handling', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should handle diagram loading errors gracefully', async ({ page }) => {
-    const diagramTabs = ['Flow', 'Site', 'FSM'];
+  test("should handle diagram loading errors gracefully", async ({ page }) => {
+    const diagramTabs = ["Flow", "Site", "FSM"];
 
     for (const tabName of diagramTabs) {
-      await tabsPage.clickTab(tabName, 'right');
+      await tabsPage.clickTab(tabName, "right");
       await basePage.waitForLoadingComplete();
 
       // Check for error handling
       const hasError = await basePage.elementExists(SELECTORS.ERROR_MESSAGE);
       const hasPlaceholder = await page
-        .locator('.diagram-loading, .placeholder')
+        .locator(".diagram-loading, .placeholder")
         .isVisible()
         .catch(() => false);
       const hasErrorState = await page
-        .locator('.error-state, .diagram-error')
+        .locator(".error-state, .diagram-error")
         .isVisible()
         .catch(() => false);
 
@@ -479,13 +479,13 @@ test.describe('Diagram Error Handling', () => {
     }
   });
 
-  test('should show loading states during diagram rendering', async ({ page }) => {
+  test("should show loading states during diagram rendering", async ({ page }) => {
     // Simulate slow network
-    await page.route('**/api/projects/**', route => {
+    await page.route("**/api/projects/**", (route) => {
       setTimeout(() => route.continue(), 2000);
     });
 
-    await tabsPage.clickTab('Flow', 'right');
+    await tabsPage.clickTab("Flow", "right");
 
     // Check for loading indicator
     const hasLoadingSpinner = await page
@@ -497,17 +497,17 @@ test.describe('Diagram Error Handling', () => {
       .isVisible()
       .catch(() => false);
 
-    console.log('Loading indicators found:', { hasLoadingSpinner, hasLoadingText });
+    console.log("Loading indicators found:", { hasLoadingSpinner, hasLoadingText });
 
     // Wait for loading to complete
     await basePage.waitForLoadingComplete();
 
     // Take screenshot of loading state
-    await basePage.takeScreenshot('diagram-loading-state');
+    await basePage.takeScreenshot("diagram-loading-state");
   });
 });
 
-test.describe('Diagram Visual Consistency', () => {
+test.describe("Diagram Visual Consistency", () => {
   let storybookHelper: StorybookHelper;
   let tabsPage: TabsPage;
   let basePage: BasePage;
@@ -522,17 +522,17 @@ test.describe('Diagram Visual Consistency', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should maintain consistent layout across all diagram tabs', async ({ page }) => {
-    const allTabs = ['Flow', 'Site', 'FSM', 'View', 'Gaps', 'Resolved', 'Architecture'];
+  test("should maintain consistent layout across all diagram tabs", async ({ page }) => {
+    const allTabs = ["Flow", "Site", "FSM", "View", "Gaps", "Resolved", "Architecture"];
     const layouts: any[] = [];
 
     for (const tabName of allTabs) {
-      await tabsPage.clickTab(tabName, 'right');
+      await tabsPage.clickTab(tabName, "right");
       await basePage.waitForLoadingComplete();
 
       // Measure layout
       const layout = await page.evaluate(() => {
-        const container = document.querySelector('.diagram-container');
+        const container = document.querySelector(".diagram-container");
         if (!container) return null;
 
         const rect = container.getBoundingClientRect();
@@ -564,14 +564,14 @@ test.describe('Diagram Visual Consistency', () => {
     }
   });
 
-  test('should be responsive to container size changes', async ({ page }) => {
+  test("should be responsive to container size changes", async ({ page }) => {
     // Test with Flow diagram
-    await tabsPage.clickTab('Flow', 'right');
+    await tabsPage.clickTab("Flow", "right");
     await basePage.waitForLoadingComplete();
 
     // Get initial size
     const initialSize = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       return container ? container.getBoundingClientRect() : null;
     });
 
@@ -581,25 +581,25 @@ test.describe('Diagram Visual Consistency', () => {
 
     // Get new size
     const newSize = await page.evaluate(() => {
-      const container = document.querySelector('.diagram-container');
+      const container = document.querySelector(".diagram-container");
       return container ? container.getBoundingClientRect() : null;
     });
 
     // Diagram should adapt to new size
     if (initialSize && newSize) {
       expect(newSize.width).not.toBe(initialSize.width);
-      console.log('Diagram responsive behavior confirmed');
+      console.log("Diagram responsive behavior confirmed");
     }
 
     // Reset viewport
     await page.setViewportSize(TEST_CONFIG.VIEWPORT.DESKTOP);
 
     // Take screenshot after resize
-    await basePage.takeScreenshot('diagram-responsive');
+    await basePage.takeScreenshot("diagram-responsive");
   });
 });
 
-test.describe('Individual Diagram Components', () => {
+test.describe("Individual Diagram Components", () => {
   let storybookHelper: StorybookHelper;
 
   test.beforeEach(async ({ page }) => {
@@ -607,14 +607,14 @@ test.describe('Individual Diagram Components', () => {
     await page.goto(TEST_CONFIG.STORYBOOK_URL);
   });
 
-  test('should test individual diagram stories', async ({ page }) => {
+  test("should test individual diagram stories", async ({ page }) => {
     // Test individual diagram component stories if they exist
     const diagramStories = [
-      'components-diagrams-flowdiagram--default',
-      'components-diagrams-sitediagram--default',
-      'components-diagrams-fsmdiagram--default',
-      'components-diagrams-viewdiagram--default',
-      'components-diagrams-architecturediagram--default',
+      "components-diagrams-flowdiagram--default",
+      "components-diagrams-sitediagram--default",
+      "components-diagrams-fsmdiagram--default",
+      "components-diagrams-viewdiagram--default",
+      "components-diagrams-architecturediagram--default",
     ];
 
     for (const storyId of diagramStories) {
@@ -625,13 +625,13 @@ test.describe('Individual Diagram Components', () => {
         await page.waitForTimeout(2000);
 
         // Check if story loaded successfully
-        const hasContent = await page.locator('body').isVisible();
+        const hasContent = await page.locator("body").isVisible();
         expect(hasContent).toBe(true);
 
         console.log(`${storyId} story loaded successfully`);
 
         // Take screenshot
-        const storyName = storyId.split('--')[0].replace('components-diagrams-', '');
+        const storyName = storyId.split("--")[0].replace("components-diagrams-", "");
         await page.screenshot({ path: `test-results/screenshots/story-${storyName}.png` });
       } catch (error) {
         console.log(`Story ${storyId} not found or failed to load:`, error);

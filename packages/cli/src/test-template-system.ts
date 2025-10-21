@@ -10,11 +10,11 @@
  * 4. Test variable extraction
  */
 
-import chalk from 'chalk';
-import { extractVariablesFromCue, templateManager } from './templates/index.js';
+import chalk from "chalk";
+import { extractVariablesFromCue, templateManager } from "./templates/index.js";
 
 async function testTemplateSystem() {
-  console.log(chalk.cyan('🧪 Testing Template System'));
+  console.log(chalk.cyan("🧪 Testing Template System"));
   console.log();
 
   try {
@@ -34,9 +34,9 @@ async function testTemplateSystem() {
  * Test template configuration loading
  */
 async function runConfigurationTest(): Promise<void> {
-  console.log(chalk.blue('1. Loading template configuration...'));
+  console.log(chalk.blue("1. Loading template configuration..."));
   await templateManager.loadConfig();
-  console.log(chalk.green('✅ Configuration loaded'));
+  console.log(chalk.green("✅ Configuration loaded"));
   console.log();
 }
 
@@ -44,9 +44,9 @@ async function runConfigurationTest(): Promise<void> {
  * Test available template engines
  */
 async function runEngineTest(): Promise<void> {
-  console.log(chalk.blue('2. Available engines:'));
+  console.log(chalk.blue("2. Available engines:"));
   const engines = templateManager.getEngines();
-  engines.forEach(engine => console.log(`  • ${engine}`));
+  engines.forEach((engine) => console.log(`  • ${engine}`));
   console.log();
 }
 
@@ -54,11 +54,11 @@ async function runEngineTest(): Promise<void> {
  * Test template alias listing
  */
 async function runTemplateListingTest(): Promise<void> {
-  console.log(chalk.blue('3. Available template aliases:'));
+  console.log(chalk.blue("3. Available template aliases:"));
   const aliases = templateManager.getAliases();
 
   if (Object.keys(aliases).length === 0) {
-    console.log(chalk.yellow('  No template aliases configured'));
+    console.log(chalk.yellow("  No template aliases configured"));
   } else {
     displayTemplateAliases(aliases);
   }
@@ -99,7 +99,7 @@ function displayTemplateDetails(templateName: string): void {
     console.log(`  Source: ${alias.source}`);
     console.log(`  Description: ${alias.description}`);
     if (alias.prerequisites) {
-      console.log(`  Prerequisites: ${alias.prerequisites.join(', ')}`);
+      console.log(`  Prerequisites: ${alias.prerequisites.join(", ")}`);
     }
   }
 }
@@ -108,12 +108,12 @@ function displayTemplateDetails(templateName: string): void {
  * Test variable extraction functionality
  */
 async function runVariableExtractionTest(): Promise<void> {
-  console.log(chalk.blue('5. Testing variable extraction:'));
+  console.log(chalk.blue("5. Testing variable extraction:"));
 
   const sampleCue = createSampleCueContent();
-  const variables = extractVariablesFromCue(sampleCue, 'api');
+  const variables = extractVariablesFromCue(sampleCue, "api");
 
-  console.log('  Extracted variables:', JSON.stringify(variables, null, 2));
+  console.log("  Extracted variables:", JSON.stringify(variables, null, 2));
   console.log();
 }
 
@@ -150,27 +150,27 @@ services: {
  * Display success message and next steps
  */
 function displaySuccessMessage(): void {
-  console.log(chalk.green('🎉 Template system test completed successfully!'));
+  console.log(chalk.green("🎉 Template system test completed successfully!"));
   console.log();
-  console.log(chalk.bold('Next steps:'));
+  console.log(chalk.bold("Next steps:"));
   console.log(
-    '  1. Add custom templates with: arbiter templates add <name> --source <source> --description <desc>'
+    "  1. Add custom templates with: arbiter templates add <name> --source <source> --description <desc>",
   );
-  console.log('  2. Use templates with: arbiter add service myapi --template <template-name>');
+  console.log("  2. Use templates with: arbiter add service myapi --template <template-name>");
 }
 
 /**
  * Handle test failure
  */
 function handleTestFailure(error: unknown): void {
-  console.error(chalk.red('❌ Template system test failed:'));
+  console.error(chalk.red("❌ Template system test failed:"));
   console.error(chalk.red(error instanceof Error ? error.message : String(error)));
   process.exit(1);
 }
 
 // Only run the template system check when executed directly, not during bun test discovery.
 if (import.meta.main) {
-  testTemplateSystem().catch(error => {
+  testTemplateSystem().catch((error) => {
     console.error(error);
     process.exit(1);
   });

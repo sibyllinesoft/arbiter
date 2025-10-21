@@ -103,15 +103,10 @@ The editor provides a default handler template:
 ```javascript
 async function handler(payload, context) {
   // Access webhook data
-  console.log('Received payload:', payload);
+  // Inspect payload as needed
 
   // Access context information
-  console.log('Handler context:', {
-    handlerId: context.handlerId,
-    provider: context.provider,
-    eventType: context.eventType,
-    timestamp: context.timestamp,
-  });
+  // The context object includes metadata about the invocation
 
   // TODO: Implement your handler logic here
 

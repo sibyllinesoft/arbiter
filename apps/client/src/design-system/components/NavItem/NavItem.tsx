@@ -4,9 +4,9 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { ChevronRight, ExternalLink } from 'lucide-react';
-import React, { forwardRef, type ReactNode } from 'react';
-import { cn } from '../../variants';
+import { ChevronRight, ExternalLink } from "lucide-react";
+import React, { forwardRef, type ReactNode } from "react";
+import { cn } from "../../variants";
 
 export interface NavItemProps {
   /** Item content/label */
@@ -31,10 +31,10 @@ export interface NavItemProps {
   badge?: string | number | ReactNode;
 
   /** Visual variant */
-  variant?: 'default' | 'subtle' | 'ghost';
+  variant?: "default" | "subtle" | "ghost";
 
   /** Size variant */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Whether this is an external link */
   external?: boolean;
@@ -54,40 +54,40 @@ export interface NavItemProps {
 
 const variantClasses = {
   default: {
-    base: 'text-graphite-700 hover:text-graphite-900 hover:bg-graphite-100',
-    active: 'bg-blue-50 text-blue-700 border-r-2 border-blue-500',
-    disabled: 'text-graphite-400 cursor-not-allowed',
+    base: "text-graphite-700 hover:text-graphite-900 hover:bg-graphite-100",
+    active: "bg-blue-50 text-blue-700 border-r-2 border-blue-500",
+    disabled: "text-graphite-400 cursor-not-allowed",
   },
   subtle: {
-    base: 'text-graphite-600 hover:text-graphite-800 hover:bg-graphite-50',
-    active: 'bg-graphite-100 text-graphite-900 font-medium',
-    disabled: 'text-graphite-400 cursor-not-allowed',
+    base: "text-graphite-600 hover:text-graphite-800 hover:bg-graphite-50",
+    active: "bg-graphite-100 text-graphite-900 font-medium",
+    disabled: "text-graphite-400 cursor-not-allowed",
   },
   ghost: {
-    base: 'text-graphite-600 hover:text-graphite-900',
-    active: 'text-blue-600 font-medium',
-    disabled: 'text-graphite-400 cursor-not-allowed',
+    base: "text-graphite-600 hover:text-graphite-900",
+    active: "text-blue-600 font-medium",
+    disabled: "text-graphite-400 cursor-not-allowed",
   },
 } as const;
 
 const sizeClasses = {
   sm: {
-    container: 'px-2 py-1.5 text-sm',
-    icon: 'h-3.5 w-3.5',
-    badge: 'px-1.5 py-0.5 text-xs',
-    shortcut: 'text-xs',
+    container: "px-2 py-1.5 text-sm",
+    icon: "h-3.5 w-3.5",
+    badge: "px-1.5 py-0.5 text-xs",
+    shortcut: "text-xs",
   },
   md: {
-    container: 'px-3 py-2 text-sm',
-    icon: 'h-4 w-4',
-    badge: 'px-2 py-1 text-xs',
-    shortcut: 'text-xs',
+    container: "px-3 py-2 text-sm",
+    icon: "h-4 w-4",
+    badge: "px-2 py-1 text-xs",
+    shortcut: "text-xs",
   },
   lg: {
-    container: 'px-4 py-3 text-base',
-    icon: 'h-5 w-5',
-    badge: 'px-2.5 py-1 text-sm',
-    shortcut: 'text-sm',
+    container: "px-4 py-3 text-base",
+    icon: "h-5 w-5",
+    badge: "px-2.5 py-1 text-sm",
+    shortcut: "text-sm",
   },
 } as const;
 
@@ -101,8 +101,8 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
       icon,
       endIcon,
       badge,
-      variant = 'default',
-      size = 'md',
+      variant = "default",
+      size = "md",
       external = false,
       className,
       onClick,
@@ -110,20 +110,20 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
       shortcut,
       ...props
     },
-    ref
+    ref,
   ) => {
     const variants = variantClasses[variant];
     const sizes = sizeClasses[size];
 
     const baseClasses = cn(
-      'flex items-center justify-between w-full rounded-md font-medium transition-all duration-150',
-      'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+      "flex items-center justify-between w-full rounded-md font-medium transition-all duration-150",
+      "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1",
       sizes.container,
 
       // State styling
       disabled ? variants.disabled : active ? variants.active : interactive && variants.base,
 
-      className
+      className,
     );
 
     const content = (
@@ -134,9 +134,9 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
           {icon && (
             <span
               className={cn(
-                'flex-shrink-0',
+                "flex-shrink-0",
                 sizes.icon,
-                active ? 'text-blue-600' : 'text-graphite-500'
+                active ? "text-blue-600" : "text-graphite-500",
               )}
             >
               {icon}
@@ -148,7 +148,7 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
 
           {/* External link indicator */}
           {external && href && (
-            <ExternalLink className={cn('flex-shrink-0', sizes.icon, 'text-graphite-400')} />
+            <ExternalLink className={cn("flex-shrink-0", sizes.icon, "text-graphite-400")} />
           )}
         </div>
 
@@ -158,9 +158,9 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
           {badge && (
             <span
               className={cn(
-                'inline-flex items-center justify-center font-medium rounded-full',
+                "inline-flex items-center justify-center font-medium rounded-full",
                 sizes.badge,
-                active ? 'bg-blue-100 text-blue-700' : 'bg-graphite-100 text-graphite-600'
+                active ? "bg-blue-100 text-blue-700" : "bg-graphite-100 text-graphite-600",
               )}
             >
               {badge}
@@ -171,9 +171,9 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
           {shortcut && (
             <kbd
               className={cn(
-                'inline-flex items-center font-mono font-medium rounded border bg-graphite-50 px-1.5 py-0.5',
+                "inline-flex items-center font-mono font-medium rounded border bg-graphite-50 px-1.5 py-0.5",
                 sizes.shortcut,
-                'text-graphite-500 border-graphite-200'
+                "text-graphite-500 border-graphite-200",
               )}
             >
               {shortcut}
@@ -182,7 +182,7 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
 
           {/* End icon */}
           {endIcon && (
-            <span className={cn('flex-shrink-0', sizes.icon, 'text-graphite-400')}>{endIcon}</span>
+            <span className={cn("flex-shrink-0", sizes.icon, "text-graphite-400")}>{endIcon}</span>
           )}
         </div>
       </>
@@ -196,8 +196,8 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
           href={href}
           className={baseClasses}
           onClick={onClick as React.MouseEventHandler<HTMLAnchorElement>}
-          target={external ? '_blank' : undefined}
-          rel={external ? 'noopener noreferrer' : undefined}
+          target={external ? "_blank" : undefined}
+          rel={external ? "noopener noreferrer" : undefined}
           {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
         >
           {content}
@@ -218,10 +218,10 @@ export const NavItem = forwardRef<HTMLButtonElement | HTMLAnchorElement, NavItem
         {content}
       </button>
     );
-  }
+  },
 );
 
-NavItem.displayName = 'NavItem';
+NavItem.displayName = "NavItem";
 
 // Group component for organizing navigation items
 export interface NavGroupProps {
@@ -251,7 +251,7 @@ export function NavGroup({
   const [collapsed, setCollapsed] = React.useState(defaultCollapsed);
 
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn("space-y-1", className)}>
       {title && (
         <div className="flex items-center justify-between">
           {collapsible ? (
@@ -261,7 +261,7 @@ export function NavGroup({
               onClick={() => setCollapsed(!collapsed)}
             >
               <ChevronRight
-                className={cn('h-3 w-3 transition-transform', !collapsed && 'rotate-90')}
+                className={cn("h-3 w-3 transition-transform", !collapsed && "rotate-90")}
               />
               {title}
             </button>

@@ -1,16 +1,16 @@
-import path from 'path';
-import fs from 'fs-extra';
-import { Hono } from 'hono';
+import path from "path";
+import fs from "fs-extra";
+import { Hono } from "hono";
 
 type Dependencies = Record<string, unknown>;
 
 export function createCliRouter(deps: Dependencies) {
-  const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
+  const PROJECT_ROOT = path.resolve(__dirname, "../../../..");
 
   const router = new Hono();
 
   // Add endpoint for MCP add commands
-  router.post('/add', async c => {
+  router.post("/add", async (c) => {
     try {
       const body = await c.req.json();
       const { subcommand, name, options = {} } = body;
@@ -19,9 +19,9 @@ export function createCliRouter(deps: Dependencies) {
         return c.json(
           {
             success: false,
-            error: 'subcommand and name parameters are required',
+            error: "subcommand and name parameters are required",
           },
-          400
+          400,
         );
       }
 
@@ -30,18 +30,18 @@ export function createCliRouter(deps: Dependencies) {
 
       // Create a basic CLI config (you may want to make this configurable)
       const config = {
-        apiUrl: 'http://localhost:5050',
+        apiUrl: "http://localhost:5050",
         timeout: 30000,
-        format: 'json' as const,
+        format: "json" as const,
         color: false,
         projectDir: process.cwd(),
         projectStructure: {
-          appsDirectory: 'apps',
-          packagesDirectory: 'packages',
-          servicesDirectory: 'services',
-          testsDirectory: 'tests',
-          infraDirectory: 'infra',
-          endpointDirectory: 'apps/api/src/endpoints',
+          appsDirectory: "apps",
+          packagesDirectory: "packages",
+          servicesDirectory: "services",
+          testsDirectory: "tests",
+          infraDirectory: "infra",
+          endpointDirectory: "apps/api/src/endpoints",
         },
       };
 
@@ -64,24 +64,24 @@ export function createCliRouter(deps: Dependencies) {
             subcommand,
             name,
           },
-          500
+          500,
         );
       }
     } catch (error) {
-      console.error('Add API error:', error);
+      console.error("Add API error:", error);
       return c.json(
         {
           success: false,
-          error: 'Add command failed',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          error: "Add command failed",
+          message: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
   // Create endpoint for MCP create project command
-  router.post('/create', async c => {
+  router.post("/create", async (c) => {
     try {
       const body = await c.req.json();
       const { name, options = {} } = body;
@@ -90,9 +90,9 @@ export function createCliRouter(deps: Dependencies) {
         return c.json(
           {
             success: false,
-            error: 'name parameter is required',
+            error: "name parameter is required",
           },
-          400
+          400,
         );
       }
 
@@ -106,7 +106,7 @@ export function createCliRouter(deps: Dependencies) {
 
       // Prepare init options
       const initOptions = {
-        template: options.template || 'basic',
+        template: options.template || "basic",
         force: options.force || false,
         ...options,
       };
@@ -142,7 +142,7 @@ export function createCliRouter(deps: Dependencies) {
               name,
               directory: targetDir,
             },
-            500
+            500,
           );
         }
       } finally {
@@ -150,20 +150,20 @@ export function createCliRouter(deps: Dependencies) {
         process.chdir(originalCwd);
       }
     } catch (error) {
-      console.error('Create API error:', error);
+      console.error("Create API error:", error);
       return c.json(
         {
           success: false,
-          error: 'Create project failed',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          error: "Create project failed",
+          message: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
   // Surface analysis endpoint - thin wrapper around CLI surface command
-  router.post('/surface', async c => {
+  router.post("/surface", async (c) => {
     try {
       const body = await c.req.json();
       const { targets = [], options = {} } = body;
@@ -172,9 +172,9 @@ export function createCliRouter(deps: Dependencies) {
         return c.json(
           {
             success: false,
-            error: 'targets parameter is required',
+            error: "targets parameter is required",
           },
-          400
+          400,
         );
       }
 
@@ -185,30 +185,30 @@ export function createCliRouter(deps: Dependencies) {
 
       // Create a minimal config object
       const config = {
-        apiUrl: 'http://localhost:5050',
+        apiUrl: "http://localhost:5050",
         timeout: 30000,
-        format: 'json' as const,
+        format: "json" as const,
         color: false,
         projectDir: targets[0],
         projectStructure: {
-          appsDirectory: 'apps',
-          packagesDirectory: 'packages',
-          servicesDirectory: 'services',
-          testsDirectory: 'tests',
-          infraDirectory: 'infra',
-          endpointDirectory: 'apps/api/src/endpoints',
+          appsDirectory: "apps",
+          packagesDirectory: "packages",
+          servicesDirectory: "services",
+          testsDirectory: "tests",
+          infraDirectory: "infra",
+          endpointDirectory: "apps/api/src/endpoints",
         },
       };
 
       // Map API options to CLI surface options
       const surfaceOptions = {
-        language: options.language ?? 'typescript', // Default language
+        language: options.language ?? "typescript", // Default language
         output: options.output,
         outputDir: options.outputDir,
         projectName: options.projectName,
         genericNames: options.genericNames ?? false,
         diff: options.diff ?? false,
-        format: 'json' as const,
+        format: "json" as const,
         ndjsonOutput: false,
         agentMode: true, // Use agent mode for API
         verbose: options.verbose ?? false,
@@ -226,10 +226,10 @@ export function createCliRouter(deps: Dependencies) {
           return c.json(
             {
               success: false,
-              error: 'Surface analysis failed',
+              error: "Surface analysis failed",
               message: `CLI command exited with code ${exitCode}`,
             },
-            500
+            500,
           );
         }
 
@@ -237,22 +237,22 @@ export function createCliRouter(deps: Dependencies) {
         return c.json({
           success: true,
           targets,
-          message: 'Surface analysis completed successfully',
-          note: 'Results written to surface file in project directory',
+          message: "Surface analysis completed successfully",
+          note: "Results written to surface file in project directory",
         });
       } finally {
         // Restore original working directory
         process.chdir(originalCwd);
       }
     } catch (error) {
-      console.error('Surface analysis error:', error);
+      console.error("Surface analysis error:", error);
       return c.json(
         {
           success: false,
-          error: 'Surface analysis failed',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          error: "Surface analysis failed",
+          message: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });

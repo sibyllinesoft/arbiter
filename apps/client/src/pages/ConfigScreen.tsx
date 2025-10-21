@@ -2,17 +2,17 @@
  * Config Screen - Global configuration for UI preferences and handler management
  */
 
-import { ArrowLeft, Code, Settings } from 'lucide-react';
-import { Moon, Sun } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { TunnelManager } from '../components/TunnelManager';
-import { useApp, useAppSettings } from '../contexts/AppContext';
-import { Button, Card, Checkbox, Input } from '../design-system';
-import { apiService } from '../services/api';
+import { ArrowLeft, Code, Settings } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { TunnelManager } from "../components/TunnelManager";
+import { useApp, useAppSettings } from "../contexts/AppContext";
+import { Button, Card, Checkbox, Input } from "../design-system";
+import { apiService } from "../services/api";
 
 interface LocalEnvironmentInfo {
-  runtime: 'cloudflare' | 'node';
+  runtime: "cloudflare" | "node";
   cloudflareTunnelSupported: boolean;
 }
 
@@ -26,7 +26,7 @@ export function ConfigScreen({
   const navigate = useNavigate();
   const { settings, updateSettings } = useAppSettings();
   const { isDark, toggleTheme } = useApp();
-  const [environment, setEnvironment] = useState<'unknown' | 'cloudflare' | 'node'>('unknown');
+  const [environment, setEnvironment] = useState<"unknown" | "cloudflare" | "node">("unknown");
 
   void _onClose;
 
@@ -42,7 +42,7 @@ export function ConfigScreen({
       })
       .catch(() => {
         if (!cancelled) {
-          setEnvironment('node');
+          setEnvironment("node");
         }
       });
 
@@ -51,14 +51,14 @@ export function ConfigScreen({
     };
   }, []);
 
-  const isCloudflare = environment === 'cloudflare';
+  const isCloudflare = environment === "cloudflare";
 
   return (
     <div
       className={
         isModal
-          ? 'bg-white dark:bg-graphite-900'
-          : 'min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-graphite-900 dark:to-graphite-950'
+          ? "bg-white dark:bg-graphite-900"
+          : "min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-graphite-900 dark:to-graphite-950"
       }
     >
       {!isModal && (
@@ -70,7 +70,7 @@ export function ConfigScreen({
                   variant="ghost"
                   size="sm"
                   leftIcon={<ArrowLeft className="w-4 h-4" />}
-                  onClick={() => navigate('/')}
+                  onClick={() => navigate("/")}
                 >
                   Back to Dashboard
                 </Button>
@@ -95,7 +95,7 @@ export function ConfigScreen({
       )}
 
       <main
-        className={`max-w-${isModal ? '6' : '7'}xl mx-auto px-4 sm:px-6 lg:px-8 ${isModal ? 'py-0' : 'py-8'} scrollbar-transparent`}
+        className={`max-w-${isModal ? "6" : "7"}xl mx-auto px-4 sm:px-6 lg:px-8 ${isModal ? "py-0" : "py-8"} scrollbar-transparent`}
       >
         <div className="space-y-8">
           <Card className="p-6">
@@ -119,8 +119,8 @@ export function ConfigScreen({
                 <div className="flex items-center gap-6">
                   <Checkbox
                     checked={settings.showNotifications}
-                    onChange={e => updateSettings({ showNotifications: e.target.checked })}
-                    label={settings.showNotifications ? 'Enabled' : 'Disabled'}
+                    onChange={(e) => updateSettings({ showNotifications: e.target.checked })}
+                    label={settings.showNotifications ? "Enabled" : "Disabled"}
                   />
                   <button
                     onClick={toggleTheme}
@@ -158,42 +158,42 @@ export function ConfigScreen({
                 label="Apps directory"
                 placeholder="apps"
                 value={settings.appsDirectory}
-                onChange={event => updateSettings({ appsDirectory: event.target.value })}
+                onChange={(event) => updateSettings({ appsDirectory: event.target.value })}
                 helperText="Location for frontends or operational apps."
               />
               <Input
                 label="Packages directory"
                 placeholder="packages"
                 value={settings.packagesDirectory}
-                onChange={event => updateSettings({ packagesDirectory: event.target.value })}
+                onChange={(event) => updateSettings({ packagesDirectory: event.target.value })}
                 helperText="Primary workspace for shared libraries and reusable modules."
               />
               <Input
                 label="Services directory"
                 placeholder="services"
                 value={settings.servicesDirectory}
-                onChange={event => updateSettings({ servicesDirectory: event.target.value })}
+                onChange={(event) => updateSettings({ servicesDirectory: event.target.value })}
                 helperText="Default location for backend or API services."
               />
               <Input
                 label="Tests directory"
                 placeholder="tests"
                 value={settings.testsDirectory}
-                onChange={event => updateSettings({ testsDirectory: event.target.value })}
+                onChange={(event) => updateSettings({ testsDirectory: event.target.value })}
                 helperText="Where generated integration and scenario tests should live."
               />
               <Input
                 label="Infrastructure directory"
                 placeholder="infra"
                 value={settings.infraDirectory}
-                onChange={event => updateSettings({ infraDirectory: event.target.value })}
+                onChange={(event) => updateSettings({ infraDirectory: event.target.value })}
                 helperText="Folder containing Terraform, Pulumi, or other infrastructure code."
               />
               <Input
                 label="Default endpoint folder"
                 placeholder="apps/api/src/endpoints"
-                value={settings.endpointDirectory ?? ''}
-                onChange={event => updateSettings({ endpointDirectory: event.target.value })}
+                value={settings.endpointDirectory ?? ""}
+                onChange={(event) => updateSettings({ endpointDirectory: event.target.value })}
                 helperText="Base folder where generated API endpoint fragments should be written."
               />
             </div>

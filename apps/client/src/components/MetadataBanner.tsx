@@ -2,8 +2,8 @@
  * MetadataBanner - Displays spec metadata (apiVersion, kind, metadata) in a compact banner
  */
 
-import { Info, Package, Tag } from 'lucide-react';
-import React from 'react';
+import { Info, Package, Tag } from "lucide-react";
+import React from "react";
 
 interface MetadataBannerProps {
   /** Resolved spec data containing apiVersion, kind, metadata */
@@ -12,19 +12,19 @@ interface MetadataBannerProps {
   className?: string;
 }
 
-export function MetadataBanner({ data, className = '' }: MetadataBannerProps) {
+export function MetadataBanner({ data, className = "" }: MetadataBannerProps) {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null;
+    typeof value === "object" && value !== null;
 
-  const apiVersion = typeof data.apiVersion === 'string' ? data.apiVersion : undefined;
-  const kind = typeof data.kind === 'string' ? data.kind : undefined;
+  const apiVersion = typeof data.apiVersion === "string" ? data.apiVersion : undefined;
+  const kind = typeof data.kind === "string" ? data.kind : undefined;
   const metadata = isRecord(data.metadata) ? data.metadata : undefined;
   const metadataKeys = metadata ? Object.keys(metadata) : [];
-  const metadataName = metadata && typeof metadata.name === 'string' ? metadata.name : undefined;
+  const metadataName = metadata && typeof metadata.name === "string" ? metadata.name : undefined;
   const metadataNamespace =
-    metadata && typeof metadata.namespace === 'string' ? metadata.namespace : undefined;
+    metadata && typeof metadata.namespace === "string" ? metadata.namespace : undefined;
   const metadataVersion =
-    metadata && typeof metadata.version === 'string' ? metadata.version : undefined;
+    metadata && typeof metadata.version === "string" ? metadata.version : undefined;
 
   // If no metadata fields are present, don't render the banner
   if (!apiVersion && !kind && (!metadata || metadataKeys.length === 0)) {

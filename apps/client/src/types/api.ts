@@ -10,12 +10,12 @@ export interface Project {
   created_at: string;
   updated_at: string;
   description?: string | null | undefined;
-  status?: 'active' | 'draft' | 'archived' | 'error' | undefined;
+  status?: "active" | "draft" | "archived" | "error" | undefined;
   lastModified?: string | undefined;
   fragmentCount?: number | undefined;
   collaborators?: string[] | undefined;
   starred?: boolean | undefined;
-  validationStatus?: 'valid' | 'warnings' | 'errors' | 'pending' | undefined;
+  validationStatus?: "valid" | "warnings" | "errors" | "pending" | undefined;
   tags?: string[] | undefined;
   event_head_id?: string | null;
   entities?: {
@@ -62,25 +62,25 @@ export interface Event {
 
 // Event types for real-time collaboration
 export type EventType =
-  | 'fragment_revision_created'
-  | 'fragment_created'
-  | 'fragment_updated'
-  | 'fragment_deleted'
-  | 'validation_started'
-  | 'validation_completed'
-  | 'validation_failed'
-  | 'version_frozen'
-  | 'webhook_received'
-  | 'handler_executed'
-  | 'git_push_processed'
-  | 'git_merge_processed'
-  | 'event_head_updated'
-  | 'events_reverted'
-  | 'events_reapplied'
-  | 'entity_created'
-  | 'entity_updated'
-  | 'entity_deleted'
-  | 'entity_restored';
+  | "fragment_revision_created"
+  | "fragment_created"
+  | "fragment_updated"
+  | "fragment_deleted"
+  | "validation_started"
+  | "validation_completed"
+  | "validation_failed"
+  | "version_frozen"
+  | "webhook_received"
+  | "handler_executed"
+  | "git_push_processed"
+  | "git_merge_processed"
+  | "event_head_updated"
+  | "events_reverted"
+  | "events_reapplied"
+  | "entity_created"
+  | "entity_updated"
+  | "entity_deleted"
+  | "entity_restored";
 
 // API request/response types
 export interface CreateFragmentRequest {
@@ -112,14 +112,14 @@ export interface ValidationResponse {
 }
 
 export interface ValidationError {
-  type: 'schema' | 'assertion' | 'custom';
+  type: "schema" | "assertion" | "custom";
   message: string;
   location?: string;
   details?: Record<string, unknown>;
 }
 
 export interface ValidationWarning {
-  type: 'orphan_token' | 'coverage' | 'duplicate';
+  type: "orphan_token" | "coverage" | "duplicate";
   message: string;
   location?: string;
 }
@@ -146,13 +146,13 @@ export interface CoverageGap {
 }
 
 export interface Duplicate {
-  type: 'capability' | 'requirement' | 'test_case';
+  type: "capability" | "requirement" | "test_case";
   name: string;
   locations: string[];
 }
 
 // IR (Intermediate Representation) types for diagrams
-export type IRKind = 'flow' | 'fsm' | 'view' | 'site';
+export type IRKind = "flow" | "fsm" | "view" | "site";
 
 export interface IRResponse {
   kind: IRKind;
@@ -170,7 +170,7 @@ export interface FlowIR {
 export interface FlowNode {
   id: string;
   label: string;
-  type: 'start' | 'end' | 'process' | 'decision' | 'data';
+  type: "start" | "end" | "process" | "decision" | "data";
   metadata?: Record<string, unknown>;
 }
 
@@ -178,7 +178,7 @@ export interface FlowEdge {
   from: string;
   to: string;
   label?: string;
-  type?: 'normal' | 'conditional' | 'error';
+  type?: "normal" | "conditional" | "error";
 }
 
 export interface FlowCluster {
@@ -195,7 +195,7 @@ export interface SiteIR {
 export interface SiteRoute {
   id: string;
   path: string;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
   handler: string;
   dependencies: string[];
 }
@@ -203,7 +203,7 @@ export interface SiteRoute {
 export interface SiteDependency {
   from: string;
   to: string;
-  type: 'data' | 'service' | 'auth';
+  type: "data" | "service" | "auth";
 }
 
 export interface FsmIR {
@@ -216,7 +216,7 @@ export interface FsmIR {
 export interface FsmState {
   id: string;
   label: string;
-  type: 'normal' | 'initial' | 'final' | 'compound';
+  type: "normal" | "initial" | "final" | "compound";
   metadata?: Record<string, unknown>;
 }
 
@@ -237,7 +237,7 @@ export interface ViewIR {
 export interface ViewToken {
   id: string;
   label: string;
-  type: 'capability' | 'requirement' | 'test' | 'data';
+  type: "capability" | "requirement" | "test" | "data";
   position: { x: number; y: number };
   metadata?: Record<string, unknown>;
 }
@@ -245,7 +245,7 @@ export interface ViewToken {
 export interface ViewConnection {
   from: string;
   to: string;
-  type: 'implements' | 'tests' | 'depends_on' | 'provides';
+  type: "implements" | "tests" | "depends_on" | "provides";
 }
 
 export interface ViewLayout {
@@ -268,7 +268,7 @@ export interface FreezeResponse {
 
 // WebSocket message types
 export interface WebSocketMessage {
-  type: 'event' | 'error' | 'ping' | 'pong';
+  type: "event" | "error" | "ping" | "pong";
   project_id?: string;
   data: Record<string, unknown>;
 }
@@ -276,11 +276,11 @@ export interface WebSocketMessage {
 // WebSocket events for real-time collaboration
 export interface WsEvent {
   type:
-    | 'connection_established'
-    | 'fragment_updated'
-    | 'resolved_updated'
-    | 'gaps_updated'
-    | 'ir_updated';
+    | "connection_established"
+    | "fragment_updated"
+    | "resolved_updated"
+    | "gaps_updated"
+    | "ir_updated";
   project_id?: string;
   data: WsEventData | { connection_id: string; user_id?: string };
   timestamp: string;
@@ -296,7 +296,7 @@ export type WsEventData =
 
 export interface WsFragmentUpdatedData {
   fragment: Fragment;
-  operation: 'created' | 'updated' | 'deleted';
+  operation: "created" | "updated" | "deleted";
 }
 
 export interface WsResolvedUpdatedData {
@@ -336,7 +336,7 @@ export interface WebhookHandler {
   metadata?: Record<string, unknown>;
 }
 
-export type WebhookProvider = 'github' | 'gitlab' | 'bitbucket' | 'slack' | 'discord' | 'custom';
+export type WebhookProvider = "github" | "gitlab" | "bitbucket" | "slack" | "discord" | "custom";
 
 export interface CreateHandlerRequest {
   name: string;
@@ -357,7 +357,7 @@ export interface UpdateHandlerRequest {
 export interface HandlerExecution {
   id: string;
   handler_id: string;
-  status: 'success' | 'error' | 'timeout';
+  status: "success" | "error" | "timeout";
   started_at: string;
   completed_at?: string;
   duration_ms?: number;

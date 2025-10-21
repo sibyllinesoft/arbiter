@@ -1,10 +1,10 @@
-import { clsx } from 'clsx';
-import { AlertTriangle, Clipboard, Download, FileText, Hash, Loader2 } from 'lucide-react';
-import { type FC, useEffect, useState } from 'react';
-import { apiService } from '../../services/api';
-import { useTheme } from '../../stores/ui-store';
-import type { ResolvedSpecResponse } from '../../types/api';
-import MonacoEditor from '../Editor/MonacoEditor';
+import { clsx } from "clsx";
+import { AlertTriangle, Clipboard, Download, FileText, Hash, Loader2 } from "lucide-react";
+import { type FC, useEffect, useState } from "react";
+import { apiService } from "../../services/api";
+import { useTheme } from "../../stores/ui-store";
+import type { ResolvedSpecResponse } from "../../types/api";
+import MonacoEditor from "../Editor/MonacoEditor";
 
 interface SourceDiagramProps {
   /** Project ID to fetch resolved spec data */
@@ -17,33 +17,33 @@ interface SourceDiagramProps {
 
 export const SourceDiagram: FC<SourceDiagramProps> = ({
   projectId,
-  className = '',
-  title = 'CUE Specification - Source View',
+  className = "",
+  title = "CUE Specification - Source View",
 }) => {
   const { isDark } = useTheme();
-  const [sourceContent, setSourceContent] = useState<string>('');
+  const [sourceContent, setSourceContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [specHash, setSpecHash] = useState<string>('');
+  const [specHash, setSpecHash] = useState<string>("");
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
 
   // Convert resolved data back to CUE-like syntax for source display
   const convertToCueSource = (data: Record<string, unknown>): string => {
     const formatValue = (value: unknown, indent: number = 0): string => {
-      const indentStr = '  '.repeat(indent);
+      const indentStr = "  ".repeat(indent);
 
       if (value === null || value === undefined) {
-        return 'null';
+        return "null";
       }
 
-      if (typeof value === 'boolean' || typeof value === 'number') {
+      if (typeof value === "boolean" || typeof value === "number") {
         return String(value);
       }
 
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         // Handle multiline strings
-        if (value.includes('\n')) {
+        if (value.includes("\n")) {
           return `"""
 ${value}
 ${indentStr}"""`;
@@ -52,17 +52,17 @@ ${indentStr}"""`;
       }
 
       if (Array.isArray(value)) {
-        if (value.length === 0) return '[]';
+        if (value.length === 0) return "[]";
 
-        const items = value.map(item => `${indentStr}  ${formatValue(item, indent + 1)}`);
+        const items = value.map((item) => `${indentStr}  ${formatValue(item, indent + 1)}`);
         return `[
-${items.join(',\n')}
+${items.join(",\n")}
 ${indentStr}]`;
       }
 
-      if (typeof value === 'object' && value !== null) {
+      if (typeof value === "object" && value !== null) {
         const entries = Object.entries(value);
-        if (entries.length === 0) return '{}';
+        if (entries.length === 0) return "{}";
 
         const fields = entries.map(([key, val]) => {
           // Format key (quote if needed)
@@ -71,7 +71,7 @@ ${indentStr}]`;
         });
 
         return `{
-${fields.join('\n')}
+${fields.join("\n")}
 ${indentStr}}`;
       }
 
@@ -79,12 +79,12 @@ ${indentStr}}`;
     };
 
     // Generate CUE package structure
-    let cueContent = '// CUE Specification\n';
-    cueContent += '// This is a reconstructed view of the resolved specification\n\n';
-    cueContent += 'package arbiter\n\n';
+    let cueContent = "// CUE Specification\n";
+    cueContent += "// This is a reconstructed view of the resolved specification\n\n";
+    cueContent += "package arbiter\n\n";
 
     // Add resolved data as CUE definitions
-    if (data && typeof data === 'object') {
+    if (data && typeof data === "object") {
       const entries = Object.entries(data);
 
       for (const [key, value] of entries) {
@@ -92,7 +92,7 @@ ${indentStr}}`;
         cueContent += `${formattedKey}: ${formatValue(value)}\n\n`;
       }
     } else {
-      cueContent += '// No resolved data available\n';
+      cueContent += "// No resolved data available\n";
     }
 
     return cueContent;
@@ -107,7 +107,7 @@ ${indentStr}}`;
         setError(null);
 
         // Add a small delay to allow for rapid project changes (like during deletion)
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Check if the request was cancelled during the delay
         if (abortController.signal.aborted) {
@@ -133,18 +133,18 @@ ${indentStr}}`;
           return;
         }
 
-        console.error('Failed to fetch resolved spec:', err);
+        console.error("Failed to fetch resolved spec:", err);
 
         // Handle specific error cases
-        if (err instanceof Error && err.message.includes('404')) {
-          setError('Project not found or has been deleted');
+        if (err instanceof Error && err.message.includes("404")) {
+          setError("Project not found or has been deleted");
           setSourceContent(
-            '// Project not found or has been deleted\n// Please select a valid project'
+            "// Project not found or has been deleted\n// Please select a valid project",
           );
         } else {
-          setError(err instanceof Error ? err.message : 'Failed to load specification data');
+          setError(err instanceof Error ? err.message : "Failed to load specification data");
           setSourceContent(
-            '// Error loading specification data\n// Please check the console for details'
+            "// Error loading specification data\n// Please check the console for details",
           );
         }
       } finally {
@@ -160,9 +160,9 @@ ${indentStr}}`;
       // Clear state when no project is selected
       setLoading(false);
       setError(null);
-      setSpecHash('');
+      setSpecHash("");
       setSourceContent(
-        '// No project selected\n// Please select a project to view its specification'
+        "// No project selected\n// Please select a project to view its specification",
       );
       setLastSync(null);
     }
@@ -179,14 +179,14 @@ ${indentStr}}`;
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      console.error("Failed to copy to clipboard:", err);
     }
   };
 
   const handleDownload = () => {
-    const blob = new Blob([sourceContent], { type: 'text/plain' });
+    const blob = new Blob([sourceContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `arbiter-spec-${specHash.substring(0, 8)}.cue`;
     document.body.appendChild(a);
@@ -211,8 +211,8 @@ ${indentStr}}`;
             const cueSource = convertToCueSource(response.resolved);
             setSourceContent(cueSource);
           } catch (err) {
-            console.error('Failed to refresh spec:', err);
-            setError(err instanceof Error ? err.message : 'Failed to refresh specification data');
+            console.error("Failed to refresh spec:", err);
+            setError(err instanceof Error ? err.message : "Failed to refresh specification data");
           } finally {
             setLoading(false);
           }
@@ -226,8 +226,8 @@ ${indentStr}}`;
     return (
       <div
         className={clsx(
-          'flex h-full flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
-          className
+          "flex h-full flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200",
+          className,
         )}
       >
         <div className="flex-shrink-0 border-b border-gray-200 bg-white p-4 dark:border-graphite-700 dark:bg-graphite-900">
@@ -249,8 +249,8 @@ ${indentStr}}`;
     return (
       <div
         className={clsx(
-          'flex h-full flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
-          className
+          "flex h-full flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200",
+          className,
         )}
       >
         <div className="flex-shrink-0 border-b border-gray-200 bg-white p-4 dark:border-graphite-700 dark:bg-graphite-900">
@@ -277,14 +277,14 @@ ${indentStr}}`;
     );
   }
 
-  const lineCount = sourceContent.split('\n').length;
+  const lineCount = sourceContent.split("\n").length;
   const charCount = sourceContent.length;
 
   return (
     <div
       className={clsx(
-        'flex h-full min-h-0 flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
-        className
+        "flex h-full min-h-0 flex-col bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200",
+        className,
       )}
     >
       {/* Header - Fixed */}
@@ -322,12 +322,12 @@ ${indentStr}}`;
               onClick={handleCopy}
               className={`px-3 py-1 text-sm rounded transition-colors flex items-center space-x-1 ${
                 copySuccess
-                  ? 'text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/20'
-                  : 'text-gray-600 dark:text-graphite-400 hover:text-gray-900 dark:hover:text-graphite-25 hover:bg-gray-100 dark:hover:bg-graphite-800'
+                  ? "text-green-700 bg-green-100 dark:text-green-400 dark:bg-green-900/20"
+                  : "text-gray-600 dark:text-graphite-400 hover:text-gray-900 dark:hover:text-graphite-25 hover:bg-gray-100 dark:hover:bg-graphite-800"
               }`}
             >
               <Clipboard className="w-3 h-3" />
-              <span>{copySuccess ? 'Copied!' : 'Copy'}</span>
+              <span>{copySuccess ? "Copied!" : "Copy"}</span>
             </button>
             <button
               onClick={handleDownload}
@@ -346,21 +346,21 @@ ${indentStr}}`;
           value={sourceContent}
           onChange={() => {}} // Read-only for now
           language="cue"
-          theme={isDark ? 'cue-dark' : 'cue-light'}
+          theme={isDark ? "cue-dark" : "cue-light"}
           options={{
             automaticLayout: true,
-            wordWrap: 'on',
-            lineNumbers: 'on',
+            wordWrap: "on",
+            lineNumbers: "on",
             minimap: { enabled: true },
             folding: true,
-            bracketMatching: 'always',
+            bracketMatching: "always",
             fontSize: 14,
             lineHeight: 1.6,
             fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", Consolas, monospace',
             padding: { top: 16, bottom: 16 },
             scrollBeyondLastLine: false,
-            renderWhitespace: 'selection',
-            renderLineHighlight: 'gutter',
+            renderWhitespace: "selection",
+            renderLineHighlight: "gutter",
             readOnly: true, // Make read-only since this is a derived view
             contextmenu: true,
             selectOnLineNumbers: true,

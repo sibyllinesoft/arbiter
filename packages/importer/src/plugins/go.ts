@@ -4,7 +4,7 @@
  * Detects Go packages via go.mod and guesses artifact type based on structure and dependencies.
  */
 
-import * as path from 'path';
+import * as path from "path";
 import {
   Evidence,
   ImporterPlugin,
@@ -12,22 +12,22 @@ import {
   InferredArtifact,
   ParseContext,
   Provenance,
-} from '../types';
+} from "../types";
 
 // Go framework detection lists
-const GO_WEB_FRAMEWORKS = ['gin', 'echo', 'fiber', 'chi', 'mux', 'goji', 'iris', 'revel'];
+const GO_WEB_FRAMEWORKS = ["gin", "echo", "fiber", "chi", "mux", "goji", "iris", "revel"];
 
-const GO_CLI_FRAMEWORKS = ['cobra', 'cli', 'urfave/cli', 'mitchellh/cli'];
+const GO_CLI_FRAMEWORKS = ["cobra", "cli", "urfave/cli", "mitchellh/cli"];
 
-const GO_JOB_FRAMEWORKS = ['cron', 'gocron', 'gronx'];
+const GO_JOB_FRAMEWORKS = ["cron", "gocron", "gronx"];
 
 const GO_DATABASE_DRIVERS = [
-  'gorm',
-  'sqlx',
-  'go-sql-driver/mysql',
-  'lib/pq',
-  'redis/go-redis',
-  'mongo-driver/mongo',
+  "gorm",
+  "sqlx",
+  "go-sql-driver/mysql",
+  "lib/pq",
+  "redis/go-redis",
+  "mongo-driver/mongo",
 ];
 
 export interface GoData extends Record<string, unknown> {
@@ -39,7 +39,7 @@ export interface GoData extends Record<string, unknown> {
 
 export class GoPlugin implements ImporterPlugin {
   name(): string {
-    return 'go';
+    return "go";
   }
 
   supports(filePath: string, fileContent?: string): boolean {
@@ -47,19 +47,19 @@ export class GoPlugin implements ImporterPlugin {
     const extension = path.extname(filePath);
 
     // Focus on go.mod and basic Go sources
-    if (fileName === 'go.mod') {
+    if (fileName === "go.mod") {
       return true;
     }
 
-    if (extension === '.go') {
-      return fileName === 'main.go' || fileName === 'main_test.go';
+    if (extension === ".go") {
+      return fileName === "main.go" || fileName === "main_test.go";
     }
 
     return false;
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
-    if (!fileContent || path.basename(filePath) !== 'go.mod') return [];
+    if (!fileContent || path.basename(filePath) !== "go.mod") return [];
 
     const evidence: Evidence[] = [];
     const baseId = path.relative(context?.projectRoot ?? process.cwd(), filePath);
@@ -74,11 +74,11 @@ export class GoPlugin implements ImporterPlugin {
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const goEvidence = evidence.filter(e => e.source === 'go');
+    const goEvidence = evidence.filter((e) => e.source === "go");
     if (goEvidence.length === 0) return [];
 
     const artifacts: InferredArtifact[] = [];
-    const goModEvidence = goEvidence.filter(e => e.type === 'config');
+    const goModEvidence = goEvidence.filter((e) => e.type === "config");
 
     for (const goMod of goModEvidence) {
       artifacts.push(...this.inferFromGoMod(goMod, evidence, context));
@@ -94,40 +94,40 @@ export class GoPlugin implements ImporterPlugin {
 
     try {
       // Simple parsing for go.mod
-      const lines = content.split('\n');
-      const moduleLine = lines.find(line => line.startsWith('module '));
-      const goLine = lines.find(line => line.startsWith('go '));
-      const requireLines = lines.filter(line => line.startsWith('\t') && line.includes(' '));
+      const lines = content.split("\n");
+      const moduleLine = lines.find((line) => line.startsWith("module "));
+      const goLine = lines.find((line) => line.startsWith("go "));
+      const requireLines = lines.filter((line) => line.startsWith("\t") && line.includes(" "));
 
       const moduleName = moduleLine
-        ? moduleLine.replace('module ', '').trim()
+        ? moduleLine.replace("module ", "").trim()
         : path.basename(path.dirname(filePath));
-      const goVersion = goLine ? goLine.replace('go ', '').trim() : '1.0';
+      const goVersion = goLine ? goLine.replace("go ", "").trim() : "1.0";
 
-      const deps = requireLines.map(line => {
-        const parts = line.trim().split(' ');
-        return parts[0].replace('\t', '');
+      const deps = requireLines.map((line) => {
+        const parts = line.trim().split(" ");
+        return parts[0].replace("\t", "");
       });
 
       const inferredType = this.determineGoType(deps);
 
       const goData: GoData = {
         name: moduleName,
-        description: 'Go package',
+        description: "Go package",
         type: inferredType,
         filePath,
       };
 
       evidence.push({
         id: baseId,
-        source: 'go',
-        type: 'config',
+        source: "go",
+        type: "config",
         filePath,
         data: goData,
         metadata: { timestamp: Date.now(), fileSize: content.length },
       });
     } catch (error) {
-      console.warn('Failed to parse go.mod:', error);
+      console.warn("Failed to parse go.mod:", error);
     }
 
     return evidence;
@@ -137,7 +137,7 @@ export class GoPlugin implements ImporterPlugin {
   private inferFromGoMod(
     goModEvidence: Evidence,
     allEvidence: Evidence[],
-    context: InferenceContext
+    context: InferenceContext,
   ): InferredArtifact[] {
     const goData = goModEvidence.data as unknown as GoData;
     const name = goData.name;
@@ -148,10 +148,10 @@ export class GoPlugin implements ImporterPlugin {
       type: goData.type as any,
       name,
       description: goData.description,
-      tags: ['go', goData.type],
+      tags: ["go", goData.type],
       metadata: {
         sourceFile: goData.filePath,
-        language: 'go',
+        language: "go",
       },
     };
 
@@ -159,10 +159,10 @@ export class GoPlugin implements ImporterPlugin {
       artifact,
       provenance: {
         evidence: [goModEvidence.id],
-        plugins: ['go'],
-        rules: ['go-mod-simplification'],
+        plugins: ["go"],
+        rules: ["go-mod-simplification"],
         timestamp: Date.now(),
-        pipelineVersion: '1.0.0',
+        pipelineVersion: "1.0.0",
       },
       relationships: [],
     });
@@ -171,14 +171,14 @@ export class GoPlugin implements ImporterPlugin {
   }
 
   private determineGoType(deps: string[]): string {
-    const hasWeb = deps.some(d => GO_WEB_FRAMEWORKS.some(f => d.includes(f)));
-    const hasCli = deps.some(d => GO_CLI_FRAMEWORKS.some(f => d.includes(f)));
-    const hasJob = deps.some(d => GO_JOB_FRAMEWORKS.some(f => d.includes(f)));
+    const hasWeb = deps.some((d) => GO_WEB_FRAMEWORKS.some((f) => d.includes(f)));
+    const hasCli = deps.some((d) => GO_CLI_FRAMEWORKS.some((f) => d.includes(f)));
+    const hasJob = deps.some((d) => GO_JOB_FRAMEWORKS.some((f) => d.includes(f)));
 
-    if (hasWeb) return 'service';
-    if (hasCli) return 'binary';
-    if (hasJob) return 'job';
-    return 'module';
+    if (hasWeb) return "service";
+    if (hasCli) return "binary";
+    if (hasJob) return "job";
+    return "module";
   }
 }
 

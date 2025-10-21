@@ -1,20 +1,20 @@
-import path from 'path';
-import fs from 'fs-extra';
-import { Hono } from 'hono';
-import ts from 'typescript';
-import { buildEpicTaskSpec } from '../utils';
+import path from "path";
+import fs from "fs-extra";
+import { Hono } from "hono";
+import ts from "typescript";
+import { buildEpicTaskSpec } from "../utils";
 
 const HTTP_METHOD_DECORATORS = new Map<string, string>([
-  ['Get', 'GET'],
-  ['Post', 'POST'],
-  ['Put', 'PUT'],
-  ['Patch', 'PATCH'],
-  ['Delete', 'DELETE'],
-  ['Head', 'HEAD'],
-  ['Options', 'OPTIONS'],
+  ["Get", "GET"],
+  ["Post", "POST"],
+  ["Put", "PUT"],
+  ["Patch", "PATCH"],
+  ["Delete", "DELETE"],
+  ["Head", "HEAD"],
+  ["Options", "OPTIONS"],
 ]);
 
-const HTTP_METHOD_ORDER = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
+const HTTP_METHOD_ORDER = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"];
 
 type Dependencies = Record<string, unknown>;
 
@@ -22,7 +22,7 @@ export function createSpecsRouter(deps: Dependencies) {
   const router = new Hono();
 
   // Specifications endpoint for CLI
-  router.get('/specifications', async c => {
+  router.get("/specifications", async (c) => {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substr(2, 9);
 
@@ -35,7 +35,7 @@ export function createSpecsRouter(deps: Dependencies) {
 
       if (specPath && (await fs.pathExists(specPath))) {
         console.log(`[SPECS-GET] ${requestId} - File exists, reading content...`);
-        const content = await fs.readFile(specPath, 'utf-8');
+        const content = await fs.readFile(specPath, "utf-8");
         const stat = await fs.stat(specPath);
         const duration = Date.now() - startTime;
 
@@ -56,11 +56,11 @@ export function createSpecsRouter(deps: Dependencies) {
       return c.json(
         {
           success: false,
-          error: 'Specification not found',
+          error: "Specification not found",
           type,
           path: specPath,
         },
-        404
+        404,
       );
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -69,15 +69,15 @@ export function createSpecsRouter(deps: Dependencies) {
       return c.json(
         {
           success: false,
-          error: 'Failed to retrieve specification',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to retrieve specification",
+          message: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
-  router.post('/specifications', async c => {
+  router.post("/specifications", async (c) => {
     const startTime = Date.now();
     const requestId = Math.random().toString(36).substr(2, 9);
 
@@ -95,15 +95,15 @@ export function createSpecsRouter(deps: Dependencies) {
       if (!specPath || !content) {
         const duration = Date.now() - startTime;
         console.log(
-          `[SPECS-POST] ${requestId} - Bad request after ${duration}ms - missing path or content`
+          `[SPECS-POST] ${requestId} - Bad request after ${duration}ms - missing path or content`,
         );
 
         return c.json(
           {
             success: false,
-            error: 'path and content are required',
+            error: "path and content are required",
           },
-          400
+          400,
         );
       }
 
@@ -113,7 +113,7 @@ export function createSpecsRouter(deps: Dependencies) {
 
       console.log(`[SPECS-POST] ${requestId} - Writing file...`);
       // Write the specification file
-      await fs.writeFile(specPath, content, 'utf-8');
+      await fs.writeFile(specPath, content, "utf-8");
 
       const duration = Date.now() - startTime;
       console.log(`[SPECS-POST] ${requestId} - Success after ${duration}ms`);
@@ -122,7 +122,7 @@ export function createSpecsRouter(deps: Dependencies) {
         success: true,
         type,
         path: specPath,
-        message: 'Specification created successfully',
+        message: "Specification created successfully",
         lastModified: new Date().toISOString(),
       });
     } catch (error) {
@@ -132,20 +132,20 @@ export function createSpecsRouter(deps: Dependencies) {
       return c.json(
         {
           success: false,
-          error: 'Failed to create specification',
-          message: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to create specification",
+          message: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
   // Missing endpoints that the frontend expects
-  router.get('/resolved', async c => {
-    const projectId = c.req.query('projectId');
+  router.get("/resolved", async (c) => {
+    const projectId = c.req.query("projectId");
 
     if (!projectId) {
-      return c.json({ error: 'projectId parameter is required' }, 400);
+      return c.json({ error: "projectId parameter is required" }, 400);
     }
 
     try {
@@ -155,7 +155,7 @@ export function createSpecsRouter(deps: Dependencies) {
       const project = projects.find((p: any) => p.id === projectId);
 
       if (!project) {
-        return c.json({ error: 'Project not found' }, 404);
+        return c.json({ error: "Project not found" }, 404);
       }
 
       // Get real artifacts from database
@@ -168,8 +168,8 @@ export function createSpecsRouter(deps: Dependencies) {
       const getCleanArtifactName = (originalName: string): string => {
         // Detect temp directory patterns and replace with project name
         if (
-          originalName.includes('arbiter-git-scan') ||
-          originalName.includes('Arbiter Git Scan') ||
+          originalName.includes("arbiter-git-scan") ||
+          originalName.includes("Arbiter Git Scan") ||
           /arbiter.*git.*scan.*\d+.*[a-z0-9]+/i.test(originalName) ||
           /^[a-zA-Z0-9_-]*\d{13}[a-zA-Z0-9_-]*$/i.test(originalName)
         ) {
@@ -180,73 +180,73 @@ export function createSpecsRouter(deps: Dependencies) {
 
       // Build services from real artifacts
       const services: Record<string, any> = {};
-      const serviceArtifacts = artifacts.filter((a: any) => a.type === 'service');
+      const serviceArtifacts = artifacts.filter((a: any) => a.type === "service");
 
       for (const artifact of serviceArtifacts) {
-        const serviceName = artifact.name.replace(/_/g, '-');
+        const serviceName = artifact.name.replace(/_/g, "-");
 
         // Determine image based on language/framework
         const getContainerImage = (language: string, framework?: string) => {
           switch (language?.toLowerCase()) {
-            case 'rust':
-              return 'rust:alpine';
-            case 'nodejs':
-            case 'javascript':
-            case 'typescript':
-              return 'node:alpine';
-            case 'python':
-              return 'python:slim';
-            case 'go':
-              return 'golang:alpine';
-            case 'java':
-              return 'openjdk:slim';
+            case "rust":
+              return "rust:alpine";
+            case "nodejs":
+            case "javascript":
+            case "typescript":
+              return "node:alpine";
+            case "python":
+              return "python:slim";
+            case "go":
+              return "golang:alpine";
+            case "java":
+              return "openjdk:slim";
             default:
-              return 'alpine:latest';
+              return "alpine:latest";
           }
         };
 
         // Determine default port based on framework
         const getDefaultPort = (language: string, framework?: string) => {
-          const normalizedFramework = (framework ?? '').toLowerCase();
-          const normalizedLanguage = (language ?? '').toLowerCase();
+          const normalizedFramework = (framework ?? "").toLowerCase();
+          const normalizedLanguage = (language ?? "").toLowerCase();
 
-          if (normalizedFramework.includes('express') || normalizedFramework.includes('fastify')) {
+          if (normalizedFramework.includes("express") || normalizedFramework.includes("fastify")) {
             return 3000;
           }
-          if (normalizedFramework.includes('flask') || normalizedFramework.includes('fastapi')) {
+          if (normalizedFramework.includes("flask") || normalizedFramework.includes("fastapi")) {
             return 5000;
           }
-          if (normalizedFramework.includes('axum') || normalizedFramework.includes('warp')) {
+          if (normalizedFramework.includes("axum") || normalizedFramework.includes("warp")) {
             return 8080;
           }
-          if (normalizedFramework.includes('gin') || normalizedFramework.includes('echo')) {
+          if (normalizedFramework.includes("gin") || normalizedFramework.includes("echo")) {
             return 8080;
           }
-          if (normalizedLanguage === 'nodejs' || normalizedLanguage === 'javascript') {
+          if (normalizedLanguage === "nodejs" || normalizedLanguage === "javascript") {
             return 3000;
           }
-          if (normalizedLanguage === 'python') {
+          if (normalizedLanguage === "python") {
             return 5000;
           }
-          if (normalizedLanguage === 'rust') {
+          if (normalizedLanguage === "rust") {
             return 8080;
           }
-          if (normalizedLanguage === 'go') {
+          if (normalizedLanguage === "go") {
             return 8080;
           }
           return 8080; // fallback
         };
 
         const coerceText = (value: unknown): string | undefined => {
-          if (typeof value !== 'string') return undefined;
+          if (typeof value !== "string") return undefined;
           const trimmed = value.trim();
           return trimmed.length > 0 ? trimmed : undefined;
         };
 
         const language =
-          coerceText(artifact.language) || coerceText(artifact.metadata?.language) || 'unknown';
+          coerceText(artifact.language) || coerceText(artifact.metadata?.language) || "unknown";
         const framework =
-          coerceText(artifact.framework) || coerceText(artifact.metadata?.framework) || 'unknown';
+          coerceText(artifact.framework) || coerceText(artifact.metadata?.framework) || "unknown";
 
         const port = artifact.metadata?.port || getDefaultPort(language, framework);
 
@@ -268,48 +268,48 @@ export function createSpecsRouter(deps: Dependencies) {
         };
 
         const dockerInfo = artifact.metadata?.docker;
-        if (dockerInfo && typeof dockerInfo === 'object') {
+        if (dockerInfo && typeof dockerInfo === "object") {
           metadata.docker = dockerInfo;
 
           const composeYaml = (dockerInfo as Record<string, unknown>).composeServiceYaml;
-          if (typeof composeYaml === 'string') {
+          if (typeof composeYaml === "string") {
             metadata.composeServiceYaml = composeYaml;
           }
 
           const composeService = (dockerInfo as Record<string, unknown>).composeService;
-          if (composeService && typeof composeService === 'object') {
+          if (composeService && typeof composeService === "object") {
             metadata.composeService = composeService;
           }
 
           const composeName = (dockerInfo as Record<string, unknown>).composeServiceName;
-          if (typeof composeName === 'string') {
+          if (typeof composeName === "string") {
             metadata.composeServiceName = composeName;
           }
 
           const composeFile = (dockerInfo as Record<string, unknown>).composeFile;
-          if (typeof composeFile === 'string') {
+          if (typeof composeFile === "string") {
             metadata.composeFile = composeFile;
           }
 
           const dockerfileContent = (dockerInfo as Record<string, unknown>).dockerfile;
-          if (typeof dockerfileContent === 'string' && dockerfileContent.trim()) {
+          if (typeof dockerfileContent === "string" && dockerfileContent.trim()) {
             metadata.dockerfileContent = dockerfileContent;
           }
 
           const buildContext = (dockerInfo as Record<string, unknown>).buildContext;
-          if (typeof buildContext === 'string') {
+          if (typeof buildContext === "string") {
             metadata.buildContext = buildContext;
           }
 
           const dockerfilePath = (dockerInfo as Record<string, unknown>).dockerfilePath;
-          if (typeof dockerfilePath === 'string') {
+          if (typeof dockerfilePath === "string") {
             metadata.dockerfilePath = dockerfilePath;
           }
         }
 
         services[serviceName] = {
           name: artifact.name, // Use the original name from docker-compose.yml
-          type: 'service',
+          type: "service",
           image: imageToUse,
           ports: [{ port, targetPort: port }],
           metadata,
@@ -318,10 +318,10 @@ export function createSpecsRouter(deps: Dependencies) {
 
       // Deduplicate: merge deployments into services and exclude from components
       const serviceNames = new Set(serviceArtifacts.map((a: any) => a.name));
-      const deploymentArtifacts = artifacts.filter((a: any) => a.type === 'deployment');
+      const deploymentArtifacts = artifacts.filter((a: any) => a.type === "deployment");
       for (const dep of deploymentArtifacts) {
         if (serviceNames.has(dep.name)) {
-          const serviceKey = dep.name.replace(/_/g, '-');
+          const serviceKey = dep.name.replace(/_/g, "-");
           if (services[serviceKey]) {
             if (!services[serviceKey].metadata.deployment) {
               services[serviceKey].metadata.deployment = {};
@@ -329,8 +329,8 @@ export function createSpecsRouter(deps: Dependencies) {
             services[serviceKey].metadata.deployment = {
               ...services[serviceKey].metadata.deployment,
               ...dep.metadata,
-              type: 'deployment',
-              source: 'inferred', // since no K8s files
+              type: "deployment",
+              source: "inferred", // since no K8s files
             };
           }
         }
@@ -338,38 +338,38 @@ export function createSpecsRouter(deps: Dependencies) {
 
       // Build databases from real artifacts
       const databases: Record<string, any> = {};
-      const databaseArtifacts = artifacts.filter((a: any) => a.type === 'database');
+      const databaseArtifacts = artifacts.filter((a: any) => a.type === "database");
 
       for (const artifact of databaseArtifacts) {
-        const dbName = artifact.name.replace(/_/g, '-');
+        const dbName = artifact.name.replace(/_/g, "-");
 
         // Determine database type from artifact or framework
         const getDatabaseType = (framework?: string, name?: string) => {
           if (framework) return framework.toLowerCase();
-          if (name?.includes('postgres') || name?.includes('pg')) return 'postgresql';
-          if (name?.includes('mysql') || name?.includes('maria')) return 'mysql';
-          if (name?.includes('mongo')) return 'mongodb';
-          if (name?.includes('redis')) return 'redis';
-          if (name?.includes('sqlite')) return 'sqlite';
-          return 'postgresql'; // fallback
+          if (name?.includes("postgres") || name?.includes("pg")) return "postgresql";
+          if (name?.includes("mysql") || name?.includes("maria")) return "mysql";
+          if (name?.includes("mongo")) return "mongodb";
+          if (name?.includes("redis")) return "redis";
+          if (name?.includes("sqlite")) return "sqlite";
+          return "postgresql"; // fallback
         };
 
         // Determine version based on database type
         const getDatabaseVersion = (dbType: string, explicitVersion?: string) => {
           if (explicitVersion) return explicitVersion;
           switch (dbType) {
-            case 'postgresql':
-              return '15';
-            case 'mysql':
-              return '8.0';
-            case 'mongodb':
-              return '7.0';
-            case 'redis':
-              return '7.2';
-            case 'sqlite':
-              return '3';
+            case "postgresql":
+              return "15";
+            case "mysql":
+              return "8.0";
+            case "mongodb":
+              return "7.0";
+            case "redis":
+              return "7.2";
+            case "sqlite":
+              return "3";
             default:
-              return 'latest';
+              return "latest";
           }
         };
 
@@ -384,7 +384,7 @@ export function createSpecsRouter(deps: Dependencies) {
             ...artifact.metadata,
             configFile: artifact.metadata?.configFile,
             detected: true,
-            language: artifact.language || 'sql',
+            language: artifact.language || "sql",
             framework: artifact.framework || dbType,
           },
         };
@@ -394,38 +394,38 @@ export function createSpecsRouter(deps: Dependencies) {
       const components: Record<string, any> = {};
       const otherArtifacts = artifacts.filter(
         (a: any) =>
-          !['service', 'database', 'deployment'].includes(a.type) || !serviceNames.has(a.name)
+          !["service", "database", "deployment"].includes(a.type) || !serviceNames.has(a.name),
       );
 
       for (const artifact of otherArtifacts) {
-        const componentName = artifact.name.replace(/_/g, '-');
+        const componentName = artifact.name.replace(/_/g, "-");
 
-        const language = artifact.language || 'unknown';
-        const framework = artifact.framework || 'unknown';
+        const language = artifact.language || "unknown";
+        const framework = artifact.framework || "unknown";
 
         let componentType = artifact.type;
         const detectedType = String(
-          artifact.metadata?.detectedType || artifact.metadata?.classification?.detectedType || ''
+          artifact.metadata?.detectedType || artifact.metadata?.classification?.detectedType || "",
         ).toLowerCase();
         const classificationReason = artifact.metadata?.classification?.reason;
         const packageData = artifact.metadata?.package || {};
         const hasCliBin = Boolean(
-          typeof packageData.bin === 'string' ||
-            (packageData.bin && Object.keys(packageData.bin).length > 0)
+          typeof packageData.bin === "string" ||
+            (packageData.bin && Object.keys(packageData.bin).length > 0),
         );
 
-        if (componentType === 'frontend' && artifact.metadata?.frontendAnalysis) {
+        if (componentType === "frontend" && artifact.metadata?.frontendAnalysis) {
           continue;
         }
 
-        if (detectedType === 'tool' || classificationReason === 'manifest-bin' || hasCliBin) {
-          componentType = 'tool';
+        if (detectedType === "tool" || classificationReason === "manifest-bin" || hasCliBin) {
+          componentType = "tool";
         }
 
         components[componentName] = {
           name: artifact.name, // Use the original name
           type: componentType,
-          description: artifact.description || artifact.metadata?.description || '',
+          description: artifact.description || artifact.metadata?.description || "",
           language,
           framework,
           metadata: {
@@ -439,7 +439,7 @@ export function createSpecsRouter(deps: Dependencies) {
 
       const typeGroups = Object.values(components).reduce(
         (acc: Record<string, { count: number; names: string[] }>, component: any) => {
-          const key = component.type || 'unknown';
+          const key = component.type || "unknown";
           if (!acc[key]) {
             acc[key] = { count: 0, names: [] };
           }
@@ -449,10 +449,10 @@ export function createSpecsRouter(deps: Dependencies) {
           }
           return acc;
         },
-        {}
+        {},
       );
 
-      console.log('[specs.resolved] aggregated components', {
+      console.log("[specs.resolved] aggregated components", {
         total: Object.keys(components).length,
         types: typeGroups,
       });
@@ -462,12 +462,12 @@ export function createSpecsRouter(deps: Dependencies) {
         .filter((artifact: any) => artifact.metadata?.frontendAnalysis)
         .map((artifact: any) => {
           const analysis = artifact.metadata.frontendAnalysis as any;
-          const packageRoot = artifact.metadata?.root ?? '.';
-          const packageJsonPath = artifact.metadata?.sourceFile ?? 'package.json';
+          const packageRoot = artifact.metadata?.root ?? ".";
+          const packageJsonPath = artifact.metadata?.sourceFile ?? "package.json";
 
           const componentEntries = (analysis.components || []).map((component: any) => ({
             name: component.name,
-            filePath: component.filePath || '',
+            filePath: component.filePath || "",
             framework: component.framework,
             description: component.description,
             props: component.props,
@@ -476,10 +476,10 @@ export function createSpecsRouter(deps: Dependencies) {
           const routeEntries = (analysis.routers || []).flatMap((router: any) =>
             (router.routes || []).map((route: any) => ({
               path: route.path,
-              filePath: route.filePath || '',
+              filePath: route.filePath || "",
               routerType:
-                router.type || router.routerType || analysis.frameworks?.[0] || 'react-router',
-            }))
+                router.type || router.routerType || analysis.frameworks?.[0] || "react-router",
+            })),
           );
 
           return {
@@ -495,41 +495,41 @@ export function createSpecsRouter(deps: Dependencies) {
       // Generate UI routes from detected frontend packages as primary source
       const derivedRoutes = frontendPackages.flatMap((pkg: any) =>
         (pkg.routes || []).map((route: any, idx: number) => {
-          const safeIdSegment = (route.path || route.filePath || 'route')
-            .replace(/[^a-zA-Z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '')
+          const safeIdSegment = (route.path || route.filePath || "route")
+            .replace(/[^a-zA-Z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
             .toLowerCase();
-          const id = `${pkg.packageName.replace(/[^a-zA-Z0-9]+/g, '-')}-${safeIdSegment || idx}`;
+          const id = `${pkg.packageName.replace(/[^a-zA-Z0-9]+/g, "-")}-${safeIdSegment || idx}`;
           const displayName = route.path || route.filePath || `${pkg.packageName} route`;
           return {
             id,
-            path: route.path || '/',
+            path: route.path || "/",
             name: displayName,
             component: route.filePath || displayName,
             capabilities: [],
-            type: 'route',
+            type: "route",
             metadata: {
               packageName: pkg.packageName,
               packageRoot: pkg.packageRoot,
               routerType: route.routerType,
               filePath: route.filePath || null,
-              source: 'frontend-detection',
+              source: "frontend-detection",
             },
           };
-        })
+        }),
       );
 
       const backendRoutes: any[] = [];
 
       const toSlug = (value: string) =>
         value
-          .replace(/[^a-z0-9]+/gi, '-')
-          .replace(/^-+|-+$/g, '')
+          .replace(/[^a-z0-9]+/gi, "-")
+          .replace(/^-+|-+$/g, "")
           .toLowerCase();
 
       const resolveControllerPath = async (
         relatives: string[],
-        normalized: string
+        normalized: string,
       ): Promise<string | null> => {
         for (const relative of relatives) {
           if (!relative) continue;
@@ -549,7 +549,7 @@ export function createSpecsRouter(deps: Dependencies) {
       };
 
       const extractControllerDetails = async (
-        controllerAbsolute: string
+        controllerAbsolute: string,
       ): Promise<{
         httpMethods: string[];
         endpoints: Array<{
@@ -577,7 +577,7 @@ export function createSpecsRouter(deps: Dependencies) {
           responses: Array<{
             status?: string;
             description?: string;
-            decorator: 'SuccessResponse' | 'Response';
+            decorator: "SuccessResponse" | "Response";
           }>;
           tags?: string[];
           source?: { line: number };
@@ -587,13 +587,13 @@ export function createSpecsRouter(deps: Dependencies) {
         className?: string;
       }> => {
         try {
-          const content = await fs.readFile(controllerAbsolute, 'utf-8');
+          const content = await fs.readFile(controllerAbsolute, "utf-8");
           const sourceFile = ts.createSourceFile(
             controllerAbsolute,
             content,
             ts.ScriptTarget.Latest,
             true,
-            ts.ScriptKind.TS
+            ts.ScriptKind.TS,
           );
 
           const methodSet = new Set<string>();
@@ -622,7 +622,7 @@ export function createSpecsRouter(deps: Dependencies) {
             responses: Array<{
               status?: string;
               description?: string;
-              decorator: 'SuccessResponse' | 'Response';
+              decorator: "SuccessResponse" | "Response";
             }>;
             tags?: string[];
             source?: { line: number };
@@ -632,25 +632,25 @@ export function createSpecsRouter(deps: Dependencies) {
           let className: string | undefined;
 
           const normalizeComment = (
-            comment?: string | ts.NodeArray<ts.JSDocComment>
+            comment?: string | ts.NodeArray<ts.JSDocComment>,
           ): string | undefined => {
             if (!comment) {
               return undefined;
             }
-            if (typeof comment === 'string') {
+            if (typeof comment === "string") {
               return comment.trim();
             }
             const text = comment
-              .map(part => {
-                if (typeof part === 'string') {
+              .map((part) => {
+                if (typeof part === "string") {
                   return part;
                 }
-                if ('text' in part && typeof (part as { text?: unknown }).text === 'string') {
+                if ("text" in part && typeof (part as { text?: unknown }).text === "string") {
                   return String(part.text);
                 }
                 return part.getText(sourceFile);
               })
-              .join('');
+              .join("");
             return text.trim();
           };
 
@@ -660,7 +660,7 @@ export function createSpecsRouter(deps: Dependencies) {
               return direct;
             }
             if (
-              typeof (ts as any).canHaveDecorators === 'function' &&
+              typeof (ts as any).canHaveDecorators === "function" &&
               (ts as any).canHaveDecorators(node)
             ) {
               const resolved = (ts as any).getDecorators?.(node);
@@ -672,7 +672,7 @@ export function createSpecsRouter(deps: Dependencies) {
           };
 
           const parseDecorator = (
-            decorator: ts.Decorator
+            decorator: ts.Decorator,
           ): { name: string; arguments: readonly ts.Expression[] } | null => {
             const expression = decorator.expression;
             if (ts.isCallExpression(expression)) {
@@ -697,9 +697,9 @@ export function createSpecsRouter(deps: Dependencies) {
             if (!base && !sub) return undefined;
             if (!base) return sub;
             if (!sub) return base;
-            const trimmedBase = base.endsWith('/') ? base.slice(0, -1) : base;
-            const trimmedSub = sub.startsWith('/') ? sub : `/${sub}`;
-            return `${trimmedBase}${trimmedSub}`.replace(/\/+/g, '/');
+            const trimmedBase = base.endsWith("/") ? base.slice(0, -1) : base;
+            const trimmedSub = sub.startsWith("/") ? sub : `/${sub}`;
+            return `${trimmedBase}${trimmedSub}`.replace(/\/+/g, "/");
           };
 
           const recordHttpMethod = (method: string) => {
@@ -719,7 +719,7 @@ export function createSpecsRouter(deps: Dependencies) {
           };
 
           const controllers: ts.ClassDeclaration[] = [];
-          sourceFile.forEachChild(node => {
+          sourceFile.forEachChild((node) => {
             if (ts.isClassDeclaration(node)) {
               controllers.push(node);
             }
@@ -734,7 +734,7 @@ export function createSpecsRouter(deps: Dependencies) {
               const parsed = parseDecorator(decorator);
               if (!parsed) continue;
               const decoratorName = parsed.name;
-              if (decoratorName === 'Route' && parsed.arguments[0]) {
+              if (decoratorName === "Route" && parsed.arguments[0]) {
                 const arg = parsed.arguments[0];
                 if (ts.isStringLiteralLike(arg)) {
                   routeDecorator = arg.text;
@@ -742,8 +742,8 @@ export function createSpecsRouter(deps: Dependencies) {
                   routeDecorator = arg.getText(sourceFile);
                 }
               }
-              if (decoratorName === 'Tags') {
-                parsed.arguments.forEach(arg => {
+              if (decoratorName === "Tags") {
+                parsed.arguments.forEach((arg) => {
                   if (ts.isStringLiteralLike(arg)) {
                     tagsSet.add(arg.text);
                   } else {
@@ -756,7 +756,7 @@ export function createSpecsRouter(deps: Dependencies) {
               }
             }
 
-            controller.members.forEach(member => {
+            controller.members.forEach((member) => {
               if (!ts.isMethodDeclaration(member)) {
                 return;
               }
@@ -772,7 +772,7 @@ export function createSpecsRouter(deps: Dependencies) {
               const responses: Array<{
                 status?: string;
                 description?: string;
-                decorator: 'SuccessResponse' | 'Response';
+                decorator: "SuccessResponse" | "Response";
               }> = [];
               let deprecatedViaDecorator: string | boolean | undefined;
 
@@ -799,8 +799,8 @@ export function createSpecsRouter(deps: Dependencies) {
                   continue;
                 }
 
-                if (decoratorName === 'Tags') {
-                  parsed.arguments.forEach(arg => {
+                if (decoratorName === "Tags") {
+                  parsed.arguments.forEach((arg) => {
                     if (ts.isStringLiteralLike(arg)) {
                       endpointTags.add(arg.text);
                       tagsSet.add(arg.text);
@@ -815,7 +815,7 @@ export function createSpecsRouter(deps: Dependencies) {
                   continue;
                 }
 
-                if (decoratorName === 'SuccessResponse' || decoratorName === 'Response') {
+                if (decoratorName === "SuccessResponse" || decoratorName === "Response") {
                   const statusArg = parsed.arguments[0];
                   const descriptionArg = parsed.arguments[1];
                   const status = statusArg
@@ -831,12 +831,12 @@ export function createSpecsRouter(deps: Dependencies) {
                   responses.push({
                     status,
                     description,
-                    decorator: decoratorName as 'SuccessResponse' | 'Response',
+                    decorator: decoratorName as "SuccessResponse" | "Response",
                   });
                   continue;
                 }
 
-                if (decoratorName === 'Deprecated') {
+                if (decoratorName === "Deprecated") {
                   const reasonArg = parsed.arguments[0];
                   deprecatedViaDecorator = reasonArg
                     ? ts.isStringLiteralLike(reasonArg)
@@ -869,7 +869,7 @@ export function createSpecsRouter(deps: Dependencies) {
                   if (!docsAccumulator.summary) {
                     const [firstLine, ...rest] = comment.split(/\r?\n/);
                     docsAccumulator.summary = firstLine?.trim() || undefined;
-                    const remainder = rest.join('\n').trim();
+                    const remainder = rest.join("\n").trim();
                     if (remainder) {
                       docsAccumulator.description = remainder;
                     }
@@ -881,7 +881,7 @@ export function createSpecsRouter(deps: Dependencies) {
                   }
                 }
 
-                (jsDoc.tags ?? []).forEach(tag => {
+                (jsDoc.tags ?? []).forEach((tag) => {
                   const tagName = tag.tagName.text.toLowerCase();
                   const tagComment = normalizeComment(tag.comment);
 
@@ -893,7 +893,7 @@ export function createSpecsRouter(deps: Dependencies) {
                     return;
                   }
 
-                  if (tagName === 'returns' || tagName === 'return') {
+                  if (tagName === "returns" || tagName === "return") {
                     if (tagComment) {
                       docsAccumulator.returns = docsAccumulator.returns
                         ? `${docsAccumulator.returns}\n${tagComment}`
@@ -902,32 +902,32 @@ export function createSpecsRouter(deps: Dependencies) {
                     return;
                   }
 
-                  if (tagName === 'example' && tagComment) {
+                  if (tagName === "example" && tagComment) {
                     docsAccumulator.examples.push(tagComment);
                     return;
                   }
 
-                  if (tagName === 'remarks' && tagComment) {
+                  if (tagName === "remarks" && tagComment) {
                     docsAccumulator.remarks.push(tagComment);
                     return;
                   }
 
-                  if (tagName === 'deprecated') {
+                  if (tagName === "deprecated") {
                     docsAccumulator.deprecated = tagComment || true;
                   }
                 });
               }
 
-              const parameterDetails = member.parameters.map(param => {
+              const parameterDetails = member.parameters.map((param) => {
                 const name = param.name.getText(sourceFile);
                 const type = param.type ? param.type.getText(sourceFile) : undefined;
                 const optional = Boolean(param.questionToken || param.initializer);
-                const parameterDecorators = getDecorators(param).map(decorator => {
+                const parameterDecorators = getDecorators(param).map((decorator) => {
                   const parsed = parseDecorator(decorator);
                   return parsed?.name;
                 });
                 const decoratorsCleaned = parameterDecorators.filter((value): value is string =>
-                  Boolean(value)
+                  Boolean(value),
                 );
 
                 return {
@@ -939,16 +939,16 @@ export function createSpecsRouter(deps: Dependencies) {
                 };
               });
 
-              const handlerName = member.name?.getText(sourceFile) ?? 'handler';
+              const handlerName = member.name?.getText(sourceFile) ?? "handler";
               const returnType = member.type ? member.type.getText(sourceFile) : undefined;
               const signatureParameters = parameterDetails
-                .map(param => {
-                  const optionalMark = param.optional ? '?' : '';
-                  const typePart = param.type ? `: ${param.type}` : '';
+                .map((param) => {
+                  const optionalMark = param.optional ? "?" : "";
+                  const typePart = param.type ? `: ${param.type}` : "";
                   return `${param.name}${optionalMark}${typePart}`;
                 })
-                .join(', ');
-              const signature = `${handlerName}(${signatureParameters})${returnType ? `: ${returnType}` : ''}`;
+                .join(", ");
+              const signature = `${handlerName}(${signatureParameters})${returnType ? `: ${returnType}` : ""}`;
 
               const documentationPayload = {
                 summary: docsAccumulator.summary,
@@ -964,7 +964,7 @@ export function createSpecsRouter(deps: Dependencies) {
                   documentationPayload.returns ||
                   (documentationPayload.remarks && documentationPayload.remarks.length > 0) ||
                   (documentationPayload.examples && documentationPayload.examples.length > 0) ||
-                  documentationPayload.deprecated
+                  documentationPayload.deprecated,
               );
 
               const position = sourceFile.getLineAndCharacterOfPosition(member.getStart());
@@ -976,7 +976,7 @@ export function createSpecsRouter(deps: Dependencies) {
                 signature,
                 returnType,
                 documentation: hasDocumentation ? documentationPayload : undefined,
-                parameters: parameterDetails.map(param => ({
+                parameters: parameterDetails.map((param) => ({
                   name: param.name,
                   type: param.type,
                   optional: param.optional,
@@ -1002,7 +1002,7 @@ export function createSpecsRouter(deps: Dependencies) {
             className,
           };
         } catch (error) {
-          console.warn('[specs.resolved] Failed to analyze TSOA controller via TypeScript API', {
+          console.warn("[specs.resolved] Failed to analyze TSOA controller via TypeScript API", {
             controller: controllerAbsolute,
             error,
           });
@@ -1013,24 +1013,24 @@ export function createSpecsRouter(deps: Dependencies) {
       for (const artifact of serviceArtifacts) {
         const analysis = artifact.metadata?.tsoaAnalysis;
         if (!analysis) {
-          console.debug('[specs.resolved] No TSOA analysis for service', {
+          console.debug("[specs.resolved] No TSOA analysis for service", {
             service: artifact.name,
           });
           continue;
         }
 
-        const rawServiceName = artifact.name.replace(/^@[^/]+\//, '') || artifact.name;
-        const slugRoot = toSlug(artifact.name) || 'service';
+        const rawServiceName = artifact.name.replace(/^@[^/]+\//, "") || artifact.name;
+        const slugRoot = toSlug(artifact.name) || "service";
         const serviceSlug = toSlug(rawServiceName) || slugRoot;
-        const baseRoutePath = `/${serviceSlug}`.replace(/\/+/g, '/');
+        const baseRoutePath = `/${serviceSlug}`.replace(/\/+/g, "/");
 
         const baseMetadata = {
-          source: 'tsoa',
+          source: "tsoa",
           serviceName: artifact.name,
           serviceDisplayName: rawServiceName,
           packageName: rawServiceName,
-          packageRoot: artifact.metadata?.root || '.',
-          routerType: 'tsoa',
+          packageRoot: artifact.metadata?.root || ".",
+          routerType: "tsoa",
           routeBasePath: baseRoutePath,
         };
 
@@ -1039,7 +1039,7 @@ export function createSpecsRouter(deps: Dependencies) {
           : [];
 
         if (controllerCandidates.length === 0) {
-          console.debug('[specs.resolved] TSOA analysis missing controller candidates', {
+          console.debug("[specs.resolved] TSOA analysis missing controller candidates", {
             service: artifact.name,
             hasAnalysis: true,
             totalTypeScriptFiles: analysis.totalTypeScriptFiles,
@@ -1049,7 +1049,7 @@ export function createSpecsRouter(deps: Dependencies) {
           continue;
         }
 
-        console.debug('[specs.resolved] TSOA controller candidates detected', {
+        console.debug("[specs.resolved] TSOA controller candidates detected", {
           service: artifact.name,
           count: controllerCandidates.length,
         });
@@ -1066,7 +1066,7 @@ export function createSpecsRouter(deps: Dependencies) {
           totalTypeScriptFiles: analysis.totalTypeScriptFiles ?? 0,
         };
 
-        const rootDisplayLabel = '/';
+        const rootDisplayLabel = "/";
         const aggregatedEndpoints: Array<{ method: string; path?: string; controller?: string }> =
           [];
         const aggregatedMethods = new Set<string>();
@@ -1078,7 +1078,7 @@ export function createSpecsRouter(deps: Dependencies) {
             name: baseRoutePath,
             component: `${rawServiceName} service`,
             capabilities: [],
-            type: 'route',
+            type: "route",
             metadata: {
               ...baseMetadata,
               displayName: rootDisplayLabel,
@@ -1097,31 +1097,31 @@ export function createSpecsRouter(deps: Dependencies) {
         let anyControllerSourceAvailable = false;
 
         for (const [index, candidate] of controllerCandidates.entries()) {
-          const normalized = candidate.split('\\').join('/');
-          const fileName = normalized.split('/').pop() || normalized;
+          const normalized = candidate.split("\\").join("/");
+          const fileName = normalized.split("/").pop() || normalized;
           const baseSegment = toSlug(
             fileName
-              .replace(/\.[tj]sx?$/i, '')
-              .replace(/controller$/i, '')
-              .replace(/route$/i, '')
+              .replace(/\.[tj]sx?$/i, "")
+              .replace(/controller$/i, "")
+              .replace(/route$/i, ""),
           );
-          const safeId = `${slugRoot}-${baseSegment || 'controller'}-${index}`;
+          const safeId = `${slugRoot}-${baseSegment || "controller"}-${index}`;
           const routePath = baseSegment
-            ? `${baseRoutePath}/${baseSegment}`.replace(/\/+/g, '/')
+            ? `${baseRoutePath}/${baseSegment}`.replace(/\/+/g, "/")
             : baseRoutePath;
           const displayNameBase = fileName
-            .replace(/\.[tj]sx?$/i, '')
-            .replace(/controller$/i, '')
-            .replace(/route$/i, '')
-            .replace(/[-_]+/g, ' ')
-            .replace(/\s+/g, ' ')
+            .replace(/\.[tj]sx?$/i, "")
+            .replace(/controller$/i, "")
+            .replace(/route$/i, "")
+            .replace(/[-_]+/g, " ")
+            .replace(/\s+/g, " ")
             .trim();
           const formatLabel = (value: string) =>
             value
               .split(/[-_\s]+/)
               .filter(Boolean)
-              .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
-              .join(' ');
+              .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+              .join(" ");
           const displayName = displayNameBase
             ? formatLabel(displayNameBase)
             : formatLabel(rawServiceName);
@@ -1130,9 +1130,9 @@ export function createSpecsRouter(deps: Dependencies) {
             analysis.root,
             artifact.metadata?.root,
             artifact.metadata?.packageRoot,
-            path.dirname(artifact.file_path || ''),
+            path.dirname(artifact.file_path || ""),
           ].filter(
-            (value): value is string => typeof value === 'string' && value.trim().length > 0
+            (value): value is string => typeof value === "string" && value.trim().length > 0,
           );
 
           const controllerAbsolute = await resolveControllerPath(candidateRoots, normalized);
@@ -1151,12 +1151,12 @@ export function createSpecsRouter(deps: Dependencies) {
             anyControllerSourceAvailable = true;
           }
 
-          controllerDetails.httpMethods.forEach(method => aggregatedMethods.add(method));
-          const enrichedEndpoints = controllerDetails.endpoints.map(endpoint => ({
+          controllerDetails.httpMethods.forEach((method) => aggregatedMethods.add(method));
+          const enrichedEndpoints = controllerDetails.endpoints.map((endpoint) => ({
             ...endpoint,
             controller: displayName,
           }));
-          enrichedEndpoints.forEach(endpoint => {
+          enrichedEndpoints.forEach((endpoint) => {
             aggregatedEndpoints.push(endpoint);
           });
 
@@ -1166,7 +1166,7 @@ export function createSpecsRouter(deps: Dependencies) {
             name: displayName,
             component: normalized,
             capabilities: [],
-            type: 'route',
+            type: "route",
             metadata: {
               ...baseMetadata,
               controllerPath: normalized,
@@ -1190,7 +1190,7 @@ export function createSpecsRouter(deps: Dependencies) {
             httpMethods: controllerDetails.httpMethods,
             endpoints: enrichedEndpoints,
           };
-          console.debug('[specs.resolved] emitting backend route', {
+          console.debug("[specs.resolved] emitting backend route", {
             service: artifact.name,
             id: route.id,
             path: route.path,
@@ -1230,9 +1230,9 @@ export function createSpecsRouter(deps: Dependencies) {
         Object.keys(services).length > 0
           ? [
               {
-                id: 'service-flow',
-                name: 'Service Integration Flow',
-                steps: [{ visit: '/' }, { expect_api: { method: 'GET', path: '/health' } }],
+                id: "service-flow",
+                name: "Service Integration Flow",
+                steps: [{ visit: "/" }, { expect_api: { method: "GET", path: "/health" } }],
               },
             ]
           : [];
@@ -1241,11 +1241,11 @@ export function createSpecsRouter(deps: Dependencies) {
         success: true,
         projectId,
         resolved: {
-          apiVersion: 'v2',
-          kind: 'Application',
+          apiVersion: "v2",
+          kind: "Application",
           metadata: {
             name: project.name,
-            version: project.version || '1.0.0',
+            version: project.version || "1.0.0",
             brownfield: true,
             detectedServices: serviceArtifacts.length,
             detectedDatabases: databaseArtifacts.length,
@@ -1265,9 +1265,9 @@ export function createSpecsRouter(deps: Dependencies) {
             },
             flows,
             capabilities: {
-              'read-data': {
-                name: 'Read Data',
-                description: 'Capability to read application data',
+              "read-data": {
+                name: "Read Data",
+                description: "Capability to read application data",
               },
             },
             epics,
@@ -1276,8 +1276,8 @@ export function createSpecsRouter(deps: Dependencies) {
         },
       });
     } catch (error) {
-      console.error('Error fetching resolved spec:', error);
-      return c.json({ error: 'Failed to fetch project specification' }, 500);
+      console.error("Error fetching resolved spec:", error);
+      return c.json({ error: "Failed to fetch project specification" }, 500);
     }
   });
 

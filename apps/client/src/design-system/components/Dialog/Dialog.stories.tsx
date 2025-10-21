@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   AlertTriangle,
   CheckCircle,
@@ -12,28 +12,28 @@ import {
   Upload,
   XCircle,
   Zap,
-} from 'lucide-react';
-import { useState } from 'react';
-import Button from './Button';
-import { AlertDialog, ConfirmDialog, Dialog, useDialog } from './Dialog';
+} from "lucide-react";
+import { useState } from "react";
+import Button from "./Button";
+import { AlertDialog, ConfirmDialog, Dialog, useDialog } from "./Dialog";
 
 const meta: Meta<typeof Dialog> = {
-  title: 'Design System/Overlays/Dialog',
+  title: "Design System/Overlays/Dialog",
   component: Dialog,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Simple confirmation and alert dialogs with predefined actions. Perfect for quick confirmations, alerts, and simple user interactions.',
+          "Simple confirmation and alert dialogs with predefined actions. Perfect for quick confirmations, alerts, and simple user interactions.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     type: {
-      control: { type: 'select' },
-      options: ['default', 'confirmation', 'destructive', 'success', 'warning', 'error', 'info'],
+      control: { type: "select" },
+      options: ["default", "confirmation", "destructive", "success", "warning", "error", "info"],
     },
   },
 };
@@ -63,12 +63,12 @@ export const Default: Story = {
 export const ConfirmationDialog: Story = {
   render: () => {
     const [open, setOpen] = useState(false);
-    const [result, setResult] = useState<string>('');
+    const [result, setResult] = useState<string>("");
 
     const handleConfirm = () => {
-      setResult('Confirmed!');
+      setResult("Confirmed!");
       setOpen(false);
-      setTimeout(() => setResult(''), 3000);
+      setTimeout(() => setResult(""), 3000);
     };
 
     return (
@@ -98,7 +98,7 @@ export const ConfirmationDialog: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Confirmation dialog for save actions with custom labels and callbacks.',
+        story: "Confirmation dialog for save actions with custom labels and callbacks.",
       },
     },
   },
@@ -108,15 +108,15 @@ export const DestructiveDialog: Story = {
   render: () => {
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [result, setResult] = useState<string>('');
+    const [result, setResult] = useState<string>("");
 
     const handleDelete = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       setLoading(false);
-      setResult('Item deleted successfully');
+      setResult("Item deleted successfully");
       setOpen(false);
-      setTimeout(() => setResult(''), 3000);
+      setTimeout(() => setResult(""), 3000);
     };
 
     return (
@@ -147,7 +147,7 @@ export const DestructiveDialog: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Destructive dialog for dangerous actions like deletion, with loading state.',
+        story: "Destructive dialog for dangerous actions like deletion, with loading state.",
       },
     },
   },
@@ -260,7 +260,7 @@ export const AlertDialogs: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different types of alert dialogs for various notification scenarios.',
+        story: "Different types of alert dialogs for various notification scenarios.",
       },
     },
   },
@@ -269,34 +269,34 @@ export const AlertDialogs: Story = {
 export const CustomActionsDialog: Story = {
   render: () => {
     const [open, setOpen] = useState(false);
-    const [result, setResult] = useState<string>('');
+    const [result, setResult] = useState<string>("");
 
     const actions = [
       {
-        label: 'Save Draft',
-        variant: 'secondary' as const,
+        label: "Save Draft",
+        variant: "secondary" as const,
         onClick: () => {
-          setResult('Saved as draft');
+          setResult("Saved as draft");
           setOpen(false);
-          setTimeout(() => setResult(''), 3000);
+          setTimeout(() => setResult(""), 3000);
         },
       },
       {
-        label: 'Discard',
-        variant: 'ghost' as const,
+        label: "Discard",
+        variant: "ghost" as const,
         onClick: () => {
-          setResult('Changes discarded');
+          setResult("Changes discarded");
           setOpen(false);
-          setTimeout(() => setResult(''), 3000);
+          setTimeout(() => setResult(""), 3000);
         },
       },
       {
-        label: 'Publish',
-        variant: 'primary' as const,
+        label: "Publish",
+        variant: "primary" as const,
         onClick: () => {
-          setResult('Published successfully');
+          setResult("Published successfully");
           setOpen(false);
-          setTimeout(() => setResult(''), 3000);
+          setTimeout(() => setResult(""), 3000);
         },
       },
     ];
@@ -341,7 +341,7 @@ export const CustomActionsDialog: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Dialog with custom action buttons for complex workflows.',
+        story: "Dialog with custom action buttons for complex workflows.",
       },
     },
   },
@@ -384,7 +384,7 @@ export const SystemDialogs: Story = {
           onClose={() => setLogoutOpen(false)}
           onConfirm={() => {
             setLogoutOpen(false);
-            alert('Signed out!');
+            alert("Signed out!");
           }}
           title="Sign Out"
           description="Are you sure you want to sign out? Any unsaved changes will be lost."
@@ -400,16 +400,16 @@ export const SystemDialogs: Story = {
           type="info"
           actions={[
             {
-              label: 'Install Later',
-              variant: 'secondary',
+              label: "Install Later",
+              variant: "secondary",
               onClick: () => setUpdateOpen(false),
             },
             {
-              label: 'Install Now',
-              variant: 'primary',
+              label: "Install Now",
+              variant: "primary",
               onClick: () => {
                 setUpdateOpen(false);
-                alert('Installing update...');
+                alert("Installing update...");
               },
             },
           ]}
@@ -435,7 +435,7 @@ export const SystemDialogs: Story = {
           onClose={() => setResetOpen(false)}
           onConfirm={() => {
             setResetOpen(false);
-            alert('Settings reset!');
+            alert("Settings reset!");
           }}
           title="Reset All Settings"
           description="This will restore all settings to their default values. Your projects and data will not be affected."
@@ -448,7 +448,7 @@ export const SystemDialogs: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Common system dialogs for logout, updates, and settings reset.',
+        story: "Common system dialogs for logout, updates, and settings reset.",
       },
     },
   },
@@ -457,51 +457,51 @@ export const SystemDialogs: Story = {
 export const ImperativeDialogHook: Story = {
   render: () => {
     const { confirm, alert, dialog } = useDialog();
-    const [result, setResult] = useState<string>('');
+    const [result, setResult] = useState<string>("");
 
     const handleConfirmExample = async () => {
       const confirmed = await confirm({
-        title: 'Delete File',
+        title: "Delete File",
         description: 'Are you sure you want to delete "spec-schema.cue"? This cannot be undone.',
-        confirmLabel: 'Delete',
-        type: 'destructive',
+        confirmLabel: "Delete",
+        type: "destructive",
       });
 
-      setResult(confirmed ? 'File deleted' : 'Delete cancelled');
-      setTimeout(() => setResult(''), 3000);
+      setResult(confirmed ? "File deleted" : "Delete cancelled");
+      setTimeout(() => setResult(""), 3000);
     };
 
     const handleAlertExample = async () => {
       await alert({
-        title: 'Operation Complete',
-        description: 'Your specification has been validated successfully.',
-        type: 'success',
+        title: "Operation Complete",
+        description: "Your specification has been validated successfully.",
+        type: "success",
       });
 
-      setResult('Alert dismissed');
-      setTimeout(() => setResult(''), 3000);
+      setResult("Alert dismissed");
+      setTimeout(() => setResult(""), 3000);
     };
 
     const handleCustomDialog = async () => {
       await dialog({
-        title: 'Custom Dialog',
-        description: 'This dialog was created imperatively using the useDialog hook.',
-        type: 'info',
+        title: "Custom Dialog",
+        description: "This dialog was created imperatively using the useDialog hook.",
+        type: "info",
         actions: [
           {
-            label: 'Option A',
-            variant: 'secondary',
+            label: "Option A",
+            variant: "secondary",
             onClick: () => {
-              setResult('Selected Option A');
-              setTimeout(() => setResult(''), 3000);
+              setResult("Selected Option A");
+              setTimeout(() => setResult(""), 3000);
             },
           },
           {
-            label: 'Option B',
-            variant: 'primary',
+            label: "Option B",
+            variant: "primary",
             onClick: () => {
-              setResult('Selected Option B');
-              setTimeout(() => setResult(''), 3000);
+              setResult("Selected Option B");
+              setTimeout(() => setResult(""), 3000);
             },
           },
         ],
@@ -534,7 +534,7 @@ export const ImperativeDialogHook: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Imperative dialog usage with the useDialog hook for programmatic control.',
+        story: "Imperative dialog usage with the useDialog hook for programmatic control.",
       },
     },
   },

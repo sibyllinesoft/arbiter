@@ -1,9 +1,9 @@
-import { MarkdownField, type MarkdownFieldProps } from '@/components/form/MarkdownField';
-import Button from '@/design-system/components/Button';
-import Input from '@/design-system/components/Input';
-import Modal from '@/design-system/components/Modal';
-import Select, { type SelectOption } from '@/design-system/components/Select';
-import { type ChangeEvent, useEffect, useMemo, useState } from 'react';
+import { MarkdownField, type MarkdownFieldProps } from "@/components/form/MarkdownField";
+import Button from "@/design-system/components/Button";
+import Input from "@/design-system/components/Input";
+import Modal from "@/design-system/components/Modal";
+import Select, { type SelectOption } from "@/design-system/components/Select";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 
 export interface EpicTaskOption {
   id: string;
@@ -37,34 +37,36 @@ export type FieldValue =
   | Record<string, unknown>
   | Array<Record<string, unknown>>;
 
-const FIELD_RECORD_KEYS = ['value', 'id', 'name', 'label', 'slug', 'key'] as const;
+const FIELD_RECORD_KEYS = ["value", "id", "name", "label", "slug", "key"] as const;
+const sanitizeNameInput = (value: string): string =>
+  value.length > 255 ? value.slice(0, 255) : value;
 
 const INPUT_SURFACE_CLASSES =
-  'bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-300 dark:border-graphite-700 hover:border-graphite-400 dark:hover:border-graphite-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500';
+  "bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-300 dark:border-graphite-700 hover:border-graphite-400 dark:hover:border-graphite-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
 const SELECT_DROPDOWN_CLASSES =
-  'bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700';
+  "bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700";
 
 const extractRecordString = (record: Record<string, unknown> | undefined | null): string => {
-  if (!record) return '';
+  if (!record) return "";
   for (const key of FIELD_RECORD_KEYS) {
     const candidate = record[key];
-    if (typeof candidate === 'string' && candidate.trim().length > 0) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
       return candidate;
     }
   }
-  return '';
+  return "";
 };
 
 export const coerceFieldValueToString = (input: FieldValue | undefined): string => {
   if (input === null || input === undefined) {
-    return '';
+    return "";
   }
 
-  if (typeof input === 'string') {
+  if (typeof input === "string") {
     return input;
   }
 
-  if (typeof input === 'number' || typeof input === 'boolean') {
+  if (typeof input === "number" || typeof input === "boolean") {
     return String(input);
   }
 
@@ -75,14 +77,14 @@ export const coerceFieldValueToString = (input: FieldValue | undefined): string 
         return normalized;
       }
     }
-    return '';
+    return "";
   }
 
-  if (typeof input === 'object') {
+  if (typeof input === "object") {
     return extractRecordString(input as Record<string, unknown>);
   }
 
-  return '';
+  return "";
 };
 
 const coerceFieldValueToArrayInternal = (input: FieldValue | undefined): string[] => {
@@ -92,7 +94,7 @@ const coerceFieldValueToArrayInternal = (input: FieldValue | undefined): string[
 
   if (Array.isArray(input)) {
     return input
-      .map(entry => coerceFieldValueToString(entry as FieldValue).trim())
+      .map((entry) => coerceFieldValueToString(entry as FieldValue).trim())
       .filter((value): value is string => value.length > 0);
   }
 
@@ -111,7 +113,7 @@ export const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {
 interface FieldConfig {
   name: string;
   label: string;
-  type?: 'text' | 'textarea' | 'select';
+  type?: "text" | "textarea" | "select";
   placeholder?: string;
   required?: boolean;
   description?: string;
@@ -120,7 +122,7 @@ interface FieldConfig {
   resolveOptions?: (values: Record<string, FieldValue>) => Array<string | SelectOption>;
   isVisible?: (
     values: Record<string, FieldValue>,
-    resolvedOptions: Array<string | SelectOption>
+    resolvedOptions: Array<string | SelectOption>,
   ) => boolean;
   onChangeClear?: string[];
   markdown?: boolean;
@@ -136,58 +138,58 @@ interface AddEntityModalProps {
   initialValues?: Record<string, FieldValue> | undefined;
   titleOverride?: string | undefined;
   descriptionOverride?: string | undefined;
-  mode?: 'create' | 'edit';
+  mode?: "create" | "edit";
 }
 
 const FALLBACK_SERVICE_LANGUAGES = [
-  'TypeScript',
-  'JavaScript',
-  'Python',
-  'Go',
-  'Rust',
-  'Java',
-  'C#',
+  "TypeScript",
+  "JavaScript",
+  "Python",
+  "Go",
+  "Rust",
+  "Java",
+  "C#",
 ];
 
 const FALLBACK_SERVICE_FRAMEWORKS: Record<string, string[]> = {
-  TypeScript: ['NestJS', 'Fastify', 'Express'],
-  JavaScript: ['Express', 'Koa', 'Hapi'],
-  Python: ['FastAPI', 'Django', 'Flask'],
-  Go: ['Gin', 'Echo', 'Fiber'],
-  Rust: ['Actix', 'Axum', 'Rocket'],
-  Java: ['Spring Boot', 'Micronaut', 'Quarkus'],
-  'C#': ['ASP.NET Core', 'NancyFX'],
+  TypeScript: ["NestJS", "Fastify", "Express"],
+  JavaScript: ["Express", "Koa", "Hapi"],
+  Python: ["FastAPI", "Django", "Flask"],
+  Go: ["Gin", "Echo", "Fiber"],
+  Rust: ["Actix", "Axum", "Rocket"],
+  Java: ["Spring Boot", "Micronaut", "Quarkus"],
+  "C#": ["ASP.NET Core", "NancyFX"],
 };
 
-const FALLBACK_FRONTEND_FRAMEWORKS = ['React', 'Next.js', 'React Native', 'Expo', 'Flutter'];
-const FALLBACK_DATABASE_ENGINES = ['PostgreSQL', 'MySQL', 'MariaDB', 'MongoDB', 'Redis', 'SQLite'];
+const FALLBACK_FRONTEND_FRAMEWORKS = ["React", "Next.js", "React Native", "Expo", "Flutter"];
+const FALLBACK_DATABASE_ENGINES = ["PostgreSQL", "MySQL", "MariaDB", "MongoDB", "Redis", "SQLite"];
 const FALLBACK_INFRASTRUCTURE_SCOPES = [
-  'Kubernetes Cluster',
-  'Terraform Stack',
-  'Serverless Platform',
+  "Kubernetes Cluster",
+  "Terraform Stack",
+  "Serverless Platform",
 ];
 
 const DEFAULT_DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
-  component: 'Outline the responsibilities, dependencies, and integrations for this component.',
-  flow: 'Summarize the key steps, triggers, and outcomes for this flow.',
-  capability: 'Explain the capability, supporting systems, and users it serves.',
-  epic: 'Capture the objective, scope, and success metrics for this epic.',
-  task: 'Detail the work, dependencies, and definition of done for this task.',
-  other: 'Provide helpful context, purpose, or constraints for this item.',
-  default: 'Share context, goals, or constraints that clarify this addition.',
+  component: "Outline the responsibilities, dependencies, and integrations for this component.",
+  flow: "Summarize the key steps, triggers, and outcomes for this flow.",
+  capability: "Explain the capability, supporting systems, and users it serves.",
+  epic: "Capture the objective, scope, and success metrics for this epic.",
+  task: "Detail the work, dependencies, and definition of done for this task.",
+  other: "Provide helpful context, purpose, or constraints for this item.",
+  default: "Share context, goals, or constraints that clarify this addition.",
 };
 
 const buildDefaultFields = (entityType: string): FieldConfig[] => {
-  const normalizedType = entityType?.toLowerCase?.() || 'default';
+  const normalizedType = entityType?.toLowerCase?.() || "default";
   const placeholder =
     DEFAULT_DESCRIPTION_PLACEHOLDERS[normalizedType] || DEFAULT_DESCRIPTION_PLACEHOLDERS.default;
 
   return [
-    { name: 'name', label: 'Name', required: true, placeholder: 'enter a name' },
+    { name: "name", label: "Name", required: true, placeholder: "enter a name" },
     {
-      name: 'description',
-      label: 'Description',
-      type: 'textarea',
+      name: "description",
+      label: "Description",
+      type: "textarea",
       ...(placeholder ? { placeholder } : {}),
     },
   ];
@@ -196,7 +198,7 @@ const buildDefaultFields = (entityType: string): FieldConfig[] => {
 function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConfig[] {
   const frontendCandidate = Array.isArray(catalog.frontendFrameworks)
     ? catalog.frontendFrameworks.filter(
-        framework => typeof framework === 'string' && framework.trim().length > 0
+        (framework) => typeof framework === "string" && framework.trim().length > 0,
       )
     : [];
   const frontendFrameworks =
@@ -205,17 +207,17 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
   const serviceFrameworkEntries = Object.entries(catalog.serviceFrameworks ?? {}).map(
     ([language, frameworkList]) =>
       [
-        typeof language === 'string' ? language.trim() : '',
+        typeof language === "string" ? language.trim() : "",
         Array.isArray(frameworkList)
           ? frameworkList
-              .map(item => (typeof item === 'string' ? item.trim() : ''))
-              .filter(entry => entry.length > 0)
+              .map((item) => (typeof item === "string" ? item.trim() : ""))
+              .filter((entry) => entry.length > 0)
           : [],
-      ] as const
+      ] as const,
   );
 
   const sanitizedFrameworkEntries = serviceFrameworkEntries.filter(
-    ([language, frameworks]) => language.length > 0 && frameworks.length > 0
+    ([language, frameworks]) => language.length > 0 && frameworks.length > 0,
   );
 
   const serviceFrameworks =
@@ -225,12 +227,12 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
           Object.entries(FALLBACK_SERVICE_FRAMEWORKS).map(([language, frameworks]) => [
             language,
             [...frameworks],
-          ])
+          ]),
         );
 
   const combinedLanguages: string[] = [];
   const addLanguage = (language: unknown) => {
-    if (typeof language !== 'string') return;
+    if (typeof language !== "string") return;
     const normalized = language.trim();
     if (!normalized) return;
     if (!combinedLanguages.includes(normalized)) {
@@ -256,7 +258,7 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
 
   const databaseCandidate = Array.isArray(catalog.databaseEngines)
     ? catalog.databaseEngines.filter(
-        engine => typeof engine === 'string' && engine.trim().length > 0
+        (engine) => typeof engine === "string" && engine.trim().length > 0,
       )
     : [];
   const databaseEngines =
@@ -264,7 +266,7 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
 
   const infrastructureCandidate = Array.isArray(catalog.infrastructureScopes)
     ? catalog.infrastructureScopes.filter(
-        scope => typeof scope === 'string' && scope.trim().length > 0
+        (scope) => typeof scope === "string" && scope.trim().length > 0,
       )
     : [];
   const infrastructureScopes =
@@ -276,7 +278,7 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
     Object.entries(serviceFrameworks).map(([language, frameworks]) => [
       language.toLowerCase(),
       frameworks,
-    ])
+    ]),
   );
 
   const frameworkOptionsFor = (languageValue: FieldValue | undefined): string[] => {
@@ -289,203 +291,218 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
   };
 
   const applyMarkdownSupport = (fields: FieldConfig[]): FieldConfig[] =>
-    fields.map(field =>
-      field.name === 'description'
+    fields.map((field) =>
+      field.name === "description"
         ? {
             ...field,
-            type: field.type ?? 'textarea',
+            type: field.type ?? "textarea",
             markdown: true,
           }
-        : field
+        : field,
     );
 
   const configs: Record<string, FieldConfig[]> = {
     frontend: [
-      { name: 'name', label: 'Frontend Name', required: true, placeholder: 'mobile-app' },
+      { name: "name", label: "Frontend Name", required: true, placeholder: "mobile-app" },
       frontendFrameworks.length > 0
         ? {
-            name: 'framework',
-            label: 'Framework',
-            type: 'select',
+            name: "framework",
+            label: "Framework",
+            type: "select",
             options: frontendFrameworks,
-            placeholder: 'Select framework',
+            placeholder: "Select framework",
           }
         : {
-            name: 'framework',
-            label: 'Framework',
-            placeholder: 'React Native, Expo, Flutter',
+            name: "framework",
+            label: "Framework",
+            placeholder: "React Native, Expo, Flutter",
           },
-      { name: 'entryPoint', label: 'Entry Point', placeholder: 'src/App.tsx' },
+      { name: "entryPoint", label: "Entry Point", placeholder: "src/App.tsx" },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'Purpose of this frontend and target platform',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "Purpose of this frontend and target platform",
       },
     ],
     service: [
-      { name: 'name', label: 'Service Name', required: true, placeholder: 'payments-service' },
+      { name: "name", label: "Service Name", required: true, placeholder: "payments-service" },
       serviceLanguages.length > 0
         ? {
-            name: 'language',
-            label: 'Language',
-            type: 'select',
+            name: "language",
+            label: "Language",
+            type: "select",
             options: serviceLanguages,
-            placeholder: 'Select language',
+            placeholder: "Select language",
             required: true,
-            onChangeClear: ['framework'],
+            onChangeClear: ["framework"],
           }
         : {
-            name: 'language',
-            label: 'Language',
+            name: "language",
+            label: "Language",
             required: true,
-            placeholder: 'Node.js, Go, Python',
-            onChangeClear: ['framework'],
+            placeholder: "Node.js, Go, Python",
+            onChangeClear: ["framework"],
           },
       {
-        name: 'framework',
-        label: 'Framework (optional)',
-        type: 'select',
-        placeholder: 'Select framework',
-        resolveOptions: values => frameworkOptionsFor(values['language']),
+        name: "framework",
+        label: "Framework (optional)",
+        type: "select",
+        placeholder: "Select framework",
+        resolveOptions: (values) => frameworkOptionsFor(values["language"]),
         isVisible: (_, resolvedOptions) => resolvedOptions.length > 0,
-        description: 'Optional: choose a framework that fits the selected language.',
+        description: "Optional: choose a framework that fits the selected language.",
       },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'What responsibilities does this service own?',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "What responsibilities does this service own?",
       },
     ],
     module: [
-      { name: 'name', label: 'Module Name', required: true, placeholder: 'shared-library' },
+      { name: "name", label: "Module Name", required: true, placeholder: "shared-library" },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'What problems does this module solve?',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "What problems does this module solve?",
       },
     ],
     tool: [
-      { name: 'name', label: 'Tool Name', required: true, placeholder: 'lint-runner' },
-      { name: 'command', label: 'Command', placeholder: 'npm run lint' },
+      { name: "name", label: "Tool Name", required: true, placeholder: "lint-runner" },
+      { name: "command", label: "Command", placeholder: "npm run lint" },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'How should this tooling be used?',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "How should this tooling be used?",
       },
     ],
     route: [
-      { name: 'name', label: 'Route Name', required: true, placeholder: 'Checkout' },
-      { name: 'path', label: 'Route Path', required: true, placeholder: '/checkout' },
-      { name: 'methods', label: 'HTTP Methods', placeholder: 'GET, POST' },
+      { name: "name", label: "Route Name", required: true, placeholder: "Checkout" },
+      { name: "path", label: "Route Path", required: true, placeholder: "/checkout" },
+      { name: "methods", label: "HTTP Methods", placeholder: "GET, POST" },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'User experience or API contract details',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "User experience or API contract details",
       },
     ],
     view: [
-      { name: 'name', label: 'View Name', required: true, placeholder: 'Dashboard' },
-      { name: 'path', label: 'View Path', placeholder: '/dashboard' },
+      { name: "name", label: "View Name", required: true, placeholder: "Dashboard" },
+      { name: "path", label: "View Path", placeholder: "/dashboard" },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'Key widgets or data surfaced in this view',
+        name: "component",
+        label: "Component (optional)",
+        placeholder: "components/DashboardView",
+      },
+      {
+        name: "filePath",
+        label: "Source File (optional)",
+        placeholder: "apps/client/src/views/DashboardView.tsx",
+      },
+      {
+        name: "routerType",
+        label: "Router Type (optional)",
+        placeholder: "react-router",
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "Key widgets or data surfaced in this view",
       },
     ],
     database: [
-      { name: 'name', label: 'Database Name', required: true, placeholder: 'user-store' },
+      { name: "name", label: "Database Name", required: true, placeholder: "user-store" },
       databaseEngines.length > 0
         ? {
-            name: 'engine',
-            label: 'Engine',
-            type: 'select',
+            name: "engine",
+            label: "Engine",
+            type: "select",
             options: databaseEngines,
-            placeholder: 'Select engine',
+            placeholder: "Select engine",
           }
         : {
-            name: 'engine',
-            label: 'Engine',
-            placeholder: 'PostgreSQL, MySQL',
+            name: "engine",
+            label: "Engine",
+            placeholder: "PostgreSQL, MySQL",
           },
-      { name: 'version', label: 'Version', placeholder: '15' },
+      { name: "version", label: "Version", placeholder: "15" },
       {
-        name: 'description',
-        label: 'Notes',
-        type: 'textarea',
-        placeholder: 'Important schemas, scaling, or retention notes',
+        name: "description",
+        label: "Notes",
+        type: "textarea",
+        placeholder: "Important schemas, scaling, or retention notes",
       },
     ],
     infrastructure: [
       {
-        name: 'name',
-        label: 'Infrastructure Component',
+        name: "name",
+        label: "Infrastructure Component",
         required: true,
-        placeholder: 'production-cluster',
+        placeholder: "production-cluster",
       },
       infrastructureScopes.length > 0
         ? {
-            name: 'scope',
-            label: 'Scope',
-            type: 'select',
+            name: "scope",
+            label: "Scope",
+            type: "select",
             options: infrastructureScopes,
-            placeholder: 'Select scope',
+            placeholder: "Select scope",
           }
         : {
-            name: 'scope',
-            label: 'Scope',
-            placeholder: 'Kubernetes Cluster, Terraform Stack',
+            name: "scope",
+            label: "Scope",
+            placeholder: "Kubernetes Cluster, Terraform Stack",
           },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'What infrastructure does this provide?',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "What infrastructure does this provide?",
       },
     ],
     epic: [
-      { name: 'name', label: 'Epic Name', required: true, placeholder: 'Checkout flow revamp' },
+      { name: "name", label: "Epic Name", required: true, placeholder: "Checkout flow revamp" },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
+        name: "description",
+        label: "Description",
+        type: "textarea",
         markdown: true,
-        placeholder: 'Summarize the objective, scope, and success metrics for this epic',
+        placeholder: "Summarize the objective, scope, and success metrics for this epic",
       },
     ],
     task: [
-      { name: 'name', label: 'Task Name', required: true, placeholder: 'Design API contract' },
+      { name: "name", label: "Task Name", required: true, placeholder: "Design API contract" },
       {
-        name: 'epicId',
-        label: 'Epic',
-        type: 'select',
+        name: "epicId",
+        label: "Epic",
+        type: "select",
         required: false,
-        placeholder: 'Select epic',
+        placeholder: "Select epic",
         resolveOptions: () =>
           (catalog.taskEpicOptions ?? [])
-            .map(option => {
-              const value = String(option.id ?? '').trim();
+            .map((option) => {
+              const value = String(option.id ?? "").trim();
               if (!value) return null;
               const label = String(option.name ?? value).trim() || value;
               return { value, label } as SelectOption;
             })
             .filter((option): option is SelectOption => Boolean(option)),
         description:
-          'Optional: choose the epic this task belongs to. Leave blank to keep it unassigned.',
+          "Optional: choose the epic this task belongs to. Leave blank to keep it unassigned.",
       },
       {
-        name: 'description',
-        label: 'Description',
-        type: 'textarea',
-        placeholder: 'Detail the work, dependencies, and definition of done for this task.',
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "Detail the work, dependencies, and definition of done for this task.",
       },
     ],
-    other: buildDefaultFields('other'),
+    other: buildDefaultFields("other"),
   };
 
   const result = configs[entityType] ?? buildDefaultFields(entityType);
@@ -493,16 +510,16 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
 }
 
 function toSingularLabel(label: string, fallback: string): string {
-  if (!label && !fallback) return 'item';
+  if (!label && !fallback) return "item";
   const base = (label || fallback).trim();
-  if (base.toLowerCase() === 'infrastructure') return 'infrastructure component';
-  if (base.toLowerCase() === 'tools') return 'tool';
-  if (base.toLowerCase() === 'services') return 'service';
-  if (base.toLowerCase() === 'databases') return 'database';
-  if (base.toLowerCase().endsWith('ies')) {
-    return base.slice(0, -3) + 'y';
+  if (base.toLowerCase() === "infrastructure") return "infrastructure component";
+  if (base.toLowerCase() === "tools") return "tool";
+  if (base.toLowerCase() === "services") return "service";
+  if (base.toLowerCase() === "databases") return "database";
+  if (base.toLowerCase().endsWith("ies")) {
+    return base.slice(0, -3) + "y";
   }
-  if (base.toLowerCase().endsWith('s')) {
+  if (base.toLowerCase().endsWith("s")) {
     return base.slice(0, -1);
   }
   return base;
@@ -518,11 +535,11 @@ export function AddEntityModal({
   initialValues,
   titleOverride,
   descriptionOverride,
-  mode = 'create',
+  mode = "create",
 }: AddEntityModalProps) {
   const fields = useMemo(
     () => getFieldConfig(entityType, optionCatalog),
-    [entityType, optionCatalog]
+    [entityType, optionCatalog],
   );
 
   const fieldByName = useMemo(() => {
@@ -536,7 +553,7 @@ export function AddEntityModal({
   const defaultValues = useMemo(() => {
     const values: Record<string, FieldValue> = {};
     for (const field of fields) {
-      values[field.name] = field.multiple ? [] : '';
+      values[field.name] = field.multiple ? [] : "";
     }
     return values;
   }, [fields]);
@@ -555,7 +572,8 @@ export function AddEntityModal({
           if (field.multiple) {
             nextValues[key] = coerceFieldValueToArray(rawValue);
           } else {
-            nextValues[key] = coerceFieldValueToString(rawValue).trim();
+            const stringValue = coerceFieldValueToString(rawValue);
+            nextValues[key] = field.markdown ? stringValue : stringValue.trim();
           }
         });
       }
@@ -567,7 +585,7 @@ export function AddEntityModal({
 
   const singularLabel = useMemo(
     () => toSingularLabel(groupLabel, entityType).toLowerCase(),
-    [groupLabel, entityType]
+    [groupLabel, entityType],
   );
 
   const formId = `add-entity-${entityType}`;
@@ -580,12 +598,17 @@ export function AddEntityModal({
     return a.every((value, index) => value === b[index]);
   };
 
+  const normalizeForComparison = (
+    _targetField: FieldConfig | undefined,
+    value: FieldValue | undefined,
+  ): string => coerceFieldValueToString(value);
+
   const handleChange = (name: string, nextValue: FieldValue) => {
     const field = fieldByName.get(name);
     const clearKeys = field?.onChangeClear ?? [];
     const impactedKeys = [name, ...clearKeys];
 
-    setValues(prev => {
+    setValues((prev) => {
       let nextState = prev;
       let mutated = false;
 
@@ -593,7 +616,7 @@ export function AddEntityModal({
       const isMultiple = field?.multiple === true;
       const shouldUpdate = isMultiple
         ? !arraysEqual(toArray(prevValue), toArray(nextValue))
-        : coerceFieldValueToString(prevValue).trim() !== coerceFieldValueToString(nextValue).trim();
+        : normalizeForComparison(field, prevValue) !== normalizeForComparison(field, nextValue);
 
       if (shouldUpdate) {
         nextState = { ...prev, [name]: nextValue };
@@ -607,15 +630,15 @@ export function AddEntityModal({
 
         for (const key of clearKeys) {
           const targetField = fieldByName.get(key);
-          const defaultValue: FieldValue = targetField?.multiple ? [] : '';
+          const defaultValue: FieldValue = targetField?.multiple ? [] : "";
           const existingValue = nextState[key];
           const needsReset = targetField?.multiple
             ? !arraysEqual(toArray(existingValue), toArray(defaultValue))
-            : coerceFieldValueToString(existingValue).trim() !==
-              coerceFieldValueToString(defaultValue).trim();
+            : normalizeForComparison(targetField, existingValue) !==
+              normalizeForComparison(targetField, defaultValue);
 
           if (needsReset) {
-            nextState[key] = targetField?.multiple ? [] : '';
+            nextState[key] = targetField?.multiple ? [] : "";
             mutated = true;
           }
         }
@@ -624,18 +647,14 @@ export function AddEntityModal({
       return mutated ? nextState : prev;
     });
 
-    if (impactedKeys.some(key => errors[key])) {
-      setErrors(prev => {
+    if (impactedKeys.some((key) => errors[key])) {
+      setErrors((prev) => {
         const nextErrors = { ...prev };
         for (const key of impactedKeys) {
           delete nextErrors[key];
         }
         return nextErrors;
       });
-    }
-
-    if (import.meta.env.DEV) {
-      console.debug('[AddEntityModal] handleChange', { field: name, value: nextValue });
     }
   };
 
@@ -651,7 +670,7 @@ export function AddEntityModal({
 
       if (field.multiple) {
         const normalizedValues = toArray(rawValue)
-          .map(item => item.trim())
+          .map((item) => item.trim())
           .filter(Boolean);
 
         if (field.required && normalizedValues.length === 0) {
@@ -686,17 +705,17 @@ export function AddEntityModal({
   };
 
   const defaultTitle =
-    mode === 'edit'
+    mode === "edit"
       ? `Update ${toSingularLabel(groupLabel, entityType)}`
       : `Add ${toSingularLabel(groupLabel, entityType)}`;
   const defaultDescription =
-    mode === 'edit'
+    mode === "edit"
       ? `Review and update this ${singularLabel}.`
       : `Provide the details needed to add a new ${singularLabel}.`;
 
   const modalTitle = titleOverride ?? defaultTitle;
   const modalDescription = descriptionOverride ?? defaultDescription;
-  const submitVerb = mode === 'edit' ? 'Update' : 'Add';
+  const submitVerb = mode === "edit" ? "Update" : "Add";
 
   return (
     <Modal
@@ -711,15 +730,15 @@ export function AddEntityModal({
       {...(firstField ? { initialFocus: `#${formId}-${firstField}` } : {})}
     >
       <form id={formId} onSubmit={handleSubmit} className="space-y-4">
-        {fields.map(field => {
+        {fields.map((field) => {
           const fieldId = `${formId}-${field.name}`;
           const rawValue = values[field.name];
           const errorMessage = errors[field.name];
           const shouldRenderMarkdown =
-            field.type === 'textarea' &&
-            (field.markdown || (entityType === 'epic' && field.name === 'description'));
+            field.type === "textarea" &&
+            (field.markdown || (entityType === "epic" && field.name === "description"));
           const resolvedOptions =
-            field.type === 'select'
+            field.type === "select"
               ? field.resolveOptions
                 ? field.resolveOptions(values)
                 : (field.options ?? [])
@@ -753,7 +772,7 @@ export function AddEntityModal({
             return <MarkdownField key={field.name} {...markdownProps} />;
           }
 
-          if (field.type === 'textarea') {
+          if (field.type === "textarea") {
             return (
               <div key={field.name} className="space-y-1">
                 <label
@@ -768,7 +787,7 @@ export function AddEntityModal({
                   name={field.name}
                   placeholder={field.placeholder}
                   value={toStringValue(rawValue)}
-                  onChange={event => handleChange(field.name, event.target.value)}
+                  onChange={(event) => handleChange(field.name, event.target.value)}
                   className="block w-full rounded-md border border-gray-300 dark:border-graphite-700 bg-white dark:bg-graphite-950 text-sm text-graphite-900 dark:text-graphite-50 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
                 />
                 {field.description && (
@@ -781,20 +800,20 @@ export function AddEntityModal({
             );
           }
 
-          if (field.type === 'select') {
+          if (field.type === "select") {
             const optionValues = Array.isArray(resolvedOptions) ? resolvedOptions : [];
             const seen = new Set<string>();
             const selectOptions: SelectOption[] = [];
 
-            optionValues.forEach(option => {
-              if (typeof option === 'string') {
+            optionValues.forEach((option) => {
+              if (typeof option === "string") {
                 const trimmed = option.trim();
                 if (!trimmed) return;
                 const dedupeKey = trimmed.toLowerCase();
                 if (seen.has(dedupeKey)) return;
                 seen.add(dedupeKey);
                 selectOptions.push({ value: trimmed, label: trimmed });
-              } else if (option && typeof option.value === 'string') {
+              } else if (option && typeof option.value === "string") {
                 const trimmedValue = option.value.trim();
                 if (!trimmedValue) return;
                 const dedupeKey = trimmedValue.toLowerCase();
@@ -804,7 +823,7 @@ export function AddEntityModal({
                   value: trimmedValue,
                   label: option.label?.trim() || trimmedValue,
                 };
-                if (typeof option.description === 'string' && option.description.trim()) {
+                if (typeof option.description === "string" && option.description.trim()) {
                   normalizedOption.description = option.description.trim();
                 }
                 if (option.disabled !== undefined) {
@@ -813,7 +832,7 @@ export function AddEntityModal({
                 if (option.icon !== undefined) {
                   normalizedOption.icon = option.icon;
                 }
-                if (typeof option.group === 'string' && option.group.trim()) {
+                if (typeof option.group === "string" && option.group.trim()) {
                   normalizedOption.group = option.group.trim();
                 }
                 selectOptions.push(normalizedOption);
@@ -839,14 +858,14 @@ export function AddEntityModal({
                   {...(isMultiple ? { multiple: true } : {})}
                   placeholder={
                     field.placeholder ||
-                    (isMultiple ? 'Select one or more options' : 'Select an option')
+                    (isMultiple ? "Select one or more options" : "Select an option")
                   }
                   {...(isMultiple
                     ? { value: selectValue as string[] }
                     : selectValue
                       ? { value: selectValue as string }
                       : {})}
-                  onChange={nextValue => {
+                  onChange={(nextValue) => {
                     if (isMultiple) {
                       const normalized = Array.isArray(nextValue)
                         ? nextValue
@@ -856,8 +875,8 @@ export function AddEntityModal({
                       handleChange(field.name, normalized);
                     } else {
                       const normalized = Array.isArray(nextValue)
-                        ? (nextValue[0] ?? '')
-                        : ((nextValue as string | undefined) ?? '');
+                        ? (nextValue[0] ?? "")
+                        : ((nextValue as string | undefined) ?? "");
                       handleChange(field.name, normalized);
                     }
                   }}

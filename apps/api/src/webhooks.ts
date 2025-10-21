@@ -1,10 +1,10 @@
 /**
  * Webhook service for handling GitLab and GitHub webhooks
  */
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import type { SpecWorkbenchDB } from './db';
-import type { EventService } from './events';
-import { CustomHandlerManager } from './handlers/manager.js';
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import type { SpecWorkbenchDB } from "./db";
+import type { EventService } from "./events";
+import { CustomHandlerManager } from "./handlers/manager.js";
 import type {
   EventType,
   ServerConfig,
@@ -13,8 +13,8 @@ import type {
   WebhookPayload,
   WebhookRequest,
   WebhookResponse,
-} from './types';
-import { generateId, getCurrentTimestamp, logger } from './utils';
+} from "./types";
+import { generateId, getCurrentTimestamp, logger } from "./utils";
 
 export class WebhookService {
   private handlerManager: CustomHandlerManager;
@@ -22,14 +22,14 @@ export class WebhookService {
   constructor(
     private config: ServerConfig,
     private events: EventService,
-    private db: SpecWorkbenchDB
+    private db: SpecWorkbenchDB,
   ) {
     this.handlerManager = new CustomHandlerManager(this.config, this.events, this.db, logger);
 
     // Initialize handlers if enabled
-    if (this.config.handlers?.enabled || process.env.HANDLERS_ENABLED === 'true') {
-      this.handlerManager.initialize().catch(err => {
-        logger.error('Failed to initialize handler manager', err);
+    if (this.config.handlers?.enabled || process.env.HANDLERS_ENABLED === "true") {
+      this.handlerManager.initialize().catch((err) => {
+        logger.error("Failed to initialize handler manager", err);
       });
     }
   }
@@ -38,14 +38,14 @@ export class WebhookService {
    * Process incoming webhook from GitLab or GitHub
    */
   async processWebhook(
-    provider: 'github' | 'gitlab',
+    provider: "github" | "gitlab",
     event: string,
     signature: string | undefined,
     payload: WebhookPayload,
-    headers: Record<string, string>
+    headers: Record<string, string>,
   ): Promise<WebhookResponse> {
     try {
-      logger.info('Processing webhook', {
+      logger.info("Processing webhook", {
         provider,
         event,
         repository: payload.repository?.full_name,
@@ -55,25 +55,25 @@ export class WebhookService {
       // Verify webhook signature
       const verification = await this.verifySignature(provider, signature, JSON.stringify(payload));
       if (!verification.valid) {
-        logger.warn('Webhook signature verification failed', {
+        logger.warn("Webhook signature verification failed", {
           provider,
           repository: payload.repository?.full_name,
         });
         return {
           success: false,
-          message: 'Invalid signature',
+          message: "Invalid signature",
         };
       }
 
       // Find matching project configuration
       const projectId = await this.findProjectForRepository(payload.repository.full_name);
       if (!projectId) {
-        logger.info('No project found for repository', {
+        logger.info("No project found for repository", {
           repository: payload.repository.full_name,
         });
         return {
           success: false,
-          message: 'No project configured for this repository',
+          message: "No project configured for this repository",
         };
       }
 
@@ -90,7 +90,7 @@ export class WebhookService {
       const builtInActions = await this.handleWebhookEvent(projectId, webhookRequest);
       const customActions = await this.handlerManager.processWebhookWithCustomHandlers(
         projectId,
-        webhookRequest
+        webhookRequest,
       );
 
       const actions = [...builtInActions, ...customActions];
@@ -98,7 +98,7 @@ export class WebhookService {
       // Broadcast webhook received event
       await this.events.broadcastToProject(projectId, {
         project_id: projectId,
-        event_type: 'webhook_received',
+        event_type: "webhook_received",
         data: {
           provider,
           event,
@@ -110,18 +110,18 @@ export class WebhookService {
 
       return {
         success: true,
-        message: 'Webhook processed successfully',
+        message: "Webhook processed successfully",
         actions_taken: actions,
         project_id: projectId,
       };
     } catch (error) {
-      logger.error('Webhook processing error', error instanceof Error ? error : undefined, {
+      logger.error("Webhook processing error", error instanceof Error ? error : undefined, {
         provider,
         event,
       });
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -130,30 +130,30 @@ export class WebhookService {
    * Verify webhook signature based on provider
    */
   private async verifySignature(
-    provider: 'github' | 'gitlab',
+    provider: "github" | "gitlab",
     signature: string | undefined,
-    payload: string
+    payload: string,
   ): Promise<{ valid: boolean; reason?: string }> {
     if (!this.config.webhooks?.enabled) {
       return { valid: true }; // Allow if webhooks not configured
     }
 
     if (!signature) {
-      return { valid: false, reason: 'No signature provided' };
+      return { valid: false, reason: "No signature provided" };
     }
 
     try {
-      if (provider === 'github') {
+      if (provider === "github") {
         return this.verifyGitHubSignature(signature, payload);
       }
-      if (provider === 'gitlab') {
+      if (provider === "gitlab") {
         return this.verifyGitLabSignature(signature, payload);
       }
 
-      return { valid: false, reason: 'Unknown provider' };
+      return { valid: false, reason: "Unknown provider" };
     } catch (error) {
-      logger.error('Signature verification error', error instanceof Error ? error : undefined);
-      return { valid: false, reason: 'Verification failed' };
+      logger.error("Signature verification error", error instanceof Error ? error : undefined);
+      return { valid: false, reason: "Verification failed" };
     }
   }
 
@@ -162,26 +162,26 @@ export class WebhookService {
    */
   private verifyGitHubSignature(
     signature: string,
-    payload: string
+    payload: string,
   ): { valid: boolean; reason?: string } {
     const secret = this.config.webhooks?.github_secret || this.config.webhooks?.secret;
 
     if (!secret) {
-      return { valid: false, reason: 'No GitHub secret configured' };
+      return { valid: false, reason: "No GitHub secret configured" };
     }
 
     // GitHub signature format: sha256=<hex>
-    if (!signature.startsWith('sha256=')) {
-      return { valid: false, reason: 'Invalid signature format' };
+    if (!signature.startsWith("sha256=")) {
+      return { valid: false, reason: "Invalid signature format" };
     }
 
-    const expectedSignature = createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
+    const expectedSignature = createHmac("sha256", secret).update(payload, "utf8").digest("hex");
 
-    const providedSignature = signature.replace('sha256=', '');
+    const providedSignature = signature.replace("sha256=", "");
 
     const valid = timingSafeEqual(
-      Buffer.from(expectedSignature, 'hex'),
-      Buffer.from(providedSignature, 'hex')
+      Buffer.from(expectedSignature, "hex"),
+      Buffer.from(providedSignature, "hex"),
     );
 
     return { valid };
@@ -192,15 +192,15 @@ export class WebhookService {
    */
   private verifyGitLabSignature(
     signature: string,
-    payload: string
+    payload: string,
   ): { valid: boolean; reason?: string } {
     const secret = this.config.webhooks?.gitlab_secret || this.config.webhooks?.secret;
 
     if (!secret) {
-      return { valid: false, reason: 'No GitLab secret configured' };
+      return { valid: false, reason: "No GitLab secret configured" };
     }
 
-    const expectedSignature = createHmac('sha256', secret).update(payload, 'utf8').digest('base64');
+    const expectedSignature = createHmac("sha256", secret).update(payload, "utf8").digest("base64");
 
     const valid = timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature));
 
@@ -224,16 +224,16 @@ export class WebhookService {
       }
 
       // Simple heuristic: find project by repository name
-      const repoName = repositoryFullName.split('/').pop()?.toLowerCase() || '';
+      const repoName = repositoryFullName.split("/").pop()?.toLowerCase() || "";
       const matchingProject = projects.find(
-        p => p.name.toLowerCase().includes(repoName) || repoName.includes(p.name.toLowerCase())
+        (p) => p.name.toLowerCase().includes(repoName) || repoName.includes(p.name.toLowerCase()),
       );
 
       return matchingProject?.id || projects[0]?.id || null;
     } catch (error) {
       logger.error(
-        'Error finding project for repository',
-        error instanceof Error ? error : undefined
+        "Error finding project for repository",
+        error instanceof Error ? error : undefined,
       );
       return null;
     }
@@ -246,14 +246,14 @@ export class WebhookService {
     const actions: string[] = [];
 
     try {
-      if (request.provider === 'github') {
+      if (request.provider === "github") {
         actions.push(...(await this.handleGitHubEvent(projectId, request)));
-      } else if (request.provider === 'gitlab') {
+      } else if (request.provider === "gitlab") {
         actions.push(...(await this.handleGitLabEvent(projectId, request)));
       }
     } catch (error) {
-      logger.error('Error handling webhook event', error instanceof Error ? error : undefined);
-      actions.push('Error processing event');
+      logger.error("Error handling webhook event", error instanceof Error ? error : undefined);
+      actions.push("Error processing event");
     }
 
     return actions;
@@ -267,21 +267,21 @@ export class WebhookService {
     const { event, payload } = request;
 
     switch (event) {
-      case 'push':
+      case "push":
         if (payload.ref && payload.commits) {
           actions.push(`Received ${payload.commits.length} commits on ${payload.ref}`);
 
           if (this.config.webhooks?.sync_on_push) {
             // TODO: Implement sync logic
-            actions.push('Triggered spec sync');
+            actions.push("Triggered spec sync");
           }
 
           // Broadcast git push event
           await this.events.broadcastToProject(projectId, {
             project_id: projectId,
-            event_type: 'git_push_processed',
+            event_type: "git_push_processed",
             data: {
-              provider: 'github',
+              provider: "github",
               ref: payload.ref,
               commits: payload.commits.length,
               repository: payload.repository.full_name,
@@ -290,20 +290,20 @@ export class WebhookService {
         }
         break;
 
-      case 'pull_request':
+      case "pull_request":
         if (payload.pull_request && payload.action) {
           actions.push(`Pull request ${payload.action}: #${payload.pull_request.id}`);
 
-          if (payload.action === 'closed' && this.config.webhooks?.validate_on_merge) {
+          if (payload.action === "closed" && this.config.webhooks?.validate_on_merge) {
             // TODO: Implement validation logic
-            actions.push('Triggered spec validation');
+            actions.push("Triggered spec validation");
           }
 
           await this.events.broadcastToProject(projectId, {
             project_id: projectId,
-            event_type: 'git_merge_processed',
+            event_type: "git_merge_processed",
             data: {
-              provider: 'github',
+              provider: "github",
               action: payload.action,
               pr_id: payload.pull_request.id,
               base_branch: payload.pull_request.base.ref,
@@ -328,20 +328,20 @@ export class WebhookService {
     const { event, payload } = request;
 
     switch (event) {
-      case 'Push Hook':
+      case "Push Hook":
         if (payload.ref && payload.commits) {
           actions.push(`Received ${payload.commits.length} commits on ${payload.ref}`);
 
           if (this.config.webhooks?.sync_on_push) {
             // TODO: Implement sync logic
-            actions.push('Triggered spec sync');
+            actions.push("Triggered spec sync");
           }
 
           await this.events.broadcastToProject(projectId, {
             project_id: projectId,
-            event_type: 'git_push_processed',
+            event_type: "git_push_processed",
             data: {
-              provider: 'gitlab',
+              provider: "gitlab",
               ref: payload.ref,
               commits: payload.commits.length,
               repository: payload.repository.full_name,
@@ -350,20 +350,20 @@ export class WebhookService {
         }
         break;
 
-      case 'Merge Request Hook':
+      case "Merge Request Hook":
         if (payload.merge_request && payload.action) {
           actions.push(`Merge request ${payload.action}: !${payload.merge_request.id}`);
 
-          if (payload.action === 'merge' && this.config.webhooks?.validate_on_merge) {
+          if (payload.action === "merge" && this.config.webhooks?.validate_on_merge) {
             // TODO: Implement validation logic
-            actions.push('Triggered spec validation');
+            actions.push("Triggered spec validation");
           }
 
           await this.events.broadcastToProject(projectId, {
             project_id: projectId,
-            event_type: 'git_merge_processed',
+            event_type: "git_merge_processed",
             data: {
-              provider: 'gitlab',
+              provider: "gitlab",
               action: payload.action,
               mr_id: payload.merge_request.id,
               target_branch: payload.merge_request.target_branch,
@@ -393,10 +393,10 @@ export class WebhookService {
     return {
       id: generateId(),
       project_id: projectId,
-      provider: 'github', // Default
-      repository_url: '',
+      provider: "github", // Default
+      repository_url: "",
       enabled: true,
-      events: ['push', 'pull_request'],
+      events: ["push", "pull_request"],
       created_at: getCurrentTimestamp(),
       updated_at: getCurrentTimestamp(),
     };
@@ -406,22 +406,22 @@ export class WebhookService {
    * Create or update webhook configuration
    */
   async updateWebhookConfig(
-    config: Partial<WebhookConfig> & { project_id: string }
+    config: Partial<WebhookConfig> & { project_id: string },
   ): Promise<WebhookConfig> {
     // TODO: Implement database storage
     const webhookConfig: WebhookConfig = {
       id: config.id || generateId(),
       project_id: config.project_id,
-      provider: config.provider || 'github',
-      repository_url: config.repository_url || '',
+      provider: config.provider || "github",
+      repository_url: config.repository_url || "",
       secret_hash: config.secret_hash,
       enabled: config.enabled ?? true,
-      events: config.events || ['push'],
+      events: config.events || ["push"],
       created_at: config.created_at || getCurrentTimestamp(),
       updated_at: getCurrentTimestamp(),
     };
 
-    logger.info('Updated webhook config', {
+    logger.info("Updated webhook config", {
       projectId: config.project_id,
       provider: webhookConfig.provider,
     });
@@ -434,7 +434,7 @@ export class WebhookService {
    */
   async deleteWebhookConfig(projectId: string): Promise<boolean> {
     // TODO: Implement database deletion
-    logger.info('Deleted webhook config', { projectId });
+    logger.info("Deleted webhook config", { projectId });
     return true;
   }
 

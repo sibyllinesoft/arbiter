@@ -1,5 +1,5 @@
-import { EventEmitter } from 'node:events';
-import { performance } from 'node:perf_hooks';
+import { EventEmitter } from "node:events";
+import { performance } from "node:perf_hooks";
 
 /**
  * Constraint violation error with specific failure details
@@ -9,10 +9,10 @@ export class ConstraintViolationError extends Error {
     public readonly constraint: string,
     public readonly actual: unknown,
     public readonly expected: unknown,
-    public readonly details?: Record<string, unknown>
+    public readonly details?: Record<string, unknown>,
   ) {
     super(`Constraint violation: ${constraint} - Expected ${expected}, got ${actual}`);
-    this.name = 'ConstraintViolationError';
+    this.name = "ConstraintViolationError";
   }
 }
 
@@ -45,7 +45,7 @@ export const DEFAULT_CONSTRAINTS: Constraints = {
     requests: 1,
     windowMs: 1000, // 1 second window for ~1 rps
   },
-  apiVersion: '2024-12-26', // Latest as of implementation
+  apiVersion: "2024-12-26", // Latest as of implementation
   maxSymlinkDepth: 0, // No symlinks allowed
 };
 
@@ -102,7 +102,7 @@ export class ConstraintEnforcer extends EventEmitter {
     // Check rate limiting before operation starts
     this.enforceRateLimit();
 
-    this.emit('operation:start', { operationId, context });
+    this.emit("operation:start", { operationId, context });
     return operationId;
   }
 
@@ -120,7 +120,7 @@ export class ConstraintEnforcer extends EventEmitter {
     // Enforce maximum operation time
     if (duration > this.constraints.maxOperationTime) {
       const violation = new ConstraintViolationError(
-        'maxOperationTime',
+        "maxOperationTime",
         `${Math.round(duration)}ms`,
         `≤${this.constraints.maxOperationTime}ms`,
         {
@@ -128,11 +128,11 @@ export class ConstraintEnforcer extends EventEmitter {
           operation: context.operation,
           duration,
           metadata: context.metadata,
-        }
+        },
       );
 
-      this.emit('constraint:violation', {
-        constraint: 'maxOperationTime',
+      this.emit("constraint:violation", {
+        constraint: "maxOperationTime",
         violation,
         context,
       });
@@ -141,7 +141,7 @@ export class ConstraintEnforcer extends EventEmitter {
     }
 
     this.operations.delete(operationId);
-    this.emit('operation:end', { operationId, duration, context });
+    this.emit("operation:end", { operationId, duration, context });
   }
 
   /**
@@ -152,18 +152,18 @@ export class ConstraintEnforcer extends EventEmitter {
 
     if (payloadSize > this.constraints.maxPayloadSize) {
       const violation = new ConstraintViolationError(
-        'maxPayloadSize',
+        "maxPayloadSize",
         `${this.formatBytes(payloadSize)}`,
         `≤${this.formatBytes(this.constraints.maxPayloadSize)}`,
         {
           operationId,
           payloadSize,
           dataType: typeof data,
-        }
+        },
       );
 
-      this.emit('constraint:violation', {
-        constraint: 'maxPayloadSize',
+      this.emit("constraint:violation", {
+        constraint: "maxPayloadSize",
         violation,
         payloadSize,
       });
@@ -179,7 +179,7 @@ export class ConstraintEnforcer extends EventEmitter {
       }
     }
 
-    this.emit('payload:validated', { operationId, payloadSize });
+    this.emit("payload:validated", { operationId, payloadSize });
   }
 
   /**
@@ -188,17 +188,17 @@ export class ConstraintEnforcer extends EventEmitter {
   validateApiVersion(version: string, operationId?: string): void {
     if (version !== this.constraints.apiVersion) {
       const violation = new ConstraintViolationError(
-        'apiVersion',
+        "apiVersion",
         version,
         this.constraints.apiVersion,
         {
           operationId,
-          message: 'Must use latest API version in envelope schema',
-        }
+          message: "Must use latest API version in envelope schema",
+        },
       );
 
-      this.emit('constraint:violation', {
-        constraint: 'apiVersion',
+      this.emit("constraint:violation", {
+        constraint: "apiVersion",
         violation,
         providedVersion: version,
       });
@@ -214,7 +214,7 @@ export class ConstraintEnforcer extends EventEmitter {
       }
     }
 
-    this.emit('apiVersion:validated', { operationId, version });
+    this.emit("apiVersion:validated", { operationId, version });
   }
 
   /**
@@ -223,22 +223,22 @@ export class ConstraintEnforcer extends EventEmitter {
   validateSandboxCompliance(
     operationType: string,
     isDirectToolExecution: boolean,
-    operationId?: string
+    operationId?: string,
   ): void {
     if (isDirectToolExecution) {
       const violation = new ConstraintViolationError(
-        'sandboxCompliance',
-        'direct tool execution',
-        'server endpoint usage',
+        "sandboxCompliance",
+        "direct tool execution",
+        "server endpoint usage",
         {
           operationId,
           operationType,
-          message: 'All analyze/validate operations must use server endpoints',
-        }
+          message: "All analyze/validate operations must use server endpoints",
+        },
       );
 
-      this.emit('constraint:violation', {
-        constraint: 'sandboxCompliance',
+      this.emit("constraint:violation", {
+        constraint: "sandboxCompliance",
         violation,
         operationType,
       });
@@ -246,7 +246,7 @@ export class ConstraintEnforcer extends EventEmitter {
       throw violation;
     }
 
-    this.emit('sandbox:validated', { operationId, operationType });
+    this.emit("sandbox:validated", { operationId, operationType });
   }
 
   /**
@@ -257,24 +257,24 @@ export class ConstraintEnforcer extends EventEmitter {
     inputs: unknown,
     expectedOutput: unknown,
     actualOutput: unknown,
-    operationId?: string
+    operationId?: string,
   ): void {
     if (!this.deepEqual(expectedOutput, actualOutput)) {
       const violation = new ConstraintViolationError(
-        'idempotency',
-        'non-deterministic output',
-        'identical output for identical inputs',
+        "idempotency",
+        "non-deterministic output",
+        "identical output for identical inputs",
         {
           operationId,
           operation,
           inputs,
           expectedOutput,
           actualOutput,
-        }
+        },
       );
 
-      this.emit('constraint:violation', {
-        constraint: 'idempotency',
+      this.emit("constraint:violation", {
+        constraint: "idempotency",
         violation,
         operation,
       });
@@ -282,7 +282,7 @@ export class ConstraintEnforcer extends EventEmitter {
       throw violation;
     }
 
-    this.emit('idempotency:validated', { operationId, operation });
+    this.emit("idempotency:validated", { operationId, operation });
   }
 
   /**
@@ -312,7 +312,7 @@ export class ConstraintEnforcer extends EventEmitter {
         windowEnd: this.rateLimitState.windowStart + this.constraints.rateLimit.windowMs,
       },
       violations: {
-        total: this.listenerCount('constraint:violation'),
+        total: this.listenerCount("constraint:violation"),
         byType: {}, // Would be populated by violation tracking
       },
     };
@@ -333,18 +333,18 @@ export class ConstraintEnforcer extends EventEmitter {
     // Check if rate limit exceeded
     if (this.rateLimitState.requests >= this.constraints.rateLimit.requests) {
       const violation = new ConstraintViolationError(
-        'rateLimit',
+        "rateLimit",
         `${this.rateLimitState.requests + 1} requests`,
         `≤${this.constraints.rateLimit.requests} requests per ${this.constraints.rateLimit.windowMs}ms`,
         {
           windowStart: this.rateLimitState.windowStart,
           windowEnd: this.rateLimitState.windowStart + this.constraints.rateLimit.windowMs,
           currentRequests: this.rateLimitState.requests,
-        }
+        },
       );
 
-      this.emit('constraint:violation', {
-        constraint: 'rateLimit',
+      this.emit("constraint:violation", {
+        constraint: "rateLimit",
         violation,
         rateLimitState: { ...this.rateLimitState },
       });
@@ -354,7 +354,7 @@ export class ConstraintEnforcer extends EventEmitter {
 
     // Increment request count
     this.rateLimitState.requests++;
-    this.emit('rateLimit:checked', {
+    this.emit("rateLimit:checked", {
       requests: this.rateLimitState.requests,
       limit: this.constraints.rateLimit.requests,
     });
@@ -364,8 +364,8 @@ export class ConstraintEnforcer extends EventEmitter {
    * Calculate payload size in bytes
    */
   private calculatePayloadSize(data: unknown): number {
-    if (typeof data === 'string') {
-      return Buffer.byteLength(data, 'utf8');
+    if (typeof data === "string") {
+      return Buffer.byteLength(data, "utf8");
     }
 
     if (Buffer.isBuffer(data)) {
@@ -374,17 +374,17 @@ export class ConstraintEnforcer extends EventEmitter {
 
     // For objects, serialize to JSON and calculate size
     const serialized = JSON.stringify(data);
-    return Buffer.byteLength(serialized, 'utf8');
+    return Buffer.byteLength(serialized, "utf8");
   }
 
   /**
    * Format bytes in human-readable format
    */
   private formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
 
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
 
     return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
@@ -400,7 +400,7 @@ export class ConstraintEnforcer extends EventEmitter {
 
     if (typeof a !== typeof b) return false;
 
-    if (typeof a !== 'object') return false;
+    if (typeof a !== "object") return false;
 
     const aObj = a as Record<string, unknown>;
     const bObj = b as Record<string, unknown>;
@@ -431,7 +431,7 @@ export function withConstraints(operation: string) {
   return <T extends (...args: any[]) => Promise<any>>(
     _target: any,
     propertyName: string,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ) => {
     const method = descriptor.value!;
 
@@ -461,7 +461,7 @@ export function withConstraints(operation: string) {
 export async function constrainedOperation<T>(
   operation: string,
   fn: () => Promise<T>,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ): Promise<T> {
   const operationId = globalConstraintEnforcer.startOperation(operation, metadata);
 

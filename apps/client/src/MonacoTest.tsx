@@ -2,8 +2,8 @@
  * Simple test component for Monaco Editor CUE syntax highlighting
  */
 
-import React, { useState } from 'react';
-import MonacoEditor from './components/Editor/MonacoEditor';
+import React, { useState } from "react";
+import MonacoEditor from "./components/Editor/MonacoEditor";
 
 const sampleCueCode = `// CUE Language Test
 package config
@@ -72,31 +72,27 @@ config: {
 
 export default function MonacoTest() {
   const [code, setCode] = useState(sampleCueCode);
-  const [theme, setTheme] = useState<'vs' | 'vs-dark' | 'cue-light' | 'cue-dark'>('cue-light');
+  const [theme, setTheme] = useState<"vs" | "vs-dark" | "cue-light" | "cue-dark">("cue-light");
   const [errors, setErrors] = useState<string[]>([]);
 
-  const handleEditorReady = (editor: any) => {
-    console.log('Monaco Editor is ready!', editor);
-
+  const handleEditorReady = (_editor: any) => {
     // Test if CUE language is registered
     const monaco = (window as any).monaco;
     if (monaco) {
       const languages = monaco.languages.getLanguages();
-      const cueLanguage = languages.find((lang: any) => lang.id === 'cue');
+      const cueLanguage = languages.find((lang: any) => lang.id === "cue");
 
       if (cueLanguage) {
-        console.log('✓ CUE language is registered');
       } else {
-        setErrors(prev => [...prev, 'CUE language is not registered']);
+        setErrors((prev) => [...prev, "CUE language is not registered"]);
       }
 
       // Test tokenization
       try {
-        const tokens = monaco.editor.tokenize('package test', 'cue');
-        console.log('✓ CUE tokenization working:', tokens);
+        monaco.editor.tokenize("package test", "cue");
       } catch (error) {
-        console.error('✗ CUE tokenization failed:', error);
-        setErrors(prev => [...prev, `Tokenization error: ${error}`]);
+        console.error("✗ CUE tokenization failed:", error);
+        setErrors((prev) => [...prev, `Tokenization error: ${error}`]);
       }
     }
   };
@@ -112,7 +108,7 @@ export default function MonacoTest() {
               <span className="text-sm font-medium">Theme:</span>
               <select
                 value={theme}
-                onChange={e => setTheme(e.target.value as any)}
+                onChange={(e) => setTheme(e.target.value as any)}
                 className="px-3 py-1 border border-gray-300 rounded-md text-sm"
               >
                 <option value="cue-light">CUE Light</option>
@@ -167,12 +163,12 @@ export default function MonacoTest() {
                 lineHeight: 21,
                 minimap: { enabled: true, scale: 0.8 },
                 scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                lineNumbers: 'on',
-                renderLineHighlight: 'line',
+                wordWrap: "on",
+                lineNumbers: "on",
+                renderLineHighlight: "line",
                 folding: true,
-                matchBrackets: 'always',
-                autoIndent: 'advanced',
+                matchBrackets: "always",
+                autoIndent: "advanced",
                 tabSize: 2,
                 insertSpaces: true,
               }}
@@ -185,43 +181,43 @@ export default function MonacoTest() {
             <h3 className="text-lg font-medium text-gray-900 mb-4">Expected Highlights</h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#0000FF' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#0000FF" }}></div>
                 <span>
                   Keywords: <code>package</code>, <code>import</code>, <code>if</code>
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#1976D2' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#1976D2" }}></div>
                 <span>
                   Types: <code>string</code>, <code>int</code>, <code>bool</code>
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#CE9178' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#CE9178" }}></div>
                 <span>
                   Strings: <code>"arbiter"</code>, <code>"/health"</code>
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#098658' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#098658" }}></div>
                 <span>
                   Numbers: <code>8080</code>, <code>3000</code>
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF9F43' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#FF9F43" }}></div>
                 <span>
                   Unification: <code>&</code>, <code>|</code>
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#4ECDC4' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#4ECDC4" }}></div>
                 <span>
                   Constraints: <code>=~</code>, <code>&gt;</code>, <code>&lt;=</code>
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-4 h-4 rounded" style={{ backgroundColor: '#6A9955' }}></div>
+                <div className="w-4 h-4 rounded" style={{ backgroundColor: "#6A9955" }}></div>
                 <span>
                   Comments: <code>// CUE Language Test</code>
                 </span>
@@ -242,27 +238,14 @@ export default function MonacoTest() {
                 <strong>Character Count:</strong> {code.length}
               </div>
               <div>
-                <strong>Line Count:</strong> {code.split('\\n').length}
+                <strong>Line Count:</strong> {code.split("\\n").length}
               </div>
             </div>
 
             <div className="mt-4">
-              <button
-                onClick={() => {
-                  console.log('Current editor state:', code.substring(0, 100) + '...');
-                  if ((window as any).monaco) {
-                    const monaco = (window as any).monaco;
-                    console.log('Registered languages:', monaco.languages.getLanguages());
-                    console.log(
-                      'Sample tokenization:',
-                      monaco.editor.tokenize('package test', 'cue')
-                    );
-                  }
-                }}
-                className="px-4 py-2 bg-gray-500 text-white text-sm rounded hover:bg-gray-600"
-              >
-                Log Debug Info
-              </button>
+              <div className="text-sm text-gray-600">
+                Use the editor above to test CUE highlighting and validation.
+              </div>
             </div>
           </div>
         </div>

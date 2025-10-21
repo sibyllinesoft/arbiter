@@ -137,24 +137,24 @@ export interface InferenceOptions {
  * @public
  */
 export type ArtifactType =
-  | 'service' // HTTP services, APIs, microservices
-  | 'binary' // Executable binaries
-  | 'tool' // Command-line interface tools
-  | 'module' // Reusable modules, components, libraries
-  | 'job' // Background jobs, cron jobs, workers
-  | 'schema' // Database schemas, API schemas
-  | 'config' // Configuration files, environment settings
-  | 'deployment' // Deployment configurations, infrastructure
-  | 'test' // Test suites, test configurations
-  | 'frontend' // Web frontends, SPAs, static sites
-  | 'database' // Database instances, data stores
-  | 'cache' // Caching layers, in-memory stores
-  | 'queue' // Message queues, event streams
-  | 'proxy' // Load balancers, reverse proxies
-  | 'monitor' // Monitoring, logging, alerting
-  | 'auth' // Authentication, authorization services
-  | 'docs' // Documentation, specifications
-  | 'infrastructure'; // Infrastructure as code
+  | "service" // HTTP services, APIs, microservices
+  | "binary" // Executable binaries
+  | "tool" // Command-line interface tools
+  | "module" // Reusable modules, components, libraries
+  | "job" // Background jobs, cron jobs, workers
+  | "schema" // Database schemas, API schemas
+  | "config" // Configuration files, environment settings
+  | "deployment" // Deployment configurations, infrastructure
+  | "test" // Test suites, test configurations
+  | "frontend" // Web frontends, SPAs, static sites
+  | "database" // Database instances, data stores
+  | "cache" // Caching layers, in-memory stores
+  | "queue" // Message queues, event streams
+  | "proxy" // Load balancers, reverse proxies
+  | "monitor" // Monitoring, logging, alerting
+  | "auth" // Authentication, authorization services
+  | "docs" // Documentation, specifications
+  | "infrastructure"; // Infrastructure as code
 
 /**
  * Base artifact interface shared by all detected resources.
@@ -182,7 +182,7 @@ export interface BaseArtifact {
  * Service artifact representing an HTTP service or API
  */
 export interface ServiceArtifact extends BaseArtifact {
-  type: 'service';
+  type: "service";
   metadata: {
     sourceFile?: string;
     root?: string;
@@ -217,7 +217,7 @@ export interface ServiceArtifact extends BaseArtifact {
  * Binary artifact representing an executable
  */
 export interface BinaryArtifact extends BaseArtifact {
-  type: 'binary';
+  type: "binary";
   metadata: {
     sourceFile?: string;
     root?: string;
@@ -240,7 +240,7 @@ export interface BinaryArtifact extends BaseArtifact {
  * Tool artifact representing a command-line interface tool
  */
 export interface ToolArtifact extends BaseArtifact {
-  type: 'tool';
+  type: "tool";
   metadata: {
     /** Programming language */
     language?: string | null;
@@ -265,7 +265,7 @@ export interface ToolArtifact extends BaseArtifact {
  * Module artifact representing reusable modules, components, or libraries
  */
 export interface ModuleArtifact extends BaseArtifact {
-  type: 'module';
+  type: "module";
   metadata: {
     sourceFile?: string;
     root?: string;
@@ -292,7 +292,7 @@ export interface ModuleArtifact extends BaseArtifact {
  * Job artifact representing background jobs or scheduled tasks
  */
 export interface JobArtifact extends BaseArtifact {
-  type: 'job';
+  type: "job";
   metadata: {
     /** Programming language */
     language?: string | null;
@@ -313,7 +313,7 @@ export interface JobArtifact extends BaseArtifact {
  * Schema artifact representing data schemas
  */
 export interface SchemaArtifact extends BaseArtifact {
-  type: 'schema';
+  type: "schema";
   metadata: {
     /** Schema format (e.g., 'json-schema', 'openapi', 'protobuf') */
     format: string;
@@ -330,7 +330,7 @@ export interface SchemaArtifact extends BaseArtifact {
  * Frontend artifact representing web frontends
  */
 export interface FrontendArtifact extends BaseArtifact {
-  type: 'frontend';
+  type: "frontend";
   metadata: {
     sourceFile?: string;
     root?: string;
@@ -351,7 +351,7 @@ export interface FrontendArtifact extends BaseArtifact {
  * Database artifact representing database instances
  */
 export interface DatabaseArtifact extends BaseArtifact {
-  type: 'database';
+  type: "database";
   metadata: {
     /** Database type (e.g., 'postgresql', 'mysql', 'mongodb') */
     databaseType: string;
@@ -370,7 +370,7 @@ export interface DatabaseArtifact extends BaseArtifact {
  * Deployment artifact representing deployment configurations
  */
 export interface DeploymentArtifact extends BaseArtifact {
-  type: 'deployment';
+  type: "deployment";
   metadata: {
     sourceFile?: string;
     /** Deployment platform (e.g., 'kubernetes', 'docker-compose', 'terraform') */
@@ -397,7 +397,7 @@ export interface DeploymentArtifact extends BaseArtifact {
  * Infrastructure artifact representing IaC configurations (Kubernetes, Terraform)
  */
 export interface InfrastructureArtifact extends BaseArtifact {
-  type: 'infrastructure';
+  type: "infrastructure";
   metadata: {
     sourceFile?: string;
     /** Root directory containing the IaC files */
@@ -405,7 +405,7 @@ export interface InfrastructureArtifact extends BaseArtifact {
     /** List of all files in this infrastructure group */
     files: string[];
     /** Type of infrastructure: 'kubernetes' or 'terraform' */
-    kind: 'kubernetes' | 'terraform';
+    kind: "kubernetes" | "terraform";
     /** Detected resources/deployments */
     resources?: Array<{ kind: string; name: string; apiVersion?: string }>;
   };
@@ -539,22 +539,22 @@ export interface Evidence {
  * Types of evidence that can be collected
  */
 export type EvidenceType =
-  | 'dependency' // Package dependencies
-  | 'import' // Import statements
-  | 'export' // Export declarations
-  | 'function' // Function definitions
-  | 'class' // Class definitions
-  | 'interface' // Interface definitions
-  | 'config' // Configuration values
-  | 'route' // HTTP route definitions
-  | 'schema' // Schema definitions
-  | 'test' // Test cases
-  | 'comment' // Documentation comments
-  | 'annotation' // Decorators/annotations
-  | 'environment' // Environment variable usage
-  | 'build' // Build configuration
-  | 'deployment' // Deployment configuration
-  | 'infrastructure'; // Infrastructure as code
+  | "dependency" // Package dependencies
+  | "import" // Import statements
+  | "export" // Export declarations
+  | "function" // Function definitions
+  | "class" // Class definitions
+  | "interface" // Interface definitions
+  | "config" // Configuration values
+  | "route" // HTTP route definitions
+  | "schema" // Schema definitions
+  | "test" // Test cases
+  | "comment" // Documentation comments
+  | "annotation" // Decorators/annotations
+  | "environment" // Environment variable usage
+  | "build" // Build configuration
+  | "deployment" // Deployment configuration
+  | "infrastructure"; // Infrastructure as code
 
 /**
  * Metadata attached to evidence
@@ -717,16 +717,16 @@ export interface ArtifactRelationship {
  * Types of relationships between artifacts
  */
 export type RelationshipType =
-  | 'depends_on' // A depends on B
-  | 'provides' // A provides B
-  | 'consumes' // A consumes B
-  | 'deploys' // A deploys B
-  | 'tests' // A tests B
-  | 'configures' // A configures B
-  | 'documents' // A documents B
-  | 'implements' // A implements B
-  | 'extends' // A extends B
-  | 'contains'; // A contains B
+  | "depends_on" // A depends on B
+  | "provides" // A provides B
+  | "consumes" // A consumes B
+  | "deploys" // A deploys B
+  | "tests" // A tests B
+  | "configures" // A configures B
+  | "documents" // A documents B
+  | "implements" // A implements B
+  | "extends" // A extends B
+  | "contains"; // A contains B
 
 /**
  * Final output of the importer detection pipeline
@@ -855,7 +855,7 @@ export interface ArtifactLogEntry {
 /**
  * Possible actions in the artifact log
  */
-export type ActionType = 'add' | 'remove';
+export type ActionType = "add" | "remove";
 
 // ============================================================================
 // Error Types
@@ -870,7 +870,7 @@ export abstract class ImporterError extends Error {
 
   constructor(
     message: string,
-    public readonly cause?: Error
+    public readonly cause?: Error,
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -880,19 +880,19 @@ export abstract class ImporterError extends Error {
 /**
  * Categories of errors
  */
-export type ErrorCategory = 'plugin' | 'parsing' | 'inference' | 'filesystem' | 'configuration';
+export type ErrorCategory = "plugin" | "parsing" | "inference" | "filesystem" | "configuration";
 
 /**
  * Plugin execution error
  */
 export class PluginError extends ImporterError {
-  readonly code = 'PLUGIN_ERROR';
-  readonly category = 'plugin' as const;
+  readonly code = "PLUGIN_ERROR";
+  readonly category = "plugin" as const;
 
   constructor(
     public readonly pluginName: string,
     message: string,
-    cause?: Error
+    cause?: Error,
   ) {
     super(`Plugin ${pluginName}: ${message}`, cause);
   }
@@ -902,13 +902,13 @@ export class PluginError extends ImporterError {
  * File parsing error
  */
 export class ParseError extends ImporterError {
-  readonly code = 'PARSE_ERROR';
-  readonly category = 'parsing' as const;
+  readonly code = "PARSE_ERROR";
+  readonly category = "parsing" as const;
 
   constructor(
     public readonly filePath: string,
     message: string,
-    cause?: Error
+    cause?: Error,
   ) {
     super(`Failed to parse ${filePath}: ${message}`, cause);
   }
@@ -918,8 +918,8 @@ export class ParseError extends ImporterError {
  * Inference error
  */
 export class InferenceError extends ImporterError {
-  readonly code = 'INFERENCE_ERROR';
-  readonly category = 'inference' as const;
+  readonly code = "INFERENCE_ERROR";
+  readonly category = "inference" as const;
 
   constructor(message: string, cause?: Error) {
     super(`Inference failed: ${message}`, cause);
@@ -930,13 +930,13 @@ export class InferenceError extends ImporterError {
  * File system error
  */
 export class FileSystemError extends ImporterError {
-  readonly code = 'FILESYSTEM_ERROR';
-  readonly category = 'filesystem' as const;
+  readonly code = "FILESYSTEM_ERROR";
+  readonly category = "filesystem" as const;
 
   constructor(
     public readonly path: string,
     message: string,
-    cause?: Error
+    cause?: Error,
   ) {
     super(`File system error at ${path}: ${message}`, cause);
   }
@@ -946,8 +946,8 @@ export class FileSystemError extends ImporterError {
  * Configuration error
  */
 export class ConfigurationError extends ImporterError {
-  readonly code = 'CONFIGURATION_ERROR';
-  readonly category = 'configuration' as const;
+  readonly code = "CONFIGURATION_ERROR";
+  readonly category = "configuration" as const;
 
   constructor(message: string, cause?: Error) {
     super(`Configuration error: ${message}`, cause);

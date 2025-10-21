@@ -4,58 +4,58 @@
  * Showcasing professional notifications with sophisticated graphite theme
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { AlertCircle, CheckCircle, Download, Upload } from 'lucide-react';
-import React, { useState } from 'react';
-import Button from './Button';
-import Toast, { ToastContainer, ToastManager } from './Toast';
+import type { Meta, StoryObj } from "@storybook/react";
+import { AlertCircle, CheckCircle, Download, Upload } from "lucide-react";
+import React, { useState } from "react";
+import Button from "./Button";
+import Toast, { ToastContainer, ToastManager } from "./Toast";
 
 const meta = {
-  title: 'Design System/Toast',
+  title: "Design System/Toast",
   component: Toast,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component:
-          'Professional toast notification system with comprehensive variants, animations, and management features. Designed for developer tools with sophisticated graphite theme.',
+          "Professional toast notification system with comprehensive variants, animations, and management features. Designed for developer tools with sophisticated graphite theme.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['success', 'warning', 'error', 'info', 'loading', 'neutral'],
-      description: 'Semantic variant of the toast',
+      control: { type: "select" },
+      options: ["success", "warning", "error", "info", "loading", "neutral"],
+      description: "Semantic variant of the toast",
     },
     position: {
-      control: { type: 'select' },
+      control: { type: "select" },
       options: [
-        'top-right',
-        'top-left',
-        'bottom-right',
-        'bottom-left',
-        'top-center',
-        'bottom-center',
+        "top-right",
+        "top-left",
+        "bottom-right",
+        "bottom-left",
+        "top-center",
+        "bottom-center",
       ],
-      description: 'Position of the toast on screen',
+      description: "Position of the toast on screen",
     },
     duration: {
-      control: { type: 'number' },
-      description: 'Duration in milliseconds before auto-dismiss (0 for no auto-dismiss)',
+      control: { type: "number" },
+      description: "Duration in milliseconds before auto-dismiss (0 for no auto-dismiss)",
     },
     showProgress: {
-      control: { type: 'boolean' },
-      description: 'Whether to show progress bar indicating time remaining',
+      control: { type: "boolean" },
+      description: "Whether to show progress bar indicating time remaining",
     },
     dismissible: {
-      control: { type: 'boolean' },
-      description: 'Whether the toast can be dismissed by clicking',
+      control: { type: "boolean" },
+      description: "Whether the toast can be dismissed by clicking",
     },
     closable: {
-      control: { type: 'boolean' },
-      description: 'Whether to show close button',
+      control: { type: "boolean" },
+      description: "Whether to show close button",
     },
   },
 } satisfies Meta<typeof Toast>;
@@ -66,13 +66,13 @@ type Story = StoryObj<typeof meta>;
 // Default toast
 export const Default: Story = {
   args: {
-    variant: 'success',
-    title: 'Success!',
-    description: 'Your changes have been saved successfully.',
+    variant: "success",
+    title: "Success!",
+    description: "Your changes have been saved successfully.",
     visible: true,
     duration: 5000,
   },
-  render: args => (
+  render: (args) => (
     <div className="relative h-screen bg-graphite-50">
       <Toast {...args} />
     </div>
@@ -82,7 +82,7 @@ export const Default: Story = {
 // All variants
 export const Variants: Story = {
   args: {
-    title: 'Variants Demo',
+    title: "Variants Demo",
   },
   render: () => {
     const [visibleToasts, setVisibleToasts] = useState({
@@ -95,7 +95,7 @@ export const Variants: Story = {
     });
 
     const toggleToast = (variant: keyof typeof visibleToasts) => {
-      setVisibleToasts(prev => ({ ...prev, [variant]: !prev[variant] }));
+      setVisibleToasts((prev) => ({ ...prev, [variant]: !prev[variant] }));
     };
 
     return (
@@ -103,7 +103,7 @@ export const Variants: Story = {
         <div className="mb-8 space-y-4">
           <h3 className="text-lg font-semibold text-graphite-800">Toast Variants</h3>
           <div className="flex flex-wrap gap-2">
-            {Object.keys(visibleToasts).map(variant => (
+            {Object.keys(visibleToasts).map((variant) => (
               <Button
                 key={variant}
                 size="sm"
@@ -123,7 +123,7 @@ export const Variants: Story = {
             description="Your application has been deployed to production successfully."
             position="top-right"
             visible={visibleToasts.success}
-            onClose={() => toggleToast('success')}
+            onClose={() => toggleToast("success")}
           />
         )}
 
@@ -134,7 +134,7 @@ export const Variants: Story = {
             description="Some dependencies are outdated. Consider updating them."
             position="top-center"
             visible={visibleToasts.warning}
-            onClose={() => toggleToast('warning')}
+            onClose={() => toggleToast("warning")}
           />
         )}
 
@@ -145,7 +145,7 @@ export const Variants: Story = {
             description="The deployment failed due to a configuration error. Please check your settings."
             position="top-left"
             visible={visibleToasts.error}
-            onClose={() => toggleToast('error')}
+            onClose={() => toggleToast("error")}
           />
         )}
 
@@ -156,7 +156,7 @@ export const Variants: Story = {
             description="A new version of the application is available for download."
             position="bottom-right"
             visible={visibleToasts.info}
-            onClose={() => toggleToast('info')}
+            onClose={() => toggleToast("info")}
           />
         )}
 
@@ -169,7 +169,7 @@ export const Variants: Story = {
             visible={visibleToasts.loading}
             closable={false}
             duration={0}
-            onClose={() => toggleToast('loading')}
+            onClose={() => toggleToast("loading")}
           />
         )}
 
@@ -180,7 +180,7 @@ export const Variants: Story = {
             description="Don't forget to commit your changes before switching branches."
             position="bottom-left"
             visible={visibleToasts.neutral}
-            onClose={() => toggleToast('neutral')}
+            onClose={() => toggleToast("neutral")}
           />
         )}
       </div>
@@ -190,7 +190,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'All semantic variants of toast notifications positioned at different locations on screen.',
+          "All semantic variants of toast notifications positioned at different locations on screen.",
       },
     },
   },
@@ -199,7 +199,7 @@ export const Variants: Story = {
 // With progress indicators
 export const WithProgress: Story = {
   args: {
-    title: 'With Progress',
+    title: "With Progress",
   },
   render: () => {
     const [toastVisible, setToastVisible] = useState(true);
@@ -228,7 +228,7 @@ export const WithProgress: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Toast with progress bar showing time remaining before auto-dismiss.',
+        story: "Toast with progress bar showing time remaining before auto-dismiss.",
       },
     },
   },
@@ -237,7 +237,7 @@ export const WithProgress: Story = {
 // With custom actions
 export const WithActions: Story = {
   args: {
-    title: 'With Actions',
+    title: "With Actions",
   },
   render: () => {
     const [toastVisible, setToastVisible] = useState(true);
@@ -263,7 +263,6 @@ export const WithActions: Story = {
                 size="sm"
                 variant="primary"
                 onClick={() => {
-                  console.log('Changes saved!');
                   setToastVisible(false);
                 }}
               >
@@ -273,7 +272,6 @@ export const WithActions: Story = {
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  console.log('Changes discarded');
                   setToastVisible(false);
                 }}
               >
@@ -289,7 +287,7 @@ export const WithActions: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Toast with custom action buttons for user interaction.',
+        story: "Toast with custom action buttons for user interaction.",
       },
     },
   },
@@ -298,7 +296,7 @@ export const WithActions: Story = {
 // Toast manager demonstration
 export const ToastManagerDemo: Story = {
   args: {
-    title: 'Toast Manager Demo',
+    title: "Toast Manager Demo",
   },
   render: () => {
     const [toasts, setToasts] = useState<any[]>([]);
@@ -311,27 +309,27 @@ export const ToastManagerDemo: Story = {
     });
 
     const showToasts = () => {
-      manager.success('Build Completed', 'Your project built successfully in 2.3 seconds');
+      manager.success("Build Completed", "Your project built successfully in 2.3 seconds");
       setTimeout(() => {
-        manager.warning('Dependency Update', 'New version of React available');
+        manager.warning("Dependency Update", "New version of React available");
       }, 500);
       setTimeout(() => {
-        manager.info('Deployment Ready', 'Your build is ready for deployment');
+        manager.info("Deployment Ready", "Your build is ready for deployment");
       }, 1000);
       setTimeout(() => {
-        manager.error('Test Failed', 'Unit tests failed. Please fix the issues before deploying.');
+        manager.error("Test Failed", "Unit tests failed. Please fix the issues before deploying.");
       }, 1500);
     };
 
     const showLoadingSequence = () => {
       const loadingId = manager.loading(
-        'Processing...',
-        'Analyzing your code for potential issues'
+        "Processing...",
+        "Analyzing your code for potential issues",
       );
 
       setTimeout(() => {
         manager.hide(loadingId);
-        manager.success('Analysis Complete', 'No issues found in your codebase');
+        manager.success("Analysis Complete", "No issues found in your codebase");
       }, 3000);
     };
 
@@ -356,7 +354,7 @@ export const ToastManagerDemo: Story = {
           toasts={toasts}
           position="top-right"
           limit={5}
-          onToastClose={id => manager.hide(id)}
+          onToastClose={(id) => manager.hide(id)}
         />
       </div>
     );
@@ -364,7 +362,7 @@ export const ToastManagerDemo: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Toast management system with automatic stacking and lifecycle management.',
+        story: "Toast management system with automatic stacking and lifecycle management.",
       },
     },
   },
@@ -373,7 +371,7 @@ export const ToastManagerDemo: Story = {
 // Professional developer tool examples
 export const DeveloperToolExamples: Story = {
   args: {
-    title: 'Developer Tool Examples',
+    title: "Developer Tool Examples",
   },
   render: () => {
     const [toasts, setToasts] = useState<any[]>([]);
@@ -386,7 +384,7 @@ export const DeveloperToolExamples: Story = {
     });
 
     const showBuildSuccess = () => {
-      manager.success('Build Successful', 'Project built in 2.3s with 0 errors', {
+      manager.success("Build Successful", "Project built in 2.3s with 0 errors", {
         icon: <CheckCircle />,
         showProgress: true,
         action: (
@@ -401,10 +399,10 @@ export const DeveloperToolExamples: Story = {
 
     const showDeploymentProcess = () => {
       const steps: { title: string; desc: string; success?: boolean }[] = [
-        { title: 'Building...', desc: 'Compiling source code' },
-        { title: 'Testing...', desc: 'Running unit tests' },
-        { title: 'Deploying...', desc: 'Uploading to production server' },
-        { title: 'Deployment Complete', desc: 'Your app is now live!', success: true },
+        { title: "Building...", desc: "Compiling source code" },
+        { title: "Testing...", desc: "Running unit tests" },
+        { title: "Deploying...", desc: "Uploading to production server" },
+        { title: "Deployment Complete", desc: "Your app is now live!", success: true },
       ];
 
       let currentStep = 0;
@@ -431,7 +429,7 @@ export const DeveloperToolExamples: Story = {
     };
 
     const showFileOperations = () => {
-      manager.info('File Downloaded', 'spec-config.json has been downloaded', {
+      manager.info("File Downloaded", "spec-config.json has been downloaded", {
         icon: <Download />,
         action: (
           <div className="flex gap-2">
@@ -443,7 +441,7 @@ export const DeveloperToolExamples: Story = {
       });
 
       setTimeout(() => {
-        manager.warning('Large File Upload', 'Uploading 250MB file may take several minutes', {
+        manager.warning("Large File Upload", "Uploading 250MB file may take several minutes", {
           icon: <Upload />,
           duration: 8000,
           showProgress: true,
@@ -452,7 +450,7 @@ export const DeveloperToolExamples: Story = {
     };
 
     const showErrorWithActions = () => {
-      manager.error('Compilation Error', 'TypeScript error in src/components/Button.tsx:42', {
+      manager.error("Compilation Error", "TypeScript error in src/components/Button.tsx:42", {
         icon: <AlertCircle />,
         duration: 0,
         action: (
@@ -470,13 +468,13 @@ export const DeveloperToolExamples: Story = {
 
     const showGitOperations = () => {
       const commitId = manager.loading(
-        'Committing Changes',
-        'Preparing commit with 12 changed files'
+        "Committing Changes",
+        "Preparing commit with 12 changed files",
       );
 
       setTimeout(() => {
         manager.hide(commitId);
-        manager.success('Changes Committed', 'Committed 12 files to feature/new-dashboard', {
+        manager.success("Changes Committed", "Committed 12 files to feature/new-dashboard", {
           action: (
             <div className="flex gap-2">
               <Button size="sm" variant="ghost">
@@ -489,7 +487,7 @@ export const DeveloperToolExamples: Story = {
     };
 
     const showTestResults = () => {
-      manager.warning('Test Suite Results', '23 passed, 2 failed, 1 skipped', {
+      manager.warning("Test Suite Results", "23 passed, 2 failed, 1 skipped", {
         icon: <AlertCircle />,
         showProgress: true,
         action: (
@@ -581,7 +579,7 @@ export const DeveloperToolExamples: Story = {
           toasts={toasts}
           position="top-right"
           limit={6}
-          onToastClose={id => manager.hide(id)}
+          onToastClose={(id) => manager.hide(id)}
         />
       </div>
     );
@@ -590,7 +588,7 @@ export const DeveloperToolExamples: Story = {
     docs: {
       description: {
         story:
-          'Professional examples of toast notifications in developer tools: build processes, deployment sequences, file operations, git workflows, and test results.',
+          "Professional examples of toast notifications in developer tools: build processes, deployment sequences, file operations, git workflows, and test results.",
       },
     },
   },
@@ -599,19 +597,19 @@ export const DeveloperToolExamples: Story = {
 // Different positions
 export const Positions: Story = {
   args: {
-    title: 'Positions',
+    title: "Positions",
   },
   render: () => {
     const positions: Array<
-      'top-right' | 'top-left' | 'bottom-right' | 'bottom-left' | 'top-center' | 'bottom-center'
-    > = ['top-right', 'top-left', 'bottom-right', 'bottom-left', 'top-center', 'bottom-center'];
+      "top-right" | "top-left" | "bottom-right" | "bottom-left" | "top-center" | "bottom-center"
+    > = ["top-right", "top-left", "bottom-right", "bottom-left", "top-center", "bottom-center"];
 
     const [visiblePositions, setVisiblePositions] = useState<Record<string, boolean>>(
-      positions.reduce((acc, pos) => ({ ...acc, [pos]: false }), {})
+      positions.reduce((acc, pos) => ({ ...acc, [pos]: false }), {}),
     );
 
     const togglePosition = (position: string) => {
-      setVisiblePositions(prev => ({ ...prev, [position]: !prev[position] }));
+      setVisiblePositions((prev) => ({ ...prev, [position]: !prev[position] }));
     };
 
     return (
@@ -619,7 +617,7 @@ export const Positions: Story = {
         <div className="mb-8 space-y-4">
           <h3 className="text-lg font-semibold text-graphite-800">Toast Positions</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {positions.map(position => (
+            {positions.map((position) => (
               <Button
                 key={position}
                 size="sm"
@@ -633,7 +631,7 @@ export const Positions: Story = {
         </div>
 
         {positions.map(
-          position =>
+          (position) =>
             visiblePositions[position] && (
               <Toast
                 key={position}
@@ -644,7 +642,7 @@ export const Positions: Story = {
                 visible={visiblePositions[position]}
                 onClose={() => togglePosition(position)}
               />
-            )
+            ),
         )}
       </div>
     );
@@ -652,7 +650,7 @@ export const Positions: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Toast notifications positioned at different locations on the screen.',
+        story: "Toast notifications positioned at different locations on the screen.",
       },
     },
   },
@@ -661,17 +659,17 @@ export const Positions: Story = {
 // Interactive playground
 export const Interactive: Story = {
   args: {
-    variant: 'info',
-    title: 'Interactive Toast',
-    description: 'This is a customizable toast notification.',
+    variant: "info",
+    title: "Interactive Toast",
+    description: "This is a customizable toast notification.",
     visible: true,
     duration: 5000,
-    position: 'top-right',
+    position: "top-right",
     showProgress: false,
     dismissible: false,
     closable: true,
   },
-  render: args => (
+  render: (args) => (
     <div className="relative h-screen bg-graphite-50">
       <Toast {...args} />
     </div>
@@ -680,7 +678,7 @@ export const Interactive: Story = {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all toast props. Use the controls panel below to test different combinations.',
+          "Interactive playground to experiment with all toast props. Use the controls panel below to test different combinations.",
       },
     },
   },

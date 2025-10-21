@@ -3,9 +3,9 @@
  * Provides graceful error handling and recovery
  */
 
-import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
-import React, { Component, type ReactNode } from 'react';
-import { Button, Card } from '../../design-system';
+import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import React, { Component, type ReactNode } from "react";
+import { Button, Card } from "../../design-system";
 
 interface Props {
   children: ReactNode;
@@ -37,7 +37,7 @@ export class HandlersErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log the error for debugging
-    console.error('HandlersErrorBoundary caught an error:', error, errorInfo);
+    console.error("HandlersErrorBoundary caught an error:", error, errorInfo);
 
     this.setState({
       error,
@@ -60,8 +60,8 @@ export class HandlersErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       const {
-        fallbackTitle = 'Something went wrong with handlers',
-        fallbackMessage = 'An error occurred while loading the webhook handlers interface. Please try refreshing or contact support if the issue persists.',
+        fallbackTitle = "Something went wrong with handlers",
+        fallbackMessage = "An error occurred while loading the webhook handlers interface. Please try refreshing or contact support if the issue persists.",
       } = this.props;
 
       return (
@@ -97,7 +97,7 @@ export class HandlersErrorBoundary extends Component<Props, State> {
             </div>
 
             {/* Error details for debugging (only in development) */}
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mt-6 text-left">
                 <summary className="cursor-pointer text-gray-500 hover:text-gray-700 text-sm mb-2">
                   Error Details (Development)

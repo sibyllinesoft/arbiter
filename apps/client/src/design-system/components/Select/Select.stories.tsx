@@ -4,7 +4,7 @@
  * Designed for sophisticated developer tools with graphite theme
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Code,
   Database,
@@ -17,197 +17,197 @@ import {
   Settings,
   Terminal,
   Users,
-} from 'lucide-react';
-import Select, { type SelectOption } from './Select';
+} from "lucide-react";
+import Select, { type SelectOption } from "./Select";
 
 // Sample option data for stories
 const frameworkOptions: SelectOption[] = [
   {
-    value: 'react',
-    label: 'React',
-    description: 'A JavaScript library for building user interfaces',
+    value: "react",
+    label: "React",
+    description: "A JavaScript library for building user interfaces",
     icon: <Code className="h-4 w-4 text-blue-500" />,
   },
   {
-    value: 'vue',
-    label: 'Vue.js',
-    description: 'The Progressive JavaScript Framework',
+    value: "vue",
+    label: "Vue.js",
+    description: "The Progressive JavaScript Framework",
     icon: <Code className="h-4 w-4 text-green-500" />,
   },
   {
-    value: 'angular',
-    label: 'Angular',
-    description: 'Platform for building mobile and desktop web apps',
+    value: "angular",
+    label: "Angular",
+    description: "Platform for building mobile and desktop web apps",
     icon: <Code className="h-4 w-4 text-red-500" />,
   },
   {
-    value: 'svelte',
-    label: 'Svelte',
-    description: 'Cybernetically enhanced web apps',
+    value: "svelte",
+    label: "Svelte",
+    description: "Cybernetically enhanced web apps",
     icon: <Code className="h-4 w-4 text-orange-500" />,
   },
   {
-    value: 'nextjs',
-    label: 'Next.js',
-    description: 'The React Framework for Production',
+    value: "nextjs",
+    label: "Next.js",
+    description: "The React Framework for Production",
     icon: <Code className="h-4 w-4 text-black" />,
   },
 ];
 
 const databaseOptions: SelectOption[] = [
   {
-    value: 'postgresql',
-    label: 'PostgreSQL',
-    description: 'Advanced open source relational database',
+    value: "postgresql",
+    label: "PostgreSQL",
+    description: "Advanced open source relational database",
     icon: <Database className="h-4 w-4 text-blue-600" />,
   },
   {
-    value: 'mysql',
-    label: 'MySQL',
-    description: 'Popular open-source relational database',
+    value: "mysql",
+    label: "MySQL",
+    description: "Popular open-source relational database",
     icon: <Database className="h-4 w-4 text-orange-500" />,
   },
   {
-    value: 'mongodb',
-    label: 'MongoDB',
-    description: 'Document-oriented NoSQL database',
+    value: "mongodb",
+    label: "MongoDB",
+    description: "Document-oriented NoSQL database",
     icon: <Database className="h-4 w-4 text-green-600" />,
   },
   {
-    value: 'redis',
-    label: 'Redis',
-    description: 'In-memory data structure store',
+    value: "redis",
+    label: "Redis",
+    description: "In-memory data structure store",
     icon: <Database className="h-4 w-4 text-red-500" />,
   },
   {
-    value: 'sqlite',
-    label: 'SQLite',
-    description: 'Lightweight embedded database',
+    value: "sqlite",
+    label: "SQLite",
+    description: "Lightweight embedded database",
     icon: <Database className="h-4 w-4 text-gray-600" />,
   },
 ];
 
 const environmentOptions: SelectOption[] = [
-  { value: 'development', label: 'Development', description: 'Local development environment' },
-  { value: 'staging', label: 'Staging', description: 'Pre-production testing environment' },
-  { value: 'production', label: 'Production', description: 'Live production environment' },
+  { value: "development", label: "Development", description: "Local development environment" },
+  { value: "staging", label: "Staging", description: "Pre-production testing environment" },
+  { value: "production", label: "Production", description: "Live production environment" },
   {
-    value: 'testing',
-    label: 'Testing',
-    description: 'Automated testing environment',
+    value: "testing",
+    label: "Testing",
+    description: "Automated testing environment",
     disabled: true,
   },
 ];
 
 const projectOptions: SelectOption[] = [
   {
-    value: 'web-app',
-    label: 'Web Application',
-    description: 'Full-stack web application',
+    value: "web-app",
+    label: "Web Application",
+    description: "Full-stack web application",
     icon: <Globe className="h-4 w-4" />,
   },
   {
-    value: 'api',
-    label: 'REST API',
-    description: 'Backend API service',
+    value: "api",
+    label: "REST API",
+    description: "Backend API service",
     icon: <Server className="h-4 w-4" />,
   },
   {
-    value: 'mobile',
-    label: 'Mobile App',
-    description: 'Native mobile application',
+    value: "mobile",
+    label: "Mobile App",
+    description: "Native mobile application",
     icon: <Package className="h-4 w-4" />,
   },
   {
-    value: 'desktop',
-    label: 'Desktop App',
-    description: 'Cross-platform desktop application',
+    value: "desktop",
+    label: "Desktop App",
+    description: "Cross-platform desktop application",
     icon: <Terminal className="h-4 w-4" />,
   },
 ];
 
 const teamOptions: SelectOption[] = [
   {
-    value: 'frontend',
-    label: 'Frontend Team',
-    description: '12 developers',
+    value: "frontend",
+    label: "Frontend Team",
+    description: "12 developers",
     icon: <Users className="h-4 w-4 text-blue-500" />,
   },
   {
-    value: 'backend',
-    label: 'Backend Team',
-    description: '8 developers',
+    value: "backend",
+    label: "Backend Team",
+    description: "8 developers",
     icon: <Users className="h-4 w-4 text-green-500" />,
   },
   {
-    value: 'devops',
-    label: 'DevOps Team',
-    description: '4 engineers',
+    value: "devops",
+    label: "DevOps Team",
+    description: "4 engineers",
     icon: <Users className="h-4 w-4 text-purple-500" />,
   },
   {
-    value: 'design',
-    label: 'Design Team',
-    description: '6 designers',
+    value: "design",
+    label: "Design Team",
+    description: "6 designers",
     icon: <Users className="h-4 w-4 text-pink-500" />,
   },
 ];
 
 const meta = {
-  title: 'Design System/Select',
+  title: "Design System/Select",
   component: Select,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional select dropdown component with search functionality, multi-select support, validation states, and comprehensive accessibility features. Designed for developer tools with sophisticated graphite theme.',
+          "Professional select dropdown component with search functionality, multi-select support, validation states, and comprehensive accessibility features. Designed for developer tools with sophisticated graphite theme.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['default', 'error', 'success', 'warning'],
-      description: 'Visual variant of the select',
+      control: { type: "select" },
+      options: ["default", "error", "success", "warning"],
+      description: "Visual variant of the select",
     },
     size: {
-      control: { type: 'select' },
-      options: ['sm', 'md', 'lg'],
-      description: 'Size of the select affecting padding and font size',
+      control: { type: "select" },
+      options: ["sm", "md", "lg"],
+      description: "Size of the select affecting padding and font size",
     },
     multiple: {
-      control: { type: 'boolean' },
-      description: 'Whether multiple selections are allowed',
+      control: { type: "boolean" },
+      description: "Whether multiple selections are allowed",
     },
     searchable: {
-      control: { type: 'boolean' },
-      description: 'Whether to show search input in dropdown',
+      control: { type: "boolean" },
+      description: "Whether to show search input in dropdown",
     },
     showDescriptions: {
-      control: { type: 'boolean' },
-      description: 'Whether to show option descriptions',
+      control: { type: "boolean" },
+      description: "Whether to show option descriptions",
     },
     showValidationIcon: {
-      control: { type: 'boolean' },
-      description: 'Whether to show validation icons automatically',
+      control: { type: "boolean" },
+      description: "Whether to show validation icons automatically",
     },
     floatingLabel: {
-      control: { type: 'boolean' },
-      description: 'Whether the label should float inside the select',
+      control: { type: "boolean" },
+      description: "Whether the label should float inside the select",
     },
     loading: {
-      control: { type: 'boolean' },
-      description: 'Whether the select is in a loading state',
+      control: { type: "boolean" },
+      description: "Whether the select is in a loading state",
     },
     disabled: {
-      control: { type: 'boolean' },
-      description: 'Whether the select is disabled',
+      control: { type: "boolean" },
+      description: "Whether the select is disabled",
     },
     required: {
-      control: { type: 'boolean' },
-      description: 'Whether the select is required',
+      control: { type: "boolean" },
+      description: "Whether the select is required",
     },
   },
 } satisfies Meta<typeof Select>;
@@ -219,9 +219,9 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   // @ts-ignore
   args: {
-    label: 'Choose Framework',
+    label: "Choose Framework",
     options: frameworkOptions,
-    placeholder: 'Select a framework...',
+    placeholder: "Select a framework...",
   },
 };
 
@@ -231,9 +231,9 @@ export const Variants: Story = {
   // @ts-ignore
   args: {
     options: frameworkOptions,
-    placeholder: 'Default select',
+    placeholder: "Default select",
   },
-  render: args => (
+  render: (args) => (
     <div className="w-80 space-y-4">
       <Select {...args} label="Default" />
       <Select
@@ -263,7 +263,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'Select variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.',
+          "Select variants with enhanced validation states: Default, Success, Warning, and Error with automatic validation icons.",
       },
     },
   },
@@ -274,9 +274,9 @@ export const Sizes: Story = {
   // @ts-ignore
   args: {
     options: frameworkOptions,
-    placeholder: 'Medium select (default)',
+    placeholder: "Medium select (default)",
   },
-  render: args => (
+  render: (args) => (
     <div className="w-80 space-y-4">
       <Select {...args} size="sm" label="Small" placeholder="Small select" />
       <Select {...args} size="md" label="Medium" />
@@ -286,7 +286,7 @@ export const Sizes: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Select sizes with proper icon scaling and padding adjustments for each size.',
+        story: "Select sizes with proper icon scaling and padding adjustments for each size.",
       },
     },
   },
@@ -298,7 +298,7 @@ export const MultipleSelection: Story = {
   args: {
     multiple: true,
   },
-  render: args => (
+  render: (args) => (
     <div className="w-96 space-y-4">
       <Select
         {...args}
@@ -330,7 +330,7 @@ export const MultipleSelection: Story = {
     docs: {
       description: {
         story:
-          'Multi-select functionality with tag display, clear all option, and proper selection management.',
+          "Multi-select functionality with tag display, clear all option, and proper selection management.",
       },
     },
   },
@@ -342,7 +342,7 @@ export const SearchableSelects: Story = {
   args: {
     searchable: true,
   },
-  render: args => (
+  render: (args) => (
     <div className="w-96 space-y-4">
       <Select
         {...args}
@@ -373,7 +373,7 @@ export const SearchableSelects: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Searchable selects with real-time filtering by option labels and descriptions.',
+        story: "Searchable selects with real-time filtering by option labels and descriptions.",
       },
     },
   },
@@ -385,7 +385,7 @@ export const LoadingStates: Story = {
   args: {
     loading: true,
   },
-  render: args => (
+  render: (args) => (
     <div className="w-80 space-y-4">
       <Select
         {...args}
@@ -400,7 +400,7 @@ export const LoadingStates: Story = {
         label="Loading Teams"
         options={teamOptions}
         placeholder="Refreshing teams..."
-        value={['frontend', 'backend']}
+        value={["frontend", "backend"]}
         helperText="Updating team assignments..."
       />
       <Select
@@ -416,7 +416,7 @@ export const LoadingStates: Story = {
     docs: {
       description: {
         story:
-          'Loading states with animated spinner and disabled interaction during data fetching.',
+          "Loading states with animated spinner and disabled interaction during data fetching.",
       },
     },
   },
@@ -428,7 +428,7 @@ export const FloatingLabels: Story = {
   args: {
     floatingLabel: true,
   },
-  render: args => (
+  render: (args) => (
     <div className="w-96 space-y-6">
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-graphite-700">Floating Label Selects</h3>
@@ -464,7 +464,7 @@ export const FloatingLabels: Story = {
     docs: {
       description: {
         story:
-          'Modern floating label pattern that provides clean, space-efficient design while maintaining accessibility.',
+          "Modern floating label pattern that provides clean, space-efficient design while maintaining accessibility.",
       },
     },
   },
@@ -474,7 +474,7 @@ export const FloatingLabels: Story = {
 export const DeveloperToolExamples: Story = {
   // @ts-ignore
   args: {},
-  render: args => (
+  render: (args) => (
     <div className="space-y-8 max-w-4xl">
       {/* Project configuration */}
       <div className="space-y-4">
@@ -535,23 +535,23 @@ export const DeveloperToolExamples: Story = {
             label="Primary Responsibility"
             options={[
               {
-                value: 'frontend',
-                label: 'Frontend Development',
+                value: "frontend",
+                label: "Frontend Development",
                 icon: <Code className="h-4 w-4" />,
               },
               {
-                value: 'backend',
-                label: 'Backend Development',
+                value: "backend",
+                label: "Backend Development",
                 icon: <Server className="h-4 w-4" />,
               },
               {
-                value: 'fullstack',
-                label: 'Full Stack Development',
+                value: "fullstack",
+                label: "Full Stack Development",
                 icon: <Layers className="h-4 w-4" />,
               },
               {
-                value: 'devops',
-                label: 'DevOps & Infrastructure',
+                value: "devops",
+                label: "DevOps & Infrastructure",
                 icon: <Settings className="h-4 w-4" />,
               },
             ]}
@@ -569,27 +569,27 @@ export const DeveloperToolExamples: Story = {
             label="Git Branch"
             options={[
               {
-                value: 'main',
-                label: 'main',
-                description: 'Production branch',
+                value: "main",
+                label: "main",
+                description: "Production branch",
                 icon: <GitBranch className="h-4 w-4 text-green-500" />,
               },
               {
-                value: 'develop',
-                label: 'develop',
-                description: 'Development branch',
+                value: "develop",
+                label: "develop",
+                description: "Development branch",
                 icon: <GitBranch className="h-4 w-4 text-blue-500" />,
               },
               {
-                value: 'staging',
-                label: 'staging',
-                description: 'Staging branch',
+                value: "staging",
+                label: "staging",
+                description: "Staging branch",
                 icon: <GitBranch className="h-4 w-4 text-yellow-500" />,
               },
               {
-                value: 'feature/auth',
-                label: 'feature/auth',
-                description: 'Authentication feature',
+                value: "feature/auth",
+                label: "feature/auth",
+                description: "Authentication feature",
                 icon: <GitBranch className="h-4 w-4 text-purple-500" />,
               },
             ]}
@@ -600,16 +600,16 @@ export const DeveloperToolExamples: Story = {
             label="Build Target"
             options={[
               {
-                value: 'development',
-                label: 'Development',
-                description: 'Unminified build with source maps',
+                value: "development",
+                label: "Development",
+                description: "Unminified build with source maps",
               },
               {
-                value: 'production',
-                label: 'Production',
-                description: 'Optimized build for deployment',
+                value: "production",
+                label: "Production",
+                description: "Optimized build for deployment",
               },
-              { value: 'testing', label: 'Testing', description: 'Build optimized for testing' },
+              { value: "testing", label: "Testing", description: "Build optimized for testing" },
             ]}
             showDescriptions
             defaultValue="development"
@@ -632,18 +632,18 @@ export const DeveloperToolExamples: Story = {
             label="Schema Validation"
             options={[
               {
-                value: 'valid',
-                label: 'Valid Schema',
+                value: "valid",
+                label: "Valid Schema",
                 icon: <FileText className="h-4 w-4 text-green-500" />,
               },
               {
-                value: 'warning',
-                label: 'Schema Warnings',
+                value: "warning",
+                label: "Schema Warnings",
                 icon: <FileText className="h-4 w-4 text-amber-500" />,
               },
               {
-                value: 'error',
-                label: 'Schema Errors',
+                value: "error",
+                label: "Schema Errors",
                 icon: <FileText className="h-4 w-4 text-red-500" />,
               },
             ]}
@@ -655,9 +655,9 @@ export const DeveloperToolExamples: Story = {
           <Select
             label="Deployment Status"
             options={[
-              { value: 'deployed', label: 'Successfully Deployed' },
-              { value: 'pending', label: 'Deployment Pending' },
-              { value: 'failed', label: 'Deployment Failed' },
+              { value: "deployed", label: "Successfully Deployed" },
+              { value: "pending", label: "Deployment Pending" },
+              { value: "failed", label: "Deployment Failed" },
             ]}
             value="failed"
             error="Deployment failed - check logs"
@@ -672,7 +672,7 @@ export const DeveloperToolExamples: Story = {
     docs: {
       description: {
         story:
-          'Real-world examples of selects in developer tools: project configuration, team assignment, build settings, and status displays.',
+          "Real-world examples of selects in developer tools: project configuration, team assignment, build settings, and status displays.",
       },
     },
   },
@@ -684,7 +684,7 @@ export const DisabledStates: Story = {
   args: {
     disabled: true,
   },
-  render: args => (
+  render: (args) => (
     <div className="w-96 space-y-4">
       <Select
         {...args}
@@ -704,7 +704,7 @@ export const DisabledStates: Story = {
         multiple
         label="Disabled Multiple"
         options={teamOptions}
-        value={['frontend', 'backend']}
+        value={["frontend", "backend"]}
         helperText="Selection cannot be changed"
       />
       <Select
@@ -722,7 +722,7 @@ export const DisabledStates: Story = {
     docs: {
       description: {
         story:
-          'Comprehensive disabled states showing how all variants and features behave when disabled.',
+          "Comprehensive disabled states showing how all variants and features behave when disabled.",
       },
     },
   },
@@ -732,11 +732,11 @@ export const DisabledStates: Story = {
 export const Interactive: Story = {
   // @ts-ignore
   args: {
-    label: 'Interactive Select',
+    label: "Interactive Select",
     options: frameworkOptions,
-    placeholder: 'Choose an option...',
-    size: 'md',
-    variant: 'default',
+    placeholder: "Choose an option...",
+    size: "md",
+    variant: "default",
     multiple: false,
     searchable: false,
     showDescriptions: true,
@@ -750,7 +750,7 @@ export const Interactive: Story = {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all select props. Use the controls panel below to test different combinations.',
+          "Interactive playground to experiment with all select props. Use the controls panel below to test different combinations.",
       },
     },
   },

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { DataSet } from 'vis-data';
-import { Network } from 'vis-network';
+import React, { useEffect, useRef } from "react";
+import { DataSet } from "vis-data";
+import { Network } from "vis-network";
 
 interface NetworkNode {
   id: string;
@@ -32,7 +32,7 @@ interface NetworkDiagramProps {
 export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
   nodes,
   edges,
-  className = '',
+  className = "",
   title,
   options = {},
 }) => {
@@ -54,8 +54,8 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
         chosen: true,
         font: {
           size: 12,
-          color: '#343a40',
-          face: 'Inter, system-ui, sans-serif',
+          color: "#343a40",
+          face: "Inter, system-ui, sans-serif",
         },
         scaling: {
           min: 10,
@@ -63,7 +63,7 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
         },
         shadow: {
           enabled: true,
-          color: 'rgba(0,0,0,0.1)',
+          color: "rgba(0,0,0,0.1)",
           size: 5,
           x: 2,
           y: 2,
@@ -72,13 +72,13 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
       edges: {
         width: 2,
         color: {
-          color: '#848484',
-          highlight: '#2563eb',
-          hover: '#3b82f6',
+          color: "#848484",
+          highlight: "#2563eb",
+          hover: "#3b82f6",
         },
         smooth: {
-          type: 'cubicBezier',
-          forceDirection: 'horizontal',
+          type: "cubicBezier",
+          forceDirection: "horizontal",
           roundness: 0.4,
         },
         arrows: {
@@ -89,9 +89,9 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
         },
         font: {
           size: 11,
-          color: '#6b7280',
-          align: 'middle',
-          background: 'rgba(255,255,255,0.8)',
+          color: "#6b7280",
+          align: "middle",
+          background: "rgba(255,255,255,0.8)",
           strokeWidth: 0,
         },
       },
@@ -133,19 +133,12 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
 
     networkRef.current = new Network(containerRef.current, data, defaultOptions);
 
-    // Add event listeners
-    networkRef.current.on('click', params => {
-      if (params.nodes.length > 0) {
-        console.log('Node clicked:', params.nodes[0]);
-      }
+    networkRef.current.on("hoverNode", (params) => {
+      document.body.style.cursor = "pointer";
     });
 
-    networkRef.current.on('hoverNode', params => {
-      document.body.style.cursor = 'pointer';
-    });
-
-    networkRef.current.on('blurNode', () => {
-      document.body.style.cursor = 'default';
+    networkRef.current.on("blurNode", () => {
+      document.body.style.cursor = "default";
     });
 
     // Cleanup function
@@ -154,7 +147,7 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
         networkRef.current.destroy();
         networkRef.current = null;
       }
-      document.body.style.cursor = 'default';
+      document.body.style.cursor = "default";
     };
   }, [nodes, edges, options]);
 
@@ -162,7 +155,7 @@ export const NetworkDiagram: React.FC<NetworkDiagramProps> = ({
     <div className={className}>
       {title && <h4 className="text-sm font-semibold text-gray-700 mb-4 text-center">{title}</h4>}
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div ref={containerRef} className="w-full h-96" style={{ minHeight: '400px' }} />
+        <div ref={containerRef} className="w-full h-96" style={{ minHeight: "400px" }} />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
  * Provides pluggable code generation for multiple programming languages
  */
 
-import type { AppSpec } from '@arbiter/shared';
+import type { AppSpec } from "@arbiter/shared";
 
 // Core types for the plugin system
 export interface ComponentProp {
@@ -14,7 +14,7 @@ export interface ComponentProp {
 
 export interface ComponentConfig {
   name: string;
-  type: 'page' | 'component' | 'layout' | 'hook' | 'util';
+  type: "page" | "component" | "layout" | "hook" | "util";
   props?: ComponentProp[];
   dependencies?: string[];
   styles?: boolean;
@@ -24,7 +24,7 @@ export interface ComponentConfig {
 
 export interface ServiceConfig {
   name: string;
-  type: 'api' | 'service' | 'handler' | 'middleware' | 'model';
+  type: "api" | "service" | "handler" | "middleware" | "model";
   endpoints?: string[];
   database?: boolean;
   auth?: boolean;
@@ -36,14 +36,14 @@ export interface ProjectConfig {
   name: string;
   description?: string;
   features: string[];
-  database?: 'sqlite' | 'postgres' | 'mysql' | 'mongodb';
-  auth?: 'jwt' | 'session' | 'oauth';
+  database?: "sqlite" | "postgres" | "mysql" | "mongodb";
+  auth?: "jwt" | "session" | "oauth";
   testing?: boolean;
   docker?: boolean;
 }
 
 export interface BuildConfig {
-  target: 'development' | 'production' | 'test';
+  target: "development" | "production" | "test";
   optimization?: boolean;
   bundling?: boolean;
   typeChecking?: boolean;
@@ -79,7 +79,7 @@ export interface LanguageTestingConfig {
 export interface EndpointAssertionDefinition {
   name: string;
   result: boolean | null;
-  severity: 'error' | 'warn' | 'info';
+  severity: "error" | "warn" | "info";
   message?: string;
   tags?: string[];
   raw?: unknown;
@@ -187,7 +187,7 @@ export function registerPlugin(plugin: LanguagePlugin): void {
 // Convenience functions
 export async function generateComponent(
   language: string,
-  config: ComponentConfig
+  config: ComponentConfig,
 ): Promise<GenerationResult> {
   const plugin = registry.get(language);
   if (!plugin) {
@@ -203,7 +203,7 @@ export async function generateComponent(
 
 export async function generateService(
   language: string,
-  config: ServiceConfig
+  config: ServiceConfig,
 ): Promise<GenerationResult> {
   const plugin = registry.get(language);
   if (!plugin) {
@@ -215,7 +215,7 @@ export async function generateService(
 
 export async function initializeProject(
   language: string,
-  config: ProjectConfig
+  config: ProjectConfig,
 ): Promise<GenerationResult> {
   const plugin = registry.get(language);
   if (!plugin) {
@@ -227,7 +227,7 @@ export async function initializeProject(
 
 export async function generateBuildConfig(
   language: string,
-  config: BuildConfig
+  config: BuildConfig,
 ): Promise<GenerationResult> {
   const plugin = registry.get(language);
   if (!plugin) {
@@ -237,11 +237,11 @@ export async function generateBuildConfig(
   return plugin.generateBuildConfig(config);
 }
 
-import { GoPlugin } from './go.js';
-import { PythonPlugin } from './python.js';
-import { RustPlugin } from './rust.js';
+import { GoPlugin } from "./go.js";
+import { PythonPlugin } from "./python.js";
+import { RustPlugin } from "./rust.js";
 // Import and register all plugins
-import { TypeScriptPlugin } from './typescript.js';
+import { TypeScriptPlugin } from "./typescript.js";
 
 // Auto-register plugins
 registerPlugin(new TypeScriptPlugin());

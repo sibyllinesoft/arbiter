@@ -328,6 +328,64 @@ body {
   font-size: 14px !important;
 }
 
+.graphite-toast {
+  font-size: 14px;
+  border-radius: 0.75rem;
+  box-shadow: 0 18px 45px -15px rgba(15, 17, 21, 0.45);
+  border: 1px solid rgba(80, 97, 122, 0.25);
+  padding: 0.75rem 1rem;
+  backdrop-filter: blur(16px);
+}
+
+.graphite-toast-light {
+  background: linear-gradient(145deg, rgba(238, 241, 245, 0.9), rgba(211, 217, 226, 0.82));
+  color: #0f1115;
+}
+
+.graphite-toast-dark {
+  background: linear-gradient(145deg, rgba(20, 24, 33, 0.95), rgba(27, 33, 48, 0.88));
+  color: #eef1f5;
+}
+
+.graphite-toast-body {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.graphite-toast-body-light {
+  color: #0f1115;
+}
+
+.graphite-toast-body-dark {
+  color: #eef1f5;
+}
+
+.graphite-toast-progress-light {
+  background: linear-gradient(90deg, #25557e, #2f6b9a);
+}
+
+.graphite-toast-progress-dark {
+  background: linear-gradient(90deg, #4a378b, #5c49a3);
+}
+
+.graphite-toast-progress-success {
+  background: linear-gradient(90deg, #1d6a5b, #2a8372) !important;
+}
+
+.graphite-toast-progress-error {
+  background: linear-gradient(90deg, #803131, #9c3d3d) !important;
+}
+
+.graphite-toast-success {
+  border-color: rgba(29, 106, 91, 0.45) !important;
+  box-shadow: 0 18px 45px -18px rgba(29, 106, 91, 0.6) !important;
+}
+
+.graphite-toast-error {
+  border-color: rgba(128, 49, 49, 0.45) !important;
+  box-shadow: 0 18px 45px -18px rgba(128, 49, 49, 0.6) !important;
+}
+
 /* Loading spinner */
 .spinner {
   @apply animate-spin rounded-full border-2 border-gray-300 border-t-blue-600;

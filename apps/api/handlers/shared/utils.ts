@@ -6,16 +6,16 @@ export function formatSlackMessage(title: string, details: Record<string, unknow
   return {
     blocks: [
       {
-        type: 'section',
+        type: "section",
         text: {
-          type: 'mrkdwn',
+          type: "mrkdwn",
           text: `*${title}*`,
         },
       },
       {
-        type: 'section',
+        type: "section",
         fields: Object.entries(details).map(([key, value]) => ({
-          type: 'mrkdwn',
+          type: "mrkdwn",
           text: `*${key}:* ${value}`,
         })),
       },
@@ -24,9 +24,9 @@ export function formatSlackMessage(title: string, details: Record<string, unknow
 }
 
 export function extractSpecFiles(filePaths: string[]): string[] {
-  return filePaths.filter(path => path.endsWith('.cue') || path.endsWith('.spec.ts'));
+  return filePaths.filter((path) => path.endsWith(".cue") || path.endsWith(".spec.ts"));
 }
 
 export function shouldNotify(branch: string, defaultBranch: string): boolean {
-  return branch === `refs/heads/${defaultBranch}` || branch.includes('release');
+  return branch === `refs/heads/${defaultBranch}` || branch.includes("release");
 }

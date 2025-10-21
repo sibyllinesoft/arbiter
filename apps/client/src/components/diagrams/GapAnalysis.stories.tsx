@@ -1,16 +1,16 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import React from 'react';
-import { DataViewer } from './DataViewer';
-import { MermaidRenderer } from './MermaidRenderer';
-import { SplitViewShowcase } from './SplitViewShowcase';
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
+import { DataViewer } from "./DataViewer";
+import { MermaidRenderer } from "./MermaidRenderer";
+import { SplitViewShowcase } from "./SplitViewShowcase";
 
 const meta = {
-  title: 'Diagrams/Gap Analysis - Split View',
+  title: "Diagrams/Gap Analysis - Split View",
   component: SplitViewShowcase,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 } satisfies Meta<typeof SplitViewShowcase>;
 
 export default meta;
@@ -24,7 +24,7 @@ interface CoverageData {
   capability: string;
   expected: number;
   actual: number;
-  status: 'good' | 'warning' | 'critical';
+  status: "good" | "warning" | "critical";
 }
 
 interface GapVisualizationProps {
@@ -33,18 +33,18 @@ interface GapVisualizationProps {
 }
 
 const GapVisualization: React.FC<GapVisualizationProps> = ({ data, title }) => {
-  const maxValue = Math.max(...data.map(d => d.expected));
+  const maxValue = Math.max(...data.map((d) => d.expected));
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'good':
-        return '#10b981';
-      case 'warning':
-        return '#f59e0b';
-      case 'critical':
-        return '#ef4444';
+      case "good":
+        return "#10b981";
+      case "warning":
+        return "#f59e0b";
+      case "critical":
+        return "#ef4444";
       default:
-        return '#6b7280';
+        return "#6b7280";
     }
   };
 
@@ -298,12 +298,12 @@ recommendations:
       timeline: "1 month"`;
 
 const coverageData: CoverageData[] = [
-  { capability: 'Authentication Module', expected: 95, actual: 78, status: 'critical' },
-  { capability: 'Payment Processing', expected: 95, actual: 82, status: 'critical' },
-  { capability: 'User Management APIs', expected: 85, actual: 91, status: 'good' },
-  { capability: 'Product Catalog', expected: 85, actual: 74, status: 'warning' },
-  { capability: 'Order Processing', expected: 90, actual: 86, status: 'warning' },
-  { capability: 'Notification System', expected: 80, actual: 92, status: 'good' },
+  { capability: "Authentication Module", expected: 95, actual: 78, status: "critical" },
+  { capability: "Payment Processing", expected: 95, actual: 82, status: "critical" },
+  { capability: "User Management APIs", expected: 85, actual: 91, status: "good" },
+  { capability: "Product Catalog", expected: 85, actual: 74, status: "warning" },
+  { capability: "Order Processing", expected: 90, actual: 86, status: "warning" },
+  { capability: "Notification System", expected: 80, actual: 92, status: "good" },
 ];
 
 const securityComplianceYaml = `# Security Compliance Gap Analysis
@@ -481,31 +481,31 @@ remediation_roadmap:
       timeline: "6 months"`;
 
 const complianceData: CoverageData[] = [
-  { capability: 'SOC2 - Access Controls (CC6.1)', expected: 100, actual: 85, status: 'critical' },
+  { capability: "SOC2 - Access Controls (CC6.1)", expected: 100, actual: 85, status: "critical" },
   {
-    capability: 'SOC2 - Access Provisioning (CC6.2)',
+    capability: "SOC2 - Access Provisioning (CC6.2)",
     expected: 100,
     actual: 92,
-    status: 'warning',
+    status: "warning",
   },
-  { capability: 'SOC2 - System Monitoring (CC7.1)', expected: 100, actual: 78, status: 'critical' },
-  { capability: 'PCI-DSS - Data Protection (Req 3)', expected: 100, actual: 95, status: 'good' },
-  { capability: 'PCI-DSS - Data Transit (Req 4)', expected: 100, actual: 88, status: 'warning' },
+  { capability: "SOC2 - System Monitoring (CC7.1)", expected: 100, actual: 78, status: "critical" },
+  { capability: "PCI-DSS - Data Protection (Req 3)", expected: 100, actual: 95, status: "good" },
+  { capability: "PCI-DSS - Data Transit (Req 4)", expected: 100, actual: 88, status: "warning" },
   {
-    capability: 'PCI-DSS - Secure Development (Req 6)',
+    capability: "PCI-DSS - Secure Development (Req 6)",
     expected: 100,
     actual: 82,
-    status: 'critical',
+    status: "critical",
   },
   {
-    capability: 'PCI-DSS - Security Testing (Req 11)',
+    capability: "PCI-DSS - Security Testing (Req 11)",
     expected: 100,
     actual: 71,
-    status: 'critical',
+    status: "critical",
   },
-  { capability: 'GDPR - Data Processing', expected: 100, actual: 94, status: 'good' },
-  { capability: 'GDPR - Subject Rights', expected: 100, actual: 87, status: 'warning' },
-  { capability: 'GDPR - Impact Assessment', expected: 100, actual: 76, status: 'critical' },
+  { capability: "GDPR - Data Processing", expected: 100, actual: 94, status: "good" },
+  { capability: "GDPR - Subject Rights", expected: 100, actual: 87, status: "warning" },
+  { capability: "GDPR - Impact Assessment", expected: 100, actual: 76, status: "critical" },
 ];
 
 const apiCoverageYaml = `# API Coverage Gap Analysis
@@ -701,13 +701,13 @@ quality_standards:
     security_testing_priority: "high_risk_endpoints_first"`;
 
 const apiCoverageData: CoverageData[] = [
-  { capability: 'Documentation Coverage', expected: 90, actual: 88.5, status: 'warning' },
-  { capability: 'Functional Test Coverage', expected: 85, actual: 83.2, status: 'warning' },
-  { capability: 'Performance Test Coverage', expected: 80, actual: 41.7, status: 'critical' },
-  { capability: 'Security Test Coverage', expected: 75, actual: 58.3, status: 'critical' },
-  { capability: 'Auth Service Coverage', expected: 90, actual: 82, status: 'warning' },
-  { capability: 'User Service Coverage', expected: 90, actual: 83.8, status: 'warning' },
-  { capability: 'Product Service Coverage', expected: 90, actual: 86.3, status: 'warning' },
+  { capability: "Documentation Coverage", expected: 90, actual: 88.5, status: "warning" },
+  { capability: "Functional Test Coverage", expected: 85, actual: 83.2, status: "warning" },
+  { capability: "Performance Test Coverage", expected: 80, actual: 41.7, status: "critical" },
+  { capability: "Security Test Coverage", expected: 75, actual: 58.3, status: "critical" },
+  { capability: "Auth Service Coverage", expected: 90, actual: 82, status: "warning" },
+  { capability: "User Service Coverage", expected: 90, actual: 83.8, status: "warning" },
+  { capability: "Product Service Coverage", expected: 90, actual: 86.3, status: "warning" },
 ];
 
 const gapAnalysisMermaid = `graph TD
@@ -774,11 +774,11 @@ const gapAnalysisMermaid = `graph TD
 
 export const TestCoverageGapAnalysis: Story = {
   args: {
-    title: 'Test Coverage Gap Analysis',
+    title: "Test Coverage Gap Analysis",
     description:
-      'Comprehensive analysis of test coverage gaps across all system components with prioritized remediation plan.',
-    dataPanelTitle: 'Coverage Analysis Report (YAML)',
-    diagramPanelTitle: 'Coverage Gap Visualization',
+      "Comprehensive analysis of test coverage gaps across all system components with prioritized remediation plan.",
+    dataPanelTitle: "Coverage Analysis Report (YAML)",
+    diagramPanelTitle: "Coverage Gap Visualization",
     dataPanel: (
       <DataViewer data={testCoverageGapYaml} language="yaml" title="test-coverage-analysis.yml" />
     ),
@@ -788,11 +788,11 @@ export const TestCoverageGapAnalysis: Story = {
 
 export const SecurityComplianceGapAnalysis: Story = {
   args: {
-    title: 'Security Compliance Gap Analysis',
+    title: "Security Compliance Gap Analysis",
     description:
-      'Multi-framework security compliance assessment (SOC2, PCI-DSS, GDPR) with risk-based remediation planning.',
-    dataPanelTitle: 'Compliance Assessment (YAML)',
-    diagramPanelTitle: 'Compliance Gap Visualization',
+      "Multi-framework security compliance assessment (SOC2, PCI-DSS, GDPR) with risk-based remediation planning.",
+    dataPanelTitle: "Compliance Assessment (YAML)",
+    diagramPanelTitle: "Compliance Gap Visualization",
     dataPanel: (
       <DataViewer
         data={securityComplianceYaml}
@@ -806,11 +806,11 @@ export const SecurityComplianceGapAnalysis: Story = {
 
 export const ApiCoverageGapAnalysis: Story = {
   args: {
-    title: 'API Coverage Gap Analysis',
+    title: "API Coverage Gap Analysis",
     description:
-      'Comprehensive API testing and documentation coverage analysis with endpoint-level gap identification.',
-    dataPanelTitle: 'API Analysis Report (YAML)',
-    diagramPanelTitle: 'API Coverage Visualization',
+      "Comprehensive API testing and documentation coverage analysis with endpoint-level gap identification.",
+    dataPanelTitle: "API Analysis Report (YAML)",
+    diagramPanelTitle: "API Coverage Visualization",
     dataPanel: (
       <DataViewer data={apiCoverageYaml} language="yaml" title="api-coverage-analysis.yml" />
     ),
@@ -822,11 +822,11 @@ export const ApiCoverageGapAnalysis: Story = {
 
 export const GapAnalysisProcess: Story = {
   args: {
-    title: 'Gap Analysis Methodology',
+    title: "Gap Analysis Methodology",
     description:
-      'Complete gap analysis process flow from data collection through remediation and continuous improvement.',
-    dataPanelTitle: 'Process Documentation (YAML)',
-    diagramPanelTitle: 'Gap Analysis Process Flow',
+      "Complete gap analysis process flow from data collection through remediation and continuous improvement.",
+    dataPanelTitle: "Process Documentation (YAML)",
+    diagramPanelTitle: "Gap Analysis Process Flow",
     dataPanel: (
       <DataViewer
         data={`# Gap Analysis Process Methodology

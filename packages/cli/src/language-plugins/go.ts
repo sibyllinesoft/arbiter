@@ -11,23 +11,23 @@ import type {
   LanguagePlugin,
   ProjectConfig,
   ServiceConfig,
-} from './index.js';
+} from "./index.js";
 
 export class GoPlugin implements LanguagePlugin {
-  readonly name = 'Go Plugin';
-  readonly language = 'go';
-  readonly version = '1.0.0';
-  readonly description = 'Modern Go with Gin, GORM, and idiomatic Go patterns';
+  readonly name = "Go Plugin";
+  readonly language = "go";
+  readonly version = "1.0.0";
+  readonly description = "Modern Go with Gin, GORM, and idiomatic Go patterns";
   readonly supportedFeatures = [
-    'web-server',
-    'api',
-    'database-orm',
-    'middleware',
-    'validation',
-    'testing',
-    'concurrency',
-    'microservices',
-    'grpc',
+    "web-server",
+    "api",
+    "database-orm",
+    "middleware",
+    "validation",
+    "testing",
+    "concurrency",
+    "microservices",
+    "grpc",
   ];
   readonly capabilities = {
     services: true,
@@ -37,7 +37,7 @@ export class GoPlugin implements LanguagePlugin {
 
   // Go doesn't have UI components like frontend frameworks
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
-    throw new Error('Component generation not supported for Go. Use generateService instead.');
+    throw new Error("Component generation not supported for Go. Use generateService instead.");
   }
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
@@ -45,7 +45,7 @@ export class GoPlugin implements LanguagePlugin {
     const dependencies: string[] = [];
 
     switch (config.type) {
-      case 'api':
+      case "api":
         files.push({
           path: `internal/handlers/${config.name.toLowerCase()}_handler.go`,
           content: this.generateAPIHandler(config),
@@ -54,22 +54,22 @@ export class GoPlugin implements LanguagePlugin {
           path: `internal/routes/${config.name.toLowerCase()}_routes.go`,
           content: this.generateRoutes(config),
         });
-        dependencies.push('github.com/gin-gonic/gin');
+        dependencies.push("github.com/gin-gonic/gin");
         break;
-      case 'service':
+      case "service":
         files.push({
           path: `internal/services/${config.name.toLowerCase()}_service.go`,
           content: this.generateBusinessService(config),
         });
         break;
-      case 'model':
+      case "model":
         files.push({
           path: `internal/models/${config.name.toLowerCase()}.go`,
           content: this.generateModel(config),
         });
-        dependencies.push('gorm.io/gorm');
+        dependencies.push("gorm.io/gorm");
         break;
-      case 'middleware':
+      case "middleware":
         files.push({
           path: `internal/middleware/${config.name.toLowerCase()}.go`,
           content: this.generateMiddleware(config),
@@ -78,11 +78,11 @@ export class GoPlugin implements LanguagePlugin {
     }
 
     if (config.validation) {
-      dependencies.push('github.com/go-playground/validator/v10');
+      dependencies.push("github.com/go-playground/validator/v10");
     }
 
     if (config.database) {
-      dependencies.push('gorm.io/gorm', 'gorm.io/driver/postgres');
+      dependencies.push("gorm.io/gorm", "gorm.io/driver/postgres");
     }
 
     return { files, dependencies };
@@ -91,77 +91,77 @@ export class GoPlugin implements LanguagePlugin {
   async initializeProject(config: ProjectConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
     const dependencies = [
-      'github.com/gin-gonic/gin',
-      'github.com/joho/godotenv',
-      'go.uber.org/zap',
+      "github.com/gin-gonic/gin",
+      "github.com/joho/godotenv",
+      "go.uber.org/zap",
     ];
 
     // Go module file
     files.push({
-      path: 'go.mod',
+      path: "go.mod",
       content: this.generateGoMod(config),
     });
 
     // Main application
     files.push({
-      path: 'cmd/main.go',
+      path: "cmd/main.go",
       content: this.generateMainApp(config),
     });
 
     // Configuration
     files.push({
-      path: 'internal/config/config.go',
+      path: "internal/config/config.go",
       content: this.generateConfig(config),
     });
 
     // Database setup (if needed)
     if (config.database) {
       files.push({
-        path: 'internal/database/database.go',
+        path: "internal/database/database.go",
         content: this.generateDatabase(config),
       });
-      dependencies.push('gorm.io/gorm', 'gorm.io/driver/postgres');
+      dependencies.push("gorm.io/gorm", "gorm.io/driver/postgres");
     }
 
     // Logging setup
     files.push({
-      path: 'internal/logger/logger.go',
+      path: "internal/logger/logger.go",
       content: this.generateLogger(),
     });
 
     // Server setup
     files.push({
-      path: 'internal/server/server.go',
+      path: "internal/server/server.go",
       content: this.generateServer(config),
     });
 
     // Middleware
     files.push({
-      path: 'internal/middleware/cors.go',
+      path: "internal/middleware/cors.go",
       content: this.generateCORSMiddleware(),
     });
 
     files.push({
-      path: 'internal/middleware/logger.go',
+      path: "internal/middleware/logger.go",
       content: this.generateLoggerMiddleware(),
     });
 
     // Health check
     files.push({
-      path: 'internal/handlers/health_handler.go',
+      path: "internal/handlers/health_handler.go",
       content: this.generateHealthHandler(),
     });
 
     // Environment file
     files.push({
-      path: '.env.example',
+      path: ".env.example",
       content: this.generateEnvExample(config),
     });
 
     // Testing setup
     if (config.testing) {
       files.push({
-        path: 'internal/testutils/testutils.go',
+        path: "internal/testutils/testutils.go",
         content: this.generateTestUtils(config),
       });
     }
@@ -169,18 +169,18 @@ export class GoPlugin implements LanguagePlugin {
     // Docker setup (if requested)
     if (config.docker) {
       files.push({
-        path: 'Dockerfile',
+        path: "Dockerfile",
         content: this.generateDockerfile(config),
       });
       files.push({
-        path: 'docker-compose.yml',
+        path: "docker-compose.yml",
         content: this.generateDockerCompose(config),
       });
     }
 
     // Makefile for common tasks
     files.push({
-      path: 'Makefile',
+      path: "Makefile",
       content: this.generateMakefile(config),
     });
 
@@ -188,14 +188,14 @@ export class GoPlugin implements LanguagePlugin {
       files,
       dependencies,
       scripts: {
-        dev: 'go run cmd/main.go',
-        build: 'go build -o bin/app cmd/main.go',
-        test: 'go test ./...',
-        'test:coverage':
-          'go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out',
-        lint: 'golangci-lint run',
-        format: 'gofmt -s -w .',
-        'mod:tidy': 'go mod tidy',
+        dev: "go run cmd/main.go",
+        build: "go build -o bin/app cmd/main.go",
+        test: "go test ./...",
+        "test:coverage":
+          "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out",
+        lint: "golangci-lint run",
+        format: "gofmt -s -w .",
+        "mod:tidy": "go mod tidy",
       },
     };
   }
@@ -204,22 +204,22 @@ export class GoPlugin implements LanguagePlugin {
     const files: GeneratedFile[] = [];
 
     // Production dockerfile
-    if (config.target === 'production') {
+    if (config.target === "production") {
       files.push({
-        path: 'Dockerfile.prod',
+        path: "Dockerfile.prod",
         content: this.generateProductionDockerfile(config),
       });
     }
 
     // CI/CD configuration
     files.push({
-      path: '.github/workflows/go.yml',
+      path: ".github/workflows/go.yml",
       content: this.generateGitHubActions(config),
     });
 
     // Build configuration
     files.push({
-      path: '.goreleaser.yml',
+      path: ".goreleaser.yml",
       content: this.generateGoReleaser(config),
     });
 
@@ -649,7 +649,7 @@ import (
 	"go.uber.org/zap"
 
 	"${config.name.toLowerCase()}/internal/config"
-	${config.database ? `"${config.name.toLowerCase()}/internal/database"` : ''}
+	${config.database ? `"${config.name.toLowerCase()}/internal/database"` : ""}
 	"${config.name.toLowerCase()}/internal/logger"
 	"${config.name.toLowerCase()}/internal/server"
 )
@@ -680,11 +680,11 @@ func main() {
 	if err := database.Migrate(db); err != nil {
 		zapLogger.Fatal("Failed to migrate database", zap.Error(err))
 	}`
-      : ''
+      : ""
   }
 
 	// Initialize server
-	srv := server.New(cfg, ${config.database ? 'db, ' : ''}zapLogger)
+	srv := server.New(cfg, ${config.database ? "db, " : ""}zapLogger)
 
 	// Start server
 	go func() {
@@ -729,8 +729,8 @@ import (
 type Config struct {
 	Address     string
 	Environment string
-	${config.database ? 'DatabaseURL string' : ''}
-	${config.auth ? 'JWTSecret   string' : ''}
+	${config.database ? "DatabaseURL string" : ""}
+	${config.auth ? "JWTSecret   string" : ""}
 	LogLevel    string
 }
 
@@ -742,8 +742,8 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Address:     getEnv("ADDRESS", ":8080"),
 		Environment: getEnv("ENVIRONMENT", "development"),
-		${config.database ? `DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable"),` : ''}
-		${config.auth ? 'JWTSecret:   getEnv("JWT_SECRET", "your-secret-key"),' : ''}
+		${config.database ? `DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable"),` : ""}
+		${config.auth ? 'JWTSecret:   getEnv("JWT_SECRET", "your-secret-key"),' : ""}
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 	}
 
@@ -880,7 +880,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	${config.database ? `"gorm.io/gorm"` : ''}
+	${config.database ? `"gorm.io/gorm"` : ""}
 
 	"${config.name.toLowerCase()}/internal/config"
 	"${config.name.toLowerCase()}/internal/handlers"
@@ -890,13 +890,13 @@ import (
 // Server represents the HTTP server
 type Server struct {
 	config *config.Config
-	${config.database ? 'db     *gorm.DB' : ''}
+	${config.database ? "db     *gorm.DB" : ""}
 	logger *zap.Logger
 	router *gin.Engine
 }
 
 // New creates a new server instance
-func New(cfg *config.Config, ${config.database ? 'db *gorm.DB, ' : ''}logger *zap.Logger) *http.Server {
+func New(cfg *config.Config, ${config.database ? "db *gorm.DB, " : ""}logger *zap.Logger) *http.Server {
 	// Set gin mode
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -1017,14 +1017,14 @@ ${
   config.database
     ? `# Database Configuration
 DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable`
-    : ''
+    : ""
 }
 
 ${
   config.auth
     ? `# Authentication
 JWT_SECRET=your-super-secret-jwt-key-change-in-production`
-    : ''
+    : ""
 }
 
 # Additional configuration as needed
@@ -1048,7 +1048,7 @@ import (
     config.database
       ? `"gorm.io/driver/sqlite"
 	"gorm.io/gorm"`
-      : ''
+      : ""
   }
 )
 
@@ -1076,7 +1076,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 
 	return db
 }`
-    : ''
+    : ""
 }
 
 // MakeRequest makes an HTTP request for testing
@@ -1176,7 +1176,7 @@ ${
 docker-run: docker-build ## Build and run Docker container
 	@echo "Running Docker container..."
 	@docker run --rm -p 8080:8080 \${APP_NAME}:latest`
-    : ''
+    : ""
 }
 
 # Development database commands (if using Docker)
@@ -1193,7 +1193,7 @@ db-down: ## Stop database container
 db-migrate: ## Run database migrations
 	@echo "Running migrations..."
 	@go run cmd/migrate.go`
-    : ''
+    : ""
 }
 `;
   }
@@ -1256,7 +1256,7 @@ CMD ["./main"]
 
   private generateDockerCompose(config: ProjectConfig): string {
     const dbService =
-      config.database === 'postgres'
+      config.database === "postgres"
         ? `
   database:
     image: postgres:15-alpine
@@ -1273,7 +1273,7 @@ CMD ["./main"]
       interval: 10s
       timeout: 5s
       retries: 5`
-        : '';
+        : "";
 
     return `version: '3.8'
 
@@ -1284,22 +1284,22 @@ services:
       - "8080:8080"
     environment:
       - ENVIRONMENT=development
-      ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}?sslmode=disable` : ''}
+      ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}?sslmode=disable` : ""}
     ${
       config.database
         ? `depends_on:
       database:
         condition: service_healthy`
-        : ''
+        : ""
     }
     restart: unless-stopped
 ${dbService}
 
 ${
-  config.database === 'postgres'
+  config.database === "postgres"
     ? `volumes:
   postgres_data:`
-    : ''
+    : ""
 }
 `;
   }
@@ -1421,7 +1421,7 @@ jobs:
         name: codecov-umbrella
 
   ${
-    config.target === 'production'
+    config.target === "production"
       ? `build:
     needs: test
     runs-on: ubuntu-latest
@@ -1444,23 +1444,23 @@ jobs:
     - name: Build Docker image
       run: |
         docker build -f Dockerfile.prod -t your-registry/app:$` +
-        '{{ github.sha }}' +
+        "{{ github.sha }}" +
         ` .
         docker tag your-registry/app:$` +
-        '{{ github.sha }}' +
+        "{{ github.sha }}" +
         ` your-registry/app:latest
     
     - name: Push Docker image
       run: |
         echo "$` +
-        '{{ secrets.DOCKER_PASSWORD }}' +
+        "{{ secrets.DOCKER_PASSWORD }}" +
         `" | docker login -u "$` +
-        '{{ secrets.DOCKER_USERNAME }}' +
+        "{{ secrets.DOCKER_USERNAME }}" +
         `" --password-stdin
         docker push your-registry/app:$` +
         `{{ github.sha }}
         docker push your-registry/app:latest`
-      : ''
+      : ""
   }
 `;
   }

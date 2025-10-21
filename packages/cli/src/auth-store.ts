@@ -1,10 +1,10 @@
-import os from 'node:os';
-import path from 'node:path';
-import fs from 'fs-extra';
-import type { AuthSession } from './types.js';
+import os from "node:os";
+import path from "node:path";
+import fs from "fs-extra";
+import type { AuthSession } from "./types.js";
 
-const AUTH_DIRECTORY = path.join(os.homedir(), '.arbiter');
-const AUTH_FILE = path.join(AUTH_DIRECTORY, 'auth.json');
+const AUTH_DIRECTORY = path.join(os.homedir(), ".arbiter");
+const AUTH_FILE = path.join(AUTH_DIRECTORY, "auth.json");
 
 export interface StoredAuthSession extends AuthSession {}
 
@@ -15,7 +15,7 @@ export async function loadAuthSession(): Promise<AuthSession | null> {
     }
 
     const data = await fs.readJSON(AUTH_FILE);
-    if (!data || typeof data !== 'object') {
+    if (!data || typeof data !== "object") {
       return null;
     }
 

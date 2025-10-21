@@ -3,12 +3,12 @@
  * Notifies Arbiter users whenever a webhook is received.
  */
 
-const DEFAULT_HANDLER_ID = 'default-webhook-notifier';
+const DEFAULT_HANDLER_ID = "default-webhook-notifier";
 
 async function defaultWebhookHandler(payload, context) {
   const { logger, provider, event, projectId } = context;
   const repository =
-    payload?.parsed?.repository?.fullName || payload?.repository?.full_name || 'unknown';
+    payload?.parsed?.repository?.fullName || payload?.repository?.full_name || "unknown";
 
   const message = `Default webhook handler triggered for ${provider} ${event}`;
   logger.info(message, { projectId, repository });
@@ -36,10 +36,10 @@ module.exports = {
   },
   metadata: {
     id: DEFAULT_HANDLER_ID,
-    name: 'Default Webhook Notifier',
-    description: 'Displays a project notification whenever any webhook event is received.',
-    version: '1.0.0',
-    supportedEvents: ['*', 'default'],
+    name: "Default Webhook Notifier",
+    description: "Displays a project notification whenever any webhook event is received.",
+    version: "1.0.0",
+    supportedEvents: ["*", "default"],
     requiredPermissions: [],
   },
 };

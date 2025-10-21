@@ -2,46 +2,46 @@
  * Tests for the Rust Plugin
  */
 
-import type { Evidence, InferenceContext, ParseContext } from '../../types';
-import { RustPlugin } from '../rust';
+import type { Evidence, InferenceContext, ParseContext } from "../../types";
+import { RustPlugin } from "../rust";
 
-describe('RustPlugin', () => {
+describe("RustPlugin", () => {
   let plugin: RustPlugin;
 
   beforeEach(() => {
     plugin = new RustPlugin();
   });
 
-  describe('supports', () => {
-    it('should support Cargo.toml files', () => {
-      expect(plugin.supports('/path/to/Cargo.toml')).toBe(true);
+  describe("supports", () => {
+    it("should support Cargo.toml files", () => {
+      expect(plugin.supports("/path/to/Cargo.toml")).toBe(true);
     });
 
-    it('should support Cargo.lock files', () => {
-      expect(plugin.supports('/path/to/Cargo.lock')).toBe(true);
+    it("should support Cargo.lock files", () => {
+      expect(plugin.supports("/path/to/Cargo.lock")).toBe(true);
     });
 
-    it('should support main.rs files', () => {
-      expect(plugin.supports('/path/to/src/main.rs')).toBe(true);
+    it("should support main.rs files", () => {
+      expect(plugin.supports("/path/to/src/main.rs")).toBe(true);
     });
 
-    it('should support lib.rs files', () => {
-      expect(plugin.supports('/path/to/src/lib.rs')).toBe(true);
+    it("should support lib.rs files", () => {
+      expect(plugin.supports("/path/to/src/lib.rs")).toBe(true);
     });
 
-    it('should support files in src directory', () => {
-      expect(plugin.supports('/path/to/src/module.rs')).toBe(true);
+    it("should support files in src directory", () => {
+      expect(plugin.supports("/path/to/src/module.rs")).toBe(true);
     });
 
-    it('should not support non-Rust files', () => {
-      expect(plugin.supports('/path/to/package.json')).toBe(false);
-      expect(plugin.supports('/path/to/README.md')).toBe(false);
-      expect(plugin.supports('/path/to/test.py')).toBe(false);
+    it("should not support non-Rust files", () => {
+      expect(plugin.supports("/path/to/package.json")).toBe(false);
+      expect(plugin.supports("/path/to/README.md")).toBe(false);
+      expect(plugin.supports("/path/to/test.py")).toBe(false);
     });
   });
 
-  describe('parse', () => {
-    it('should parse a basic Cargo.toml', async () => {
+  describe("parse", () => {
+    it("should parse a basic Cargo.toml", async () => {
       const cargoToml = `
 [package]
 name = "my-rust-app"
@@ -60,9 +60,9 @@ path = "src/bin/server.rs"
 `;
 
       const context: ParseContext = {
-        projectRoot: '/test/project',
+        projectRoot: "/test/project",
         fileIndex: {
-          root: '/test/project',
+          root: "/test/project",
           files: new Map(),
           directories: new Map(),
           timestamp: Date.now(),
@@ -72,28 +72,28 @@ path = "src/bin/server.rs"
           targetLanguages: [],
           maxFileSize: 1024 * 1024,
           includeBinaries: false,
-          patterns: { include: ['**/*'], exclude: [] },
+          patterns: { include: ["**/*"], exclude: [] },
         },
         cache: new Map(),
       };
 
-      const evidence = await plugin.parse('/test/project/Cargo.toml', cargoToml, context);
+      const evidence = await plugin.parse("/test/project/Cargo.toml", cargoToml, context);
 
       expect(evidence.length).toBeGreaterThanOrEqual(4); // package + 3 dependencies, maybe binary
 
       // Check package evidence
-      const packageEvidence = evidence.find(e => e.data.configType === 'cargo-toml');
+      const packageEvidence = evidence.find((e) => e.data.configType === "cargo-toml");
       expect(packageEvidence).toBeDefined();
-      expect(packageEvidence?.data.package.name).toBe('my-rust-app');
+      expect(packageEvidence?.data.package.name).toBe("my-rust-app");
       expect(packageEvidence?.data.hasBinaries).toBe(true);
 
       // Check binary evidence (might not be parsed due to [[bin]] array handling)
-      const binaryEvidence = evidence.find(e => e.data.configType === 'binary-definition');
+      const binaryEvidence = evidence.find((e) => e.data.configType === "binary-definition");
       expect(binaryEvidence).toBeDefined();
-      expect(binaryEvidence?.data.binaryName).toBe('server');
+      expect(binaryEvidence?.data.binaryName).toBe("server");
     });
 
-    it('should parse Rust source with main function', async () => {
+    it("should parse Rust source with main function", async () => {
       const mainRs = `
 use axum::{Router, response::Html};
 use tokio::net::TcpListener;
@@ -106,33 +106,33 @@ async fn main() {
 }
 `;
 
-      const evidence = await plugin.parse('/test/project/src/main.rs', mainRs);
+      const evidence = await plugin.parse("/test/project/src/main.rs", mainRs);
 
       expect(evidence).toHaveLength(3); // main function + async main + HTTP framework detection
 
-      const mainEvidence = evidence.find(e => e.data.functionType === 'main');
+      const mainEvidence = evidence.find((e) => e.data.functionType === "main");
       expect(mainEvidence).toBeDefined();
       expect(mainEvidence?.data.isEntryPoint).toBe(true);
 
-      const asyncMainEvidence = evidence.find(e => e.data.functionType === 'async-main');
+      const asyncMainEvidence = evidence.find((e) => e.data.functionType === "async-main");
       expect(asyncMainEvidence).toBeDefined();
-      expect(asyncMainEvidence?.data.runtime).toBe('tokio');
+      expect(asyncMainEvidence?.data.runtime).toBe("tokio");
     });
   });
 
-  describe('infer', () => {
-    it('should infer a web service from Cargo.toml with axum dependency', async () => {
+  describe("infer", () => {
+    it("should infer a web service from Cargo.toml with axum dependency", async () => {
       const cargoEvidence: Evidence = {
-        id: 'test-package',
-        source: 'rust',
-        type: 'config',
-        filePath: '/test/Cargo.toml',
+        id: "test-package",
+        source: "rust",
+        type: "config",
+        filePath: "/test/Cargo.toml",
         data: {
-          configType: 'cargo-toml',
-          package: { name: 'web-service', version: '0.1.0' },
+          configType: "cargo-toml",
+          package: { name: "web-service", version: "0.1.0" },
           hasBinaries: true,
           hasModule: false,
-          dependencies: { axum: '0.7', tokio: '1.0' },
+          dependencies: { axum: "0.7", tokio: "1.0" },
           devDependencies: {},
           buildDependencies: {},
         },
@@ -141,23 +141,23 @@ async fn main() {
       };
 
       const binaryEvidence: Evidence = {
-        id: 'test-binary',
-        source: 'rust',
-        type: 'config',
-        filePath: '/test/Cargo.toml',
+        id: "test-binary",
+        source: "rust",
+        type: "config",
+        filePath: "/test/Cargo.toml",
         data: {
-          configType: 'binary-definition',
-          binaryName: 'server',
-          binaryPath: 'src/bin/server.rs',
+          configType: "binary-definition",
+          binaryName: "server",
+          binaryPath: "src/bin/server.rs",
         },
         confidence: 0.9,
         metadata: { timestamp: Date.now(), fileSize: 100 },
       };
 
       const context: InferenceContext = {
-        projectRoot: '/test',
+        projectRoot: "/test",
         fileIndex: {
-          root: '/test',
+          root: "/test",
           files: new Map(),
           directories: new Map(),
           timestamp: Date.now(),
@@ -175,24 +175,24 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence, binaryEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe('service');
-      expect(artifacts[0].artifact.name).toBe('server');
-      expect(artifacts[0].artifact.metadata.framework).toBe('axum');
-      expect(artifacts[0].artifact.metadata.language).toBe('rust');
+      expect(artifacts[0].artifact.type).toBe("service");
+      expect(artifacts[0].artifact.name).toBe("server");
+      expect(artifacts[0].artifact.metadata.framework).toBe("axum");
+      expect(artifacts[0].artifact.metadata.language).toBe("rust");
     });
 
-    it('should infer a CLI binary from Cargo.toml with clap dependency', async () => {
+    it("should infer a CLI binary from Cargo.toml with clap dependency", async () => {
       const cargoEvidence: Evidence = {
-        id: 'test-package',
-        source: 'rust',
-        type: 'config',
-        filePath: '/test/Cargo.toml',
+        id: "test-package",
+        source: "rust",
+        type: "config",
+        filePath: "/test/Cargo.toml",
         data: {
-          configType: 'cargo-toml',
-          package: { name: 'cli-tool', version: '0.1.0' },
+          configType: "cargo-toml",
+          package: { name: "cli-tool", version: "0.1.0" },
           hasBinaries: true,
           hasModule: false,
-          dependencies: { clap: '4.0' },
+          dependencies: { clap: "4.0" },
           devDependencies: {},
           buildDependencies: {},
         },
@@ -201,12 +201,12 @@ async fn main() {
       };
 
       const mainEvidence: Evidence = {
-        id: 'test-main',
-        source: 'rust',
-        type: 'function',
-        filePath: '/test/src/main.rs',
+        id: "test-main",
+        source: "rust",
+        type: "function",
+        filePath: "/test/src/main.rs",
         data: {
-          functionType: 'main',
+          functionType: "main",
           isEntryPoint: true,
         },
         confidence: 0.95,
@@ -214,9 +214,9 @@ async fn main() {
       };
 
       const context: InferenceContext = {
-        projectRoot: '/test',
+        projectRoot: "/test",
         fileIndex: {
-          root: '/test',
+          root: "/test",
           files: new Map(),
           directories: new Map(),
           timestamp: Date.now(),
@@ -234,24 +234,24 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence, mainEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe('binary');
-      expect(artifacts[0].artifact.name).toBe('cli-tool');
-      expect(artifacts[0].artifact.tags).toContain('tool');
-      expect(artifacts[0].artifact.metadata.language).toBe('rust');
+      expect(artifacts[0].artifact.type).toBe("binary");
+      expect(artifacts[0].artifact.name).toBe("cli-tool");
+      expect(artifacts[0].artifact.tags).toContain("tool");
+      expect(artifacts[0].artifact.metadata.language).toBe("rust");
     });
 
-    it('should infer a module from Cargo.toml with lib section', async () => {
+    it("should infer a module from Cargo.toml with lib section", async () => {
       const cargoEvidence: Evidence = {
-        id: 'test-package',
-        source: 'rust',
-        type: 'config',
-        filePath: '/test/Cargo.toml',
+        id: "test-package",
+        source: "rust",
+        type: "config",
+        filePath: "/test/Cargo.toml",
         data: {
-          configType: 'cargo-toml',
-          package: { name: 'my-lib', version: '0.1.0', description: 'A useful module' },
+          configType: "cargo-toml",
+          package: { name: "my-lib", version: "0.1.0", description: "A useful module" },
           hasBinaries: false,
           hasModule: true,
-          dependencies: { serde: '1.0' },
+          dependencies: { serde: "1.0" },
           devDependencies: {},
           buildDependencies: {},
         },
@@ -260,9 +260,9 @@ async fn main() {
       };
 
       const context: InferenceContext = {
-        projectRoot: '/test',
+        projectRoot: "/test",
         fileIndex: {
-          root: '/test',
+          root: "/test",
           files: new Map(),
           directories: new Map(),
           timestamp: Date.now(),
@@ -280,29 +280,29 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe('module');
-      expect(artifacts[0].artifact.name).toBe('my-lib');
-      expect(artifacts[0].artifact.description).toBe('A useful module');
-      expect(artifacts[0].artifact.metadata.language).toBe('rust');
-      expect(artifacts[0].artifact.metadata.packageManager).toBe('cargo');
+      expect(artifacts[0].artifact.type).toBe("module");
+      expect(artifacts[0].artifact.name).toBe("my-lib");
+      expect(artifacts[0].artifact.description).toBe("A useful module");
+      expect(artifacts[0].artifact.metadata.language).toBe("rust");
+      expect(artifacts[0].artifact.metadata.packageManager).toBe("cargo");
     });
 
-    it('should treat library crates with CLI dependencies as modules when no binaries are present', async () => {
+    it("should treat library crates with CLI dependencies as modules when no binaries are present", async () => {
       const cargoEvidence: Evidence = {
-        id: 'test-package',
-        source: 'rust',
-        type: 'config',
-        filePath: '/workspace/smith/shared/Cargo.toml',
+        id: "test-package",
+        source: "rust",
+        type: "config",
+        filePath: "/workspace/smith/shared/Cargo.toml",
         data: {
-          configType: 'cargo-toml',
+          configType: "cargo-toml",
           package: {
-            name: 'smith-protocol',
-            version: '0.1.0',
-            description: 'Protocol definitions',
+            name: "smith-protocol",
+            version: "0.1.0",
+            description: "Protocol definitions",
           },
           hasBinaries: false,
           hasModule: false,
-          dependencies: { clap: '4.0', serde: '1.0' },
+          dependencies: { clap: "4.0", serde: "1.0" },
           devDependencies: {},
           buildDependencies: {},
         },
@@ -311,9 +311,9 @@ async fn main() {
       };
 
       const context: InferenceContext = {
-        projectRoot: '/workspace/smith',
+        projectRoot: "/workspace/smith",
         fileIndex: {
-          root: '/workspace/smith',
+          root: "/workspace/smith",
           files: new Map(),
           directories: new Map(),
           timestamp: Date.now(),
@@ -331,14 +331,14 @@ async fn main() {
       const artifacts = await plugin.infer([cargoEvidence], context);
 
       expect(artifacts).toHaveLength(1);
-      expect(artifacts[0].artifact.type).toBe('module');
-      expect(artifacts[0].artifact.name).toBe('smith-protocol');
+      expect(artifacts[0].artifact.type).toBe("module");
+      expect(artifacts[0].artifact.name).toBe("smith-protocol");
     });
   });
 
-  describe('name', () => {
+  describe("name", () => {
     it('should return "rust"', () => {
-      expect(plugin.name()).toBe('rust');
+      expect(plugin.name()).toBe("rust");
     });
   });
 });

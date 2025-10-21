@@ -1,21 +1,21 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import React from 'react';
-import { Card } from '../../design-system/components/Card';
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
+import { Card } from "../../design-system/components/Card";
 import {
   assemblySpecCue,
   basicRequirementsCue,
   sampleResolvedData,
   validationErrorsCue,
-} from '../../test/cue-samples';
-import { MonacoEditor } from '../Editor/MonacoEditor';
-import { CueShowcase } from './CueShowcase';
-import { CueViewer } from './CueViewer';
-import { DataViewer } from './DataViewer';
+} from "../../test/cue-samples";
+import { MonacoEditor } from "../Editor/MonacoEditor";
+import { CueShowcase } from "./CueShowcase";
+import { CueViewer } from "./CueViewer";
+import { DataViewer } from "./DataViewer";
 
 const meta: Meta = {
-  title: 'Components/CUE Visualization/Overview',
+  title: "Components/CUE Visualization/Overview",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component: `
@@ -95,7 +95,7 @@ This comprehensive system provides a production-ready solution for CUE file mana
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -157,19 +157,19 @@ const OverviewDemo = () => {
                   line: 6,
                   column: 10,
                   message: 'Cannot unify int 12345 and string "user123"',
-                  severity: 'error',
+                  severity: "error",
                 },
                 {
                   line: 34,
                   column: 10,
-                  message: 'Invalid email format',
-                  severity: 'warning',
+                  message: "Invalid email format",
+                  severity: "warning",
                 },
                 {
                   line: 62,
                   column: 14,
-                  message: 'Unknown status value',
-                  severity: 'info',
+                  message: "Unknown status value",
+                  severity: "info",
                 },
               ]}
               mode="view"
@@ -204,11 +204,11 @@ const OverviewDemo = () => {
               language="cue"
               theme="cue-light"
               options={{
-                lineNumbers: 'on',
+                lineNumbers: "on",
                 minimap: { enabled: true, scale: 0.5 },
                 scrollBeyondLastLine: false,
                 readOnly: true,
-                wordWrap: 'on',
+                wordWrap: "on",
               }}
             />
           </div>
@@ -246,9 +246,9 @@ config: {
             <DataViewer
               data={{
                 user: {
-                  name: 'John Doe',
+                  name: "John Doe",
                   age: 30,
-                  email: 'john@example.com',
+                  email: "john@example.com",
                 },
                 config: {
                   timeout: 30,
@@ -384,50 +384,50 @@ export const ValidationDemo: Story = {
               line: 6,
               column: 10,
               message: 'Cannot unify int 12345 and string "user123" - conflicting types',
-              severity: 'error',
+              severity: "error",
             },
             {
               line: 9,
               column: 6,
-              message: 'Value 150 exceeds maximum allowed age of 120',
-              severity: 'error',
+              message: "Value 150 exceeds maximum allowed age of 120",
+              severity: "error",
             },
             {
               line: 23,
               column: 1,
               message: 'Missing required field "email" in user specification',
-              severity: 'error',
+              severity: "error",
             },
             {
               line: 30,
               column: 15,
-              message: 'Cannot unify string constraint with int value 12345',
-              severity: 'error',
+              message: "Cannot unify string constraint with int value 12345",
+              severity: "error",
             },
             {
               line: 34,
               column: 10,
               message: 'String "invalid-email" does not match email pattern regex',
-              severity: 'warning',
+              severity: "warning",
             },
             {
               line: 38,
               column: 9,
-              message: 'Value -50 is below minimum allowed value 0 for score field',
-              severity: 'error',
+              message: "Value -50 is below minimum allowed value 0 for score field",
+              severity: "error",
             },
             {
               line: 52,
               column: 12,
               message: '"PATCH" is not in allowed methods list ["GET", "POST", "PUT", "DELETE"]',
-              severity: 'error',
+              severity: "error",
             },
             {
               line: 62,
               column: 14,
               message:
                 '"unknown" is not in valid status values ["active", "inactive", "pending", "suspended"]',
-              severity: 'info',
+              severity: "info",
             },
           ]}
           mode="view"

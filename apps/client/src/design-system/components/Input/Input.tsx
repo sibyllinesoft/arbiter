@@ -4,16 +4,16 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { AlertCircle, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import { type InputHTMLAttributes, type ReactNode, forwardRef } from 'react';
-import { cn, inputVariants, sizeVariants } from '../../variants';
+import { AlertCircle, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { type InputHTMLAttributes, type ReactNode, forwardRef } from "react";
+import { cn, inputVariants, sizeVariants } from "../../variants";
 
-export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   /** Input variant determines the visual style */
-  variant?: 'default' | 'error' | 'success' | 'warning';
+  variant?: "default" | "error" | "success" | "warning";
 
   /** Input size affects padding and font size */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Whether the input should take full width of container */
   fullWidth?: boolean;
@@ -67,8 +67,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   (
     {
-      variant = 'default',
-      size = 'md',
+      variant = "default",
+      size = "md",
       fullWidth = true,
       leftIcon,
       rightIcon,
@@ -89,10 +89,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       id,
       ...props
     },
-    ref
+    ref,
   ) => {
     // Determine actual variant based on state props
-    const actualVariant = error ? 'error' : warning ? 'warning' : success ? 'success' : variant;
+    const actualVariant = error ? "error" : warning ? "warning" : success ? "success" : variant;
     const actualHelperText = error || warning || success || helperText;
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -100,10 +100,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     const getValidationIcon = () => {
       if (!showValidationIcon || loading) return null;
 
-      if (error) return <AlertCircle className={cn(sizeVariants.icon[size], 'text-red-500')} />;
+      if (error) return <AlertCircle className={cn(sizeVariants.icon[size], "text-red-500")} />;
       if (warning)
-        return <AlertTriangle className={cn(sizeVariants.icon[size], 'text-amber-500')} />;
-      if (success) return <CheckCircle className={cn(sizeVariants.icon[size], 'text-green-500')} />;
+        return <AlertTriangle className={cn(sizeVariants.icon[size], "text-amber-500")} />;
+      if (success) return <CheckCircle className={cn(sizeVariants.icon[size], "text-green-500")} />;
 
       return null;
     };
@@ -113,10 +113,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
     const inputClasses = cn(
       // Base styles
-      'block w-full font-sans',
-      'transition-all duration-150 ease-in-out',
-      'placeholder:text-gray-500 dark:placeholder:text-graphite-400',
-      'focus:outline-none focus:ring-2 focus:ring-offset-0',
+      "block w-full font-sans",
+      "transition-all duration-150 ease-in-out",
+      "placeholder:text-gray-500 dark:placeholder:text-graphite-400",
+      "focus:outline-none focus:ring-2 focus:ring-offset-0",
 
       // Variant styles
       inputVariants[actualVariant],
@@ -125,27 +125,27 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       sizeVariants.input[size],
 
       // Icon padding adjustments
-      leftIcon && (size === 'lg' ? 'pl-12' : size === 'sm' ? 'pl-8' : 'pl-10'),
-      hasRightElement && (size === 'lg' ? 'pr-12' : size === 'sm' ? 'pr-8' : 'pr-10'),
+      leftIcon && (size === "lg" ? "pl-12" : size === "sm" ? "pl-8" : "pl-10"),
+      hasRightElement && (size === "lg" ? "pr-12" : size === "sm" ? "pr-8" : "pr-10"),
 
       // Loading state
-      loading && 'cursor-wait',
+      loading && "cursor-wait",
 
       // Floating label adjustments
-      floatingLabel && 'pt-6 pb-2',
+      floatingLabel && "pt-6 pb-2",
 
       // Custom className
-      className
+      className,
     );
 
     const wrapperClasses = cn(
-      'space-y-1',
-      !fullWidth && 'inline-block',
-      disabled && 'opacity-60 cursor-not-allowed',
-      wrapperClassName
+      "space-y-1",
+      !fullWidth && "inline-block",
+      disabled && "opacity-60 cursor-not-allowed",
+      wrapperClassName,
     );
 
-    const inputWrapperClasses = cn('relative', inputWrapperClassName);
+    const inputWrapperClasses = cn("relative", inputWrapperClassName);
 
     return (
       <div className={wrapperClasses}>
@@ -172,14 +172,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             <label
               htmlFor={inputId}
               className={cn(
-                'absolute left-3 transition-all duration-150 pointer-events-none',
-                'text-sm font-medium',
+                "absolute left-3 transition-all duration-150 pointer-events-none",
+                "text-sm font-medium",
                 props.value || props.defaultValue
-                  ? 'top-2 text-xs text-graphite-600'
-                  : 'top-1/2 -translate-y-1/2 text-graphite-500',
-                actualVariant === 'error' && 'text-red-600',
-                actualVariant === 'warning' && 'text-amber-600',
-                actualVariant === 'success' && 'text-green-600'
+                  ? "top-2 text-xs text-graphite-600"
+                  : "top-1/2 -translate-y-1/2 text-graphite-500",
+                actualVariant === "error" && "text-red-600",
+                actualVariant === "warning" && "text-amber-600",
+                actualVariant === "success" && "text-green-600",
               )}
             >
               {label}
@@ -191,8 +191,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {leftIcon && (
             <div
               className={cn(
-                'absolute top-1/2 -translate-y-1/2 text-graphite-400',
-                size === 'lg' ? 'left-4' : size === 'sm' ? 'left-2' : 'left-3'
+                "absolute top-1/2 -translate-y-1/2 text-graphite-400",
+                size === "lg" ? "left-4" : size === "sm" ? "left-2" : "left-3",
               )}
             >
               <div className={sizeVariants.icon[size]}>{leftIcon}</div>
@@ -207,22 +207,22 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className={inputClasses}
             aria-describedby={cn(
               actualHelperText && `${inputId}-description`,
-              description && `${inputId}-desc`
+              description && `${inputId}-desc`,
             )}
-            aria-invalid={error ? 'true' : undefined}
+            aria-invalid={error ? "true" : undefined}
             {...props}
           />
 
           {/* Right side elements */}
           <div
             className={cn(
-              'absolute top-1/2 -translate-y-1/2 flex items-center gap-1',
-              size === 'lg' ? 'right-4' : size === 'sm' ? 'right-2' : 'right-3'
+              "absolute top-1/2 -translate-y-1/2 flex items-center gap-1",
+              size === "lg" ? "right-4" : size === "sm" ? "right-2" : "right-3",
             )}
           >
             {/* Loading spinner */}
             {loading && (
-              <Loader2 className={cn(sizeVariants.icon[size], 'animate-spin text-graphite-400')} />
+              <Loader2 className={cn(sizeVariants.icon[size], "animate-spin text-graphite-400")} />
             )}
 
             {/* Validation icon */}
@@ -249,11 +249,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <p
             id={`${inputId}-description`}
             className={cn(
-              'text-sm flex items-start gap-1',
-              actualVariant === 'error' && 'text-red-600',
-              actualVariant === 'warning' && 'text-amber-600',
-              actualVariant === 'success' && 'text-green-600',
-              actualVariant === 'default' && 'text-graphite-600'
+              "text-sm flex items-start gap-1",
+              actualVariant === "error" && "text-red-600",
+              actualVariant === "warning" && "text-amber-600",
+              actualVariant === "success" && "text-green-600",
+              actualVariant === "default" && "text-graphite-600",
             )}
           >
             {actualHelperText}
@@ -261,9 +261,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
-Input.displayName = 'Input';
+Input.displayName = "Input";
 
 export default Input;

@@ -1,15 +1,15 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import chalk from 'chalk';
-import { diffLines } from 'diff';
-import yaml from 'js-yaml';
-import { withStepProgress } from '../utils/progress.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import chalk from "chalk";
+import { diffLines } from "diff";
+import yaml from "js-yaml";
+import { withStepProgress } from "../utils/progress.js";
 import {
   type ExecutionReport,
   type PlanOutput,
   createOutputManager,
   shouldUseAgentMode,
-} from '../utils/standardized-output.js';
+} from "../utils/standardized-output.js";
 
 // Strategy interfaces for execution patterns
 interface ExecutionStrategy {
@@ -42,7 +42,7 @@ export interface Epic {
   }>;
   generate: Array<{
     path: string;
-    mode: 'create' | 'patch';
+    mode: "create" | "patch";
     template: string;
     data: Record<string, any>;
     guards: string[];
@@ -70,14 +70,14 @@ export interface Epic {
     updated?: string;
     version?: string;
     tags?: string[];
-    priority?: 'low' | 'medium' | 'high' | 'critical';
+    priority?: "low" | "medium" | "high" | "critical";
     complexity?: number;
   };
 }
 
 export interface FileOperation {
   path: string;
-  mode: 'create' | 'patch';
+  mode: "create" | "patch";
   content: string;
   guards: string[];
   originalExists: boolean;
@@ -136,14 +136,14 @@ class EpicLoader {
 
   async load(): Promise<Epic> {
     try {
-      const content = await fs.readFile(this.epicPath, 'utf-8');
+      const content = await fs.readFile(this.epicPath, "utf-8");
 
       // For now, assume the epic is in JSON format or can be parsed as such
       // In a real implementation, we'd use CUE's parser
       // This is a simplified version for the prototype
-      if (content.includes('package epics') || content.includes(': epics.#Epic')) {
+      if (content.includes("package epics") || content.includes(": epics.#Epic")) {
         // CUE format - would need proper CUE parsing here
-        throw new Error('CUE parsing not yet implemented - please provide JSON format for now');
+        throw new Error("CUE parsing not yet implemented - please provide JSON format for now");
       }
 
       // Try to parse as JSON/YAML
@@ -159,14 +159,14 @@ class EpicLoader {
       return epic;
     } catch (error) {
       throw new Error(
-        `Failed to load epic from ${this.epicPath}: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to load epic from ${this.epicPath}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
 
   private validateEpic(epic: Epic): void {
     if (!epic.id || !epic.title || !epic.owners || !epic.generate) {
-      throw new Error('Invalid epic: missing required fields (id, title, owners, generate)');
+      throw new Error("Invalid epic: missing required fields (id, title, owners, generate)");
     }
   }
 }
@@ -197,7 +197,7 @@ class PlanGenerator implements PlanBuilder {
       guardViolations.push(...violations);
 
       // Check for conflicts
-      if (gen.mode === 'create' && operation.originalExists) {
+      if (gen.mode === "create" && operation.originalExists) {
         conflicts.push(`Conflict: ${gen.path} already exists but mode is 'create'`);
       }
     }
@@ -207,7 +207,7 @@ class PlanGenerator implements PlanBuilder {
     return {
       epicId: this.epic.id,
       operations: operations.sort(
-        (a, b) => sortedOrder.indexOf(a.path) - sortedOrder.indexOf(b.path)
+        (a, b) => sortedOrder.indexOf(a.path) - sortedOrder.indexOf(b.path),
       ),
       sortedOrder,
       conflicts,
@@ -215,14 +215,14 @@ class PlanGenerator implements PlanBuilder {
     };
   }
 
-  private async createFileOperation(gen: Epic['generate'][0]): Promise<FileOperation> {
+  private async createFileOperation(gen: Epic["generate"][0]): Promise<FileOperation> {
     const fullPath = path.isAbsolute(gen.path) ? gen.path : path.join(this.workspace, gen.path);
 
     // Check if file exists
     let originalExists = false;
     let originalContent: string | undefined;
     try {
-      originalContent = await fs.readFile(fullPath, 'utf-8');
+      originalContent = await fs.readFile(fullPath, "utf-8");
       originalExists = true;
     } catch {
       originalExists = false;
@@ -243,7 +243,7 @@ class PlanGenerator implements PlanBuilder {
 
   private calculateSortOrder(operations: FileOperation[]): string[] {
     return operations
-      .map(op => op.path)
+      .map((op) => op.path)
       .sort((a, b) => {
         const depthA = a.split(path.sep).length;
         const depthB = b.split(path.sep).length;
@@ -260,7 +260,7 @@ class PlanGenerator implements PlanBuilder {
     const violations: string[] = [];
 
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fs.readFile(filePath, "utf-8");
 
       for (const guard of guards) {
         if (content.includes(guard)) {
@@ -276,11 +276,11 @@ class PlanGenerator implements PlanBuilder {
 
   private async loadTemplate(templatePath: string, data: Record<string, any>): Promise<string> {
     try {
-      let content = await fs.readFile(templatePath, 'utf-8');
+      let content = await fs.readFile(templatePath, "utf-8");
 
       // Simple template variable substitution - {{.variable}}
       for (const [key, value] of Object.entries(data)) {
-        const regex = new RegExp(`\\{\\{\\.${key}\\}\\}`, 'g');
+        const regex = new RegExp(`\\{\\{\\.${key}\\}\\}`, "g");
         content = content.replace(regex, String(value));
       }
 
@@ -288,19 +288,19 @@ class PlanGenerator implements PlanBuilder {
       content = content.replace(
         /\{\{if\s+\.(\w+)\}\}(.*?)\{\{end\}\}/gs,
         (_match, varName, block) => {
-          return data[varName] ? block : '';
-        }
+          return data[varName] ? block : "";
+        },
       );
 
       return content;
     } catch (error) {
       // If template file doesn't exist, treat template as inline content
-      if ((error as any).code === 'ENOENT') {
+      if ((error as any).code === "ENOENT") {
         let content = templatePath;
 
         // Apply same substitutions to inline template
         for (const [key, value] of Object.entries(data)) {
-          const regex = new RegExp(`\\{\\{\\.${key}\\}\\}`, 'g');
+          const regex = new RegExp(`\\{\\{\\.${key}\\}\\}`, "g");
           content = content.replace(regex, String(value));
         }
 
@@ -328,11 +328,11 @@ class RealExecutionStrategy implements ExecutionStrategy {
 
     let finalContent = operation.content;
 
-    if (operation.mode === 'patch' && operation.originalExists && operation.originalContent) {
+    if (operation.mode === "patch" && operation.originalExists && operation.originalContent) {
       finalContent = this.applyPatch(operation.originalContent, operation.content);
     }
 
-    await fs.writeFile(operation.path, finalContent, 'utf-8');
+    await fs.writeFile(operation.path, finalContent, "utf-8");
   }
 
   private applyPatch(originalContent: string, patchContent: string): string {
@@ -348,7 +348,7 @@ class RealExecutionStrategy implements ExecutionStrategy {
       // Check if this block already exists in original
       const existingBlockRegex = new RegExp(
         `//\\s*ARBITER:BEGIN\\s+${markerId}.*?//\\s*ARBITER:END\\s+${markerId}`,
-        'g'
+        "g",
       );
 
       if (existingBlockRegex.test(result)) {
@@ -398,39 +398,39 @@ class ReportGenerator {
   generateDiff(operation: FileOperation): string {
     if (!operation.originalExists) {
       // New file
-      const lines = operation.content.split('\n');
-      return lines.map(line => chalk.green(`+${line}`)).join('\n');
+      const lines = operation.content.split("\n");
+      return lines.map((line) => chalk.green(`+${line}`)).join("\n");
     }
 
     if (!operation.originalContent) {
-      return chalk.red('Error: Original content not available');
+      return chalk.red("Error: Original content not available");
     }
 
     let finalContent = operation.content;
-    if (operation.mode === 'patch') {
+    if (operation.mode === "patch") {
       finalContent = this.applyPatch(operation.originalContent, operation.content);
     }
 
     const diff = diffLines(operation.originalContent, finalContent);
     return diff
-      .map(part => {
-        const lines = part.value.split('\n').filter(line => line !== '');
+      .map((part) => {
+        const lines = part.value.split("\n").filter((line) => line !== "");
         if (part.added) {
-          return lines.map(line => chalk.green(`+${line}`)).join('\n');
+          return lines.map((line) => chalk.green(`+${line}`)).join("\n");
         }
         if (part.removed) {
-          return lines.map(line => chalk.red(`-${line}`)).join('\n');
+          return lines.map((line) => chalk.red(`-${line}`)).join("\n");
         }
-        return lines.map(line => ` ${line}`).join('\n');
+        return lines.map((line) => ` ${line}`).join("\n");
       })
-      .join('\n');
+      .join("\n");
   }
 
   createExecutionSummary(
     epic: Epic,
     plan: ExecutionPlan,
-    results: ExecutionSummary['results'],
-    startTime: number
+    results: ExecutionSummary["results"],
+    startTime: number,
   ): ExecutionSummary {
     const duration = Date.now() - startTime;
     return {
@@ -438,12 +438,12 @@ class ReportGenerator {
       timestamp: new Date().toISOString(),
       filesChanged: plan.operations.length,
       testsRun: results.length,
-      testsPassed: results.filter(r => r.passed).length,
+      testsPassed: results.filter((r) => r.passed).length,
       contractsChecked: epic.contracts.types.length + epic.contracts.invariants.length,
       contractsPassed: 0, // Would be implemented with actual CUE evaluation
       rolloutGatesChecked: epic.rollout.gates.length,
       rolloutGatesPassed: 0, // Would be implemented with actual CUE evaluation
-      overallSuccess: results.every(r => r.passed),
+      overallSuccess: results.every((r) => r.passed),
       duration,
       results,
     };
@@ -451,15 +451,15 @@ class ReportGenerator {
 
   createExecutionReport(plan: ExecutionPlan, duration: number): ExecutionReport {
     return {
-      apiVersion: 'arbiter.dev/v2',
+      apiVersion: "arbiter.dev/v2",
       timestamp: Date.now(),
-      command: 'execute',
-      kind: 'ExecutionReport',
+      command: "execute",
+      kind: "ExecutionReport",
       applied: plan.operations.map((op, index) => ({
         id: `op-${index + 1}`,
         action: op.mode,
         target: path.relative(this.workspace, op.path),
-        status: 'success' as const,
+        status: "success" as const,
         duration: 100, // Would track actual duration
       })),
       report: {
@@ -473,30 +473,30 @@ class ReportGenerator {
   }
 
   createPlanOutput(plan: ExecutionPlan): {
-    planOutput: PlanOutput['plan'];
-    guards: PlanOutput['guards'];
+    planOutput: PlanOutput["plan"];
+    guards: PlanOutput["guards"];
     diff: any;
   } {
-    const planOutput: PlanOutput['plan'] = plan.operations.map((op, index) => ({
+    const planOutput: PlanOutput["plan"] = plan.operations.map((op, index) => ({
       id: `op-${index + 1}`,
-      type: 'file' as const,
-      action: op.mode === 'create' ? ('create' as const) : ('update' as const),
+      type: "file" as const,
+      action: op.mode === "create" ? ("create" as const) : ("update" as const),
       target: path.relative(this.workspace, op.path),
       content: op.content,
       dependencies: [],
       estimatedTime: 100, // milliseconds estimate
     }));
 
-    const guards: PlanOutput['guards'] = plan.guardViolations.map((violation, index) => ({
+    const guards: PlanOutput["guards"] = plan.guardViolations.map((violation, index) => ({
       id: `guard-${index + 1}`,
-      type: 'constraint' as const,
+      type: "constraint" as const,
       description: violation,
       required: true,
     }));
 
     const diff = {
-      added: plan.operations.filter(op => !op.originalExists).length,
-      modified: plan.operations.filter(op => op.originalExists).length,
+      added: plan.operations.filter((op) => !op.originalExists).length,
+      modified: plan.operations.filter((op) => op.originalExists).length,
       deleted: 0,
       summary: `${plan.operations.length} operations planned`,
     };
@@ -517,7 +517,7 @@ class ReportGenerator {
       // Check if this block already exists in original
       const existingBlockRegex = new RegExp(
         `//\\s*ARBITER:BEGIN\\s+${markerId}.*?//\\s*ARBITER:END\\s+${markerId}`,
-        'g'
+        "g",
       );
 
       if (existingBlockRegex.test(result)) {
@@ -543,8 +543,8 @@ class TestRunner {
     this.timeout = timeout;
   }
 
-  async runCliTests(tests: Epic['tests']['cli']): Promise<ExecutionSummary['results']> {
-    const results: ExecutionSummary['results'] = [];
+  async runCliTests(tests: Epic["tests"]["cli"]): Promise<ExecutionSummary["results"]> {
+    const results: ExecutionSummary["results"] = [];
 
     for (const test of tests) {
       const result = await this.runSingleCliTest(test);
@@ -567,27 +567,27 @@ class TestRunner {
     const startTime = Date.now();
 
     try {
-      const { spawn } = await import('node:child_process');
-      const [command, ...args] = test.cmd.split(' ');
+      const { spawn } = await import("node:child_process");
+      const [command, ...args] = test.cmd.split(" ");
 
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         const proc = spawn(command, args, {
-          stdio: ['pipe', 'pipe', 'pipe'],
+          stdio: ["pipe", "pipe", "pipe"],
           timeout: this.timeout,
         });
 
-        let stdout = '';
-        let stderr = '';
+        let stdout = "";
+        let stderr = "";
 
-        proc.stdout?.on('data', data => {
+        proc.stdout?.on("data", (data) => {
           stdout += data.toString();
         });
 
-        proc.stderr?.on('data', data => {
+        proc.stderr?.on("data", (data) => {
           stderr += data.toString();
         });
 
-        proc.on('close', code => {
+        proc.on("close", (code) => {
           const duration = Date.now() - startTime;
 
           if (code !== test.expectExit) {
@@ -611,7 +611,7 @@ class TestRunner {
           resolve({ passed: true, duration });
         });
 
-        proc.on('error', error => {
+        proc.on("error", (error) => {
           resolve({
             passed: false,
             error: error.message,
@@ -646,7 +646,7 @@ class LoadEpicCommand implements Command {
 
   getEpic(): Epic {
     if (!this.epic) {
-      throw new Error('Epic not loaded - execute() must be called first');
+      throw new Error("Epic not loaded - execute() must be called first");
     }
     return this.epic;
   }
@@ -666,7 +666,7 @@ class GeneratePlanCommand implements Command {
 
   getPlan(): ExecutionPlan {
     if (!this.plan) {
-      throw new Error('Plan not generated - execute() must be called first');
+      throw new Error("Plan not generated - execute() must be called first");
     }
     return this.plan;
   }
@@ -692,7 +692,7 @@ class ExecutePlanCommand implements Command {
 class RunTestsCommand implements Command {
   private testRunner: TestRunner;
   private epic: Epic;
-  private results: ExecutionSummary['results'] = [];
+  private results: ExecutionSummary["results"] = [];
   private options: ExecuteOptions;
 
   constructor(epic: Epic, options: ExecuteOptions) {
@@ -707,7 +707,7 @@ class RunTestsCommand implements Command {
     }
   }
 
-  getResults(): ExecutionSummary['results'] {
+  getResults(): ExecutionSummary["results"] {
     return this.results;
   }
 }
@@ -723,7 +723,7 @@ interface ExecutionContext {
   reportGenerator: ReportGenerator;
   epic?: Epic;
   plan?: ExecutionPlan;
-  testResults?: ExecutionSummary['results'];
+  testResults?: ExecutionSummary["results"];
 }
 
 /**
@@ -736,15 +736,15 @@ export async function executeCommand(options: ExecuteOptions): Promise<number> {
     {
       title: `Executing epic: ${path.basename(options.epic)}`,
       steps: getExecutionSteps(),
-      color: 'blue',
+      color: "blue",
     },
-    async progress => {
+    async (progress) => {
       try {
         return await executeMainWorkflow(context, options, progress);
       } catch (error) {
         return handleExecutionError(error, context);
       }
-    }
+    },
   );
 }
 
@@ -754,7 +754,7 @@ export async function executeCommand(options: ExecuteOptions): Promise<number> {
 function initializeExecutionContext(options: ExecuteOptions): ExecutionContext {
   const workspace = options.workspace || process.cwd();
   const agentMode = shouldUseAgentMode(options);
-  const outputManager = createOutputManager('execute', agentMode, options.ndjsonOutput);
+  const outputManager = createOutputManager("execute", agentMode, options.ndjsonOutput);
   const reportGenerator = new ReportGenerator(workspace);
 
   return {
@@ -771,14 +771,14 @@ function initializeExecutionContext(options: ExecuteOptions): ExecutionContext {
  */
 function getExecutionSteps(): string[] {
   return [
-    'Loading epic configuration',
-    'Analyzing targets and dependencies',
-    'Generating execution plan',
-    'Validating guards and constraints',
-    'Applying file changes',
-    'Running tests',
-    'Verifying contracts',
-    'Generating execution report',
+    "Loading epic configuration",
+    "Analyzing targets and dependencies",
+    "Generating execution plan",
+    "Validating guards and constraints",
+    "Applying file changes",
+    "Running tests",
+    "Verifying contracts",
+    "Generating execution report",
   ];
 }
 
@@ -788,7 +788,7 @@ function getExecutionSteps(): string[] {
 async function executeMainWorkflow(
   context: ExecutionContext,
   options: ExecuteOptions,
-  progress: any
+  progress: any,
 ): Promise<number> {
   await initializeExecution(context);
 
@@ -806,7 +806,7 @@ async function executeMainWorkflow(
       context.outputManager,
       context.reportGenerator,
       context.workspace,
-      context.agentMode
+      context.agentMode,
     );
   }
 
@@ -822,8 +822,8 @@ async function executeMainWorkflow(
  */
 async function initializeExecution(context: ExecutionContext): Promise<void> {
   context.outputManager.emitEvent({
-    phase: 'plan',
-    status: 'start',
+    phase: "plan",
+    status: "start",
     data: { actions: 0, guards: 0 },
   });
 
@@ -838,16 +838,16 @@ async function initializeExecution(context: ExecutionContext): Promise<void> {
 async function loadEpicConfiguration(
   context: ExecutionContext,
   options: ExecuteOptions,
-  progress: any
+  progress: any,
 ): Promise<Epic> {
-  progress.nextStep('Loading epic configuration');
+  progress.nextStep("Loading epic configuration");
   const loadEpicCommand = new LoadEpicCommand(options.epic);
   await loadEpicCommand.execute();
   const epic = loadEpicCommand.getEpic();
 
   if (!context.agentMode) {
     console.log(chalk.cyan(`📋 Epic: ${epic.title} (${epic.id})`));
-    console.log(chalk.dim(`Owners: ${epic.owners.join(', ')}`));
+    console.log(chalk.dim(`Owners: ${epic.owners.join(", ")}`));
   }
 
   return epic;
@@ -858,9 +858,9 @@ async function loadEpicConfiguration(
  */
 async function analyzeTargetsAndDependencies(
   context: ExecutionContext,
-  progress: any
+  progress: any,
 ): Promise<void> {
-  progress.nextStep('Analyzing targets and dependencies');
+  progress.nextStep("Analyzing targets and dependencies");
   // Implementation would go here
 }
 
@@ -869,9 +869,9 @@ async function analyzeTargetsAndDependencies(
  */
 async function generateExecutionPlan(
   context: ExecutionContext,
-  progress: any
+  progress: any,
 ): Promise<ExecutionPlan> {
-  progress.nextStep('Generating execution plan');
+  progress.nextStep("Generating execution plan");
   const generatePlanCommand = new GeneratePlanCommand(context.epic!, context.workspace);
   await generatePlanCommand.execute();
   return generatePlanCommand.getPlan();
@@ -883,9 +883,9 @@ async function generateExecutionPlan(
 async function validatePlanAndConstraints(
   context: ExecutionContext,
   options: ExecuteOptions,
-  progress: any
+  progress: any,
 ): Promise<number | null> {
-  progress.nextStep('Validating guards and constraints');
+  progress.nextStep("Validating guards and constraints");
 
   const validationError = validatePlan(context.plan!, context.agentMode, context.outputManager);
   if (validationError) {
@@ -897,8 +897,8 @@ async function validatePlanAndConstraints(
   await context.outputManager.writePlanFile(planOutput, guards, diff);
 
   context.outputManager.emitEvent({
-    phase: 'plan',
-    status: 'complete',
+    phase: "plan",
+    status: "complete",
     data: { actions: context.plan?.operations.length, guards: guards.length },
   });
 
@@ -915,18 +915,18 @@ async function validatePlanAndConstraints(
 async function executeFileChanges(
   context: ExecutionContext,
   options: ExecuteOptions,
-  progress: any
+  progress: any,
 ): Promise<void> {
-  progress.nextStep('Applying file changes');
+  progress.nextStep("Applying file changes");
 
   context.outputManager.emitEvent({
-    phase: 'execute',
-    status: 'start',
+    phase: "execute",
+    status: "start",
     data: { total: context.plan?.operations.length },
   });
 
   if (!context.agentMode) {
-    console.log(chalk.blue('\n🔧 Applying changes...'));
+    console.log(chalk.blue("\n🔧 Applying changes..."));
   }
 
   const executePlanCommand = new ExecutePlanCommand(context.plan!, options);
@@ -937,8 +937,8 @@ async function executeFileChanges(
   }
 
   context.outputManager.emitEvent({
-    phase: 'execute',
-    status: 'complete',
+    phase: "execute",
+    status: "complete",
     data: { progress: context.plan?.operations.length, total: context.plan?.operations.length },
   });
 }
@@ -949,21 +949,21 @@ async function executeFileChanges(
 async function runTests(
   context: ExecutionContext,
   options: ExecuteOptions,
-  progress: any
-): Promise<ExecutionSummary['results']> {
-  progress.nextStep('Running tests');
+  progress: any,
+): Promise<ExecutionSummary["results"]> {
+  progress.nextStep("Running tests");
 
   const runTestsCommand = new RunTestsCommand(context.epic!, options);
 
   if (context.epic?.tests.cli?.length > 0) {
     context.outputManager.emitEvent({
-      phase: 'test',
-      status: 'start',
+      phase: "test",
+      status: "start",
       data: { tests: context.epic?.tests.cli.length },
     });
 
     if (!context.agentMode) {
-      console.log(chalk.blue('\n🧪 Running CLI tests...'));
+      console.log(chalk.blue("\n🧪 Running CLI tests..."));
     }
 
     await runTestsCommand.execute();
@@ -972,12 +972,12 @@ async function runTests(
     await logTestResults(results, context.agentMode);
 
     context.outputManager.emitEvent({
-      phase: 'test',
-      status: 'complete',
+      phase: "test",
+      status: "complete",
       data: {
         tests: results.length,
-        passed: results.filter(r => r.passed).length,
-        failed: results.filter(r => !r.passed).length,
+        passed: results.filter((r) => r.passed).length,
+        failed: results.filter((r) => !r.passed).length,
       },
     });
 
@@ -991,8 +991,8 @@ async function runTests(
  * Log test results to console
  */
 async function logTestResults(
-  results: ExecutionSummary['results'],
-  agentMode: boolean
+  results: ExecutionSummary["results"],
+  agentMode: boolean,
 ): Promise<void> {
   if (!agentMode) {
     for (const result of results) {
@@ -1012,7 +1012,7 @@ async function logTestResults(
  * Verify contracts
  */
 async function verifyContracts(context: ExecutionContext, progress: any): Promise<void> {
-  progress.nextStep('Verifying contracts');
+  progress.nextStep("Verifying contracts");
   // Implementation would go here
 }
 
@@ -1022,16 +1022,16 @@ async function verifyContracts(context: ExecutionContext, progress: any): Promis
 async function generateFinalReports(
   context: ExecutionContext,
   options: ExecuteOptions,
-  progress: any
+  progress: any,
 ): Promise<number> {
-  progress.nextStep('Generating execution report');
+  progress.nextStep("Generating execution report");
 
   const duration = Date.now() - context.startTime;
   const summary = context.reportGenerator.createExecutionSummary(
     context.epic!,
     context.plan!,
     context.testResults!,
-    context.startTime
+    context.startTime,
   );
   const executionReport = context.reportGenerator.createExecutionReport(context.plan!, duration);
 
@@ -1049,16 +1049,16 @@ async function generateFinalReports(
 async function addJUnitReportIfNeeded(
   executionReport: ExecutionReport,
   options: ExecuteOptions,
-  context: ExecutionContext
+  context: ExecutionContext,
 ): Promise<void> {
   if (options.junit || context.testResults?.length > 0) {
     executionReport.junit = {
       name: `Epic.${context.epic?.id}`,
       tests: context.testResults?.length,
-      failures: context.testResults?.filter(r => !r.passed).length,
+      failures: context.testResults?.filter((r) => !r.passed).length,
       errors: 0,
       time: (Date.now() - context.startTime) / 1000,
-      testcases: context.testResults?.map(result => ({
+      testcases: context.testResults?.map((result) => ({
         classname: `Epic.${context.epic?.id}`,
         name: result.name,
         time: (result.duration || 0) / 1000,
@@ -1066,9 +1066,9 @@ async function addJUnitReportIfNeeded(
           ? {}
           : {
               failure: {
-                message: result.error || 'Test failed',
-                type: 'AssertionError',
-                content: result.error || 'Test failed',
+                message: result.error || "Test failed",
+                type: "AssertionError",
+                content: result.error || "Test failed",
               },
             }),
       })),
@@ -1082,7 +1082,7 @@ async function addJUnitReportIfNeeded(
 async function writeReportFiles(
   context: ExecutionContext,
   options: ExecuteOptions,
-  executionReport: ExecutionReport
+  executionReport: ExecutionReport,
 ): Promise<void> {
   await context.outputManager.writeReportFile(executionReport);
 
@@ -1096,13 +1096,13 @@ async function writeReportFiles(
  */
 async function outputFinalSummary(summary: ExecutionSummary, agentMode: boolean): Promise<void> {
   if (!agentMode) {
-    console.log(chalk.blue('\n📊 Execution Summary:'));
+    console.log(chalk.blue("\n📊 Execution Summary:"));
     console.log(`  Epic: ${summary.epicId}`);
     console.log(`  Files changed: ${summary.filesChanged}`);
     console.log(`  Tests: ${summary.testsPassed}/${summary.testsRun} passed`);
     console.log(`  Duration: ${summary.duration}ms`);
     console.log(
-      `  Overall: ${summary.overallSuccess ? chalk.green('SUCCESS') : chalk.red('FAILED')}`
+      `  Overall: ${summary.overallSuccess ? chalk.green("SUCCESS") : chalk.red("FAILED")}`,
     );
   }
 }
@@ -1114,12 +1114,12 @@ function handleExecutionError(error: unknown, context: ExecutionContext): number
   const errorMessage = error instanceof Error ? error.message : String(error);
 
   if (!context.agentMode) {
-    console.error(chalk.red('❌ Execution failed:'), errorMessage);
+    console.error(chalk.red("❌ Execution failed:"), errorMessage);
   }
 
   context.outputManager.emitEvent({
-    phase: 'execute',
-    status: 'complete',
+    phase: "execute",
+    status: "complete",
     data: { progress: 0, total: 0 },
   });
 
@@ -1134,13 +1134,13 @@ function validatePlan(plan: ExecutionPlan, agentMode: boolean, outputManager: an
   // Check for conflicts
   if (plan.conflicts.length > 0) {
     if (!agentMode) {
-      console.log(chalk.red('\n❌ Conflicts detected:'));
-      plan.conflicts.forEach(conflict => console.log(chalk.red(`  • ${conflict}`)));
+      console.log(chalk.red("\n❌ Conflicts detected:"));
+      plan.conflicts.forEach((conflict) => console.log(chalk.red(`  • ${conflict}`)));
     }
     outputManager.emitEvent({
-      phase: 'plan',
-      status: 'error',
-      error: `Conflicts detected: ${plan.conflicts.join(', ')}`,
+      phase: "plan",
+      status: "error",
+      error: `Conflicts detected: ${plan.conflicts.join(", ")}`,
     });
     return 1;
   }
@@ -1148,13 +1148,13 @@ function validatePlan(plan: ExecutionPlan, agentMode: boolean, outputManager: an
   // Check for guard violations
   if (plan.guardViolations.length > 0) {
     if (!agentMode) {
-      console.log(chalk.red('\n❌ Guard violations:'));
-      plan.guardViolations.forEach(violation => console.log(chalk.red(`  • ${violation}`)));
+      console.log(chalk.red("\n❌ Guard violations:"));
+      plan.guardViolations.forEach((violation) => console.log(chalk.red(`  • ${violation}`)));
     }
     outputManager.emitEvent({
-      phase: 'plan',
-      status: 'error',
-      error: `Guard violations: ${plan.guardViolations.join(', ')}`,
+      phase: "plan",
+      status: "error",
+      error: `Guard violations: ${plan.guardViolations.join(", ")}`,
     });
     return 1;
   }
@@ -1171,10 +1171,10 @@ async function handleDryRun(
   outputManager: any,
   reportGenerator: ReportGenerator,
   workspace: string,
-  agentMode: boolean
+  agentMode: boolean,
 ): Promise<number> {
   if (!agentMode) {
-    console.log(chalk.blue('\n📝 Dry run - showing planned changes:\n'));
+    console.log(chalk.blue("\n📝 Dry run - showing planned changes:\n"));
 
     for (const operation of plan.operations) {
       const relativePath = path.relative(workspace, operation.path);
@@ -1183,18 +1183,18 @@ async function handleDryRun(
       if (options.verbose) {
         const diffText = reportGenerator.generateDiff(operation);
         console.log(diffText);
-        console.log(''); // Empty line separator
+        console.log(""); // Empty line separator
       }
     }
 
-    console.log(chalk.blue('\n📊 Summary:'));
+    console.log(chalk.blue("\n📊 Summary:"));
     console.log(`  Files to modify: ${plan.operations.length}`);
-    console.log(`  New files: ${plan.operations.filter(op => !op.originalExists).length}`);
-    console.log(`  Existing files: ${plan.operations.filter(op => op.originalExists).length}`);
+    console.log(`  New files: ${plan.operations.filter((op) => !op.originalExists).length}`);
+    console.log(`  Existing files: ${plan.operations.filter((op) => op.originalExists).length}`);
   }
 
   // Generate diff.txt file
-  const diffContent = plan.operations.map(op => reportGenerator.generateDiff(op)).join('\n\n');
+  const diffContent = plan.operations.map((op) => reportGenerator.generateDiff(op)).join("\n\n");
   await outputManager.writeDiffFile(diffContent);
 
   outputManager.close();
@@ -1207,15 +1207,15 @@ async function handleDryRun(
 function _generateJUnitXML(summary: ExecutionSummary): string {
   const testcases = summary.results
     .map(
-      result => `
+      (result) => `
     <testcase 
       classname="Epic.${summary.epicId}" 
       name="${result.name}" 
       time="${(result.duration || 0) / 1000}">
-      ${result.passed ? '' : `<failure message="${result.error || 'Test failed'}">${result.error || 'Test failed'}</failure>`}
-    </testcase>`
+      ${result.passed ? "" : `<failure message="${result.error || "Test failed"}">${result.error || "Test failed"}</failure>`}
+    </testcase>`,
     )
-    .join('');
+    .join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuite 

@@ -12,25 +12,25 @@ export interface MigrationPath {
 export interface MigrationStep {
   id: string;
   description: string;
-  type: 'schema' | 'data' | 'config' | 'file';
+  type: "schema" | "data" | "config" | "file";
   required: boolean;
-  risk: 'low' | 'medium' | 'high';
+  risk: "low" | "medium" | "high";
 }
 
 export function getAvailableMigrationPaths(component: string): string[] {
   const paths: string[] = [];
 
   switch (component) {
-    case 'arbiter':
-      paths.push('v0.9.0 -> v1.0.0', 'v1.0.0 -> v1.1.0', 'v1.0.0 -> v2.0.0');
+    case "arbiter":
+      paths.push("v0.9.0 -> v1.0.0", "v1.0.0 -> v1.1.0", "v1.0.0 -> v2.0.0");
       break;
 
-    case 'cue':
-      paths.push('v0.5.0 -> v0.6.0', 'v0.6.0 -> v0.7.0');
+    case "cue":
+      paths.push("v0.5.0 -> v0.6.0", "v0.6.0 -> v0.7.0");
       break;
 
-    case 'node':
-      paths.push('v18.0.0 -> v20.0.0', 'v20.0.0 -> v22.0.0');
+    case "node":
+      paths.push("v18.0.0 -> v20.0.0", "v20.0.0 -> v22.0.0");
       break;
 
     default:
@@ -44,13 +44,13 @@ export function getAvailableMigrationPaths(component: string): string[] {
 export function hasMigrationPath(
   component: string,
   fromVersion: string,
-  toVersion: string
+  toVersion: string,
 ): boolean {
   const availablePaths = getAvailableMigrationPaths(component);
   const searchPath = `${fromVersion} -> ${toVersion}`;
 
   // Direct path check
-  if (availablePaths.some(path => path.includes(searchPath))) {
+  if (availablePaths.some((path) => path.includes(searchPath))) {
     return true;
   }
 
@@ -75,7 +75,7 @@ export function hasMigrationPath(
  * Parse version string into components
  */
 function parseVersion(version: string): { major: number; minor: number; patch: number } | null {
-  const cleanVersion = version.replace(/^v/, '');
+  const cleanVersion = version.replace(/^v/, "");
   const match = cleanVersion.match(/^(\d+)\.(\d+)\.(\d+)/);
 
   if (!match) return null;
@@ -90,7 +90,7 @@ function parseVersion(version: string): { major: number; minor: number; patch: n
 export function estimateMigrationDuration(
   component: string,
   fromVersion: string,
-  toVersion: string
+  toVersion: string,
 ): number {
   const fromVer = parseVersion(fromVersion);
   const toVer = parseVersion(toVersion);
@@ -113,17 +113,17 @@ export function estimateMigrationDuration(
 
   // Component-specific adjustments
   switch (component) {
-    case 'arbiter':
+    case "arbiter":
       // Arbiter migrations tend to be more complex
       baseDuration *= 2;
       break;
 
-    case 'cue':
+    case "cue":
       // CUE migrations are usually syntax changes
       baseDuration *= 1.5;
       break;
 
-    case 'node':
+    case "node":
       // Node migrations are usually just dependency updates
       baseDuration *= 0.5;
       break;

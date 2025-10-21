@@ -3,13 +3,13 @@
  * Modern approach using named tunnels with DNS routes
  */
 
-import { Hono } from 'hono';
-import { TunnelConfig, tunnelManager } from '../tunnel-manager';
+import { Hono } from "hono";
+import { TunnelConfig, tunnelManager } from "../tunnel-manager";
 
 export const tunnelRoutes = new Hono();
 
 // Get tunnel status
-tunnelRoutes.get('/status', async c => {
+tunnelRoutes.get("/status", async (c) => {
   try {
     // Try to load saved state first
     const savedInfo = await tunnelManager.loadState();
@@ -31,13 +31,13 @@ tunnelRoutes.get('/status', async c => {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       },
-      500
+      500,
     );
   }
 });
 
 // Preflight check
-tunnelRoutes.get('/preflight', async c => {
+tunnelRoutes.get("/preflight", async (c) => {
   try {
     const result = await tunnelManager.preflight();
     return c.json({
@@ -51,13 +51,13 @@ tunnelRoutes.get('/preflight', async c => {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       },
-      500
+      500,
     );
   }
 });
 
 // Setup tunnel
-tunnelRoutes.post('/setup', async c => {
+tunnelRoutes.post("/setup", async (c) => {
   try {
     const body = await c.req.json();
     const config: TunnelConfig = {
@@ -70,16 +70,16 @@ tunnelRoutes.post('/setup', async c => {
     };
 
     // Setup event listeners for logging
-    tunnelManager.removeAllListeners('log');
-    tunnelManager.removeAllListeners('error');
+    tunnelManager.removeAllListeners("log");
+    tunnelManager.removeAllListeners("error");
 
     const logs: string[] = [];
-    tunnelManager.on('log', message => {
+    tunnelManager.on("log", (message) => {
       console.log(`[TunnelManager] ${message}`);
       logs.push(message);
     });
 
-    tunnelManager.on('error', error => {
+    tunnelManager.on("error", (error) => {
       console.error(`[TunnelManager Error] ${error}`);
       logs.push(`ERROR: ${error}`);
     });
@@ -97,18 +97,18 @@ tunnelRoutes.post('/setup', async c => {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       },
-      500
+      500,
     );
   }
 });
 
 // Stop tunnel
-tunnelRoutes.post('/stop', async c => {
+tunnelRoutes.post("/stop", async (c) => {
   try {
     await tunnelManager.stop();
     return c.json({
       success: true,
-      message: 'Tunnel stopped',
+      message: "Tunnel stopped",
     });
   } catch (error) {
     return c.json(
@@ -116,18 +116,18 @@ tunnelRoutes.post('/stop', async c => {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       },
-      500
+      500,
     );
   }
 });
 
 // Teardown tunnel (complete removal)
-tunnelRoutes.post('/teardown', async c => {
+tunnelRoutes.post("/teardown", async (c) => {
   try {
     await tunnelManager.teardown();
     return c.json({
       success: true,
-      message: 'Tunnel and all resources removed',
+      message: "Tunnel and all resources removed",
     });
   } catch (error) {
     return c.json(
@@ -135,13 +135,13 @@ tunnelRoutes.post('/teardown', async c => {
         success: false,
         error: error instanceof Error ? error.message : String(error),
       },
-      500
+      500,
     );
   }
 });
 
 // Get logs (for debugging)
-tunnelRoutes.get('/logs', c => {
+tunnelRoutes.get("/logs", (c) => {
   try {
     const logs = tunnelManager.getLogs();
     return c.json({
@@ -156,15 +156,15 @@ tunnelRoutes.get('/logs', c => {
         error: error instanceof Error ? error.message : String(error),
         logs: [],
       },
-      500
+      500,
     );
   }
 });
 
 // Health check endpoint (for the tunnel to call)
-tunnelRoutes.get('/health', c => {
+tunnelRoutes.get("/health", (c) => {
   return c.json({
-    status: 'ok',
+    status: "ok",
     timestamp: new Date().toISOString(),
   });
 });

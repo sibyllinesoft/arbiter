@@ -3,9 +3,9 @@
  * Professional breadcrumb navigation with elegant separators and hover states
  * Designed for developer tools with sophisticated graphite theme
  */
-import { ChevronRight, File, Folder, Home, MoreHorizontal } from 'lucide-react';
-import React, { type ReactNode } from 'react';
-import { cn } from '../../variants';
+import { ChevronRight, File, Folder, Home, MoreHorizontal } from "lucide-react";
+import React, { type ReactNode } from "react";
+import { cn } from "../../variants";
 
 export interface BreadcrumbItem {
   id: string;
@@ -21,13 +21,13 @@ export interface BreadcrumbsProps {
   items: BreadcrumbItem[];
 
   /** Separator between items */
-  separator?: 'chevron' | 'slash' | 'dot' | ReactNode;
+  separator?: "chevron" | "slash" | "dot" | ReactNode;
 
   /** Maximum number of items to show before collapsing */
   maxItems?: number;
 
   /** Size variant */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Whether to show home icon for first item */
   showHomeIcon?: boolean;
@@ -47,30 +47,30 @@ const separators = {
 
 const sizeClasses = {
   sm: {
-    container: 'text-xs',
-    item: 'px-2 py-1',
-    icon: 'h-3 w-3',
+    container: "text-xs",
+    item: "px-2 py-1",
+    icon: "h-3 w-3",
   },
   md: {
-    container: 'text-sm',
-    item: 'px-2.5 py-1.5',
-    icon: 'h-4 w-4',
+    container: "text-sm",
+    item: "px-2.5 py-1.5",
+    icon: "h-4 w-4",
   },
   lg: {
-    container: 'text-base',
-    item: 'px-3 py-2',
-    icon: 'h-5 w-5',
+    container: "text-base",
+    item: "px-3 py-2",
+    icon: "h-5 w-5",
   },
 } as const;
 
 function BreadcrumbItem({
   item,
-  size = 'md',
+  size = "md",
   onItemClick,
   showIcon = false,
 }: {
   item: BreadcrumbItem;
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   onItemClick?: (item: BreadcrumbItem) => void;
   showIcon?: boolean;
 }) {
@@ -88,28 +88,29 @@ function BreadcrumbItem({
   const content = (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md transition-colors duration-150',
+        "inline-flex items-center gap-1.5 rounded-md transition-colors duration-150",
         sizes.item,
 
         // Current item styling
-        isCurrent && 'text-graphite-900 font-semibold',
+        isCurrent && "text-graphite-900 font-semibold",
 
         // Clickable item styling
         isClickable &&
           !isCurrent &&
-          'text-graphite-600 hover:text-graphite-900 hover:bg-graphite-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+          "text-graphite-600 hover:text-graphite-900 hover:bg-graphite-50 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1",
 
         // Non-clickable item styling
-        !isClickable && !isCurrent && 'text-graphite-600'
+        !isClickable && !isCurrent && "text-graphite-600",
       )}
+      aria-current={isCurrent ? "page" : undefined}
     >
       {/* Icon */}
       {(showIcon || item.icon) && (
         <span
           className={cn(
-            'flex-shrink-0',
+            "flex-shrink-0",
             sizes.icon,
-            isCurrent ? 'text-graphite-700' : 'text-graphite-500'
+            isCurrent ? "text-graphite-700" : "text-graphite-500",
           )}
         >
           {item.icon || <Folder className={sizes.icon} />}
@@ -126,7 +127,7 @@ function BreadcrumbItem({
         type="button"
         onClick={handleClick}
         className="inline-flex items-center"
-        aria-current={isCurrent ? 'page' : undefined}
+        aria-current={isCurrent ? "page" : undefined}
       >
         {content}
       </button>
@@ -134,7 +135,7 @@ function BreadcrumbItem({
   }
 
   return (
-    <span className="inline-flex items-center" aria-current={isCurrent ? 'page' : undefined}>
+    <span className="inline-flex items-center" aria-current={isCurrent ? "page" : undefined}>
       {content}
     </span>
   );
@@ -142,11 +143,11 @@ function BreadcrumbItem({
 
 function CollapsedItems({
   items,
-  size = 'md',
+  size = "md",
   onItemClick,
 }: {
   items: BreadcrumbItem[];
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   onItemClick?: (item: BreadcrumbItem) => void;
 }) {
   const [expanded, setExpanded] = React.useState(false);
@@ -172,10 +173,10 @@ function CollapsedItems({
       type="button"
       onClick={() => setExpanded(true)}
       className={cn(
-        'inline-flex items-center gap-1 rounded-md transition-colors duration-150',
+        "inline-flex items-center gap-1 rounded-md transition-colors duration-150",
         sizes.item,
-        'text-graphite-600 hover:text-graphite-900 hover:bg-graphite-50',
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1'
+        "text-graphite-600 hover:text-graphite-900 hover:bg-graphite-50",
+        "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1",
       )}
       aria-label={`Show ${items.length} hidden items`}
     >
@@ -186,9 +187,9 @@ function CollapsedItems({
 
 export function Breadcrumbs({
   items,
-  separator = 'chevron',
+  separator = "chevron",
   maxItems,
-  size = 'md',
+  size = "md",
   showHomeIcon = false,
   className,
   onItemClick,
@@ -210,19 +211,21 @@ export function Breadcrumbs({
   }
 
   const getSeparator = () => {
-    if (typeof separator === 'string') {
+    if (typeof separator === "string") {
       return separators[separator as keyof typeof separators];
     }
     return separator;
   };
 
   return (
-    <nav aria-label="Breadcrumb" className={cn('flex items-center', sizes.container, className)}>
+    <nav aria-label="Breadcrumb" className={cn("flex items-center", sizes.container, className)}>
       <ol className="flex items-center space-x-1">
         {displayItems.map((item, index) => {
           const isFirst = index === 0;
           const isLast = index === displayItems.length - 1;
           const showIcon = isFirst && showHomeIcon;
+
+          const itemForRender = item.current === undefined ? { ...item, current: isLast } : item;
 
           return (
             <li key={item.id} className="flex items-center">
@@ -230,7 +233,7 @@ export function Breadcrumbs({
               {isFirst && collapsedItems.length > 0 && (
                 <>
                   <BreadcrumbItem
-                    item={item}
+                    item={itemForRender}
                     size={size}
                     {...(onItemClick ? { onItemClick } : {})}
                     showIcon={showIcon}
@@ -249,7 +252,7 @@ export function Breadcrumbs({
               {(isFirst && collapsedItems.length === 0) || !isFirst ? (
                 <>
                   <BreadcrumbItem
-                    item={item}
+                    item={itemForRender}
                     size={size}
                     {...(onItemClick ? { onItemClick } : {})}
                     showIcon={showIcon}

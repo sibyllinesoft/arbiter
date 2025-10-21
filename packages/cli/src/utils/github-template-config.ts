@@ -15,8 +15,8 @@ import type {
   GitHubTemplateSet,
   GitHubTemplateSetSource,
   GitHubTemplatesConfig,
-} from '../types.js';
-import type { Epic, Task } from './sharded-storage.js';
+} from "../types.js";
+import type { Epic, Task } from "./sharded-storage.js";
 
 export interface GeneratedTemplate {
   title: string;
@@ -36,131 +36,131 @@ export interface TemplateFiles {
  */
 export const DEFAULT_TEMPLATES_CONFIG: GitHubTemplatesConfig = {
   base: {
-    name: 'arbiter-default',
-    description: 'Default Arbiter template set',
+    name: "arbiter-default",
+    description: "Default Arbiter template set",
     sections: {
-      description: '## 📋 Description\n\n{{description}}\n\n',
+      description: "## 📋 Description\n\n{{description}}\n\n",
       details: [
-        { name: 'priority', label: 'Priority', required: true, type: 'select' },
-        { name: 'status', label: 'Status', required: true, type: 'select' },
-        { name: 'assignee', label: 'Assignee', type: 'text' },
-        { name: 'estimatedHours', label: 'Estimated Hours', type: 'number' },
+        { name: "priority", label: "Priority", required: true, type: "select" },
+        { name: "status", label: "Status", required: true, type: "select" },
+        { name: "assignee", label: "Assignee", type: "text" },
+        { name: "estimatedHours", label: "Estimated Hours", type: "number" },
       ],
       acceptanceCriteria:
-        '## ✅ Acceptance Criteria\n\n{{#each acceptanceCriteria}}\n- [ ] {{this}}\n{{/each}}\n\n',
-      dependencies: '## 🔗 Dependencies\n\n{{#each dependencies}}\n- [ ] {{this}}\n{{/each}}\n\n',
+        "## ✅ Acceptance Criteria\n\n{{#each acceptanceCriteria}}\n- [ ] {{this}}\n{{/each}}\n\n",
+      dependencies: "## 🔗 Dependencies\n\n{{#each dependencies}}\n- [ ] {{this}}\n{{/each}}\n\n",
     },
-    labels: ['arbiter-managed'],
+    labels: ["arbiter-managed"],
     validation: {
       fields: [
         {
-          field: 'name',
+          field: "name",
           required: true,
           minLength: 5,
           maxLength: 80,
-          errorMessage: 'Name must be 5-80 characters',
+          errorMessage: "Name must be 5-80 characters",
         },
         {
-          field: 'description',
+          field: "description",
           required: true,
           minLength: 10,
-          errorMessage: 'Description must be at least 10 characters',
+          errorMessage: "Description must be at least 10 characters",
         },
       ],
     },
   },
   epic: {
-    inherits: 'arbiter-default',
-    name: 'Epic',
-    title: '[EPIC] {{priority}}: {{name}}',
-    labels: ['epic', 'priority:{{priority}}', 'status:{{status}}'],
+    inherits: "arbiter-default",
+    name: "Epic",
+    title: "[EPIC] {{priority}}: {{name}}",
+    labels: ["epic", "priority:{{priority}}", "status:{{status}}"],
     sections: {
       description:
-        '## 📋 Epic Description\n\n**Summary:** {{description}}\n\n**Success Criteria:** {{successCriteria}}\n\n',
+        "## 📋 Epic Description\n\n**Summary:** {{description}}\n\n**Success Criteria:** {{successCriteria}}\n\n",
       additional: {
         scope:
-          '## 🎯 Scope\n\n**In Scope:**\n{{#each inScope}}\n- {{this}}\n{{/each}}\n\n**Out of Scope:**\n{{#each outOfScope}}\n- {{this}}\n{{/each}}\n\n',
+          "## 🎯 Scope\n\n**In Scope:**\n{{#each inScope}}\n- {{this}}\n{{/each}}\n\n**Out of Scope:**\n{{#each outOfScope}}\n- {{this}}\n{{/each}}\n\n",
         tasks:
-          '## ✅ Tasks Overview\n\n**Total Tasks:** {{tasks.length}}\n\n{{#each tasks}}\n- [ ] {{this.name}} ({{this.status}})\n{{/each}}\n\n',
+          "## ✅ Tasks Overview\n\n**Total Tasks:** {{tasks.length}}\n\n{{#each tasks}}\n- [ ] {{this.name}} ({{this.status}})\n{{/each}}\n\n",
       },
     },
     validation: {
       fields: [
         {
-          field: 'priority',
+          field: "priority",
           required: true,
-          enum: ['critical', 'high', 'medium', 'low'],
-          errorMessage: 'Priority must be one of: critical, high, medium, low',
+          enum: ["critical", "high", "medium", "low"],
+          errorMessage: "Priority must be one of: critical, high, medium, low",
         },
         {
-          field: 'owner',
+          field: "owner",
           required: true,
-          errorMessage: 'Epic must have an assigned owner',
+          errorMessage: "Epic must have an assigned owner",
         },
       ],
     },
   },
   task: {
-    inherits: 'arbiter-default',
-    name: 'Task',
-    title: '[{{type}}] {{priority}}: {{name}}',
-    labels: ['type:{{type}}', 'priority:{{priority}}', 'status:{{status}}', 'epic:{{epicId}}'],
+    inherits: "arbiter-default",
+    name: "Task",
+    title: "[{{type}}] {{priority}}: {{name}}",
+    labels: ["type:{{type}}", "priority:{{priority}}", "status:{{status}}", "epic:{{epicId}}"],
     sections: {
       description:
-        '## 📋 Task Description\n\n**Summary:** {{description}}\n\n**Context:** {{context}}\n\n',
+        "## 📋 Task Description\n\n**Summary:** {{description}}\n\n**Context:** {{context}}\n\n",
       additional: {
-        implementation: '## 📝 Implementation Notes\n\n{{implementationNotes}}\n\n',
+        implementation: "## 📝 Implementation Notes\n\n{{implementationNotes}}\n\n",
         testing:
-          '## 🧪 Testing Requirements\n\n- [ ] Unit tests added/updated\n- [ ] Integration tests added/updated\n- [ ] Manual testing completed\n- [ ] Documentation updated\n\n',
+          "## 🧪 Testing Requirements\n\n- [ ] Unit tests added/updated\n- [ ] Integration tests added/updated\n- [ ] Manual testing completed\n- [ ] Documentation updated\n\n",
       },
     },
     validation: {
       fields: [
         {
-          field: 'type',
+          field: "type",
           required: true,
-          enum: ['feature', 'bug', 'refactor', 'test', 'docs', 'devops', 'research'],
+          enum: ["feature", "bug", "refactor", "test", "docs", "devops", "research"],
           errorMessage:
-            'Task type must be one of: feature, bug, refactor, test, docs, devops, research',
+            "Task type must be one of: feature, bug, refactor, test, docs, devops, research",
         },
         {
-          field: 'acceptanceCriteria',
+          field: "acceptanceCriteria",
           required: true,
-          errorMessage: 'Task must have at least one acceptance criterion',
+          errorMessage: "Task must have at least one acceptance criterion",
         },
       ],
     },
   },
   bugReport: {
-    name: 'Bug Report',
-    title: '[BUG] {{priority}}: {{title}}',
-    labels: ['type:bug', 'priority:{{priority}}'],
+    name: "Bug Report",
+    title: "[BUG] {{priority}}: {{title}}",
+    labels: ["type:bug", "priority:{{priority}}"],
     sections: {
       description:
-        '## 🐛 Bug Description\n\n**Summary:** {{summary}}\n\n**Expected Behavior:** {{expectedBehavior}}\n\n**Actual Behavior:** {{actualBehavior}}\n\n',
+        "## 🐛 Bug Description\n\n**Summary:** {{summary}}\n\n**Expected Behavior:** {{expectedBehavior}}\n\n**Actual Behavior:** {{actualBehavior}}\n\n",
       additional: {
         reproduction:
-          '## 🔄 Steps to Reproduce\n\n{{#each steps}}\n{{@index}. {{this}}\n{{/each}}\n\n',
+          "## 🔄 Steps to Reproduce\n\n{{#each steps}}\n{{@index}. {{this}}\n{{/each}}\n\n",
         environment:
-          '## 🌍 Environment\n\n- **OS:** {{os}}\n- **Browser:** {{browser}}\n- **Version:** {{version}}\n\n',
+          "## 🌍 Environment\n\n- **OS:** {{os}}\n- **Browser:** {{browser}}\n- **Version:** {{version}}\n\n",
         impact:
-          '## 📊 Impact Assessment\n\n- **Priority:** {{priority}}\n- **Affected Users:** {{affectedUsers}}\n- **Workaround Available:** {{workaround}}\n\n',
+          "## 📊 Impact Assessment\n\n- **Priority:** {{priority}}\n- **Affected Users:** {{affectedUsers}}\n- **Workaround Available:** {{workaround}}\n\n",
       },
     },
   },
   featureRequest: {
-    name: 'Feature Request',
-    title: '[FEATURE] {{title}}',
-    labels: ['type:feature', 'priority:{{priority}}'],
+    name: "Feature Request",
+    title: "[FEATURE] {{title}}",
+    labels: ["type:feature", "priority:{{priority}}"],
     sections: {
       description:
-        '## 💡 Feature Description\n\n**Summary:** {{summary}}\n\n**Problem Statement:** {{problemStatement}}\n\n**Proposed Solution:** {{proposedSolution}}\n\n',
+        "## 💡 Feature Description\n\n**Summary:** {{summary}}\n\n**Problem Statement:** {{problemStatement}}\n\n**Proposed Solution:** {{proposedSolution}}\n\n",
       additional: {
         useCases:
-          '## 🎯 Use Cases\n\n{{#each useCases}}\n{{@index}}. **As a {{userType}}, I want {{goal}} so that {{benefit}}**\n{{/each}}\n\n',
-        alternatives: '## 🔄 Alternatives Considered\n\n{{alternatives}}\n\n',
+          "## 🎯 Use Cases\n\n{{#each useCases}}\n{{@index}}. **As a {{userType}}, I want {{goal}} so that {{benefit}}**\n{{/each}}\n\n",
+        alternatives: "## 🔄 Alternatives Considered\n\n{{alternatives}}\n\n",
         impact:
-          '## 📊 Impact Assessment\n\n- **Priority:** {{priority}}\n- **Effort Estimate:** {{effortEstimate}}\n- **Potential Users:** {{potentialUsers}}\n\n',
+          "## 📊 Impact Assessment\n\n- **Priority:** {{priority}}\n- **Effort Estimate:** {{effortEstimate}}\n- **Potential Users:** {{potentialUsers}}\n\n",
       },
     },
   },
@@ -169,67 +169,67 @@ export const DEFAULT_TEMPLATES_CONFIG: GitHubTemplatesConfig = {
       blankIssuesEnabled: false,
       contactLinks: [
         {
-          name: '📚 Documentation',
-          url: 'https://github.com/{{owner}}/{{repo}}/wiki',
-          about: 'Check our documentation for common questions',
+          name: "📚 Documentation",
+          url: "https://github.com/{{owner}}/{{repo}}/wiki",
+          about: "Check our documentation for common questions",
         },
         {
-          name: '💬 Discussions',
-          url: 'https://github.com/{{owner}}/{{repo}}/discussions',
-          about: 'Ask questions and discuss with the community',
+          name: "💬 Discussions",
+          url: "https://github.com/{{owner}}/{{repo}}/discussions",
+          about: "Ask questions and discuss with the community",
         },
       ],
     },
     labels: [
       // Type labels
-      { name: 'type:feature', color: '0e8a16', description: 'New feature or enhancement' },
-      { name: 'type:bug', color: 'd73a49', description: 'Something is not working' },
+      { name: "type:feature", color: "0e8a16", description: "New feature or enhancement" },
+      { name: "type:bug", color: "d73a49", description: "Something is not working" },
       {
-        name: 'type:refactor',
-        color: 'fbca04',
-        description: 'Code improvement without new features',
+        name: "type:refactor",
+        color: "fbca04",
+        description: "Code improvement without new features",
       },
-      { name: 'type:test', color: 'c5def5', description: 'Testing related changes' },
-      { name: 'type:docs', color: '0052cc', description: 'Documentation improvements' },
-      { name: 'type:devops', color: '5319e7', description: 'DevOps and infrastructure changes' },
-      { name: 'type:research', color: 'd4c5f9', description: 'Research and exploration task' },
+      { name: "type:test", color: "c5def5", description: "Testing related changes" },
+      { name: "type:docs", color: "0052cc", description: "Documentation improvements" },
+      { name: "type:devops", color: "5319e7", description: "DevOps and infrastructure changes" },
+      { name: "type:research", color: "d4c5f9", description: "Research and exploration task" },
 
       // Priority labels
       {
-        name: 'priority:critical',
-        color: 'b60205',
-        description: 'Critical priority - must be addressed immediately',
+        name: "priority:critical",
+        color: "b60205",
+        description: "Critical priority - must be addressed immediately",
       },
       {
-        name: 'priority:high',
-        color: 'ff9500',
-        description: 'High priority - should be addressed soon',
+        name: "priority:high",
+        color: "ff9500",
+        description: "High priority - should be addressed soon",
       },
       {
-        name: 'priority:medium',
-        color: 'fbca04',
-        description: 'Medium priority - normal timeline',
+        name: "priority:medium",
+        color: "fbca04",
+        description: "Medium priority - normal timeline",
       },
-      { name: 'priority:low', color: '0e8a16', description: 'Low priority - can wait' },
+      { name: "priority:low", color: "0e8a16", description: "Low priority - can wait" },
 
       // Status labels
-      { name: 'status:planning', color: 'f0f0f0', description: 'In planning phase' },
-      { name: 'status:in_progress', color: '0052cc', description: 'Currently being worked on' },
-      { name: 'status:review', color: 'fbca04', description: 'In review' },
-      { name: 'status:testing', color: 'c5def5', description: 'In testing phase' },
-      { name: 'status:completed', color: '0e8a16', description: 'Completed' },
-      { name: 'status:cancelled', color: 'd93f0b', description: 'Cancelled' },
+      { name: "status:planning", color: "f0f0f0", description: "In planning phase" },
+      { name: "status:in_progress", color: "0052cc", description: "Currently being worked on" },
+      { name: "status:review", color: "fbca04", description: "In review" },
+      { name: "status:testing", color: "c5def5", description: "In testing phase" },
+      { name: "status:completed", color: "0e8a16", description: "Completed" },
+      { name: "status:cancelled", color: "d93f0b", description: "Cancelled" },
 
       // Special labels
-      { name: 'epic', color: '5319e7', description: 'Large feature epic' },
-      { name: 'needs-review', color: 'fbca04', description: 'Requires code review' },
-      { name: 'needs-testing', color: 'c5def5', description: 'Requires testing' },
+      { name: "epic", color: "5319e7", description: "Large feature epic" },
+      { name: "needs-review", color: "fbca04", description: "Requires code review" },
+      { name: "needs-testing", color: "c5def5", description: "Requires testing" },
       {
-        name: 'parallel-safe',
-        color: '0e8a16',
-        description: 'Can run in parallel with other tasks',
+        name: "parallel-safe",
+        color: "0e8a16",
+        description: "Can run in parallel with other tasks",
       },
-      { name: 'arbiter-managed', color: 'd4c5f9', description: 'Managed by Arbiter CLI' },
+      { name: "arbiter-managed", color: "d4c5f9", description: "Managed by Arbiter CLI" },
     ],
   },
 };
@@ -244,32 +244,32 @@ export class ConfigurableTemplateManager {
   }
 
   private isFileTemplateRef(
-    value: GitHubTemplateConfig | GitHubFileTemplateRef
+    value: GitHubTemplateConfig | GitHubFileTemplateRef,
   ): value is GitHubFileTemplateRef {
     return (value as GitHubFileTemplateRef).file !== undefined;
   }
 
   private isTemplateSet(value: GitHubTemplateSetSource): value is GitHubTemplateSet {
     return (
-      typeof (value as GitHubTemplateSet).name === 'string' &&
+      typeof (value as GitHubTemplateSet).name === "string" &&
       value !== undefined &&
-      typeof (value as GitHubTemplateSet).sections?.description === 'string'
+      typeof (value as GitHubTemplateSet).sections?.description === "string"
     );
   }
 
   private ensureTemplateConfig(
-    value: GitHubTemplateConfig | GitHubFileTemplateRef
+    value: GitHubTemplateConfig | GitHubFileTemplateRef,
   ): GitHubTemplateConfig {
     if (this.isFileTemplateRef(value)) {
       throw new Error(
-        `File-based templates are not supported by ConfigurableTemplateManager. Use FileBasedTemplateManager for ${value.file}.`
+        `File-based templates are not supported by ConfigurableTemplateManager. Use FileBasedTemplateManager for ${value.file}.`,
       );
     }
     return value;
   }
 
   private extractTemplateMetadata(
-    value: GitHubTemplateConfig | GitHubFileTemplateRef | undefined
+    value: GitHubTemplateConfig | GitHubFileTemplateRef | undefined,
   ): { name?: string; description?: string } {
     if (!value) return {};
     if (this.isFileTemplateRef(value)) {
@@ -294,8 +294,8 @@ export class ConfigurableTemplateManager {
     }
 
     // Load default base template if not overridden
-    if (!this.baseTemplates.has('arbiter-default')) {
-      this.baseTemplates.set('arbiter-default', DEFAULT_TEMPLATES_CONFIG.base as GitHubTemplateSet);
+    if (!this.baseTemplates.has("arbiter-default")) {
+      this.baseTemplates.set("arbiter-default", DEFAULT_TEMPLATES_CONFIG.base as GitHubTemplateSet);
     }
   }
 
@@ -311,7 +311,7 @@ export class ConfigurableTemplateManager {
 
     // Generate template content
     const context = this.createTemplateContext(epic, options);
-    const title = this.renderTemplate(resolvedConfig.title || '{{name}}', context);
+    const title = this.renderTemplate(resolvedConfig.title || "{{name}}", context);
     const body = this.generateTemplateBody(resolvedConfig.sections, context);
     const labels = this.renderLabels(resolvedConfig.labels || [], context);
     const assignees = this.getAssignees(epic, resolvedConfig.assignees);
@@ -330,7 +330,7 @@ export class ConfigurableTemplateManager {
   generateTaskTemplate(
     task: Task,
     epic: Epic,
-    options: GitHubTemplateOptions = {}
+    options: GitHubTemplateOptions = {},
   ): GeneratedTemplate {
     const templateConfig = this.config.task || DEFAULT_TEMPLATES_CONFIG.task!;
     const resolvedConfig = this.resolveTemplateConfig(templateConfig);
@@ -340,7 +340,7 @@ export class ConfigurableTemplateManager {
 
     // Generate template content
     const context = this.createTemplateContext({ ...task, epic }, options);
-    const title = this.renderTemplate(resolvedConfig.title || '{{name}}', context);
+    const title = this.renderTemplate(resolvedConfig.title || "{{name}}", context);
     const body = this.generateTemplateBody(resolvedConfig.sections, context);
     const labels = this.renderLabels(resolvedConfig.labels || [], context);
     const assignees = this.getAssignees(task, resolvedConfig.assignees);
@@ -360,33 +360,33 @@ export class ConfigurableTemplateManager {
     const files: TemplateFiles = {};
 
     // Generate issue templates
-    files['.github/ISSUE_TEMPLATE/epic.md'] = this.generateIssueTemplateFile(
+    files[".github/ISSUE_TEMPLATE/epic.md"] = this.generateIssueTemplateFile(
       this.config.epic || DEFAULT_TEMPLATES_CONFIG.epic!,
-      'epic'
+      "epic",
     );
 
-    files['.github/ISSUE_TEMPLATE/task.md'] = this.generateIssueTemplateFile(
+    files[".github/ISSUE_TEMPLATE/task.md"] = this.generateIssueTemplateFile(
       this.config.task || DEFAULT_TEMPLATES_CONFIG.task!,
-      'task'
+      "task",
     );
 
-    files['.github/ISSUE_TEMPLATE/bug_report.md'] = this.generateIssueTemplateFile(
+    files[".github/ISSUE_TEMPLATE/bug_report.md"] = this.generateIssueTemplateFile(
       this.config.bugReport || DEFAULT_TEMPLATES_CONFIG.bugReport!,
-      'bug'
+      "bug",
     );
 
-    files['.github/ISSUE_TEMPLATE/feature_request.md'] = this.generateIssueTemplateFile(
+    files[".github/ISSUE_TEMPLATE/feature_request.md"] = this.generateIssueTemplateFile(
       this.config.featureRequest || DEFAULT_TEMPLATES_CONFIG.featureRequest!,
-      'feature'
+      "feature",
     );
 
     // Generate configuration files
     if (this.config.repositoryConfig?.issueConfig) {
-      files['.github/config.yml'] = this.generateConfigFile();
+      files[".github/config.yml"] = this.generateConfigFile();
     }
 
     if (this.config.repositoryConfig?.labels) {
-      files['.github/labels.yml'] = this.generateLabelsFile();
+      files[".github/labels.yml"] = this.generateLabelsFile();
     }
 
     return files;
@@ -396,7 +396,7 @@ export class ConfigurableTemplateManager {
    * Resolve template configuration with inheritance
    */
   private resolveTemplateConfig(
-    config: GitHubTemplateConfig | GitHubFileTemplateRef
+    config: GitHubTemplateConfig | GitHubFileTemplateRef,
   ): GitHubTemplateConfig {
     const normalizedConfig = this.ensureTemplateConfig(config);
 
@@ -468,8 +468,8 @@ export class ConfigurableTemplateManager {
       /\{\{#if\s+(\w+)\}\}(.*?)\{\{\/if\}\}/gs,
       (match, condition, content) => {
         const value = this.getNestedValue(context, condition);
-        return value ? content : '';
-      }
+        return value ? content : "";
+      },
     );
 
     // Handle each blocks {{#each array}}...{{/each}}
@@ -477,7 +477,7 @@ export class ConfigurableTemplateManager {
       /\{\{#each\s+(\w+)\}\}(.*?)\{\{\/each\}\}/gs,
       (match, arrayKey, content) => {
         const array = this.getNestedValue(context, arrayKey);
-        if (!Array.isArray(array)) return '';
+        if (!Array.isArray(array)) return "";
 
         return array
           .map((item, index) => {
@@ -486,8 +486,8 @@ export class ConfigurableTemplateManager {
             itemContent = itemContent.replace(/\{\{@index\}\}/g, String(index + 1));
             return itemContent;
           })
-          .join('');
-      }
+          .join("");
+      },
     );
 
     return result.trim();
@@ -497,7 +497,7 @@ export class ConfigurableTemplateManager {
    * Get nested value from context
    */
   private getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => current?.[key], obj);
+    return path.split(".").reduce((current, key) => current?.[key], obj);
   }
 
   /**
@@ -505,11 +505,11 @@ export class ConfigurableTemplateManager {
    */
   private generateTemplateBody(
     sections: Partial<GitHubTemplateSections> | undefined,
-    context: Record<string, any>
+    context: Record<string, any>,
   ): string {
-    if (!sections) return '';
+    if (!sections) return "";
 
-    let body = '';
+    let body = "";
 
     // Add description section
     if (sections.description) {
@@ -518,17 +518,17 @@ export class ConfigurableTemplateManager {
 
     // Add details table
     if (sections.details && sections.details.length > 0) {
-      body += '## 📊 Details\n\n';
-      body += '| Field | Value |\n';
-      body += '|-------|-------|\n';
+      body += "## 📊 Details\n\n";
+      body += "| Field | Value |\n";
+      body += "|-------|-------|\n";
 
-      sections.details.forEach(field => {
+      sections.details.forEach((field) => {
         const value = this.getNestedValue(context, field.name);
-        const displayValue = value !== undefined ? String(value) : field.default || 'Not specified';
+        const displayValue = value !== undefined ? String(value) : field.default || "Not specified";
         body += `| **${field.label}** | \`${displayValue}\` |\n`;
       });
 
-      body += '\n';
+      body += "\n";
     }
 
     // Add acceptance criteria section
@@ -556,8 +556,8 @@ export class ConfigurableTemplateManager {
    */
   private renderLabels(labelTemplates: string[], context: Record<string, any>): string[] {
     return labelTemplates
-      .map(template => this.renderTemplate(template, context))
-      .filter(label => label.length > 0);
+      .map((template) => this.renderTemplate(template, context))
+      .filter((label) => label.length > 0);
   }
 
   /**
@@ -584,12 +584,12 @@ export class ConfigurableTemplateManager {
   /**
    * Validate data against template validation rules
    */
-  private validateData(data: any, validation?: GitHubTemplateConfig['validation']): void {
+  private validateData(data: any, validation?: GitHubTemplateConfig["validation"]): void {
     if (!validation?.fields) return;
 
     const errors: string[] = [];
 
-    validation.fields.forEach(rule => {
+    validation.fields.forEach((rule) => {
       const value = this.getNestedValue(data, rule.field);
 
       if (rule.required && (!value || (Array.isArray(value) && value.length === 0))) {
@@ -600,13 +600,13 @@ export class ConfigurableTemplateManager {
       if (value) {
         if (rule.minLength && String(value).length < rule.minLength) {
           errors.push(
-            rule.errorMessage || `${rule.field} must be at least ${rule.minLength} characters`
+            rule.errorMessage || `${rule.field} must be at least ${rule.minLength} characters`,
           );
         }
 
         if (rule.maxLength && String(value).length > rule.maxLength) {
           errors.push(
-            rule.errorMessage || `${rule.field} must be at most ${rule.maxLength} characters`
+            rule.errorMessage || `${rule.field} must be at most ${rule.maxLength} characters`,
           );
         }
 
@@ -615,13 +615,13 @@ export class ConfigurableTemplateManager {
         }
 
         if (rule.enum && !rule.enum.includes(String(value))) {
-          errors.push(rule.errorMessage || `${rule.field} must be one of: ${rule.enum.join(', ')}`);
+          errors.push(rule.errorMessage || `${rule.field} must be one of: ${rule.enum.join(", ")}`);
         }
       }
     });
 
     if (errors.length > 0) {
-      throw new Error(`Template validation failed:\n${errors.map(e => `  • ${e}`).join('\n')}`);
+      throw new Error(`Template validation failed:\n${errors.map((e) => `  • ${e}`).join("\n")}`);
     }
   }
 
@@ -630,21 +630,21 @@ export class ConfigurableTemplateManager {
    */
   private generateIssueTemplateFile(
     config: GitHubTemplateConfig | GitHubFileTemplateRef,
-    type: string
+    type: string,
   ): string {
     const resolvedConfig = this.resolveTemplateConfig(config);
 
-    let template = '---\n';
+    let template = "---\n";
     template += `name: ${resolvedConfig.name || type}\n`;
     template += `about: Create a new ${resolvedConfig.name || type}\n`;
-    template += `title: '${resolvedConfig.title?.replace(/\{\{.*?\}\}/g, '')}'\n`;
-    template += `labels: '${(resolvedConfig.labels || []).join(',').replace(/\{\{.*?\}\}/g, '')}'\n`;
-    template += `assignees: '${(resolvedConfig.assignees || []).join(',')}'\n`;
-    template += '---\n\n';
+    template += `title: '${resolvedConfig.title?.replace(/\{\{.*?\}\}/g, "")}'\n`;
+    template += `labels: '${(resolvedConfig.labels || []).join(",").replace(/\{\{.*?\}\}/g, "")}'\n`;
+    template += `assignees: '${(resolvedConfig.assignees || []).join(",")}'\n`;
+    template += "---\n\n";
 
     // Add template body structure
-    template += '<!-- DO NOT EDIT: Arbiter ID will be filled automatically -->\n';
-    template += '<!-- arbiter-id:  -->\n';
+    template += "<!-- DO NOT EDIT: Arbiter ID will be filled automatically -->\n";
+    template += "<!-- arbiter-id:  -->\n";
     template += `<!-- arbiter-type: ${type} -->\n\n`;
 
     // Add template sections as placeholders
@@ -660,14 +660,14 @@ export class ConfigurableTemplateManager {
    */
   private generateConfigFile(): string {
     const config = this.config.repositoryConfig?.issueConfig;
-    if (!config) return '';
+    if (!config) return "";
 
-    let content = '# Configuration for GitHub features\n\n';
+    let content = "# Configuration for GitHub features\n\n";
     content += `blank_issues_enabled: ${config.blankIssuesEnabled || false}\n`;
 
     if (config.contactLinks) {
-      content += 'contact_links:\n';
-      config.contactLinks.forEach(link => {
+      content += "contact_links:\n";
+      config.contactLinks.forEach((link) => {
         content += `  - name: ${link.name}\n`;
         content += `    url: ${link.url}\n`;
         content += `    about: ${link.about}\n`;
@@ -682,11 +682,11 @@ export class ConfigurableTemplateManager {
    */
   private generateLabelsFile(): string {
     const labels = this.config.repositoryConfig?.labels;
-    if (!labels) return '';
+    if (!labels) return "";
 
-    let content = '# GitHub Labels for Arbiter-managed projects\n\n';
+    let content = "# GitHub Labels for Arbiter-managed projects\n\n";
 
-    labels.forEach(label => {
+    labels.forEach((label) => {
       content += `- name: '${label.name}'\n`;
       content += `  color: '${label.color}'\n`;
       if (label.description) {
@@ -702,15 +702,15 @@ export class ConfigurableTemplateManager {
    */
   private getStatusEmoji(status: string): string {
     const emojis: Record<string, string> = {
-      todo: '📋',
-      planning: '📋',
-      in_progress: '🚧',
-      review: '👀',
-      testing: '🧪',
-      completed: '✅',
-      cancelled: '❌',
+      todo: "📋",
+      planning: "📋",
+      in_progress: "🚧",
+      review: "👀",
+      testing: "🧪",
+      completed: "✅",
+      cancelled: "❌",
     };
-    return emojis[status] || '❓';
+    return emojis[status] || "❓";
   }
 
   /**
@@ -722,8 +722,8 @@ export class ConfigurableTemplateManager {
     if (this.config.epic) {
       const meta = this.extractTemplateMetadata(this.config.epic);
       templates.push({
-        name: meta.name || 'epic',
-        type: 'epic',
+        name: meta.name || "epic",
+        type: "epic",
         description: meta.description,
       });
     }
@@ -731,8 +731,8 @@ export class ConfigurableTemplateManager {
     if (this.config.task) {
       const meta = this.extractTemplateMetadata(this.config.task);
       templates.push({
-        name: meta.name || 'task',
-        type: 'task',
+        name: meta.name || "task",
+        type: "task",
         description: meta.description,
       });
     }
@@ -740,8 +740,8 @@ export class ConfigurableTemplateManager {
     if (this.config.bugReport) {
       const meta = this.extractTemplateMetadata(this.config.bugReport);
       templates.push({
-        name: meta.name || 'bug_report',
-        type: 'bug',
+        name: meta.name || "bug_report",
+        type: "bug",
         description: meta.description,
       });
     }
@@ -749,8 +749,8 @@ export class ConfigurableTemplateManager {
     if (this.config.featureRequest) {
       const meta = this.extractTemplateMetadata(this.config.featureRequest);
       templates.push({
-        name: meta.name || 'feature_request',
-        type: 'feature',
+        name: meta.name || "feature_request",
+        type: "feature",
         description: meta.description,
       });
     }
@@ -766,10 +766,10 @@ export class ConfigurableTemplateManager {
 
     // Validate base template references
     const templateConfigs = [
-      { name: 'epic', config: this.config.epic },
-      { name: 'task', config: this.config.task },
-      { name: 'bugReport', config: this.config.bugReport },
-      { name: 'featureRequest', config: this.config.featureRequest },
+      { name: "epic", config: this.config.epic },
+      { name: "task", config: this.config.task },
+      { name: "bugReport", config: this.config.bugReport },
+      { name: "featureRequest", config: this.config.featureRequest },
     ];
 
     templateConfigs.forEach(({ name, config }) => {

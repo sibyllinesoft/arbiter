@@ -4,15 +4,15 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { type HTMLAttributes, type ReactNode, forwardRef } from 'react';
-import { cn } from '../../variants';
+import { type HTMLAttributes, type ReactNode, forwardRef } from "react";
+import { cn } from "../../variants";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /** Card variant determines the visual style and interaction behavior */
-  variant?: 'default' | 'interactive' | 'elevated' | 'outlined' | 'ghost';
+  variant?: "default" | "interactive" | "elevated" | "outlined" | "ghost";
 
   /** Card size affects padding and border radius */
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: "sm" | "md" | "lg" | "xl";
 
   /** Card header content */
   header?: ReactNode;
@@ -63,8 +63,8 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
 export const Card = forwardRef<HTMLDivElement, CardProps>(
   (
     {
-      variant = 'default',
-      size = 'md',
+      variant = "default",
+      size = "md",
       header,
       title,
       subtitle,
@@ -83,41 +83,41 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       onClick,
       ...props
     },
-    ref
+    ref,
   ) => {
     // Card size classes
     const sizeClasses = {
       sm: {
-        card: 'rounded-lg',
-        padding: 'p-3',
-        headerPadding: 'px-3 pt-3',
-        bodyPadding: 'px-3',
-        footerPadding: 'px-3 pb-3',
-        gap: 'space-y-2',
+        card: "rounded-lg",
+        padding: "p-3",
+        headerPadding: "px-3 pt-3",
+        bodyPadding: "px-3",
+        footerPadding: "px-3 pb-3",
+        gap: "space-y-2",
       },
       md: {
-        card: 'rounded-lg',
-        padding: 'p-4',
-        headerPadding: 'px-4 pt-4',
-        bodyPadding: 'px-4',
-        footerPadding: 'px-4 pb-4',
-        gap: 'space-y-3',
+        card: "rounded-lg",
+        padding: "p-4",
+        headerPadding: "px-4 pt-4",
+        bodyPadding: "px-4",
+        footerPadding: "px-4 pb-4",
+        gap: "space-y-3",
       },
       lg: {
-        card: 'rounded-xl',
-        padding: 'p-6',
-        headerPadding: 'px-6 pt-6',
-        bodyPadding: 'px-6',
-        footerPadding: 'px-6 pb-6',
-        gap: 'space-y-4',
+        card: "rounded-xl",
+        padding: "p-6",
+        headerPadding: "px-6 pt-6",
+        bodyPadding: "px-6",
+        footerPadding: "px-6 pb-6",
+        gap: "space-y-4",
       },
       xl: {
-        card: 'rounded-xl',
-        padding: 'p-8',
-        headerPadding: 'px-8 pt-8',
-        bodyPadding: 'px-8',
-        footerPadding: 'px-8 pb-8',
-        gap: 'space-y-6',
+        card: "rounded-xl",
+        padding: "p-8",
+        headerPadding: "px-8 pt-8",
+        bodyPadding: "px-8",
+        footerPadding: "px-8 pb-8",
+        gap: "space-y-6",
       },
     };
 
@@ -126,43 +126,43 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     // Card variant classes
     const variantClasses = {
       default: cn(
-        'bg-white dark:bg-graphite-800 border border-[#2f394b] dark:border-[#242b3a] shadow-sm dark:shadow-graphite-900/10',
+        "bg-white dark:bg-graphite-800 border border-[#2f394b] dark:border-[#242b3a] shadow-sm dark:shadow-graphite-900/10",
         hoverable &&
-          'hover:border-gray-300 dark:hover:border-graphite-600 hover:shadow-md dark:hover:shadow-graphite-900/20',
+          "hover:border-gray-300 dark:hover:border-graphite-600 hover:shadow-md dark:hover:shadow-graphite-900/20",
         selected &&
-          'border-blue-500 dark:border-blue-400 ring-1 ring-blue-500 dark:ring-blue-400 ring-opacity-20'
+          "border-blue-500 dark:border-blue-400 ring-1 !ring-blue-500 dark:ring-blue-400 ring-opacity-20",
       ),
       interactive: cn(
-        'bg-white dark:bg-graphite-800 border border-[#2f394b] dark:border-[#242b3a] shadow-sm dark:shadow-graphite-900/10',
-        'hover:border-gray-300 dark:hover:border-graphite-600 hover:shadow-md dark:hover:shadow-graphite-900/20 hover:shadow-graphite-900/5',
-        'active:scale-[0.998] active:shadow-sm',
-        'transition-all duration-150 ease-out cursor-pointer',
+        "bg-white dark:bg-graphite-800 border border-[#2f394b] dark:border-[#242b3a] shadow-sm dark:shadow-graphite-900/10",
+        "hover:border-gray-300 dark:hover:border-graphite-600 hover:shadow-md dark:hover:shadow-graphite-900/20 hover:shadow-graphite-900/5",
+        "active:scale-[0.998] active:shadow-sm",
+        "transition-all duration-150 ease-out cursor-pointer",
         selected &&
-          'border-blue-500 dark:border-blue-400 ring-1 ring-blue-500 dark:ring-blue-400 ring-opacity-20',
+          "border-blue-500 dark:border-blue-400 ring-1 !ring-blue-500 dark:ring-blue-400 ring-opacity-20",
         disabled &&
-          'cursor-not-allowed opacity-60 hover:border-gray-200 dark:hover:border-graphite-700 hover:shadow-sm dark:hover:shadow-graphite-900/10 active:scale-100'
+          "cursor-not-allowed opacity-60 hover:border-gray-200 dark:hover:border-graphite-700 hover:shadow-sm dark:hover:shadow-graphite-900/10 active:scale-100",
       ),
       elevated: cn(
-        'bg-white dark:bg-graphite-800 border-0 shadow-lg shadow-gray-900/10 dark:shadow-graphite-900/20',
-        hoverable && 'hover:shadow-xl hover:shadow-gray-900/15 dark:hover:shadow-graphite-900/25',
-        selected && 'ring-1 ring-blue-500 dark:ring-blue-400 ring-opacity-30'
+        "bg-white dark:bg-graphite-800 border-0 shadow-lg shadow-gray-900/10 dark:shadow-graphite-900/20",
+        hoverable && "hover:shadow-xl hover:shadow-gray-900/15 dark:hover:shadow-graphite-900/25",
+        selected && "ring-1 !ring-blue-500 dark:ring-blue-400 ring-opacity-30",
       ),
       outlined: cn(
-        'bg-transparent border-2 border-gray-300 dark:border-graphite-600',
+        "bg-transparent border-2 border-gray-300 dark:border-graphite-600",
         hoverable &&
-          'hover:border-gray-400 dark:hover:border-graphite-500 hover:bg-gray-50 dark:hover:bg-graphite-700',
-        selected && 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20'
+          "hover:border-gray-400 dark:hover:border-graphite-500 hover:bg-gray-50 dark:hover:bg-graphite-700",
+        selected && "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20",
       ),
       ghost: cn(
-        'bg-transparent border-0 shadow-none',
-        hoverable && 'hover:bg-gray-50 dark:hover:bg-graphite-700',
-        selected && 'bg-blue-50 dark:bg-blue-900/20'
+        "bg-transparent border-0 shadow-none",
+        hoverable && "hover:bg-gray-50 dark:hover:bg-graphite-700",
+        selected && "bg-blue-50 dark:bg-blue-900/20",
       ),
     };
 
     const cardClasses = cn(
       // Base styles
-      'relative transition-all duration-150 ease-out overflow-hidden',
+      "relative transition-all duration-150 ease-out overflow-hidden text-gray-900/70 dark:text-gray-100/70",
 
       // Size
       sizeClass.card,
@@ -171,12 +171,12 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       variantClasses[variant],
 
       // Loading state
-      loading && 'pointer-events-none',
+      loading && "pointer-events-none",
 
       // Disabled state
-      disabled && 'opacity-60 cursor-not-allowed',
+      disabled && "opacity-60 cursor-not-allowed",
 
-      className
+      className,
     );
 
     const hasHeader = header || title || subtitle;
@@ -188,12 +188,13 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         className={cardClasses}
         onClick={isClickable ? onClick : undefined}
-        role={isClickable ? 'button' : undefined}
+        role={isClickable ? "button" : undefined}
         tabIndex={isClickable ? 0 : undefined}
         onKeyDown={
           isClickable
-            ? e => {
-                if (e.key === 'Enter' || e.key === ' ') {
+            ? (e) => {
+                const key = e.key;
+                if (key === "Enter" || key === " " || key === "Space" || key === "Spacebar") {
                   e.preventDefault();
                   onClick?.(e as any);
                 }
@@ -207,7 +208,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         {/* Loading overlay */}
         {loading && (
           <div className="absolute inset-0 bg-white dark:bg-graphite-800 bg-opacity-80 dark:bg-opacity-90 rounded-inherit flex items-center justify-center z-10">
-            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-gray-600/70 dark:text-gray-400/70">
               <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin" />
               <span className="text-sm">Loading...</span>
             </div>
@@ -220,8 +221,8 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
             <div
               className={cn(
                 hasFooter || children ? sizeClass.headerPadding : sizeClass.padding,
-                headerDivider && 'border-graphite-200',
-                headerClassName
+                headerDivider && "border-b border-graphite-200",
+                headerClassName,
               )}
             >
               {header || (
@@ -229,11 +230,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
                   {title && (
                     <h3
                       className={cn(
-                        'font-semibold text-gray-900 dark:text-gray-100',
-                        size === 'sm' && 'text-sm',
-                        size === 'md' && 'text-base',
-                        size === 'lg' && 'text-lg',
-                        size === 'xl' && 'text-xl'
+                        "font-semibold text-gray-900/70 dark:text-gray-100/70",
+                        size === "sm" && "text-sm",
+                        size === "md" && "text-base",
+                        size === "lg" && "text-lg",
+                        size === "xl" && "text-xl",
                       )}
                     >
                       {title}
@@ -242,11 +243,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
                   {subtitle && (
                     <p
                       className={cn(
-                        'text-gray-600 dark:text-gray-400',
-                        size === 'sm' && 'text-xs',
-                        size === 'md' && 'text-sm',
-                        size === 'lg' && 'text-sm',
-                        size === 'xl' && 'text-base'
+                        "text-gray-600/70 dark:text-gray-400/70",
+                        size === "sm" && "text-xs",
+                        size === "md" && "text-sm",
+                        size === "lg" && "text-sm",
+                        size === "xl" && "text-base",
                       )}
                     >
                       {subtitle}
@@ -268,7 +269,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
                     : hasFooter
                       ? sizeClass.headerPadding
                       : sizeClass.padding,
-                bodyClassName
+                bodyClassName,
               )}
             >
               {children}
@@ -280,8 +281,8 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
             <div
               className={cn(
                 hasHeader || children ? sizeClass.footerPadding : sizeClass.padding,
-                footerDivider && 'border-t border-graphite-200',
-                footerClassName
+                footerDivider && "border-t border-graphite-200",
+                footerClassName,
               )}
             >
               {footer}
@@ -290,9 +291,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
-Card.displayName = 'Card';
+Card.displayName = "Card";
 
 export default Card;

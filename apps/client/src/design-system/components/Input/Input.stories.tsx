@@ -4,7 +4,7 @@
  * Showcasing professional developer tool patterns with sophisticated graphite theme
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Calendar,
   CheckCircle,
@@ -25,84 +25,84 @@ import {
   Shield,
   Terminal,
   User,
-} from 'lucide-react';
-import Input from './Input';
+} from "lucide-react";
+import Input from "./Input";
 
 const meta = {
-  title: 'Design System/Input',
+  title: "Design System/Input",
   component: Input,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional input component with comprehensive variants, states, validation, floating labels, and accessibility features. Designed for developer tools with sophisticated graphite theme and modern UX patterns.',
+          "Professional input component with comprehensive variants, states, validation, floating labels, and accessibility features. Designed for developer tools with sophisticated graphite theme and modern UX patterns.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['default', 'error', 'success', 'warning'],
-      description: 'Visual variant of the input',
+      control: { type: "select" },
+      options: ["default", "error", "success", "warning"],
+      description: "Visual variant of the input",
     },
     size: {
-      control: { type: 'select' },
-      options: ['sm', 'md', 'lg'],
-      description: 'Size of the input affecting padding and font size',
+      control: { type: "select" },
+      options: ["sm", "md", "lg"],
+      description: "Size of the input affecting padding and font size",
     },
     fullWidth: {
-      control: { type: 'boolean' },
-      description: 'Whether the input should take full width of container',
+      control: { type: "boolean" },
+      description: "Whether the input should take full width of container",
     },
     label: {
-      control: { type: 'text' },
-      description: 'Label for the input',
+      control: { type: "text" },
+      description: "Label for the input",
     },
     placeholder: {
-      control: { type: 'text' },
-      description: 'Placeholder text',
+      control: { type: "text" },
+      description: "Placeholder text",
     },
     description: {
-      control: { type: 'text' },
-      description: 'Additional description text',
+      control: { type: "text" },
+      description: "Additional description text",
     },
     helperText: {
-      control: { type: 'text' },
-      description: 'Helper text below the input',
+      control: { type: "text" },
+      description: "Helper text below the input",
     },
     error: {
-      control: { type: 'text' },
-      description: 'Error message (sets variant to error automatically)',
+      control: { type: "text" },
+      description: "Error message (sets variant to error automatically)",
     },
     warning: {
-      control: { type: 'text' },
-      description: 'Warning message (sets variant to warning automatically)',
+      control: { type: "text" },
+      description: "Warning message (sets variant to warning automatically)",
     },
     success: {
-      control: { type: 'text' },
-      description: 'Success message (sets variant to success automatically)',
+      control: { type: "text" },
+      description: "Success message (sets variant to success automatically)",
     },
     loading: {
-      control: { type: 'boolean' },
-      description: 'Whether the input is in a loading state',
+      control: { type: "boolean" },
+      description: "Whether the input is in a loading state",
     },
     showValidationIcon: {
-      control: { type: 'boolean' },
-      description: 'Whether to show validation icons automatically',
+      control: { type: "boolean" },
+      description: "Whether to show validation icons automatically",
     },
     floatingLabel: {
-      control: { type: 'boolean' },
-      description: 'Whether the label should float inside the input',
+      control: { type: "boolean" },
+      description: "Whether the label should float inside the input",
     },
     disabled: {
-      control: { type: 'boolean' },
-      description: 'Whether the input is disabled',
+      control: { type: "boolean" },
+      description: "Whether the input is disabled",
     },
     required: {
-      control: { type: 'boolean' },
-      description: 'Whether the input is required',
+      control: { type: "boolean" },
+      description: "Whether the input is required",
     },
   },
 } satisfies Meta<typeof Input>;
@@ -113,8 +113,8 @@ type Story = StoryObj<typeof meta>;
 // Default input
 export const Default: Story = {
   args: {
-    label: 'Email Address',
-    placeholder: 'Enter your email',
+    label: "Email Address",
+    placeholder: "Enter your email",
   },
 };
 
@@ -132,7 +132,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'Input variants with enhanced validation states: Default, Success, Warning (new), and Error with automatic validation icons.',
+          "Input variants with enhanced validation states: Default, Success, Warning (new), and Error with automatic validation icons.",
       },
     },
   },
@@ -150,7 +150,7 @@ export const Sizes: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Input sizes with proper icon scaling and padding adjustments for each size.',
+        story: "Input sizes with proper icon scaling and padding adjustments for each size.",
       },
     },
   },
@@ -191,7 +191,7 @@ export const ValidationStates: Story = {
     docs: {
       description: {
         story:
-          'Enhanced validation states with automatic validation icons and comprehensive feedback messages.',
+          "Enhanced validation states with automatic validation icons and comprehensive feedback messages.",
       },
     },
   },
@@ -221,7 +221,7 @@ export const LoadingStates: Story = {
     docs: {
       description: {
         story:
-          'Loading states with animated spinner, showing the input is processing or validating data.',
+          "Loading states with animated spinner, showing the input is processing or validating data.",
       },
     },
   },
@@ -262,7 +262,7 @@ export const FloatingLabels: Story = {
     docs: {
       description: {
         story:
-          'Modern floating label pattern that provides a clean, space-efficient design while maintaining accessibility.',
+          "Modern floating label pattern that provides a clean, space-efficient design while maintaining accessibility.",
       },
     },
   },
@@ -299,7 +299,7 @@ export const WithIcons: Story = {
     docs: {
       description: {
         story:
-          'Inputs with various icon combinations, properly sized and positioned for each input size.',
+          "Inputs with various icon combinations, properly sized and positioned for each input size.",
       },
     },
   },
@@ -411,7 +411,7 @@ export const DeveloperToolExamples: Story = {
     docs: {
       description: {
         story:
-          'Real-world examples of inputs in developer tools: configuration forms, search interfaces, validation feedback, and API settings.',
+          "Real-world examples of inputs in developer tools: configuration forms, search interfaces, validation feedback, and API settings.",
       },
     },
   },
@@ -444,7 +444,7 @@ export const DisabledStates: Story = {
     docs: {
       description: {
         story:
-          'Comprehensive disabled states showing how all variants and features behave when disabled.',
+          "Comprehensive disabled states showing how all variants and features behave when disabled.",
       },
     },
   },
@@ -620,11 +620,11 @@ This story demonstrates how Input components are used in real developer tool sce
 // Interactive playground with all new features
 export const Interactive: Story = {
   args: {
-    label: 'Interactive Input',
-    placeholder: 'Type something...',
-    helperText: 'This is a helper text',
-    size: 'md',
-    variant: 'default',
+    label: "Interactive Input",
+    placeholder: "Type something...",
+    helperText: "This is a helper text",
+    size: "md",
+    variant: "default",
     fullWidth: true,
     disabled: false,
     required: false,
@@ -636,7 +636,7 @@ export const Interactive: Story = {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all enhanced input props. Use the controls panel below to test different combinations including the new features.',
+          "Interactive playground to experiment with all enhanced input props. Use the controls panel below to test different combinations including the new features.",
       },
     },
   },

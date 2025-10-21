@@ -1,10 +1,10 @@
-import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from '@/components/ArtifactPanel';
-import StatusBadge from '@/design-system/components/StatusBadge';
-import { clsx } from 'clsx';
-import type { LucideIcon } from 'lucide-react';
-import { PlusCircle } from 'lucide-react';
-import React from 'react';
-import { ComponentCard } from './ComponentCard';
+import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "@/components/ArtifactPanel";
+import StatusBadge from "@/design-system/components/StatusBadge";
+import { clsx } from "clsx";
+import type { LucideIcon } from "lucide-react";
+import { PlusCircle } from "lucide-react";
+import React from "react";
+import { ComponentCard } from "./ComponentCard";
 
 interface SourceGroupProps {
   groupLabel: string;
@@ -13,9 +13,35 @@ interface SourceGroupProps {
   setExpandedSources: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   onComponentClick: (payload: { name: string; data: any }) => void;
   icon?: LucideIcon;
+  groupType?: string;
   onAddClick?: () => void;
   onDeleteComponent?: (payload: { artifactId: string; label?: string }) => void;
 }
+
+const DEFAULT_ICON_COLOR = "text-gray-500 dark:text-gray-300";
+
+const ICON_COLOR_MAP: Record<string, string> = {
+  service: "text-blue-500 dark:text-blue-300",
+  module: "text-purple-500 dark:text-purple-300",
+  tool: "text-red-500 dark:text-red-300",
+  route: "text-indigo-500 dark:text-indigo-300",
+  view: "text-[#725718] dark:text-[#d8b66f]",
+  database: "text-amber-500 dark:text-amber-300",
+  infrastructure: "text-emerald-500 dark:text-emerald-300",
+  frontend: "text-teal-500 dark:text-teal-300",
+  flow: "text-sky-500 dark:text-sky-300",
+  capability: "text-pink-500 dark:text-pink-300",
+  epic: "text-rose-500 dark:text-rose-300",
+  task: "text-slate-500 dark:text-slate-300",
+};
+
+const getIconColorClass = (groupType?: string): string => {
+  const candidate = groupType ? ICON_COLOR_MAP[groupType] : undefined;
+  if (typeof candidate === "string") {
+    return candidate;
+  }
+  return DEFAULT_ICON_COLOR;
+};
 
 export const SourceGroup: React.FC<SourceGroupProps> = ({
   groupLabel,
@@ -24,16 +50,18 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
   setExpandedSources,
   onComponentClick,
   icon: Icon,
+  groupType,
   onAddClick,
   onDeleteComponent,
 }) => {
   const hasComponents = components.length > 0;
   const isExpanded = hasComponents ? (expandedSources[groupLabel] ?? false) : false;
+  const iconColorClass = getIconColorClass(groupType);
   const handleToggle = () => {
     if (!hasComponents) {
       return;
     }
-    setExpandedSources(prev => ({ ...prev, [groupLabel]: !prev[groupLabel] }));
+    setExpandedSources((prev) => ({ ...prev, [groupLabel]: !prev[groupLabel] }));
   };
 
   const handleAddClick = () => {
@@ -44,16 +72,16 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
 
   const singularLabel = (() => {
     const trimmed = groupLabel.trim();
-    if (!trimmed) return 'item';
-    if (/ies$/i.test(trimmed)) return trimmed.replace(/ies$/i, 'y');
-    if (/s$/i.test(trimmed)) return trimmed.replace(/s$/i, '');
+    if (!trimmed) return "item";
+    if (/ies$/i.test(trimmed)) return trimmed.replace(/ies$/i, "y");
+    if (/s$/i.test(trimmed)) return trimmed.replace(/s$/i, "");
     return trimmed;
   })();
   const addButtonLabel = `Add ${singularLabel}`;
   const toggleLabel = `Toggle ${groupLabel}`;
 
   return (
-    <div className={clsx(ARTIFACT_PANEL_CLASS, 'overflow-hidden')}>
+    <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden")}>
       {/* Group Header */}
       <div className="flex items-center gap-3 border-b border-white/40 px-2 py-1.5 dark:border-graphite-700/60">
         <button
@@ -65,12 +93,12 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           aria-disabled={hasComponents ? undefined : true}
           tabIndex={hasComponents ? undefined : -1}
         >
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
+          <div className="flex items-center justify-center">
             {Icon ? (
-              <Icon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <Icon className={clsx("w-5 h-5", iconColorClass)} />
             ) : (
               <svg
-                className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                className={clsx("w-5 h-5", iconColorClass)}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -120,15 +148,15 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           type="button"
           onClick={hasComponents ? handleToggle : undefined}
           className={clsx(
-            'p-2 rounded-md text-gray-500 hover:text-graphite-900 hover:bg-gray-100 dark:text-graphite-300 dark:hover:text-graphite-25 dark:hover:bg-graphite-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500',
-            !hasComponents && 'invisible pointer-events-none'
+            "p-2 rounded-md text-gray-500 hover:text-graphite-900 hover:bg-gray-100 dark:text-graphite-300 dark:hover:text-graphite-25 dark:hover:bg-graphite-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500",
+            !hasComponents && "invisible pointer-events-none",
           )}
           aria-label={hasComponents ? toggleLabel : undefined}
           aria-expanded={hasComponents ? isExpanded : undefined}
           disabled={!hasComponents}
         >
           <svg
-            className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -142,22 +170,22 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
       {hasComponents && (
         <div
           className={clsx(
-            'grid transition-[grid-template-rows] duration-300 ease-out',
-            isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            "grid transition-[grid-template-rows] duration-300 ease-out",
+            isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
           )}
           aria-hidden={!isExpanded}
         >
           <div
             className={clsx(
-              'overflow-hidden transition-opacity duration-200 ease-out',
-              isExpanded ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'
+              "overflow-hidden transition-opacity duration-200 ease-out",
+              isExpanded ? "opacity-100 delay-100" : "opacity-0 pointer-events-none",
             )}
           >
-            <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, 'px-3 py-3 md:px-4 md:py-4')}>
+            <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {components.map(({ name, data }) => {
                   const displayLabel =
-                    typeof data?.name === 'string' && data.name.trim() ? data.name : name;
+                    typeof data?.name === "string" && data.name.trim() ? data.name : name;
                   const potentialIds = [
                     data?.artifactId,
                     data?.id,
@@ -165,7 +193,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
                     data?.metadata?.artifact_id,
                   ];
                   const artifactIdRaw = potentialIds.find(
-                    value => typeof value === 'string' && value.trim().length > 0
+                    (value) => typeof value === "string" && value.trim().length > 0,
                   ) as string | undefined;
                   const artifactId = artifactIdRaw?.trim();
                   const onDelete =

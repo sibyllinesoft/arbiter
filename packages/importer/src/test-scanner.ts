@@ -3,11 +3,11 @@
  * Test scanner to verify package type detection
  */
 
-import { getAllPlugins } from './plugins/index';
-import { ScannerRunner } from './scanner';
+import { getAllPlugins } from "./plugins/index";
+import { ScannerRunner } from "./scanner";
 
 async function main() {
-  const projectPath = process.argv[2] || '/home/nathan/Projects/arbiter';
+  const projectPath = process.argv[2] || "/home/nathan/Projects/arbiter";
 
   console.log(`📦 Scanning project: ${projectPath}\n`);
 
@@ -20,23 +20,23 @@ async function main() {
 
     const manifest = await scanner.scan();
 
-    console.log('\nAll Artifacts:');
+    console.log("\nAll Artifacts:");
     for (const inferred of manifest.artifacts) {
       console.log(
-        `Type: ${inferred.artifact.type}, Name: ${inferred.artifact.name}, Source: ${inferred.provenance.evidence.join(', ')}`
+        `Type: ${inferred.artifact.type}, Name: ${inferred.artifact.name}, Source: ${inferred.provenance.evidence.join(", ")}`,
       );
     }
-    console.log('\nDetected Artifacts per Config:');
-    console.log('==============================');
+    console.log("\nDetected Artifacts per Config:");
+    console.log("==============================");
 
     for (const [config, artifacts] of Object.entries(manifest.perConfig)) {
       console.log(`\nConfig: ${config}`);
-      console.log('----------------');
+      console.log("----------------");
 
       // Group by type for this config
       const byType: Record<string, any[]> = {};
       for (const artifact of artifacts) {
-        const type = artifact.artifact?.type || 'other';
+        const type = artifact.artifact?.type || "other";
         if (!byType[type]) byType[type] = [];
         byType[type].push(artifact);
       }
@@ -67,7 +67,7 @@ async function main() {
       console.log(`  ${type}: ${count}`);
     }
   } catch (error) {
-    console.error('Error scanning project:', error);
+    console.error("Error scanning project:", error);
     process.exit(1);
   }
 }

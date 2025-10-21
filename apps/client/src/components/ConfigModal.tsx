@@ -1,6 +1,6 @@
-import { X } from 'lucide-react';
-import React from 'react';
-import { ConfigScreen } from '../pages/ConfigScreen';
+import { X } from "lucide-react";
+import React from "react";
+import { ConfigScreen } from "../pages/ConfigScreen";
 
 interface ConfigModalProps {
   onClose: () => void;

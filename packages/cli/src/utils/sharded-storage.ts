@@ -3,10 +3,10 @@
  * Implements sharded persistence helpers for epic and task specifications.
  */
 
-import path from 'node:path';
-import chalk from 'chalk';
-import fs from 'fs-extra';
-import { createCUEManipulator, formatCUE, validateCUE } from '../cue/index.js';
+import path from "node:path";
+import chalk from "chalk";
+import fs from "fs-extra";
+import { createCUEManipulator, formatCUE, validateCUE } from "../cue/index.js";
 
 // Types for sharded storage management
 /**
@@ -37,8 +37,8 @@ export interface Epic {
   id: string;
   name: string;
   description?: string;
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  status: 'planning' | 'in_progress' | 'completed' | 'cancelled';
+  priority: "critical" | "high" | "medium" | "low";
+  status: "planning" | "in_progress" | "completed" | "cancelled";
   owner?: string;
   assignee?: string;
   estimatedHours?: number;
@@ -72,9 +72,9 @@ export interface Task {
   name: string;
   epicId?: string | null;
   description?: string;
-  type: 'feature' | 'bug' | 'refactor' | 'test' | 'docs' | 'devops' | 'research';
-  priority: 'critical' | 'high' | 'medium' | 'low';
-  status: 'todo' | 'in_progress' | 'review' | 'testing' | 'completed' | 'cancelled';
+  type: "feature" | "bug" | "refactor" | "test" | "docs" | "devops" | "research";
+  priority: "critical" | "high" | "medium" | "low";
+  status: "todo" | "in_progress" | "review" | "testing" | "completed" | "cancelled";
   assignee?: string;
   reviewer?: string;
   estimatedHours?: number;
@@ -131,12 +131,12 @@ export class ShardedCUEStorage {
 
   constructor(config: Partial<ShardedStorageConfig> = {}) {
     this.config = {
-      baseDir: '.arbiter/epics',
-      manifestFile: '.arbiter/shard-manifest.cue',
-      shardPrefix: 'epic-shard',
+      baseDir: ".arbiter/epics",
+      manifestFile: ".arbiter/shard-manifest.cue",
+      shardPrefix: "epic-shard",
       maxEpicsPerShard: 10,
       autoCreateShards: true,
-      cuePackage: 'epics',
+      cuePackage: "epics",
       ...config,
     };
 
@@ -149,7 +149,7 @@ export class ShardedCUEStorage {
       return epic;
     }
 
-    epic.tasks = epic.tasks.map(task => ({
+    epic.tasks = epic.tasks.map((task) => ({
       ...task,
       epicId: task.epicId ?? epic.id,
     }));
@@ -203,7 +203,7 @@ config: {
    */
   private async loadManifests(): Promise<void> {
     try {
-      const manifestContent = await fs.readFile(this.config.manifestFile, 'utf-8');
+      const manifestContent = await fs.readFile(this.config.manifestFile, "utf-8");
       const ast = await this.cueManipulator.parse(manifestContent);
 
       if (ast.shardManifests) {
@@ -221,14 +221,14 @@ config: {
    */
   private async saveManifests(): Promise<void> {
     try {
-      const manifestContent = await fs.readFile(this.config.manifestFile, 'utf-8');
+      const manifestContent = await fs.readFile(this.config.manifestFile, "utf-8");
       const manifestArray = Array.from(this.manifests.values());
 
       const updatedContent = await this.cueManipulator.addToSection(
         manifestContent,
-        'shardManifests',
-        '',
-        manifestArray
+        "shardManifests",
+        "",
+        manifestArray,
       );
 
       const formatted = await formatCUE(updatedContent);
@@ -304,7 +304,7 @@ epics: {
       if (this.config.autoCreateShards) {
         targetShard = await this.createNewShard();
       } else {
-        throw new Error('No available shards and auto-creation is disabled');
+        throw new Error("No available shards and auto-creation is disabled");
       }
     }
 
@@ -330,10 +330,10 @@ epics: {
 
     // Load shard file and add epic
     const shardPath = path.join(this.config.baseDir, manifest.fileName);
-    let shardContent = '';
+    let shardContent = "";
 
     if (fs.existsSync(shardPath)) {
-      shardContent = await fs.readFile(shardPath, 'utf-8');
+      shardContent = await fs.readFile(shardPath, "utf-8");
     } else {
       // Create shard file if it doesn't exist
       shardContent = `package ${this.config.cuePackage}\n\nepics: {}`;
@@ -342,15 +342,15 @@ epics: {
     // Add epic using CUE manipulation
     const updatedContent = await this.cueManipulator.addToSection(
       shardContent,
-      'epics',
+      "epics",
       epic.id,
-      epic
+      epic,
     );
 
     // Validate and save
     const validationResult = await validateCUE(updatedContent);
     if (!validationResult.valid) {
-      throw new Error(`CUE validation failed: ${validationResult.errors.join(', ')}`);
+      throw new Error(`CUE validation failed: ${validationResult.errors.join(", ")}`);
     }
 
     const formatted = await formatCUE(updatedContent);
@@ -380,7 +380,7 @@ epics: {
     let targetShard: string | null = null;
 
     for (const [shardId, manifest] of this.manifests) {
-      if (manifest.epics.some(e => e.id === epicId)) {
+      if (manifest.epics.some((e) => e.id === epicId)) {
         targetShard = shardId;
         break;
       }
@@ -397,7 +397,7 @@ epics: {
       throw new Error(`Shard file ${manifest.fileName} not found`);
     }
 
-    const shardContent = await fs.readFile(shardPath, 'utf-8');
+    const shardContent = await fs.readFile(shardPath, "utf-8");
     const ast = await this.cueManipulator.parse(shardContent);
 
     const epic = ast.epics?.[epicId] || null;
@@ -434,25 +434,25 @@ epics: {
     const manifest = this.manifests.get(targetShard)!;
     const shardPath = path.join(this.config.baseDir, manifest.fileName);
 
-    const shardContent = await fs.readFile(shardPath, 'utf-8');
+    const shardContent = await fs.readFile(shardPath, "utf-8");
     const updatedContent = await this.cueManipulator.addToSection(
       shardContent,
-      'epics',
+      "epics",
       epic.id,
-      epic
+      epic,
     );
 
     // Validate and save
     const validationResult = await validateCUE(updatedContent);
     if (!validationResult.valid) {
-      throw new Error(`CUE validation failed: ${validationResult.errors.join(', ')}`);
+      throw new Error(`CUE validation failed: ${validationResult.errors.join(", ")}`);
     }
 
     const formatted = await formatCUE(updatedContent);
     await fs.writeFile(shardPath, formatted);
 
     // Update manifest
-    const epicManifest = manifest.epics.find(e => e.id === epic.id);
+    const epicManifest = manifest.epics.find((e) => e.id === epic.id);
     if (epicManifest) {
       epicManifest.status = epic.status;
       epicManifest.lastModified = new Date().toISOString();
@@ -482,7 +482,7 @@ epics: {
       }
 
       try {
-        const shardContent = await fs.readFile(shardPath, 'utf-8');
+        const shardContent = await fs.readFile(shardPath, "utf-8");
         const ast = await this.cueManipulator.parse(shardContent);
 
         if (ast.epics) {
@@ -524,7 +524,7 @@ epics: {
     for (const epic of allEpics) {
       if (epic.tasks) {
         // Add epic context to tasks for cross-epic dependencies
-        const tasksWithEpicContext = epic.tasks.map(task => ({
+        const tasksWithEpicContext = epic.tasks.map((task) => ({
           ...task,
           epicId: epic.id,
         }));
@@ -572,7 +572,7 @@ epics: {
    * Validate task dependencies for cycles and missing references
    */
   private validateTaskDependencies(tasks: Task[]): void {
-    const taskIds = new Set(tasks.map(t => t.id));
+    const taskIds = new Set(tasks.map((t) => t.id));
 
     // Check for missing dependencies
     for (const task of tasks) {
@@ -601,7 +601,7 @@ epics: {
       visited.add(taskId);
       recursionStack.add(taskId);
 
-      const task = tasks.find(t => t.id === taskId);
+      const task = tasks.find((t) => t.id === taskId);
       if (task?.dependsOn) {
         for (const depId of task.dependsOn) {
           if (hasCycle(depId)) {
@@ -663,7 +663,7 @@ epics: {
 
     while (queue.length > 0) {
       const currentId = queue.shift()!;
-      const currentTask = tasks.find(t => t.id === currentId)!;
+      const currentTask = tasks.find((t) => t.id === currentId)!;
       result.push(currentTask);
 
       // Process dependents
@@ -677,7 +677,7 @@ epics: {
 
     // If result doesn't contain all tasks, there was a cycle (shouldn't happen due to validation)
     if (result.length !== tasks.length) {
-      throw new Error('Unable to sort tasks - circular dependency detected');
+      throw new Error("Unable to sort tasks - circular dependency detected");
     }
 
     return result;
@@ -690,7 +690,7 @@ epics: {
     nodes: Array<{ id: string; name: string; type: string; status: string }>;
     edges: Array<{ from: string; to: string }>;
   } {
-    const nodes = tasks.map(task => ({
+    const nodes = tasks.map((task) => ({
       id: task.id,
       name: task.name,
       type: task.type,
@@ -714,8 +714,8 @@ epics: {
    * Get tasks that can be started (no incomplete dependencies)
    */
   getReadyTasks(tasks: Task[]): Task[] {
-    return tasks.filter(task => {
-      if (task.status === 'completed' || task.status === 'cancelled') {
+    return tasks.filter((task) => {
+      if (task.status === "completed" || task.status === "cancelled") {
         return false;
       }
 
@@ -724,9 +724,9 @@ epics: {
       }
 
       // Check if all dependencies are completed
-      return task.dependsOn.every(depId => {
-        const depTask = tasks.find(t => t.id === depId);
-        return depTask?.status === 'completed';
+      return task.dependsOn.every((depId) => {
+        const depTask = tasks.find((t) => t.id === depId);
+        return depTask?.status === "completed";
       });
     });
   }
@@ -735,8 +735,8 @@ epics: {
    * Get blocked tasks (have incomplete dependencies)
    */
   getBlockedTasks(tasks: Task[]): Task[] {
-    return tasks.filter(task => {
-      if (task.status === 'completed' || task.status === 'cancelled') {
+    return tasks.filter((task) => {
+      if (task.status === "completed" || task.status === "cancelled") {
         return false;
       }
 
@@ -745,9 +745,9 @@ epics: {
       }
 
       // Check if any dependencies are not completed
-      return task.dependsOn.some(depId => {
-        const depTask = tasks.find(t => t.id === depId);
-        return depTask?.status !== 'completed';
+      return task.dependsOn.some((depId) => {
+        const depTask = tasks.find((t) => t.id === depId);
+        return depTask?.status !== "completed";
       });
     });
   }

@@ -9,24 +9,24 @@
  * - mcp/: Model Context Protocol tool handlers
  * - static/: Static file serving for frontend
  */
-import type { ServerWebSocket } from 'bun';
-import { Hono } from 'hono';
-import { AuthService } from './auth';
-import { loadConfig } from './config';
-import { SpecWorkbenchDB } from './db';
-import { EventService } from './events';
-import { HandlerAPIController } from './handlers/api.js';
-import { SpecEngine } from './specEngine';
-import { tunnelManager } from './tunnel-manager';
-import type { ServerConfig } from './types.ts';
-import { createProblemDetails, getCurrentTimestamp, logger } from './utils';
-import { WebhookService } from './webhooks';
+import type { ServerWebSocket } from "bun";
+import { Hono } from "hono";
+import { AuthService } from "./auth";
+import { loadConfig } from "./config";
+import { SpecWorkbenchDB } from "./db";
+import { EventService } from "./events";
+import { HandlerAPIController } from "./handlers/api.js";
+import { SpecEngine } from "./specEngine";
+import { tunnelManager } from "./tunnel-manager";
+import type { ServerConfig } from "./types.ts";
+import { createProblemDetails, getCurrentTimestamp, logger } from "./utils";
+import { WebhookService } from "./webhooks";
 
-import { createMcpApp } from './mcp';
+import { createMcpApp } from "./mcp";
 // Import modular components
-import { type Dependencies, createApiRouter } from './routes/index';
-import { StaticFileHandler } from './static/index';
-import { WebSocketHandler } from './websocket/index';
+import { type Dependencies, createApiRouter } from "./routes/index";
+import { StaticFileHandler } from "./static/index";
+import { WebSocketHandler } from "./websocket/index";
 
 export class SpecWorkbenchServer {
   private db: SpecWorkbenchDB;
@@ -43,9 +43,12 @@ export class SpecWorkbenchServer {
   private mcpApp: ReturnType<typeof createMcpApp>;
   private staticHandler: StaticFileHandler;
 
-  constructor(private config: ServerConfig) {
+  constructor(
+    private config: ServerConfig,
+    db: SpecWorkbenchDB,
+  ) {
     // Initialize core services
-    this.db = new SpecWorkbenchDB(config);
+    this.db = db;
     this.auth = new AuthService(config);
     this.specEngine = new SpecEngine(config);
     this.events = new EventService(config, this.db);
@@ -53,33 +56,33 @@ export class SpecWorkbenchServer {
     this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
 
     // Listen to tunnel manager logs and broadcast to global subscribers
-    tunnelManager.on('log', (message: string) => {
+    tunnelManager.on("log", (message: string) => {
       this.events
         .broadcastGlobal({
-          type: 'event',
+          type: "event",
           data: {
-            event_type: 'tunnel_log',
+            event_type: "tunnel_log",
             log: message,
             timestamp: getCurrentTimestamp(),
           },
         })
-        .catch(error => {
-          logger.error('Failed to broadcast tunnel log', error);
+        .catch((error) => {
+          logger.error("Failed to broadcast tunnel log", error);
         });
     });
 
-    tunnelManager.on('error', (error: string) => {
+    tunnelManager.on("error", (error: string) => {
       this.events
         .broadcastGlobal({
-          type: 'event',
+          type: "event",
           data: {
-            event_type: 'tunnel_error',
+            event_type: "tunnel_error",
             log: `ERROR: ${error}`,
             timestamp: getCurrentTimestamp(),
           },
         })
-        .catch(error => {
-          logger.error('Failed to broadcast tunnel error', error);
+        .catch((error) => {
+          logger.error("Failed to broadcast tunnel error", error);
         });
     });
 
@@ -96,11 +99,11 @@ export class SpecWorkbenchServer {
 
     this.apiRouter = createApiRouter(dependencies);
     this.httpApp = new Hono();
-    this.wsHandler = new WebSocketHandler(this.auth, this.events, config.websocket);
+    this.wsHandler = new WebSocketHandler(this.auth, this.events, this.config.websocket);
     this.mcpApp = createMcpApp();
     this.staticHandler = new StaticFileHandler();
 
-    this.httpApp.use('*', async (c, next) => {
+    this.httpApp.use("*", async (c, next) => {
       await next();
 
       if (c.res) {
@@ -113,24 +116,24 @@ export class SpecWorkbenchServer {
       }
     });
 
-    this.httpApp.route('/', this.apiRouter);
+    this.httpApp.route("/", this.apiRouter);
 
-    this.httpApp.route('/', this.mcpApp);
+    this.httpApp.route("/", this.mcpApp);
 
-    this.httpApp.all('/webhooks/*', async c => {
+    this.httpApp.all("/webhooks/*", async (c) => {
       const corsHeaders = this.getCorsHeaders();
       const path = new URL(c.req.url).pathname;
-      const provider = path.split('/')[2] as 'github' | 'gitlab';
+      const provider = path.split("/")[2] as "github" | "gitlab";
 
-      if (provider !== 'github' && provider !== 'gitlab') {
-        return new Response(JSON.stringify({ error: 'Invalid webhook provider' }), {
+      if (provider !== "github" && provider !== "gitlab") {
+        return new Response(JSON.stringify({ error: "Invalid webhook provider" }), {
           status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const event = c.req.header('X-GitHub-Event') || c.req.header('X-GitLab-Event') || 'unknown';
-      const signature = c.req.header('X-Hub-Signature-256') || c.req.header('X-GitLab-Token');
+      const event = c.req.header("X-GitHub-Event") || c.req.header("X-GitLab-Event") || "unknown";
+      const signature = c.req.header("X-Hub-Signature-256") || c.req.header("X-GitLab-Token");
       const payload = await c.req.json();
       const headers = Object.fromEntries(c.req.raw.headers.entries());
 
@@ -139,16 +142,16 @@ export class SpecWorkbenchServer {
         event,
         signature,
         payload,
-        headers
+        headers,
       );
 
       return new Response(JSON.stringify(result), {
         status: result.success ? 200 : 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     });
 
-    this.httpApp.notFound(async c => {
+    this.httpApp.notFound(async (c) => {
       const corsHeaders = this.getCorsHeaders();
       const pathname = new URL(c.req.url).pathname;
 
@@ -178,50 +181,50 @@ export class SpecWorkbenchServer {
       hostname: this.config.host,
 
       async fetch(request: Request, server: any) {
-        console.log('[FETCH] Request received:', request.method, request.url);
+        console.log("[FETCH] Request received:", request.method, request.url);
 
         // Check for WebSocket upgrade requests explicitly
         const url = new URL(request.url);
         if (
-          url.pathname === '/events' &&
-          request.headers.get('upgrade')?.toLowerCase() === 'websocket'
+          url.pathname === "/events" &&
+          request.headers.get("upgrade")?.toLowerCase() === "websocket"
         ) {
-          logger.info('[SERVER] WebSocket upgrade request detected', {
+          logger.info("[SERVER] WebSocket upgrade request detected", {
             pathname: url.pathname,
             headers: {
-              upgrade: request.headers.get('upgrade'),
-              connection: request.headers.get('connection'),
-              origin: request.headers.get('origin'),
+              upgrade: request.headers.get("upgrade"),
+              connection: request.headers.get("connection"),
+              origin: request.headers.get("origin"),
             },
           });
 
           // Handle authentication here before upgrade
           const authContext = await self.auth.authenticateRequest(request.headers);
 
-          logger.info('[SERVER] WebSocket auth result', {
+          logger.info("[SERVER] WebSocket auth result", {
             hasAuth: !!authContext,
-            authContext: authContext || 'NO_AUTH',
+            authContext: authContext || "NO_AUTH",
           });
 
           if (!authContext) {
-            logger.warn('[SERVER] WebSocket auth failed - rejecting upgrade');
-            return new Response('Unauthorized', { status: 401 });
+            logger.warn("[SERVER] WebSocket auth failed - rejecting upgrade");
+            return new Response("Unauthorized", { status: 401 });
           }
 
           // Perform the upgrade with auth context
           const upgraded = server.upgrade(request, {
             data: {
-              connectionId: '',
+              connectionId: "",
               authContext,
             },
           });
 
-          logger.info('[SERVER] WebSocket upgrade result', {
-            upgraded: upgraded ? 'SUCCESS' : 'FAILED',
+          logger.info("[SERVER] WebSocket upgrade result", {
+            upgraded: upgraded ? "SUCCESS" : "FAILED",
           });
 
           if (!upgraded) {
-            return new Response('WebSocket upgrade failed', { status: 400 });
+            return new Response("WebSocket upgrade failed", { status: 400 });
           }
 
           return undefined; // Successful upgrade, no response needed
@@ -234,7 +237,7 @@ export class SpecWorkbenchServer {
         message: async (ws: ServerWebSocket, message: string | Uint8Array) => {
           await self.wsHandler.handleMessage(
             ws as any,
-            typeof message === 'string' ? message : message.toString()
+            typeof message === "string" ? message : message.toString(),
           );
         },
 
@@ -248,10 +251,10 @@ export class SpecWorkbenchServer {
       },
     });
 
-    logger.info('🚀 Arbiter API server started', {
+    logger.info("🚀 Arbiter API server started", {
       port: this.config.port,
       host: this.config.host,
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.NODE_ENV || "development",
     });
   }
 
@@ -260,14 +263,14 @@ export class SpecWorkbenchServer {
    */
   private getCorsHeaders(): Record<string, string> {
     return {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers':
-        'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-API-Key, ' +
-        'X-GitHub-Event, X-Hub-Signature-256, X-GitLab-Event, X-GitLab-Token',
-      'Access-Control-Expose-Headers': 'Content-Length, X-Request-ID',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Max-Age': '86400',
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers":
+        "Content-Type, Authorization, X-Requested-With, Accept, Origin, X-API-Key, " +
+        "X-GitHub-Event, X-Hub-Signature-256, X-GitLab-Event, X-GitLab-Token",
+      "Access-Control-Expose-Headers": "Content-Length, X-Request-ID",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
     };
   }
 
@@ -290,42 +293,42 @@ export class SpecWorkbenchServer {
     const pathname = url.pathname;
 
     try {
-      logger.info('[SERVER] Request received', {
+      logger.info("[SERVER] Request received", {
         method,
         pathname,
         url: url.toString(),
         requestHeaders: {
-          upgrade: request.headers.get('upgrade'),
-          connection: request.headers.get('connection'),
-          origin: request.headers.get('origin'),
-          userAgent: request.headers.get('user-agent'),
+          upgrade: request.headers.get("upgrade"),
+          connection: request.headers.get("connection"),
+          origin: request.headers.get("origin"),
+          userAgent: request.headers.get("user-agent"),
         },
       });
 
       const corsHeaders = this.getCorsHeaders();
 
-      if (method === 'OPTIONS') {
-        logger.info('[SERVER] Handling OPTIONS preflight');
+      if (method === "OPTIONS") {
+        logger.info("[SERVER] Handling OPTIONS preflight");
         return this.handlePreflightRequest(corsHeaders);
       }
 
-      logger.info('[SERVER] Checking if WebSocket upgrade...');
+      logger.info("[SERVER] Checking if WebSocket upgrade...");
       if (this.wsHandler.isWebSocketUpgrade(pathname, request)) {
-        logger.info('[SERVER] WebSocket upgrade detected - calling handleUpgrade');
+        logger.info("[SERVER] WebSocket upgrade detected - calling handleUpgrade");
         const upgradeResult = await this.wsHandler.handleUpgrade(request, server);
-        logger.info('[SERVER] Upgrade result', {
+        logger.info("[SERVER] Upgrade result", {
           hasResponse: !!upgradeResult.response,
-          result: upgradeResult.response ? 'Response returned' : 'Success',
+          result: upgradeResult.response ? "Response returned" : "Success",
         });
-        return upgradeResult.response || new Response('WebSocket upgrade successful');
+        return upgradeResult.response || new Response("WebSocket upgrade successful");
       }
 
-      logger.info('[SERVER] Not a WebSocket upgrade - proceeding to app routing');
+      logger.info("[SERVER] Not a WebSocket upgrade - proceeding to app routing");
 
-      logger.info('[SERVER] Passing to httpApp.fetch');
+      logger.info("[SERVER] Passing to httpApp.fetch");
       return await this.httpApp.fetch(request);
     } catch (error) {
-      console.log('[SERVER] Error in handleRequest:', error);
+      console.log("[SERVER] Error in handleRequest:", error);
       return this.handleRequestError(error, method, pathname);
     }
   }
@@ -338,22 +341,22 @@ export class SpecWorkbenchServer {
       JSON.stringify(
         createProblemDetails(
           404,
-          'Not Found',
+          "Not Found",
           `Route ${pathname} not found`,
           undefined, // type
           undefined, // instance
           {
-            available_endpoints: ['/health', '/status', '/mcp', '/api/*', '/ws'],
-          }
-        )
+            available_endpoints: ["/health", "/status", "/mcp", "/api/*", "/ws"],
+          },
+        ),
       ),
       {
         status: 404,
         headers: {
-          'Content-Type': 'application/problem+json',
+          "Content-Type": "application/problem+json",
           ...corsHeaders,
         },
-      }
+      },
     );
   }
 
@@ -361,22 +364,22 @@ export class SpecWorkbenchServer {
    * Handle request errors
    */
   private handleRequestError(error: unknown, method: string, pathname: string): Response {
-    logger.error('Request handling error', error instanceof Error ? error : undefined, {
+    logger.error("Request handling error", error instanceof Error ? error : undefined, {
       method,
       pathname,
     });
 
     return new Response(
       JSON.stringify(
-        createProblemDetails(500, 'Internal Server Error', 'An unexpected error occurred')
+        createProblemDetails(500, "Internal Server Error", "An unexpected error occurred"),
       ),
       {
         status: 500,
         headers: {
-          'Content-Type': 'application/problem+json',
-          'Access-Control-Allow-Origin': '*',
+          "Content-Type": "application/problem+json",
+          "Access-Control-Allow-Origin": "*",
         },
-      }
+      },
     );
   }
 
@@ -384,16 +387,16 @@ export class SpecWorkbenchServer {
    * Get client ID for rate limiting
    */
   private getClientId(request: Request): string {
-    const forwarded = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const cfConnectingIp = request.headers.get('cf-connecting-ip');
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
     // Use the first available IP, preferring Cloudflare's
-    const ip = cfConnectingIp || realIp || forwarded?.split(',')[0] || 'unknown';
+    const ip = cfConnectingIp || realIp || forwarded?.split(",")[0] || "unknown";
 
     // Include user agent for better rate limiting granularity
-    const userAgent = request.headers.get('user-agent') || 'unknown';
-    const authHeader = request.headers.get('authorization');
+    const userAgent = request.headers.get("user-agent") || "unknown";
+    const authHeader = request.headers.get("authorization");
 
     // If there's an auth header, use that for rate limiting (per user)
     if (authHeader) {
@@ -408,7 +411,7 @@ export class SpecWorkbenchServer {
    * Graceful shutdown
    */
   async shutdown(): Promise<void> {
-    logger.info('Shutting down server...');
+    logger.info("Shutting down server...");
 
     try {
       // Close database connections
@@ -419,9 +422,9 @@ export class SpecWorkbenchServer {
 
       // Clean up any other resources
 
-      logger.info('Server shutdown complete');
+      logger.info("Server shutdown complete");
     } catch (error) {
-      logger.error('Error during shutdown', error instanceof Error ? error : undefined);
+      logger.error("Error during shutdown", error instanceof Error ? error : undefined);
     }
   }
 }
@@ -464,9 +467,9 @@ class ProcessMonitor {
 
   private setupUncaughtExceptionHandling() {
     // Handle uncaught exceptions
-    process.on('uncaughtException', error => {
+    process.on("uncaughtException", (error) => {
       this.errorCount++;
-      logger.error('❌ UNCAUGHT EXCEPTION', error, {
+      logger.error("❌ UNCAUGHT EXCEPTION", error, {
         errorCount: this.errorCount,
         processUptime: process.uptime(),
         memoryUsage: process.memoryUsage(),
@@ -475,15 +478,15 @@ class ProcessMonitor {
 
       // If we get too many errors, shutdown gracefully
       if (this.errorCount > 5) {
-        logger.error('🚨 Too many uncaught exceptions, initiating shutdown');
-        this.gracefulShutdown('uncaught-exceptions');
+        logger.error("🚨 Too many uncaught exceptions, initiating shutdown");
+        this.gracefulShutdown("uncaught-exceptions");
       }
     });
 
     // Handle unhandled promise rejections
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on("unhandledRejection", (reason, promise) => {
       this.errorCount++;
-      logger.error('❌ UNHANDLED PROMISE REJECTION', reason instanceof Error ? reason : undefined, {
+      logger.error("❌ UNHANDLED PROMISE REJECTION", reason instanceof Error ? reason : undefined, {
         reason: reason,
         promise: promise,
         errorCount: this.errorCount,
@@ -494,14 +497,14 @@ class ProcessMonitor {
 
       // If we get too many errors, shutdown gracefully
       if (this.errorCount > 10) {
-        logger.error('🚨 Too many unhandled rejections, initiating shutdown');
-        this.gracefulShutdown('unhandled-rejections');
+        logger.error("🚨 Too many unhandled rejections, initiating shutdown");
+        this.gracefulShutdown("unhandled-rejections");
       }
     });
 
     // Handle warnings
-    process.on('warning', warning => {
-      logger.warn('⚠️ Node.js Warning', {
+    process.on("warning", (warning) => {
+      logger.warn("⚠️ Node.js Warning", {
         name: warning.name,
         message: warning.message,
         stack: warning.stack,
@@ -509,13 +512,13 @@ class ProcessMonitor {
     });
 
     // Handle exit events
-    process.on('beforeExit', code => {
+    process.on("beforeExit", (code) => {
       if (!this.isShuttingDown) {
-        logger.info('🔄 Process beforeExit event', { code });
+        logger.info("🔄 Process beforeExit event", { code });
       }
     });
 
-    process.on('exit', code => {
+    process.on("exit", (code) => {
       console.log(`🔚 Process exit with code: ${code}`);
     });
   }
@@ -524,17 +527,17 @@ class ProcessMonitor {
     const memUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
 
-    logger.info('📊 Process Health Check', {
+    logger.info("📊 Process Health Check", {
       uptime: Math.floor(process.uptime()),
       pid: process.pid,
       nodeVersion: process.version,
       platform: process.platform,
       errorCount: this.errorCount,
       memory: {
-        rss: Math.round(memUsage.rss / 1024 / 1024) + 'MB',
-        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
-        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + 'MB',
-        external: Math.round(memUsage.external / 1024 / 1024) + 'MB',
+        rss: Math.round(memUsage.rss / 1024 / 1024) + "MB",
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
+        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024) + "MB",
+        external: Math.round(memUsage.external / 1024 / 1024) + "MB",
       },
       cpu: {
         user: cpuUsage.user,
@@ -547,15 +550,15 @@ class ProcessMonitor {
     const memUsage = process.memoryUsage();
 
     if (memUsage.heapUsed > this.memoryWarningThreshold) {
-      logger.warn('⚠️ High memory usage detected', {
-        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + 'MB',
-        threshold: Math.round(this.memoryWarningThreshold / 1024 / 1024) + 'MB',
-        recommendation: 'Consider garbage collection or restart',
+      logger.warn("⚠️ High memory usage detected", {
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024) + "MB",
+        threshold: Math.round(this.memoryWarningThreshold / 1024 / 1024) + "MB",
+        recommendation: "Consider garbage collection or restart",
       });
 
       // Force garbage collection if available
       if (global.gc) {
-        logger.info('🗑️ Running garbage collection');
+        logger.info("🗑️ Running garbage collection");
         global.gc();
       }
     }
@@ -563,7 +566,7 @@ class ProcessMonitor {
 
   async gracefulShutdown(reason: string) {
     if (this.isShuttingDown) {
-      logger.warn('⚠️ Shutdown already in progress, ignoring duplicate request');
+      logger.warn("⚠️ Shutdown already in progress, ignoring duplicate request");
       return;
     }
 
@@ -583,17 +586,17 @@ class ProcessMonitor {
     try {
       // Set a timeout for shutdown
       const shutdownTimeout = setTimeout(() => {
-        logger.error('🚨 Shutdown timeout exceeded, forcing exit');
+        logger.error("🚨 Shutdown timeout exceeded, forcing exit");
         process.exit(1);
       }, 10000); // 10 second timeout
 
       await this.server.shutdown();
       clearTimeout(shutdownTimeout);
 
-      logger.info('✅ Graceful shutdown completed');
+      logger.info("✅ Graceful shutdown completed");
       process.exit(0);
     } catch (error) {
-      logger.error('❌ Error during graceful shutdown', error instanceof Error ? error : undefined);
+      logger.error("❌ Error during graceful shutdown", error instanceof Error ? error : undefined);
       process.exit(1);
     }
   }
@@ -604,23 +607,24 @@ let config: ServerConfig;
 try {
   config = loadConfig();
 } catch (error) {
-  logger.error('Failed to load server configuration', error instanceof Error ? error : undefined);
+  logger.error("Failed to load server configuration", error instanceof Error ? error : undefined);
   process.exit(1);
 }
 
 // Start the server
-const server = new SpecWorkbenchServer(config);
+const db = await SpecWorkbenchDB.create(config);
+const server = new SpecWorkbenchServer(config, db);
 const monitor = new ProcessMonitor(server);
 
 // Handle graceful shutdown signals
-process.on('SIGINT', async () => {
-  console.log('\n🔸 Received SIGINT signal');
-  await monitor.gracefulShutdown('SIGINT');
+process.on("SIGINT", async () => {
+  console.log("\n🔸 Received SIGINT signal");
+  await monitor.gracefulShutdown("SIGINT");
 });
 
-process.on('SIGTERM', async () => {
-  console.log('\n🔸 Received SIGTERM signal');
-  await monitor.gracefulShutdown('SIGTERM');
+process.on("SIGTERM", async () => {
+  console.log("\n🔸 Received SIGTERM signal");
+  await monitor.gracefulShutdown("SIGTERM");
 });
 
 // Enhanced startup with retry logic
@@ -629,26 +633,28 @@ async function startServerWithRetry(maxRetries = 3) {
     try {
       logger.info(`🚀 Starting server (attempt ${attempt}/${maxRetries})`);
       await server.start();
-      logger.info('✅ Server started successfully');
+      logger.info("✅ Server started successfully");
       return;
     } catch (error) {
       logger.error(
         `❌ Server startup failed (attempt ${attempt}/${maxRetries})`,
-        error instanceof Error ? error : undefined
+        error instanceof Error ? error : undefined,
       );
 
       if (attempt === maxRetries) {
-        logger.error('🚨 All startup attempts failed, exiting');
+        logger.error("🚨 All startup attempts failed, exiting");
         process.exit(1);
       }
 
       // Wait before retry
       const delay = attempt * 2000; // 2s, 4s, 6s
       logger.info(`⏳ Waiting ${delay}ms before retry...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 }
 
-// Start the server with retry logic
-await startServerWithRetry();
+// Start the server with retry logic when executed directly
+if (import.meta.main) {
+  await startServerWithRetry();
+}

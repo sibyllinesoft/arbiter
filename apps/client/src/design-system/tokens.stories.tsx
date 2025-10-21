@@ -4,7 +4,7 @@
  * Shows professional usage in developer tool contexts
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Activity,
   AlertTriangle,
@@ -13,22 +13,22 @@ import {
   Code,
   Database,
   FileText,
-} from 'lucide-react';
-import { storybookData } from '../test/storybook-data';
-import { borderRadius, colors, shadows, spacing, typography } from './tokens';
+} from "lucide-react";
+import { storybookData } from "../test/storybook-data";
+import { borderRadius, colors, shadows, spacing, typography } from "./tokens";
 
 const meta = {
-  title: 'Design System/Tokens',
+  title: "Design System/Tokens",
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component:
-          'Design tokens for the Graphite theme - colors, typography, spacing, and other design primitives that ensure consistency across the application.',
+          "Design tokens for the Graphite theme - colors, typography, spacing, and other design primitives that ensure consistency across the application.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 } satisfies Meta;
 
 export default meta;
@@ -104,7 +104,7 @@ export const Colors: Story = {
     docs: {
       description: {
         story:
-          'Complete color palette including the primary graphite scale, semantic colors for status indicators, and accent colors for interactive elements.',
+          "Complete color palette including the primary graphite scale, semantic colors for status indicators, and accent colors for interactive elements.",
       },
     },
   },
@@ -174,7 +174,7 @@ export const Typography: Story = {
     docs: {
       description: {
         story:
-          'Typography system including font families, sizes, and weights. Optimized for developer tools with excellent code readability.',
+          "Typography system including font families, sizes, and weights. Optimized for developer tools with excellent code readability.",
       },
     },
   },
@@ -200,7 +200,7 @@ export const Spacing: Story = {
     docs: {
       description: {
         story:
-          'Consistent spacing scale used for margins, padding, and gaps throughout the interface.',
+          "Consistent spacing scale used for margins, padding, and gaps throughout the interface.",
       },
     },
   },
@@ -218,7 +218,7 @@ export const BorderRadius: Story = {
               className="w-16 h-16 bg-blue-100 border-2 border-blue-300 mb-2 mx-auto"
               style={{ borderRadius: value }}
             />
-            <div className="text-sm font-medium">{key === 'DEFAULT' ? 'default' : key}</div>
+            <div className="text-sm font-medium">{key === "DEFAULT" ? "default" : key}</div>
             <div className="text-xs text-gray-600 font-mono">{value}</div>
           </div>
         ))}
@@ -228,7 +228,7 @@ export const BorderRadius: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Border radius tokens for consistent rounded corners across components.',
+        story: "Border radius tokens for consistent rounded corners across components.",
       },
     },
   },
@@ -241,14 +241,14 @@ export const Shadows: Story = {
       <h2 className="text-2xl font-bold mb-6">Shadows</h2>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
         {Object.entries(shadows).map(([key, value]) => {
-          if (key === 'none') return null;
+          if (key === "none") return null;
           return (
             <div key={key} className="text-center">
               <div
                 className="w-20 h-20 bg-white rounded-lg mb-3 mx-auto"
                 style={{ boxShadow: value }}
               />
-              <div className="text-sm font-medium">{key === 'DEFAULT' ? 'default' : key}</div>
+              <div className="text-sm font-medium">{key === "DEFAULT" ? "default" : key}</div>
               <div className="text-xs text-gray-600 font-mono break-all">{value}</div>
             </div>
           );
@@ -259,7 +259,7 @@ export const Shadows: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Shadow tokens providing depth and elevation to UI elements.',
+        story: "Shadow tokens providing depth and elevation to UI elements.",
       },
     },
   },
@@ -312,7 +312,7 @@ export const CodeColors: Story = {
     docs: {
       description: {
         story:
-          'Color scheme for the Monaco code editor, providing excellent contrast and readability for CUE language syntax.',
+          "Color scheme for the Monaco code editor, providing excellent contrast and readability for CUE language syntax.",
       },
     },
   },
@@ -346,7 +346,7 @@ export const ProfessionalUsageExample: Story = {
                   lineHeight: typography.fontSize.xl[1].lineHeight,
                 }}
               >
-                {storybookData.projects[0]?.name || 'Project Name'}
+                {storybookData.projects[0]?.name || "Project Name"}
               </h1>
               <p
                 style={{
@@ -391,29 +391,29 @@ export const ProfessionalUsageExample: Story = {
           >
             {[
               {
-                title: 'Active Specs',
-                value: '23',
+                title: "Active Specs",
+                value: "23",
                 icon: FileText,
                 color: colors.semantic.info[500],
                 bg: colors.semantic.info[50],
               },
               {
-                title: 'Build Status',
-                value: 'Passing',
+                title: "Build Status",
+                value: "Passing",
                 icon: CheckCircle,
                 color: colors.semantic.success[500],
                 bg: colors.semantic.success[50],
               },
               {
-                title: 'Coverage',
-                value: '98.5%',
+                title: "Coverage",
+                value: "98.5%",
                 icon: Activity,
                 color: colors.semantic.success[500],
                 bg: colors.semantic.success[50],
               },
               {
-                title: 'Issues',
-                value: '2',
+                title: "Issues",
+                value: "2",
                 icon: AlertTriangle,
                 color: colors.semantic.warning[500],
                 bg: colors.semantic.warning[50],
@@ -433,7 +433,7 @@ export const ProfessionalUsageExample: Story = {
                   <div>
                     <div
                       style={{
-                        fontSize: typography.fontSize['2xl'][0],
+                        fontSize: typography.fontSize["2xl"][0],
                         fontWeight: typography.fontWeight.bold,
                         color: colors.text.primary,
                       }}
@@ -508,7 +508,7 @@ export const ProfessionalUsageExample: Story = {
                     borderBottom:
                       index < storybookData.projects.length - 1
                         ? `1px solid ${colors.border.subtle}`
-                        : 'none',
+                        : "none",
                   }}
                 >
                   <div className="flex items-center" style={{ gap: spacing[4] }}>
@@ -565,7 +565,7 @@ export const ProfessionalUsageExample: Story = {
                         fontWeight: typography.fontWeight.medium,
                       }}
                     >
-                      {index === 0 ? 'Active' : index === 1 ? 'Building' : 'Ready'}
+                      {index === 0 ? "Active" : index === 1 ? "Building" : "Ready"}
                     </div>
                     <button
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors"
@@ -586,7 +586,7 @@ export const ProfessionalUsageExample: Story = {
               backgroundColor: colors.code.background,
               borderRadius: borderRadius.lg,
               boxShadow: shadows.xl,
-              overflow: 'hidden',
+              overflow: "hidden",
             }}
           >
             <div
@@ -639,7 +639,7 @@ export const ProfessionalUsageExample: Story = {
                 padding: spacing[4],
                 fontFamily: typography.fontFamily.mono,
                 fontSize: typography.fontSize.sm[0],
-                lineHeight: '1.5',
+                lineHeight: "1.5",
               }}
             >
               <div className="space-y-1">

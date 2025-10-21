@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { DockerPlugin } from './plugins/docker';
-import type { InferenceContext, ParseContext, ProjectMetadata } from './types';
+import { DockerPlugin } from "./plugins/docker";
+import type { InferenceContext, ParseContext, ProjectMetadata } from "./types";
 
 // Test with the actual Arbiter project's docker-compose.yml content
 async function testDockerDetection() {
@@ -85,11 +85,11 @@ volumes:
   spec-data:
     driver: local`;
 
-  const testFile = '/tmp/test-docker-compose.yml';
+  const testFile = "/tmp/test-docker-compose.yml";
   const parseContext: ParseContext = {
-    projectRoot: '/home/nathan/Projects/arbiter',
+    projectRoot: "/home/nathan/Projects/arbiter",
     fileIndex: {
-      root: '/home/nathan/Projects/arbiter',
+      root: "/home/nathan/Projects/arbiter",
       files: new Map(),
       directories: new Map(),
       timestamp: Date.now(),
@@ -99,43 +99,43 @@ volumes:
       targetLanguages: [],
       maxFileSize: 10 * 1024 * 1024,
       includeBinaries: false,
-      patterns: { include: ['**/*'], exclude: [] },
+      patterns: { include: ["**/*"], exclude: [] },
     },
     cache: new Map(),
   };
   const evidence = await plugin.parse(testFile, dockerComposeContent, parseContext);
 
-  console.log('Docker Compose Service Detection Results:');
-  console.log('=========================================\n');
+  console.log("Docker Compose Service Detection Results:");
+  console.log("=========================================\n");
 
   for (const ev of evidence) {
-    if (ev.type === 'config' && (ev.data as any).configType === 'compose-service') {
+    if (ev.type === "config" && (ev.data as any).configType === "compose-service") {
       const data = ev.data as any;
       console.log(`Service: ${data.serviceName}`);
-      console.log(`  Image: ${data.image || '(built locally)'}`);
-      console.log(`  Build: ${data.build ? JSON.stringify(data.build) : 'N/A'}`);
+      console.log(`  Image: ${data.image || "(built locally)"}`);
+      console.log(`  Build: ${data.build ? JSON.stringify(data.build) : "N/A"}`);
       console.log(
-        `  Ports: ${data.ports && data.ports.length > 0 ? data.ports.map((p: any) => `${p.host}:${p.container}`).join(', ') : 'none'}`
+        `  Ports: ${data.ports && data.ports.length > 0 ? data.ports.map((p: any) => `${p.host}:${p.container}`).join(", ") : "none"}`,
       );
-      console.log(`  Depends On: ${data.dependsOn ? data.dependsOn.join(', ') : 'none'}`);
+      console.log(`  Depends On: ${data.dependsOn ? data.dependsOn.join(", ") : "none"}`);
       console.log(
-        `  Environment: ${data.environment ? data.environment.slice(0, 3).join(', ') + (data.environment.length > 3 ? '...' : '') : 'none'}`
+        `  Environment: ${data.environment ? data.environment.slice(0, 3).join(", ") + (data.environment.length > 3 ? "..." : "") : "none"}`,
       );
-      console.log('');
+      console.log("");
     }
   }
 
   // Now test inference to see what artifacts are created
   const projectMetadata: ProjectMetadata = {
-    name: 'arbiter',
-    root: '/home/nathan/Projects/arbiter',
-    languages: ['typescript', 'javascript'],
-    frameworks: ['react', 'express'],
+    name: "arbiter",
+    root: "/home/nathan/Projects/arbiter",
+    languages: ["typescript", "javascript"],
+    frameworks: ["react", "express"],
     fileCount: 1000,
     totalSize: 5000000,
   };
   const inferenceContext: InferenceContext = {
-    projectRoot: '/home/nathan/Projects/arbiter',
+    projectRoot: "/home/nathan/Projects/arbiter",
     fileIndex: parseContext.fileIndex,
     allEvidence: evidence,
     options: {
@@ -149,8 +149,8 @@ volumes:
   };
   const inferred = await plugin.infer(evidence, inferenceContext);
 
-  console.log('\nInferred Artifacts:');
-  console.log('===================\n');
+  console.log("\nInferred Artifacts:");
+  console.log("===================\n");
 
   for (const artifact of inferred) {
     console.log(`Artifact ID: ${artifact.artifact.id}`);
@@ -168,7 +168,7 @@ volumes:
       console.log(`  Port: ${metadata.port}`);
     }
     console.log(`  Language: ${metadata.language}`);
-    console.log('');
+    console.log("");
   }
 }
 

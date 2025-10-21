@@ -2,20 +2,20 @@
  * UI state store using Zustand with zukeeper devtools
  */
 
-import zukeeper from 'zukeeper';
-import { create } from 'zustand';
+import zukeeper from "zukeeper";
+import { create } from "zustand";
 
-type LeftTab = 'source';
+type LeftTab = "source";
 type RightTab =
-  | 'flow'
-  | 'site'
-  | 'view'
-  | 'architecture'
-  | 'services'
-  | 'tasks'
-  | 'webhooks'
-  | 'events'
-  | 'handlers';
+  | "flow"
+  | "site"
+  | "view"
+  | "architecture"
+  | "services"
+  | "tasks"
+  | "webhooks"
+  | "events"
+  | "handlers";
 
 interface UiState {
   leftTab: LeftTab;
@@ -26,8 +26,8 @@ interface UiState {
   toggleTheme: () => void;
 }
 
-const THEME_KEY = 'arbiter:theme';
-const isBrowser = typeof window !== 'undefined';
+const THEME_KEY = "arbiter:theme";
+const isBrowser = typeof window !== "undefined";
 
 export const useUiStore = zukeeper(
   create<UiState>((set, get) => {
@@ -39,21 +39,21 @@ export const useUiStore = zukeeper(
       try {
         savedTheme = window.localStorage.getItem(THEME_KEY);
       } catch (error) {
-        console.warn('Failed to read theme from localStorage', error);
+        console.warn("Failed to read theme from localStorage", error);
       }
       try {
-        const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        const media = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
         prefersDark = media ? media.matches : false;
       } catch (error) {
         prefersDark = false;
       }
     }
 
-    const initialDark = savedTheme === 'dark' ? true : savedTheme === 'light' ? false : prefersDark;
+    const initialDark = savedTheme === "dark" ? true : savedTheme === "light" ? false : prefersDark;
 
     return {
-      leftTab: 'source',
-      rightTab: 'flow',
+      leftTab: "source",
+      rightTab: "flow",
       isDark: initialDark,
       setLeftTab: (tab: LeftTab) => set({ leftTab: tab }),
       setRightTab: (tab: RightTab) => set({ rightTab: tab }),
@@ -63,14 +63,14 @@ export const useUiStore = zukeeper(
         set({ isDark: newTheme });
         if (isBrowser) {
           try {
-            window.localStorage.setItem(THEME_KEY, newTheme ? 'dark' : 'light');
+            window.localStorage.setItem(THEME_KEY, newTheme ? "dark" : "light");
           } catch (error) {
-            console.warn('Failed to persist theme to localStorage', error);
+            console.warn("Failed to persist theme to localStorage", error);
           }
         }
       },
     };
-  })
+  }),
 );
 
 // Convenience hooks for specific parts of the state

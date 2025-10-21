@@ -12,15 +12,15 @@ export interface ArchitecturalElement {
 }
 
 export type ElementType =
-  | 'service'
-  | 'component'
-  | 'route'
-  | 'flow'
-  | 'capability'
-  | 'state_machine'
-  | 'api_endpoint'
-  | 'external_system'
-  | 'data_store';
+  | "service"
+  | "component"
+  | "route"
+  | "flow"
+  | "capability"
+  | "state_machine"
+  | "api_endpoint"
+  | "external_system"
+  | "data_store";
 
 // Enhanced component model for diagram rendering
 export interface DiagramComponent extends ArchitecturalElement {
@@ -38,8 +38,8 @@ export interface DiagramComponent extends ArchitecturalElement {
   ports?: DiagramPort[];
 
   // From CUE services
-  serviceType?: 'bespoke' | 'prebuilt' | 'external';
-  deploymentType?: 'deployment' | 'statefulset' | 'daemonset';
+  serviceType?: "bespoke" | "prebuilt" | "external";
+  deploymentType?: "deployment" | "statefulset" | "daemonset";
   replicas?: number;
 
   // From UI routes
@@ -57,16 +57,16 @@ export interface DiagramComponent extends ArchitecturalElement {
 export interface DiagramPort {
   id: string;
   position: { x: number; y: number };
-  type: 'input' | 'output' | 'bidirectional';
-  protocol?: 'http' | 'websocket' | 'grpc' | 'database';
+  type: "input" | "output" | "bidirectional";
+  protocol?: "http" | "websocket" | "grpc" | "database";
 }
 
 export type DiagramLayer =
-  | 'presentation' // UI routes, components
-  | 'application' // Flows, business logic
-  | 'service' // Services, APIs
-  | 'data' // Databases, storage
-  | 'external'; // External systems
+  | "presentation" // UI routes, components
+  | "application" // Flows, business logic
+  | "service" // Services, APIs
+  | "data" // Databases, storage
+  | "external"; // External systems
 
 // Connection types derived from CUE relationships
 export interface DiagramConnection {
@@ -93,18 +93,18 @@ export interface DiagramConnection {
 }
 
 export type ConnectionType =
-  | 'user_navigation' // UI route navigation
-  | 'user_interaction' // Flow steps (click, fill, etc.)
-  | 'api_call' // HTTP requests to services
-  | 'capability_usage' // Capability dependencies
-  | 'state_transition' // State machine transitions
-  | 'data_flow' // Data passing between components
-  | 'dependency'; // Service dependencies
+  | "user_navigation" // UI route navigation
+  | "user_interaction" // Flow steps (click, fill, etc.)
+  | "api_call" // HTTP requests to services
+  | "capability_usage" // Capability dependencies
+  | "state_transition" // State machine transitions
+  | "data_flow" // Data passing between components
+  | "dependency"; // Service dependencies
 
 // Flow analysis for generating connections
 export interface FlowStep {
   id: string;
-  type: 'visit' | 'click' | 'fill' | 'expect' | 'expect_api';
+  type: "visit" | "click" | "fill" | "expect" | "expect_api";
   target?: string;
   value?: string;
   expectation?: any;
@@ -112,8 +112,8 @@ export interface FlowStep {
 
 // Layout configuration for different diagram types
 export interface DiagramLayout {
-  type: 'layered' | 'force_directed' | 'hierarchical' | 'circular';
-  direction: 'top_down' | 'left_right' | 'bottom_up' | 'right_left';
+  type: "layered" | "force_directed" | "hierarchical" | "circular";
+  direction: "top_down" | "left_right" | "bottom_up" | "right_left";
   spacing: {
     component: { x: number; y: number };
     layer: number;
@@ -140,7 +140,7 @@ export interface ArchitectureDiagram {
   generatedFrom: {
     cuePath: string;
     timestamp: string;
-    schemaVersion: 'v1' | 'v2';
+    schemaVersion: "v1" | "v2";
   };
 
   // Interactive features
@@ -153,12 +153,12 @@ export interface ArchitectureDiagram {
 }
 
 export type DiagramType =
-  | 'system_overview' // Complete system architecture
-  | 'service_topology' // Service interconnections
-  | 'user_journey' // Flow-based user paths
-  | 'capability_map' // Business capability relationships
-  | 'state_diagram' // State machine visualization
-  | 'api_surface'; // API endpoint mapping
+  | "system_overview" // Complete system architecture
+  | "service_topology" // Service interconnections
+  | "user_journey" // Flow-based user paths
+  | "capability_map" // Business capability relationships
+  | "state_diagram" // State machine visualization
+  | "api_surface"; // API endpoint mapping
 
 // CUE parsing results
 export interface CueArchitectureData {
@@ -189,7 +189,7 @@ export interface LayoutAlgorithm {
   name: string;
   calculate(
     components: DiagramComponent[],
-    connections: DiagramConnection[]
+    connections: DiagramConnection[],
   ): {
     components: DiagramComponent[];
     viewport: { width: number; height: number };
@@ -212,7 +212,7 @@ export interface DiagramTheme {
     {
       color: string;
       width: number;
-      style: 'solid' | 'dashed' | 'dotted';
+      style: "solid" | "dashed" | "dotted";
     }
   >;
   components: {
@@ -225,7 +225,7 @@ export interface DiagramTheme {
 
 // Export configuration
 export interface DiagramExportOptions {
-  format: 'svg' | 'png' | 'pdf' | 'mermaid' | 'graphviz';
+  format: "svg" | "png" | "pdf" | "mermaid" | "graphviz";
   quality?: number;
   width?: number;
   height?: number;

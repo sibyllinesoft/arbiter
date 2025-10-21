@@ -1,17 +1,17 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import React from 'react';
-import { DataViewer } from './DataViewer';
-import { MermaidRenderer } from './MermaidRenderer';
-import { NetworkDiagram } from './NetworkDiagram';
-import { SplitViewShowcase } from './SplitViewShowcase';
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
+import { DataViewer } from "./DataViewer";
+import { MermaidRenderer } from "./MermaidRenderer";
+import { NetworkDiagram } from "./NetworkDiagram";
+import { SplitViewShowcase } from "./SplitViewShowcase";
 
 const meta = {
-  title: 'Diagrams/Complete Diagram Showcase',
+  title: "Diagrams/Complete Diagram Showcase",
   component: SplitViewShowcase,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 } satisfies Meta<typeof SplitViewShowcase>;
 
 export default meta;
@@ -373,11 +373,11 @@ const combinedVisualization = `graph TB
 
 export const DiagramShowcaseOverview: Story = {
   args: {
-    title: 'Complete Diagram Visualization Platform',
+    title: "Complete Diagram Visualization Platform",
     description:
-      'Comprehensive overview of all available diagram types and technical capabilities for developer tools.',
-    dataPanelTitle: 'Integration Guide (YAML)',
-    diagramPanelTitle: 'Available Diagram Types',
+      "Comprehensive overview of all available diagram types and technical capabilities for developer tools.",
+    dataPanelTitle: "Integration Guide (YAML)",
+    diagramPanelTitle: "Available Diagram Types",
     dataPanel: (
       <DataViewer data={quickStartGuideYaml} language="yaml" title="diagram-platform-guide.yml" />
     ),
@@ -387,11 +387,11 @@ export const DiagramShowcaseOverview: Story = {
 
 export const TechnicalArchitectureOverview: Story = {
   args: {
-    title: 'Diagram Rendering Architecture',
+    title: "Diagram Rendering Architecture",
     description:
-      'Technical architecture showing how YAML/JSON specifications are transformed into interactive diagrams.',
-    dataPanelTitle: 'Architecture Overview (YAML)',
-    diagramPanelTitle: 'Rendering Pipeline Flow',
+      "Technical architecture showing how YAML/JSON specifications are transformed into interactive diagrams.",
+    dataPanelTitle: "Architecture Overview (YAML)",
+    diagramPanelTitle: "Rendering Pipeline Flow",
     dataPanel: (
       <DataViewer
         data={`# Diagram Rendering Architecture

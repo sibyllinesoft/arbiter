@@ -13,9 +13,9 @@ import {
   Search,
   Settings,
   Users,
-} from 'lucide-react';
-import { type ReactNode, useState } from 'react';
-import { cn } from '../../variants';
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { cn } from "../../variants";
 
 export interface SidebarNavItem {
   id: string;
@@ -38,7 +38,7 @@ export interface SidebarProps {
   collapsed?: boolean;
 
   /** Sidebar width when expanded */
-  width?: 'sm' | 'md' | 'lg';
+  width?: "sm" | "md" | "lg";
 
   /** Callback when an item is clicked */
   onItemClick?: (item: SidebarNavItem) => void;
@@ -57,12 +57,12 @@ export interface SidebarProps {
 }
 
 const widthClasses = {
-  sm: 'w-48',
-  md: 'w-64',
-  lg: 'w-72',
+  sm: "w-48",
+  md: "w-64",
+  lg: "w-80",
 } as const;
 
-const collapsedWidth = 'w-14';
+const collapsedWidth = "w-14";
 
 function NavItemComponent({
   item,
@@ -98,26 +98,26 @@ function NavItemComponent({
   const itemContent = (
     <div
       className={cn(
-        'group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-all duration-150',
-        'text-sm font-medium',
+        "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-all duration-150",
+        "text-sm font-medium",
 
         // Indentation for nested items
         level > 0 && !collapsed && `ml-${level * 4}`,
 
         // Active state
-        isActive && 'bg-blue-50 text-blue-700 border-r-2 border-blue-500',
+        isActive && "bg-blue-50 text-blue-700 border-r-2 border-blue-500",
 
         // Hover state
-        !isActive && 'text-graphite-700 hover:bg-graphite-100 hover:text-graphite-900',
+        !isActive && "text-graphite-700 hover:bg-graphite-100 hover:text-graphite-900",
 
         // Collapsed state
-        collapsed && 'justify-center px-2'
+        collapsed && "justify-center px-2",
       )}
       onClick={handleClick}
       role="button"
       tabIndex={0}
-      onKeyDown={e => {
-        if (e.key === 'Enter' || e.key === ' ') {
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           handleClick();
         }
@@ -134,9 +134,9 @@ function NavItemComponent({
       {item.icon && (
         <span
           className={cn(
-            'flex-shrink-0',
-            isActive ? 'text-blue-600' : 'text-graphite-500 group-hover:text-graphite-700',
-            hasChildren && item.collapsible && !collapsed && 'ml-0'
+            "flex-shrink-0",
+            isActive ? "text-blue-600" : "text-graphite-500 group-hover:text-graphite-700",
+            hasChildren && item.collapsible && !collapsed && "ml-0",
           )}
         >
           {item.icon}
@@ -152,10 +152,10 @@ function NavItemComponent({
           {item.badge && (
             <span
               className={cn(
-                'inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium',
+                "inline-flex items-center justify-center px-2 py-0.5 rounded-md text-xs font-medium",
                 isActive
-                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                  : 'bg-graphite-100 dark:bg-graphite-800 text-graphite-600 dark:text-graphite-300 group-hover:bg-graphite-200 dark:group-hover:bg-graphite-700'
+                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                  : "bg-graphite-100 dark:bg-graphite-800 text-graphite-600 dark:text-graphite-300 group-hover:bg-graphite-200 dark:group-hover:bg-graphite-700",
               )}
             >
               {item.badge}
@@ -179,7 +179,7 @@ function NavItemComponent({
       {/* Children */}
       {hasChildren && !isCollapsed && !collapsed && (
         <ul className="mt-1 space-y-1">
-          {item.children!.map(child => (
+          {item.children!.map((child) => (
             <NavItemComponent
               key={child.id}
               item={child}
@@ -198,7 +198,7 @@ function NavItemComponent({
 export function Sidebar({
   items,
   collapsed = false,
-  width = 'md',
+  width = "md",
   onItemClick,
   onToggle,
   header,
@@ -208,14 +208,14 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        'flex flex-col h-full bg-white border-r border-graphite-200 transition-all duration-200',
+        "flex flex-col h-full bg-white border-r border-graphite-200 transition-all duration-200",
         collapsed ? collapsedWidth : widthClasses[width],
-        className
+        className,
       )}
     >
       {/* Header */}
       {header && (
-        <div className={cn('flex-shrink-0 p-4 border-b border-graphite-200', collapsed && 'px-2')}>
+        <div className={cn("flex-shrink-0 p-4 border-b border-graphite-200", collapsed && "px-2")}>
           {header}
         </div>
       )}
@@ -223,7 +223,7 @@ export function Sidebar({
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-2">
-          {items.map(item => (
+          {items.map((item) => (
             <NavItemComponent
               key={item.id}
               item={item}
@@ -237,7 +237,7 @@ export function Sidebar({
 
       {/* Footer */}
       {footer && (
-        <div className={cn('flex-shrink-0 p-4 border-t border-graphite-200', collapsed && 'px-2')}>
+        <div className={cn("flex-shrink-0 p-4 border-t border-graphite-200", collapsed && "px-2")}>
           {footer}
         </div>
       )}

@@ -1,12 +1,12 @@
-import * as path from 'path';
-import * as yaml from 'yaml';
+import * as path from "path";
+import * as yaml from "yaml";
 import type {
   Evidence,
   ImporterPlugin,
   InferenceContext,
   InferredArtifact,
   ParseContext,
-} from '../types';
+} from "../types";
 
 export interface KubernetesData {
   name: string;
@@ -20,23 +20,23 @@ export interface KubernetesData {
 
 export class KubernetesPlugin implements ImporterPlugin {
   name(): string {
-    return 'kubernetes';
+    return "kubernetes";
   }
 
   supports(filePath: string): boolean {
     const basename = path.basename(filePath).toLowerCase();
     const relative = path.relative(process.cwd(), filePath).toLowerCase();
     return (
-      (basename.endsWith('.yaml') || basename.endsWith('.yml')) &&
-      (relative.includes('kubernetes') ||
-        relative.includes('k8s') ||
-        relative.includes('manifests'))
+      (basename.endsWith(".yaml") || basename.endsWith(".yml")) &&
+      (relative.includes("kubernetes") ||
+        relative.includes("k8s") ||
+        relative.includes("manifests"))
     );
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
     if (!fileContent) {
-      throw new Error('File content required for Kubernetes parsing');
+      throw new Error("File content required for Kubernetes parsing");
     }
 
     const evidence: Evidence[] = [];
@@ -49,8 +49,8 @@ export class KubernetesPlugin implements ImporterPlugin {
         return evidence;
       }
       const parsedItems = documents
-        .map(doc => doc.toJSON())
-        .filter(item => item && typeof item === 'object' && item !== null);
+        .map((doc) => doc.toJSON())
+        .filter((item) => item && typeof item === "object" && item !== null);
       if (parsedItems.length === 0) {
         return evidence;
       }
@@ -68,12 +68,12 @@ export class KubernetesPlugin implements ImporterPlugin {
 
     if (Array.isArray(parsed)) {
       parsed.forEach((item, index) => {
-        if (typeof item === 'object' && item !== null) {
+        if (typeof item === "object" && item !== null) {
           const itemEvidence = this.parseSingleItem(item, filePath, projectRoot, index);
           evidence.push(itemEvidence);
         }
       });
-    } else if (typeof parsed === 'object' && parsed !== null) {
+    } else if (typeof parsed === "object" && parsed !== null) {
       const itemEvidence = this.parseSingleItem(parsed, filePath, projectRoot, 0);
       evidence.push(itemEvidence);
     }
@@ -85,7 +85,7 @@ export class KubernetesPlugin implements ImporterPlugin {
     parsed: any,
     filePath: string,
     projectRoot: string,
-    index: number
+    index: number,
   ): Evidence {
     const name = parsed.metadata?.name;
     const kind = parsed.kind;
@@ -107,7 +107,7 @@ export class KubernetesPlugin implements ImporterPlugin {
     return {
       id: evidenceId,
       source: this.name(),
-      type: 'infrastructure',
+      type: "infrastructure",
       filePath: relativePath,
       data,
       metadata: {
@@ -122,7 +122,7 @@ export class KubernetesPlugin implements ImporterPlugin {
 
     // Filter Kubernetes evidence
     const kubeEvidence = evidence.filter(
-      e => e.source === this.name() && e.type === 'infrastructure'
+      (e) => e.source === this.name() && e.type === "infrastructure",
     );
 
     if (kubeEvidence.length === 0) return artifacts;
@@ -133,7 +133,7 @@ export class KubernetesPlugin implements ImporterPlugin {
 
     for (const e of kubeEvidence) {
       const data = e.data as KubernetesData;
-      const safeName = (data.name || `resource-${data.index}`).replace(/[^a-zA-Z0-9-]/g, '-');
+      const safeName = (data.name || `resource-${data.index}`).replace(/[^a-zA-Z0-9-]/g, "-");
       const artifactId = `${data.kind.toLowerCase()}-${safeName}`;
       const artifactName = data.name || `Unnamed Resource`;
       const fullParsed = (data as any).fullParsed;
@@ -142,55 +142,55 @@ export class KubernetesPlugin implements ImporterPlugin {
         description = `Kubernetes ${data.kind} resource`;
       } else {
         switch (data.kind) {
-          case 'Deployment': {
+          case "Deployment": {
             const replicas = fullParsed.spec?.replicas || 1;
             const containers = fullParsed.spec?.template?.spec?.containers || [];
-            const images = containers.map((c: any) => c.image).join(', ');
-            description = `Deploys ${data.name || 'unnamed'} with ${replicas} replicas using images: ${images}`;
+            const images = containers.map((c: any) => c.image).join(", ");
+            description = `Deploys ${data.name || "unnamed"} with ${replicas} replicas using images: ${images}`;
             if (data.namespace) description += ` in namespace ${data.namespace}`;
             break;
           }
-          case 'Service': {
+          case "Service": {
             const portValues = (fullParsed.spec?.ports || [])
               .map((p: any) => p?.port)
               .filter(
                 (port: any) =>
-                  typeof port === 'number' || (typeof port === 'string' && port.trim().length > 0)
+                  typeof port === "number" || (typeof port === "string" && port.trim().length > 0),
               );
             const selector = JSON.stringify(fullParsed.spec?.selector || {});
             const portSegment =
               portValues.length > 0
-                ? `on ports ${portValues.join(', ')}`
-                : 'without explicit port configuration';
-            description = `Exposes service ${data.name || 'unnamed'} ${portSegment} selecting pods by ${selector}`;
+                ? `on ports ${portValues.join(", ")}`
+                : "without explicit port configuration";
+            description = `Exposes service ${data.name || "unnamed"} ${portSegment} selecting pods by ${selector}`;
             if (data.namespace) description += ` in namespace ${data.namespace}`;
             break;
           }
-          case 'ConfigMap': {
+          case "ConfigMap": {
             const keys = Object.keys(fullParsed.data || {}).length;
-            description = `Provides configuration for ${data.name || 'unnamed'} with ${keys} key-value pairs`;
+            description = `Provides configuration for ${data.name || "unnamed"} with ${keys} key-value pairs`;
             if (data.namespace) description += ` in namespace ${data.namespace}`;
             break;
           }
-          case 'Secret': {
-            const secretType = fullParsed.type || 'Opaque';
+          case "Secret": {
+            const secretType = fullParsed.type || "Opaque";
             const dataKeys = Object.keys(fullParsed.data || {}).length;
-            description = `Stores ${secretType} secret ${data.name || 'unnamed'} with ${dataKeys} entries`;
+            description = `Stores ${secretType} secret ${data.name || "unnamed"} with ${dataKeys} entries`;
             if (data.namespace) description += ` in namespace ${data.namespace}`;
             break;
           }
           default:
-            description = `Kubernetes ${data.kind} named ${data.name || 'unnamed'}`;
+            description = `Kubernetes ${data.kind} named ${data.name || "unnamed"}`;
             if (data.namespace) description += ` in namespace ${data.namespace}`;
         }
       }
 
       const artifact = {
         id: artifactId,
-        type: 'infrastructure' as const,
+        type: "infrastructure" as const,
         name: artifactName,
         description,
-        tags: ['kubernetes', 'infrastructure'],
+        tags: ["kubernetes", "infrastructure"],
         metadata: {
           root: rootDir,
           filePath: e.filePath,
@@ -207,9 +207,9 @@ export class KubernetesPlugin implements ImporterPlugin {
         provenance: {
           evidence: [e.id],
           plugins: [this.name()],
-          rules: ['kube-parsing', 'resource-extraction'],
+          rules: ["kube-parsing", "resource-extraction"],
           timestamp: Date.now(),
-          pipelineVersion: '1.0.0',
+          pipelineVersion: "1.0.0",
         },
         relationships: [],
       });
@@ -222,27 +222,27 @@ export class KubernetesPlugin implements ImporterPlugin {
     if (evidence.length === 0) return null;
 
     // Get all file paths (already relative)
-    const relativePaths = evidence.map(e => e.filePath);
+    const relativePaths = evidence.map((e) => e.filePath);
 
     // Extract directory paths (remove filename and #index)
-    const dirPaths = relativePaths.map(relPath => {
-      const withoutIndex = relPath.split('#')[0];
+    const dirPaths = relativePaths.map((relPath) => {
+      const withoutIndex = relPath.split("#")[0];
       return path.dirname(withoutIndex);
     });
 
     if (dirPaths.length === 0) return null;
 
     // Split all dir paths into parts
-    const dirPartsList = dirPaths.map(dir => dir.split(path.sep));
+    const dirPartsList = dirPaths.map((dir) => dir.split(path.sep));
 
     // Find the minimum length
-    const minLength = Math.min(...dirPartsList.map(parts => parts.length));
+    const minLength = Math.min(...dirPartsList.map((parts) => parts.length));
 
     // Find the first index where not all parts match
     let commonLength = 0;
     for (let i = 0; i < minLength; i++) {
       const part = dirPartsList[0][i];
-      if (!dirPartsList.every(parts => parts[i] === part)) {
+      if (!dirPartsList.every((parts) => parts[i] === part)) {
         break;
       }
       commonLength = i + 1;
@@ -251,7 +251,7 @@ export class KubernetesPlugin implements ImporterPlugin {
     // Join the common parts
     const commonDir = dirPartsList[0].slice(0, commonLength).join(path.sep);
 
-    if (commonDir === '') return '.';
+    if (commonDir === "") return ".";
     return commonDir;
   }
 }

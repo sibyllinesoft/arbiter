@@ -15,34 +15,34 @@ import {
   Settings,
   Trash2,
   XCircle,
-} from 'lucide-react';
-import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-toastify';
-import { Button, Card, Input, Select, StatusBadge, cn } from '../../design-system';
-import { apiService } from '../../services/api';
-import type { WebhookHandler, WebhookProvider } from '../../types/api';
-import { createLogger } from '../../utils/logger';
+} from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
+import { Button, Card, Input, Select, StatusBadge, cn } from "../../design-system";
+import { apiService } from "../../services/api";
+import type { WebhookHandler, WebhookProvider } from "../../types/api";
+import { createLogger } from "../../utils/logger";
 
-const log = createLogger('HandlersList');
+const log = createLogger("HandlersList");
 
 // Provider icons mapping
 const PROVIDER_ICONS: Record<WebhookProvider, string> = {
-  github: '🐙',
-  gitlab: '🦊',
-  bitbucket: '🪣',
-  slack: '💬',
-  discord: '💬',
-  custom: '⚙️',
+  github: "🐙",
+  gitlab: "🦊",
+  bitbucket: "🪣",
+  slack: "💬",
+  discord: "💬",
+  custom: "⚙️",
 };
 
 // Provider colors for badges
 const PROVIDER_COLORS: Record<WebhookProvider, string> = {
-  github: 'bg-gray-100 text-gray-800',
-  gitlab: 'bg-orange-100 text-orange-800',
-  bitbucket: 'bg-blue-100 text-blue-800',
-  slack: 'bg-purple-100 text-purple-800',
-  discord: 'bg-indigo-100 text-indigo-800',
-  custom: 'bg-green-100 text-green-800',
+  github: "bg-gray-100 text-gray-800",
+  gitlab: "bg-orange-100 text-orange-800",
+  bitbucket: "bg-blue-100 text-blue-800",
+  slack: "bg-purple-100 text-purple-800",
+  discord: "bg-indigo-100 text-indigo-800",
+  custom: "bg-green-100 text-green-800",
 };
 
 interface HandlersListProps {
@@ -56,9 +56,9 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
   const [filteredHandlers, setFilteredHandlers] = useState<WebhookHandler[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterProvider, setFilterProvider] = useState<WebhookProvider | 'all'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterProvider, setFilterProvider] = useState<WebhookProvider | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "enabled" | "disabled">("all");
 
   // Load handlers from API
   const loadHandlers = useCallback(async () => {
@@ -68,11 +68,11 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
       const handlersData = await apiService.getHandlers();
       const safeHandlers = Array.isArray(handlersData) ? handlersData : [];
       setHandlers(safeHandlers);
-      log.debug('Loaded handlers:', safeHandlers);
+      log.debug("Loaded handlers:", safeHandlers);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load handlers';
+      const message = err instanceof Error ? err.message : "Failed to load handlers";
       setError(message);
-      log.error('Failed to load handlers:', err);
+      log.error("Failed to load handlers:", err);
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -92,22 +92,22 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
-        handler =>
+        (handler) =>
           handler.name.toLowerCase().includes(query) ||
           handler.event_type.toLowerCase().includes(query) ||
-          handler.provider.toLowerCase().includes(query)
+          handler.provider.toLowerCase().includes(query),
       );
     }
 
     // Apply provider filter
-    if (filterProvider !== 'all') {
-      filtered = filtered.filter(handler => handler.provider === filterProvider);
+    if (filterProvider !== "all") {
+      filtered = filtered.filter((handler) => handler.provider === filterProvider);
     }
 
     // Apply status filter
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(handler =>
-        filterStatus === 'enabled' ? handler.enabled : !handler.enabled
+    if (filterStatus !== "all") {
+      filtered = filtered.filter((handler) =>
+        filterStatus === "enabled" ? handler.enabled : !handler.enabled,
       );
     }
 
@@ -119,13 +119,13 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
     try {
       const updatedHandler = await apiService.toggleHandler(handler.id, !handler.enabled);
 
-      setHandlers(prev => prev.map(h => (h.id === handler.id ? updatedHandler : h)));
+      setHandlers((prev) => prev.map((h) => (h.id === handler.id ? updatedHandler : h)));
 
-      toast.success(`Handler ${updatedHandler.enabled ? 'enabled' : 'disabled'} successfully`);
+      toast.success(`Handler ${updatedHandler.enabled ? "enabled" : "disabled"} successfully`);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to toggle handler';
+      const message = err instanceof Error ? err.message : "Failed to toggle handler";
       toast.error(message);
-      log.error('Failed to toggle handler:', err);
+      log.error("Failed to toggle handler:", err);
     }
   }, []);
 
@@ -133,7 +133,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
   const handleDeleteHandler = useCallback(async (handler: WebhookHandler) => {
     if (
       !confirm(
-        `Are you sure you want to delete handler "${handler.name}"? This action cannot be undone.`
+        `Are you sure you want to delete handler "${handler.name}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -141,12 +141,12 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
 
     try {
       await apiService.deleteHandler(handler.id);
-      setHandlers(prev => prev.filter(h => h.id !== handler.id));
-      toast.success('Handler deleted successfully');
+      setHandlers((prev) => prev.filter((h) => h.id !== handler.id));
+      toast.success("Handler deleted successfully");
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete handler';
+      const message = err instanceof Error ? err.message : "Failed to delete handler";
       toast.error(message);
-      log.error('Failed to delete handler:', err);
+      log.error("Failed to delete handler:", err);
     }
   }, []);
 
@@ -156,26 +156,26 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
       const testPayload = {
         test: true,
         timestamp: new Date().toISOString(),
-        source: 'manual-test',
+        source: "manual-test",
       };
 
       const result = await apiService.testHandler(handler.id, testPayload);
 
-      if (result.status === 'success') {
+      if (result.status === "success") {
         toast.success(`Handler test completed in ${result.duration_ms}ms`);
       } else {
         toast.error(`Handler test failed: ${result.error}`);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to test handler';
+      const message = err instanceof Error ? err.message : "Failed to test handler";
       toast.error(message);
-      log.error('Failed to test handler:', err);
+      log.error("Failed to test handler:", err);
     }
   }, []);
 
   // Format last execution time
   const formatLastExecution = (timestamp: string | undefined) => {
-    if (!timestamp) return 'Never';
+    if (!timestamp) return "Never";
 
     const date = new Date(timestamp);
     const now = new Date();
@@ -184,7 +184,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
@@ -241,7 +241,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
             <Input
               placeholder="Search handlers..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
               leftIcon={<Search className="h-4 w-4" />}
             />
           </div>
@@ -249,15 +249,15 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
           {/* Provider filter */}
           <Select
             value={filterProvider}
-            onChange={value => setFilterProvider(value as WebhookProvider | 'all')}
+            onChange={(value) => setFilterProvider(value as WebhookProvider | "all")}
             options={[
-              { value: 'all', label: 'All Providers' },
-              { value: 'github', label: '🐙 GitHub' },
-              { value: 'gitlab', label: '🦊 GitLab' },
-              { value: 'bitbucket', label: '🪣 Bitbucket' },
-              { value: 'slack', label: '💬 Slack' },
-              { value: 'discord', label: '💬 Discord' },
-              { value: 'custom', label: '⚙️ Custom' },
+              { value: "all", label: "All Providers" },
+              { value: "github", label: "🐙 GitHub" },
+              { value: "gitlab", label: "🦊 GitLab" },
+              { value: "bitbucket", label: "🪣 Bitbucket" },
+              { value: "slack", label: "💬 Slack" },
+              { value: "discord", label: "💬 Discord" },
+              { value: "custom", label: "⚙️ Custom" },
             ]}
             className="w-40"
           />
@@ -265,11 +265,11 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
           {/* Status filter */}
           <Select
             value={filterStatus}
-            onChange={value => setFilterStatus(value as 'all' | 'enabled' | 'disabled')}
+            onChange={(value) => setFilterStatus(value as "all" | "enabled" | "disabled")}
             options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'enabled', label: 'Enabled' },
-              { value: 'disabled', label: 'Disabled' },
+              { value: "all", label: "All Status" },
+              { value: "enabled", label: "Enabled" },
+              { value: "disabled", label: "Disabled" },
             ]}
             className="w-32"
           />
@@ -300,7 +300,7 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredHandlers.map(handler => (
+          {filteredHandlers.map((handler) => (
             <Card key={handler.id} className="p-6 hover:shadow-md transition-shadow">
               {/* Handler Header */}
               <div className="flex items-start justify-between mb-4">
@@ -311,14 +311,14 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
                     <div className="flex items-center gap-2 mb-2">
                       <span
                         className={cn(
-                          'px-2 py-1 text-xs font-medium rounded-full',
-                          PROVIDER_COLORS[handler.provider]
+                          "px-2 py-1 text-xs font-medium rounded-full",
+                          PROVIDER_COLORS[handler.provider],
                         )}
                       >
                         {handler.provider}
                       </span>
-                      <StatusBadge variant={handler.enabled ? 'success' : 'error'} size="sm">
-                        {handler.enabled ? 'Enabled' : 'Disabled'}
+                      <StatusBadge variant={handler.enabled ? "success" : "error"} size="sm">
+                        {handler.enabled ? "Enabled" : "Disabled"}
                       </StatusBadge>
                     </div>
                     <p className="text-sm text-gray-600">{handler.event_type}</p>
@@ -329,12 +329,12 @@ export function HandlersList({ onEditHandler, onViewStats, onCreateHandler }: Ha
                 <button
                   onClick={() => handleToggleHandler(handler)}
                   className={cn(
-                    'p-2 rounded-lg transition-colors',
+                    "p-2 rounded-lg transition-colors",
                     handler.enabled
-                      ? 'text-green-600 hover:bg-green-50'
-                      : 'text-gray-400 hover:bg-gray-50'
+                      ? "text-green-600 hover:bg-green-50"
+                      : "text-gray-400 hover:bg-gray-50",
                   )}
-                  title={handler.enabled ? 'Disable handler' : 'Enable handler'}
+                  title={handler.enabled ? "Disable handler" : "Enable handler"}
                 >
                   {handler.enabled ? (
                     <Power className="h-4 w-4" />

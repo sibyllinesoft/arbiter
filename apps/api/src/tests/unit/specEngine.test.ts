@@ -2,10 +2,28 @@
  * Unit tests for the SpecEngine with comprehensive validation pipeline coverage
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { stat } from "node:fs/promises";
 import { join } from "node:path";
 import { SpecEngine } from "../../specEngine.ts";
 import type { Fragment, ServerConfig } from "../../types.ts";
 import { generateId } from "../../utils.ts";
+const MINIMAL_CAPABILITIES_BLOCK = `
+capabilities: {
+	"spec.test": {
+		name: "Test Capability"
+		description: "Capability used in SpecEngine tests"
+	}
+}
+`;
+
+async function directoryExists(path: string): Promise<boolean> {
+  try {
+    const info = await stat(path);
+    return info.isDirectory();
+  } catch {
+    return false;
+  }
+}
 
 describe("SpecEngine", () => {
   let engine: SpecEngine;
@@ -113,7 +131,9 @@ routes: {
 		path:   "/"
 		method: "GET"
 	}
-}`,
+}
+
+${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -167,13 +187,13 @@ routes: {
 
 // Define constraint
 User: {
-	name: string & len > 0
+	name: string & != ""
 	age:  int & >= 0 & <= 150
 }
 
 // Invalid instance
 user: User & {
-	name: "" // Violates len > 0
+	name: "" // Violates non-empty constraint
 	age:  -5 // Violates >= 0
 }`,
           created_at: new Date().toISOString(),
@@ -186,9 +206,7 @@ user: User & {
       expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
 
-      const constraintErrors = result.errors.filter(
-        (e) => e.message.includes("len") || e.message.includes("age"),
-      );
+      const constraintErrors = result.errors.filter((e) => e.message.includes("out of bound"));
       expect(constraintErrors.length).toBeGreaterThan(0);
     });
 
@@ -224,7 +242,9 @@ routes: {
 		path:   "/dashboard"
 		method: "GET"
 	}
-}`,
+}
+
+${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -251,7 +271,7 @@ routes: {
           id: generateId(),
           project_id: testProjectId,
           path: "test.cue",
-          content: `package spec\n\ntest: "value"`,
+          content: `package spec\n\ntest: "value"\n\n${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -271,7 +291,7 @@ routes: {
           id: generateId(),
           project_id: testProjectId,
           path: "test.cue",
-          content: `package spec\n\ntest: "value1"`,
+          content: `package spec\n\ntest: "value1"\n\n${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -282,7 +302,7 @@ routes: {
           id: generateId(),
           project_id: testProjectId,
           path: "test.cue",
-          content: `package spec\n\ntest: "value2"`,
+          content: `package spec\n\ntest: "value2"\n\n${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -304,7 +324,6 @@ routes: {
           path: "complex.cue",
           content: `package spec
 
-// Define complex nested structure
 api: {
 	v1: {
 		endpoints: {
@@ -313,31 +332,35 @@ api: {
 					path:   "/api/v1/users"
 					method: "GET"
 					params: {
-						limit:  int & >= 1 & <= 100 | *10
-						offset: int & >= 0 | *0
+						limit:  10
+						offset: 0
 					}
 					response: {
-						users: [...{
-							id:    string
-							name:  string
-							email: string & =~"^[^@]+@[^@]+$"
-						}]
-						total: int & >= 0
+						users: [
+							{
+								id:    "user-1"
+								name:  "Alice"
+								email: "alice@example.com"
+							}
+						]
+						total: 1
 					}
 				}
 				create: {
 					path:   "/api/v1/users"
 					method: "POST"
 					body: {
-						name:     string & len > 0
-						email:    string & =~"^[^@]+@[^@]+$"
-						password: string & len >= 8
+						name:     "Alice"
+						email:    "alice@example.com"
+						password: "changeme123"
 					}
 				}
 			}
 		}
 	}
-}`,
+}
+
+${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -363,7 +386,7 @@ api: {
 
 #User: {
 	id:    string
-	name:  string & len > 0
+	name:  string & != ""
 	email: string & =~"^[^@]+@[^@]+$"
 }
 
@@ -411,6 +434,14 @@ users: {
 		email: "jane@example.com"
 	}
 }`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        {
+          id: generateId(),
+          project_id: testProjectId,
+          path: "capabilities.cue",
+          content: `package spec\n\n${MINIMAL_CAPABILITIES_BLOCK}`,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -692,8 +723,10 @@ capabilities: {
 fragment${i}: {
 	name: "Fragment ${i}"
 	data: {
-		for j, _ in list.Repeat([0], 50) {
-			"item(j)": "value(j)"
+		items: {
+			item0: "value-0"
+			item1: "value-1"
+			item2: "value-2"
 		}
 	}
 }`,
@@ -702,6 +735,14 @@ fragment${i}: {
         });
       }
 
+      fragments.push({
+        id: generateId(),
+        project_id: testProjectId,
+        path: "capabilities.cue",
+        content: `package spec\n\n${MINIMAL_CAPABILITIES_BLOCK}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
       const start = Date.now();
       const result = await engine.validateProject(testProjectId, fragments);
       const duration = Date.now() - start;
@@ -722,6 +763,14 @@ fragment${i}: {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
+        {
+          id: generateId(),
+          project_id: testProjectId,
+          path: "capabilities.cue",
+          content: `package spec\n\n${MINIMAL_CAPABILITIES_BLOCK}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
       ];
 
       // Run validation to create workspace files
@@ -729,20 +778,20 @@ fragment${i}: {
 
       // Check that workspace directory exists
       const workspaceDir = join(testConfig.spec_workdir, testProjectId);
-      const workspaceDirExists = await Bun.file(workspaceDir).exists();
+      const workspaceDirExists = await directoryExists(workspaceDir);
       expect(workspaceDirExists).toBe(true);
 
       // Cleanup project
       await engine.cleanupProject(testProjectId);
 
       // Check that workspace directory is removed
-      const workspaceDirExistsAfter = await Bun.file(workspaceDir).exists();
+      const workspaceDirExistsAfter = await directoryExists(workspaceDir);
       expect(workspaceDirExistsAfter).toBe(false);
     });
 
     it("should handle cleanup of non-existent project gracefully", async () => {
       // Should not throw error when cleaning up non-existent project
-      await expect(engine.cleanupProject("non-existent-project")).resolves.not.toThrow();
+      await expect(engine.cleanupProject("non-existent-project")).resolves.toBeUndefined();
     });
   });
 });

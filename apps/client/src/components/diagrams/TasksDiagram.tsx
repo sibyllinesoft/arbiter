@@ -1,4 +1,4 @@
-import { ArtifactCard, type ArtifactCardMetaRow } from '@/components/ArtifactCard';
+import { ArtifactCard, type ArtifactCardMetaRow } from "@/components/ArtifactCard";
 import {
   AddEntityModal,
   DEFAULT_UI_OPTION_CATALOG,
@@ -7,12 +7,12 @@ import {
   type TaskEpicOption,
   type UiOptionCatalog,
   coerceFieldValueToString,
-} from '@/components/modals/AddEntityModal';
-import { Button, Card, type TabItem, Tabs } from '@/design-system';
-import { apiService } from '@/services/api';
-import { clsx } from 'clsx';
-import { AlertCircle, Flag, GitBranch, Layers, Plus, User, Workflow } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+} from "@/components/modals/AddEntityModal";
+import { Button, Card, type TabItem, Tabs } from "@/design-system";
+import { apiService } from "@/services/api";
+import { clsx } from "clsx";
+import { AlertCircle, Flag, GitBranch, Layers, Plus, User, Workflow } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Handle,
   Position,
@@ -22,8 +22,8 @@ import ReactFlow, {
   type NodeProps,
   getRectOfNodes,
   type ReactFlowInstance,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
+} from "reactflow";
+import "reactflow/dist/style.css";
 
 interface TasksDiagramProps {
   projectId: string;
@@ -83,30 +83,30 @@ interface NormalizedTaskGroup {
   /** Normalized tasks contained within the group */
   tasks: NormalizedTask[];
   /** Group type - either dedicated epic or global unscoped tasks */
-  type: 'epic' | 'unscoped';
+  type: "epic" | "unscoped";
   /** Slug match keys to correlate tasks with this group */
   matchKeys: string[];
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  completed: 'fill:#dcfce7,stroke:#15803d,color:#166534,font-weight:bold',
-  in_progress: 'fill:#bfdbfe,stroke:#1d4ed8,color:#1e3a8a,font-weight:bold',
-  blocked: 'fill:#fee2e2,stroke:#dc2626,color:#991b1b,font-weight:bold',
-  at_risk: 'fill:#fef3c7,stroke:#d97706,color:#92400e,font-weight:bold',
-  todo: 'fill:#f1f5f9,stroke:#94a3b8,color:#475569',
+  completed: "fill:#dcfce7,stroke:#15803d,color:#166534,font-weight:bold",
+  in_progress: "fill:#bfdbfe,stroke:#1d4ed8,color:#1e3a8a,font-weight:bold",
+  blocked: "fill:#fee2e2,stroke:#dc2626,color:#991b1b,font-weight:bold",
+  at_risk: "fill:#fef3c7,stroke:#d97706,color:#92400e,font-weight:bold",
+  todo: "fill:#f1f5f9,stroke:#94a3b8,color:#475569",
 };
 
-const DEFAULT_TASK_LAYER_KEY = 'task-default';
+const DEFAULT_TASK_LAYER_KEY = "task-default";
 
 const TASK_STATUS_LAYER_KEY: Record<string, string> = {
-  completed: 'task-completed',
-  in_progress: 'task-in-progress',
-  blocked: 'task-blocked',
-  at_risk: 'task-at-risk',
+  completed: "task-completed",
+  in_progress: "task-in-progress",
+  blocked: "task-blocked",
+  at_risk: "task-at-risk",
   todo: DEFAULT_TASK_LAYER_KEY,
 };
 
-const FALLBACK_STATUS_CLASS = 'todo';
+const FALLBACK_STATUS_CLASS = "todo";
 
 const normalizeString = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
@@ -118,18 +118,18 @@ const slugify = (value: string): string =>
   value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 const toArray = (value: unknown): string[] => {
   if (!value) return [];
   if (Array.isArray(value)) {
-    return value.map(item => normalizeString(item)).filter((v): v is string => Boolean(v));
+    return value.map((item) => normalizeString(item)).filter((v): v is string => Boolean(v));
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value
-      .split(',')
-      .map(item => normalizeString(item))
+      .split(",")
+      .map((item) => normalizeString(item))
       .filter((v): v is string => Boolean(v));
   }
   return [];
@@ -149,10 +149,10 @@ const deriveStatusClass = (status?: string | null): string => {
 };
 
 const escapeMermaidLabel = (value: string): string =>
-  value.replace(/"/g, '\\"').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  value.replace(/"/g, '\\"').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const toRecord = (value: unknown): UnknownRecord =>
-  value && typeof value === 'object' && !Array.isArray(value) ? (value as UnknownRecord) : {};
+  value && typeof value === "object" && !Array.isArray(value) ? (value as UnknownRecord) : {};
 
 const getString = (record: UnknownRecord, key: string): string | null =>
   normalizeString(record[key]);
@@ -171,7 +171,7 @@ const ensureArray = (value: unknown): Array<{ key: string; value: unknown; index
     }));
   }
 
-  if (value && typeof value === 'object') {
+  if (value && typeof value === "object") {
     return Object.entries(value as Record<string, unknown>).map(([key, entry], index) => ({
       key,
       value: entry,
@@ -202,123 +202,123 @@ const normalizeTask = ({
   nodePrefix,
   epicContext,
 }: NormalizeTaskArgs): NormalizedTask | null => {
-  const taskRecord = typeof value === 'string' ? {} : toRecord(value);
-  const inlineName = normalizeString(typeof value === 'string' ? value : taskRecord['name']);
-  const metadata = getNestedRecord(taskRecord, 'metadata');
+  const taskRecord = typeof value === "string" ? {} : toRecord(value);
+  const inlineName = normalizeString(typeof value === "string" ? value : taskRecord["name"]);
+  const metadata = getNestedRecord(taskRecord, "metadata");
 
   const explicitEpicId =
-    getString(taskRecord, 'epicId') ??
-    getString(taskRecord, 'epic_id') ??
-    getString(metadata, 'epicId') ??
-    getString(metadata, 'epic_id') ??
+    getString(taskRecord, "epicId") ??
+    getString(taskRecord, "epic_id") ??
+    getString(metadata, "epicId") ??
+    getString(metadata, "epic_id") ??
     null;
 
   const explicitEpicName =
-    getString(taskRecord, 'epicName') ??
-    getString(metadata, 'epicName') ??
-    getString(metadata, 'epic') ??
+    getString(taskRecord, "epicName") ??
+    getString(metadata, "epicName") ??
+    getString(metadata, "epic") ??
     null;
 
   const fallbackBase = epicContext
     ? `${epicContext.slug}-task-${index + 1}`
-    : `${nodePrefix || 'task'}-${index + 1}`;
+    : `${nodePrefix || "task"}-${index + 1}`;
 
   const rawId =
-    getString(taskRecord, 'id') ??
-    getString(taskRecord, 'slug') ??
+    getString(taskRecord, "id") ??
+    getString(taskRecord, "slug") ??
     normalizeString(key) ??
     inlineName ??
     fallbackBase;
 
-  const name = getString(taskRecord, 'name') ?? inlineName ?? rawId ?? fallbackBase;
+  const name = getString(taskRecord, "name") ?? inlineName ?? rawId ?? fallbackBase;
 
   const description =
-    getString(taskRecord, 'description') ??
-    getString(taskRecord, 'summary') ??
-    getString(metadata, 'description') ??
-    getString(metadata, 'summary') ??
+    getString(taskRecord, "description") ??
+    getString(taskRecord, "summary") ??
+    getString(metadata, "description") ??
+    getString(metadata, "summary") ??
     undefined;
 
   const statusCandidates = [
-    getString(taskRecord, 'status'),
-    getString(taskRecord, 'state'),
-    getString(metadata, 'status'),
-    getString(metadata, 'state'),
+    getString(taskRecord, "status"),
+    getString(taskRecord, "state"),
+    getString(metadata, "status"),
+    getString(metadata, "state"),
   ].filter((candidate): candidate is string => Boolean(candidate));
 
-  const statusTokens = statusCandidates.map(token => token.toLowerCase());
+  const statusTokens = statusCandidates.map((token) => token.toLowerCase());
   const status = statusCandidates[0] ?? undefined;
 
   const assignee =
-    getString(taskRecord, 'assignee') ??
-    getString(taskRecord, 'owner') ??
-    getString(metadata, 'assignee') ??
-    getString(metadata, 'owner') ??
+    getString(taskRecord, "assignee") ??
+    getString(taskRecord, "owner") ??
+    getString(metadata, "assignee") ??
+    getString(metadata, "owner") ??
     undefined;
 
   const priority =
-    getString(taskRecord, 'priority') ?? getString(metadata, 'priority') ?? undefined;
+    getString(taskRecord, "priority") ?? getString(metadata, "priority") ?? undefined;
 
   const completedFlag =
-    getBooleanFlag(taskRecord['completed']) ||
-    getBooleanFlag(taskRecord['done']) ||
-    getBooleanFlag(taskRecord['isCompleted']) ||
-    getBooleanFlag(metadata['completed']) ||
-    getBooleanFlag(metadata['done']) ||
-    getBooleanFlag(metadata['isCompleted']) ||
-    statusTokens.includes('completed') ||
-    statusTokens.includes('done');
+    getBooleanFlag(taskRecord["completed"]) ||
+    getBooleanFlag(taskRecord["done"]) ||
+    getBooleanFlag(taskRecord["isCompleted"]) ||
+    getBooleanFlag(metadata["completed"]) ||
+    getBooleanFlag(metadata["done"]) ||
+    getBooleanFlag(metadata["isCompleted"]) ||
+    statusTokens.includes("completed") ||
+    statusTokens.includes("done");
 
   const dependencySources = [
-    taskRecord['dependsOn'],
-    taskRecord['depends_on'],
-    taskRecord['dependencies'],
-    taskRecord['blockedBy'],
-    taskRecord['blocked_by'],
-    metadata['dependsOn'],
-    metadata['depends_on'],
-    metadata['dependencies'],
+    taskRecord["dependsOn"],
+    taskRecord["depends_on"],
+    taskRecord["dependencies"],
+    taskRecord["blockedBy"],
+    taskRecord["blocked_by"],
+    metadata["dependsOn"],
+    metadata["depends_on"],
+    metadata["dependencies"],
   ];
 
   const dependsOn = dependencySources
-    .flatMap(entry => toArray(entry))
+    .flatMap((entry) => toArray(entry))
     .filter((dep, depIndex, self) => self.indexOf(dep) === depIndex);
 
-  const aliasCandidates = taskRecord['aliases'] ?? metadata['aliases'];
+  const aliasCandidates = taskRecord["aliases"] ?? metadata["aliases"];
   const aliasValues = Array.isArray(aliasCandidates)
     ? aliasCandidates
-        .map(item => normalizeString(item))
+        .map((item) => normalizeString(item))
         .filter((item): item is string => Boolean(item))
-    : typeof aliasCandidates === 'string'
+    : typeof aliasCandidates === "string"
       ? aliasCandidates
-          .split(',')
-          .map(item => normalizeString(item))
+          .split(",")
+          .map((item) => normalizeString(item))
           .filter((item): item is string => Boolean(item))
       : [];
 
   const artifactId =
-    getString(taskRecord, 'artifactId') ??
-    getString(taskRecord, 'artifact_id') ??
-    getString(taskRecord, 'entityId') ??
-    getString(taskRecord, 'entity_id') ??
-    getString(metadata, 'artifactId') ??
-    getString(metadata, 'artifact_id') ??
-    getString(metadata, 'entityId') ??
-    getString(metadata, 'entity_id') ??
+    getString(taskRecord, "artifactId") ??
+    getString(taskRecord, "artifact_id") ??
+    getString(taskRecord, "entityId") ??
+    getString(taskRecord, "entity_id") ??
+    getString(metadata, "artifactId") ??
+    getString(metadata, "artifact_id") ??
+    getString(metadata, "entityId") ??
+    getString(metadata, "entity_id") ??
     null;
 
   const slugSeed = rawId ?? name ?? fallbackBase;
   const slugValue = slugify(slugSeed);
-  const sanitizedPrefix = slugify(nodePrefix) || 'task';
+  const sanitizedPrefix = slugify(nodePrefix) || "task";
   const nodeIdBase = slugValue || `${sanitizedPrefix}-${index + 1}`;
   const nodeId = `task_${nodeIdBase}`;
 
   const matchKeys = Array.from(
     new Set(
       [rawId, name, key, slugValue, ...aliasValues]
-        .map(item => (item ? slugify(String(item)) : null))
-        .filter((item): item is string => Boolean(item))
-    )
+        .map((item) => (item ? slugify(String(item)) : null))
+        .filter((item): item is string => Boolean(item)),
+    ),
   );
 
   if (!matchKeys.includes(nodeIdBase)) {
@@ -331,7 +331,7 @@ const normalizeTask = ({
     slug: slugValue || nodeIdBase,
     dependsOn,
     nodeId,
-    statusClass: deriveStatusClass(status ?? (completedFlag ? 'completed' : undefined)),
+    statusClass: deriveStatusClass(status ?? (completedFlag ? "completed" : undefined)),
     completed: completedFlag,
     matchKeys,
   };
@@ -375,14 +375,14 @@ const normalizeTask = ({
 
 const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedTaskGroup[] => {
   const unscopedGroup: NormalizedTaskGroup = {
-    id: 'unscoped',
-    rawId: 'unscoped',
+    id: "unscoped",
+    rawId: "unscoped",
     artifactId: null,
-    name: 'Unscoped',
-    description: 'Tasks that are not assigned to an epic yet.',
+    name: "Unscoped",
+    description: "Tasks that are not assigned to an epic yet.",
     tasks: [],
-    type: 'unscoped',
-    matchKeys: ['unscoped'],
+    type: "unscoped",
+    matchKeys: ["unscoped"],
   };
 
   if (!resolved) {
@@ -390,9 +390,9 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
   }
 
   const resolvedRecord = toRecord(resolved);
-  const specRecord = getNestedRecord(resolvedRecord, 'spec');
+  const specRecord = getNestedRecord(resolvedRecord, "spec");
 
-  const epicSource = specRecord['epics'] ?? resolvedRecord['epics'] ?? [];
+  const epicSource = specRecord["epics"] ?? resolvedRecord["epics"] ?? [];
   const epicEntries = ensureArray(epicSource);
 
   const epicGroups: NormalizedTaskGroup[] = [];
@@ -419,42 +419,44 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
   };
 
   epicEntries.forEach(({ key, value, index }) => {
-    if (!value && typeof value !== 'string') {
+    if (!value && typeof value !== "string") {
       return;
     }
 
     const epicRecord =
-      typeof value === 'string' ? ({ name: value } satisfies UnknownRecord) : toRecord(value);
-    const metadata = getNestedRecord(epicRecord, 'metadata');
+      typeof value === "string" ? ({ name: value } satisfies UnknownRecord) : toRecord(value);
+    const metadata = getNestedRecord(epicRecord, "metadata");
     const rawEpicId =
-      getString(epicRecord, 'id') ??
-      getString(epicRecord, 'slug') ??
-      getString(metadata, 'id') ??
-      getString(metadata, 'slug') ??
+      getString(epicRecord, "id") ??
+      getString(epicRecord, "slug") ??
+      getString(metadata, "id") ??
+      getString(metadata, "slug") ??
       normalizeString(key) ??
       `epic-${index + 1}`;
 
-    const epicName = getString(epicRecord, 'name') ?? rawEpicId ?? `Epic ${index + 1}`;
+    const epicName = getString(epicRecord, "name") ?? rawEpicId ?? `Epic ${index + 1}`;
 
     const description =
-      getString(epicRecord, 'description') ?? getString(epicRecord, 'summary') ?? undefined;
+      getString(epicRecord, "description") ?? getString(epicRecord, "summary") ?? undefined;
 
-    const aliasRaw = epicRecord['aliases'];
+    const aliasRaw = epicRecord["aliases"];
     const aliasValues = Array.isArray(aliasRaw)
-      ? aliasRaw.map(item => normalizeString(item)).filter((item): item is string => Boolean(item))
+      ? aliasRaw
+          .map((item) => normalizeString(item))
+          .filter((item): item is string => Boolean(item))
       : [];
 
-    const metadataSlug = getString(metadata, 'slug') ?? getString(metadata, 'id');
+    const metadataSlug = getString(metadata, "slug") ?? getString(metadata, "id");
     const artifactId =
-      getString(epicRecord, 'artifactId') ??
-      getString(epicRecord, 'artifact_id') ??
-      getString(metadata, 'artifactId') ??
-      getString(metadata, 'artifact_id') ??
-      getString(metadata, 'entityId') ??
-      getString(metadata, 'entity_id') ??
+      getString(epicRecord, "artifactId") ??
+      getString(epicRecord, "artifact_id") ??
+      getString(metadata, "artifactId") ??
+      getString(metadata, "artifact_id") ??
+      getString(metadata, "entityId") ??
+      getString(metadata, "entity_id") ??
       null;
 
-    const slugBase = rawEpicId ?? metadataSlug ?? epicName ?? `${key || 'epic'}-${index + 1}`;
+    const slugBase = rawEpicId ?? metadataSlug ?? epicName ?? `${key || "epic"}-${index + 1}`;
     const epicSlug = slugify(slugBase) || `epic-${index + 1}`;
 
     const matchKeys = Array.from(
@@ -463,15 +465,15 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
           rawEpicId,
           epicName,
           normalizeString(key),
-          getString(epicRecord, 'slug'),
-          getString(metadata, 'slug'),
-          getString(metadata, 'id'),
+          getString(epicRecord, "slug"),
+          getString(metadata, "slug"),
+          getString(metadata, "id"),
           epicSlug,
           ...aliasValues,
         ]
-          .map(item => (item ? slugify(String(item)) : null))
-          .filter((item): item is string => Boolean(item))
-      )
+          .map((item) => (item ? slugify(String(item)) : null))
+          .filter((item): item is string => Boolean(item)),
+      ),
     );
 
     if (!matchKeys.includes(epicSlug)) {
@@ -484,19 +486,19 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
       artifactId,
       name: epicName,
       tasks: [],
-      type: 'epic',
+      type: "epic",
       matchKeys,
       ...(description ? { description } : {}),
     };
 
     epicGroups.push(epicGroup);
-    matchKeys.forEach(matchKey => {
+    matchKeys.forEach((matchKey) => {
       if (!epicMatchMap.has(matchKey)) {
         epicMatchMap.set(matchKey, epicGroup);
       }
     });
 
-    const taskSource = epicRecord['tasks'] ?? [];
+    const taskSource = epicRecord["tasks"] ?? [];
     const taskEntries = ensureArray(taskSource);
 
     taskEntries.forEach(({ key: taskKey, value: taskValue, index: taskIndex }) => {
@@ -518,19 +520,19 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
     });
   });
 
-  const globalTaskSource = specRecord['tasks'] ?? resolvedRecord['tasks'] ?? [];
+  const globalTaskSource = specRecord["tasks"] ?? resolvedRecord["tasks"] ?? [];
   const globalTaskEntries = ensureArray(globalTaskSource);
 
   globalTaskEntries.forEach(({ key, value, index }) => {
-    const taskRecord = typeof value === 'string' ? {} : toRecord(value);
-    const metadata = getNestedRecord(taskRecord, 'metadata');
+    const taskRecord = typeof value === "string" ? {} : toRecord(value);
+    const metadata = getNestedRecord(taskRecord, "metadata");
 
     const epicCandidates = [
-      getString(taskRecord, 'epicId'),
-      getString(taskRecord, 'epic_id'),
-      getString(taskRecord, 'epic'),
-      getString(metadata, 'epicId'),
-      getString(metadata, 'epic'),
+      getString(taskRecord, "epicId"),
+      getString(taskRecord, "epic_id"),
+      getString(taskRecord, "epic"),
+      getString(metadata, "epicId"),
+      getString(metadata, "epic"),
     ].filter((candidate): candidate is string => Boolean(candidate));
 
     let targetEpic: NormalizedTaskGroup | null = null;
@@ -549,7 +551,7 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
       value,
       key,
       index,
-      nodePrefix: targetEpic ? `${targetEpic.id}-task` : 'unscoped-task',
+      nodePrefix: targetEpic ? `${targetEpic.id}-task` : "unscoped-task",
       ...(targetEpic
         ? {
             epicContext: {
@@ -574,7 +576,7 @@ const buildTaskGroups = (resolved: ResolvedSpec | null | undefined): NormalizedT
 
   const allGroups = [unscopedGroup, ...epicGroups];
 
-  allGroups.forEach(group => {
+  allGroups.forEach((group) => {
     group.tasks.sort((a, b) => {
       const nameA = a.name ?? a.rawId;
       const nameB = b.name ?? b.rawId;
@@ -600,7 +602,7 @@ interface TaskFlowData {
 
 const getTaskLayerKey = (statusClass: string): string => {
   const candidate = TASK_STATUS_LAYER_KEY[statusClass];
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : DEFAULT_TASK_LAYER_KEY;
+  return typeof candidate === "string" && candidate.length > 0 ? candidate : DEFAULT_TASK_LAYER_KEY;
 };
 
 const buildTaskCardData = (task: NormalizedTask) => {
@@ -622,17 +624,17 @@ const buildTaskCardData = (task: NormalizedTask) => {
 const buildTaskMetaRows = (task: NormalizedTask): ArtifactCardMetaRow[] => {
   const rows: ArtifactCardMetaRow[] = [];
 
-  const statusLabel = task.status ? task.status : task.completed ? 'Completed' : 'Unclassified';
+  const statusLabel = task.status ? task.status : task.completed ? "Completed" : "Unclassified";
 
   rows.push({
-    key: 'status',
+    key: "status",
     icon: <Workflow />,
     content: <span className="opacity-100 capitalize">Status: {statusLabel}</span>,
   });
 
   if (task.priority) {
     rows.push({
-      key: 'priority',
+      key: "priority",
       icon: <Flag />,
       content: <span className="opacity-100">Priority: {task.priority}</span>,
     });
@@ -640,7 +642,7 @@ const buildTaskMetaRows = (task: NormalizedTask): ArtifactCardMetaRow[] => {
 
   if (task.assignee) {
     rows.push({
-      key: 'assignee',
+      key: "assignee",
       icon: <User />,
       content: <span className="opacity-100">Owner: {task.assignee}</span>,
     });
@@ -648,7 +650,7 @@ const buildTaskMetaRows = (task: NormalizedTask): ArtifactCardMetaRow[] => {
 
   if (task.epicName) {
     rows.push({
-      key: 'epic',
+      key: "epic",
       icon: <Layers />,
       content: <span className="opacity-100">Epic: {task.epicName}</span>,
     });
@@ -656,7 +658,7 @@ const buildTaskMetaRows = (task: NormalizedTask): ArtifactCardMetaRow[] => {
 
   if (task.dependsOn.length > 0) {
     rows.push({
-      key: 'dependencies',
+      key: "dependencies",
       icon: <GitBranch />,
       content: <span className="opacity-100">Dependencies: {task.dependsOn.length}</span>,
     });
@@ -667,15 +669,15 @@ const buildTaskMetaRows = (task: NormalizedTask): ArtifactCardMetaRow[] => {
 
 const buildTaskFlowData = (
   group: NormalizedTaskGroup,
-  selectedTaskId: string | null
+  selectedTaskId: string | null,
 ): TaskFlowData => {
   const nodes: Node<TaskNodeData>[] = [];
   const edges: Edge[] = [];
   const missingDependencies: string[] = [];
 
   const matchMap = new Map<string, NormalizedTask>();
-  group.tasks.forEach(task => {
-    task.matchKeys.forEach(key => {
+  group.tasks.forEach((task) => {
+    task.matchKeys.forEach((key) => {
       if (key && !matchMap.has(key)) {
         matchMap.set(key, task);
       }
@@ -687,7 +689,7 @@ const buildTaskFlowData = (
   group.tasks.forEach((task, index) => {
     nodes.push({
       id: task.nodeId,
-      type: 'task',
+      type: "task",
       position: { x: index * horizontalSpacing, y: 0 },
       data: {
         task,
@@ -702,12 +704,12 @@ const buildTaskFlowData = (
 
   const edgeIds = new Set<string>();
 
-  group.tasks.forEach(task => {
+  group.tasks.forEach((task) => {
     if (!task.dependsOn.length) {
       return;
     }
 
-    task.dependsOn.forEach(dep => {
+    task.dependsOn.forEach((dep) => {
       const normalized = slugify(dep);
       const dependencyTask = normalized ? matchMap.get(normalized) : undefined;
 
@@ -718,7 +720,7 @@ const buildTaskFlowData = (
             id: edgeId,
             source: dependencyTask.nodeId,
             target: task.nodeId,
-            type: 'smoothstep',
+            type: "smoothstep",
             markerEnd: {
               type: MarkerType.ArrowClosed,
             },
@@ -756,7 +758,7 @@ const TaskNode: React.FC<NodeProps<TaskNodeData>> = ({ data }) => {
         metaRows={metaRows}
         onClick={() => {}}
         className={clsx(
-          isSelected ? 'ring-2 ring-offset-2 ring-offset-black/20 ring-white/80' : ''
+          isSelected ? "ring-2 ring-offset-2 ring-offset-black/20 ring-white/80" : "",
         )}
       />
     </div>
@@ -826,7 +828,7 @@ function TaskFlow({ nodes, edges, onSelectTask, width, height, onTaskClick }: Ta
       panOnScroll={false}
       zoomOnScroll
       zoomOnPinch
-      onInit={instance => {
+      onInit={(instance) => {
         instanceRef.current = instance;
         applyViewport();
       }}
@@ -863,7 +865,7 @@ const TaskDetailCard: React.FC<TaskDetailCardProps> = ({ task }) => {
         <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-700 shadow-sm dark:bg-white/10 dark:text-white/85">
           <p className="font-medium text-slate-900 dark:text-white">Dependencies</p>
           <ul className="mt-2 list-disc list-inside space-y-1">
-            {task.dependsOn.map(dep => (
+            {task.dependsOn.map((dep) => (
               <li key={`${task.nodeId}-${dep}`}>{dep}</li>
             ))}
           </ul>
@@ -888,7 +890,7 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
     height: 0,
   });
   const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return { width: 1280, height: 720 };
     }
     return { width: window.innerWidth, height: window.innerHeight };
@@ -896,7 +898,7 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
 
   const flowData = useMemo(
     () => buildTaskFlowData(group, selectedTask?.nodeId ?? null),
-    [group, selectedTask?.nodeId]
+    [group, selectedTask?.nodeId],
   );
 
   useEffect(() => {
@@ -918,9 +920,9 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
     const rect = node.getBoundingClientRect();
     const computed = window.getComputedStyle(node);
     const paddingX =
-      parseFloat(computed.paddingLeft || '0') + parseFloat(computed.paddingRight || '0');
+      parseFloat(computed.paddingLeft || "0") + parseFloat(computed.paddingRight || "0");
     const paddingY =
-      parseFloat(computed.paddingTop || '0') + parseFloat(computed.paddingBottom || '0');
+      parseFloat(computed.paddingTop || "0") + parseFloat(computed.paddingBottom || "0");
 
     const width = Math.max(1, Math.round(rect.width - paddingX));
     const height = Math.max(1, Math.round(rect.height - paddingY));
@@ -930,16 +932,10 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
       return false;
     }
 
-    setFlowSize(previous => {
+    setFlowSize((previous) => {
       const deltaWidth = width - previous.width;
       const deltaHeight = height - previous.height;
       const noChange = Math.abs(deltaWidth) < 1 && Math.abs(deltaHeight) < 1;
-      if (!noChange && import.meta.env.DEV) {
-        const formatDelta = (delta: number) => `${delta >= 0 ? '+' : ''}${delta.toFixed(2)}`;
-        console.debug(
-          `[TasksDiagram] measured flow container for "${group.id}": ${width}x${height}px (Δ ${formatDelta(deltaWidth)} x ${formatDelta(deltaHeight)}), padding ${paddingX.toFixed(2)}x${paddingY.toFixed(2)}`
-        );
-      }
       return noChange ? previous : { width, height };
     });
 
@@ -950,7 +946,7 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
 
   useEffect(() => {
     const updateViewport = () => {
-      if (typeof window === 'undefined') return;
+      if (typeof window === "undefined") return;
       setViewportSize({
         width: Math.max(1, window.innerWidth),
         height: Math.max(1, window.innerHeight),
@@ -958,9 +954,9 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
     };
 
     updateViewport();
-    window.addEventListener('resize', updateViewport);
+    window.addEventListener("resize", updateViewport);
     return () => {
-      window.removeEventListener('resize', updateViewport);
+      window.removeEventListener("resize", updateViewport);
     };
   }, []);
 
@@ -1017,9 +1013,9 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
       updateMeasuredSize();
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, [updateMeasuredSize, isActive]);
 
@@ -1049,11 +1045,11 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
                 className="relative h-full w-full overflow-hidden bg-white dark:bg-graphite-950"
                 style={{ minHeight: `${adjustedHeight}px` }}
               >
-                {group.type === 'epic' && group.description && (
+                {group.type === "epic" && group.description && (
                   <div className="pointer-events-none absolute left-2 top-2 z-[999] flex justify-start">
                     <div
                       className="pointer-events-none rounded-lg border border-white/30 bg-white/50 p-3 text-xs leading-relaxed text-gray-900 shadow-xl backdrop-blur-[10px] dark:border-white/10 dark:bg-graphite-900/50 dark:text-graphite-50"
-                      style={{ width: '25%', minWidth: '16rem', maxWidth: '24rem' }}
+                      style={{ width: "25%", minWidth: "16rem", maxWidth: "24rem" }}
                     >
                       <p className="whitespace-pre-line">{group.description}</p>
                     </div>
@@ -1064,7 +1060,7 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
                   style={{
                     width: `${renderWidth}px`,
                     height: `${adjustedHeight}px`,
-                    transform: 'translate(-50%, -50%)',
+                    transform: "translate(-50%, -50%)",
                   }}
                 >
                   <TaskFlow
@@ -1084,9 +1080,9 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
             )
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gray-50 text-xs text-gray-500 dark:bg-graphite-900/40 dark:text-graphite-300">
-              {group.type === 'unscoped'
-                ? 'No unscoped tasks yet. Use Add Task to capture work that has not been assigned to an epic.'
-                : 'No tasks have been added to this epic yet. Use Add Task to start planning the work.'}
+              {group.type === "unscoped"
+                ? "No unscoped tasks yet. Use Add Task to capture work that has not been assigned to an epic."
+                : "No tasks have been added to this epic yet. Use Add Task to start planning the work."}
             </div>
           )}
         </div>
@@ -1112,7 +1108,7 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
   );
 }
 
-export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className = '' }) => {
+export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className = "" }) => {
   const [resolved, setResolved] = useState<ResolvedSpec | null>(null);
   const [, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1121,13 +1117,13 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
   const [epicModalState, setEpicModalState] = useState<{
     open: boolean;
     initialValues: Record<string, FieldValue> | null;
-    mode: 'create' | 'edit';
+    mode: "create" | "edit";
     targetArtifactId: string | null;
     draftIdentifier: string | null;
   }>({
     open: false,
     initialValues: null,
-    mode: 'create',
+    mode: "create",
     targetArtifactId: null,
     draftIdentifier: null,
   });
@@ -1137,16 +1133,16 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
     open: boolean;
     presetEpicId: string | null;
     initialValues: Record<string, FieldValue> | null;
-    mode: 'create' | 'edit';
+    mode: "create" | "edit";
     targetArtifactId: string | null;
   }>({
     open: false,
     presetEpicId: null,
     initialValues: null,
-    mode: 'create',
+    mode: "create",
     targetArtifactId: null,
   });
-  const [activeTab, setActiveTab] = useState<string>('unscoped');
+  const [activeTab, setActiveTab] = useState<string>("unscoped");
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -1177,10 +1173,10 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         if (!isMountedRef.current) return;
         setResolved(response.resolved as ResolvedSpec);
       } catch (err) {
-        console.error('Failed to load epic/task data', err);
+        console.error("Failed to load epic/task data", err);
         if (!isMountedRef.current) return;
         setResolved(null);
-        setError(err instanceof Error ? err.message : 'Failed to load tasks');
+        setError(err instanceof Error ? err.message : "Failed to load tasks");
         throw err;
       } finally {
         if (!silent && isMountedRef.current) {
@@ -1188,7 +1184,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         }
       }
     },
-    [projectId]
+    [projectId],
   );
 
   useEffect(() => {
@@ -1203,14 +1199,14 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
       try {
         const options = await apiService.getUiOptionCatalog();
         if (!active || !isMountedRef.current || !options) return;
-        setUiOptionCatalog(prev => ({
+        setUiOptionCatalog((prev) => ({
           ...DEFAULT_UI_OPTION_CATALOG,
           ...prev,
           ...options,
         }));
       } catch (err) {
         if (import.meta.env.DEV) {
-          console.warn('[TasksDiagram] failed to fetch UI option catalog', err);
+          console.warn("[TasksDiagram] failed to fetch UI option catalog", err);
         }
       }
     })();
@@ -1224,14 +1220,14 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
 
   useEffect(() => {
     if (!taskGroups.length) {
-      if (activeTab !== 'unscoped') {
-        setActiveTab('unscoped');
+      if (activeTab !== "unscoped") {
+        setActiveTab("unscoped");
       }
       return;
     }
 
-    if (!taskGroups.some(group => group.id === activeTab)) {
-      setActiveTab(taskGroups[0]?.id ?? 'unscoped');
+    if (!taskGroups.some((group) => group.id === activeTab)) {
+      setActiveTab(taskGroups[0]?.id ?? "unscoped");
     }
   }, [taskGroups, activeTab]);
 
@@ -1241,8 +1237,8 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
     const seenTasks = new Set<string>();
     const seenEpics = new Set<string>();
 
-    taskGroups.forEach(group => {
-      if (group.type === 'epic') {
+    taskGroups.forEach((group) => {
+      if (group.type === "epic") {
         const epicIdentifier = group.rawId ?? group.id;
         if (epicIdentifier && !seenEpics.has(epicIdentifier)) {
           selection.push({ id: epicIdentifier, name: group.name });
@@ -1251,7 +1247,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         }
       }
 
-      group.tasks.forEach(task => {
+      group.tasks.forEach((task) => {
         if (task.completed) {
           return;
         }
@@ -1269,7 +1265,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
           name: task.name,
         };
 
-        if (group.type === 'epic') {
+        if (group.type === "epic") {
           const epicIdentifier = group.rawId ?? group.id;
           option.epicId = epicIdentifier;
           option.epicName = group.name;
@@ -1308,7 +1304,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
       epicTaskOptions: openTaskOptions,
       taskEpicOptions: epicSelectionOptions,
     }),
-    [uiOptionCatalog, openTaskOptions, epicSelectionOptions]
+    [uiOptionCatalog, openTaskOptions, epicSelectionOptions],
   );
 
   const handleCreateEntity = useCallback(
@@ -1341,23 +1337,23 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
           setError(null);
         }
       } catch (err) {
-        console.error('[TasksDiagram] failed to create entity', err);
+        console.error("[TasksDiagram] failed to create entity", err);
         if (isMountedRef.current) {
-          setError(err instanceof Error ? err.message : 'Failed to create entity');
+          setError(err instanceof Error ? err.message : "Failed to create entity");
         }
       }
     },
-    [projectId, loadResolved]
+    [projectId, loadResolved],
   );
 
   const handleEpicSubmit = useCallback(
     (payload: { entityType: string; values: Record<string, FieldValue> }) => {
       const valuesWithContext: Record<string, FieldValue> = { ...payload.values };
       const incomingId =
-        typeof valuesWithContext.id === 'string' ? valuesWithContext.id.trim() : '';
+        typeof valuesWithContext.id === "string" ? valuesWithContext.id.trim() : "";
       const incomingSlug =
-        typeof valuesWithContext.slug === 'string' ? valuesWithContext.slug.trim() : '';
-      const resolvedIdentifier = incomingId || incomingSlug || activeEpicDraftIdentifier || '';
+        typeof valuesWithContext.slug === "string" ? valuesWithContext.slug.trim() : "";
+      const resolvedIdentifier = incomingId || incomingSlug || activeEpicDraftIdentifier || "";
 
       if (resolvedIdentifier) {
         valuesWithContext.id = resolvedIdentifier;
@@ -1370,15 +1366,15 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         artifactId: activeEpicArtifactId ?? null,
       });
     },
-    [handleCreateEntity, activeEpicArtifactId, activeEpicDraftIdentifier]
+    [handleCreateEntity, activeEpicArtifactId, activeEpicDraftIdentifier],
   );
 
   const epicLookup = useMemo(() => {
     const map = new Map<string, NormalizedTaskGroup>();
-    taskGroups.forEach(group => {
-      if (group.type !== 'epic') return;
-      const identifiers = [group.id, group.rawId ?? '', group.artifactId ?? ''];
-      identifiers.filter(Boolean).forEach(identifier => {
+    taskGroups.forEach((group) => {
+      if (group.type !== "epic") return;
+      const identifiers = [group.id, group.rawId ?? "", group.artifactId ?? ""];
+      identifiers.filter(Boolean).forEach((identifier) => {
         map.set(identifier, group);
         map.set(slugify(identifier), group);
       });
@@ -1396,7 +1392,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
       const rawEpicValue =
         coerceSingle(valuesWithContext.epicId) ||
         coerceSingle(valuesWithContext.epic) ||
-        (typeof taskModalState.presetEpicId === 'string' ? taskModalState.presetEpicId : '');
+        (typeof taskModalState.presetEpicId === "string" ? taskModalState.presetEpicId : "");
 
       delete valuesWithContext.epic;
       delete valuesWithContext.epicId;
@@ -1426,25 +1422,25 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         artifactId: targetId,
       });
     },
-    [taskModalState.presetEpicId, taskModalState.targetArtifactId, epicLookup, handleCreateEntity]
+    [taskModalState.presetEpicId, taskModalState.targetArtifactId, epicLookup, handleCreateEntity],
   );
 
   const openTaskModal = useCallback((group?: NormalizedTaskGroup | null) => {
-    if (group && group.type === 'epic') {
+    if (group && group.type === "epic") {
       const epicIdentifier = group.rawId ?? group.id;
       setTaskModalState({
         open: true,
         presetEpicId: epicIdentifier,
         initialValues: { epicId: epicIdentifier },
-        mode: 'create',
+        mode: "create",
         targetArtifactId: null,
       });
     } else {
       setTaskModalState({
         open: true,
         presetEpicId: null,
-        initialValues: { epicId: '' },
-        mode: 'create',
+        initialValues: { epicId: "" },
+        mode: "create",
         targetArtifactId: null,
       });
     }
@@ -1456,7 +1452,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
       open: false,
       presetEpicId: null,
       initialValues: null,
-      mode: 'create',
+      mode: "create",
       targetArtifactId: null,
     });
     setError(null);
@@ -1464,8 +1460,8 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
 
   const handleExistingTaskClick = useCallback((task: NormalizedTask) => {
     const initialValues: Record<string, FieldValue> = {
-      name: task.name ?? task.rawId ?? '',
-      epicId: task.epicId ?? '',
+      name: task.name ?? task.rawId ?? "",
+      epicId: task.epicId ?? "",
     };
     if (task.description) {
       initialValues.description = task.description;
@@ -1475,7 +1471,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
       open: true,
       presetEpicId: task.epicId ?? null,
       initialValues,
-      mode: 'edit',
+      mode: "edit",
       targetArtifactId: task.artifactId ?? null,
     });
     setError(null);
@@ -1484,8 +1480,8 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
   const handleEpicCreate = useCallback(() => {
     setEpicModalState({
       open: true,
-      initialValues: { name: '', description: '' },
-      mode: 'create',
+      initialValues: { name: "", description: "" },
+      mode: "create",
       targetArtifactId: null,
       draftIdentifier: null,
     });
@@ -1493,17 +1489,17 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
   }, []);
 
   const handleEpicEdit = useCallback((group: NormalizedTaskGroup) => {
-    if (group.type !== 'epic') return;
+    if (group.type !== "epic") return;
 
     const initialValues: Record<string, FieldValue> = {
       name: group.name,
-      description: group.description ?? '',
+      description: group.description ?? "",
     };
 
     setEpicModalState({
       open: true,
       initialValues,
-      mode: 'edit',
+      mode: "edit",
       targetArtifactId: group.artifactId ?? null,
       draftIdentifier: group.rawId ?? group.id ?? null,
     });
@@ -1514,7 +1510,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
     setEpicModalState({
       open: false,
       initialValues: null,
-      mode: 'create',
+      mode: "create",
       targetArtifactId: null,
       draftIdentifier: null,
     });
@@ -1522,8 +1518,8 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
   }, []);
 
   const activeGroup = useMemo(
-    () => taskGroups.find(group => group.id === activeTab) ?? taskGroups[0] ?? null,
-    [taskGroups, activeTab]
+    () => taskGroups.find((group) => group.id === activeTab) ?? taskGroups[0] ?? null,
+    [taskGroups, activeTab],
   );
 
   const presetEpicGroup = useMemo(() => {
@@ -1538,36 +1534,36 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
   }, [taskModalState, epicLookup]);
 
   const taskModalTitle = useMemo(() => {
-    if (taskModalState.mode === 'edit') {
+    if (taskModalState.mode === "edit") {
       const taskName = coerceFieldValueToString(taskModalState.initialValues?.name).trim();
-      return taskName.length > 0 ? `Update Task: ${taskName}` : 'Update Task';
+      return taskName.length > 0 ? `Update Task: ${taskName}` : "Update Task";
     }
-    return 'Add Task';
+    return "Add Task";
   }, [taskModalState.mode, taskModalState.initialValues]);
 
   const taskModalDescription = useMemo(() => {
-    return taskModalState.mode === 'edit'
-      ? 'Review and update the selected task. Changes will be saved to the project.'
-      : 'Provide the details needed to add a new task.';
+    return taskModalState.mode === "edit"
+      ? "Review and update the selected task. Changes will be saved to the project."
+      : "Provide the details needed to add a new task.";
   }, [taskModalState.mode]);
 
   const epicModalInitialValues = useMemo<Record<string, FieldValue>>(
-    () => epicModalState.initialValues ?? { name: '', description: '' },
-    [epicModalState.initialValues]
+    () => epicModalState.initialValues ?? { name: "", description: "" },
+    [epicModalState.initialValues],
   );
 
   const epicModalTitle = useMemo(() => {
-    if (epicModalState.mode === 'edit') {
+    if (epicModalState.mode === "edit") {
       const epicName = coerceFieldValueToString(epicModalState.initialValues?.name).trim();
-      return epicName.length > 0 ? `Update Epic: ${epicName}` : 'Update Epic';
+      return epicName.length > 0 ? `Update Epic: ${epicName}` : "Update Epic";
     }
-    return 'Add Epic';
+    return "Add Epic";
   }, [epicModalState.mode, epicModalState.initialValues]);
 
   const epicModalDescription = useMemo(() => {
-    return epicModalState.mode === 'edit'
-      ? 'Modify the epic details and save your updates.'
-      : 'Provide the details needed to add a new epic.';
+    return epicModalState.mode === "edit"
+      ? "Modify the epic details and save your updates."
+      : "Provide the details needed to add a new epic.";
   }, [epicModalState.mode]);
 
   const taskModalInitialValues = useMemo<Record<string, FieldValue>>(() => {
@@ -1583,27 +1579,27 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
       return { epicId: taskModalState.presetEpicId };
     }
 
-    return { epicId: '' };
+    return { epicId: "" };
   }, [taskModalState.initialValues, presetEpicGroup, taskModalState.presetEpicId]);
 
   const tabItems = useMemo<TabItem[]>(
     () =>
-      taskGroups.map(group => {
+      taskGroups.map((group) => {
         const panelProps: TaskGroupPanelProps = {
           group,
           isActive: activeTab === group.id,
           onTaskClick: handleExistingTaskClick,
-          ...(group.type === 'epic' ? { onEpicEdit: handleEpicEdit } : {}),
+          ...(group.type === "epic" ? { onEpicEdit: handleEpicEdit } : {}),
         } as TaskGroupPanelProps;
 
         return {
           id: group.id,
-          label: group.type === 'unscoped' ? 'Unscoped' : group.name,
+          label: group.type === "unscoped" ? "Unscoped" : group.name,
           badge: String(group.tasks.length),
           content: <TaskGroupPanel {...panelProps} />,
         } satisfies TabItem;
       }),
-    [taskGroups, activeTab, handleExistingTaskClick, handleEpicEdit]
+    [taskGroups, activeTab, handleExistingTaskClick, handleEpicEdit],
   );
 
   if (!projectId) {
@@ -1687,7 +1683,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         <AddEntityModal
           open={taskModalState.open}
           entityType="task"
-          groupLabel={presetEpicGroup ? `Task for ${presetEpicGroup.name}` : 'Task'}
+          groupLabel={presetEpicGroup ? `Task for ${presetEpicGroup.name}` : "Task"}
           optionCatalog={optionCatalog}
           onClose={closeTaskModal}
           onSubmit={handleTaskSubmit}

@@ -2,7 +2,7 @@
  * API service for backend communication
  */
 
-import type { UIOptionCatalog } from '@arbiter/shared';
+import type { UIOptionCatalog } from "@arbiter/shared";
 
 import type {
   CreateFragmentRequest,
@@ -24,10 +24,12 @@ import type {
   ValidationRequest,
   ValidationResponse,
   WebhookHandler,
-} from '../types/api';
-import { createLogger } from '../utils/logger';
+} from "../types/api";
+import { createLogger } from "../utils/logger";
 
-const log = createLogger('API');
+const log = createLogger("API");
+
+export const AUTH_TOKEN_STORAGE_KEY = "arbiter:authToken";
 
 export class ApiError extends Error {
   status: number;
@@ -35,15 +37,26 @@ export class ApiError extends Error {
 
   constructor(message: string, status: number, details?: ProblemDetails | undefined) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.details = details;
   }
 }
 
 export interface EnvironmentInfo {
-  runtime: 'cloudflare' | 'node';
+  runtime: "cloudflare" | "node";
   cloudflareTunnelSupported: boolean;
+}
+
+interface AuthMetadataResponse {
+  enabled: boolean;
+  provider?: string | null;
+  authorizationEndpoint?: string | null;
+  tokenEndpoint?: string | null;
+  clientId?: string | null;
+  scopes?: string[];
+  redirectUri?: string | null;
+  reason?: string;
 }
 
 export interface ProjectStructureSettings {
@@ -97,18 +110,39 @@ type TunnelSetupResponse = {
     hostname: string;
     url: string;
     configPath: string;
-    status: 'running' | 'stopped';
+    status: "running" | "stopped";
     hookId?: string;
   };
   logs?: string[];
   error?: string;
 };
 
+export interface OAuthTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in?: number;
+  scope?: string;
+  refresh_token?: string;
+  user_id?: string;
+}
+
+interface OAuthTokenExchangeResponse {
+  success: boolean;
+  message?: string;
+  token: OAuthTokenResponse;
+  authContext?: {
+    user_id?: string | null;
+    project_access?: string[];
+  } | null;
+}
+
 export class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || '';
+  private baseUrl = import.meta.env.VITE_API_URL || "";
   private defaultHeaders: Record<string, string | undefined> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   };
+  private authMetadata?: AuthMetadataResponse | null;
+  private authMetadataPromise: Promise<AuthMetadataResponse | null> | null = null;
 
   constructor() {
     // Constructor
@@ -116,7 +150,7 @@ export class ApiService {
 
   private buildRequestConfig(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): { url: string; config: RequestInit } {
     const url = `${this.baseUrl}${endpoint}`;
     const config: RequestInit = {
@@ -124,8 +158,8 @@ export class ApiService {
       headers: {
         ...Object.fromEntries(
           Object.entries({ ...this.defaultHeaders, ...options.headers }).filter(
-            ([, v]) => v !== undefined
-          )
+            ([, v]) => v !== undefined,
+          ),
         ),
       } as HeadersInit,
     };
@@ -145,12 +179,12 @@ export class ApiService {
     return new ApiError(
       errorDetails?.detail || `HTTP ${response.status}: ${response.statusText}`,
       response.status,
-      errorDetails
+      errorDetails,
     );
   }
 
   private shouldReturnEmptyResponse(response: Response): boolean {
-    return response.status === 204 || response.headers.get('content-length') === '0';
+    return response.status === 204 || response.headers.get("content-length") === "0";
   }
 
   private async handleErrorResponse(response: Response): Promise<never> {
@@ -170,8 +204,8 @@ export class ApiService {
       throw error;
     }
     throw new ApiError(
-      `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      0
+      `Network error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      0,
     );
   }
 
@@ -182,6 +216,9 @@ export class ApiService {
       const response = await fetch(url, config);
 
       if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          await this.handleAuthRedirect();
+        }
         return await this.handleErrorResponse(response);
       }
 
@@ -193,7 +230,7 @@ export class ApiService {
 
   // Project endpoints
   async getProjects(): Promise<Project[]> {
-    const response = await this.request<{ projects: Project[] }>('/api/projects');
+    const response = await this.request<{ projects: Project[] }>("/api/projects");
     return response.projects;
   }
 
@@ -203,54 +240,54 @@ export class ApiService {
 
   async getProjectEvents(
     projectId: string,
-    options: { limit?: number; includeDangling?: boolean; since?: string } = {}
+    options: { limit?: number; includeDangling?: boolean; since?: string } = {},
   ): Promise<ProjectEventsResponse> {
     const params = new URLSearchParams();
 
     if (options.limit) {
-      params.set('limit', String(options.limit));
+      params.set("limit", String(options.limit));
     }
 
     if (options.since) {
-      params.set('since', options.since);
+      params.set("since", options.since);
     }
 
     if (options.includeDangling === false) {
-      params.set('includeDangling', 'false');
+      params.set("includeDangling", "false");
     }
 
-    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const queryString = params.toString() ? `?${params.toString()}` : "";
 
     return this.request<ProjectEventsResponse>(`/api/projects/${projectId}/events${queryString}`);
   }
 
   async setProjectEventHead(
     projectId: string,
-    headEventId: string | null
+    headEventId: string | null,
   ): Promise<SetEventHeadResponse> {
     return this.request<SetEventHeadResponse>(`/api/projects/${projectId}/events/head`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ head_event_id: headEventId }),
     });
   }
 
   async revertProjectEvents(projectId: string, eventIds: string[]): Promise<RevertEventsResponse> {
     return this.request<RevertEventsResponse>(`/api/projects/${projectId}/events/revert`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ event_ids: eventIds }),
     });
   }
 
   async getEnvironmentInfo(): Promise<EnvironmentInfo> {
-    return this.request<EnvironmentInfo>('/api/environment');
+    return this.request<EnvironmentInfo>("/api/environment");
   }
 
   async getProjectStructureSettings(): Promise<ProjectStructureResponse> {
-    return this.request<ProjectStructureResponse>('/api/config/project-structure');
+    return this.request<ProjectStructureResponse>("/api/config/project-structure");
   }
 
   async getUiOptionCatalog(): Promise<UIOptionCatalog> {
-    const response = await this.request<UiOptionsResponse>('/api/config/ui-options');
+    const response = await this.request<UiOptionsResponse>("/api/config/ui-options");
     return (response.options ?? {}) as UIOptionCatalog;
   }
 
@@ -260,25 +297,25 @@ export class ApiService {
         if (Array.isArray(value)) {
           return [key, value];
         }
-        if (value && typeof value === 'object') {
+        if (value && typeof value === "object") {
           return [key, value];
         }
-        if (typeof value === 'number' || typeof value === 'boolean') {
+        if (typeof value === "number" || typeof value === "boolean") {
           return [key, value];
         }
-        return [key, typeof value === 'string' ? value : String(value ?? '')];
-      })
+        return [key, typeof value === "string" ? value : String(value ?? "")];
+      }),
     );
   }
 
   async createProjectEntity(
     projectId: string,
-    payload: { type: string; values: Record<string, unknown> }
+    payload: { type: string; values: Record<string, unknown> },
   ) {
     const normalizedValues = this.normalizeEntityValues(payload.values);
 
     return this.request(`/api/projects/${projectId}/entities`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({
         type: payload.type,
         values: normalizedValues,
@@ -289,16 +326,16 @@ export class ApiService {
   async updateProjectEntity(
     projectId: string,
     artifactId: string,
-    payload: { type: string; values: Record<string, unknown> }
+    payload: { type: string; values: Record<string, unknown> },
   ) {
     if (!artifactId) {
-      throw new Error('artifactId is required to update a project entity');
+      throw new Error("artifactId is required to update a project entity");
     }
 
     const normalizedValues = this.normalizeEntityValues(payload.values);
 
     return this.request(`/api/projects/${projectId}/entities/${artifactId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({
         type: payload.type,
         values: normalizedValues,
@@ -308,26 +345,26 @@ export class ApiService {
 
   async deleteProjectEntity(projectId: string, artifactId: string): Promise<void> {
     if (!artifactId) {
-      throw new Error('artifactId is required to delete a project entity');
+      throw new Error("artifactId is required to delete a project entity");
     }
     await this.request<void>(`/api/projects/${projectId}/entities/${artifactId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async restoreProjectEntity(
     projectId: string,
     artifactId: string,
-    payload: { snapshot: Record<string, unknown>; eventId?: string | null }
+    payload: { snapshot: Record<string, unknown>; eventId?: string | null },
   ): Promise<void> {
     if (!artifactId) {
-      throw new Error('artifactId is required to restore a project entity');
+      throw new Error("artifactId is required to restore a project entity");
     }
-    if (!payload?.snapshot || typeof payload.snapshot !== 'object') {
-      throw new Error('snapshot is required to restore a project entity');
+    if (!payload?.snapshot || typeof payload.snapshot !== "object") {
+      throw new Error("snapshot is required to restore a project entity");
     }
     await this.request<void>(`/api/projects/${projectId}/entities/${artifactId}/restore`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({
         snapshot: payload.snapshot,
         eventId: payload.eventId ?? undefined,
@@ -336,28 +373,28 @@ export class ApiService {
   }
 
   async updateProjectStructureSettings(
-    settings: Partial<ProjectStructureSettings>
+    settings: Partial<ProjectStructureSettings>,
   ): Promise<ProjectStructureResponse> {
-    return this.request<ProjectStructureResponse>('/api/config/project-structure', {
-      method: 'PUT',
+    return this.request<ProjectStructureResponse>("/api/config/project-structure", {
+      method: "PUT",
       body: JSON.stringify(settings),
     });
   }
 
   async createProject(name: string, path?: string, presetId?: string): Promise<Project> {
-    return this.request<Project>('/api/projects', {
-      method: 'POST',
+    return this.request<Project>("/api/projects", {
+      method: "POST",
       body: JSON.stringify(
         Object.fromEntries(
-          Object.entries({ name, path, presetId }).filter(([, value]) => value !== undefined)
-        )
+          Object.entries({ name, path, presetId }).filter(([, value]) => value !== undefined),
+        ),
       ),
     });
   }
 
   async deleteProject(projectId: string): Promise<void> {
     await this.request<void>(`/api/projects/${projectId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -372,34 +409,34 @@ export class ApiService {
 
   async createFragment(
     projectId: string,
-    request: CreateFragmentRequest
+    request: CreateFragmentRequest,
   ): Promise<CreateFragmentResponse> {
     return this.request<CreateFragmentResponse>(`/api/fragments?projectId=${projectId}`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(request),
     });
   }
 
   async updateFragment(projectId: string, fragmentId: string, content: string): Promise<Fragment> {
     return this.request<Fragment>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ content }),
     });
   }
 
   async deleteFragment(projectId: string, fragmentId: string): Promise<void> {
     await this.request<void>(`/api/fragments/${fragmentId}?projectId=${projectId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   // Validation endpoints
   async validateProject(
     projectId: string,
-    request: ValidationRequest = {}
+    request: ValidationRequest = {},
   ): Promise<ValidationResponse> {
-    return this.request<ValidationResponse>('/api/validate', {
-      method: 'POST',
+    return this.request<ValidationResponse>("/api/validate", {
+      method: "POST",
       body: JSON.stringify({ projectId, ...request }),
     });
   }
@@ -414,7 +451,7 @@ export class ApiService {
 
     // Transform response to match expected interface
     return {
-      spec_hash: 'generated', // The API doesn't return this field
+      spec_hash: "generated", // The API doesn't return this field
       resolved: response.resolved,
       last_updated: new Date().toISOString(),
     };
@@ -428,13 +465,13 @@ export class ApiService {
   // IR (Intermediate Representation) endpoints
   async getIR(projectId: string, kind: IRKind): Promise<IRResponse> {
     if (!kind) {
-      throw new Error('IRKind is required');
+      throw new Error("IRKind is required");
     }
     return this.request<IRResponse>(`/api/ir/${kind}?projectId=${projectId}`);
   }
 
   async getAllIRs(projectId: string): Promise<Record<IRKind, IRResponse>> {
-    const kinds: IRKind[] = ['flow', 'fsm', 'view', 'site'];
+    const kinds: IRKind[] = ["flow", "fsm", "view", "site"];
     const irs: Record<IRKind, IRResponse> = {} as Record<IRKind, IRResponse>;
 
     // Sequential requests with small delays to avoid rate limiting
@@ -447,7 +484,7 @@ export class ApiService {
       }
 
       // Add small delay between requests to avoid overwhelming rate limiter
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     return irs;
@@ -455,8 +492,8 @@ export class ApiService {
 
   // Version freezing endpoints
   async freezeVersion(projectId: string, request: FreezeRequest): Promise<FreezeResponse> {
-    return this.request<FreezeResponse>('/api/freeze', {
-      method: 'POST',
+    return this.request<FreezeResponse>("/api/freeze", {
+      method: "POST",
       body: JSON.stringify({ projectId, ...request }),
     });
   }
@@ -467,7 +504,7 @@ export class ApiService {
       success: boolean;
       handlers: WebhookHandler[];
       total: number;
-    }>('/api/handlers');
+    }>("/api/handlers");
     if (!response.success || !Array.isArray(response.handlers)) {
       return [];
     }
@@ -479,28 +516,28 @@ export class ApiService {
   }
 
   async createHandler(request: CreateHandlerRequest): Promise<WebhookHandler> {
-    return this.request<WebhookHandler>('/api/handlers', {
-      method: 'POST',
+    return this.request<WebhookHandler>("/api/handlers", {
+      method: "POST",
       body: JSON.stringify(request),
     });
   }
 
   async updateHandler(handlerId: string, request: UpdateHandlerRequest): Promise<WebhookHandler> {
     return this.request<WebhookHandler>(`/api/handlers/${handlerId}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(request),
     });
   }
 
   async deleteHandler(handlerId: string): Promise<void> {
     await this.request<void>(`/api/handlers/${handlerId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async toggleHandler(handlerId: string, enabled: boolean): Promise<WebhookHandler> {
     return this.request<WebhookHandler>(`/api/handlers/${handlerId}/toggle`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ enabled }),
     });
   }
@@ -510,21 +547,21 @@ export class ApiService {
   }
 
   async getHandlerExecutions(handlerId: string, limit?: number): Promise<HandlerExecution[]> {
-    const params = limit ? `?limit=${limit}` : '';
+    const params = limit ? `?limit=${limit}` : "";
     return this.request<HandlerExecution[]>(`/api/handlers/${handlerId}/executions${params}`);
   }
 
   async testHandler(
     handlerId: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
   ): Promise<{
-    status: 'success' | 'error';
+    status: "success" | "error";
     result?: Record<string, unknown>;
     error?: string;
     duration_ms: number;
   }> {
     return this.request(`/api/handlers/${handlerId}/test`, {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify({ payload }),
     });
   }
@@ -548,16 +585,16 @@ export class ApiService {
     message?: string;
     error?: string;
   }> {
-    return this.request('/api/webhooks/github/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    return this.request("/api/webhooks/github/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
     });
   }
 
   async listGitHubWebhooks(
     owner: string,
-    repo: string
+    repo: string,
   ): Promise<{
     success: boolean;
     webhooks?: Array<{
@@ -579,7 +616,7 @@ export class ApiService {
   async deleteGitHubWebhook(
     owner: string,
     repo: string,
-    hookId: number
+    hookId: number,
   ): Promise<{
     success: boolean;
     message?: string;
@@ -588,7 +625,7 @@ export class ApiService {
     const safeOwner = encodeURIComponent(owner.trim());
     const safeRepo = encodeURIComponent(repo.trim());
     return this.request(`/api/webhooks/github/${safeOwner}/${safeRepo}/${hookId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -601,12 +638,12 @@ export class ApiService {
       hostname: string;
       url: string;
       configPath: string;
-      status: 'running' | 'stopped';
+      status: "running" | "stopped";
       hookId?: string;
     } | null;
     error?: string;
   }> {
-    return this.request('/api/tunnel/status');
+    return this.request("/api/tunnel/status");
   }
 
   async setupTunnel(config: {
@@ -617,9 +654,9 @@ export class ApiService {
     repository?: string;
     webhookSecret?: string;
   }): Promise<TunnelSetupResponse> {
-    return this.request('/api/tunnel/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    return this.request("/api/tunnel/setup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
     });
   }
@@ -627,7 +664,7 @@ export class ApiService {
   // Legacy startTunnel for backwards compatibility
   async startTunnel(): Promise<TunnelSetupResponse> {
     return this.setupTunnel({
-      zone: 'sibylline.dev',
+      zone: "sibylline.dev",
       localPort: 5050,
     });
   }
@@ -637,8 +674,8 @@ export class ApiService {
     message?: string;
     error?: string;
   }> {
-    return this.request('/api/tunnel/stop', {
-      method: 'POST',
+    return this.request("/api/tunnel/stop", {
+      method: "POST",
     });
   }
 
@@ -647,8 +684,8 @@ export class ApiService {
     message?: string;
     error?: string;
   }> {
-    return this.request('/api/tunnel/teardown', {
-      method: 'POST',
+    return this.request("/api/tunnel/teardown", {
+      method: "POST",
     });
   }
 
@@ -657,7 +694,7 @@ export class ApiService {
     zones?: string[];
     error?: string;
   }> {
-    return this.request('/api/tunnel/preflight');
+    return this.request("/api/tunnel/preflight");
   }
 
   async getTunnelLogs(): Promise<{
@@ -665,7 +702,7 @@ export class ApiService {
     logs?: string;
     error?: string;
   }> {
-    return this.request('/api/tunnel/logs');
+    return this.request("/api/tunnel/logs");
   }
 
   // Import scanning methods
@@ -686,9 +723,9 @@ export class ApiService {
     projectName?: string;
     error?: string;
   }> {
-    return this.request('/api/import/scan-git', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    return this.request("/api/import/scan-git", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ gitUrl }),
     });
   }
@@ -708,9 +745,9 @@ export class ApiService {
     };
     error?: string;
   }> {
-    return this.request('/api/import/scan-local', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    return this.request("/api/import/scan-local", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ directoryPath }),
     });
   }
@@ -721,7 +758,7 @@ export class ApiService {
     error?: string;
   }> {
     return this.request(`/api/import/cleanup/${tempId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
@@ -743,13 +780,13 @@ export class ApiService {
       updated_at: string;
       owner: {
         login: string;
-        type: 'User' | 'Organization';
+        type: "User" | "Organization";
         avatar_url: string;
       };
     }>;
     error?: string;
   }> {
-    return this.request('/api/github/user/repos');
+    return this.request("/api/github/user/repos");
   }
 
   async getGitHubUserOrgs(): Promise<{
@@ -763,7 +800,7 @@ export class ApiService {
     }>;
     error?: string;
   }> {
-    return this.request('/api/github/user/orgs');
+    return this.request("/api/github/user/orgs");
   }
 
   async getGitHubOrgRepos(org: string): Promise<{
@@ -783,7 +820,7 @@ export class ApiService {
       updated_at: string;
       owner: {
         login: string;
-        type: 'User' | 'Organization';
+        type: "User" | "Organization";
         avatar_url: string;
       };
     }>;
@@ -794,7 +831,7 @@ export class ApiService {
 
   // Health check
   async healthCheck(): Promise<{ status: string; timestamp: string }> {
-    return this.request<{ status: string; timestamp: string }>('/health');
+    return this.request<{ status: string; timestamp: string }>("/health");
   }
 
   // Set authentication token
@@ -805,6 +842,94 @@ export class ApiService {
   // Remove authentication token
   clearAuthToken() {
     delete this.defaultHeaders.Authorization;
+  }
+
+  async exchangeOAuthCode(
+    code: string,
+    options: { redirectUri?: string; codeVerifier?: string } = {},
+  ): Promise<OAuthTokenExchangeResponse> {
+    const body = {
+      code,
+      redirectUri: options.redirectUri,
+      codeVerifier: options.codeVerifier,
+    };
+
+    return this.request<OAuthTokenExchangeResponse>("/api/auth/token", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  private async handleAuthRedirect(): Promise<void> {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const metadata = await this.getAuthMetadata();
+    if (!metadata?.enabled || !metadata.authorizationEndpoint) {
+      return;
+    }
+
+    const authorizeUrl = new URL(metadata.authorizationEndpoint);
+    const clientId = metadata.clientId ?? "dev-cli";
+    authorizeUrl.searchParams.set("client_id", clientId);
+
+    const redirectUri =
+      metadata.redirectUri ??
+      (typeof window !== "undefined"
+        ? `${window.location.origin}/oauth/callback`
+        : "http://localhost:3000/oauth/callback");
+    authorizeUrl.searchParams.set("redirect_uri", redirectUri);
+    authorizeUrl.searchParams.set("response_type", "code");
+
+    const scopes =
+      metadata.scopes && metadata.scopes.length > 0 ? metadata.scopes : ["read", "write"];
+    authorizeUrl.searchParams.set("scope", scopes.join(" "));
+
+    const statePayload = {
+      returnTo: window.location.href,
+      timestamp: Date.now(),
+    };
+    const stateEncoded =
+      typeof window !== "undefined" && typeof window.btoa === "function"
+        ? window.btoa(JSON.stringify(statePayload))
+        : JSON.stringify(statePayload);
+    authorizeUrl.searchParams.set("state", stateEncoded);
+
+    window.location.href = authorizeUrl.toString();
+  }
+
+  private async getAuthMetadata(): Promise<AuthMetadataResponse | null> {
+    if (this.authMetadata) {
+      return this.authMetadata;
+    }
+
+    if (this.authMetadataPromise) {
+      return this.authMetadataPromise;
+    }
+
+    this.authMetadataPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/api/auth/metadata`, {
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const metadata = (await response.json()) as AuthMetadataResponse;
+        this.authMetadata = metadata;
+        return metadata;
+      } catch (error) {
+        console.warn("Failed to fetch auth metadata", error);
+        return null;
+      } finally {
+        this.authMetadataPromise = null;
+      }
+    })();
+
+    return this.authMetadataPromise;
   }
 }
 

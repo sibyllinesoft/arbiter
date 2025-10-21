@@ -3,11 +3,11 @@
  * Manages named Cloudflare tunnel lifecycle within the application
  */
 
-import { ChildProcess, spawn } from 'child_process';
-import { EventEmitter } from 'events';
-import os from 'os';
-import path from 'path';
-import fs from 'fs-extra';
+import { ChildProcess, spawn } from "child_process";
+import { EventEmitter } from "events";
+import os from "os";
+import path from "path";
+import fs from "fs-extra";
 
 export interface TunnelInfo {
   id: string;
@@ -17,7 +17,7 @@ export interface TunnelInfo {
 }
 
 export interface TunnelStatus {
-  status: 'running' | 'stopped' | 'failed';
+  status: "running" | "stopped" | "failed";
   url: string | null;
   output: string;
   error: string | null;
@@ -28,7 +28,7 @@ export interface TunnelStatus {
 }
 
 export interface TunnelConfig {
-  mode: 'webhook-only' | 'full-api' | 'custom';
+  mode: "webhook-only" | "full-api" | "custom";
   port: number;
   tunnelName?: string;
   domain?: string;
@@ -36,13 +36,13 @@ export interface TunnelConfig {
 }
 
 class CloudflareTunnelService extends EventEmitter {
-  static defaultTunnelName = 'arbiter-tunnel';
-  static defaultDomain = 'trycloudflare.com';
+  static defaultTunnelName = "arbiter-tunnel";
+  static defaultDomain = "trycloudflare.com";
   private tunnelProcess: ChildProcess | null = null;
   private status: TunnelStatus = {
-    status: 'stopped',
+    status: "stopped",
     url: null,
-    output: '',
+    output: "",
     error: null,
   };
   private logBuffer: string[] = [];
@@ -54,16 +54,16 @@ class CloudflareTunnelService extends EventEmitter {
     super();
 
     // Set up cloudflared configuration directory
-    this.configDir = path.join(os.homedir(), '.cloudflared');
-    this.credentialsDir = path.join(this.configDir, 'credentials');
+    this.configDir = path.join(os.homedir(), ".cloudflared");
+    this.credentialsDir = path.join(this.configDir, "credentials");
 
     // Ensure directories exist
     this.ensureDirectories();
 
     // Handle process cleanup on exit
-    process.on('SIGINT', () => this.cleanup());
-    process.on('SIGTERM', () => this.cleanup());
-    process.on('exit', () => this.cleanup());
+    process.on("SIGINT", () => this.cleanup());
+    process.on("SIGTERM", () => this.cleanup());
+    process.on("exit", () => this.cleanup());
   }
 
   /**
@@ -79,7 +79,7 @@ class CloudflareTunnelService extends EventEmitter {
    * Get tunnel logs
    */
   getLogs(): string {
-    return this.logBuffer.join('\n');
+    return this.logBuffer.join("\n");
   }
 
   /**
@@ -87,7 +87,7 @@ class CloudflareTunnelService extends EventEmitter {
    */
   async startTunnel(config: TunnelConfig): Promise<TunnelStatus> {
     if (this.tunnelProcess) {
-      throw new Error('Tunnel is already running');
+      throw new Error("Tunnel is already running");
     }
 
     this.config = config;
@@ -111,62 +111,62 @@ class CloudflareTunnelService extends EventEmitter {
     this.checkExternalTunnel();
 
     // If we detect an external tunnel but don't manage it, try to stop it
-    if (this.status.status === 'running' && !this.tunnelProcess) {
+    if (this.status.status === "running" && !this.tunnelProcess) {
       try {
-        const { execSync } = require('child_process');
+        const { execSync } = require("child_process");
 
         // Try to stop the external cloudflared process
-        this.log('Attempting to stop external cloudflared process');
-        execSync('pkill cloudflared', { encoding: 'utf8' });
+        this.log("Attempting to stop external cloudflared process");
+        execSync("pkill cloudflared", { encoding: "utf8" });
 
         // Wait a bit for the process to stop
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // Update status
         this.status = {
-          status: 'stopped',
+          status: "stopped",
           url: null,
-          output: 'External tunnel stopped',
+          output: "External tunnel stopped",
           error: null,
         };
-        this.emit('stopped');
+        this.emit("stopped");
         return this.getStatus();
       } catch (error) {
         // If pkill fails (no process found or permission denied)
-        this.log('Failed to stop external tunnel: ' + error);
-        this.status.error = 'Failed to stop external tunnel';
+        this.log("Failed to stop external tunnel: " + error);
+        this.status.error = "Failed to stop external tunnel";
         return this.getStatus();
       }
     }
 
     // Handle internally managed tunnel
     if (!this.tunnelProcess) {
-      this.status.status = 'stopped';
+      this.status.status = "stopped";
       return this.getStatus();
     }
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       const cleanup = () => {
         this.tunnelProcess = null;
         this.status = {
-          status: 'stopped',
+          status: "stopped",
           url: null,
           output: this.status.output,
           error: null,
         };
-        this.emit('stopped');
+        this.emit("stopped");
         resolve(this.getStatus());
       };
 
-      this.tunnelProcess!.on('exit', cleanup);
+      this.tunnelProcess!.on("exit", cleanup);
 
       // Graceful shutdown
-      this.tunnelProcess!.kill('SIGTERM');
+      this.tunnelProcess!.kill("SIGTERM");
 
       // Force kill after 5 seconds
       setTimeout(() => {
         if (this.tunnelProcess) {
-          this.tunnelProcess.kill('SIGKILL');
+          this.tunnelProcess.kill("SIGKILL");
         }
       }, 5000);
     });
@@ -177,7 +177,7 @@ class CloudflareTunnelService extends EventEmitter {
    */
   async restartTunnel(): Promise<TunnelStatus> {
     if (!this.config) {
-      throw new Error('No configuration available for restart');
+      throw new Error("No configuration available for restart");
     }
 
     await this.stopTunnel();
@@ -188,7 +188,7 @@ class CloudflareTunnelService extends EventEmitter {
    * Check if tunnel is healthy
    */
   isHealthy(): boolean {
-    return this.status.status === 'running' && this.status.url !== null;
+    return this.status.status === "running" && this.status.url !== null;
   }
 
   /**
@@ -196,16 +196,16 @@ class CloudflareTunnelService extends EventEmitter {
    */
   private checkExternalTunnel(): void {
     try {
-      const { execSync } = require('child_process');
+      const { execSync } = require("child_process");
 
       // Step 1: Check if cloudflared is running
-      const psOutput = execSync('ps aux | grep cloudflared | grep -v grep', {
-        encoding: 'utf8',
+      const psOutput = execSync("ps aux | grep cloudflared | grep -v grep", {
+        encoding: "utf8",
       });
 
-      if (!psOutput || !psOutput.includes('cloudflared tunnel')) {
+      if (!psOutput || !psOutput.includes("cloudflared tunnel")) {
         if (!this.tunnelProcess) {
-          this.status.status = 'stopped';
+          this.status.status = "stopped";
           this.status.url = null;
         }
         return;
@@ -221,9 +221,9 @@ class CloudflareTunnelService extends EventEmitter {
         configPath = configMatch[1];
         // Read the config to get the tunnel ID
         try {
-          const configContent = require('fs').readFileSync(configPath, 'utf8');
+          const configContent = require("fs").readFileSync(configPath, "utf8");
           const tunnelMatch = configContent.match(
-            /tunnel:\s*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+            /tunnel:\s*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
           );
           if (tunnelMatch) {
             tunnelId = tunnelMatch[1];
@@ -231,20 +231,20 @@ class CloudflareTunnelService extends EventEmitter {
 
           // Also extract hostname directly from config
           const hostnameMatch = configContent.match(/hostname:\s*([^\s]+)/);
-          if (hostnameMatch && !hostnameMatch[1].includes('cfargotunnel.com')) {
+          if (hostnameMatch && !hostnameMatch[1].includes("cfargotunnel.com")) {
             const hostname = hostnameMatch[1];
-            this.status.url = hostname.startsWith('http') ? hostname : `https://${hostname}`;
+            this.status.url = hostname.startsWith("http") ? hostname : `https://${hostname}`;
             this.log(`Found tunnel URL from config: ${this.status.url}`);
           }
         } catch (e) {
-          this.log('Could not read tunnel config: ' + e);
+          this.log("Could not read tunnel config: " + e);
         }
       }
 
       // Fallback to extracting tunnel ID from process args
       if (!tunnelId) {
         const tunnelIdMatch = psOutput.match(
-          /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+          /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
         );
         if (tunnelIdMatch) {
           tunnelId = tunnelIdMatch[1];
@@ -253,16 +253,16 @@ class CloudflareTunnelService extends EventEmitter {
 
       if (!tunnelId) {
         // Quick tunnel detected (no tunnel ID)
-        if (psOutput.includes('--url')) {
-          this.status.status = 'running';
-          this.status.error = 'Quick tunnel detected. Cannot determine URL from quick tunnels.';
+        if (psOutput.includes("--url")) {
+          this.status.status = "running";
+          this.status.error = "Quick tunnel detected. Cannot determine URL from quick tunnels.";
         }
         return;
       }
 
       // If we detect an external tunnel, update the status
       if (!this.tunnelProcess) {
-        this.status.status = 'running';
+        this.status.status = "running";
         this.status.tunnelId = tunnelId;
         this.status.error = null; // Clear any previous errors
 
@@ -271,8 +271,8 @@ class CloudflareTunnelService extends EventEmitter {
           const tunnelInfoJson = execSync(
             `cloudflared tunnel info ${tunnelId} --output json 2>/dev/null`,
             {
-              encoding: 'utf8',
-            }
+              encoding: "utf8",
+            },
           );
 
           const tunnelInfo = JSON.parse(tunnelInfoJson);
@@ -284,7 +284,7 @@ class CloudflareTunnelService extends EventEmitter {
           // Check ingress rules in the tunnel config
           if (tunnelInfo.config?.config?.ingress) {
             for (const rule of tunnelInfo.config.config.ingress) {
-              if (rule.hostname && !rule.hostname.includes('cfargotunnel.com')) {
+              if (rule.hostname && !rule.hostname.includes("cfargotunnel.com")) {
                 hostnames.add(rule.hostname);
               }
             }
@@ -293,7 +293,7 @@ class CloudflareTunnelService extends EventEmitter {
           // Alternative: check the raw config if available
           if (tunnelInfo.config?.src?.content?.ingress) {
             for (const rule of tunnelInfo.config.src.content.ingress) {
-              if (rule.hostname && !rule.hostname.includes('cfargotunnel.com')) {
+              if (rule.hostname && !rule.hostname.includes("cfargotunnel.com")) {
                 hostnames.add(rule.hostname);
               }
             }
@@ -302,10 +302,10 @@ class CloudflareTunnelService extends EventEmitter {
           // Step 4: Get DNS routes to find additional hostnames
           try {
             const routesJson = execSync(
-              'cloudflared tunnel route dns --list --output json 2>/dev/null',
+              "cloudflared tunnel route dns --list --output json 2>/dev/null",
               {
-                encoding: 'utf8',
-              }
+                encoding: "utf8",
+              },
             );
 
             const routes = JSON.parse(routesJson);
@@ -316,36 +316,36 @@ class CloudflareTunnelService extends EventEmitter {
             }
           } catch (e) {
             // DNS route listing might fail if not configured
-            this.log('Could not list DNS routes: ' + e);
+            this.log("Could not list DNS routes: " + e);
           }
 
           // Step 5: Set the URL from discovered hostnames (if not already set)
           if (!this.status.url && hostnames.size > 0) {
             // Use the first non-cfargotunnel hostname
             const hostname = Array.from(hostnames)[0];
-            this.status.url = hostname.startsWith('http') ? hostname : `https://${hostname}`;
+            this.status.url = hostname.startsWith("http") ? hostname : `https://${hostname}`;
             this.status.error = null;
             this.log(`Found tunnel URL: ${this.status.url}`);
           } else if (!this.status.url) {
-            this.log('Warning: Tunnel is running but no hostname configured');
+            this.log("Warning: Tunnel is running but no hostname configured");
             this.status.error =
               'Tunnel is running but no DNS route configured. Use "cloudflared tunnel route dns" to set up a route.';
           }
         } catch (e) {
           // Only set error if we don't already have a URL
           if (!this.status.url) {
-            this.log('Error getting tunnel info: ' + e);
-            this.status.error = 'Could not determine tunnel configuration';
+            this.log("Error getting tunnel info: " + e);
+            this.status.error = "Could not determine tunnel configuration";
           } else {
             // We have the URL from config, so just log the issue
-            this.log('Could not get additional tunnel info via CLI: ' + e);
+            this.log("Could not get additional tunnel info via CLI: " + e);
           }
         }
       }
     } catch (error) {
       // If ps command fails, assume no tunnel is running
       if (!this.tunnelProcess) {
-        this.status.status = 'stopped';
+        this.status.status = "stopped";
         this.status.url = null;
       }
     }
@@ -356,22 +356,22 @@ class CloudflareTunnelService extends EventEmitter {
    */
   async listTunnels(): Promise<TunnelInfo[]> {
     return new Promise((resolve, reject) => {
-      const process = spawn('cloudflared', ['tunnel', 'list'], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const process = spawn("cloudflared", ["tunnel", "list"], {
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
-      let output = '';
-      let error = '';
+      let output = "";
+      let error = "";
 
-      process.stdout?.on('data', data => {
+      process.stdout?.on("data", (data) => {
         output += data.toString();
       });
 
-      process.stderr?.on('data', data => {
+      process.stderr?.on("data", (data) => {
         error += data.toString();
       });
 
-      process.on('exit', code => {
+      process.on("exit", (code) => {
         if (code === 0) {
           const tunnels = this.parseTunnelList(output);
           resolve(tunnels);
@@ -380,7 +380,7 @@ class CloudflareTunnelService extends EventEmitter {
         }
       });
 
-      process.on('error', err => {
+      process.on("error", (err) => {
         reject(new Error(`Failed to execute cloudflared: ${err.message}`));
       });
     });
@@ -393,40 +393,40 @@ class CloudflareTunnelService extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.log(`Creating new tunnel: ${name}`);
 
-      const process = spawn('cloudflared', ['tunnel', 'create', name], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const process = spawn("cloudflared", ["tunnel", "create", name], {
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
-      let output = '';
-      let error = '';
+      let output = "";
+      let error = "";
 
-      process.stdout?.on('data', data => {
+      process.stdout?.on("data", (data) => {
         output += data.toString();
       });
 
-      process.stderr?.on('data', data => {
+      process.stderr?.on("data", (data) => {
         error += data.toString();
       });
 
-      process.on('exit', code => {
+      process.on("exit", (code) => {
         if (code === 0) {
           // Extract tunnel UUID from output
           const uuidMatch = output.match(
-            /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/
+            /([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/,
           );
           if (uuidMatch) {
             const tunnelId = uuidMatch[1];
             this.log(`Created tunnel: ${name} (UUID: ${tunnelId})`);
             resolve(tunnelId);
           } else {
-            reject(new Error('Could not extract tunnel UUID from output'));
+            reject(new Error("Could not extract tunnel UUID from output"));
           }
         } else {
           reject(new Error(`Failed to create tunnel: ${error}`));
         }
       });
 
-      process.on('error', err => {
+      process.on("error", (err) => {
         reject(new Error(`Failed to execute cloudflared: ${err.message}`));
       });
     });
@@ -439,17 +439,17 @@ class CloudflareTunnelService extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.log(`Deleting tunnel: ${nameOrId}`);
 
-      const process = spawn('cloudflared', ['tunnel', 'delete', nameOrId], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const process = spawn("cloudflared", ["tunnel", "delete", nameOrId], {
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
-      let error = '';
+      let error = "";
 
-      process.stderr?.on('data', data => {
+      process.stderr?.on("data", (data) => {
         error += data.toString();
       });
 
-      process.on('exit', code => {
+      process.on("exit", (code) => {
         if (code === 0) {
           this.log(`Deleted tunnel: ${nameOrId}`);
           resolve();
@@ -458,7 +458,7 @@ class CloudflareTunnelService extends EventEmitter {
         }
       });
 
-      process.on('error', err => {
+      process.on("error", (err) => {
         reject(new Error(`Failed to execute cloudflared: ${err.message}`));
       });
     });
@@ -470,7 +470,7 @@ class CloudflareTunnelService extends EventEmitter {
   async ensureTunnel(name: string = CloudflareTunnelService.defaultTunnelName): Promise<string> {
     try {
       const tunnels = await this.listTunnels();
-      const existingTunnel = tunnels.find(t => t.name === name);
+      const existingTunnel = tunnels.find((t) => t.name === name);
 
       if (existingTunnel) {
         this.log(`Using existing tunnel: ${name} (${existingTunnel.id})`);
@@ -481,7 +481,7 @@ class CloudflareTunnelService extends EventEmitter {
       }
     } catch (error) {
       throw new Error(
-        `Failed to ensure tunnel: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to ensure tunnel: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
@@ -519,21 +519,21 @@ class CloudflareTunnelService extends EventEmitter {
 
     const args = this.buildTunnelArgs(tunnelId);
 
-    this.log(`Starting cloudflared with args: ${args.join(' ')}`);
+    this.log(`Starting cloudflared with args: ${args.join(" ")}`);
 
-    this.tunnelProcess = spawn('cloudflared', args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+    this.tunnelProcess = spawn("cloudflared", args, {
+      stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...process.env,
         // Disable auto-update for stability
-        NO_AUTOUPDATE: '1',
+        NO_AUTOUPDATE: "1",
       },
     });
 
     this.status = {
-      status: 'running',
+      status: "running",
       url: null,
-      output: '',
+      output: "",
       error: null, // Clear any previous errors when starting successfully
       pid: this.tunnelProcess.pid,
       startTime: Date.now(),
@@ -545,38 +545,38 @@ class CloudflareTunnelService extends EventEmitter {
   }
 
   private buildTunnelArgs(tunnelId: string): string[] {
-    const configFile = path.join(this.configDir, 'config.yml');
+    const configFile = path.join(this.configDir, "config.yml");
 
     // Use named tunnel with configuration file
-    return ['tunnel', '--config', configFile, '--no-autoupdate', 'run', tunnelId];
+    return ["tunnel", "--config", configFile, "--no-autoupdate", "run", tunnelId];
   }
 
   /**
    * Generate tunnel configuration file based on mode
    */
   private async generateTunnelConfig(tunnelId: string, tunnelName: string): Promise<void> {
-    const configFile = path.join(this.configDir, 'config.yml');
+    const configFile = path.join(this.configDir, "config.yml");
     const credentialsFile = path.join(this.configDir, `${tunnelId}.json`);
 
     this.log(`Generating tunnel configuration for mode: ${this.config!.mode}`);
 
-    let configContent = '';
+    let configContent = "";
 
     switch (this.config!.mode) {
-      case 'webhook-only':
+      case "webhook-only":
         configContent = this.generateWebhookOnlyConfig(tunnelId, credentialsFile);
         break;
-      case 'full-api':
+      case "full-api":
         configContent = this.generateFullApiConfig(tunnelId, credentialsFile);
         break;
-      case 'custom':
+      case "custom":
         configContent = this.generateCustomConfig(tunnelId, credentialsFile);
         break;
       default:
         throw new Error(`Unknown tunnel mode: ${this.config!.mode}`);
     }
 
-    await fs.writeFile(configFile, configContent, 'utf8');
+    await fs.writeFile(configFile, configContent, "utf8");
     this.log(`Configuration created at: ${configFile}`);
   }
 
@@ -584,7 +584,7 @@ class CloudflareTunnelService extends EventEmitter {
     const domain = this.config!.domain || CloudflareTunnelService.defaultDomain;
     const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
 
-    this.log('Creating webhook-only configuration (secure mode)');
+    this.log("Creating webhook-only configuration (secure mode)");
 
     return `tunnel: ${tunnelId}
 credentials-file: ${credentialsFile}
@@ -602,8 +602,8 @@ ingress:
     const domain = this.config!.domain || CloudflareTunnelService.defaultDomain;
     const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
 
-    this.log('Creating full API configuration - ALL endpoints will be exposed!');
-    this.log('Use webhook-only mode for production environments');
+    this.log("Creating full API configuration - ALL endpoints will be exposed!");
+    this.log("Use webhook-only mode for production environments");
 
     return `tunnel: ${tunnelId}
 credentials-file: ${credentialsFile}
@@ -619,7 +619,7 @@ ingress:
     const domain = this.config!.domain || CloudflareTunnelService.defaultDomain;
     const tunnelName = this.config!.tunnelName || CloudflareTunnelService.defaultTunnelName;
 
-    this.log('Creating custom configuration...');
+    this.log("Creating custom configuration...");
 
     if (this.config!.customConfig) {
       return this.config!.customConfig;
@@ -639,7 +639,7 @@ ingress:
   private setupProcessHandlers(): void {
     if (!this.tunnelProcess) return;
 
-    this.tunnelProcess.stdout?.on('data', (data: Buffer) => {
+    this.tunnelProcess.stdout?.on("data", (data: Buffer) => {
       const output = data.toString();
       this.status.output += output;
       this.log(`[STDOUT] ${output.trim()}`);
@@ -648,7 +648,7 @@ ingress:
       this.extractTunnelUrl(output);
     });
 
-    this.tunnelProcess.stderr?.on('data', (data: Buffer) => {
+    this.tunnelProcess.stderr?.on("data", (data: Buffer) => {
       const stderr = data.toString();
       this.log(`[STDERR] ${stderr.trim()}`);
 
@@ -659,25 +659,25 @@ ingress:
       this.extractTunnelUrl(stderr);
     });
 
-    this.tunnelProcess.on('exit', (code: number, signal: string) => {
+    this.tunnelProcess.on("exit", (code: number, signal: string) => {
       this.log(`[PROCESS] Tunnel exited with code ${code} (signal: ${signal})`);
       this.tunnelProcess = null;
 
       if (code === 0) {
-        this.status.status = 'stopped';
+        this.status.status = "stopped";
       } else {
-        this.status.status = 'failed';
+        this.status.status = "failed";
         this.status.error = this.status.error || `Process exited with code ${code}`;
       }
 
-      this.emit('exit', { code, signal });
+      this.emit("exit", { code, signal });
     });
 
-    this.tunnelProcess.on('error', (error: Error) => {
+    this.tunnelProcess.on("error", (error: Error) => {
       this.log(`[ERROR] ${error.message}`);
-      this.status.status = 'failed';
+      this.status.status = "failed";
       this.status.error = error.message;
-      this.emit('error', error);
+      this.emit("error", error);
     });
   }
 
@@ -712,10 +712,10 @@ ingress:
       const match = output.match(pattern);
       if (match && match[1]) {
         // Ensure it's a full URL
-        const hostname = match[1].startsWith('http') ? match[1] : `https://${match[1]}`;
+        const hostname = match[1].startsWith("http") ? match[1] : `https://${match[1]}`;
         this.status.url = hostname;
         this.log(`Tunnel hostname detected from output: ${this.status.url}`);
-        this.emit('url', this.status.url);
+        this.emit("url", this.status.url);
         return;
       }
     }
@@ -725,22 +725,22 @@ ingress:
     if (httpsUrlMatch) {
       // Filter out known false positives - only accept actual tunnel URLs
       const validUrl = httpsUrlMatch.find(
-        url =>
-          !url.includes('github.com') &&
-          !url.includes('cloudflare.com/docs') &&
-          !url.includes('quic-go') &&
-          !url.includes('wiki') &&
+        (url) =>
+          !url.includes("github.com") &&
+          !url.includes("cloudflare.com/docs") &&
+          !url.includes("quic-go") &&
+          !url.includes("wiki") &&
           // Only accept trycloudflare URLs or URLs that cloudflared specifically outputs
-          (url.includes('.trycloudflare.com') ||
+          (url.includes(".trycloudflare.com") ||
             output.includes(`Serving at ${url}`) ||
             output.includes(`Available at ${url}`) ||
-            output.includes(`Your tunnel is available at: ${url}`))
+            output.includes(`Your tunnel is available at: ${url}`)),
       );
 
       if (validUrl) {
         this.status.url = validUrl;
         this.log(`Tunnel URL detected from output: ${this.status.url}`);
-        this.emit('url', this.status.url);
+        this.emit("url", this.status.url);
         return;
       }
     }
@@ -749,16 +749,16 @@ ingress:
     if (this.status.tunnelId) {
       // Check if tunnel is connected (look for connection messages)
       if (
-        output.includes('Registered tunnel connection') ||
-        output.includes('Connection registered') ||
-        output.includes('tunnel connected') ||
-        output.includes('Serving HTTP traffic')
+        output.includes("Registered tunnel connection") ||
+        output.includes("Connection registered") ||
+        output.includes("tunnel connected") ||
+        output.includes("Serving HTTP traffic")
       ) {
         // Tunnel is connected but we haven't found a URL
         if (!this.status.url) {
-          this.log('Warning: Tunnel connected but no URL found in output');
+          this.log("Warning: Tunnel connected but no URL found in output");
           this.status.error =
-            'Tunnel is connected but URL cannot be determined from cloudflared output.';
+            "Tunnel is connected but URL cannot be determined from cloudflared output.";
         }
       }
     }
@@ -769,7 +769,7 @@ ingress:
       if (trycloudflareMatch) {
         this.status.url = trycloudflareMatch[0];
         this.log(`Quick tunnel URL detected: ${this.status.url}`);
-        this.emit('url', this.status.url);
+        this.emit("url", this.status.url);
       }
     }
   }
@@ -777,17 +777,17 @@ ingress:
   private async waitForConnection(): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error('Timeout waiting for tunnel connection'));
+        reject(new Error("Timeout waiting for tunnel connection"));
       }, 30000);
 
       const checkConnection = () => {
         if (this.status.url) {
           clearTimeout(timeout);
-          this.log('Tunnel connected successfully');
+          this.log("Tunnel connected successfully");
           resolve();
-        } else if (this.status.status === 'failed') {
+        } else if (this.status.status === "failed") {
           clearTimeout(timeout);
-          reject(new Error(this.status.error || 'Tunnel failed to start'));
+          reject(new Error(this.status.error || "Tunnel failed to start"));
         } else {
           // Check again in 1 second
           setTimeout(checkConnection, 1000);
@@ -800,18 +800,18 @@ ingress:
 
   private async handleStartError(error: any): Promise<void> {
     this.status = {
-      status: 'failed',
+      status: "failed",
       url: null,
       output: this.status.output,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
 
     if (this.tunnelProcess) {
-      this.tunnelProcess.kill('SIGKILL');
+      this.tunnelProcess.kill("SIGKILL");
       this.tunnelProcess = null;
     }
 
-    this.emit('error', error);
+    this.emit("error", error);
   }
 
   private log(message: string): void {
@@ -826,7 +826,7 @@ ingress:
     }
 
     // Emit log event for real-time monitoring
-    this.emit('log', logMessage);
+    this.emit("log", logMessage);
 
     // Also log to console for debugging
     console.log(`[TunnelService] ${message}`);
@@ -834,8 +834,8 @@ ingress:
 
   private cleanup(): void {
     if (this.tunnelProcess) {
-      this.log('Cleaning up tunnel process');
-      this.tunnelProcess.kill('SIGKILL');
+      this.log("Cleaning up tunnel process");
+      this.tunnelProcess.kill("SIGKILL");
       this.tunnelProcess = null;
     }
   }
@@ -849,7 +849,7 @@ ingress:
       await fs.ensureDir(this.credentialsDir);
     } catch (error) {
       this.log(
-        `Warning: Could not create directories: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Warning: Could not create directories: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
@@ -858,7 +858,7 @@ ingress:
    * Parse tunnel list output into structured data
    */
   private parseTunnelList(output: string): TunnelInfo[] {
-    const lines = output.split('\n');
+    const lines = output.split("\n");
     const tunnels: TunnelInfo[] = [];
 
     for (const line of lines) {
@@ -869,8 +869,8 @@ ingress:
         tunnels.push({
           id: parts[0],
           name: parts[1],
-          created: parts[2] || 'unknown',
-          status: parts[3] || 'inactive',
+          created: parts[2] || "unknown",
+          status: parts[3] || "inactive",
         });
       }
     }
@@ -890,26 +890,26 @@ ingress:
    */
   async getTunnelInfo(tunnelId: string): Promise<{ hostname?: string } | null> {
     return new Promise((resolve, reject) => {
-      const process = spawn('cloudflared', ['tunnel', 'info', tunnelId], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const process = spawn("cloudflared", ["tunnel", "info", tunnelId], {
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
-      let output = '';
-      let error = '';
+      let output = "";
+      let error = "";
 
-      process.stdout?.on('data', data => {
+      process.stdout?.on("data", (data) => {
         output += data.toString();
       });
 
-      process.stderr?.on('data', data => {
+      process.stderr?.on("data", (data) => {
         error += data.toString();
       });
 
-      process.on('exit', code => {
+      process.on("exit", (code) => {
         if (code === 0) {
           // Parse output for hostname
           const hostnameMatch = output.match(
-            /hostname:\s*([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i
+            /hostname:\s*([a-zA-Z0-9-]+\.[a-zA-Z0-9.-]+[a-zA-Z]{2,})/i,
           );
           if (hostnameMatch && hostnameMatch[1]) {
             resolve({ hostname: hostnameMatch[1] });
@@ -923,7 +923,7 @@ ingress:
         }
       });
 
-      process.on('error', err => {
+      process.on("error", (err) => {
         this.log(`Could not execute cloudflared info: ${err.message}`);
         resolve(null);
       });
@@ -934,26 +934,26 @@ ingress:
    * Get configured DNS route for a tunnel
    */
   async getTunnelRoute(tunnelId: string): Promise<string | null> {
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       // Try to list routes for this tunnel
-      const process = spawn('cloudflared', ['tunnel', 'route', 'list'], {
-        stdio: ['pipe', 'pipe', 'pipe'],
+      const process = spawn("cloudflared", ["tunnel", "route", "list"], {
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
-      let output = '';
+      let output = "";
 
-      process.stdout?.on('data', data => {
+      process.stdout?.on("data", (data) => {
         output += data.toString();
       });
 
-      process.on('exit', () => {
+      process.on("exit", () => {
         // Parse output for routes matching this tunnel ID
-        const lines = output.split('\n');
+        const lines = output.split("\n");
         for (const line of lines) {
           if (line.includes(tunnelId)) {
             // Extract hostname from route (format: HOSTNAME UUID TYPE)
             const parts = line.trim().split(/\s+/);
-            if (parts.length >= 1 && parts[0].includes('.')) {
+            if (parts.length >= 1 && parts[0].includes(".")) {
               this.log(`Found configured DNS route: ${parts[0]}`);
               resolve(parts[0]);
               return;
@@ -963,7 +963,7 @@ ingress:
         resolve(null);
       });
 
-      process.on('error', () => {
+      process.on("error", () => {
         resolve(null);
       });
     });

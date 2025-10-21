@@ -2,8 +2,8 @@
  * ViewReport - Standalone view diagram report component
  */
 
-import React from 'react';
-import { ViewDiagram } from './diagrams';
+import React from "react";
+import { ViewDiagram } from "./diagrams";
 
 interface ViewReportProps {
   projectId: string;
@@ -12,7 +12,7 @@ interface ViewReportProps {
 
 export function ViewReport({ projectId, className }: ViewReportProps) {
   return (
-    <div className={`h-full ${className || ''}`}>
+    <div className={`h-full ${className || ""}`}>
       <ViewDiagram projectId={projectId} />
     </div>
   );

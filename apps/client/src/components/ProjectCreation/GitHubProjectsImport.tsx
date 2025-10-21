@@ -2,14 +2,14 @@
  * GitHubProjectsImport - Component for importing projects from GitHub repositories
  */
 
-import type { GitHubOrganization, GitHubReposByOwner, GitHubRepository } from '@/types/github';
-import { useGitHubState } from '@contexts/AppContext';
-import { Button, cn } from '@design-system';
-import { useProjects } from '@hooks/api-hooks';
-import { apiService } from '@services/api';
-import { GitBranch as GitIcon, RefreshCw, Upload } from 'lucide-react';
-import React from 'react';
-import { toast } from 'react-toastify';
+import type { GitHubOrganization, GitHubReposByOwner, GitHubRepository } from "@/types/github";
+import { useGitHubState } from "@contexts/AppContext";
+import { Button, cn } from "@design-system";
+import { useProjects } from "@hooks/api-hooks";
+import { apiService } from "@services/api";
+import { GitBranch as GitIcon, RefreshCw, Upload } from "lucide-react";
+import React from "react";
+import { toast } from "react-toastify";
 
 interface GitHubProjectsImportProps {
   onClose: () => void;
@@ -45,7 +45,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
 
       if (reposResult.success && reposResult.repositories) {
         aggregatedRepos.push(...reposResult.repositories);
-        reposResult.repositories.forEach(repo => {
+        reposResult.repositories.forEach((repo) => {
           const owner = repo.owner.login;
           if (!groupedRepos[owner]) groupedRepos[owner] = [];
           groupedRepos[owner].push(repo);
@@ -74,11 +74,11 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       setReposByOwner(groupedRepos);
 
       if (!reposResult.success) {
-        toast.error(reposResult.error || 'Failed to load GitHub repositories');
+        toast.error(reposResult.error || "Failed to load GitHub repositories");
       }
     } catch (error) {
-      console.error('Failed to load GitHub projects:', error);
-      toast.error('Failed to load GitHub projects');
+      console.error("Failed to load GitHub projects:", error);
+      toast.error("Failed to load GitHub projects");
     } finally {
       setLoadingGitHub(false);
     }
@@ -90,7 +90,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
 
   const handleImportSelectedRepos = async () => {
     if (selectedRepos.size === 0) {
-      toast.error('Please select at least one repository to import');
+      toast.error("Please select at least one repository to import");
       return;
     }
 
@@ -98,7 +98,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
     try {
       for (const repoId of selectedRepos) {
         // Search through all repos (both user repos and org repos)
-        const repo = gitHubRepos.find(r => r.id === repoId);
+        const repo = gitHubRepos.find((r) => r.id === repoId);
         if (repo) {
           const scanResult = await apiService.scanGitUrl(repo.clone_url);
           if (scanResult.success) {
@@ -107,7 +107,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
             toast.success(`Project "${projectName}" imported successfully`);
           } else {
             toast.error(
-              `Failed to scan repository "${repo.name}": ${scanResult.error || 'Unknown error'}`
+              `Failed to scan repository "${repo.name}": ${scanResult.error || "Unknown error"}`,
             );
           }
         } else {
@@ -118,8 +118,8 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
       onClose();
       setSelectedRepos(new Set());
     } catch (error) {
-      toast.error('Failed to import repositories');
-      console.error('Import error:', error);
+      toast.error("Failed to import repositories");
+      console.error("Import error:", error);
     } finally {
       setIsCreatingProject(false);
     }
@@ -145,7 +145,7 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
             )
           }
         >
-          {isLoadingGitHub ? 'Loading...' : 'Load Projects'}
+          {isLoadingGitHub ? "Loading..." : "Load Projects"}
         </Button>
       </div>
 
@@ -184,22 +184,22 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
                   </div>
 
                   <div className="space-y-2">
-                    {repos.map(repo => (
+                    {repos.map((repo) => (
                       <div
                         key={repo.id}
                         className={cn(
-                          'flex cursor-pointer items-center gap-3 rounded border p-2 transition-colors',
+                          "flex cursor-pointer items-center gap-3 rounded border p-2 transition-colors",
                           selectedRepos.has(repo.id)
-                            ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800'
+                            ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800",
                         )}
                         onClick={() => handleSelectRepo(repo.id)}
                       >
                         <input
                           type="checkbox"
                           checked={selectedRepos.has(repo.id)}
-                          onChange={e => e.stopPropagation()}
-                          onClick={e => e.stopPropagation()}
+                          onChange={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()}
                           className="pointer-events-none h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-blue-300 dark:focus:ring-blue-400"
                         />
                         <div className="flex-1 min-w-0">
@@ -253,8 +253,8 @@ export function GitHubProjectsImport({ onClose }: GitHubProjectsImportProps) {
                 }
               >
                 {isCreatingProject
-                  ? 'Importing Projects...'
-                  : `Import ${selectedRepos.size} Selected Project${selectedRepos.size > 1 ? 's' : ''}`}
+                  ? "Importing Projects..."
+                  : `Import ${selectedRepos.size} Selected Project${selectedRepos.size > 1 ? "s" : ""}`}
               </Button>
             </div>
           )}

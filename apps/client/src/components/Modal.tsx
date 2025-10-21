@@ -1,6 +1,6 @@
-import { clsx } from 'clsx';
-import { X } from 'lucide-react';
-import React from 'react';
+import { clsx } from "clsx";
+import { X } from "lucide-react";
+import React from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface ModalProps {
   title?: string;
   children: React.ReactNode;
   className?: string;
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | '6xl' | '7xl';
+  maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "5xl" | "6xl" | "7xl";
   maxHeight?: string;
   backdropClass?: string;
   hasBlur?: boolean;
@@ -19,43 +19,43 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   children,
-  className = '',
-  maxWidth = '4xl',
-  maxHeight = '90vh',
+  className = "",
+  maxWidth = "4xl",
+  maxHeight = "90vh",
   hasBlur = true,
   backdropClass,
 }) => {
   if (!isOpen) return null;
 
   const maxWidthClass = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
-    '3xl': 'max-w-3xl',
-    '4xl': 'max-w-4xl',
-    '5xl': 'max-w-5xl',
-    '6xl': 'max-w-6xl',
-    '7xl': 'max-w-7xl',
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-lg",
+    xl: "max-w-xl",
+    "2xl": "max-w-2xl",
+    "3xl": "max-w-3xl",
+    "4xl": "max-w-4xl",
+    "5xl": "max-w-5xl",
+    "6xl": "max-w-6xl",
+    "7xl": "max-w-7xl",
   }[maxWidth];
 
   return (
     <div
       className={clsx(
-        'fixed inset-0 z-50 p-4 flex items-center justify-center',
-        backdropClass || (hasBlur ? 'bg-black/20 backdrop-blur-sm' : 'bg-black/20'),
-        className
+        "fixed inset-0 z-50 p-4 flex items-center justify-center",
+        backdropClass || (hasBlur ? "bg-black/20 backdrop-blur-sm" : "bg-black/20"),
+        className,
       )}
       onClick={onClose}
     >
       <div
         className={clsx(
-          'bg-white rounded-lg shadow-2xl w-full flex flex-col overflow-hidden',
+          "bg-white rounded-lg shadow-2xl w-full flex flex-col overflow-hidden",
           maxWidthClass,
-          `max-h-[${maxHeight}]`
+          `max-h-[${maxHeight}]`,
         )}
-        onClick={e => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {(title || true) && (
@@ -64,7 +64,7 @@ export const Modal: React.FC<ModalProps> = ({
               {title && (
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-                  {title === 'Configuration' && (
+                  {title === "Configuration" && (
                     <p className="text-sm text-gray-500">Webhook and handler settings</p>
                   )}
                 </div>

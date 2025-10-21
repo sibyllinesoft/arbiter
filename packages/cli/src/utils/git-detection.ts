@@ -1,12 +1,12 @@
-import { execSync } from 'node:child_process';
-import chalk from 'chalk';
-import type { GitHubRepo } from '../types.js';
+import { execSync } from "node:child_process";
+import chalk from "chalk";
+import type { GitHubRepo } from "../types.js";
 
 export interface GitRemoteInfo {
   owner: string;
   repo: string;
   url: string;
-  type: 'https' | 'ssh';
+  type: "https" | "ssh";
 }
 
 export interface GitDetectionResult {
@@ -18,7 +18,7 @@ export interface GitDetectionResult {
 export interface RepositoryConflict {
   configRepo: GitHubRepo;
   detectedRepo: GitRemoteInfo;
-  conflictType: 'owner' | 'repo' | 'both';
+  conflictType: "owner" | "repo" | "both";
 }
 
 export interface ConflictResolution {
@@ -34,9 +34,9 @@ export interface ConflictResolution {
 export function detectGitHubRepository(): GitDetectionResult {
   try {
     // Get the origin remote URL
-    const remoteUrl = execSync('git remote get-url origin', {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'], // Suppress stderr to avoid noise
+    const remoteUrl = execSync("git remote get-url origin", {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "ignore"], // Suppress stderr to avoid noise
     }).trim();
 
     // Parse GitHub URLs (both HTTPS and SSH formats)
@@ -45,7 +45,7 @@ export function detectGitHubRepository(): GitDetectionResult {
     if (!remote) {
       return {
         detected: false,
-        error: 'Remote origin is not a GitHub repository',
+        error: "Remote origin is not a GitHub repository",
       };
     }
 
@@ -56,7 +56,7 @@ export function detectGitHubRepository(): GitDetectionResult {
   } catch (error) {
     return {
       detected: false,
-      error: error instanceof Error ? error.message : 'Failed to detect Git remote',
+      error: error instanceof Error ? error.message : "Failed to detect Git remote",
     };
   }
 }
@@ -73,7 +73,7 @@ export function parseGitHubUrl(url: string): GitRemoteInfo | null {
       owner,
       repo,
       url,
-      type: 'https',
+      type: "https",
     };
   }
 
@@ -85,7 +85,7 @@ export function parseGitHubUrl(url: string): GitRemoteInfo | null {
       owner,
       repo,
       url,
-      type: 'ssh',
+      type: "ssh",
     };
   }
 
@@ -97,7 +97,7 @@ export function parseGitHubUrl(url: string): GitRemoteInfo | null {
  */
 export function detectRepositoryConflicts(
   configRepo: GitHubRepo,
-  detectedRepo: GitRemoteInfo
+  detectedRepo: GitRemoteInfo,
 ): RepositoryConflict | null {
   const ownerConflict = configRepo.owner !== detectedRepo.owner;
   const repoConflict = configRepo.repo !== detectedRepo.repo;
@@ -106,13 +106,13 @@ export function detectRepositoryConflicts(
     return null; // No conflict
   }
 
-  let conflictType: 'owner' | 'repo' | 'both';
+  let conflictType: "owner" | "repo" | "both";
   if (ownerConflict && repoConflict) {
-    conflictType = 'both';
+    conflictType = "both";
   } else if (ownerConflict) {
-    conflictType = 'owner';
+    conflictType = "owner";
   } else {
-    conflictType = 'repo';
+    conflictType = "repo";
   }
 
   return {
@@ -126,28 +126,28 @@ export function detectRepositoryConflicts(
  * Display a conflict resolution prompt and get user choice
  */
 export function displayConflictResolution(conflict: RepositoryConflict): void {
-  console.log(chalk.yellow('\n⚠️  Repository Configuration Conflict'));
-  console.log(chalk.dim('Found different repository information in config vs Git remote:\n'));
+  console.log(chalk.yellow("\n⚠️  Repository Configuration Conflict"));
+  console.log(chalk.dim("Found different repository information in config vs Git remote:\n"));
 
   // Display comparison table
   const configInfo = `${conflict.configRepo.owner}/${conflict.configRepo.repo}`;
   const detectedInfo = `${conflict.detectedRepo.owner}/${conflict.detectedRepo.repo}`;
 
-  console.log('┌─────────────────┬─────────────────────────────┐');
-  console.log('│ Source          │ Repository                  │');
-  console.log('├─────────────────┼─────────────────────────────┤');
+  console.log("┌─────────────────┬─────────────────────────────┐");
+  console.log("│ Source          │ Repository                  │");
+  console.log("├─────────────────┼─────────────────────────────┤");
   console.log(`│ Config file     │ ${configInfo.padEnd(27)} │`);
   console.log(`│ Git remote      │ ${detectedInfo.padEnd(27)} │`);
-  console.log('└─────────────────┴─────────────────────────────┘');
+  console.log("└─────────────────┴─────────────────────────────┘");
 
-  console.log(chalk.cyan('\nOptions:'));
-  console.log(chalk.dim('  1. Use config file values (keep current configuration)'));
-  console.log(chalk.dim('  2. Use Git remote values (auto-detected from repository)'));
-  console.log(chalk.dim('  3. Use Git remote and update config file'));
+  console.log(chalk.cyan("\nOptions:"));
+  console.log(chalk.dim("  1. Use config file values (keep current configuration)"));
+  console.log(chalk.dim("  2. Use Git remote values (auto-detected from repository)"));
+  console.log(chalk.dim("  3. Use Git remote and update config file"));
 
-  console.log(chalk.dim('\nFor non-interactive use:'));
-  console.log(chalk.dim('  --use-config      Use config file values'));
-  console.log(chalk.dim('  --use-git-remote  Use Git remote values'));
+  console.log(chalk.dim("\nFor non-interactive use:"));
+  console.log(chalk.dim("  --use-config      Use config file values"));
+  console.log(chalk.dim("  --use-git-remote  Use Git remote values"));
 }
 
 /**
@@ -158,7 +158,7 @@ export function resolveRepositorySelection(
   options: {
     useConfig?: boolean;
     useGitRemote?: boolean;
-  }
+  },
 ): ConflictResolution {
   if (options.useConfig) {
     return {
@@ -206,21 +206,21 @@ export function getSmartRepositoryConfig(
     useConfig?: boolean;
     useGitRemote?: boolean;
     verbose?: boolean;
-  } = {}
-): { repo: GitHubRepo; source: 'config' | 'detected' | 'merged' } | null {
+  } = {},
+): { repo: GitHubRepo; source: "config" | "detected" | "merged" } | null {
   const detection = detectGitHubRepository();
 
   // If Git detection failed
   if (!detection.detected) {
     if (options.verbose) {
-      console.log(chalk.dim('Git detection failed:', detection.error));
+      console.log(chalk.dim("Git detection failed:", detection.error));
     }
 
     if (configRepo) {
       if (options.verbose) {
-        console.log(chalk.dim('Using repository from config file'));
+        console.log(chalk.dim("Using repository from config file"));
       }
-      return { repo: configRepo, source: 'config' };
+      return { repo: configRepo, source: "config" };
     }
 
     return null;
@@ -231,8 +231,8 @@ export function getSmartRepositoryConfig(
     if (options.verbose) {
       console.log(
         chalk.dim(
-          `Auto-detected GitHub repository: ${detection.remote?.owner}/${detection.remote?.repo}`
-        )
+          `Auto-detected GitHub repository: ${detection.remote?.owner}/${detection.remote?.repo}`,
+        ),
       );
     }
     return {
@@ -240,7 +240,7 @@ export function getSmartRepositoryConfig(
         owner: detection.remote?.owner,
         repo: detection.remote?.repo,
       },
-      source: 'detected',
+      source: "detected",
     };
   }
 
@@ -251,10 +251,10 @@ export function getSmartRepositoryConfig(
     // No conflict - config and detected match
     if (options.verbose) {
       console.log(
-        chalk.dim(`Repository configuration validated: ${configRepo.owner}/${configRepo.repo}`)
+        chalk.dim(`Repository configuration validated: ${configRepo.owner}/${configRepo.repo}`),
       );
     }
-    return { repo: configRepo, source: 'config' };
+    return { repo: configRepo, source: "config" };
   }
 
   // Handle conflict
@@ -266,7 +266,7 @@ export function getSmartRepositoryConfig(
 
   return {
     repo: resolution.selectedRepo,
-    source: resolution.useConfig ? 'config' : 'detected',
+    source: resolution.useConfig ? "config" : "detected",
   };
 }
 
@@ -276,13 +276,13 @@ export function getSmartRepositoryConfig(
 export function createRepositoryConfig(
   owner: string,
   repo: string,
-  baseConfig?: Partial<GitHubRepo>
+  baseConfig?: Partial<GitHubRepo>,
 ): GitHubRepo {
   return {
     owner,
     repo,
     baseUrl: baseConfig?.baseUrl,
-    tokenEnv: baseConfig?.tokenEnv || 'GITHUB_TOKEN',
+    tokenEnv: baseConfig?.tokenEnv || "GITHUB_TOKEN",
   };
 }
 
@@ -298,32 +298,32 @@ export function validateRepositoryConfig(repo: GitHubRepo): {
   const suggestions: string[] = [];
 
   if (!repo.owner) {
-    errors.push('Repository owner is required');
+    errors.push("Repository owner is required");
   }
 
   if (!repo.repo) {
-    errors.push('Repository name is required');
+    errors.push("Repository name is required");
   }
 
-  if (repo.baseUrl && !repo.baseUrl.startsWith('https://')) {
-    errors.push('Base URL must start with https://');
+  if (repo.baseUrl && !repo.baseUrl.startsWith("https://")) {
+    errors.push("Base URL must start with https://");
   }
 
   // Check for common owner/repo format issues
-  if (repo.owner?.includes('/')) {
-    errors.push('Owner should not contain forward slashes');
+  if (repo.owner?.includes("/")) {
+    errors.push("Owner should not contain forward slashes");
     suggestions.push(
-      `Did you mean owner: "${repo.owner.split('/')[0]}", repo: "${repo.owner.split('/')[1]}"?`
+      `Did you mean owner: "${repo.owner.split("/")[0]}", repo: "${repo.owner.split("/")[1]}"?`,
     );
   }
 
-  if (repo.repo?.includes('/')) {
-    errors.push('Repository name should not contain forward slashes');
+  if (repo.repo?.includes("/")) {
+    errors.push("Repository name should not contain forward slashes");
   }
 
-  if (repo.repo?.endsWith('.git')) {
+  if (repo.repo?.endsWith(".git")) {
     suggestions.push(
-      `Repository name should not include .git extension: "${repo.repo.replace('.git', '')}"`
+      `Repository name should not include .git extension: "${repo.repo.replace(".git", "")}"`,
     );
   }
 

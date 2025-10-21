@@ -96,3 +96,17 @@ docs/api/
 
 # Biome files (avoid conflicts)
 biome.json
+
+# Custom workflow excluded for formatting
+.github/workflows/version-bump.yml
+**/*.ts
+**/*.tsx
+**/*.js
+**/*.jsx
+**/*.mjs
+**/*.cjs
+**/*.json
+**/*.md
+**/*.yml
+**/*.yaml
+**/*.html

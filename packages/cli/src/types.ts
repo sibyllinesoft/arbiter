@@ -3,8 +3,8 @@
  * Shared type definitions for the Arbiter CLI.
  */
 
-import type { SpinnerName } from 'cli-spinners';
-import type { Spinner } from 'ora';
+import type { SpinnerName } from "cli-spinners";
+import type { Spinner } from "ora";
 
 // Re-export issue types from shared package
 export type {
@@ -12,13 +12,13 @@ export type {
   ChecklistItem,
   IssueValidationConfig,
   IssueValidationResult,
-} from '@arbiter/shared';
+} from "@arbiter/shared";
 export {
   DEFAULT_ISSUE_VALIDATION,
   validateIssue,
   createIssue,
   createChecklistItem,
-} from '@arbiter/shared';
+} from "@arbiter/shared";
 /**
  * GitHub repository metadata used by the synchronization subsystem.
  *
@@ -71,7 +71,7 @@ export interface GitHubSyncConfig {
   templates?: GitHubTemplatesConfig;
 }
 
-import type { UIOptionCatalog, UIOptionGeneratorMap } from '@arbiter/shared';
+import type { UIOptionCatalog, UIOptionGeneratorMap } from "@arbiter/shared";
 
 /**
  * Primary configuration object consumed by the CLI.
@@ -104,9 +104,11 @@ export interface CLIConfig {
   /** Default timeout in milliseconds */
   timeout: number;
   /** Default output format */
-  format: 'table' | 'json' | 'yaml';
+  format: "table" | "json" | "yaml";
   /** Enable colored output */
   color: boolean;
+  /** Operate in offline/local CUE mode */
+  localMode: boolean;
   /** Verbose output flag */
   verbose?: boolean;
   /** Default project directory */
@@ -135,10 +137,10 @@ export interface CLIConfig {
  * Lifecycle hook identifiers emitted by the generator.
  */
 export type GeneratorHookEvent =
-  | 'before:generate'
-  | 'after:generate'
-  | 'before:fileWrite'
-  | 'after:fileWrite';
+  | "before:generate"
+  | "after:generate"
+  | "before:fileWrite"
+  | "after:fileWrite";
 
 /**
  * Mapping of generator hooks to shell commands executed during scaffolding.
@@ -197,7 +199,7 @@ export interface LanguageTestingConfig {
 
 export interface MasterTestRunnerConfig {
   /** Runner type for aggregating tests. Defaults to "make". */
-  type?: 'make' | 'node';
+  type?: "make" | "node";
   /** Custom output path for the generated runner (relative to output dir). */
   output?: string;
 }
@@ -250,12 +252,12 @@ export interface CommandResult<T = any> {
  */
 export interface ValidationResult {
   file: string;
-  status: 'valid' | 'invalid' | 'error';
+  status: "valid" | "invalid" | "error";
   errors: Array<{
     line: number;
     column: number;
     message: string;
-    severity: 'error' | 'warning';
+    severity: "error" | "warning";
     category: string;
   }>;
   warnings: Array<{
@@ -370,20 +372,20 @@ export interface AppSpec {
  * Export format options
  */
 export type ExportFormat =
-  | 'openapi'
-  | 'types'
-  | 'k8s'
-  | 'terraform'
-  | 'json-schema'
-  | 'json'
-  | 'yaml';
+  | "openapi"
+  | "types"
+  | "k8s"
+  | "terraform"
+  | "json-schema"
+  | "json"
+  | "yaml";
 
 /**
  * Progress indicator options
  */
 export interface ProgressOptions {
   text: string;
-  color?: 'blue' | 'green' | 'yellow' | 'red' | 'cyan' | 'magenta';
+  color?: "blue" | "green" | "yellow" | "red" | "cyan" | "magenta";
   spinner?: Spinner | SpinnerName;
 }
 
@@ -393,7 +395,7 @@ export interface ProgressOptions {
 export interface StepProgressOptions {
   title: string;
   steps: string[];
-  color?: 'blue' | 'green' | 'yellow' | 'red' | 'cyan' | 'magenta';
+  color?: "blue" | "green" | "yellow" | "red" | "cyan" | "magenta";
   spinner?: Spinner | SpinnerName;
 }
 
@@ -434,7 +436,7 @@ export interface InitOptions {
 export interface CheckOptions {
   recursive?: boolean;
   watch?: boolean;
-  format?: 'table' | 'json';
+  format?: "table" | "json";
   verbose?: boolean;
   failFast?: boolean;
 }
@@ -445,7 +447,7 @@ export interface CheckOptions {
 export interface ValidateOptions {
   schema?: string;
   config?: string;
-  format?: 'table' | 'json';
+  format?: "table" | "json";
   strict?: boolean;
   verbose?: boolean;
 }
@@ -468,7 +470,7 @@ export interface ExportOptions {
  */
 export interface TemplateOptions {
   output?: string;
-  format?: 'cue' | 'json';
+  format?: "cue" | "json";
   list?: boolean;
   interactive?: boolean;
 }
@@ -499,7 +501,7 @@ export interface ImportOptions {
  */
 export interface DiffOptions {
   migration?: boolean;
-  format?: 'text' | 'json';
+  format?: "text" | "json";
   context?: number;
   summary?: boolean;
 }
@@ -545,7 +547,7 @@ export interface WatchOptions {
  * Surface command options for API extraction
  */
 export interface SurfaceOptions {
-  language: 'typescript' | 'python' | 'rust' | 'go' | 'bash';
+  language: "typescript" | "python" | "rust" | "go" | "bash";
   output?: string;
   diff?: boolean;
   includePrivate?: boolean;
@@ -558,7 +560,7 @@ export interface SurfaceOptions {
  * Tests command options for scaffolding and coverage
  */
 export interface TestsOptions {
-  language?: 'python' | 'typescript' | 'rust' | 'go' | 'bash';
+  language?: "python" | "typescript" | "rust" | "go" | "bash";
   framework?: string;
   property?: boolean;
   output?: string;
@@ -608,7 +610,7 @@ export interface VersionReleaseOptions {
  */
 export interface IDEOptions {
   /** Editor type to generate config for */
-  editor?: 'vscode' | 'idea' | 'vim' | 'all';
+  editor?: "vscode" | "idea" | "vim" | "all";
   /** Force overwrite existing configuration */
   force?: boolean;
   /** Only detect project languages, don't generate config */
@@ -624,7 +626,7 @@ export interface IDEOptions {
  */
 export interface SyncOptions {
   /** Language manifests to sync */
-  language?: 'python' | 'typescript' | 'rust' | 'bash' | 'all';
+  language?: "python" | "typescript" | "rust" | "bash" | "all";
   /** Sync all detected languages */
   all?: boolean;
   /** Dry run - show what would be changed */
@@ -640,9 +642,9 @@ export interface SyncOptions {
  */
 export interface IntegrateOptions {
   /** CI provider to generate workflows for */
-  provider?: 'github' | 'gitlab' | 'azure' | 'all';
+  provider?: "github" | "gitlab" | "azure" | "all";
   /** Workflow type to generate */
-  type?: 'pr' | 'main' | 'release' | 'all';
+  type?: "pr" | "main" | "release" | "all";
   /** Output directory for CI files */
   output?: string;
   /** Force overwrite existing workflows */
@@ -658,7 +660,7 @@ export interface IntegrateOptions {
  */
 export interface DocsOptions {
   /** Output format */
-  format?: 'markdown' | 'html' | 'json';
+  format?: "markdown" | "html" | "json";
   /** Output file path */
   output?: string;
   /** Template to use */
@@ -674,7 +676,7 @@ export interface DocsOptions {
  */
 export interface ExamplesOptions {
   /** Example type */
-  type?: 'profile' | 'language';
+  type?: "profile" | "language";
   /** Specific profile to generate */
   profile?: string;
   /** Specific language to generate */
@@ -800,7 +802,7 @@ export interface GitHubTemplateField {
   /** Whether field is required */
   required?: boolean;
   /** Field type */
-  type?: 'text' | 'number' | 'date' | 'select' | 'boolean';
+  type?: "text" | "number" | "date" | "select" | "boolean";
   /** Default value */
   default?: string;
   /** Validation pattern */
@@ -884,7 +886,7 @@ export interface GitHubTemplateOptions {
  */
 export interface TemplateManagementOptions {
   /** Template type */
-  type?: 'epic' | 'task' | 'bug' | 'feature';
+  type?: "epic" | "task" | "bug" | "feature";
   /** Template name */
   name?: string;
   /** List available templates */
@@ -898,7 +900,7 @@ export interface TemplateManagementOptions {
   /** Show template details */
   show?: boolean;
   /** Output format */
-  format?: 'table' | 'json' | 'yaml';
+  format?: "table" | "json" | "yaml";
   /** Initialize/scaffold template files */
   init?: boolean;
   /** Scaffold template files */
@@ -918,7 +920,7 @@ export interface TemplateManagementOptions {
  */
 export interface ExplainOptions {
   /** Output format */
-  format?: 'text' | 'json';
+  format?: "text" | "json";
   /** Output file path */
   output?: string;
   /** Verbose explanation */
@@ -944,7 +946,7 @@ export interface GenerateOptions {
   /** Verbose output */
   verbose?: boolean;
   /** Output format */
-  format?: 'auto' | 'json' | 'yaml' | 'typescript' | 'python' | 'rust' | 'go' | 'shell';
+  format?: "auto" | "json" | "yaml" | "typescript" | "python" | "rust" | "go" | "shell";
   /** Sync with GitHub */
   syncGithub?: boolean;
   /** Use configuration file */
@@ -960,7 +962,7 @@ export interface GenerateOptions {
  */
 export interface PreviewOptions {
   /** Output format */
-  format?: 'json' | 'yaml' | 'text';
+  format?: "json" | "yaml" | "text";
   /** Output file path */
   output?: string;
   /** Output directory for plan file */

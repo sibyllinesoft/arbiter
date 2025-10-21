@@ -1,5 +1,5 @@
-import * as path from 'path';
-import * as yaml from 'yaml';
+import * as path from "path";
+import * as yaml from "yaml";
 import type {
   ConfidenceScore,
   Evidence,
@@ -8,8 +8,8 @@ import type {
   InferredArtifact,
   ParseContext,
   Provenance,
-} from '../types';
-import type { ProjectMetadata } from '../types';
+} from "../types";
+import type { ProjectMetadata } from "../types";
 
 export interface DockerData {
   name: string;
@@ -24,22 +24,22 @@ export interface DockerData {
 
 export class DockerPlugin implements ImporterPlugin {
   name(): string {
-    return 'docker';
+    return "docker";
   }
 
   supports(filePath: string): boolean {
     const basename = path.basename(filePath).toLowerCase();
     return (
-      basename === 'dockerfile' ||
-      basename === 'docker-compose.yml' ||
-      basename === 'docker-compose.yaml' ||
-      basename.includes('compose')
+      basename === "dockerfile" ||
+      basename === "docker-compose.yml" ||
+      basename === "docker-compose.yaml" ||
+      basename.includes("compose")
     );
   }
 
   async parse(filePath: string, fileContent?: string, context?: ParseContext): Promise<Evidence[]> {
     if (!fileContent) {
-      throw new Error('File content required for Docker parsing');
+      throw new Error("File content required for Docker parsing");
     }
 
     const evidence: Evidence[] = [];
@@ -47,28 +47,28 @@ export class DockerPlugin implements ImporterPlugin {
 
     try {
       let parsed;
-      if (basename === 'dockerfile') {
+      if (basename === "dockerfile") {
         // Don't use YAML for Dockerfile
         parsed = null;
       } else {
         parsed = yaml.parse(fileContent);
       }
 
-      if (basename === 'dockerfile') {
+      if (basename === "dockerfile") {
         // Parse Dockerfile
         const dockerfileEvidence = this.parseDockerfile(
           fileContent,
           filePath,
-          context?.projectRoot || '/'
+          context?.projectRoot || "/",
         );
         evidence.push(...dockerfileEvidence);
-      } else if (basename.includes('docker-compose')) {
+      } else if (basename.includes("docker-compose")) {
         // Parse docker-compose.yml
-        if (parsed && typeof parsed === 'object') {
+        if (parsed && typeof parsed === "object") {
           const composeEvidence = this.parseDockerCompose(
             parsed,
             filePath,
-            context?.projectRoot || '/'
+            context?.projectRoot || "/",
           );
           evidence.push(...composeEvidence);
         }
@@ -84,11 +84,11 @@ export class DockerPlugin implements ImporterPlugin {
   private parseDockerfile(content: string, filePath: string, projectRoot: string): Evidence[] {
     const evidence: Evidence[] = [];
 
-    const name = path.basename(path.dirname(filePath)) || 'docker-build';
+    const name = path.basename(path.dirname(filePath)) || "docker-build";
     const data: DockerData = {
       name,
-      description: 'Docker build configuration',
-      type: 'dockerfile',
+      description: "Docker build configuration",
+      type: "dockerfile",
       filePath,
       dockerfileContent: content,
     };
@@ -97,7 +97,7 @@ export class DockerPlugin implements ImporterPlugin {
     evidence.push({
       id: evidenceId,
       source: this.name(),
-      type: 'config',
+      type: "config",
       filePath,
       data,
       metadata: {
@@ -113,7 +113,7 @@ export class DockerPlugin implements ImporterPlugin {
     const evidence: Evidence[] = [];
 
     const services = parsed.services;
-    if (!services || typeof services !== 'object') {
+    if (!services || typeof services !== "object") {
       return evidence;
     }
 
@@ -121,13 +121,13 @@ export class DockerPlugin implements ImporterPlugin {
 
     for (const [serviceName, serviceConfigRaw] of Object.entries(services)) {
       const serviceConfig = serviceConfigRaw as any;
-      if (typeof serviceConfig !== 'object' || serviceConfig === null) continue;
+      if (typeof serviceConfig !== "object" || serviceConfig === null) continue;
 
       const evidenceId = relativeComposePath;
       const data: DockerData = {
         name: serviceName as string,
-        description: 'Docker service',
-        type: 'service',
+        description: "Docker service",
+        type: "service",
         filePath,
         composeServiceConfig: serviceConfig,
         composeServiceYaml: yaml.stringify({ [serviceName]: serviceConfig }, { indent: 2 }),
@@ -136,7 +136,7 @@ export class DockerPlugin implements ImporterPlugin {
       evidence.push({
         id: evidenceId,
         source: this.name(),
-        type: 'config',
+        type: "config",
         filePath,
         data,
         metadata: {
@@ -153,15 +153,15 @@ export class DockerPlugin implements ImporterPlugin {
     const artifacts: InferredArtifact[] = [];
 
     // Filter Docker evidence
-    const dockerEvidence = evidence.filter(e => e.source === this.name() && e.type === 'config');
+    const dockerEvidence = evidence.filter((e) => e.source === this.name() && e.type === "config");
 
-    const hasCompose = dockerEvidence.some(e => e.filePath.toLowerCase().includes('compose'));
+    const hasCompose = dockerEvidence.some((e) => e.filePath.toLowerCase().includes("compose"));
 
     for (const ev of dockerEvidence) {
       const data = ev.data as unknown as DockerData;
-      if (data.type !== 'service' && (hasCompose || data.type !== 'dockerfile')) continue;
+      if (data.type !== "service" && (hasCompose || data.type !== "dockerfile")) continue;
 
-      const artifactType = data.type === 'dockerfile' ? 'service' : data.type;
+      const artifactType = data.type === "dockerfile" ? "service" : data.type;
       const root = hasCompose ? path.basename(data.filePath) : path.dirname(data.filePath);
       const dockerMetadata: Record<string, unknown> = {};
       if (data.composeServiceConfig) {
@@ -179,9 +179,9 @@ export class DockerPlugin implements ImporterPlugin {
         metadata.docker = dockerMetadata;
       }
 
-      if (data.composeServiceConfig && typeof data.composeServiceConfig === 'object') {
+      if (data.composeServiceConfig && typeof data.composeServiceConfig === "object") {
         const composeConfig = data.composeServiceConfig as Record<string, unknown>;
-        if (typeof composeConfig.image === 'string') {
+        if (typeof composeConfig.image === "string") {
           metadata.containerImage = composeConfig.image;
         }
         if (composeConfig.build !== undefined) {
@@ -203,7 +203,7 @@ export class DockerPlugin implements ImporterPlugin {
         type: artifactType as any,
         name: data.name,
         description: data.description,
-        tags: ['docker', artifactType],
+        tags: ["docker", artifactType],
         metadata,
       };
 
@@ -211,10 +211,10 @@ export class DockerPlugin implements ImporterPlugin {
         artifact,
         provenance: {
           evidence: [ev.id],
-          plugins: ['docker'],
-          rules: ['docker-simplification'],
+          plugins: ["docker"],
+          rules: ["docker-simplification"],
           timestamp: Date.now(),
-          pipelineVersion: '1.0.0',
+          pipelineVersion: "1.0.0",
         },
         relationships: [],
       });

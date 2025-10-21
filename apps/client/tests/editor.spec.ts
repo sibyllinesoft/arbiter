@@ -3,7 +3,7 @@
  * Tests for Monaco editor functionality, content editing, and editor features
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 import {
   BasePage,
   EditorPage,
@@ -15,9 +15,9 @@ import {
   TopBarPage,
   mockApiResponses,
   waitForToast,
-} from './test-utils';
+} from "./test-utils";
 
-test.describe('Monaco Editor Functionality', () => {
+test.describe("Monaco Editor Functionality", () => {
   let storybookHelper: StorybookHelper;
   let editorPage: EditorPage;
   let topBarPage: TopBarPage;
@@ -40,11 +40,11 @@ test.describe('Monaco Editor Functionality', () => {
     await basePage.waitForLoadingComplete();
 
     // Switch to Source tab (left side) to ensure editor is visible
-    await tabsPage.clickTab('Source', 'left');
+    await tabsPage.clickTab("Source", "left");
     await basePage.waitForLoadingComplete();
   });
 
-  test('should load Monaco editor successfully', async ({ page }) => {
+  test("should load Monaco editor successfully", async ({ page }) => {
     // Wait for Monaco editor to load
     await editorPage.waitForMonacoToLoad();
 
@@ -59,11 +59,11 @@ test.describe('Monaco Editor Functionality', () => {
     expect(hasMonaco).toBe(true);
 
     // Take screenshot of loaded editor
-    await basePage.takeScreenshot('monaco-editor-loaded');
-    console.log('Monaco editor loaded successfully');
+    await basePage.takeScreenshot("monaco-editor-loaded");
+    console.log("Monaco editor loaded successfully");
   });
 
-  test('should display CUE content in editor', async ({ page }) => {
+  test("should display CUE content in editor", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Get current editor content
@@ -74,18 +74,18 @@ test.describe('Monaco Editor Functionality', () => {
 
     // Check for CUE-like patterns
     const hasCuePatterns =
-      content.includes('package') ||
-      content.includes('cue') ||
-      content.includes('//') ||
+      content.includes("package") ||
+      content.includes("cue") ||
+      content.includes("//") ||
       content.length > 10;
 
     expect(hasCuePatterns).toBe(true);
 
-    console.log('Editor content length:', content.length);
-    console.log('Content preview:', content.substring(0, 100));
+    console.log("Editor content length:", content.length);
+    console.log("Content preview:", content.substring(0, 100));
   });
 
-  test('should allow typing and editing content', async ({ page }) => {
+  test("should allow typing and editing content", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Clear existing content and add new content
@@ -100,18 +100,18 @@ test.describe('Monaco Editor Functionality', () => {
     await editor.click();
 
     // Move to end and add a comment
-    await page.keyboard.press('Control+End');
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('// Additional test comment');
+    await page.keyboard.press("Control+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("// Additional test comment");
 
     // Verify the addition
     const updatedContent = await editorPage.getEditorContent();
-    expect(updatedContent).toContain('Additional test comment');
+    expect(updatedContent).toContain("Additional test comment");
 
-    console.log('Content editing test completed');
+    console.log("Content editing test completed");
   });
 
-  test('should provide syntax highlighting for CUE', async ({ page }) => {
+  test("should provide syntax highlighting for CUE", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set CUE content
@@ -121,7 +121,7 @@ test.describe('Monaco Editor Functionality', () => {
     const editor = await editorPage.getMonacoEditor();
 
     // Look for Monaco's syntax highlighting classes
-    const syntaxElements = editor.locator('.mtk1, .mtk2, .mtk3, .mtk4, .mtk5, .mtk6');
+    const syntaxElements = editor.locator(".mtk1, .mtk2, .mtk3, .mtk4, .mtk5, .mtk6");
     const syntaxCount = await syntaxElements.count();
 
     // Should have multiple syntax highlighting elements
@@ -132,16 +132,16 @@ test.describe('Monaco Editor Functionality', () => {
     const commentCount = await commentElements.count();
 
     if (commentCount > 0) {
-      console.log('Comment syntax highlighting detected');
+      console.log("Comment syntax highlighting detected");
     }
 
     // Take screenshot showing syntax highlighting
-    await basePage.takeScreenshot('syntax-highlighting');
+    await basePage.takeScreenshot("syntax-highlighting");
 
     console.log(`Found ${syntaxCount} syntax highlighting elements`);
   });
 
-  test('should show line numbers', async ({ page }) => {
+  test("should show line numbers", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set multi-line content
@@ -149,7 +149,7 @@ test.describe('Monaco Editor Functionality', () => {
 
     // Check for line numbers
     const editor = await editorPage.getMonacoEditor();
-    const lineNumbers = editor.locator('.line-numbers, .margin-view-overlays .line-numbers');
+    const lineNumbers = editor.locator(".line-numbers, .margin-view-overlays .line-numbers");
 
     // Line numbers should be visible
     await expect(lineNumbers.first()).toBeVisible();
@@ -161,7 +161,7 @@ test.describe('Monaco Editor Functionality', () => {
     console.log(`Found ${lineNumberCount} line number elements`);
   });
 
-  test('should support keyboard shortcuts', async ({ page }) => {
+  test("should support keyboard shortcuts", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set content
@@ -171,30 +171,30 @@ test.describe('Monaco Editor Functionality', () => {
     await editor.click();
 
     // Test Ctrl+A (Select All)
-    await page.keyboard.press('Control+a');
+    await page.keyboard.press("Control+a");
     await page.waitForTimeout(200);
 
     // Test Ctrl+C and Ctrl+V (Copy and Paste)
-    await page.keyboard.press('Control+c');
+    await page.keyboard.press("Control+c");
     await page.waitForTimeout(200);
 
     // Move to end and paste
-    await page.keyboard.press('Control+End');
-    await page.keyboard.press('Enter');
-    await page.keyboard.press('Control+v');
+    await page.keyboard.press("Control+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Control+v");
 
     // Content should be duplicated
     const finalContent = await editorPage.getEditorContent();
-    const originalLines = TEST_DATA.CUE_CONTENT.trim().split('\n').length;
-    const finalLines = finalContent.trim().split('\n').length;
+    const originalLines = TEST_DATA.CUE_CONTENT.trim().split("\n").length;
+    const finalLines = finalContent.trim().split("\n").length;
 
     // Should have approximately double the lines (allowing for some variance)
     expect(finalLines).toBeGreaterThan(originalLines);
 
-    console.log('Keyboard shortcuts test completed');
+    console.log("Keyboard shortcuts test completed");
   });
 
-  test('should trigger save when content changes', async ({ page }) => {
+  test("should trigger save when content changes", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set initial content
@@ -203,20 +203,20 @@ test.describe('Monaco Editor Functionality', () => {
     // Make a change
     const editor = await editorPage.getMonacoEditor();
     await editor.click();
-    await page.keyboard.press('Control+End');
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('// Change to trigger save');
+    await page.keyboard.press("Control+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("// Change to trigger save");
 
     // Check if save button becomes enabled/highlighted
     const saveButton = await topBarPage.getSaveButton();
 
     // Button might be enabled or show visual indication of unsaved changes
-    const saveButtonClasses = (await saveButton.getAttribute('class')) || '';
-    const isDisabled = await saveButton.getAttribute('disabled');
+    const saveButtonClasses = (await saveButton.getAttribute("class")) || "";
+    const isDisabled = await saveButton.getAttribute("disabled");
 
     // If save functionality is working, button should not be disabled
     // or should show some indication of unsaved changes
-    console.log('Save button state:', { classes: saveButtonClasses, disabled: isDisabled });
+    console.log("Save button state:", { classes: saveButtonClasses, disabled: isDisabled });
 
     // Click save button
     await topBarPage.clickSave();
@@ -224,10 +224,10 @@ test.describe('Monaco Editor Functionality', () => {
     // Wait for save operation
     await basePage.waitForLoadingComplete();
 
-    console.log('Save functionality test completed');
+    console.log("Save functionality test completed");
   });
 
-  test('should handle validation errors in editor', async ({ page }) => {
+  test("should handle validation errors in editor", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set invalid CUE content
@@ -239,13 +239,13 @@ test.describe('Monaco Editor Functionality', () => {
 
     // Check for validation status
     const validationStatus = await topBarPage.getValidationStatus();
-    console.log('Validation status:', validationStatus);
+    console.log("Validation status:", validationStatus);
 
     // Look for error indicators in the editor or UI
     const errorSelectors = [
-      '.error-marker',
-      '.squiggly-error',
-      '.monaco-error',
+      ".error-marker",
+      ".squiggly-error",
+      ".monaco-error",
       SELECTORS.ERROR_MESSAGE,
     ];
 
@@ -259,12 +259,12 @@ test.describe('Monaco Editor Functionality', () => {
     }
 
     // Take screenshot of validation state
-    await basePage.takeScreenshot('validation-errors');
+    await basePage.takeScreenshot("validation-errors");
 
-    console.log('Validation error handling test completed');
+    console.log("Validation error handling test completed");
   });
 
-  test('should support find and replace functionality', async ({ page }) => {
+  test("should support find and replace functionality", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set content with searchable text
@@ -285,36 +285,36 @@ app: {
     await editor.click();
 
     // Open find dialog with Ctrl+F
-    await page.keyboard.press('Control+f');
+    await page.keyboard.press("Control+f");
     await page.waitForTimeout(500);
 
     // Check if find widget is visible
-    const findWidget = page.locator('.find-widget, .editor-widget');
+    const findWidget = page.locator(".find-widget, .editor-widget");
     if (await findWidget.isVisible()) {
       // Type search term
-      await page.keyboard.type('searchable');
+      await page.keyboard.type("searchable");
       await page.waitForTimeout(300);
 
       // Press Enter to find next
-      await page.keyboard.press('Enter');
+      await page.keyboard.press("Enter");
       await page.waitForTimeout(300);
 
-      console.log('Find functionality is working');
+      console.log("Find functionality is working");
     } else {
-      console.log('Find widget not detected - may use different implementation');
+      console.log("Find widget not detected - may use different implementation");
     }
 
     // Close find widget with Escape
-    await page.keyboard.press('Escape');
+    await page.keyboard.press("Escape");
 
-    console.log('Find and replace test completed');
+    console.log("Find and replace test completed");
   });
 
-  test('should handle large content efficiently', async ({ page }) => {
+  test("should handle large content efficiently", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Generate large content
-    const largeContent = Array(100).fill(TEST_DATA.CUE_CONTENT).join('\n\n');
+    const largeContent = Array(100).fill(TEST_DATA.CUE_CONTENT).join("\n\n");
 
     // Measure performance
     const startTime = Date.now();
@@ -336,17 +336,17 @@ app: {
     await editor.click();
 
     // Scroll to end
-    await page.keyboard.press('Control+End');
+    await page.keyboard.press("Control+End");
     await page.waitForTimeout(200);
 
     // Scroll to beginning
-    await page.keyboard.press('Control+Home');
+    await page.keyboard.press("Control+Home");
     await page.waitForTimeout(200);
 
-    console.log('Large content handling test completed');
+    console.log("Large content handling test completed");
   });
 
-  test('should maintain focus and cursor position', async ({ page }) => {
+  test("should maintain focus and cursor position", async ({ page }) => {
     await editorPage.waitForMonacoToLoad();
 
     // Set content
@@ -356,13 +356,13 @@ app: {
     await editor.click();
 
     // Move cursor to specific position
-    await page.keyboard.press('Control+Home'); // Go to start
-    await page.keyboard.press('ArrowDown'); // Move down one line
-    await page.keyboard.press('ArrowRight'); // Move right
-    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press("Control+Home"); // Go to start
+    await page.keyboard.press("ArrowDown"); // Move down one line
+    await page.keyboard.press("ArrowRight"); // Move right
+    await page.keyboard.press("ArrowRight");
 
     // Click somewhere else and back to editor
-    await topBarPage.getValidateButton().then(btn => btn.click());
+    await topBarPage.getValidateButton().then((btn) => btn.click());
     await editor.click();
 
     // Cursor position should be maintained or at least editor should be focusable
@@ -370,23 +370,23 @@ app: {
       const activeElement = document.activeElement;
       return (
         activeElement &&
-        (activeElement.classList.contains('monaco-editor') ||
-          activeElement.closest('.monaco-editor') !== null)
+        (activeElement.classList.contains("monaco-editor") ||
+          activeElement.closest(".monaco-editor") !== null)
       );
     });
 
     // Editor should be focusable
-    console.log('Editor focus state:', isFocused);
+    console.log("Editor focus state:", isFocused);
 
-    console.log('Focus and cursor position test completed');
+    console.log("Focus and cursor position test completed");
   });
 
-  test('should work in both Source and Friendly tabs', async ({ page }) => {
-    const tabsToTest = ['Source', 'Friendly'];
+  test("should work in both Source and Friendly tabs", async ({ page }) => {
+    const tabsToTest = ["Source", "Friendly"];
 
     for (const tabName of tabsToTest) {
       // Switch to tab
-      await tabsPage.clickTab(tabName, 'left');
+      await tabsPage.clickTab(tabName, "left");
       await basePage.waitForLoadingComplete();
 
       // Check if editor is present
@@ -419,7 +419,7 @@ app: {
   });
 });
 
-test.describe('Editor Integration', () => {
+test.describe("Editor Integration", () => {
   let storybookHelper: StorybookHelper;
   let editorPage: EditorPage;
   let topBarPage: TopBarPage;
@@ -436,10 +436,10 @@ test.describe('Editor Integration', () => {
     await basePage.waitForLoadingComplete();
   });
 
-  test('should integrate with validation system', async ({ page }) => {
+  test("should integrate with validation system", async ({ page }) => {
     // Switch to Source tab
     const tabsPage = new TabsPage(page);
-    await tabsPage.clickTab('Source', 'left');
+    await tabsPage.clickTab("Source", "left");
 
     if (await basePage.elementExists(SELECTORS.MONACO_EDITOR)) {
       await editorPage.waitForMonacoToLoad();
@@ -453,7 +453,7 @@ test.describe('Editor Integration', () => {
 
       // Check validation status
       const status1 = await topBarPage.getValidationStatus();
-      console.log('Status after valid content:', status1);
+      console.log("Status after valid content:", status1);
 
       // Set invalid content
       await editorPage.setEditorContent(TEST_DATA.INVALID_CUE_CONTENT);
@@ -464,16 +464,16 @@ test.describe('Editor Integration', () => {
 
       // Check validation status
       const status2 = await topBarPage.getValidationStatus();
-      console.log('Status after invalid content:', status2);
+      console.log("Status after invalid content:", status2);
 
       // Statuses should be different or show appropriate feedback
-      console.log('Validation integration test completed');
+      console.log("Validation integration test completed");
     }
   });
 
-  test('should save changes and show appropriate feedback', async ({ page }) => {
+  test("should save changes and show appropriate feedback", async ({ page }) => {
     const tabsPage = new TabsPage(page);
-    await tabsPage.clickTab('Source', 'left');
+    await tabsPage.clickTab("Source", "left");
 
     if (await basePage.elementExists(SELECTORS.MONACO_EDITOR)) {
       await editorPage.waitForMonacoToLoad();
@@ -482,23 +482,23 @@ test.describe('Editor Integration', () => {
       await editorPage.setEditorContent(TEST_DATA.CUE_CONTENT);
       const editor = await editorPage.getMonacoEditor();
       await editor.click();
-      await page.keyboard.press('Control+End');
-      await page.keyboard.type('\n// Saved change');
+      await page.keyboard.press("Control+End");
+      await page.keyboard.type("\n// Saved change");
 
       // Save changes
       await topBarPage.clickSave();
 
       // Wait for save operation and potential toast notification
       await basePage.waitForLoadingComplete();
-      await waitForToast(page, 'success');
+      await waitForToast(page, "success");
 
-      console.log('Save integration test completed');
+      console.log("Save integration test completed");
     }
   });
 
-  test('should handle CUE file switching', async ({ page }) => {
+  test("should handle CUE file switching", async ({ page }) => {
     const tabsPage = new TabsPage(page);
-    await tabsPage.clickTab('Source', 'left');
+    await tabsPage.clickTab("Source", "left");
 
     if (await basePage.elementExists(SELECTORS.MONACO_EDITOR)) {
       await editorPage.waitForMonacoToLoad();
@@ -508,7 +508,7 @@ test.describe('Editor Integration', () => {
 
       // Try to switch CUE files (if multiple are available)
       const cueSelector = await topBarPage.getCueSelector();
-      const options = cueSelector.locator('option');
+      const options = cueSelector.locator("option");
       const optionCount = await options.count();
 
       if (optionCount > 1) {
@@ -520,13 +520,13 @@ test.describe('Editor Integration', () => {
 
           // Content might change
           const newContent = await editorPage.getEditorContent();
-          console.log('Content changed after CUE file switch');
-          console.log('Initial length:', initialContent.length);
-          console.log('New length:', newContent.length);
+          console.log("Content changed after CUE file switch");
+          console.log("Initial length:", initialContent.length);
+          console.log("New length:", newContent.length);
         }
       }
 
-      console.log('CUE file switching test completed');
+      console.log("CUE file switching test completed");
     }
   });
 });

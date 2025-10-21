@@ -2,14 +2,14 @@
  * API hooks using React Query
  */
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiService } from '../services/api';
-import type { CreateHandlerRequest, UpdateHandlerRequest } from '../types/api';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiService } from "../services/api";
+import type { CreateHandlerRequest, UpdateHandlerRequest } from "../types/api";
 
 // Project hooks
 export function useProjects() {
   return useQuery({
-    queryKey: ['projects'],
+    queryKey: ["projects"],
     queryFn: () => apiService.getProjects(),
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
@@ -17,7 +17,7 @@ export function useProjects() {
 
 export function useProject(projectId: string) {
   return useQuery({
-    queryKey: ['projects', projectId],
+    queryKey: ["projects", projectId],
     queryFn: () => apiService.getProject(projectId),
     enabled: !!projectId,
   });
@@ -25,7 +25,7 @@ export function useProject(projectId: string) {
 
 export function useProjectEvents(
   projectId: string,
-  options: { limit?: number; includeDangling?: boolean } = {}
+  options: { limit?: number; includeDangling?: boolean } = {},
 ) {
   const requestOptions: { limit?: number; includeDangling?: boolean } = {};
 
@@ -39,7 +39,7 @@ export function useProjectEvents(
 
   return useQuery({
     queryKey: [
-      'project-events',
+      "project-events",
       projectId,
       requestOptions.limit ?? null,
       requestOptions.includeDangling ?? null,
@@ -56,7 +56,7 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: (name: string) => apiService.createProject(name),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
@@ -67,7 +67,7 @@ export function useDeleteProject() {
   return useMutation({
     mutationFn: (projectId: string) => apiService.deleteProject(projectId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
@@ -79,9 +79,9 @@ export function useSetEventHead(projectId: string) {
     mutationFn: (headEventId: string | null) =>
       apiService.setProjectEventHead(projectId, headEventId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ["project-events", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
@@ -92,16 +92,16 @@ export function useRevertProjectEvents(projectId: string) {
   return useMutation({
     mutationFn: (eventIds: string[]) => apiService.revertProjectEvents(projectId, eventIds),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project-events', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ["project-events", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 }
 
 export function useResolvedSpec(projectId: string | null) {
   return useQuery({
-    queryKey: ['resolved-spec', projectId],
+    queryKey: ["resolved-spec", projectId],
     queryFn: () => apiService.getResolvedSpec(projectId!),
     enabled: !!projectId,
     staleTime: 1000 * 60 * 2, // 2 minutes
@@ -111,7 +111,7 @@ export function useResolvedSpec(projectId: string | null) {
 // Handler hooks
 export function useHandlers() {
   return useQuery({
-    queryKey: ['handlers'],
+    queryKey: ["handlers"],
     queryFn: () => apiService.getHandlers(),
     staleTime: 1000 * 60 * 2, // 2 minutes
   });
@@ -119,7 +119,7 @@ export function useHandlers() {
 
 export function useHandler(handlerId: string) {
   return useQuery({
-    queryKey: ['handlers', handlerId],
+    queryKey: ["handlers", handlerId],
     queryFn: () => apiService.getHandler(handlerId),
     enabled: !!handlerId,
   });
@@ -131,7 +131,7 @@ export function useCreateHandler() {
   return useMutation({
     mutationFn: (request: CreateHandlerRequest) => apiService.createHandler(request),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['handlers'] });
+      queryClient.invalidateQueries({ queryKey: ["handlers"] });
     },
   });
 }
@@ -143,8 +143,8 @@ export function useUpdateHandler() {
     mutationFn: ({ handlerId, request }: { handlerId: string; request: UpdateHandlerRequest }) =>
       apiService.updateHandler(handlerId, request),
     onSuccess: (_, { handlerId }) => {
-      queryClient.invalidateQueries({ queryKey: ['handlers'] });
-      queryClient.invalidateQueries({ queryKey: ['handlers', handlerId] });
+      queryClient.invalidateQueries({ queryKey: ["handlers"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers", handlerId] });
     },
   });
 }
@@ -155,7 +155,7 @@ export function useDeleteHandler() {
   return useMutation({
     mutationFn: (handlerId: string) => apiService.deleteHandler(handlerId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['handlers'] });
+      queryClient.invalidateQueries({ queryKey: ["handlers"] });
     },
   });
 }
@@ -167,8 +167,8 @@ export function useToggleHandler() {
     mutationFn: ({ handlerId, enabled }: { handlerId: string; enabled: boolean }) =>
       apiService.toggleHandler(handlerId, enabled),
     onSuccess: (_, { handlerId }) => {
-      queryClient.invalidateQueries({ queryKey: ['handlers'] });
-      queryClient.invalidateQueries({ queryKey: ['handlers', handlerId] });
+      queryClient.invalidateQueries({ queryKey: ["handlers"] });
+      queryClient.invalidateQueries({ queryKey: ["handlers", handlerId] });
     },
   });
 }
@@ -176,7 +176,7 @@ export function useToggleHandler() {
 // Health check hook
 export function useHealthCheck() {
   return useQuery({
-    queryKey: ['health'],
+    queryKey: ["health"],
     queryFn: () => apiService.healthCheck(),
     refetchInterval: 30000, // Check every 30 seconds
     retry: 3,

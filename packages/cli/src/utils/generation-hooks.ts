@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process';
-import path from 'node:path';
-import type { GeneratorHookEvent, GeneratorHookMap } from '../types.js';
+import { spawn } from "node:child_process";
+import path from "node:path";
+import type { GeneratorHookEvent, GeneratorHookMap } from "../types.js";
 
 export interface GenerationHookOptions {
   hooks?: GeneratorHookMap;
@@ -26,17 +26,17 @@ export class GenerationHookManager {
   }
 
   async runBeforeGenerate(): Promise<void> {
-    await this.runHook('before:generate');
+    await this.runHook("before:generate");
   }
 
   async runAfterGenerate(generatedFiles: string[]): Promise<void> {
-    await this.runHook('after:generate', {
-      ARBITER_GENERATED_FILES: generatedFiles.join('\n'),
+    await this.runHook("after:generate", {
+      ARBITER_GENERATED_FILES: generatedFiles.join("\n"),
     });
   }
 
   async beforeFileWrite(filePath: string, content: string): Promise<string> {
-    const command = this.hooks?.['before:fileWrite'];
+    const command = this.hooks?.["before:fileWrite"];
     if (!command || this.dryRun) {
       return content;
     }
@@ -49,14 +49,14 @@ export class GenerationHookManager {
         ARBITER_RELATIVE_PATH: relativePath,
       },
       content,
-      true
+      true,
     );
 
     return stdout.length > 0 ? stdout : content;
   }
 
   async afterFileWrite(filePath: string, content: string): Promise<void> {
-    await this.runHook('after:fileWrite', {
+    await this.runHook("after:fileWrite", {
       ARBITER_TARGET_PATH: filePath,
       ARBITER_RELATIVE_PATH: path.relative(this.workspaceRoot, filePath),
       ARBITER_CONTENT_LENGTH: String(content.length),
@@ -65,7 +65,7 @@ export class GenerationHookManager {
 
   private async runHook(
     event: GeneratorHookEvent,
-    extras: Record<string, string> = {}
+    extras: Record<string, string> = {},
   ): Promise<void> {
     const command = this.hooks?.[event];
     if (!command || this.dryRun) {
@@ -80,7 +80,7 @@ export class GenerationHookManager {
     extras: Record<string, string>,
     input?: string,
     captureOutput = false,
-    event: GeneratorHookEvent = 'before:generate'
+    event: GeneratorHookEvent = "before:generate",
   ): Promise<string> {
     const env = {
       ...process.env,
@@ -88,21 +88,21 @@ export class GenerationHookManager {
       ARBITER_HOOK_EVENT: event,
       ARBITER_WORKSPACE_ROOT: this.workspaceRoot,
       ARBITER_OUTPUT_DIR: this.outputDir,
-      ARBITER_CONFIG_DIR: this.configDir ?? '',
-      ARBITER_IS_DRY_RUN: this.dryRun ? '1' : '0',
+      ARBITER_CONFIG_DIR: this.configDir ?? "",
+      ARBITER_IS_DRY_RUN: this.dryRun ? "1" : "0",
     } as Record<string, string>;
 
-    const stdio: any = captureOutput ? ['pipe', 'pipe', 'inherit'] : ['pipe', 'inherit', 'inherit'];
-    const child = spawn('sh', ['-c', command], {
+    const stdio: any = captureOutput ? ["pipe", "pipe", "inherit"] : ["pipe", "inherit", "inherit"];
+    const child = spawn("sh", ["-c", command], {
       cwd: this.workspaceRoot,
       env,
       stdio,
     });
 
-    let stdout = '';
+    let stdout = "";
     if (captureOutput && child.stdout) {
-      child.stdout.setEncoding('utf-8');
-      child.stdout.on('data', chunk => {
+      child.stdout.setEncoding("utf-8");
+      child.stdout.on("data", (chunk) => {
         stdout += chunk;
       });
     }
@@ -113,8 +113,8 @@ export class GenerationHookManager {
     }
 
     return await new Promise<string>((resolve, reject) => {
-      child.once('error', reject);
-      child.once('close', code => {
+      child.once("error", reject);
+      child.once("close", (code) => {
         if (code !== 0) {
           reject(new Error(`Hook command failed (event: ${event}): ${command}`));
           return;

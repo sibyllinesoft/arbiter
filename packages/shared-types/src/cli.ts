@@ -13,7 +13,7 @@ export interface ValidationError {
   line?: number;
   column?: number;
   path?: string;
-  severity: 'error';
+  severity: "error";
 }
 
 export interface ValidationWarning {
@@ -21,7 +21,7 @@ export interface ValidationWarning {
   line?: number;
   column?: number;
   path?: string;
-  severity: 'warning';
+  severity: "warning";
 }
 
 export interface ConfigEntry {
@@ -99,14 +99,14 @@ export interface ValidationRequest {
 }
 
 // Enhanced deployment and service types
-export type ServiceType = 'bespoke' | 'prebuilt' | 'external';
-export type DeploymentTarget = 'kubernetes' | 'compose' | 'both';
+export type ServiceType = "bespoke" | "prebuilt" | "external";
+export type DeploymentTarget = "kubernetes" | "compose" | "both";
 
 export interface ServiceConfig {
   name: string;
   serviceType: ServiceType;
   language: string;
-  type: 'deployment' | 'statefulset' | 'daemonset' | 'job' | 'cronjob';
+  type: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
 
   // Image and build configuration
   image?: string;
@@ -130,7 +130,7 @@ export interface ServiceConfig {
     name: string;
     path: string;
     size?: string;
-    type?: 'emptyDir' | 'persistentVolumeClaim' | 'configMap' | 'secret';
+    type?: "emptyDir" | "persistentVolumeClaim" | "configMap" | "secret";
   }>;
   resources?: {
     requests?: { cpu?: string; memory?: string };
@@ -163,7 +163,7 @@ export interface DeploymentConfig {
   // Kubernetes configuration
   cluster?: {
     name: string;
-    provider: 'kubernetes' | 'eks' | 'gke' | 'aks';
+    provider: "kubernetes" | "eks" | "gke" | "aks";
     context?: string;
     namespace: string;
     config?: Record<string, any>;
@@ -171,7 +171,7 @@ export interface DeploymentConfig {
 
   // Docker Compose configuration
   compose?: {
-    version: '3.8' | '3.9';
+    version: "3.8" | "3.9";
     networks?: Record<string, any>;
     volumes?: Record<string, any>;
     profiles?: string[];
@@ -226,7 +226,7 @@ export interface TestCompositionResult {
   conflicts: Array<{
     test: string;
     reason: string;
-    resolution: 'skip' | 'merge' | 'replace';
+    resolution: "skip" | "merge" | "replace";
   }>;
   generated: TestCase[];
   preserved: TestCase[];
@@ -259,7 +259,7 @@ export interface EnhancedGenerateOptions {
   force?: boolean;
   dryRun?: boolean;
   verbose?: boolean;
-  format?: 'auto' | 'json' | 'yaml' | 'typescript' | 'python' | 'rust' | 'go' | 'shell';
+  format?: "auto" | "json" | "yaml" | "typescript" | "python" | "rust" | "go" | "shell";
   spec?: string;
 
   // Enhanced options
@@ -311,7 +311,7 @@ export interface IssueValidationConfig {
 /** Default issue validation configuration */
 export const DEFAULT_ISSUE_VALIDATION: IssueValidationConfig = {
   maxTitleLength: 255,
-  requiredFields: ['title', 'body'],
+  requiredFields: ["title", "body"],
 };
 
 /** Issue validation result */
@@ -323,13 +323,13 @@ export interface IssueValidationResult {
 /** Validate an issue against the schema */
 export function validateIssue(
   issue: Partial<IssueSpec>,
-  config: IssueValidationConfig = DEFAULT_ISSUE_VALIDATION
+  config: IssueValidationConfig = DEFAULT_ISSUE_VALIDATION,
 ): IssueValidationResult {
   const errors: string[] = [];
 
   // Check required fields
   for (const field of config.requiredFields) {
-    if (!issue[field] || (typeof issue[field] === 'string' && issue[field]?.trim() === '')) {
+    if (!issue[field] || (typeof issue[field] === "string" && issue[field]?.trim() === "")) {
       errors.push(`Field '${field}' is required`);
     }
   }
@@ -342,10 +342,10 @@ export function validateIssue(
   // Validate checklist structure if present
   if (issue.checklist) {
     issue.checklist.forEach((item, index) => {
-      if (!item.id || typeof item.id !== 'string' || item.id.trim() === '') {
+      if (!item.id || typeof item.id !== "string" || item.id.trim() === "") {
         errors.push(`Checklist item ${index} missing required 'id' field`);
       }
-      if (!item.text || typeof item.text !== 'string' || item.text.trim() === '') {
+      if (!item.text || typeof item.text !== "string" || item.text.trim() === "") {
         errors.push(`Checklist item ${index} missing required 'text' field`);
       }
     });
@@ -359,7 +359,7 @@ export function validateIssue(
 
 /** Create a new issue with default structure */
 export function createIssue(
-  data: Pick<IssueSpec, 'title' | 'body'> & Partial<IssueSpec>
+  data: Pick<IssueSpec, "title" | "body"> & Partial<IssueSpec>,
 ): IssueSpec {
   return {
     title: data.title,
@@ -391,7 +391,7 @@ export type Human = string; // Non-empty human-readable label
 export type Email = string; // Pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
 export type ISODateTime = string; // Pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$
 export type URLPath = string; // Pattern: ^/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*$
-export type HTTPMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+export type HTTPMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 export type HTTPStatus = number; // 100-599
 
 // Domain tokens
@@ -405,7 +405,7 @@ export type CssSelector = string; // Non-empty single-line selector
 
 // Flow types
 export type FlowID = Slug;
-export type StateKind = 'visible' | 'hidden' | 'enabled' | 'disabled' | 'attached' | 'detached';
+export type StateKind = "visible" | "hidden" | "enabled" | "disabled" | "attached" | "detached";
 export type FactoryName = Slug;
 
 export interface TextMatch {
@@ -450,7 +450,7 @@ export interface HttpResponse {
 
 export interface HttpParameter {
   name: string;
-  in: 'path' | 'query' | 'header' | 'cookie';
+  in: "path" | "query" | "header" | "cookie";
   description?: string;
   required?: boolean;
   schema?: any;
@@ -495,7 +495,7 @@ export interface ComponentsSpec {
 }
 
 // API path specifications
-export type AssertionSeverity = 'error' | 'warn' | 'info';
+export type AssertionSeverity = "error" | "warn" | "info";
 
 export interface CueAssertionObject {
   assert: boolean;
@@ -579,7 +579,7 @@ export interface TestabilitySpec {
   };
   quality_gates?: {
     a11y?: {
-      axe_severity_max?: 'minor' | 'moderate' | 'serious' | 'critical';
+      axe_severity_max?: "minor" | "moderate" | "serious" | "critical";
     };
     perf?: {
       p95_nav_ms_max?: number;
@@ -639,8 +639,8 @@ export interface AppSpec {
 
 // Schema version detection and configuration
 export interface SchemaVersion {
-  version: 'v1' | 'app';
-  detected_from: 'structure' | 'metadata' | 'default' | 'unified' | 'fallback';
+  version: "v1" | "app";
+  detected_from: "structure" | "metadata" | "default" | "unified" | "fallback";
 }
 
 export interface ConfigWithVersion {

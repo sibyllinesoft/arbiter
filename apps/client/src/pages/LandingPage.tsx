@@ -2,20 +2,20 @@
  * Landing Page - Main dashboard for Arbiter web service
  */
 
-import arbiterLogo from '@assets/arbiter.webp';
-import { useUIState } from '@contexts/AppContext';
-import { useCurrentProject, useSetCurrentProject } from '@contexts/ProjectContext';
-import { Button } from '@design-system';
-import { useDeleteProject, useProjects } from '@hooks/api-hooks';
-import { GitBranch, Plus, Settings } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import { ProjectList, useUnifiedTabs } from '../components';
+import arbiterLogo from "@assets/arbiter.webp";
+import { useUIState } from "@contexts/AppContext";
+import { useCurrentProject, useSetCurrentProject } from "@contexts/ProjectContext";
+import { Button } from "@design-system";
+import { useDeleteProject, useProjects } from "@hooks/api-hooks";
+import { GitBranch, Plus, Settings } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ProjectList, useUnifiedTabs } from "../components";
 // @ts-ignore
-import { ConfigModal } from '../components/ConfigModal';
-import Tabs from '../components/Layout/Tabs';
-import { ProjectCreationModal } from '../components/ProjectCreation';
+import { ConfigModal } from "../components/ConfigModal";
+import Tabs from "../components/Layout/Tabs";
+import { ProjectCreationModal } from "../components/ProjectCreation";
 
 interface LandingPageProps {
   onNavigateToConfig?: () => void;
@@ -40,30 +40,30 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
   const handleDeleteProject = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     if (
-      window.confirm('Are you sure you want to delete this project? This action cannot be undone.')
+      window.confirm("Are you sure you want to delete this project? This action cannot be undone.")
     ) {
       try {
         await deleteProjectMutation.mutateAsync(projectId);
-        const updatedProjects = (projects || []).filter(project => project.id !== projectId);
+        const updatedProjects = (projects || []).filter((project) => project.id !== projectId);
 
         if (currentProject?.id === projectId) {
           if (updatedProjects.length > 0) {
             const nextProject = updatedProjects[0];
             setCurrentProject(nextProject ?? null);
-            if (nextProject && location.pathname.startsWith('/project')) {
+            if (nextProject && location.pathname.startsWith("/project")) {
               navigate(`/project/${nextProject.id}`, { replace: true });
             }
           } else {
             setCurrentProject(null);
-            if (location.pathname.startsWith('/project')) {
-              navigate('/', { replace: true });
+            if (location.pathname.startsWith("/project")) {
+              navigate("/", { replace: true });
             }
           }
         }
-        toast.success('Project deleted successfully');
+        toast.success("Project deleted successfully");
       } catch (error) {
-        toast.error('Failed to delete project');
-        console.error('Failed to delete project:', error);
+        toast.error("Failed to delete project");
+        console.error("Failed to delete project:", error);
       }
     }
   };
@@ -76,22 +76,22 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
     if (projects.length === 0) {
       if (currentProject) {
         setCurrentProject(null);
-        if (location.pathname.startsWith('/project')) {
-          navigate('/', { replace: true });
+        if (location.pathname.startsWith("/project")) {
+          navigate("/", { replace: true });
         }
       }
       return;
     }
 
     const currentProjectExists = currentProject
-      ? projects.some(project => project.id === currentProject.id)
+      ? projects.some((project) => project.id === currentProject.id)
       : false;
 
     if (!currentProjectExists) {
       const nextProject = projects[0];
       if (nextProject) {
         setCurrentProject(nextProject);
-        if (location.pathname.startsWith('/project')) {
+        if (location.pathname.startsWith("/project")) {
           navigate(`/project/${nextProject.id}`, { replace: true });
         }
       }
@@ -114,9 +114,9 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
       capabilities: 0,
     };
     return {
-      status: project.status || ('active' as const),
+      status: project.status || ("active" as const),
       entities,
-      lastActivity: project.lastActivity || '2 minutes ago',
+      lastActivity: project.lastActivity || "2 minutes ago",
     };
   };
 
@@ -203,7 +203,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
       {isProjectModalOpen && (
         <ProjectCreationModal
           onClose={() => setIsProjectModalOpen(false)}
-          onNavigateToProject={project => {
+          onNavigateToProject={(project) => {
             setCurrentProject(project);
             navigate(`/project/${project.id}`);
           }}

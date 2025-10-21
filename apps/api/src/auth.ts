@@ -82,7 +82,10 @@ export class AuthService {
 
   constructor(private config: ServerConfig) {
     // Initialize with development tokens only in development mode
-    if (process.env.NODE_ENV === "development") {
+    const devTokensEnabled =
+      process.env.NODE_ENV === "development" && process.env.DISABLE_DEV_AUTH_TOKEN !== "1";
+
+    if (devTokensEnabled) {
       const devToken = process.env.DEV_AUTH_TOKEN || "dev-token";
       const devUser = process.env.DEV_AUTH_USER || "dev-user";
 
@@ -546,6 +549,9 @@ export class AuthService {
       case "supertokens":
       case "super-tokens":
       case "super_tokens":
+      case "dev-oauth":
+      case "dev_oauth":
+      case "devoauth":
         return new SupertokensOAuthAdapter(oauthConfig);
       default:
         throw new Error(`Unsupported OAuth provider: ${oauthConfig.provider ?? providerId}`);

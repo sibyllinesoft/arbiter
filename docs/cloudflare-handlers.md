@@ -201,6 +201,35 @@ The script reads registry/API settings from `handlers` entries in
 `.arbiter/config.*`, builds and publishes the container image, then creates the
 handler via `POST /api/handlers` and scaffolds `wrangler.generated.toml`
 alongside your container so you can deploy the Durable Object with Wrangler.
+When the target directory does not already contain a Worker entrypoint the
+publisher also drops a `worker.ts` template that proxies requests into the
+container-based Durable Object. The generated `wrangler.generated.toml`
+includes stubs for the common Arbiter services:
+
+```toml
+[[d1_databases]]
+binding = "ARBITER_DB"
+database_name = "arbiter"
+database_id = "8429ba62-bdee-4722-8ea5-dc1970960b65"
+
+[[kv_namespaces]]
+binding = "ARBITER_KV"
+id = "e3147cc1737b402aafefd246a0238909"
+
+[[r2_buckets]]
+binding = "ARBITER_BUCKET"
+bucket_name = "arbiter"
+```
+
+If your project uses different resources, update the IDs before deploying. A
+ready-to-edit deployment example that references the shared `arbiter`
+database/KV namespace/bucket lives in `deploy/cloudflare/wrangler.example.toml`.
+Copy it to `wrangler.toml`, swap in your Cloudflare `account_id`, set
+`ARBITER_HANDLER_IMAGE` to the tag published by `handlers:publish`, and run
+`wrangler deploy`. The Worker template picks up the
+bindings automatically and forwards the KV/R2 identifiers into the container
+when `ARBITER_CONTAINER_FORWARD_ENV` is left at its default
+(`ARBITER_KV,ARBITER_BUCKET`).
 Override any value with CLI flags such as `--provider`, `--event`,
 `--image-name`, or `--tag`.
 

@@ -1,20 +1,20 @@
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { SpecWorkbenchDB } from '../../db.ts';
-import type { ServerConfig } from '../../types.ts';
-import { generateId } from '../../utils.ts';
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
+import { SpecWorkbenchDB } from "../../db.ts";
+import type { ServerConfig } from "../../types.ts";
+import { generateId } from "../../utils.ts";
 
-describe('Artifact description persistence', () => {
+describe("Artifact description persistence", () => {
   let db: SpecWorkbenchDB;
   let projectId: string;
 
   beforeEach(async () => {
     const config: ServerConfig = {
       port: 0,
-      host: 'localhost',
-      database_path: ':memory:',
+      host: "localhost",
+      database_path: ":memory:",
       spec_workdir: `/tmp/artifact-description-test-${Date.now()}`,
-      cue_binary_path: 'cue',
-      jq_binary_path: 'jq',
+      cue_binary_path: "cue",
+      jq_binary_path: "jq",
       auth_required: false,
       rate_limit: {
         max_tokens: 10,
@@ -28,71 +28,73 @@ describe('Artifact description persistence', () => {
       },
     };
 
-    db = new SpecWorkbenchDB(config);
+    db = await SpecWorkbenchDB.create(config);
     projectId = generateId();
-    await db.createProject(projectId, 'Description Project');
+    await db.createProject(projectId, "Description Project");
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     if (db) {
-      db.close();
+      await db.close();
     }
   });
 
-  it('stores and retrieves artifact descriptions', async () => {
+  it("stores and retrieves artifact descriptions", async () => {
     const artifactId = generateId();
-    const description = 'Example module imported from package.json';
+    const description = "Example module imported from package.json";
 
     await db.createArtifact(
       artifactId,
       projectId,
-      'example-module',
+      "example-module",
       description,
-      'module',
-      'typescript',
+      "module",
+      "typescript",
       null,
       {
         package: {
-          name: 'example-module',
+          name: "example-module",
           description,
         },
       },
-      'packages/example-module/package.json'
+      "packages/example-module/package.json",
     );
 
     const artifacts = await db.getArtifacts(projectId);
-    const stored = artifacts.find(artifact => artifact.id === artifactId);
+    const stored = artifacts.find((artifact) => artifact.id === artifactId);
 
     expect(stored).toBeDefined();
     expect(stored?.description).toBe(description);
   });
 
-  it('backfills missing descriptions from stored metadata', async () => {
+  it("backfills missing descriptions from stored metadata", async () => {
     const artifactId = generateId();
-    const legacyDescription = 'Legacy module description sourced from metadata';
+    const legacyDescription = "Legacy module description sourced from metadata";
 
     await db.createArtifact(
       artifactId,
       projectId,
-      'legacy-module',
+      "legacy-module",
       null,
-      'module',
-      'typescript',
+      "module",
+      "typescript",
       null,
       {
         package: {
-          name: 'legacy-module',
+          name: "legacy-module",
           description: legacyDescription,
         },
       },
-      'packages/legacy-module/package.json'
+      "packages/legacy-module/package.json",
     );
 
-    const internalDb = db as unknown as { backfillArtifactDescriptions: () => void };
-    internalDb.backfillArtifactDescriptions();
+    const internalDb = db as unknown as {
+      backfillArtifactDescriptions: () => Promise<void>;
+    };
+    await internalDb.backfillArtifactDescriptions();
 
     const artifacts = await db.getArtifacts(projectId);
-    const stored = artifacts.find(artifact => artifact.id === artifactId);
+    const stored = artifacts.find((artifact) => artifact.id === artifactId);
 
     expect(stored?.description).toBe(legacyDescription);
   });

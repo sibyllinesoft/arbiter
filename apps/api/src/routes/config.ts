@@ -1,4 +1,4 @@
-import path from 'path';
+import path from "path";
 import {
   ARRAY_UI_OPTION_KEYS,
   DEFAULT_UI_OPTION_CATALOG,
@@ -8,14 +8,14 @@ import {
   UI_OPTION_KEYS,
   buildUIOptionConfig,
   resolveUIOptionCatalog,
-} from '@arbiter/shared';
-import fs from 'fs-extra';
-import { Hono } from 'hono';
-import yaml from 'yaml';
+} from "@arbiter/shared";
+import fs from "fs-extra";
+import { Hono } from "hono";
+import yaml from "yaml";
 
 type Dependencies = Record<string, unknown>;
 
-type ConfigFormat = 'json' | 'yaml';
+type ConfigFormat = "json" | "yaml";
 
 type ProjectStructureSettings = {
   appsDirectory: string;
@@ -26,52 +26,52 @@ type ProjectStructureSettings = {
   endpointDirectory: string;
 };
 
-const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
+const PROJECT_ROOT = path.resolve(__dirname, "../../../..");
 const CONFIG_SEARCH_PATHS = [
-  '.arbiter/config.json',
-  '.arbiter/config.yaml',
-  '.arbiter/config.yml',
-  '.arbiter.json',
-  '.arbiter.yaml',
-  '.arbiter.yml',
-  'arbiter.json',
-  'arbiter.yaml',
-  'arbiter.yml',
+  ".arbiter/config.json",
+  ".arbiter/config.yaml",
+  ".arbiter/config.yml",
+  ".arbiter.json",
+  ".arbiter.yaml",
+  ".arbiter.yml",
+  "arbiter.json",
+  "arbiter.yaml",
+  "arbiter.yml",
 ] as const;
 
 const DEFAULT_PROJECT_STRUCTURE: ProjectStructureSettings = {
-  appsDirectory: 'apps',
-  packagesDirectory: 'packages',
-  servicesDirectory: 'services',
-  testsDirectory: 'tests',
-  infraDirectory: 'infra',
-  endpointDirectory: 'apps/api/src/endpoints',
+  appsDirectory: "apps",
+  packagesDirectory: "packages",
+  servicesDirectory: "services",
+  testsDirectory: "tests",
+  infraDirectory: "infra",
+  endpointDirectory: "apps/api/src/endpoints",
 };
 
 function coerceStringArray(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
     const result = value
-      .map(item => (typeof item === 'string' ? item.trim() : ''))
-      .filter(item => item.length > 0);
+      .map((item) => (typeof item === "string" ? item.trim() : ""))
+      .filter((item) => item.length > 0);
     return result.length > 0 ? result : undefined;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const items = value
-      .split(',')
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
     return items.length > 0 ? items : undefined;
   }
   return undefined;
 }
 
 function coerceFrameworkMap(value: unknown): Record<string, string[]> | undefined {
-  if (!value || typeof value !== 'object') return undefined;
+  if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
   const result: Record<string, string[]> = {};
 
   for (const [rawLanguage, rawFrameworks] of Object.entries(record)) {
-    if (typeof rawLanguage !== 'string') continue;
+    if (typeof rawLanguage !== "string") continue;
     const language = rawLanguage.trim();
     if (!language) continue;
 
@@ -87,7 +87,7 @@ function coerceFrameworkMap(value: unknown): Record<string, string[]> | undefine
 }
 
 function extractOptionCatalog(raw: unknown): UIOptionCatalog | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
+  if (!raw || typeof raw !== "object") return undefined;
   const source = raw as Record<string, unknown>;
   const catalog: UIOptionCatalog = {};
 
@@ -98,8 +98,8 @@ function extractOptionCatalog(raw: unknown): UIOptionCatalog | undefined {
     }
   }
 
-  if (Object.prototype.hasOwnProperty.call(source, 'serviceFrameworks')) {
-    const frameworks = coerceFrameworkMap(source['serviceFrameworks']);
+  if (Object.prototype.hasOwnProperty.call(source, "serviceFrameworks")) {
+    const frameworks = coerceFrameworkMap(source["serviceFrameworks"]);
     if (frameworks !== undefined) {
       catalog.serviceFrameworks = frameworks;
     }
@@ -109,12 +109,12 @@ function extractOptionCatalog(raw: unknown): UIOptionCatalog | undefined {
 }
 
 function extractOptionGenerators(raw: unknown): UIOptionGeneratorMap | undefined {
-  if (!raw || typeof raw !== 'object') return undefined;
+  if (!raw || typeof raw !== "object") return undefined;
   const source = raw as Record<string, unknown>;
   const generators: UIOptionGeneratorMap = {};
   for (const key of UI_OPTION_KEYS) {
     const value = source[key];
-    if (typeof value === 'string' && value.trim().length > 0) {
+    if (typeof value === "string" && value.trim().length > 0) {
       generators[key] = value.trim();
     }
   }
@@ -128,7 +128,7 @@ interface LoadedConfig {
 }
 
 function resolveDefaultConfigPath(): string {
-  return path.join(PROJECT_ROOT, '.arbiter', 'config.json');
+  return path.join(PROJECT_ROOT, ".arbiter", "config.json");
 }
 
 async function findExistingConfig(): Promise<LoadedConfig | null> {
@@ -136,9 +136,9 @@ async function findExistingConfig(): Promise<LoadedConfig | null> {
     const filePath = path.join(PROJECT_ROOT, relativePath);
     if (await fs.pathExists(filePath)) {
       const ext = path.extname(filePath).toLowerCase();
-      const format: ConfigFormat = ext === '.json' ? 'json' : 'yaml';
-      const content = await fs.readFile(filePath, 'utf-8');
-      const parsed = format === 'json' ? JSON.parse(content) : (yaml.parse(content) ?? {});
+      const format: ConfigFormat = ext === ".json" ? "json" : "yaml";
+      const content = await fs.readFile(filePath, "utf-8");
+      const parsed = format === "json" ? JSON.parse(content) : (yaml.parse(content) ?? {});
       return { config: parsed as Record<string, unknown>, filePath, format };
     }
   }
@@ -146,17 +146,19 @@ async function findExistingConfig(): Promise<LoadedConfig | null> {
 }
 
 function sanitizeStructureCandidate(value: unknown): Partial<ProjectStructureSettings> {
-  if (!value || typeof value !== 'object') return {};
+  if (!value || typeof value !== "object") return {};
 
   const result: Partial<ProjectStructureSettings> = {};
   const record = value as Record<string, unknown>;
 
-  (Object.keys(DEFAULT_PROJECT_STRUCTURE) as Array<keyof ProjectStructureSettings>).forEach(key => {
-    const candidate = record[key];
-    if (typeof candidate === 'string' && candidate.trim().length > 0) {
-      result[key] = candidate;
-    }
-  });
+  (Object.keys(DEFAULT_PROJECT_STRUCTURE) as Array<keyof ProjectStructureSettings>).forEach(
+    (key) => {
+      const candidate = record[key];
+      if (typeof candidate === "string" && candidate.trim().length > 0) {
+        result[key] = candidate;
+      }
+    },
+  );
 
   return result;
 }
@@ -168,7 +170,7 @@ async function loadProjectStructureConfig(): Promise<
 
   if (existing) {
     const existingStructure = sanitizeStructureCandidate(
-      (existing.config as Record<string, unknown>)['projectStructure']
+      (existing.config as Record<string, unknown>)["projectStructure"],
     );
 
     return {
@@ -183,18 +185,18 @@ async function loadProjectStructureConfig(): Promise<
   return {
     config: {},
     filePath: resolveDefaultConfigPath(),
-    format: 'json',
+    format: "json",
     structure: { ...DEFAULT_PROJECT_STRUCTURE },
   };
 }
 
 async function persistProjectStructure(
-  updates: Partial<ProjectStructureSettings>
+  updates: Partial<ProjectStructureSettings>,
 ): Promise<ProjectStructureSettings> {
   const loaded = await loadProjectStructureConfig();
   const sanitizedUpdates = sanitizeStructureCandidate(updates);
   const existingStructure = sanitizeStructureCandidate(
-    (loaded.config as Record<string, unknown>)['projectStructure']
+    (loaded.config as Record<string, unknown>)["projectStructure"],
   );
 
   const updatedStructure: ProjectStructureSettings = {
@@ -209,10 +211,10 @@ async function persistProjectStructure(
   };
 
   await fs.ensureDir(path.dirname(loaded.filePath));
-  if (loaded.format === 'json') {
-    await fs.writeFile(loaded.filePath, JSON.stringify(configToWrite, null, 2), 'utf-8');
+  if (loaded.format === "json") {
+    await fs.writeFile(loaded.filePath, JSON.stringify(configToWrite, null, 2), "utf-8");
   } else {
-    await fs.writeFile(loaded.filePath, yaml.stringify(configToWrite), 'utf-8');
+    await fs.writeFile(loaded.filePath, yaml.stringify(configToWrite), "utf-8");
   }
 
   return updatedStructure;
@@ -221,7 +223,7 @@ async function persistProjectStructure(
 export function createConfigRouter(_: Dependencies) {
   const router = new Hono();
 
-  router.get('/config/project-structure', async c => {
+  router.get("/config/project-structure", async (c) => {
     try {
       const loaded = await loadProjectStructureConfig();
       return c.json({
@@ -229,53 +231,53 @@ export function createConfigRouter(_: Dependencies) {
         projectStructure: loaded.structure,
       });
     } catch (error) {
-      console.error('Failed to load project structure config:', error);
+      console.error("Failed to load project structure config:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to load project structure configuration',
+          error: "Failed to load project structure configuration",
         },
-        500
+        500,
       );
     }
   });
 
-  router.put('/config/project-structure', async c => {
+  router.put("/config/project-structure", async (c) => {
     try {
       const body = await c.req.json();
-      if (!body || typeof body !== 'object') {
+      if (!body || typeof body !== "object") {
         return c.json(
           {
             success: false,
-            error: 'Request body must be an object',
+            error: "Request body must be an object",
           },
-          400
+          400,
         );
       }
 
       const updated = await persistProjectStructure(body as Partial<ProjectStructureSettings>);
       return c.json({ success: true, projectStructure: updated });
     } catch (error) {
-      console.error('Failed to update project structure config:', error);
+      console.error("Failed to update project structure config:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to update project structure configuration',
+          error: "Failed to update project structure configuration",
         },
-        500
+        500,
       );
     }
   });
 
-  router.get('/config/ui-options', async c => {
+  router.get("/config/ui-options", async (c) => {
     try {
       const loaded = await findExistingConfig();
       const rawConfig = loaded?.config ?? {};
       const optionCatalog =
-        extractOptionCatalog((rawConfig as Record<string, unknown>)['uiOptions']) ||
+        extractOptionCatalog((rawConfig as Record<string, unknown>)["uiOptions"]) ||
         DEFAULT_UI_OPTION_CATALOG;
       const optionGenerators = extractOptionGenerators(
-        (rawConfig as Record<string, unknown>)['uiOptionGenerators']
+        (rawConfig as Record<string, unknown>)["uiOptionGenerators"],
       );
 
       const optionConfig = buildUIOptionConfig(optionCatalog, optionGenerators);
@@ -294,13 +296,13 @@ export function createConfigRouter(_: Dependencies) {
         diagnostics,
       });
     } catch (error) {
-      console.error('Failed to load UI options:', error);
+      console.error("Failed to load UI options:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to load UI options',
+          error: "Failed to load UI options",
         },
-        500
+        500,
       );
     }
   });

@@ -1,5 +1,5 @@
-import { action } from '@storybook/addon-actions';
-import type { Meta, StoryObj } from '@storybook/react';
+import { action } from "@storybook/addon-actions";
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   assemblySpecCue,
   basicRequirementsCue,
@@ -7,14 +7,14 @@ import {
   rustMicroserviceCue,
   sampleResolvedData,
   validationErrorsCue,
-} from '../../test/cue-samples';
-import { CueViewer } from './CueViewer';
+} from "../../test/cue-samples";
+import { CueViewer } from "./CueViewer";
 
 const meta: Meta<typeof CueViewer> = {
-  title: 'Components/CUE Visualization/CueViewer',
+  title: "Components/CUE Visualization/CueViewer",
   component: CueViewer,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
     docs: {
       description: {
         component: `
@@ -59,28 +59,28 @@ The viewer can display validation results from CUE's type checker, including:
   },
   argTypes: {
     mode: {
-      control: 'select',
-      options: ['view', 'edit', 'split'],
-      description: 'Display mode for the viewer',
+      control: "select",
+      options: ["view", "edit", "split"],
+      description: "Display mode for the viewer",
     },
     editable: {
-      control: 'boolean',
-      description: 'Whether the CUE content can be edited',
+      control: "boolean",
+      description: "Whether the CUE content can be edited",
     },
     showLineNumbers: {
-      control: 'boolean',
-      description: 'Show line numbers in the editor',
+      control: "boolean",
+      description: "Show line numbers in the editor",
     },
     showCopyButton: {
-      control: 'boolean',
-      description: 'Show copy to clipboard button',
+      control: "boolean",
+      description: "Show copy to clipboard button",
     },
     onChange: {
-      action: 'content-changed',
-      description: 'Callback when content changes in edit mode',
+      action: "content-changed",
+      description: "Callback when content changes in edit mode",
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -92,9 +92,9 @@ type Story = StoryObj<typeof CueViewer>;
  */
 export const Requirements: Story = {
   args: {
-    title: 'Authentication Requirements',
+    title: "Authentication Requirements",
     cueSource: basicRequirementsCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
   },
@@ -106,9 +106,9 @@ export const Requirements: Story = {
  */
 export const Assembly: Story = {
   args: {
-    title: 'Microservices Assembly',
+    title: "Microservices Assembly",
     cueSource: assemblySpecCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
   },
@@ -120,9 +120,9 @@ export const Assembly: Story = {
  */
 export const ValidationErrors: Story = {
   args: {
-    title: 'CUE Validation Errors Demo',
+    title: "CUE Validation Errors Demo",
     cueSource: validationErrorsCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
     validationErrors: [
@@ -130,49 +130,49 @@ export const ValidationErrors: Story = {
         line: 6,
         column: 10,
         message: 'Cannot unify int 12345 and string "user123"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 9,
         column: 6,
-        message: 'Value 150 exceeds maximum allowed age of 120',
-        severity: 'error',
+        message: "Value 150 exceeds maximum allowed age of 120",
+        severity: "error",
       },
       {
         line: 23,
         column: 1,
         message: 'Missing required field "email"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 24,
         column: 1,
         message: 'Missing required field "age"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 30,
         column: 15,
-        message: 'Cannot unify string and int 12345',
-        severity: 'error',
+        message: "Cannot unify string and int 12345",
+        severity: "error",
       },
       {
         line: 34,
         column: 10,
         message: 'String "invalid-email" does not match email pattern',
-        severity: 'warning',
+        severity: "warning",
       },
       {
         line: 38,
         column: 9,
-        message: 'Value -50 is below minimum allowed value 0',
-        severity: 'error',
+        message: "Value -50 is below minimum allowed value 0",
+        severity: "error",
       },
       {
         line: 62,
         column: 14,
         message: '"unknown" is not in the list of valid statuses',
-        severity: 'info',
+        severity: "info",
       },
     ],
   },
@@ -184,9 +184,9 @@ export const ValidationErrors: Story = {
  */
 export const TypeScriptProject: Story = {
   args: {
-    title: 'Advanced TypeScript Project',
+    title: "Advanced TypeScript Project",
     cueSource: complexTypescriptProjectCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
   },
@@ -198,9 +198,9 @@ export const TypeScriptProject: Story = {
  */
 export const RustMicroservice: Story = {
   args: {
-    title: 'High-Performance Rust Service',
+    title: "High-Performance Rust Service",
     cueSource: rustMicroserviceCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
   },
@@ -212,13 +212,13 @@ export const RustMicroservice: Story = {
  */
 export const Editable: Story = {
   args: {
-    title: 'Editable CUE Specification',
+    title: "Editable CUE Specification",
     cueSource: basicRequirementsCue,
-    mode: 'edit',
+    mode: "edit",
     editable: true,
     showLineNumbers: true,
     showCopyButton: true,
-    onChange: action('content-changed'),
+    onChange: action("content-changed"),
   },
 };
 
@@ -228,9 +228,9 @@ export const Editable: Story = {
  */
 export const SplitView: Story = {
   args: {
-    title: 'CUE Source + Resolved Data',
+    title: "CUE Source + Resolved Data",
     cueSource: assemblySpecCue,
-    mode: 'split',
+    mode: "split",
     showLineNumbers: true,
     showCopyButton: true,
     resolvedData: sampleResolvedData.resolved,
@@ -258,7 +258,7 @@ api: {
     port: 8080
     timeout: 30
 }`,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: false,
     showCopyButton: false,
   },
@@ -269,7 +269,7 @@ api: {
  */
 export const Compact: Story = {
   args: {
-    title: 'Compact CUE Viewer',
+    title: "Compact CUE Viewer",
     cueSource: `package config
 
 database: {
@@ -283,10 +283,10 @@ redis: {
     url: "redis://localhost:6379"
     timeout: 5000
 }`,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
-    className: 'max-w-2xl',
+    className: "max-w-2xl",
   },
 };
 
@@ -296,25 +296,25 @@ redis: {
  */
 export const LargeDisplay: Story = {
   args: {
-    title: 'Large Display - Assembly Specification',
+    title: "Large Display - Assembly Specification",
     cueSource: assemblySpecCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
-    className: 'text-lg',
+    className: "text-lg",
   },
   parameters: {
     viewport: {
       viewports: {
         largeDesktop: {
-          name: 'Large Desktop',
+          name: "Large Desktop",
           styles: {
-            width: '1440px',
-            height: '900px',
+            width: "1440px",
+            height: "900px",
           },
         },
       },
-      defaultViewport: 'largeDesktop',
+      defaultViewport: "largeDesktop",
     },
   },
 };
@@ -324,16 +324,16 @@ export const LargeDisplay: Story = {
  */
 export const DarkTheme: Story = {
   args: {
-    title: 'Dark Theme CUE Viewer',
+    title: "Dark Theme CUE Viewer",
     cueSource: complexTypescriptProjectCue,
-    mode: 'view',
+    mode: "view",
     showLineNumbers: true,
     showCopyButton: true,
   },
   parameters: {
     backgrounds: {
-      default: 'dark',
-      values: [{ name: 'dark', value: '#1a1a1a' }],
+      default: "dark",
+      values: [{ name: "dark", value: "#1a1a1a" }],
     },
   },
 };

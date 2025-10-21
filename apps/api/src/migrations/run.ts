@@ -2,11 +2,11 @@
 /**
  * Database migration runner
  */
-import { Database } from 'bun:sqlite';
-import { existsSync } from 'node:fs';
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import { logger } from '../utils.ts';
+import { Database } from "bun:sqlite";
+import { existsSync } from "node:fs";
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { logger } from "../utils.ts";
 
 interface Migration {
   id: string;
@@ -17,8 +17,8 @@ interface Migration {
 
 const migrations: Migration[] = [
   {
-    id: '001',
-    name: 'initial_schema',
+    id: "001",
+    name: "initial_schema",
     up: `
       -- Enable WAL mode for better concurrent access
       PRAGMA journal_mode = WAL;
@@ -124,18 +124,18 @@ class MigrationRunner {
   }
 
   private getAppliedMigrations(): Set<string> {
-    const stmt = this.db.prepare('SELECT id FROM migrations');
+    const stmt = this.db.prepare("SELECT id FROM migrations");
     const results = stmt.all() as { id: string }[];
-    return new Set(results.map(r => r.id));
+    return new Set(results.map((r) => r.id));
   }
 
   private recordMigration(id: string, name: string): void {
-    const stmt = this.db.prepare('INSERT INTO migrations (id, name) VALUES (?, ?)');
+    const stmt = this.db.prepare("INSERT INTO migrations (id, name) VALUES (?, ?)");
     stmt.run(id, name);
   }
 
   private removeMigration(id: string): void {
-    const stmt = this.db.prepare('DELETE FROM migrations WHERE id = ?');
+    const stmt = this.db.prepare("DELETE FROM migrations WHERE id = ?");
     stmt.run(id);
   }
 
@@ -143,10 +143,10 @@ class MigrationRunner {
     await this.runDrizzleMigrations();
 
     const applied = this.getAppliedMigrations();
-    const pending = migrations.filter(m => !applied.has(m.id));
+    const pending = migrations.filter((m) => !applied.has(m.id));
 
     if (pending.length === 0) {
-      logger.info('No pending migrations');
+      logger.info("No pending migrations");
       return;
     }
 
@@ -164,35 +164,35 @@ class MigrationRunner {
       } catch (error) {
         logger.error(
           `❌ Migration ${migration.id} failed`,
-          error instanceof Error ? error : undefined
+          error instanceof Error ? error : undefined,
         );
         throw error;
       }
     }
 
-    logger.info('All migrations completed successfully');
+    logger.info("All migrations completed successfully");
   }
 
   private async runDrizzleMigrations(): Promise<void> {
-    const migrationsDir = new URL('../../drizzle', import.meta.url).pathname;
+    const migrationsDir = new URL("../../drizzle", import.meta.url).pathname;
 
     if (!existsSync(migrationsDir)) {
       return;
     }
 
-    logger.info('Running Drizzle migrations', { migrationsDir });
+    logger.info("Running Drizzle migrations", { migrationsDir });
 
     try {
       await migrate(drizzle(this.db), { migrationsFolder: migrationsDir });
-      logger.info('Drizzle migrations completed successfully');
+      logger.info("Drizzle migrations completed successfully");
     } catch (error) {
-      logger.error('Drizzle migrations failed', error instanceof Error ? error : undefined);
+      logger.error("Drizzle migrations failed", error instanceof Error ? error : undefined);
       throw error;
     }
   }
 
   async rollbackMigration(id: string): Promise<void> {
-    const migration = migrations.find(m => m.id === id);
+    const migration = migrations.find((m) => m.id === id);
 
     if (!migration) {
       throw new Error(`Migration ${id} not found`);
@@ -219,7 +219,7 @@ class MigrationRunner {
     } catch (error) {
       logger.error(
         `❌ Rollback of migration ${migration.id} failed`,
-        error instanceof Error ? error : undefined
+        error instanceof Error ? error : undefined,
       );
       throw error;
     }
@@ -228,11 +228,11 @@ class MigrationRunner {
   listMigrations(): void {
     const applied = this.getAppliedMigrations();
 
-    logger.info('Migration Status:');
-    console.log('==================');
+    logger.info("Migration Status:");
+    console.log("==================");
 
     for (const migration of migrations) {
-      const status = applied.has(migration.id) ? '✅ Applied' : '⏳ Pending';
+      const status = applied.has(migration.id) ? "✅ Applied" : "⏳ Pending";
       console.log(`${status} ${migration.id} - ${migration.name}`);
     }
   }
@@ -244,28 +244,28 @@ class MigrationRunner {
 
 // CLI interface
 async function main() {
-  const dbPath = process.env.DATABASE_PATH || './spec_workbench.db';
+  const dbPath = process.env.DATABASE_PATH || "./spec_workbench.db";
   const runner = new MigrationRunner(dbPath);
 
   try {
     const command = process.argv[2];
 
     switch (command) {
-      case 'up':
+      case "up":
         await runner.runMigrations();
         break;
 
-      case 'down': {
+      case "down": {
         const migrationId = process.argv[3];
         if (!migrationId) {
-          console.error('Usage: bun run migrate down <migration_id>');
+          console.error("Usage: bun run migrate down <migration_id>");
           process.exit(1);
         }
         await runner.rollbackMigration(migrationId);
         break;
       }
 
-      case 'status':
+      case "status":
         runner.listMigrations();
         break;
 
@@ -275,7 +275,7 @@ async function main() {
         break;
     }
   } catch (error) {
-    logger.error('Migration failed', error instanceof Error ? error : undefined);
+    logger.error("Migration failed", error instanceof Error ? error : undefined);
     process.exit(1);
   } finally {
     runner.close();

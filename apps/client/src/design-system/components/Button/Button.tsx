@@ -3,21 +3,21 @@
  * Professional button with comprehensive variants and states
  */
 
-import { type ButtonHTMLAttributes, type ReactNode, forwardRef } from 'react';
-import { buttonVariants, cn, sizeVariants } from '../../variants';
+import { type ButtonHTMLAttributes, type ReactNode, forwardRef } from "react";
+import { buttonVariants, cn, sizeVariants } from "../../variants";
 
-export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'size'> {
+export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "size"> {
   /** Button variant determines the visual style */
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+  variant?: "primary" | "secondary" | "ghost" | "danger";
 
   /** Button size affects padding and font size */
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 
   /** Legacy shorthand icon prop (defaults to left side) */
   icon?: ReactNode;
 
   /** Position for legacy icon prop */
-  iconPosition?: 'left' | 'right';
+  iconPosition?: "left" | "right";
 
   /** Whether the button should take full width of container */
   fullWidth?: boolean;
@@ -41,10 +41,10 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
-      variant = 'primary',
-      size = 'md',
+      variant = "primary",
+      size = "md",
       icon,
-      iconPosition = 'left',
+      iconPosition = "left",
       fullWidth = false,
       leftIcon,
       rightIcon,
@@ -54,24 +54,24 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       ...props
     },
-    ref
+    ref,
   ) => {
-    const resolvedLeftIcon = leftIcon ?? (icon && iconPosition !== 'right' ? icon : undefined);
-    const resolvedRightIcon = rightIcon ?? (icon && iconPosition === 'right' ? icon : undefined);
+    const resolvedLeftIcon = leftIcon ?? (icon && iconPosition !== "right" ? icon : undefined);
+    const resolvedRightIcon = rightIcon ?? (icon && iconPosition === "right" ? icon : undefined);
 
     const variantKey =
-      variant === 'primary' ? 'default' : variant === 'danger' ? 'destructive' : variant;
+      variant === "primary" ? "default" : variant === "danger" ? "destructive" : variant;
 
     const isIconOnly = !children && (resolvedLeftIcon || resolvedRightIcon);
     const buttonClasses = cn(
       // Base styles
-      'inline-flex items-center justify-center',
-      isIconOnly ? 'gap-0 px-2' : 'gap-2',
-      'font-medium',
-      'rounded-md',
-      'transition-all duration-150 ease-in-out',
-      'focus:outline-none focus:ring-2 focus:ring-offset-2',
-      'disabled:pointer-events-none disabled:opacity-60',
+      "inline-flex items-center justify-center",
+      isIconOnly ? "gap-0 px-2" : "gap-2",
+      "font-medium",
+      "rounded-md",
+      "transition-all duration-150 ease-in-out",
+      "focus:outline-none focus:ring-2 focus:ring-offset-2",
+      "disabled:pointer-events-none disabled:opacity-60",
 
       // Variant styles
       buttonVariants[variantKey],
@@ -80,13 +80,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       sizeVariants.button[size],
 
       // Full width
-      fullWidth && 'w-full',
+      fullWidth && "w-full",
 
       // Loading state
-      loading && 'relative text-transparent',
+      loading && "relative text-transparent",
 
       // Custom className
-      className
+      className,
     );
 
     return (
@@ -101,7 +101,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {/* Left icon */}
         {!loading && resolvedLeftIcon && (
           <span
-            className={cn('flex-shrink-0', sizeVariants.icon[size], isIconOnly && 'text-inherit')}
+            className={cn("flex-shrink-0", sizeVariants.icon[size], isIconOnly && "text-inherit")}
           >
             {resolvedLeftIcon}
           </span>
@@ -113,16 +113,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {/* Right icon */}
         {!loading && resolvedRightIcon && (
           <span
-            className={cn('flex-shrink-0', sizeVariants.icon[size], isIconOnly && 'text-inherit')}
+            className={cn("flex-shrink-0", sizeVariants.icon[size], isIconOnly && "text-inherit")}
           >
             {resolvedRightIcon}
           </span>
         )}
       </button>
     );
-  }
+  },
 );
 
-Button.displayName = 'Button';
+Button.displayName = "Button";
 
 export default Button;

@@ -11,7 +11,7 @@ import {
   determineMostLikelyCategory,
   getAllCategoriesByConfidence,
   getCategoryExplanation,
-} from './dependency-matrix';
+} from "./dependency-matrix";
 
 export interface DetectionContext {
   /** Primary language detected */
@@ -114,10 +114,10 @@ export class ArtifactDetector {
       (factors.sourceFactors?.length ?? 0) > 0;
 
     if (!hasEvidence) {
-      const explanation = ['Detected as module based on:', 'no strong detection signals'];
+      const explanation = ["Detected as module based on:", "no strong detection signals"];
       const confidence = DEPENDENCY_MATRIX[context.language] ? 0.2 : 0;
       return {
-        primaryType: 'module',
+        primaryType: "module",
         confidence,
         alternativeTypes: [],
         explanation,
@@ -135,7 +135,7 @@ export class ArtifactDetector {
       }))
       .sort((a, b) => b.confidence - a.confidence);
 
-    const primaryType = sortedTypes[0]?.type || 'module';
+    const primaryType = sortedTypes[0]?.type || "module";
     const confidence = sortedTypes[0]?.confidence || 0.1;
     const alternativeTypes = sortedTypes.slice(1);
 
@@ -212,7 +212,7 @@ export class ArtifactDetector {
     ]);
     if (cliScripts.length > 0) {
       factors.push({
-        category: 'tool',
+        category: "tool",
         confidence: Math.min(0.8, cliScripts.length * 0.3),
         scripts: cliScripts,
       });
@@ -228,7 +228,7 @@ export class ArtifactDetector {
     ]);
     if (webScripts.length > 0) {
       factors.push({
-        category: 'web_service',
+        category: "web_service",
         confidence: Math.min(0.7, webScripts.length * 0.25),
         scripts: webScripts,
       });
@@ -248,7 +248,7 @@ export class ArtifactDetector {
     ]);
     if (frontendScripts.length > 0) {
       factors.push({
-        category: 'frontend',
+        category: "frontend",
         confidence: Math.min(0.6, frontendScripts.length * 0.2),
         scripts: frontendScripts,
       });
@@ -264,7 +264,7 @@ export class ArtifactDetector {
     ]);
     if (testScripts.length > 0) {
       factors.push({
-        category: 'testing',
+        category: "testing",
         confidence: Math.min(0.5, testScripts.length * 0.15),
         scripts: testScripts,
       });
@@ -280,7 +280,7 @@ export class ArtifactDetector {
     ]);
     if (buildScripts.length > 0) {
       factors.push({
-        category: 'build_tool',
+        category: "build_tool",
         confidence: Math.min(0.4, buildScripts.length * 0.1),
         scripts: buildScripts,
       });
@@ -305,16 +305,16 @@ export class ArtifactDetector {
 
     // CLI indicators
     const cliPatterns = context.filePatterns.filter(
-      pattern =>
+      (pattern) =>
         /bin\//.test(pattern) ||
         /cli\./.test(pattern) ||
         /command\./.test(pattern) ||
         /main\./.test(pattern) ||
-        /cmd\//i.test(pattern)
+        /cmd\//i.test(pattern),
     );
     if (cliPatterns.length > 0) {
       factors.push({
-        category: 'tool',
+        category: "tool",
         confidence: Math.min(0.6, cliPatterns.length * 0.2),
         patterns: cliPatterns,
       });
@@ -322,16 +322,16 @@ export class ArtifactDetector {
 
     // Web service patterns
     const webPatterns = context.filePatterns.filter(
-      pattern =>
+      (pattern) =>
         /server\./.test(pattern) ||
         /app\./.test(pattern) ||
         /routes?\//.test(pattern) ||
         /controllers?\//.test(pattern) ||
-        /middleware\//.test(pattern)
+        /middleware\//.test(pattern),
     );
     if (webPatterns.length > 0) {
       factors.push({
-        category: 'web_service',
+        category: "web_service",
         confidence: Math.min(0.7, webPatterns.length * 0.15),
         patterns: webPatterns,
       });
@@ -339,17 +339,17 @@ export class ArtifactDetector {
 
     // Frontend patterns
     const frontendPatterns = context.filePatterns.filter(
-      pattern =>
+      (pattern) =>
         /components?\//.test(pattern) ||
         /pages?\//.test(pattern) ||
         /views?\//.test(pattern) ||
         /public\//.test(pattern) ||
         /assets?\//.test(pattern) ||
-        /src\/.*\.(tsx?|jsx?|vue|svelte)$/.test(pattern)
+        /src\/.*\.(tsx?|jsx?|vue|svelte)$/.test(pattern),
     );
     if (frontendPatterns.length > 0) {
       factors.push({
-        category: 'frontend',
+        category: "frontend",
         confidence: Math.min(0.6, frontendPatterns.length * 0.1),
         patterns: frontendPatterns,
       });
@@ -357,12 +357,12 @@ export class ArtifactDetector {
 
     // Library/module patterns
     const modulePatterns = context.filePatterns.filter(
-      pattern =>
-        /lib\//.test(pattern) || /src\/.*index\.(ts|js)$/.test(pattern) || /dist\//.test(pattern)
+      (pattern) =>
+        /lib\//.test(pattern) || /src\/.*index\.(ts|js)$/.test(pattern) || /dist\//.test(pattern),
     );
     if (modulePatterns.length > 0) {
       factors.push({
-        category: 'module',
+        category: "module",
         confidence: Math.min(0.4, modulePatterns.length * 0.1),
         patterns: modulePatterns,
       });
@@ -370,15 +370,15 @@ export class ArtifactDetector {
 
     // Desktop app patterns
     const desktopPatterns = context.filePatterns.filter(
-      pattern =>
+      (pattern) =>
         /electron/.test(pattern) ||
         /tauri/.test(pattern) ||
         /native/.test(pattern) ||
-        /desktop/.test(pattern)
+        /desktop/.test(pattern),
     );
     if (desktopPatterns.length > 0) {
       factors.push({
-        category: 'desktop_app',
+        category: "desktop_app",
         confidence: Math.min(0.8, desktopPatterns.length * 0.3),
         patterns: desktopPatterns,
       });
@@ -386,15 +386,15 @@ export class ArtifactDetector {
 
     // Game patterns
     const gamePatterns = context.filePatterns.filter(
-      pattern =>
+      (pattern) =>
         /game/.test(pattern) ||
         /scenes?\//.test(pattern) ||
         /sprites?\//.test(pattern) ||
-        /assets\/.*\.(png|jpg|wav|mp3)$/.test(pattern)
+        /assets\/.*\.(png|jpg|wav|mp3)$/.test(pattern),
     );
     if (gamePatterns.length > 0) {
       factors.push({
-        category: 'game',
+        category: "game",
         confidence: Math.min(0.7, gamePatterns.length * 0.2),
         patterns: gamePatterns,
       });
@@ -402,15 +402,15 @@ export class ArtifactDetector {
 
     // Mobile patterns
     const mobilePatterns = context.filePatterns.filter(
-      pattern =>
+      (pattern) =>
         /mobile/.test(pattern) ||
         /ios\//.test(pattern) ||
         /android\//.test(pattern) ||
-        /react-native/.test(pattern)
+        /react-native/.test(pattern),
     );
     if (mobilePatterns.length > 0) {
       factors.push({
-        category: 'mobile',
+        category: "mobile",
         confidence: Math.min(0.8, mobilePatterns.length * 0.25),
         patterns: mobilePatterns,
       });
@@ -438,25 +438,25 @@ export class ArtifactDetector {
     // CLI indicators
     const cliIndicators: string[] = [];
     if (config.bin) {
-      cliIndicators.push('has bin field');
-      if (typeof config.bin === 'object') {
-        cliIndicators.push('binary command definitions');
-        cliIndicators.push('explicit CLI entry point');
+      cliIndicators.push("has bin field");
+      if (typeof config.bin === "object") {
+        cliIndicators.push("binary command definitions");
+        cliIndicators.push("explicit CLI entry point");
       }
     }
-    if (config.main && typeof config.main === 'string' && config.main.includes('bin')) {
-      cliIndicators.push('main points to bin');
+    if (config.main && typeof config.main === "string" && config.main.includes("bin")) {
+      cliIndicators.push("main points to bin");
     }
     if (config.preferGlobal) {
-      cliIndicators.push('preferGlobal flag');
+      cliIndicators.push("preferGlobal flag");
     }
     if (config.entry_points?.console_scripts) {
-      cliIndicators.push('console script entry points');
-      cliIndicators.push('exposed console commands');
+      cliIndicators.push("console script entry points");
+      cliIndicators.push("exposed console commands");
     }
     if (cliIndicators.length > 0) {
       factors.push({
-        category: 'tool',
+        category: "tool",
         confidence: Math.min(0.9, cliIndicators.length * 0.4),
         indicators: cliIndicators,
       });
@@ -465,30 +465,30 @@ export class ArtifactDetector {
     // Module indicators - enhanced detection
     const moduleIndicators: string[] = [];
     if (config.main && !config.bin) {
-      moduleIndicators.push('has main without bin');
+      moduleIndicators.push("has main without bin");
     }
     if (config.exports) {
-      moduleIndicators.push('has exports field');
+      moduleIndicators.push("has exports field");
     }
     if (config.types || config.typings) {
-      moduleIndicators.push('provides TypeScript types');
+      moduleIndicators.push("provides TypeScript types");
     }
-    if ('private' in config && !config.private && !config.bin) {
-      moduleIndicators.push('public package without CLI');
+    if ("private" in config && !config.private && !config.bin) {
+      moduleIndicators.push("public package without CLI");
     }
     // Check for module-specific fields
     if (config.module) {
-      moduleIndicators.push('has ESM module field');
+      moduleIndicators.push("has ESM module field");
     }
     if (config.peerDependencies && Object.keys(config.peerDependencies).length > 0) {
-      moduleIndicators.push('has peer dependencies');
+      moduleIndicators.push("has peer dependencies");
     }
     if (config.keywords?.some((k: string) => /module|util|helper|plugin|middleware/i.test(k))) {
-      moduleIndicators.push('module-related keywords');
+      moduleIndicators.push("module-related keywords");
     }
     if (moduleIndicators.length > 0) {
       factors.push({
-        category: 'module',
+        category: "module",
         confidence: Math.min(0.8, moduleIndicators.length * 0.2),
         indicators: moduleIndicators,
       });
@@ -497,20 +497,20 @@ export class ArtifactDetector {
     // Frontend indicators - enhanced detection
     const frontendIndicators: string[] = [];
     if (config.private && (config.scripts?.build || config.scripts?.dev)) {
-      frontendIndicators.push('private package with build/dev scripts');
+      frontendIndicators.push("private package with build/dev scripts");
     }
     if (config.homepage) {
-      frontendIndicators.push('has homepage field');
+      frontendIndicators.push("has homepage field");
     }
     if (config.browserslist) {
-      frontendIndicators.push('has browserslist config');
+      frontendIndicators.push("has browserslist config");
     }
-    if (config.scripts?.start && !config.scripts?.start.includes('node')) {
-      frontendIndicators.push('non-node start script');
+    if (config.scripts?.start && !config.scripts?.start.includes("node")) {
+      frontendIndicators.push("non-node start script");
     }
     if (frontendIndicators.length > 0) {
       factors.push({
-        category: 'frontend',
+        category: "frontend",
         confidence: Math.min(0.6, frontendIndicators.length * 0.2),
         indicators: frontendIndicators,
       });
@@ -518,18 +518,18 @@ export class ArtifactDetector {
 
     // Web service indicators - new detection
     const webServiceIndicators: string[] = [];
-    if (config.scripts?.start?.includes('node')) {
-      webServiceIndicators.push('node start script');
+    if (config.scripts?.start?.includes("node")) {
+      webServiceIndicators.push("node start script");
     }
-    if (config.scripts?.['start:prod'] || config.scripts?.production) {
-      webServiceIndicators.push('production start scripts');
+    if (config.scripts?.["start:prod"] || config.scripts?.production) {
+      webServiceIndicators.push("production start scripts");
     }
     if (config.engines?.node && !config.bin) {
-      webServiceIndicators.push('node engine requirement without CLI');
+      webServiceIndicators.push("node engine requirement without CLI");
     }
     if (webServiceIndicators.length > 0) {
       factors.push({
-        category: 'web_service',
+        category: "web_service",
         confidence: Math.min(0.5, webServiceIndicators.length * 0.2),
         indicators: webServiceIndicators,
       });
@@ -556,11 +556,11 @@ export class ArtifactDetector {
 
     if (analysis.hasBinaryExecution || analysis.hasCliPatterns) {
       const patterns: string[] = [];
-      if (analysis.hasBinaryExecution) patterns.push('binary execution patterns');
-      if (analysis.hasCliPatterns) patterns.push('CLI interaction patterns');
+      if (analysis.hasBinaryExecution) patterns.push("binary execution patterns");
+      if (analysis.hasCliPatterns) patterns.push("CLI interaction patterns");
 
       factors.push({
-        category: 'tool',
+        category: "tool",
         confidence: 0.8,
         patterns,
       });
@@ -568,49 +568,49 @@ export class ArtifactDetector {
 
     if (analysis.hasServerPatterns) {
       factors.push({
-        category: 'web_service',
+        category: "web_service",
         confidence: 0.9,
-        patterns: ['server/service patterns detected'],
+        patterns: ["server/service patterns detected"],
       });
     }
 
     if (analysis.hasFrontendPatterns) {
       factors.push({
-        category: 'frontend',
+        category: "frontend",
         confidence: 0.8,
-        patterns: ['frontend/UI patterns detected'],
+        patterns: ["frontend/UI patterns detected"],
       });
     }
 
     if (analysis.hasDataProcessingPatterns) {
       factors.push({
-        category: 'data_processing',
+        category: "data_processing",
         confidence: 0.7,
-        patterns: ['data processing patterns detected'],
+        patterns: ["data processing patterns detected"],
       });
     }
 
     if (analysis.hasGamePatterns) {
       factors.push({
-        category: 'game',
+        category: "game",
         confidence: 0.9,
-        patterns: ['game development patterns detected'],
+        patterns: ["game development patterns detected"],
       });
     }
 
     if (analysis.hasMobilePatterns) {
       factors.push({
-        category: 'mobile',
+        category: "mobile",
         confidence: 0.8,
-        patterns: ['mobile development patterns detected'],
+        patterns: ["mobile development patterns detected"],
       });
     }
 
     if (analysis.hasDesktopPatterns) {
       factors.push({
-        category: 'desktop_app',
+        category: "desktop_app",
         confidence: 0.8,
-        patterns: ['desktop application patterns detected'],
+        patterns: ["desktop application patterns detected"],
       });
     }
 
@@ -646,28 +646,28 @@ export class ArtifactDetector {
           };
 
     // Aggregate dependency factors
-    factors.dependencyFactors.forEach(factor => {
+    factors.dependencyFactors.forEach((factor) => {
       scores[factor.category] =
         (scores[factor.category] || 0) + factor.confidence * weights.dependency;
     });
 
     // Aggregate source factors (if available)
-    factors.sourceFactors?.forEach(factor => {
+    factors.sourceFactors?.forEach((factor) => {
       scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weights.source;
     });
 
     // Aggregate config factors
-    factors.configFactors.forEach(factor => {
+    factors.configFactors.forEach((factor) => {
       scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weights.config;
     });
 
     // Aggregate script factors
-    factors.scriptFactors.forEach(factor => {
+    factors.scriptFactors.forEach((factor) => {
       scores[factor.category] = (scores[factor.category] || 0) + factor.confidence * weights.script;
     });
 
     // Aggregate file pattern factors
-    factors.filePatternFactors.forEach(factor => {
+    factors.filePatternFactors.forEach((factor) => {
       scores[factor.category] =
         (scores[factor.category] || 0) + factor.confidence * weights.filePattern;
     });
@@ -677,33 +677,33 @@ export class ArtifactDetector {
       // Try to make a more intelligent guess based on available evidence
 
       // Strong CLI indicators
-      if (factors.configFactors.some(f => f.category === 'tool' && f.confidence > 0.5)) {
-        scores['tool'] = 0.7;
+      if (factors.configFactors.some((f) => f.category === "tool" && f.confidence > 0.5)) {
+        scores["tool"] = 0.7;
       }
       // Strong module indicators
-      else if (factors.configFactors.some(f => f.category === 'module' && f.confidence > 0.3)) {
-        scores['module'] = 0.5;
+      else if (factors.configFactors.some((f) => f.category === "module" && f.confidence > 0.3)) {
+        scores["module"] = 0.5;
       }
       // Check for web service patterns
       else if (
-        factors.sourceFactors?.some(f => f.category === 'web_service' && f.confidence > 0.5)
+        factors.sourceFactors?.some((f) => f.category === "web_service" && f.confidence > 0.5)
       ) {
-        scores['web_service'] = 0.6;
+        scores["web_service"] = 0.6;
       }
       // Check for frontend patterns
       else if (
-        factors.filePatternFactors.some(f => f.category === 'frontend' && f.confidence > 0.3)
+        factors.filePatternFactors.some((f) => f.category === "frontend" && f.confidence > 0.3)
       ) {
-        scores['frontend'] = 0.5;
+        scores["frontend"] = 0.5;
       }
       // Default to module with low confidence
       else {
-        scores['module'] = 0.2;
+        scores["module"] = 0.2;
       }
     }
 
     // Normalize scores but keep them reasonable
-    Object.keys(scores).forEach(key => {
+    Object.keys(scores).forEach((key) => {
       scores[key] = Math.min(1.0, scores[key]);
     });
 
@@ -716,37 +716,37 @@ export class ArtifactDetector {
   private generateExplanation(
     context: DetectionContext,
     factors: DetectionFactors,
-    primaryType: keyof CategoryMatrix
+    primaryType: keyof CategoryMatrix,
   ): string[] {
     const explanation: string[] = [];
 
     explanation.push(`Detected as ${primaryType} based on:`);
 
     // Add dependency explanations
-    const depFactor = factors.dependencyFactors.find(f => f.category === primaryType);
+    const depFactor = factors.dependencyFactors.find((f) => f.category === primaryType);
     if (depFactor && depFactor.matches.length > 0) {
-      explanation.push('Dependencies:');
+      explanation.push("Dependencies:");
       explanation.push(...depFactor.matches.slice(0, 3));
     }
 
     // Add source code explanations
-    const sourceFactor = factors.sourceFactors?.find(f => f.category === primaryType);
+    const sourceFactor = factors.sourceFactors?.find((f) => f.category === primaryType);
     if (sourceFactor && sourceFactor.patterns.length > 0) {
-      explanation.push('Source code:');
+      explanation.push("Source code:");
       explanation.push(...sourceFactor.patterns);
     }
 
     // Add config explanations
-    const configFactor = factors.configFactors.find(f => f.category === primaryType);
+    const configFactor = factors.configFactors.find((f) => f.category === primaryType);
     if (configFactor && configFactor.indicators.length > 0) {
-      explanation.push('Configuration:');
+      explanation.push("Configuration:");
       explanation.push(...configFactor.indicators);
     }
 
     // Add script explanations
-    const scriptFactor = factors.scriptFactors.find(f => f.category === primaryType);
+    const scriptFactor = factors.scriptFactors.find((f) => f.category === primaryType);
     if (scriptFactor && scriptFactor.scripts.length > 0) {
-      explanation.push('Scripts:');
+      explanation.push("Scripts:");
       explanation.push(...scriptFactor.scripts.slice(0, 2));
     }
 
@@ -760,7 +760,7 @@ export class ArtifactDetector {
     const matches: string[] = [];
 
     Object.entries(scripts).forEach(([name, command]) => {
-      if (patterns.some(pattern => pattern.test(name) || pattern.test(command))) {
+      if (patterns.some((pattern) => pattern.test(name) || pattern.test(command))) {
         matches.push(`${name}: ${command}`);
       }
     });

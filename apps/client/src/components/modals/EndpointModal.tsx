@@ -1,17 +1,17 @@
-import { MonacoEditor } from '@/components/Editor/MonacoEditor';
-import { ContentTypeSelect } from '@/components/form/ContentTypeSelect';
-import { MarkdownField } from '@/components/form/MarkdownField';
-import Button from '@/design-system/components/Button';
-import Checkbox from '@/design-system/components/Checkbox';
-import Input from '@/design-system/components/Input';
-import Modal from '@/design-system/components/Modal';
-import Select, { type SelectOption } from '@/design-system/components/Select';
-import { ChevronDown } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FieldValue } from './AddEntityModal';
+import { MonacoEditor } from "@/components/Editor/MonacoEditor";
+import { ContentTypeSelect } from "@/components/form/ContentTypeSelect";
+import { MarkdownField } from "@/components/form/MarkdownField";
+import Button from "@/design-system/components/Button";
+import Checkbox from "@/design-system/components/Checkbox";
+import Input from "@/design-system/components/Input";
+import Modal from "@/design-system/components/Modal";
+import Select, { type SelectOption } from "@/design-system/components/Select";
+import { ChevronDown } from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { FieldValue } from "./AddEntityModal";
 
-type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
-type ParameterLocation = 'path' | 'query' | 'header' | 'cookie';
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+type ParameterLocation = "path" | "query" | "header" | "cookie";
 
 interface EndpointModalProps {
   open: boolean;
@@ -21,7 +21,7 @@ interface EndpointModalProps {
     values: Record<string, FieldValue>;
   }) => Promise<void> | void;
   groupLabel?: string;
-  mode?: 'create' | 'edit';
+  mode?: "create" | "edit";
   initialValues?: Record<string, FieldValue> | null;
 }
 
@@ -65,67 +65,67 @@ interface EndpointFormState {
   responses: ResponseFormState[];
 }
 
-const HTTP_METHOD_VALUES: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
-const HTTP_METHOD_OPTIONS: SelectOption[] = HTTP_METHOD_VALUES.map(method => ({
+const HTTP_METHOD_VALUES: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+const HTTP_METHOD_OPTIONS: SelectOption[] = HTTP_METHOD_VALUES.map((method) => ({
   value: method,
   label: method,
 }));
 
-const PARAM_LOCATION_VALUES: ParameterLocation[] = ['path', 'query', 'header', 'cookie'];
-const PARAM_LOCATION_OPTIONS: SelectOption[] = PARAM_LOCATION_VALUES.map(location => ({
+const PARAM_LOCATION_VALUES: ParameterLocation[] = ["path", "query", "header", "cookie"];
+const PARAM_LOCATION_OPTIONS: SelectOption[] = PARAM_LOCATION_VALUES.map((location) => ({
   value: location,
   label: location,
 }));
 
 const DEFAULT_REQUEST_BODY: RequestBodyState = {
-  description: '',
+  description: "",
   required: false,
-  contentType: 'application/json',
-  schemaRef: '',
-  example: '',
+  contentType: "application/json",
+  schemaRef: "",
+  example: "",
 };
 
 const INPUT_SURFACE_CLASSES =
-  'bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700';
+  "bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700";
 const CHECKBOX_SURFACE_CLASSES =
-  'bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700';
+  "bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700";
 const JSON_EDITOR_CONTAINER_CLASSES =
-  'h-40 rounded-md border border-graphite-500 bg-graphite-200 dark:border-graphite-700 dark:bg-graphite-950 overflow-hidden shadow-inner';
+  "h-40 rounded-md border border-graphite-500 bg-graphite-200 dark:border-graphite-700 dark:bg-graphite-950 overflow-hidden shadow-inner";
 
-const PARAMETER_NEW_OPTION_VALUE = '__new-parameter__';
-const PARAMETER_DIVIDER_VALUE = '__parameter-divider__';
-const RESPONSE_NEW_OPTION_VALUE = '__new-response__';
-const RESPONSE_DIVIDER_VALUE = '__response-divider__';
+const PARAMETER_NEW_OPTION_VALUE = "__new-parameter__";
+const PARAMETER_DIVIDER_VALUE = "__parameter-divider__";
+const RESPONSE_NEW_OPTION_VALUE = "__new-response__";
+const RESPONSE_DIVIDER_VALUE = "__response-divider__";
 
 const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 
 const createParameter = (overrides: Partial<ParameterFormState> = {}): ParameterFormState => ({
-  id: createId('param'),
-  name: '',
-  location: 'path',
-  description: '',
+  id: createId("param"),
+  name: "",
+  location: "path",
+  description: "",
   required: true,
-  schemaType: 'string',
-  schemaRef: '',
-  example: '',
+  schemaType: "string",
+  schemaRef: "",
+  example: "",
   ...overrides,
 });
 
 const createResponse = (overrides: Partial<ResponseFormState> = {}): ResponseFormState => ({
-  id: createId('response'),
-  status: '200',
-  description: 'Successful response',
-  contentType: 'application/json',
-  schemaRef: '',
-  example: '',
+  id: createId("response"),
+  status: "200",
+  description: "Successful response",
+  contentType: "application/json",
+  schemaRef: "",
+  example: "",
   ...overrides,
 });
 
 function toTagArray(tags: string): string[] {
   return tags
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(tag => tag.length > 0);
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
 }
 
 function buildSchemaObject(schemaType: string, schemaRef: string, example?: string) {
@@ -146,29 +146,29 @@ export function EndpointModal({
   onClose,
   onSubmit,
   groupLabel,
-  mode = 'create',
+  mode = "create",
   initialValues = null,
 }: EndpointModalProps) {
   const buildInitialForm = useCallback((): EndpointFormState => {
     const initialPath =
-      typeof initialValues?.path === 'string' && initialValues.path.trim().length > 0
+      typeof initialValues?.path === "string" && initialValues.path.trim().length > 0
         ? initialValues.path.trim()
-        : '/';
+        : "/";
     const initialMethod =
-      typeof initialValues?.method === 'string' &&
+      typeof initialValues?.method === "string" &&
       HTTP_METHOD_VALUES.includes(initialValues.method as HttpMethod)
         ? (initialValues.method as HttpMethod)
-        : 'GET';
-    const initialSummary = typeof initialValues?.summary === 'string' ? initialValues.summary : '';
+        : "GET";
+    const initialSummary = typeof initialValues?.summary === "string" ? initialValues.summary : "";
     const initialDescription =
-      typeof initialValues?.description === 'string' ? initialValues.description : '';
+      typeof initialValues?.description === "string" ? initialValues.description : "";
     const initialOperationId =
-      typeof initialValues?.operationId === 'string' ? initialValues.operationId : '';
+      typeof initialValues?.operationId === "string" ? initialValues.operationId : "";
     const initialTags = Array.isArray(initialValues?.tags)
-      ? (initialValues?.tags as string[]).join(', ')
-      : typeof initialValues?.tags === 'string'
+      ? (initialValues?.tags as string[]).join(", ")
+      : typeof initialValues?.tags === "string"
         ? (initialValues.tags as string)
-        : '';
+        : "";
 
     return {
       path: initialPath,
@@ -190,10 +190,10 @@ export function EndpointModal({
   const [activeParameterId, setActiveParameterId] = useState<string | null>(null);
   const [activeResponseId, setActiveResponseId] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<
-    'endpoint' | 'request' | 'parameters' | 'responses'
-  >('endpoint');
+    "endpoint" | "request" | "parameters" | "responses"
+  >("endpoint");
   const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof document !== 'undefined' ? document.documentElement.classList.contains('dark') : false
+    typeof document !== "undefined" ? document.documentElement.classList.contains("dark") : false,
   );
 
   useEffect(() => {
@@ -206,7 +206,7 @@ export function EndpointModal({
     setSubmitError(null);
     setActiveParameterId(null);
     setActiveResponseId(null);
-    setExpandedSection('endpoint');
+    setExpandedSection("endpoint");
   }, [open, buildInitialForm]);
 
   useEffect(() => {
@@ -215,8 +215,8 @@ export function EndpointModal({
       return;
     }
     const fallbackId = form.parameters[0]?.id ?? null;
-    setActiveParameterId(prev => {
-      if (prev && form.parameters.some(param => param.id === prev)) {
+    setActiveParameterId((prev) => {
+      if (prev && form.parameters.some((param) => param.id === prev)) {
         return prev;
       }
       return fallbackId;
@@ -229,8 +229,8 @@ export function EndpointModal({
       return;
     }
     const fallbackId = form.responses[0]?.id ?? null;
-    setActiveResponseId(prev => {
-      if (prev && form.responses.some(response => response.id === prev)) {
+    setActiveResponseId((prev) => {
+      if (prev && form.responses.some((response) => response.id === prev)) {
         return prev;
       }
       return fallbackId;
@@ -238,58 +238,58 @@ export function EndpointModal({
   }, [form.responses]);
 
   useEffect(() => {
-    if (typeof document === 'undefined') {
+    if (typeof document === "undefined") {
       return;
     }
 
     const updateTheme = () => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
     };
 
     updateTheme();
 
     const observer = new MutationObserver(updateTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
 
     return () => observer.disconnect();
   }, []);
 
   const modalTitle = useMemo(() => {
-    const fallback = mode === 'edit' ? 'Endpoint' : 'Endpoint';
+    const fallback = mode === "edit" ? "Endpoint" : "Endpoint";
     if (!groupLabel) {
-      return mode === 'edit' ? `Update ${fallback}` : `Add ${fallback}`;
+      return mode === "edit" ? `Update ${fallback}` : `Add ${fallback}`;
     }
     const trimmed = groupLabel.trim();
     if (!trimmed) {
-      return mode === 'edit' ? `Update ${fallback}` : `Add ${fallback}`;
+      return mode === "edit" ? `Update ${fallback}` : `Add ${fallback}`;
     }
-    const singular = trimmed.endsWith('s') ? trimmed.slice(0, -1) : trimmed;
-    return mode === 'edit' ? `Update ${singular}` : `Add ${singular}`;
+    const singular = trimmed.endsWith("s") ? trimmed.slice(0, -1) : trimmed;
+    return mode === "edit" ? `Update ${singular}` : `Add ${singular}`;
   }, [groupLabel, mode]);
 
   const updateForm = useCallback(
     <K extends keyof EndpointFormState>(key: K, value: EndpointFormState[K]) => {
-      setForm(prev => ({ ...prev, [key]: value }));
+      setForm((prev) => ({ ...prev, [key]: value }));
     },
-    []
+    [],
   );
 
   const handleAddParameter = useCallback(() => {
     const newParam = createParameter();
-    setForm(prev => ({ ...prev, parameters: [...prev.parameters, newParam] }));
+    setForm((prev) => ({ ...prev, parameters: [...prev.parameters, newParam] }));
     setActiveParameterId(newParam.id);
-    setExpandedSection('parameters');
+    setExpandedSection("parameters");
     return newParam.id;
   }, []);
 
   const handleRemoveParameter = useCallback((id: string) => {
-    setForm(prev => {
-      const filtered = prev.parameters.filter(param => param.id !== id);
-      setActiveParameterId(current => {
+    setForm((prev) => {
+      const filtered = prev.parameters.filter((param) => param.id !== id);
+      setActiveParameterId((current) => {
         if (!filtered.length) {
           return null;
         }
-        if (current && current !== id && filtered.some(param => param.id === current)) {
+        if (current && current !== id && filtered.some((param) => param.id === current)) {
           return current;
         }
         return filtered[0]?.id ?? null;
@@ -300,23 +300,23 @@ export function EndpointModal({
 
   const handleAddResponse = useCallback(() => {
     const newResponse = createResponse();
-    setForm(prev => ({ ...prev, responses: [...prev.responses, newResponse] }));
+    setForm((prev) => ({ ...prev, responses: [...prev.responses, newResponse] }));
     setActiveResponseId(newResponse.id);
-    setExpandedSection('responses');
+    setExpandedSection("responses");
     return newResponse.id;
   }, []);
 
   const handleRemoveResponse = useCallback((id: string) => {
-    setForm(prev => {
+    setForm((prev) => {
       if (prev.responses.length === 1) {
         return prev;
       }
-      const filtered = prev.responses.filter(response => response.id !== id);
-      setActiveResponseId(current => {
+      const filtered = prev.responses.filter((response) => response.id !== id);
+      setActiveResponseId((current) => {
         if (!filtered.length) {
           return null;
         }
-        if (current && current !== id && filtered.some(response => response.id === current)) {
+        if (current && current !== id && filtered.some((response) => response.id === current)) {
           return current;
         }
         return filtered[0]?.id ?? null;
@@ -326,84 +326,84 @@ export function EndpointModal({
   }, []);
 
   const updateParameter = useCallback((id: string, updates: Partial<ParameterFormState>) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      parameters: prev.parameters.map(entry =>
+      parameters: prev.parameters.map((entry) =>
         entry.id === id
           ? {
               ...entry,
               ...updates,
             }
-          : entry
+          : entry,
       ),
     }));
   }, []);
 
   const updateResponse = useCallback((id: string, updates: Partial<ResponseFormState>) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      responses: prev.responses.map(entry =>
+      responses: prev.responses.map((entry) =>
         entry.id === id
           ? {
               ...entry,
               ...updates,
             }
-          : entry
+          : entry,
       ),
     }));
   }, []);
 
   const selectedParameter = useMemo(
-    () => form.parameters.find(param => param.id === activeParameterId) ?? null,
-    [form.parameters, activeParameterId]
+    () => form.parameters.find((param) => param.id === activeParameterId) ?? null,
+    [form.parameters, activeParameterId],
   );
 
   const selectedResponse = useMemo(
-    () => form.responses.find(response => response.id === activeResponseId) ?? null,
-    [form.responses, activeResponseId]
+    () => form.responses.find((response) => response.id === activeResponseId) ?? null,
+    [form.responses, activeResponseId],
   );
 
-  const isEndpointOpen = expandedSection === 'endpoint';
-  const isRequestOpen = expandedSection === 'request';
-  const isParametersOpen = expandedSection === 'parameters';
-  const isResponsesOpen = expandedSection === 'responses';
-  const endpointSummary = `${form.method} ${form.path || '/'}`;
+  const isEndpointOpen = expandedSection === "endpoint";
+  const isRequestOpen = expandedSection === "request";
+  const isParametersOpen = expandedSection === "parameters";
+  const isResponsesOpen = expandedSection === "responses";
+  const endpointSummary = `${form.method} ${form.path || "/"}`;
   const hasRequestBodyContent =
     form.requestBody.contentType.trim().length > 0 ||
     form.requestBody.description.trim().length > 0 ||
     form.requestBody.schemaRef.trim().length > 0 ||
     form.requestBody.example.trim().length > 0;
   const requestSummary = hasRequestBodyContent
-    ? form.requestBody.contentType.trim() || 'Optional request body'
-    : 'No request body';
+    ? form.requestBody.contentType.trim() || "Optional request body"
+    : "No request body";
   const parameterSummary =
     form.parameters.length === 0
-      ? 'No parameters yet'
-      : `${form.parameters.length} ${form.parameters.length === 1 ? 'parameter' : 'parameters'}`;
+      ? "No parameters yet"
+      : `${form.parameters.length} ${form.parameters.length === 1 ? "parameter" : "parameters"}`;
   const responseSummary =
     form.responses.length === 0
-      ? 'No responses yet'
-      : `${form.responses.length} ${form.responses.length === 1 ? 'response' : 'responses'}`;
+      ? "No responses yet"
+      : `${form.responses.length} ${form.responses.length === 1 ? "response" : "responses"}`;
   const jsonEditorOptions = useMemo(
     () => ({
       minimap: { enabled: false },
       scrollBeyondLastLine: false,
       glyphMargin: false,
-      lineNumbers: 'off' as const,
-      wordWrap: 'on' as const,
+      lineNumbers: "off" as const,
+      wordWrap: "on" as const,
       readOnly: submitting,
       padding: { top: 8, bottom: 8 },
       automaticLayout: true,
     }),
-    [submitting]
+    [submitting],
   );
-  const monacoTheme = isDarkMode ? 'vs-dark' : 'vs';
+  const monacoTheme = isDarkMode ? "vs-dark" : "vs";
 
   const renderAccordionHeader = (
-    id: 'endpoint' | 'request' | 'parameters' | 'responses',
+    id: "endpoint" | "request" | "parameters" | "responses",
     title: string,
     summary: string,
-    isOpen: boolean
+    isOpen: boolean,
   ) => (
     <button
       type="button"
@@ -417,7 +417,7 @@ export function EndpointModal({
         <div className="text-xs text-graphite-500 dark:text-graphite-300">{summary}</div>
       </div>
       <ChevronDown
-        className={`h-4 w-4 text-graphite-500 transition-transform duration-150 ${isOpen ? 'rotate-180' : 'rotate-0'}`}
+        className={`h-4 w-4 text-graphite-500 transition-transform duration-150 ${isOpen ? "rotate-180" : "rotate-0"}`}
       />
     </button>
   );
@@ -426,17 +426,17 @@ export function EndpointModal({
     const existing = form.parameters.map((param, index) => ({
       value: param.id,
       label: param.name.trim() || `Parameter ${index + 1}`,
-      description: `${param.location.toUpperCase()} • ${param.required ? 'Required' : 'Optional'}`,
+      description: `${param.location.toUpperCase()} • ${param.required ? "Required" : "Optional"}`,
     }));
 
     if (existing.length === 0) {
-      return [{ value: PARAMETER_NEW_OPTION_VALUE, label: 'Add new parameter' }];
+      return [{ value: PARAMETER_NEW_OPTION_VALUE, label: "Add new parameter" }];
     }
 
     return [
       ...existing,
-      { value: PARAMETER_DIVIDER_VALUE, label: '────────────', disabled: true },
-      { value: PARAMETER_NEW_OPTION_VALUE, label: 'Add new parameter' },
+      { value: PARAMETER_DIVIDER_VALUE, label: "────────────", disabled: true },
+      { value: PARAMETER_NEW_OPTION_VALUE, label: "Add new parameter" },
     ];
   }, [form.parameters]);
 
@@ -444,17 +444,17 @@ export function EndpointModal({
     const existing = form.responses.map((response, index) => ({
       value: response.id,
       label: response.status.trim() || `Response ${index + 1}`,
-      description: response.description.trim() || 'Describe the HTTP response',
+      description: response.description.trim() || "Describe the HTTP response",
     }));
 
     if (existing.length === 0) {
-      return [{ value: RESPONSE_NEW_OPTION_VALUE, label: 'Add new response' }];
+      return [{ value: RESPONSE_NEW_OPTION_VALUE, label: "Add new response" }];
     }
 
     return [
       ...existing,
-      { value: RESPONSE_DIVIDER_VALUE, label: '────────────', disabled: true },
-      { value: RESPONSE_NEW_OPTION_VALUE, label: 'Add new response' },
+      { value: RESPONSE_DIVIDER_VALUE, label: "────────────", disabled: true },
+      { value: RESPONSE_NEW_OPTION_VALUE, label: "Add new response" },
     ];
   }, [form.responses]);
 
@@ -479,7 +479,7 @@ export function EndpointModal({
       }
       setActiveParameterId(value);
     },
-    [handleAddParameter]
+    [handleAddParameter],
   );
 
   const handleResponseSelect = useCallback(
@@ -496,7 +496,7 @@ export function EndpointModal({
       }
       setActiveResponseId(value);
     },
-    [handleAddResponse]
+    [handleAddResponse],
   );
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -504,13 +504,13 @@ export function EndpointModal({
     const nextErrors: Record<string, string> = {};
 
     if (!form.path.trim()) {
-      nextErrors.path = 'Path is required';
+      nextErrors.path = "Path is required";
     }
 
     if (!form.responses.length) {
-      nextErrors.responses = 'At least one response is required';
-    } else if (form.responses.some(response => !response.status.trim())) {
-      nextErrors.responses = 'Each response must include a status code';
+      nextErrors.responses = "At least one response is required";
+    } else if (form.responses.some((response) => !response.status.trim())) {
+      nextErrors.responses = "Each response must include a status code";
     }
 
     const requestBodyContentType = form.requestBody.contentType.trim();
@@ -519,7 +519,7 @@ export function EndpointModal({
       form.requestBody.schemaRef.trim().length > 0 ||
       form.requestBody.example.trim().length > 0;
     if (requestBodyHasAdditionalFields && !requestBodyContentType) {
-      nextErrors.requestBody = 'Request body requires a content type';
+      nextErrors.requestBody = "Request body requires a content type";
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -530,8 +530,8 @@ export function EndpointModal({
     const tags = toTagArray(form.tags);
 
     const parameters = form.parameters
-      .filter(param => param.name.trim())
-      .map(param => {
+      .filter((param) => param.name.trim())
+      .map((param) => {
         const schema = buildSchemaObject(param.schemaType, param.schemaRef, param.example);
         return {
           name: param.name.trim(),
@@ -552,7 +552,7 @@ export function EndpointModal({
         return undefined;
       }
 
-      const schema = buildSchemaObject('', form.requestBody.schemaRef, form.requestBody.example);
+      const schema = buildSchemaObject("", form.requestBody.schemaRef, form.requestBody.example);
       const mediaObject: Record<string, unknown> = {};
       if (schema) {
         mediaObject.schema = schema;
@@ -577,9 +577,9 @@ export function EndpointModal({
         if (!statusKey) {
           return acc;
         }
-        const description = response.description.trim() || 'Response';
+        const description = response.description.trim() || "Response";
         const contentType = response.contentType.trim();
-        const schema = buildSchemaObject('', response.schemaRef, response.example);
+        const schema = buildSchemaObject("", response.schemaRef, response.example);
         const responseObj: Record<string, unknown> = { description };
         if (contentType) {
           const media: Record<string, unknown> = {};
@@ -597,11 +597,11 @@ export function EndpointModal({
         acc[statusKey] = responseObj;
         return acc;
       },
-      {}
+      {},
     );
 
     if (Object.keys(responses).length === 0) {
-      setErrors({ responses: 'At least one response must include a status code' });
+      setErrors({ responses: "At least one response must include a status code" });
       return;
     }
 
@@ -620,12 +620,12 @@ export function EndpointModal({
     try {
       setSubmitting(true);
       setSubmitError(null);
-      const normalizedPath = form.path.trim() || '/';
+      const normalizedPath = form.path.trim() || "/";
       const normalizedSummary = form.summary.trim();
       const normalizedDescription = form.description.trim();
       const normalizedOperationId = form.operationId.trim();
       await onSubmit({
-        entityType: 'route',
+        entityType: "route",
         values: {
           name: normalizedSummary || `${form.method} ${normalizedPath}`,
           path: normalizedPath,
@@ -642,7 +642,7 @@ export function EndpointModal({
       onClose();
     } catch (error) {
       const fallbackMessage =
-        mode === 'edit' ? 'Failed to update endpoint' : 'Failed to create endpoint';
+        mode === "edit" ? "Failed to update endpoint" : "Failed to create endpoint";
       const message = error instanceof Error ? error.message : fallbackMessage;
       setSubmitError(message);
     } finally {
@@ -660,9 +660,9 @@ export function EndpointModal({
       }}
       title={modalTitle}
       description={
-        mode === 'edit'
-          ? 'Review and update the HTTP endpoint definition.'
-          : 'Define the HTTP endpoint and provide request/response details for OpenAPI generation.'
+        mode === "edit"
+          ? "Review and update the HTTP endpoint definition."
+          : "Define the HTTP endpoint and provide request/response details for OpenAPI generation."
       }
       size="3xl"
       showDefaultFooter={false}
@@ -672,7 +672,7 @@ export function EndpointModal({
       <form className="space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-4 divide-y divide-graphite-200 dark:divide-graphite-700">
           <div className="space-y-3">
-            {renderAccordionHeader('endpoint', 'Endpoint Details', endpointSummary, isEndpointOpen)}
+            {renderAccordionHeader("endpoint", "Endpoint Details", endpointSummary, isEndpointOpen)}
             {isEndpointOpen && (
               <div className="space-y-4 border-l border-graphite-200 pl-4 dark:border-graphite-700">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -685,7 +685,7 @@ export function EndpointModal({
                       hideLabel
                       options={HTTP_METHOD_OPTIONS}
                       value={form.method}
-                      onChange={value => updateForm('method', value as HttpMethod)}
+                      onChange={(value) => updateForm("method", value as HttpMethod)}
                       disabled={submitting}
                     />
                   </div>
@@ -696,7 +696,7 @@ export function EndpointModal({
                     <Input
                       className={INPUT_SURFACE_CLASSES}
                       value={form.path}
-                      onChange={event => updateForm('path', event.target.value)}
+                      onChange={(event) => updateForm("path", event.target.value)}
                       placeholder="/api/users/{userId}"
                       required
                       disabled={submitting}
@@ -713,7 +713,7 @@ export function EndpointModal({
                     <Input
                       className={INPUT_SURFACE_CLASSES}
                       value={form.summary}
-                      onChange={event => updateForm('summary', event.target.value)}
+                      onChange={(event) => updateForm("summary", event.target.value)}
                       placeholder="Fetch a user by ID"
                       disabled={submitting}
                     />
@@ -725,7 +725,7 @@ export function EndpointModal({
                     <Input
                       className={INPUT_SURFACE_CLASSES}
                       value={form.operationId}
-                      onChange={event => updateForm('operationId', event.target.value)}
+                      onChange={(event) => updateForm("operationId", event.target.value)}
                       placeholder="getUserById"
                       disabled={submitting}
                     />
@@ -736,7 +736,7 @@ export function EndpointModal({
                   id="endpoint-description"
                   label="Description"
                   value={form.description}
-                  onChange={value => updateForm('description', value)}
+                  onChange={(value) => updateForm("description", value)}
                   placeholder="Document business context, side-effects, or considerations for this endpoint."
                 />
 
@@ -747,7 +747,7 @@ export function EndpointModal({
                   <Input
                     className={INPUT_SURFACE_CLASSES}
                     value={form.tags}
-                    onChange={event => updateForm('tags', event.target.value)}
+                    onChange={(event) => updateForm("tags", event.target.value)}
                     placeholder="Comma-separated, e.g. users,admin"
                     disabled={submitting}
                   />
@@ -757,7 +757,7 @@ export function EndpointModal({
           </div>
 
           <div className="space-y-3 pt-4">
-            {renderAccordionHeader('request', 'Request Body', requestSummary, isRequestOpen)}
+            {renderAccordionHeader("request", "Request Body", requestSummary, isRequestOpen)}
             {isRequestOpen && (
               <div className="space-y-4 border-l border-graphite-200 pl-4 dark:border-graphite-700">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -769,8 +769,8 @@ export function EndpointModal({
                       <ContentTypeSelect
                         className="w-full"
                         value={form.requestBody.contentType}
-                        onChange={nextValue =>
-                          updateForm('requestBody', {
+                        onChange={(nextValue) =>
+                          updateForm("requestBody", {
                             ...form.requestBody,
                             contentType: nextValue,
                           })
@@ -782,8 +782,8 @@ export function EndpointModal({
                       <Checkbox
                         className={CHECKBOX_SURFACE_CLASSES}
                         checked={form.requestBody.required}
-                        onChange={event =>
-                          updateForm('requestBody', {
+                        onChange={(event) =>
+                          updateForm("requestBody", {
                             ...form.requestBody,
                             required: event.target.checked,
                           })
@@ -802,8 +802,8 @@ export function EndpointModal({
                     <Input
                       className={INPUT_SURFACE_CLASSES}
                       value={form.requestBody.schemaRef}
-                      onChange={event =>
-                        updateForm('requestBody', {
+                      onChange={(event) =>
+                        updateForm("requestBody", {
                           ...form.requestBody,
                           schemaRef: event.target.value,
                         })
@@ -818,8 +818,8 @@ export function EndpointModal({
                   id="request-body-description"
                   label="Description"
                   value={form.requestBody.description}
-                  onChange={value =>
-                    updateForm('requestBody', {
+                  onChange={(value) =>
+                    updateForm("requestBody", {
                       ...form.requestBody,
                       description: value,
                     })
@@ -834,10 +834,10 @@ export function EndpointModal({
                   <div className={JSON_EDITOR_CONTAINER_CLASSES}>
                     <MonacoEditor
                       value={form.requestBody.example}
-                      onChange={value =>
-                        updateForm('requestBody', {
+                      onChange={(value) =>
+                        updateForm("requestBody", {
                           ...form.requestBody,
-                          example: value ?? '',
+                          example: value ?? "",
                         })
                       }
                       language="json"
@@ -854,7 +854,7 @@ export function EndpointModal({
           </div>
 
           <div className="space-y-3 pt-4">
-            {renderAccordionHeader('parameters', 'Parameters', parameterSummary, isParametersOpen)}
+            {renderAccordionHeader("parameters", "Parameters", parameterSummary, isParametersOpen)}
             {isParametersOpen && (
               <div className="space-y-4 border-l border-graphite-200 pl-4 dark:border-graphite-700">
                 <Select
@@ -876,7 +876,7 @@ export function EndpointModal({
                   <div className="space-y-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <h4 className="text-sm font-semibold text-graphite-700 dark:text-graphite-100">
-                        Editing {selectedParameter.name.trim() || 'Parameter'}
+                        Editing {selectedParameter.name.trim() || "Parameter"}
                       </h4>
                       <Button
                         type="button"
@@ -898,7 +898,7 @@ export function EndpointModal({
                         <Input
                           className={INPUT_SURFACE_CLASSES}
                           value={selectedParameter.name}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateParameter(selectedParameter.id, { name: event.target.value })
                           }
                           placeholder="userId"
@@ -914,7 +914,7 @@ export function EndpointModal({
                           hideLabel
                           value={selectedParameter.location}
                           options={PARAM_LOCATION_OPTIONS}
-                          onChange={value =>
+                          onChange={(value) =>
                             updateParameter(selectedParameter.id, {
                               location: value as ParameterLocation,
                             })
@@ -926,7 +926,7 @@ export function EndpointModal({
                         <Checkbox
                           className={CHECKBOX_SURFACE_CLASSES}
                           checked={selectedParameter.required}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateParameter(selectedParameter.id, {
                               required: event.target.checked,
                             })
@@ -945,7 +945,7 @@ export function EndpointModal({
                       </label>
                       <textarea
                         value={selectedParameter.description}
-                        onChange={event =>
+                        onChange={(event) =>
                           updateParameter(selectedParameter.id, { description: event.target.value })
                         }
                         className="w-full rounded-md border border-graphite-500 bg-graphite-200 text-sm text-graphite-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100 dark:focus:border-blue-400 dark:focus:ring-blue-500/40"
@@ -962,7 +962,7 @@ export function EndpointModal({
                         <Input
                           className={INPUT_SURFACE_CLASSES}
                           value={selectedParameter.schemaType}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateParameter(selectedParameter.id, {
                               schemaType: event.target.value,
                             })
@@ -978,7 +978,7 @@ export function EndpointModal({
                         <Input
                           className={INPUT_SURFACE_CLASSES}
                           value={selectedParameter.schemaRef}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateParameter(selectedParameter.id, { schemaRef: event.target.value })
                           }
                           placeholder="#/components/schemas/UserQuery"
@@ -994,7 +994,7 @@ export function EndpointModal({
                       <Input
                         className={INPUT_SURFACE_CLASSES}
                         value={selectedParameter.example}
-                        onChange={event =>
+                        onChange={(event) =>
                           updateParameter(selectedParameter.id, { example: event.target.value })
                         }
                         placeholder="12345"
@@ -1012,7 +1012,7 @@ export function EndpointModal({
           </div>
 
           <div className="space-y-3 pt-4">
-            {renderAccordionHeader('responses', 'Responses', responseSummary, isResponsesOpen)}
+            {renderAccordionHeader("responses", "Responses", responseSummary, isResponsesOpen)}
             {isResponsesOpen && (
               <div className="space-y-4 border-l border-graphite-200 pl-4 dark:border-graphite-700">
                 <Select
@@ -1033,7 +1033,7 @@ export function EndpointModal({
                   <div className="space-y-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <h4 className="text-sm font-semibold text-graphite-700 dark:text-graphite-100">
-                        Editing {selectedResponse.status.trim() || 'Response'}
+                        Editing {selectedResponse.status.trim() || "Response"}
                       </h4>
                       <Button
                         type="button"
@@ -1055,7 +1055,7 @@ export function EndpointModal({
                         <Input
                           className={INPUT_SURFACE_CLASSES}
                           value={selectedResponse.status}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateResponse(selectedResponse.id, { status: event.target.value })
                           }
                           placeholder="200"
@@ -1069,7 +1069,7 @@ export function EndpointModal({
                         <Input
                           className={INPUT_SURFACE_CLASSES}
                           value={selectedResponse.description}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateResponse(selectedResponse.id, { description: event.target.value })
                           }
                           placeholder="Successful response"
@@ -1086,7 +1086,7 @@ export function EndpointModal({
                         <ContentTypeSelect
                           className="w-full"
                           value={selectedResponse.contentType}
-                          onChange={nextValue =>
+                          onChange={(nextValue) =>
                             updateResponse(selectedResponse.id, { contentType: nextValue })
                           }
                           placeholder="Select content type..."
@@ -1100,7 +1100,7 @@ export function EndpointModal({
                         <Input
                           className={INPUT_SURFACE_CLASSES}
                           value={selectedResponse.schemaRef}
-                          onChange={event =>
+                          onChange={(event) =>
                             updateResponse(selectedResponse.id, { schemaRef: event.target.value })
                           }
                           placeholder="#/components/schemas/User"
@@ -1116,8 +1116,8 @@ export function EndpointModal({
                       <div className={JSON_EDITOR_CONTAINER_CLASSES}>
                         <MonacoEditor
                           value={selectedResponse.example}
-                          onChange={value =>
-                            updateResponse(selectedResponse.id, { example: value ?? '' })
+                          onChange={(value) =>
+                            updateResponse(selectedResponse.id, { example: value ?? "" })
                           }
                           language="json"
                           theme={monacoTheme}
@@ -1150,12 +1150,12 @@ export function EndpointModal({
           </Button>
           <Button type="submit" disabled={submitting}>
             {submitting
-              ? mode === 'edit'
-                ? 'Updating…'
-                : 'Adding…'
-              : mode === 'edit'
-                ? 'Update Endpoint'
-                : 'Add Endpoint'}
+              ? mode === "edit"
+                ? "Updating…"
+                : "Adding…"
+              : mode === "edit"
+                ? "Update Endpoint"
+                : "Add Endpoint"}
           </Button>
         </div>
       </form>

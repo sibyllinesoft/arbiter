@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { CueShowcase } from './CueShowcase';
+import type { Meta, StoryObj } from "@storybook/react";
+import { CueShowcase } from "./CueShowcase";
 
 const meta: Meta<typeof CueShowcase> = {
-  title: 'Components/CUE Visualization/CueShowcase',
+  title: "Components/CUE Visualization/CueShowcase",
   component: CueShowcase,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component: `
@@ -43,7 +43,7 @@ This component serves as both a demonstration tool and a production-ready interf
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -64,18 +64,18 @@ export const Default: Story = {
 export const FullScreen: Story = {
   args: {},
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     viewport: {
       viewports: {
         fullHD: {
-          name: 'Full HD',
+          name: "Full HD",
           styles: {
-            width: '1920px',
-            height: '1080px',
+            width: "1920px",
+            height: "1080px",
           },
         },
       },
-      defaultViewport: 'fullHD',
+      defaultViewport: "fullHD",
     },
   },
 };
@@ -85,20 +85,20 @@ export const FullScreen: Story = {
  */
 export const Compact: Story = {
   args: {
-    className: 'max-w-4xl mx-auto',
+    className: "max-w-4xl mx-auto",
   },
   parameters: {
     viewport: {
       viewports: {
         tablet: {
-          name: 'Tablet',
+          name: "Tablet",
           styles: {
-            width: '768px',
-            height: '1024px',
+            width: "768px",
+            height: "1024px",
           },
         },
       },
-      defaultViewport: 'tablet',
+      defaultViewport: "tablet",
     },
   },
 };

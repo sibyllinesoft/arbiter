@@ -1,13 +1,13 @@
-import { clsx } from 'clsx';
-import React from 'react';
+import { clsx } from "clsx";
+import React from "react";
 
 interface EmptyStateProps {
   className?: string;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ className = '' }) => {
+export const EmptyState: React.FC<EmptyStateProps> = ({ className = "" }) => {
   return (
-    <div className={clsx('text-center py-8', className)}>
+    <div className={clsx("text-center py-8", className)}>
       <div className="text-gray-400 mb-4">
         <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path

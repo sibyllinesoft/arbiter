@@ -1,7 +1,7 @@
-import '@testing-library/jest-dom';
-import * as matchers from '@testing-library/jest-dom/matchers';
-import { cleanup } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, expect, vi } from 'vitest';
+import "@testing-library/jest-dom";
+import * as matchers from "@testing-library/jest-dom/matchers";
+import { cleanup } from "@testing-library/react";
+import { afterAll, afterEach, beforeAll, expect, vi } from "vitest";
 
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
@@ -13,9 +13,9 @@ afterEach(() => {
 
 // Mock window.matchMedia which is not available in jsdom
 beforeAll(() => {
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(window, "matchMedia", {
     writable: true,
-    value: vi.fn().mockImplementation(query => ({
+    value: vi.fn().mockImplementation((query) => ({
       matches: false,
       media: query,
       onchange: null,
@@ -43,7 +43,7 @@ beforeAll(() => {
 
   // Mock Monaco Editor globals that may not be available in test environment
   (globalThis as any).MonacoEnvironment = {
-    getWorkerUrl: () => '',
+    getWorkerUrl: () => "",
   };
 });
 

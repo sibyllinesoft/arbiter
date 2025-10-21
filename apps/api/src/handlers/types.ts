@@ -2,17 +2,17 @@
  * Custom webhook handler types and interfaces
  */
 
-import type { SpecWorkbenchDB } from '../db.ts';
-import type { EventService } from '../events.ts';
-import type { WebhookPayload, WebhookRequest } from '../types.ts';
+import type { SpecWorkbenchDB } from "../db.ts";
+import type { EventService } from "../events.ts";
+import type { WebhookPayload, WebhookRequest } from "../types.ts";
 
 // Supported handler runtimes
-export type HandlerRuntime = 'local' | 'cloudflare-worker' | 'cloudflare-durable-object';
+export type HandlerRuntime = "local" | "cloudflare-worker" | "cloudflare-durable-object";
 
 // Handler execution context
 export interface HandlerContext {
   projectId: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   config: HandlerConfig;
   logger: Logger;
@@ -29,13 +29,15 @@ export interface HandlerConfig {
   secrets: Record<string, string>; // Encrypted secrets
 }
 
+export type HandlerStorageType = "filesystem" | "cloudflare-r2";
+
 // Cloudflare handler configuration
 export type CloudflareHandlerConfig =
   | CloudflareWorkerHandlerConfig
   | CloudflareDurableObjectHandlerConfig;
 
 export interface CloudflareWorkerHandlerConfig {
-  type: 'worker';
+  type: "worker";
   endpoint: string;
   method?: string;
   headers?: Record<string, string>;
@@ -47,7 +49,7 @@ export interface CloudflareWorkerHandlerConfig {
 }
 
 export interface CloudflareDurableObjectHandlerConfig {
-  type: 'durable-object';
+  type: "durable-object";
   endpoint: string;
   objectName: string;
   objectId?: string;
@@ -60,7 +62,7 @@ export interface CloudflareDurableObjectHandlerConfig {
 }
 
 export interface CloudflareContainerTemplate {
-  template: 'codex' | 'claude' | 'claude-code' | 'otel-collector';
+  template: "codex" | "claude" | "claude-code" | "otel-collector";
   name?: string;
   repository?: string;
   branch?: string;
@@ -163,7 +165,7 @@ export interface EnhancedWebhookPayload extends WebhookPayload {
 // Handler function signature
 export type WebhookHandler = (
   payload: EnhancedWebhookPayload,
-  context: HandlerContext
+  context: HandlerContext,
 ) => Promise<HandlerResult>;
 
 // Handler module interface
@@ -235,7 +237,7 @@ export interface GitService {
 
 export interface FileDiff {
   path: string;
-  status: 'added' | 'modified' | 'deleted' | 'renamed';
+  status: "added" | "modified" | "deleted" | "renamed";
   additions: number;
   deletions: number;
   patch?: string;
@@ -244,9 +246,10 @@ export interface FileDiff {
 // Handler registry types
 export interface RegisteredHandler {
   id: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   handlerPath: string;
+  storage: HandlerStorageType;
   enabled: boolean;
   config: HandlerConfig;
   runtime: HandlerRuntime;
@@ -254,11 +257,11 @@ export interface RegisteredHandler {
   lastExecuted?: string;
   executionCount: number;
   errorCount: number;
-  metadata: HandlerModule['metadata'];
+  metadata: HandlerModule["metadata"];
 }
 
 export interface HandlerCreationOptions {
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   code: string;
   config?: Partial<HandlerConfig>;
@@ -274,7 +277,7 @@ export interface HandlerExecution {
   id: string;
   handlerId: string;
   projectId: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event: string;
   payload: EnhancedWebhookPayload;
   result: HandlerResult;
@@ -295,4 +298,4 @@ export interface HandlerDiscoveryConfig {
   enableMetrics: boolean;
 }
 
-export { WebhookPayload, WebhookRequest } from '../types';
+export { WebhookPayload, WebhookRequest } from "../types";

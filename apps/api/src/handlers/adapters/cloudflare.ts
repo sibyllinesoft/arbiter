@@ -1,4 +1,4 @@
-import { URL } from 'node:url';
+import { URL } from "node:url";
 
 import type {
   CloudflareDurableObjectHandlerConfig,
@@ -8,7 +8,7 @@ import type {
   HandlerContext,
   HandlerResult,
   Logger,
-} from '../types.js';
+} from "../types.js";
 
 interface RepositoryContext {
   name: string | null;
@@ -41,9 +41,9 @@ export class CloudflareHandlerAdapter {
   async execute(
     config: CloudflareHandlerConfig,
     payload: EnhancedWebhookPayload,
-    context: HandlerContext
+    context: HandlerContext,
   ): Promise<HandlerResult> {
-    if (config.type === 'worker') {
+    if (config.type === "worker") {
       return this.executeWorker(config, payload, context);
     }
     return this.executeDurableObject(config, payload, context);
@@ -52,18 +52,18 @@ export class CloudflareHandlerAdapter {
   private async executeWorker(
     config: CloudflareWorkerHandlerConfig,
     payload: EnhancedWebhookPayload,
-    context: HandlerContext
+    context: HandlerContext,
   ): Promise<HandlerResult> {
     const url = this.interpolateEndpoint(config.endpoint, context, config.route);
-    const method = (config.method ?? 'POST').toUpperCase();
+    const method = (config.method ?? "POST").toUpperCase();
 
     const requestBody = this.createRequestBody(config, payload, context);
     const headers = this.prepareHeaders(config.headers);
 
-    this.logger.info('Dispatching Cloudflare Worker handler', {
+    this.logger.info("Dispatching Cloudflare Worker handler", {
       endpoint: url,
       method,
-      handlerRuntime: 'cloudflare-worker',
+      handlerRuntime: "cloudflare-worker",
       projectId: context.projectId,
       provider: context.provider,
       event: context.event,
@@ -81,19 +81,19 @@ export class CloudflareHandlerAdapter {
   private async executeDurableObject(
     config: CloudflareDurableObjectHandlerConfig,
     payload: EnhancedWebhookPayload,
-    context: HandlerContext
+    context: HandlerContext,
   ): Promise<HandlerResult> {
     const targetId = config.objectId ?? context.projectId;
     const url = this.interpolateEndpoint(config.endpoint, context, undefined, targetId);
-    const method = (config.method ?? 'POST').toUpperCase();
+    const method = (config.method ?? "POST").toUpperCase();
 
     const requestBody = this.createRequestBody(config, payload, context, targetId);
     const headers = this.prepareHeaders(config.headers);
 
-    this.logger.info('Dispatching Cloudflare Durable Object handler', {
+    this.logger.info("Dispatching Cloudflare Durable Object handler", {
       endpoint: url,
       method,
-      handlerRuntime: 'cloudflare-durable-object',
+      handlerRuntime: "cloudflare-durable-object",
       projectId: context.projectId,
       provider: context.provider,
       event: context.event,
@@ -112,7 +112,7 @@ export class CloudflareHandlerAdapter {
 
   private prepareHeaders(custom?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = {
-      'content-type': 'application/json',
+      "content-type": "application/json",
     };
 
     if (custom) {
@@ -128,22 +128,22 @@ export class CloudflareHandlerAdapter {
     endpoint: string,
     context: HandlerContext,
     route?: string,
-    durableObjectId?: string
+    durableObjectId?: string,
   ): string {
     const url = new URL(endpoint);
 
     if (route) {
-      url.pathname = route.startsWith('/') ? route : `/${route}`;
+      url.pathname = route.startsWith("/") ? route : `/${route}`;
     }
 
     const replacements: Record<string, string> = {
-      ':projectId': context.projectId,
-      ':provider': context.provider,
-      ':event': context.event,
+      ":projectId": context.projectId,
+      ":provider": context.provider,
+      ":event": context.event,
     };
 
     if (durableObjectId) {
-      replacements[':objectId'] = durableObjectId;
+      replacements[":objectId"] = durableObjectId;
     }
 
     let pathname = url.pathname;
@@ -159,7 +159,7 @@ export class CloudflareHandlerAdapter {
     config: CloudflareHandlerConfig,
     payload: EnhancedWebhookPayload,
     context: HandlerContext,
-    durableObjectId?: string
+    durableObjectId?: string,
   ): Record<string, unknown> {
     const forwardedSecrets = this.collectForwardedSecrets(config, context);
     const repository = this.extractRepositoryContext(payload);
@@ -177,9 +177,9 @@ export class CloudflareHandlerAdapter {
       },
       adapter: {
         type: config.type,
-        worker: config.type === 'worker' ? this.describeWorkerConfig(config) : undefined,
+        worker: config.type === "worker" ? this.describeWorkerConfig(config) : undefined,
         durableObject:
-          config.type === 'durable-object'
+          config.type === "durable-object"
             ? this.describeDurableObjectConfig(config, durableObjectId)
             : undefined,
       },
@@ -201,7 +201,7 @@ export class CloudflareHandlerAdapter {
 
   private describeDurableObjectConfig(
     config: CloudflareDurableObjectHandlerConfig,
-    targetId?: string
+    targetId?: string,
   ): Record<string, unknown> {
     return {
       endpoint: config.endpoint,
@@ -221,7 +221,7 @@ export class CloudflareHandlerAdapter {
     const fromList = (record: Record<string, unknown>, keys: string[]): string | null => {
       for (const key of keys) {
         const value = record?.[key];
-        if (typeof value === 'string' && value.trim().length > 0) {
+        if (typeof value === "string" && value.trim().length > 0) {
           return value;
         }
       }
@@ -230,33 +230,33 @@ export class CloudflareHandlerAdapter {
 
     const ownerValue = parsed.owner ?? raw.owner;
     let owner: string | null = null;
-    if (typeof ownerValue === 'string') {
+    if (typeof ownerValue === "string") {
       owner = ownerValue;
-    } else if (ownerValue && typeof ownerValue === 'object') {
+    } else if (ownerValue && typeof ownerValue === "object") {
       const ownerRecord = ownerValue as Record<string, unknown>;
-      const candidate = ownerRecord['login'] ?? ownerRecord['name'] ?? ownerRecord['username'];
-      owner = typeof candidate === 'string' ? candidate : null;
+      const candidate = ownerRecord["login"] ?? ownerRecord["name"] ?? ownerRecord["username"];
+      owner = typeof candidate === "string" ? candidate : null;
     }
 
     const refValue = (payload as Record<string, any>).ref;
     const branch = this.extractBranch(payload);
     const defaultBranch =
-      fromList(parsed, ['defaultBranch']) ?? fromList(raw, ['default_branch', 'defaultBranch']);
+      fromList(parsed, ["defaultBranch"]) ?? fromList(raw, ["default_branch", "defaultBranch"]);
 
     return {
-      name: fromList(parsed, ['name']) ?? fromList(raw, ['name']),
+      name: fromList(parsed, ["name"]) ?? fromList(raw, ["name"]),
       fullName:
-        fromList(parsed, ['fullName']) ??
-        fromList(raw, ['full_name', 'path_with_namespace', 'path']) ??
+        fromList(parsed, ["fullName"]) ??
+        fromList(raw, ["full_name", "path_with_namespace", "path"]) ??
         null,
       owner,
-      httpUrl: fromList(raw, ['clone_url', 'http_url', 'git_http_url', 'url']) ?? null,
-      sshUrl: fromList(raw, ['ssh_url', 'git_ssh_url', 'ssh_url_to_repo']) ?? null,
-      htmlUrl: fromList(raw, ['html_url', 'web_url']) ?? null,
+      httpUrl: fromList(raw, ["clone_url", "http_url", "git_http_url", "url"]) ?? null,
+      sshUrl: fromList(raw, ["ssh_url", "git_ssh_url", "ssh_url_to_repo"]) ?? null,
+      htmlUrl: fromList(raw, ["html_url", "web_url"]) ?? null,
       branch,
       defaultBranch: defaultBranch ?? null,
       commit: this.extractCommitSha(payload),
-      ref: typeof refValue === 'string' ? refValue : null,
+      ref: typeof refValue === "string" ? refValue : null,
     };
   }
 
@@ -295,19 +295,19 @@ export class CloudflareHandlerAdapter {
     const env: Record<string, string> = {};
 
     const setIfString = (key: string, value: unknown) => {
-      if (typeof value === 'string' && value.trim().length > 0) {
+      if (typeof value === "string" && value.trim().length > 0) {
         env[key] = value;
       }
     };
 
-    setIfString('ARBITER_REPO_HTTP_URL', repository.httpUrl);
-    setIfString('ARBITER_REPO_SSH_URL', repository.sshUrl);
-    setIfString('ARBITER_REPO_HTML_URL', repository.htmlUrl);
-    setIfString('ARBITER_REPO_FULL_NAME', repository.fullName);
-    setIfString('ARBITER_REPO_NAME', repository.name);
-    setIfString('ARBITER_REPO_BRANCH', repository.branch);
-    setIfString('ARBITER_REPO_DEFAULT_BRANCH', repository.defaultBranch);
-    setIfString('ARBITER_COMMIT_SHA', repository.commit);
+    setIfString("ARBITER_REPO_HTTP_URL", repository.httpUrl);
+    setIfString("ARBITER_REPO_SSH_URL", repository.sshUrl);
+    setIfString("ARBITER_REPO_HTML_URL", repository.htmlUrl);
+    setIfString("ARBITER_REPO_FULL_NAME", repository.fullName);
+    setIfString("ARBITER_REPO_NAME", repository.name);
+    setIfString("ARBITER_REPO_BRANCH", repository.branch);
+    setIfString("ARBITER_REPO_DEFAULT_BRANCH", repository.defaultBranch);
+    setIfString("ARBITER_COMMIT_SHA", repository.commit);
 
     return env;
   }
@@ -315,8 +315,8 @@ export class CloudflareHandlerAdapter {
   private normalizeRef(ref?: string | null): string | null {
     if (!ref) return null;
 
-    if (ref.startsWith('refs/heads/')) {
-      return ref.substring('refs/heads/'.length);
+    if (ref.startsWith("refs/heads/")) {
+      return ref.substring("refs/heads/".length);
     }
 
     return ref;
@@ -324,7 +324,7 @@ export class CloudflareHandlerAdapter {
 
   private collectForwardedSecrets(
     config: CloudflareHandlerConfig,
-    context: HandlerContext
+    context: HandlerContext,
   ): Record<string, string> {
     const forwarded: Record<string, string> = {};
     const keys = config.forwardSecrets ?? [];
@@ -334,7 +334,7 @@ export class CloudflareHandlerAdapter {
       if (secretValue) {
         forwarded[key] = secretValue;
       } else {
-        this.logger.warn('Requested secret not available for Cloudflare handler', {
+        this.logger.warn("Requested secret not available for Cloudflare handler", {
           key,
           handlerRuntime: config.type,
           projectId: context.projectId,
@@ -363,7 +363,7 @@ export class CloudflareHandlerAdapter {
       const parsed = this.parseResponseBody(rawText);
 
       if (!response.ok) {
-        this.logger.error('Cloudflare handler invocation failed', undefined, {
+        this.logger.error("Cloudflare handler invocation failed", undefined, {
           endpoint,
           status: response.status,
           statusText: response.statusText,
@@ -387,7 +387,7 @@ export class CloudflareHandlerAdapter {
 
       return {
         success: true,
-        message: 'Cloudflare handler executed successfully',
+        message: "Cloudflare handler executed successfully",
         data: {
           endpoint,
           status: response.status,
@@ -395,17 +395,17 @@ export class CloudflareHandlerAdapter {
         },
       };
     } catch (error) {
-      this.logger.error('Cloudflare handler invocation threw', error as Error, {
+      this.logger.error("Cloudflare handler invocation threw", error as Error, {
         endpoint,
         method,
       });
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown Cloudflare handler error',
+        message: error instanceof Error ? error.message : "Unknown Cloudflare handler error",
         errors: [
           {
-            code: 'CLOUDFLARE_HANDLER_ERROR',
+            code: "CLOUDFLARE_HANDLER_ERROR",
             message: error instanceof Error ? error.message : String(error),
           },
         ],
@@ -421,7 +421,7 @@ export class CloudflareHandlerAdapter {
     try {
       return JSON.parse(rawText);
     } catch (error) {
-      this.logger.debug('Unable to parse Cloudflare handler response as JSON', {
+      this.logger.debug("Unable to parse Cloudflare handler response as JSON", {
         error: error instanceof Error ? error.message : String(error),
       });
       return rawText;
@@ -430,12 +430,12 @@ export class CloudflareHandlerAdapter {
 
   private isHandlerResult(value: unknown): value is HandlerResult {
     return (
-      typeof value === 'object' &&
+      typeof value === "object" &&
       value !== null &&
-      'success' in value &&
-      typeof (value as { success?: unknown }).success === 'boolean' &&
-      'message' in value &&
-      typeof (value as { message?: unknown }).message === 'string'
+      "success" in value &&
+      typeof (value as { success?: unknown }).success === "boolean" &&
+      "message" in value &&
+      typeof (value as { message?: unknown }).message === "string"
     );
   }
 }

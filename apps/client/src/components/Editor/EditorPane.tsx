@@ -2,15 +2,15 @@
  * Editor pane combining file tree and Monaco editor
  */
 
-import { clsx } from 'clsx';
-import { CheckCircle2, Circle, Code2, FileText, Save } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
-import { useActiveFragment, useApp, useEditorContent } from '../../contexts/AppContext';
-import { useCurrentProject } from '../../contexts/ProjectContext';
-import { apiService } from '../../services/api';
-import SplitPane from '../Layout/SplitPane';
-import FileTree from './FileTree';
-import MonacoEditor from './MonacoEditor';
+import { clsx } from "clsx";
+import { CheckCircle2, Circle, Code2, FileText, Save } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useActiveFragment, useApp, useEditorContent } from "../../contexts/AppContext";
+import { useCurrentProject } from "../../contexts/ProjectContext";
+import { apiService } from "../../services/api";
+import SplitPane from "../Layout/SplitPane";
+import FileTree from "./FileTree";
+import MonacoEditor from "./MonacoEditor";
 
 export interface EditorPaneProps {
   className?: string;
@@ -21,14 +21,14 @@ export function EditorPane({ className }: EditorPaneProps) {
 
   const currentProject = useCurrentProject();
   const activeFragment = useActiveFragment();
-  const editorContent = useEditorContent(activeFragment?.id || '');
+  const editorContent = useEditorContent(activeFragment?.id || "");
 
   const [isDark, setIsDark] = useState(false);
 
   // Detect dark mode from document class (Tailwind dark mode)
   useEffect(() => {
     const updateTheme = () => {
-      setIsDark(document.documentElement.classList.contains('dark'));
+      setIsDark(document.documentElement.classList.contains("dark"));
     };
 
     updateTheme(); // Initial check
@@ -36,7 +36,7 @@ export function EditorPane({ className }: EditorPaneProps) {
     const observer = new MutationObserver(updateTheme);
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class'],
+      attributeFilter: ["class"],
     });
 
     return () => observer.disconnect();
@@ -44,7 +44,7 @@ export function EditorPane({ className }: EditorPaneProps) {
 
   // Load fragment content when active fragment changes
   useEffect(() => {
-    if (!activeFragment || editorContent !== '') {
+    if (!activeFragment || editorContent !== "") {
       return; // Already loaded or no fragment selected
     }
 
@@ -66,7 +66,7 @@ export function EditorPane({ className }: EditorPaneProps) {
         markSaved(activeFragment.id);
       }
     },
-    [activeFragment, updateEditorContent, markUnsaved, markSaved]
+    [activeFragment, updateEditorContent, markUnsaved, markSaved],
   );
 
   // Handle save (Ctrl+S or manual save)
@@ -84,16 +84,16 @@ export function EditorPane({ className }: EditorPaneProps) {
       const updatedFragment = await apiService.updateFragment(
         currentProject.id,
         activeFragment.id,
-        content
+        content,
       );
 
       // Update fragment in state
-      dispatch({ type: 'UPDATE_FRAGMENT', payload: updatedFragment });
+      dispatch({ type: "UPDATE_FRAGMENT", payload: updatedFragment });
 
       // Mark as saved
       markSaved(activeFragment.id);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to save fragment';
+      const message = error instanceof Error ? error.message : "Failed to save fragment";
       setError(message);
     }
   }, [currentProject, activeFragment, state.editorContent, dispatch, markSaved, setError]);
@@ -113,16 +113,16 @@ export function EditorPane({ className }: EditorPaneProps) {
         }
       });
     },
-    [activeFragment, state.unsavedChanges, handleSave]
+    [activeFragment, state.unsavedChanges, handleSave],
   );
 
   if (!currentProject) {
     return (
       <div
         className={clsx(
-          'h-full flex items-center justify-center',
-          'bg-gradient-to-br from-graphite-50 via-white to-graphite-50',
-          className
+          "h-full flex items-center justify-center",
+          "bg-gradient-to-br from-graphite-50 via-white to-graphite-50",
+          className,
         )}
       >
         <div className="text-center p-8 max-w-md">
@@ -139,7 +139,7 @@ export function EditorPane({ className }: EditorPaneProps) {
   }
 
   return (
-    <div className={clsx('h-full bg-graphite-50 dark:bg-graphite-900', className)}>
+    <div className={clsx("h-full bg-graphite-50 dark:bg-graphite-900", className)}>
       <SplitPane
         split="horizontal"
         defaultSize="40%"
@@ -147,10 +147,10 @@ export function EditorPane({ className }: EditorPaneProps) {
         maxSize="70%"
         resizerStyle={{
           background:
-            'linear-gradient(90deg, transparent 0%, rgba(71, 85, 105, 0.1) 50%, transparent 100%)',
-          borderTop: '1px solid rgba(71, 85, 105, 0.1)',
-          borderBottom: '1px solid rgba(71, 85, 105, 0.1)',
-          height: '1px',
+            "linear-gradient(90deg, transparent 0%, rgba(71, 85, 105, 0.1) 50%, transparent 100%)",
+          borderTop: "1px solid rgba(71, 85, 105, 0.1)",
+          borderBottom: "1px solid rgba(71, 85, 105, 0.1)",
+          height: "1px",
         }}
       >
         {/* Top: File Tree */}
@@ -186,13 +186,24 @@ export function EditorPane({ className }: EditorPaneProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  <div className="hidden sm:flex items-center gap-2 text-[11px] text-graphite-400 uppercase tracking-wide">
+                    <span className="px-2 py-0.5 rounded-full bg-graphite-100/60 dark:bg-graphite-800/80 border border-graphite-200 dark:border-graphite-700">
+                      {(activeFragment.path.split(".").pop() || "file").toUpperCase()}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-graphite-100/60 dark:bg-graphite-800/80 border border-graphite-200 dark:border-graphite-700">
+                      UTF-8
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-graphite-100/60 dark:bg-graphite-800/80 border border-graphite-200 dark:border-graphite-700">
+                      LF
+                    </span>
+                  </div>
                   <button
                     onClick={handleSave}
                     className={clsx(
-                      'p-1.5 rounded-lg transition-all duration-200',
+                      "p-1.5 rounded-lg transition-all duration-200",
                       state.unsavedChanges.has(activeFragment.id)
-                        ? 'bg-blue-100 dark:bg-blue-900/20 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400'
-                        : 'bg-graphite-100 dark:bg-graphite-800 text-graphite-400 dark:text-graphite-500 cursor-default'
+                        ? "bg-blue-100 dark:bg-blue-900/20 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400"
+                        : "bg-graphite-100 dark:bg-graphite-800 text-graphite-400 dark:text-graphite-500 cursor-default",
                     )}
                     disabled={!state.unsavedChanges.has(activeFragment.id)}
                   >
@@ -210,15 +221,15 @@ export function EditorPane({ className }: EditorPaneProps) {
                   onEditorReady={handleEditorReady}
                   fragmentId={activeFragment.id}
                   language="cue"
-                  theme={isDark ? 'vs-dark' : 'vs'}
+                  theme={isDark ? "vs-dark" : "vs"}
                   options={{
                     automaticLayout: true,
-                    wordWrap: 'on',
-                    lineNumbers: 'on',
+                    wordWrap: "on",
+                    lineNumbers: "on",
                     minimap: { enabled: true },
                     folding: true,
-                    bracketMatching: 'always',
-                    autoIndent: 'advanced',
+                    bracketMatching: "always",
+                    autoIndent: "advanced",
                     formatOnType: true,
                     formatOnPaste: true,
                     fontSize: 14,
@@ -226,8 +237,8 @@ export function EditorPane({ className }: EditorPaneProps) {
                     fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", Consolas, monospace',
                     padding: { top: 16, bottom: 16 },
                     scrollBeyondLastLine: false,
-                    renderWhitespace: 'selection',
-                    renderLineHighlight: 'gutter',
+                    renderWhitespace: "selection",
+                    renderLineHighlight: "gutter",
                   }}
                 />
               </div>

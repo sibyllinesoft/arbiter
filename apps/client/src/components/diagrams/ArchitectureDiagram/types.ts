@@ -1,11 +1,11 @@
-import type { FieldValue, UiOptionCatalog } from '@/components/modals/AddEntityModal';
+import type { FieldValue, UiOptionCatalog } from "@/components/modals/AddEntityModal";
 
 export interface ArchitectureEntityModalRequest {
   type: string;
   label: string;
   optionCatalog?: UiOptionCatalog | undefined;
   initialValues?: Record<string, FieldValue> | undefined;
-  mode?: 'create' | 'edit';
+  mode?: "create" | "edit";
   titleOverride?: string | undefined;
   descriptionOverride?: string | undefined;
   onSubmit: (payload: {
@@ -23,7 +23,7 @@ export interface ArchitectureDiagramProps {
 export interface Component {
   id: string;
   name: string;
-  type: 'frontend' | 'backend' | 'tool' | 'data' | 'external';
+  type: "frontend" | "backend" | "tool" | "data" | "external";
   description: string;
   technologies: string[];
   position: { x: number; y: number };
@@ -34,7 +34,7 @@ export interface Component {
 export interface Connection {
   from: { componentId: string; portId?: string };
   to: { componentId: string; portId?: string };
-  type: 'api' | 'websocket' | 'file' | 'data';
+  type: "api" | "websocket" | "file" | "data";
   label?: string;
   bidirectional?: boolean;
 }

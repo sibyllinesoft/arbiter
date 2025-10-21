@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono } from "hono";
 
 type Dependencies = Record<string, unknown>;
 
@@ -6,24 +6,24 @@ export function createGithubRouter(deps: Dependencies) {
   const router = new Hono();
 
   // GitHub API endpoints
-  router.get('/user/repos', async c => {
+  router.get("/user/repos", async (c) => {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
       return c.json(
         {
           success: false,
-          error: 'GITHUB_TOKEN environment variable not set',
+          error: "GITHUB_TOKEN environment variable not set",
         },
-        400
+        400,
       );
     }
 
     try {
-      const response = await fetch('https://api.github.com/user/repos?per_page=100&sort=updated', {
+      const response = await fetch("https://api.github.com/user/repos?per_page=100&sort=updated", {
         headers: {
           Authorization: `Bearer ${githubToken}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
@@ -34,7 +34,7 @@ export function createGithubRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          400
+          400,
         );
       }
 
@@ -63,36 +63,36 @@ export function createGithubRouter(deps: Dependencies) {
         })),
       });
     } catch (error) {
-      console.error('Failed to fetch GitHub user repos:', error);
+      console.error("Failed to fetch GitHub user repos:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to fetch repositories',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to fetch repositories",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
-  router.get('/user/orgs', async c => {
+  router.get("/user/orgs", async (c) => {
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
       return c.json(
         {
           success: false,
-          error: 'GITHUB_TOKEN environment variable not set',
+          error: "GITHUB_TOKEN environment variable not set",
         },
-        400
+        400,
       );
     }
 
     try {
-      const response = await fetch('https://api.github.com/user/orgs', {
+      const response = await fetch("https://api.github.com/user/orgs", {
         headers: {
           Authorization: `Bearer ${githubToken}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
@@ -103,7 +103,7 @@ export function createGithubRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          400
+          400,
         );
       }
 
@@ -120,28 +120,28 @@ export function createGithubRouter(deps: Dependencies) {
         })),
       });
     } catch (error) {
-      console.error('Failed to fetch GitHub user orgs:', error);
+      console.error("Failed to fetch GitHub user orgs:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to fetch organizations',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to fetch organizations",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
-  router.get('/orgs/:org/repos', async c => {
-    const org = c.req.param('org');
+  router.get("/orgs/:org/repos", async (c) => {
+    const org = c.req.param("org");
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
       return c.json(
         {
           success: false,
-          error: 'GITHUB_TOKEN environment variable not set',
+          error: "GITHUB_TOKEN environment variable not set",
         },
-        400
+        400,
       );
     }
 
@@ -151,10 +151,10 @@ export function createGithubRouter(deps: Dependencies) {
         {
           headers: {
             Authorization: `Bearer ${githubToken}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -164,7 +164,7 @@ export function createGithubRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          400
+          400,
         );
       }
 
@@ -193,14 +193,14 @@ export function createGithubRouter(deps: Dependencies) {
         })),
       });
     } catch (error) {
-      console.error('Failed to fetch GitHub org repos:', error);
+      console.error("Failed to fetch GitHub org repos:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to fetch organization repositories',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to fetch organization repositories",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });

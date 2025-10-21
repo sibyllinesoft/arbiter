@@ -13,21 +13,21 @@ import {
   Save,
   Settings,
   X,
-} from 'lucide-react';
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { toast } from 'react-toastify';
-import { Button, Card, Input, Select, StatusBadge, cn } from '../../design-system';
-import { apiService } from '../../services/api';
+} from "lucide-react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "react-toastify";
+import { Button, Card, Input, Select, StatusBadge, cn } from "../../design-system";
+import { apiService } from "../../services/api";
 import type {
   CreateHandlerRequest,
   UpdateHandlerRequest,
   WebhookHandler,
   WebhookProvider,
-} from '../../types/api';
-import { createLogger } from '../../utils/logger';
-import MonacoEditor from '../Editor/MonacoEditor';
+} from "../../types/api";
+import { createLogger } from "../../utils/logger";
+import MonacoEditor from "../Editor/MonacoEditor";
 
-const log = createLogger('HandlerEditor');
+const log = createLogger("HandlerEditor");
 
 // Default handler code template
 const DEFAULT_HANDLER_CODE = `/**
@@ -40,15 +40,10 @@ const DEFAULT_HANDLER_CODE = `/**
  */
 async function handler(payload, context) {
   // Access webhook data
-  console.log('Received payload:', payload);
+  // Inspect payload as needed
   
   // Access context information
-  console.log('Handler context:', {
-    handlerId: context.handlerId,
-    provider: context.provider,
-    eventType: context.eventType,
-    timestamp: context.timestamp
-  });
+  // The context object contains details about the webhook invocation
   
   // TODO: Implement your handler logic here
   
@@ -57,7 +52,6 @@ async function handler(payload, context) {
     const { action, repository } = payload;
     
     if (action === 'push') {
-      console.log(\`Push to \${repository?.full_name}\`);
       // Handle push event
     }
   }
@@ -76,31 +70,31 @@ module.exports = handler;`;
 // Provider-specific event types
 const PROVIDER_EVENT_TYPES: Record<WebhookProvider, string[]> = {
   github: [
-    'push',
-    'pull_request',
-    'issues',
-    'issue_comment',
-    'release',
-    'create',
-    'delete',
-    'fork',
-    'watch',
-    'star',
+    "push",
+    "pull_request",
+    "issues",
+    "issue_comment",
+    "release",
+    "create",
+    "delete",
+    "fork",
+    "watch",
+    "star",
   ],
   gitlab: [
-    'push',
-    'merge_request',
-    'issues',
-    'note',
-    'pipeline',
-    'build',
-    'wiki_page',
-    'deployment',
+    "push",
+    "merge_request",
+    "issues",
+    "note",
+    "pipeline",
+    "build",
+    "wiki_page",
+    "deployment",
   ],
-  bitbucket: ['push', 'pullrequest', 'issue', 'repo_fork', 'repo_commit_comment'],
-  slack: ['message', 'app_mention', 'reaction_added', 'member_joined_channel'],
-  discord: ['message', 'guild_member_add', 'reaction_add', 'voice_state_update'],
-  custom: ['webhook', 'http_request', 'api_call', 'event'],
+  bitbucket: ["push", "pullrequest", "issue", "repo_fork", "repo_commit_comment"],
+  slack: ["message", "app_mention", "reaction_added", "member_joined_channel"],
+  discord: ["message", "guild_member_add", "reaction_add", "voice_state_update"],
+  custom: ["webhook", "http_request", "api_call", "event"],
 };
 
 interface HandlerEditorProps {
@@ -111,9 +105,9 @@ interface HandlerEditorProps {
 
 export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps) {
   const [formData, setFormData] = useState({
-    name: '',
-    provider: 'custom' as WebhookProvider,
-    event_type: '',
+    name: "",
+    provider: "custom" as WebhookProvider,
+    event_type: "",
     code: DEFAULT_HANDLER_CODE,
     enabled: true,
   });
@@ -123,7 +117,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [codeErrors, setCodeErrors] = useState<string[]>([]);
   const [testResult, setTestResult] = useState<{
-    status: 'success' | 'error';
+    status: "success" | "error";
     message: string;
     duration?: number;
   } | null>(null);
@@ -144,9 +138,9 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
     } else {
       // Reset form for new handler
       setFormData({
-        name: '',
-        provider: 'custom',
-        event_type: '',
+        name: "",
+        provider: "custom",
+        event_type: "",
         code: DEFAULT_HANDLER_CODE,
         enabled: true,
       });
@@ -164,16 +158,16 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
   // Handle form field changes
   const handleFieldChange = useCallback(
     (field: string, value: any) => {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      setFormData((prev) => ({ ...prev, [field]: value }));
       markUnsaved();
     },
-    [markUnsaved]
+    [markUnsaved],
   );
 
   // Handle code changes
   const handleCodeChange = useCallback(
     (code: string) => {
-      setFormData(prev => ({ ...prev, code }));
+      setFormData((prev) => ({ ...prev, code }));
       markUnsaved();
 
       // Clear previous test results when code changes
@@ -182,7 +176,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
       // Basic syntax validation
       validateCode(code);
     },
-    [markUnsaved]
+    [markUnsaved],
   );
 
   // Basic code validation
@@ -190,18 +184,18 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
     const errors: string[] = [];
 
     // Check for required handler function
-    if (!code.includes('function handler') && !code.includes('handler =')) {
+    if (!code.includes("function handler") && !code.includes("handler =")) {
       errors.push('Handler must define a "handler" function');
     }
 
     // Check for module.exports
-    if (!code.includes('module.exports')) {
-      errors.push('Handler must export the handler function using module.exports');
+    if (!code.includes("module.exports")) {
+      errors.push("Handler must export the handler function using module.exports");
     }
 
     // Check for async function (recommended)
-    if (!code.includes('async function') && !code.includes('async ')) {
-      console.warn('Handler function should be async for better compatibility');
+    if (!code.includes("async function") && !code.includes("async ")) {
+      console.warn("Handler function should be async for better compatibility");
     }
 
     setCodeErrors(errors);
@@ -210,20 +204,20 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
   // Handle provider change (update available event types)
   const handleProviderChange = useCallback(
     (provider: WebhookProvider) => {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         provider,
-        event_type: PROVIDER_EVENT_TYPES[provider][0] || '',
+        event_type: PROVIDER_EVENT_TYPES[provider][0] || "",
       }));
       markUnsaved();
     },
-    [markUnsaved]
+    [markUnsaved],
   );
 
   // Test handler with sample payload
   const handleTestHandler = useCallback(async () => {
     if (codeErrors.length > 0) {
-      toast.error('Fix code errors before testing');
+      toast.error("Fix code errors before testing");
       return;
     }
 
@@ -235,22 +229,22 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
       let samplePayload: Record<string, unknown> = {
         test: true,
         timestamp: new Date().toISOString(),
-        source: 'editor-test',
+        source: "editor-test",
       };
 
-      if (formData.provider === 'github') {
+      if (formData.provider === "github") {
         samplePayload = {
           ...samplePayload,
-          action: 'push',
+          action: "push",
           repository: {
-            full_name: 'test/repo',
-            default_branch: 'main',
+            full_name: "test/repo",
+            default_branch: "main",
           },
           commits: [
             {
-              id: 'abc123',
-              message: 'Test commit',
-              author: { name: 'Test User', email: 'test@example.com' },
+              id: "abc123",
+              message: "Test commit",
+              author: { name: "Test User", email: "test@example.com" },
             },
           ],
         };
@@ -263,29 +257,29 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
         setTestResult({
           status: result.status,
           message:
-            result.status === 'success'
-              ? 'Handler executed successfully'
-              : result.error || 'Test failed',
+            result.status === "success"
+              ? "Handler executed successfully"
+              : result.error || "Test failed",
           duration: result.duration_ms,
         });
       } else {
         // For new handlers, simulate a test by checking code syntax
         // In a real implementation, you'd send the code to the backend for testing
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
 
         setTestResult({
-          status: 'success',
-          message: 'Code syntax validated successfully',
+          status: "success",
+          message: "Code syntax validated successfully",
           duration: 45,
         });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Test failed';
+      const message = err instanceof Error ? err.message : "Test failed";
       setTestResult({
-        status: 'error',
+        status: "error",
         message,
       });
-      log.error('Handler test failed:', err);
+      log.error("Handler test failed:", err);
     } finally {
       setIsTesting(false);
     }
@@ -295,22 +289,22 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
   const handleSave = useCallback(async () => {
     // Validation
     if (!formData.name.trim()) {
-      toast.error('Handler name is required');
+      toast.error("Handler name is required");
       return;
     }
 
     if (!formData.event_type.trim()) {
-      toast.error('Event type is required');
+      toast.error("Event type is required");
       return;
     }
 
     if (!formData.code.trim()) {
-      toast.error('Handler code is required');
+      toast.error("Handler code is required");
       return;
     }
 
     if (codeErrors.length > 0) {
-      toast.error('Fix code errors before saving');
+      toast.error("Fix code errors before saving");
       return;
     }
 
@@ -329,7 +323,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
           enabled: formData.enabled,
         };
         savedHandler = await apiService.updateHandler(handler.id, updateRequest);
-        toast.success('Handler updated successfully');
+        toast.success("Handler updated successfully");
       } else {
         // Create new handler
         const createRequest: CreateHandlerRequest = {
@@ -340,15 +334,15 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
           enabled: formData.enabled,
         };
         savedHandler = await apiService.createHandler(createRequest);
-        toast.success('Handler created successfully');
+        toast.success("Handler created successfully");
       }
 
       setHasUnsavedChanges(false);
       onSave(savedHandler);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save handler';
+      const message = err instanceof Error ? err.message : "Failed to save handler";
       toast.error(message);
-      log.error('Failed to save handler:', err);
+      log.error("Failed to save handler:", err);
     } finally {
       setIsSaving(false);
     }
@@ -357,7 +351,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
   // Handle unsaved changes warning
   const handleCancel = useCallback(() => {
     if (hasUnsavedChanges) {
-      if (confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+      if (confirm("You have unsaved changes. Are you sure you want to discard them?")) {
         onCancel();
       }
     } else {
@@ -373,10 +367,10 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
           <Code className="h-6 w-6 text-blue-600" />
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
-              {isEditing ? 'Edit Handler' : 'New Handler'}
+              {isEditing ? "Edit Handler" : "New Handler"}
             </h2>
             <p className="text-sm text-gray-600">
-              {isEditing ? `Editing ${handler?.name}` : 'Create a new webhook handler'}
+              {isEditing ? `Editing ${handler?.name}` : "Create a new webhook handler"}
             </p>
           </div>
         </div>
@@ -411,7 +405,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
               isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />
             }
           >
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? "Saving..." : "Save"}
           </Button>
 
           <Button onClick={handleCancel} variant="secondary">
@@ -438,7 +432,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                   </label>
                   <Input
                     value={formData.name}
-                    onChange={e => handleFieldChange('name', e.target.value)}
+                    onChange={(e) => handleFieldChange("name", e.target.value)}
                     placeholder="Enter handler name..."
                   />
                 </div>
@@ -447,14 +441,14 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                   <label className="block text-sm font-medium text-gray-700 mb-2">Provider</label>
                   <Select
                     value={formData.provider}
-                    onChange={value => handleProviderChange(value as WebhookProvider)}
+                    onChange={(value) => handleProviderChange(value as WebhookProvider)}
                     options={[
-                      { value: 'github', label: '🐙 GitHub' },
-                      { value: 'gitlab', label: '🦊 GitLab' },
-                      { value: 'bitbucket', label: '🪣 Bitbucket' },
-                      { value: 'slack', label: '💬 Slack' },
-                      { value: 'discord', label: '💬 Discord' },
-                      { value: 'custom', label: '⚙️ Custom' },
+                      { value: "github", label: "🐙 GitHub" },
+                      { value: "gitlab", label: "🦊 GitLab" },
+                      { value: "bitbucket", label: "🪣 Bitbucket" },
+                      { value: "slack", label: "💬 Slack" },
+                      { value: "discord", label: "💬 Discord" },
+                      { value: "custom", label: "⚙️ Custom" },
                     ]}
                   />
                 </div>
@@ -463,8 +457,8 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                   <label className="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
                   <Select
                     value={formData.event_type}
-                    onChange={value => handleFieldChange('event_type', value)}
-                    options={PROVIDER_EVENT_TYPES[formData.provider].map(eventType => ({
+                    onChange={(value) => handleFieldChange("event_type", value)}
+                    options={PROVIDER_EVENT_TYPES[formData.provider].map((eventType) => ({
                       value: eventType,
                       label: eventType,
                     }))}
@@ -476,7 +470,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                     type="checkbox"
                     id="enabled"
                     checked={formData.enabled}
-                    onChange={e => handleFieldChange('enabled', e.target.checked)}
+                    onChange={(e) => handleFieldChange("enabled", e.target.checked)}
                     className="rounded border-gray-300"
                   />
                   <label htmlFor="enabled" className="text-sm text-gray-700">
@@ -507,31 +501,31 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
             {testResult && (
               <div
                 className={cn(
-                  'border rounded-lg p-4',
-                  testResult.status === 'success'
-                    ? 'border-green-200 bg-green-50'
-                    : 'border-red-200 bg-red-50'
+                  "border rounded-lg p-4",
+                  testResult.status === "success"
+                    ? "border-green-200 bg-green-50"
+                    : "border-red-200 bg-red-50",
                 )}
               >
                 <div className="flex items-center gap-2 mb-2">
-                  {testResult.status === 'success' ? (
+                  {testResult.status === "success" ? (
                     <CheckCircle className="h-4 w-4 text-green-600" />
                   ) : (
                     <AlertTriangle className="h-4 w-4 text-red-600" />
                   )}
                   <h4
                     className={cn(
-                      'text-sm font-medium',
-                      testResult.status === 'success' ? 'text-green-800' : 'text-red-800'
+                      "text-sm font-medium",
+                      testResult.status === "success" ? "text-green-800" : "text-red-800",
                     )}
                   >
-                    Test {testResult.status === 'success' ? 'Passed' : 'Failed'}
+                    Test {testResult.status === "success" ? "Passed" : "Failed"}
                   </h4>
                 </div>
                 <p
                   className={cn(
-                    'text-sm',
-                    testResult.status === 'success' ? 'text-green-700' : 'text-red-700'
+                    "text-sm",
+                    testResult.status === "success" ? "text-green-700" : "text-red-700",
                   )}
                 >
                   {testResult.message}
@@ -590,7 +584,7 @@ export function HandlerEditor({ handler, onSave, onCancel }: HandlerEditorProps)
                 fontSize: 14,
                 minimap: { enabled: true },
                 scrollBeyondLastLine: false,
-                wordWrap: 'on',
+                wordWrap: "on",
                 automaticLayout: true,
                 quickSuggestions: true,
                 parameterHints: { enabled: true },

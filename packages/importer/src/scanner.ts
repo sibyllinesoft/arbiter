@@ -4,10 +4,10 @@
  * plugin analysis, and aggregates inferred artifacts.
  */
 
-import { spawn } from 'child_process';
-import * as path from 'path';
-import * as fs from 'fs-extra';
-import { glob } from 'glob';
+import { spawn } from "child_process";
+import * as path from "path";
+import * as fs from "fs-extra";
+import { glob } from "glob";
 import {
   AnalysisConfiguration,
   AnalysisStatistics,
@@ -31,7 +31,7 @@ import {
   ParseOptions,
   PluginError,
   ProjectMetadata,
-} from './types';
+} from "./types";
 
 /**
  * Configuration used to control the scanner pipeline.
@@ -78,19 +78,19 @@ const DEFAULT_SCANNER_CONFIG: Partial<ScannerConfig> = {
     useHeuristics: true,
   },
   ignorePatterns: [
-    'node_modules/**',
-    '.git/**',
-    '**/.DS_Store',
-    '**/Thumbs.db',
-    '**/*.log',
-    'dist/**',
-    'build/**',
-    'target/**',
-    '**/__pycache__/**',
-    '**/*.pyc',
-    '.next/**',
-    '.nuxt/**',
-    'coverage/**',
+    "node_modules/**",
+    ".git/**",
+    "**/.DS_Store",
+    "**/Thumbs.db",
+    "**/*.log",
+    "dist/**",
+    "build/**",
+    "target/**",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    ".next/**",
+    ".nuxt/**",
+    "coverage/**",
   ],
   maxConcurrency: 10,
   debug: false,
@@ -124,7 +124,7 @@ export class PluginRegistry {
    */
   getEnabled(): ImporterPlugin[] {
     return Array.from(this.enabledPlugins)
-      .map(name => this.plugins.get(name))
+      .map((name) => this.plugins.get(name))
       .filter((plugin): plugin is ImporterPlugin => plugin !== undefined);
   }
 
@@ -135,7 +135,7 @@ export class PluginRegistry {
    * @param fileContent - Optional file content available for heuristics.
    */
   getSupportingPlugins(filePath: string, fileContent?: string): ImporterPlugin[] {
-    return this.getEnabled().filter(plugin => {
+    return this.getEnabled().filter((plugin) => {
       try {
         return plugin.supports(filePath, fileContent);
       } catch {
@@ -155,7 +155,7 @@ export class PluginRegistry {
 async function buildFileIndex(
   projectRoot: string,
   ignorePatterns: string[],
-  parseOptions: ParseOptions
+  parseOptions: ParseOptions,
 ): Promise<FileIndex> {
   const files = new Map<string, FileInfo>();
   const directories = new Map<string, DirectoryInfo>();
@@ -230,40 +230,40 @@ async function buildFileIndex(
  * Enumerates files by delegating to `git ls-files` when the project is a Git repository.
  */
 async function tryGitFileEnumeration(projectRoot: string): Promise<string[]> {
-  const gitDir = path.join(projectRoot, '.git');
+  const gitDir = path.join(projectRoot, ".git");
   if (!(await fs.pathExists(gitDir))) {
-    throw new Error('No git repo');
+    throw new Error("No git repo");
   }
 
   return new Promise((resolve, reject) => {
-    const gitProcess = spawn('git', ['ls-files', '-z'], {
+    const gitProcess = spawn("git", ["ls-files", "-z"], {
       cwd: projectRoot,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    gitProcess.stdout?.on('data', data => {
+    gitProcess.stdout?.on("data", (data) => {
       stdout += data.toString();
     });
 
-    gitProcess.stderr?.on('data', data => {
+    gitProcess.stderr?.on("data", (data) => {
       stderr += data.toString();
     });
 
-    gitProcess.on('close', code => {
+    gitProcess.on("close", (code) => {
       if (code !== 0) {
         reject(new Error(`git ls-files failed: ${stderr}`));
         return;
       }
 
-      const relativeFiles = stdout.split('\0').filter(f => f.length > 0);
-      const absoluteFiles = relativeFiles.map(f => path.resolve(projectRoot, f));
+      const relativeFiles = stdout.split("\0").filter((f) => f.length > 0);
+      const absoluteFiles = relativeFiles.map((f) => path.resolve(projectRoot, f));
       resolve(absoluteFiles);
     });
 
-    gitProcess.on('error', reject);
+    gitProcess.on("error", reject);
   });
 }
 
@@ -273,61 +273,61 @@ async function tryGitFileEnumeration(projectRoot: string): Promise<string[]> {
 async function fallbackGlobEnumeration(
   projectRoot: string,
   ignorePatterns: string[],
-  parseOptions: ParseOptions
+  parseOptions: ParseOptions,
 ): Promise<string[]> {
   const configPatterns = [
-    '**/Dockerfile',
-    '**/docker-compose*.{yaml,yml}',
-    '**/compose*.{yaml,yml}',
-    '**/kubernetes/*.{yaml,yml}',
-    '**/helm/**/Chart.yaml',
-    '**/helm/**/values*.{yaml,yml}',
-    '**/*.tf',
-    '**/terragrunt.hcl',
-    '**/*.bicep',
-    '**/*.cloudformation.{yaml,yml}',
-    '**/package.json',
-    '**/pnpm-workspace.yaml',
-    '**/yarn.lock',
-    '**/pyproject.toml',
-    '**/requirements*.txt',
-    '**/Pipfile',
-    '**/setup.cfg',
-    '**/poetry.lock',
-    '**/go.mod',
-    '**/go.sum',
-    '**/Cargo.toml',
-    '**/Cargo.lock',
-    '**/pom.xml',
-    '**/build.gradle*',
-    '**/settings.gradle*',
-    '**/Makefile',
-    '**/CMakeLists.txt',
-    '**/Gemfile',
-    '**/mix.exs',
-    '**/composer.json',
-    '**/.env',
-    '**/.env.*',
-    '**/Procfile',
-    '**/supervisord.conf',
-    '**/systemd/*.service',
-    '**/github/workflows/*.yaml',
-    '**/gitlab-ci.yml',
-    '**/azure-pipelines.yml',
-    '**/circle.yml',
-    '**/circleci/config.yml',
-    '**/Jenkinsfile',
-    '**/skaffold.yaml',
-    '**/Tiltfile',
-    '**/migrations/*',
-    '**/*.sql',
-    '**/schema.prisma',
-    '**/prisma/schema.prisma',
-    '**/openapi*.{yaml,yml}',
-    '**/*.proto',
-    '**/nginx/*.conf',
-    '**/haproxy/*.cfg',
-    '**/Caddyfile',
+    "**/Dockerfile",
+    "**/docker-compose*.{yaml,yml}",
+    "**/compose*.{yaml,yml}",
+    "**/kubernetes/*.{yaml,yml}",
+    "**/helm/**/Chart.yaml",
+    "**/helm/**/values*.{yaml,yml}",
+    "**/*.tf",
+    "**/terragrunt.hcl",
+    "**/*.bicep",
+    "**/*.cloudformation.{yaml,yml}",
+    "**/package.json",
+    "**/pnpm-workspace.yaml",
+    "**/yarn.lock",
+    "**/pyproject.toml",
+    "**/requirements*.txt",
+    "**/Pipfile",
+    "**/setup.cfg",
+    "**/poetry.lock",
+    "**/go.mod",
+    "**/go.sum",
+    "**/Cargo.toml",
+    "**/Cargo.lock",
+    "**/pom.xml",
+    "**/build.gradle*",
+    "**/settings.gradle*",
+    "**/Makefile",
+    "**/CMakeLists.txt",
+    "**/Gemfile",
+    "**/mix.exs",
+    "**/composer.json",
+    "**/.env",
+    "**/.env.*",
+    "**/Procfile",
+    "**/supervisord.conf",
+    "**/systemd/*.service",
+    "**/github/workflows/*.yaml",
+    "**/gitlab-ci.yml",
+    "**/azure-pipelines.yml",
+    "**/circle.yml",
+    "**/circleci/config.yml",
+    "**/Jenkinsfile",
+    "**/skaffold.yaml",
+    "**/Tiltfile",
+    "**/migrations/*",
+    "**/*.sql",
+    "**/schema.prisma",
+    "**/prisma/schema.prisma",
+    "**/openapi*.{yaml,yml}",
+    "**/*.proto",
+    "**/nginx/*.conf",
+    "**/haproxy/*.cfg",
+    "**/Caddyfile",
   ];
 
   const excludePatterns = [...ignorePatterns, ...parseOptions.patterns.exclude];
@@ -401,7 +401,7 @@ function passesConfigAllowlist(relativePath: string, basename: string): boolean 
     /^Caddyfile$/,
   ];
 
-  return configPatterns.some(pattern => pattern.test(basename) || pattern.test(relativePath));
+  return configPatterns.some((pattern) => pattern.test(basename) || pattern.test(relativePath));
 }
 
 /**
@@ -411,35 +411,35 @@ async function passesContentGuard(filePath: string, extension: string): Promise<
   try {
     const basename = path.basename(filePath);
     const shouldGuard =
-      basename.includes('docker-compose') ||
-      basename.includes('compose') ||
-      basename.startsWith('Dockerfile') ||
-      extension === '.tf' ||
-      basename.includes('kubernetes') ||
-      basename === 'Chart.yaml' ||
-      basename.startsWith('values') ||
-      basename.includes('openapi');
+      basename.includes("docker-compose") ||
+      basename.includes("compose") ||
+      basename.startsWith("Dockerfile") ||
+      extension === ".tf" ||
+      basename.includes("kubernetes") ||
+      basename === "Chart.yaml" ||
+      basename.startsWith("values") ||
+      basename.includes("openapi");
 
     if (!shouldGuard) return true;
 
-    const buffer = await fs.readFile(filePath, { flag: 'r' });
-    const sample = buffer.subarray(0, Math.min(1024, buffer.length)).toString('utf-8');
+    const buffer = await fs.readFile(filePath, { flag: "r" });
+    const sample = buffer.subarray(0, Math.min(1024, buffer.length)).toString("utf-8");
 
-    if (basename.includes('docker-compose') || basename.includes('compose')) {
+    if (basename.includes("docker-compose") || basename.includes("compose")) {
       return /services:\s*$/m.test(sample) || /version:\s*['"]?[0-9]/m.test(sample);
     }
 
-    if (extension === '.yaml' || extension === '.yml') {
+    if (extension === ".yaml" || extension === ".yml") {
       return (/apiVersion:\s*/.test(sample) && /kind:\s*/.test(sample)) || /\w+:\s*/.test(sample);
     }
 
-    if (extension === '.tf') {
+    if (extension === ".tf") {
       return (
         /provider\s*"/.test(sample) || /resource\s*"/.test(sample) || /variable\s*"/.test(sample)
       );
     }
 
-    if (basename.includes('openapi')) {
+    if (basename.includes("openapi")) {
       return /openapi:\s*['"]?[0-9]/.test(sample) || /swagger:\s*['"]?[0-9]/.test(sample);
     }
 
@@ -456,7 +456,7 @@ async function isFileBinary(filePath: string, includeBinaries: boolean): Promise
   if (includeBinaries) return false;
 
   try {
-    const buffer = await fs.readFile(filePath, { flag: 'r' });
+    const buffer = await fs.readFile(filePath, { flag: "r" });
     const sample = buffer.subarray(0, Math.min(1024, buffer.length));
 
     for (let i = 0; i < sample.length; i++) {
@@ -499,7 +499,7 @@ export class ScannerRunner {
     const startTime = Date.now();
 
     try {
-      this.debug('Starting simplified scanner pipeline');
+      this.debug("Starting simplified scanner pipeline");
 
       // Stage 1: Discovery
       const fileIndex = await this.discoverFiles();
@@ -531,7 +531,7 @@ export class ScannerRunner {
       return await buildFileIndex(
         this.config.projectRoot,
         this.config.ignorePatterns,
-        this.config.parseOptions
+        this.config.parseOptions,
       );
     } catch (error) {
       throw new FileSystemError(this.config.projectRoot, `Failed to build file index: ${error}`);
@@ -558,7 +558,7 @@ export class ScannerRunner {
     for (let i = 0; i < files.length; i += batchSize) {
       const batch = files.slice(i, i + batchSize);
 
-      const batchPromises = batch.map(async fileInfo => {
+      const batchPromises = batch.map(async (fileInfo) => {
         try {
           return await this.parseFile(fileInfo, parseContext);
         } catch (error) {
@@ -577,7 +577,7 @@ export class ScannerRunner {
     }
 
     this.debug(
-      `Collected ${allEvidence.length} evidence from ${files.length - failedFiles.length}/${files.length} files`
+      `Collected ${allEvidence.length} evidence from ${files.length - failedFiles.length}/${files.length} files`,
     );
 
     if (failedFiles.length > 0) {
@@ -598,7 +598,7 @@ export class ScannerRunner {
     let fileContent: string | undefined;
     if (!fileInfo.isBinary) {
       try {
-        fileContent = await fs.readFile(fileInfo.path, 'utf-8');
+        fileContent = await fs.readFile(fileInfo.path, "utf-8");
       } catch (error) {
         throw new ParseError(fileInfo.path, `Failed to read file: ${error}`);
       }
@@ -620,7 +620,7 @@ export class ScannerRunner {
         throw new PluginError(
           plugin.name(),
           `Failed to parse ${fileInfo.path}: ${error}`,
-          error as Error
+          error as Error,
         );
       }
     }
@@ -633,7 +633,7 @@ export class ScannerRunner {
    */
   private async inferArtifacts(
     evidence: Evidence[],
-    fileIndex: FileIndex
+    fileIndex: FileIndex,
   ): Promise<InferredArtifact[]> {
     const projectMetadata = await this.generateProjectMetadata(fileIndex);
     this.debug(`Generated project metadata for ${projectMetadata.name}`);
@@ -671,18 +671,18 @@ export class ScannerRunner {
   private augmentArtifactsWithDockerMetadata(
     artifacts: InferredArtifact[],
     evidence: Evidence[],
-    projectRoot?: string
+    projectRoot?: string,
   ): void {
-    const dockerEvidence = evidence.filter(ev => ev.source === 'docker' && ev.type === 'config');
+    const dockerEvidence = evidence.filter((ev) => ev.source === "docker" && ev.type === "config");
     if (dockerEvidence.length === 0) return;
 
-    const baseProjectRoot = projectRoot ?? '';
+    const baseProjectRoot = projectRoot ?? "";
 
     const normalizeRelativePath = (value: string | undefined): string => {
-      if (!value) return '';
-      const normalized = value.replace(/\\/g, '/');
-      if (normalized === '.' || normalized === './') return '';
-      return normalized.replace(/^\.\//, '').replace(/\/$/, '');
+      if (!value) return "";
+      const normalized = value.replace(/\\/g, "/");
+      if (normalized === "." || normalized === "./") return "";
+      return normalized.replace(/^\.\//, "").replace(/\/$/, "");
     };
 
     interface ComposeServiceInfo {
@@ -703,36 +703,36 @@ export class ScannerRunner {
 
     for (const ev of dockerEvidence) {
       const data = ev.data as Record<string, unknown> | undefined;
-      if (!data || typeof data !== 'object') continue;
+      if (!data || typeof data !== "object") continue;
 
       const dataTypeRaw = data.type;
-      const dataType = typeof dataTypeRaw === 'string' ? dataTypeRaw.toLowerCase() : '';
+      const dataType = typeof dataTypeRaw === "string" ? dataTypeRaw.toLowerCase() : "";
 
-      if (dataType === 'dockerfile') {
+      if (dataType === "dockerfile") {
         const filePath = data.filePath;
         const content = data.dockerfileContent;
-        if (typeof filePath === 'string' && typeof content === 'string') {
+        if (typeof filePath === "string" && typeof content === "string") {
           dockerfiles.set(path.resolve(filePath), content);
         }
         continue;
       }
 
-      if (dataType !== 'service') continue;
+      if (dataType !== "service") continue;
 
       const composeFilePath = data.filePath;
       const composeServiceConfig = data.composeServiceConfig;
-      if (typeof composeFilePath !== 'string') continue;
-      if (!composeServiceConfig || typeof composeServiceConfig !== 'object') continue;
+      if (typeof composeFilePath !== "string") continue;
+      if (!composeServiceConfig || typeof composeServiceConfig !== "object") continue;
 
       const composeServiceNameRaw = data.name;
       const composeServiceName =
-        typeof composeServiceNameRaw === 'string' ? composeServiceNameRaw : '';
+        typeof composeServiceNameRaw === "string" ? composeServiceNameRaw : "";
       const composeServiceYaml =
-        typeof data.composeServiceYaml === 'string' ? data.composeServiceYaml : undefined;
+        typeof data.composeServiceYaml === "string" ? data.composeServiceYaml : undefined;
 
       const composeDir = path.dirname(composeFilePath);
       const composeFileRelative = normalizeRelativePath(
-        path.relative(baseProjectRoot, composeFilePath)
+        path.relative(baseProjectRoot, composeFilePath),
       );
 
       let buildContextAbsolute: string | undefined;
@@ -740,25 +740,25 @@ export class ScannerRunner {
 
       const buildConfig = (composeServiceConfig as Record<string, unknown>).build;
 
-      if (typeof buildConfig === 'string') {
+      if (typeof buildConfig === "string") {
         buildContextAbsolute = path.resolve(composeDir, buildConfig);
-        dockerfilePathAbsolute = path.resolve(buildContextAbsolute, 'Dockerfile');
-      } else if (buildConfig && typeof buildConfig === 'object') {
+        dockerfilePathAbsolute = path.resolve(buildContextAbsolute, "Dockerfile");
+      } else if (buildConfig && typeof buildConfig === "object") {
         const build = buildConfig as Record<string, unknown>;
         const contextValue = build.context;
         const dockerfileValue = build.dockerfile;
 
-        if (typeof contextValue === 'string') {
+        if (typeof contextValue === "string") {
           buildContextAbsolute = path.resolve(composeDir, contextValue);
         } else {
           buildContextAbsolute = composeDir;
         }
 
-        if (typeof dockerfileValue === 'string') {
+        if (typeof dockerfileValue === "string") {
           const baseDir = buildContextAbsolute ?? composeDir;
           dockerfilePathAbsolute = path.resolve(baseDir, dockerfileValue);
         } else if (buildContextAbsolute) {
-          dockerfilePathAbsolute = path.resolve(buildContextAbsolute, 'Dockerfile');
+          dockerfilePathAbsolute = path.resolve(buildContextAbsolute, "Dockerfile");
         }
       }
 
@@ -793,17 +793,17 @@ export class ScannerRunner {
     }
 
     const scoredMatch = (artifact: InferredArtifact): ComposeServiceInfo | undefined => {
-      if (artifact.artifact.type !== 'service') return undefined;
+      if (artifact.artifact.type !== "service") return undefined;
 
       const metadata = artifact.artifact.metadata as Record<string, unknown>;
-      const artifactRootRaw = typeof metadata.root === 'string' ? metadata.root : undefined;
+      const artifactRootRaw = typeof metadata.root === "string" ? metadata.root : undefined;
       const artifactRoot = normalizeRelativePath(artifactRootRaw);
       const artifactName = artifact.artifact.name;
       const containerImage =
-        typeof metadata.containerImage === 'string' ? metadata.containerImage : undefined;
+        typeof metadata.containerImage === "string" ? metadata.containerImage : undefined;
 
       const candidates = composeServices
-        .map(service => {
+        .map((service) => {
           let score = 0;
 
           if (!artifactRoot && !service.buildContextRelative) {
@@ -827,7 +827,7 @@ export class ScannerRunner {
           const serviceImage = (service.serviceConfig as { image?: unknown }).image;
           if (
             containerImage &&
-            typeof serviceImage === 'string' &&
+            typeof serviceImage === "string" &&
             serviceImage === containerImage
           ) {
             score += 40;
@@ -839,7 +839,7 @@ export class ScannerRunner {
 
           return { service, score };
         })
-        .filter(candidate => candidate.score > 0)
+        .filter((candidate) => candidate.score > 0)
         .sort((a, b) => b.score - a.score);
 
       return candidates.length > 0 ? candidates[0].service : undefined;
@@ -852,7 +852,7 @@ export class ScannerRunner {
       const metadata = artifact.artifact.metadata as Record<string, unknown>;
 
       const dockerMetadata =
-        metadata.docker && typeof metadata.docker === 'object'
+        metadata.docker && typeof metadata.docker === "object"
           ? (metadata.docker as Record<string, unknown>)
           : {};
 
@@ -864,7 +864,7 @@ export class ScannerRunner {
         }
       };
 
-      if (!metadata.docker || typeof metadata.docker !== 'object') {
+      if (!metadata.docker || typeof metadata.docker !== "object") {
         metadata.docker = dockerMetadata;
       }
 
@@ -887,7 +887,7 @@ export class ScannerRunner {
 
       if (!metadata.containerImage) {
         const candidateImage = (match.serviceConfig as { image?: unknown }).image;
-        if (typeof candidateImage === 'string') {
+        if (typeof candidateImage === "string") {
           metadata.containerImage = candidateImage;
         }
       }
@@ -908,7 +908,7 @@ export class ScannerRunner {
     artifacts: InferredArtifact[],
     evidence: Evidence[],
     fileIndex: FileIndex,
-    startTime: number
+    startTime: number,
   ): Promise<ArtifactManifest> {
     const projectMetadata = await this.generateProjectMetadata(fileIndex);
     const statistics = this.generateStatistics(artifacts, evidence, startTime);
@@ -917,7 +917,7 @@ export class ScannerRunner {
     const provenance = this.buildProvenanceMap(artifacts);
 
     return {
-      version: '1.0.0',
+      version: "1.0.0",
       project: projectMetadata,
       perConfig,
       artifacts,
@@ -952,7 +952,7 @@ export class ScannerRunner {
   private generateStatistics(
     artifacts: InferredArtifact[],
     evidence: Evidence[],
-    startTime: number
+    startTime: number,
   ): AnalysisStatistics {
     const artifactCounts: Record<ArtifactType, number> = {} as Record<ArtifactType, number>;
     for (const artifact of artifacts) {
@@ -970,7 +970,7 @@ export class ScannerRunner {
       artifactCounts,
       evidenceCounts,
       processingTimeMs: Date.now() - startTime,
-      pluginsExecuted: this.pluginRegistry.getEnabled().map(p => p.name()),
+      pluginsExecuted: this.pluginRegistry.getEnabled().map((p) => p.name()),
       failedFiles: [],
     };
   }
@@ -982,7 +982,7 @@ export class ScannerRunner {
     return {
       parseOptions: this.config.parseOptions,
       inferenceOptions: this.config.inferenceOptions,
-      enabledPlugins: this.pluginRegistry.getEnabled().map(p => p.name()),
+      enabledPlugins: this.pluginRegistry.getEnabled().map((p) => p.name()),
       pluginConfiguration: {},
     };
   }
@@ -991,7 +991,7 @@ export class ScannerRunner {
    * Groups artifacts by the configuration evidence that identified them.
    */
   private groupArtifactsByConfig(
-    artifacts: InferredArtifact[]
+    artifacts: InferredArtifact[],
   ): Record<string, InferredArtifact[]> {
     const grouped: Record<string, InferredArtifact[]> = {};
 
@@ -1053,7 +1053,7 @@ export class ScannerRunner {
     if (!trimmed) return null;
 
     // Remove leading ./ or / for consistency
-    const withoutLeading = trimmed.replace(/^\.?\/+/, '');
+    const withoutLeading = trimmed.replace(/^\.?\/+/, "");
     return withoutLeading || null;
   }
 

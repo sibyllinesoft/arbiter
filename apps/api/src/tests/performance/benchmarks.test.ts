@@ -3,6 +3,7 @@
  * Validates all performance targets: 500ms validation, 100ms WebSocket broadcast, 1.5s initial load
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { SpecWorkbenchDB } from "../../db.ts";
 import { SpecWorkbenchServer } from "../../server.ts";
 import type { ServerConfig } from "../../types.ts";
 import { generateId } from "../../utils.ts";
@@ -10,6 +11,7 @@ import { generateId } from "../../utils.ts";
 (process.env.ARBITER_FULL_API === "1" ? describe : describe.skip)(
   "Performance Validation and Benchmarks",
   () => {
+    let db: SpecWorkbenchDB;
     let server: SpecWorkbenchServer;
     let baseUrl: string;
     let testConfig: ServerConfig;
@@ -38,7 +40,8 @@ import { generateId } from "../../utils.ts";
         },
       };
 
-      server = new SpecWorkbenchServer(testConfig);
+      db = await SpecWorkbenchDB.create(testConfig);
+      server = new SpecWorkbenchServer(testConfig, db);
       baseUrl = `http://localhost:${port}`;
 
       await server.start();

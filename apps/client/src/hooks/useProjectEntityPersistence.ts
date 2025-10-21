@@ -1,8 +1,8 @@
-import { useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
 
-import type { FieldValue } from '@/components/modals/AddEntityModal';
-import { apiService } from '@/services/api';
+import type { FieldValue } from "@/components/modals/AddEntityModal";
+import { apiService } from "@/services/api";
 
 interface UseProjectEntityPersistenceOptions {
   projectId: string | null;
@@ -38,19 +38,19 @@ export function useProjectEntityPersistence({
       const valuesWithContext: Record<string, FieldValue> = { ...values };
 
       const incomingId =
-        typeof valuesWithContext.id === 'string' ? valuesWithContext.id.trim() : '';
+        typeof valuesWithContext.id === "string" ? valuesWithContext.id.trim() : "";
       const incomingSlug =
-        typeof valuesWithContext.slug === 'string' ? valuesWithContext.slug.trim() : '';
+        typeof valuesWithContext.slug === "string" ? valuesWithContext.slug.trim() : "";
       const resolvedIdentifier =
         incomingId ||
         incomingSlug ||
-        (typeof draftIdentifier === 'string' ? draftIdentifier.trim() : '');
+        (typeof draftIdentifier === "string" ? draftIdentifier.trim() : "");
 
       if (resolvedIdentifier) {
         const normalizedIdentifier = resolvedIdentifier
           .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
           .trim();
         const finalIdentifier =
           normalizedIdentifier.length > 0 ? normalizedIdentifier : resolvedIdentifier;
@@ -72,16 +72,16 @@ export function useProjectEntityPersistence({
         }
 
         await refresh?.({ silent: true });
-        queryClient.invalidateQueries({ queryKey: ['projects'] });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
         setError?.(null);
         return true;
       } catch (err: any) {
-        console.error('[entity-persistence] failed to persist entity', err);
-        setError?.(err?.message || 'Failed to save entity');
+        console.error("[entity-persistence] failed to persist entity", err);
+        setError?.(err?.message || "Failed to save entity");
         return false;
       }
     },
-    [projectId, refresh, setError, queryClient]
+    [projectId, refresh, setError, queryClient],
   );
 
   return { persistEntity };

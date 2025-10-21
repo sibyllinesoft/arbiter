@@ -4,7 +4,7 @@
  * Showcasing professional tabbed interfaces with sophisticated graphite theme
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Activity,
   AlertTriangle,
@@ -20,47 +20,47 @@ import {
   Terminal,
   Users,
   Zap,
-} from 'lucide-react';
-import { useState } from 'react';
-import Button from './Button';
-import StatusBadge from './StatusBadge';
-import Tabs from './Tabs';
+} from "lucide-react";
+import { useState } from "react";
+import Button from "./Button";
+import StatusBadge from "./StatusBadge";
+import Tabs from "./Tabs";
 
 const meta = {
-  title: 'Design System/Tabs',
+  title: "Design System/Tabs",
   component: Tabs,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
     docs: {
       description: {
         component:
-          'Professional tabs component with comprehensive features including scrollable tabs, closable tabs, loading states, and keyboard navigation. Designed for developer tools with sophisticated graphite theme.',
+          "Professional tabs component with comprehensive features including scrollable tabs, closable tabs, loading states, and keyboard navigation. Designed for developer tools with sophisticated graphite theme.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['underline', 'pills', 'bordered', 'buttons'],
-      description: 'Visual variant of the tabs',
+      control: { type: "select" },
+      options: ["underline", "pills", "bordered", "buttons"],
+      description: "Visual variant of the tabs",
     },
     size: {
-      control: { type: 'select' },
-      options: ['sm', 'md', 'lg'],
-      description: 'Size of the tabs',
+      control: { type: "select" },
+      options: ["sm", "md", "lg"],
+      description: "Size of the tabs",
     },
     fullWidth: {
-      control: { type: 'boolean' },
-      description: 'Whether tabs should take full width',
+      control: { type: "boolean" },
+      description: "Whether tabs should take full width",
     },
     scrollable: {
-      control: { type: 'boolean' },
-      description: 'Whether tabs should be scrollable when overflowing',
+      control: { type: "boolean" },
+      description: "Whether tabs should be scrollable when overflowing",
     },
     showScrollButtons: {
-      control: { type: 'boolean' },
-      description: 'Whether to show scroll buttons',
+      control: { type: "boolean" },
+      description: "Whether to show scroll buttons",
     },
   },
 } satisfies Meta<typeof Tabs>;
@@ -97,9 +97,9 @@ const CodeContent = () => (
     <div className="bg-graphite-900 rounded-lg p-4 text-sm font-mono">
       <div className="text-green-400">// Example TypeScript code</div>
       <div className="text-white">
-        <span className="text-purple-400">export</span>{' '}
-        <span className="text-blue-400">interface</span>{' '}
-        <span className="text-yellow-400">TabItem</span> <span className="text-white">{'{'}</span>
+        <span className="text-purple-400">export</span>{" "}
+        <span className="text-blue-400">interface</span>{" "}
+        <span className="text-yellow-400">TabItem</span> <span className="text-white">{"{"}</span>
       </div>
       <div className="text-white ml-4">
         <span className="text-cyan-400">id</span>: <span className="text-green-400">string</span>;
@@ -108,7 +108,7 @@ const CodeContent = () => (
         <span className="text-cyan-400">label</span>: <span className="text-green-400">string</span>
         ;
       </div>
-      <div className="text-white">{'}'}</div>
+      <div className="text-white">{"}"}</div>
     </div>
   </div>
 );
@@ -137,26 +137,26 @@ export const Default: Story = {
   args: {
     items: [
       {
-        id: 'overview',
-        label: 'Overview',
+        id: "overview",
+        label: "Overview",
         content: <OverviewContent />,
       },
       {
-        id: 'code',
-        label: 'Source Code',
+        id: "code",
+        label: "Source Code",
         icon: <Code />,
         content: <CodeContent />,
       },
       {
-        id: 'database',
-        label: 'Database',
+        id: "database",
+        label: "Database",
         icon: <Database />,
-        badge: '3',
+        badge: "3",
         content: <DatabaseContent />,
       },
       {
-        id: 'settings',
-        label: 'Settings',
+        id: "settings",
+        label: "Settings",
         icon: <Settings />,
         content: (
           <div className="p-6 bg-graphite-50 rounded-lg">
@@ -166,7 +166,7 @@ export const Default: Story = {
         ),
       },
     ],
-    activeTab: 'overview',
+    activeTab: "overview",
   },
 };
 
@@ -174,12 +174,12 @@ export const Default: Story = {
 export const Variants: Story = {
   args: {
     items: [
-      { id: 'tab1', label: 'Overview', content: <div className="p-4">Overview content</div> },
-      { id: 'tab2', label: 'Details', content: <div className="p-4">Details content</div> },
-      { id: 'tab3', label: 'Settings', content: <div className="p-4">Settings content</div> },
+      { id: "tab1", label: "Overview", content: <div className="p-4">Overview content</div> },
+      { id: "tab2", label: "Details", content: <div className="p-4">Details content</div> },
+      { id: "tab3", label: "Settings", content: <div className="p-4">Settings content</div> },
     ],
   },
-  render: args => {
+  render: (args) => {
     const { items } = args;
 
     return (
@@ -210,7 +210,7 @@ export const Variants: Story = {
     docs: {
       description: {
         story:
-          'Different visual variants of tabs: underline (default), pills, bordered, and buttons.',
+          "Different visual variants of tabs: underline (default), pills, bordered, and buttons.",
       },
     },
   },
@@ -221,27 +221,27 @@ export const Sizes: Story = {
   args: {
     items: [
       {
-        id: 'tab1',
-        label: 'Small',
+        id: "tab1",
+        label: "Small",
         icon: <Code />,
         content: <div className="p-4">Small tab content</div>,
       },
       {
-        id: 'tab2',
-        label: 'Medium',
+        id: "tab2",
+        label: "Medium",
         icon: <Database />,
-        badge: '5',
+        badge: "5",
         content: <div className="p-4">Medium tab content</div>,
       },
       {
-        id: 'tab3',
-        label: 'Large',
+        id: "tab3",
+        label: "Large",
         icon: <Settings />,
         content: <div className="p-4">Large tab content</div>,
       },
     ],
   },
-  render: args => {
+  render: (args) => {
     const { items } = args;
 
     return (
@@ -266,7 +266,7 @@ export const Sizes: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different sizes of tabs with proportional scaling.',
+        story: "Different sizes of tabs with proportional scaling.",
       },
     },
   },
@@ -277,52 +277,52 @@ export const WithIconsAndBadges: Story = {
   args: {
     items: [
       {
-        id: 'files',
-        label: 'Files',
+        id: "files",
+        label: "Files",
         icon: <FileText />,
-        badge: '24',
+        badge: "24",
         content: <div className="p-4">Files and directories in your project</div>,
       },
       {
-        id: 'git',
-        label: 'Git Changes',
+        id: "git",
+        label: "Git Changes",
         icon: <GitBranch />,
-        badge: '7',
+        badge: "7",
         content: <div className="p-4">Uncommitted changes in your repository</div>,
       },
       {
-        id: 'tests',
-        label: 'Tests',
+        id: "tests",
+        label: "Tests",
         icon: <Play />,
         loading: true,
         content: <div className="p-4">Test results will appear here</div>,
       },
       {
-        id: 'issues',
-        label: 'Issues',
+        id: "issues",
+        label: "Issues",
         icon: <Bug />,
-        badge: '2',
+        badge: "2",
         disabled: true,
         content: <div className="p-4">Code analysis issues</div>,
       },
       {
-        id: 'metrics',
-        label: 'Metrics',
+        id: "metrics",
+        label: "Metrics",
         icon: <Activity />,
         content: <div className="p-4">Performance and quality metrics</div>,
       },
     ],
-    variant: 'pills',
+    variant: "pills",
   },
-  render: args => {
+  render: (args) => {
     const { items, variant } = args;
 
-    return <Tabs items={items} variant={variant ?? 'underline'} />;
+    return <Tabs items={items} variant={variant ?? "underline"} />;
   },
   parameters: {
     docs: {
       description: {
-        story: 'Tabs with icons, badges, loading states, and disabled states.',
+        story: "Tabs with icons, badges, loading states, and disabled states.",
       },
     },
   },
@@ -333,8 +333,8 @@ export const ClosableTabs: Story = {
   args: {
     items: [
       {
-        id: 'main.ts',
-        label: 'main.ts',
+        id: "main.ts",
+        label: "main.ts",
         icon: <FileText />,
         closable: true,
         content: (
@@ -345,8 +345,8 @@ export const ClosableTabs: Story = {
         ),
       },
       {
-        id: 'components.tsx',
-        label: 'components.tsx',
+        id: "components.tsx",
+        label: "components.tsx",
         icon: <Code />,
         closable: true,
         content: (
@@ -357,8 +357,8 @@ export const ClosableTabs: Story = {
         ),
       },
       {
-        id: 'database.sql',
-        label: 'database.sql',
+        id: "database.sql",
+        label: "database.sql",
         icon: <Database />,
         closable: true,
         content: (
@@ -369,8 +369,8 @@ export const ClosableTabs: Story = {
         ),
       },
       {
-        id: 'config.json',
-        label: 'config.json',
+        id: "config.json",
+        label: "config.json",
         icon: <Settings />,
         closable: true,
         content: (
@@ -381,20 +381,20 @@ export const ClosableTabs: Story = {
         ),
       },
     ],
-    variant: 'bordered',
+    variant: "bordered",
   },
-  render: args => {
+  render: (args) => {
     const { items, variant } = args;
     const [tabs, setTabs] = useState(items);
 
     const handleTabClose = (tabId: string) => {
-      setTabs(prevTabs => prevTabs.filter(tab => tab.id !== tabId));
+      setTabs((prevTabs) => prevTabs.filter((tab) => tab.id !== tabId));
     };
 
     const addNewTab = () => {
       const newTab = {
         id: `new-file-${Date.now()}`,
-        label: 'untitled.ts',
+        label: "untitled.ts",
         icon: <FileText />,
         closable: true,
         content: (
@@ -404,7 +404,7 @@ export const ClosableTabs: Story = {
           </div>
         ),
       };
-      setTabs(prevTabs => [...prevTabs, newTab]);
+      setTabs((prevTabs) => [...prevTabs, newTab]);
     };
 
     return (
@@ -415,7 +415,7 @@ export const ClosableTabs: Story = {
             New File
           </Button>
         </div>
-        <Tabs items={tabs} variant={variant ?? 'bordered'} onTabClose={handleTabClose} />
+        <Tabs items={tabs} variant={variant ?? "bordered"} onTabClose={handleTabClose} />
         {tabs.length === 0 && (
           <div className="text-center py-8 text-graphite-500">
             No files open. Click "New File" to create a tab.
@@ -427,7 +427,7 @@ export const ClosableTabs: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Tabs with close buttons that can be dynamically added and removed.',
+        story: "Tabs with close buttons that can be dynamically added and removed.",
       },
     },
   },
@@ -449,7 +449,7 @@ export const ScrollableTabs: Story = {
       ),
     })),
   },
-  render: args => {
+  render: (args) => {
     const { items } = args;
 
     return (
@@ -469,7 +469,7 @@ export const ScrollableTabs: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Scrollable tabs for handling overflow with optional scroll buttons.',
+        story: "Scrollable tabs for handling overflow with optional scroll buttons.",
       },
     },
   },
@@ -481,12 +481,12 @@ export const DeveloperToolExamples: Story = {
     items: [],
   },
   render: () => {
-    const [activeSection, setActiveSection] = useState('ide');
+    const [activeSection, setActiveSection] = useState("ide");
 
     const ideEditorTabs = [
       {
-        id: 'main.ts',
-        label: 'main.ts',
+        id: "main.ts",
+        label: "main.ts",
         icon: <FileText />,
         closable: true,
         content: (
@@ -500,19 +500,19 @@ export const DeveloperToolExamples: Story = {
             <div className="bg-graphite-900 rounded-lg p-4 text-sm font-mono text-white">
               <div className="text-green-400">// Main application entry point</div>
               <div>
-                <span className="text-purple-400">import</span> {'{ App }'}{' '}
-                <span className="text-purple-400">from</span>{' '}
+                <span className="text-purple-400">import</span> {"{ App }"}{" "}
+                <span className="text-purple-400">from</span>{" "}
                 <span className="text-yellow-300">'./App'</span>;
               </div>
               <div>
-                <span className="text-purple-400">import</span>{' '}
+                <span className="text-purple-400">import</span>{" "}
                 <span className="text-yellow-300">'./main.css'</span>;
               </div>
               <br />
               <div>
-                <span className="text-blue-400">const</span>{' '}
-                <span className="text-cyan-400">app</span> ={' '}
-                <span className="text-purple-400">new</span>{' '}
+                <span className="text-blue-400">const</span>{" "}
+                <span className="text-cyan-400">app</span> ={" "}
+                <span className="text-purple-400">new</span>{" "}
                 <span className="text-yellow-400">App</span>();
               </div>
             </div>
@@ -520,10 +520,10 @@ export const DeveloperToolExamples: Story = {
         ),
       },
       {
-        id: 'app.tsx',
-        label: 'App.tsx',
+        id: "app.tsx",
+        label: "App.tsx",
         icon: <Code />,
-        badge: '!',
+        badge: "!",
         closable: true,
         content: (
           <div className="p-6 bg-graphite-50 rounded-lg min-h-[300px]">
@@ -540,8 +540,8 @@ export const DeveloperToolExamples: Story = {
         ),
       },
       {
-        id: 'database.ts',
-        label: 'database.ts',
+        id: "database.ts",
+        label: "database.ts",
         icon: <Database />,
         loading: true,
         content: (
@@ -555,8 +555,8 @@ export const DeveloperToolExamples: Story = {
 
     const deploymentTabs = [
       {
-        id: 'overview',
-        label: 'Overview',
+        id: "overview",
+        label: "Overview",
         icon: <Activity />,
         content: (
           <div className="p-6 space-y-4">
@@ -593,10 +593,10 @@ export const DeveloperToolExamples: Story = {
         ),
       },
       {
-        id: 'logs',
-        label: 'Build Logs',
+        id: "logs",
+        label: "Build Logs",
         icon: <Terminal />,
-        badge: '234',
+        badge: "234",
         content: (
           <div className="p-6 bg-graphite-50 rounded-lg min-h-[300px]">
             <h4 className="font-semibold text-graphite-900 mb-4">Build Output</h4>
@@ -610,8 +610,8 @@ export const DeveloperToolExamples: Story = {
         ),
       },
       {
-        id: 'metrics',
-        label: 'Performance',
+        id: "metrics",
+        label: "Performance",
         icon: <Zap />,
         content: (
           <div className="p-6 bg-graphite-50 rounded-lg min-h-[300px]">
@@ -633,17 +633,17 @@ export const DeveloperToolExamples: Story = {
 
     const teamTabs = [
       {
-        id: 'members',
-        label: 'Team Members',
+        id: "members",
+        label: "Team Members",
         icon: <Users />,
-        badge: '12',
+        badge: "12",
         content: (
           <div className="p-6 space-y-4">
             <div className="space-y-3">
               {[
-                { name: 'Sarah Chen', role: 'Frontend Developer', status: 'online' },
-                { name: 'Marcus Johnson', role: 'Backend Engineer', status: 'away' },
-                { name: 'Emily Rodriguez', role: 'DevOps Engineer', status: 'offline' },
+                { name: "Sarah Chen", role: "Frontend Developer", status: "online" },
+                { name: "Marcus Johnson", role: "Backend Engineer", status: "away" },
+                { name: "Emily Rodriguez", role: "DevOps Engineer", status: "offline" },
               ].map((member, i) => (
                 <div
                   key={i}
@@ -655,15 +655,15 @@ export const DeveloperToolExamples: Story = {
                   </div>
                   <StatusBadge
                     variant={
-                      member.status === 'online'
-                        ? 'active'
-                        : member.status === 'away'
-                          ? 'pending'
-                          : 'inactive'
+                      member.status === "online"
+                        ? "active"
+                        : member.status === "away"
+                          ? "pending"
+                          : "inactive"
                     }
                     size="xs"
                     showDot
-                    pulse={member.status === 'online'}
+                    pulse={member.status === "online"}
                   >
                     {member.status}
                   </StatusBadge>
@@ -674,8 +674,8 @@ export const DeveloperToolExamples: Story = {
         ),
       },
       {
-        id: 'permissions',
-        label: 'Permissions',
+        id: "permissions",
+        label: "Permissions",
         icon: <Shield />,
         content: (
           <div className="p-6 bg-graphite-50 rounded-lg min-h-[300px]">
@@ -685,10 +685,10 @@ export const DeveloperToolExamples: Story = {
         ),
       },
       {
-        id: 'activity',
-        label: 'Activity',
+        id: "activity",
+        label: "Activity",
         icon: <Activity />,
-        badge: '5',
+        badge: "5",
         content: (
           <div className="p-6 bg-graphite-50 rounded-lg min-h-[300px]">
             <h4 className="font-semibold text-graphite-900 mb-4">Recent Activity</h4>
@@ -719,22 +719,22 @@ export const DeveloperToolExamples: Story = {
           <div className="flex gap-2">
             <Button
               size="sm"
-              variant={activeSection === 'ide' ? 'primary' : 'secondary'}
-              onClick={() => setActiveSection('ide')}
+              variant={activeSection === "ide" ? "primary" : "secondary"}
+              onClick={() => setActiveSection("ide")}
             >
               IDE Editor
             </Button>
             <Button
               size="sm"
-              variant={activeSection === 'deployment' ? 'primary' : 'secondary'}
-              onClick={() => setActiveSection('deployment')}
+              variant={activeSection === "deployment" ? "primary" : "secondary"}
+              onClick={() => setActiveSection("deployment")}
             >
               Deployment
             </Button>
             <Button
               size="sm"
-              variant={activeSection === 'team' ? 'primary' : 'secondary'}
-              onClick={() => setActiveSection('team')}
+              variant={activeSection === "team" ? "primary" : "secondary"}
+              onClick={() => setActiveSection("team")}
             >
               Team Management
             </Button>
@@ -742,7 +742,7 @@ export const DeveloperToolExamples: Story = {
         </div>
 
         {/* IDE Editor Example */}
-        {activeSection === 'ide' && (
+        {activeSection === "ide" && (
           <div>
             <h4 className="text-sm font-medium text-graphite-700 mb-4">Code Editor - File Tabs</h4>
             <Tabs items={ideEditorTabs} variant="bordered" scrollable showScrollButtons />
@@ -750,7 +750,7 @@ export const DeveloperToolExamples: Story = {
         )}
 
         {/* Deployment Dashboard Example */}
-        {activeSection === 'deployment' && (
+        {activeSection === "deployment" && (
           <div>
             <h4 className="text-sm font-medium text-graphite-700 mb-4">Deployment Dashboard</h4>
             <Tabs items={deploymentTabs} variant="underline" />
@@ -758,7 +758,7 @@ export const DeveloperToolExamples: Story = {
         )}
 
         {/* Team Management Example */}
-        {activeSection === 'team' && (
+        {activeSection === "team" && (
           <div>
             <h4 className="text-sm font-medium text-graphite-700 mb-4">Team Management Console</h4>
             <Tabs items={teamTabs} variant="pills" />
@@ -771,7 +771,7 @@ export const DeveloperToolExamples: Story = {
     docs: {
       description: {
         story:
-          'Real-world examples of tabs in developer tools: IDE file tabs, deployment dashboards, and team management interfaces.',
+          "Real-world examples of tabs in developer tools: IDE file tabs, deployment dashboards, and team management interfaces.",
       },
     },
   },
@@ -780,28 +780,28 @@ export const DeveloperToolExamples: Story = {
 // Interactive playground
 export const Interactive: Story = {
   args: {
-    variant: 'underline',
-    size: 'md',
+    variant: "underline",
+    size: "md",
     fullWidth: false,
     scrollable: false,
     showScrollButtons: false,
     items: [
       {
-        id: 'tab1',
-        label: 'First Tab',
+        id: "tab1",
+        label: "First Tab",
         icon: <FileText />,
         content: <div className="p-4">Content for the first tab</div>,
       },
       {
-        id: 'tab2',
-        label: 'Second Tab',
+        id: "tab2",
+        label: "Second Tab",
         icon: <Code />,
-        badge: '5',
+        badge: "5",
         content: <div className="p-4">Content for the second tab</div>,
       },
       {
-        id: 'tab3',
-        label: 'Third Tab',
+        id: "tab3",
+        label: "Third Tab",
         icon: <Database />,
         closable: true,
         content: <div className="p-4">Content for the third tab</div>,
@@ -812,7 +812,7 @@ export const Interactive: Story = {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all tabs props. Use the controls panel below to test different combinations.',
+          "Interactive playground to experiment with all tabs props. Use the controls panel below to test different combinations.",
       },
     },
   },

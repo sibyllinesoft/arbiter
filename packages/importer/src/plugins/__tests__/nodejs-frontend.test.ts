@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'bun:test';
-import { tmpdir } from 'os';
-import * as path from 'path';
-import * as fs from 'fs-extra';
-import type { Evidence, FileIndex, FileInfo, InferenceContext, ParseContext } from '../../types';
-import { NodeJSPlugin } from '../nodejs';
+import { describe, expect, it } from "bun:test";
+import { tmpdir } from "os";
+import * as path from "path";
+import * as fs from "fs-extra";
+import type { Evidence, FileIndex, FileInfo, InferenceContext, ParseContext } from "../../types";
+import { NodeJSPlugin } from "../nodejs";
 
 async function createTempDir(prefix: string): Promise<string> {
   await fs.ensureDir(tmpdir());
@@ -13,7 +13,7 @@ async function createTempDir(prefix: string): Promise<string> {
 async function writeFile(root: string, relativePath: string, content: string): Promise<void> {
   const fullPath = path.join(root, relativePath);
   await fs.ensureDir(path.dirname(fullPath));
-  await fs.writeFile(fullPath, content, 'utf-8');
+  await fs.writeFile(fullPath, content, "utf-8");
 }
 
 async function createFileInfo(root: string, relativePath: string): Promise<FileInfo> {
@@ -21,7 +21,7 @@ async function createFileInfo(root: string, relativePath: string): Promise<FileI
   const stats = await fs.stat(fullPath);
   return {
     path: fullPath,
-    relativePath: relativePath.replace(/\\+/g, '/'),
+    relativePath: relativePath.replace(/\\+/g, "/"),
     size: stats.size,
     lastModified: stats.mtimeMs,
     extension: path.extname(fullPath).toLowerCase(),
@@ -52,7 +52,7 @@ function createInferenceContext(
   projectRoot: string,
   fileIndex: FileIndex,
   evidence: Evidence[],
-  projectName: string
+  projectName: string,
 ): InferenceContext {
   const totalSize = Array.from(fileIndex.files.values()).reduce((sum, file) => sum + file.size, 0);
   return {
@@ -69,7 +69,7 @@ function createInferenceContext(
     projectMetadata: {
       name: projectName,
       root: projectRoot,
-      languages: ['typescript'],
+      languages: ["typescript"],
       frameworks: [],
       fileCount: fileIndex.files.size,
       totalSize,
@@ -77,41 +77,41 @@ function createInferenceContext(
   };
 }
 
-describe('NodeJSPlugin frontend analysis', () => {
-  it('detects React components and react-router routes', async () => {
-    const projectRoot = await createTempDir('nodejs-react-');
+describe("NodeJSPlugin frontend analysis", () => {
+  it("detects React components and react-router routes", async () => {
+    const projectRoot = await createTempDir("nodejs-react-");
 
     const pkgJson = {
-      name: 'react-sample',
-      version: '1.0.0',
+      name: "react-sample",
+      version: "1.0.0",
       dependencies: {
-        react: '^18.0.0',
-        'react-dom': '^18.0.0',
-        'react-router-dom': '^6.24.0',
+        react: "^18.0.0",
+        "react-dom": "^18.0.0",
+        "react-router-dom": "^6.24.0",
       },
     };
 
-    await writeFile(projectRoot, 'package.json', JSON.stringify(pkgJson, null, 2));
+    await writeFile(projectRoot, "package.json", JSON.stringify(pkgJson, null, 2));
     await writeFile(
       projectRoot,
-      'tsconfig.json',
+      "tsconfig.json",
       JSON.stringify(
         {
           compilerOptions: {
-            target: 'ES2020',
-            module: 'ESNext',
-            jsx: 'react-jsx',
+            target: "ES2020",
+            module: "ESNext",
+            jsx: "react-jsx",
             strict: true,
             esModuleInterop: true,
           },
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     await writeFile(
       projectRoot,
-      'src/components/Greeting.tsx',
+      "src/components/Greeting.tsx",
       `import React from 'react';
 
 export interface GreetingProps {
@@ -123,11 +123,11 @@ export const Greeting: React.FC<GreetingProps> = ({ name }) => {
 };
 
 export default Greeting;
-`
+`,
     );
     await writeFile(
       projectRoot,
-      'src/App.tsx',
+      "src/App.tsx",
       `import { Routes, Route } from 'react-router-dom';
 import Greeting from './components/Greeting';
 
@@ -139,30 +139,30 @@ export function App() {
     </Routes>
   );
 }
-`
+`,
     );
 
     const fileInfos = await Promise.all([
-      createFileInfo(projectRoot, 'package.json'),
-      createFileInfo(projectRoot, 'tsconfig.json'),
-      createFileInfo(projectRoot, 'src/components/Greeting.tsx'),
-      createFileInfo(projectRoot, 'src/App.tsx'),
+      createFileInfo(projectRoot, "package.json"),
+      createFileInfo(projectRoot, "tsconfig.json"),
+      createFileInfo(projectRoot, "src/components/Greeting.tsx"),
+      createFileInfo(projectRoot, "src/App.tsx"),
     ]);
 
     const fileIndex: FileIndex = {
       root: projectRoot,
-      files: new Map(fileInfos.map(info => [info.path, info])),
+      files: new Map(fileInfos.map((info) => [info.path, info])),
       directories: new Map(),
       timestamp: Date.now(),
     };
 
     const plugin = new NodeJSPlugin();
     const parseContext = createParseContext(projectRoot, fileIndex);
-    const pkgContent = await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8');
+    const pkgContent = await fs.readFile(path.join(projectRoot, "package.json"), "utf-8");
     const evidence = await plugin.parse(
-      path.join(projectRoot, 'package.json'),
+      path.join(projectRoot, "package.json"),
       pkgContent,
-      parseContext
+      parseContext,
     );
     const inferenceContext = createInferenceContext(projectRoot, fileIndex, evidence, pkgJson.name);
     const artifacts = await plugin.infer(evidence, inferenceContext);
@@ -171,102 +171,102 @@ export function App() {
     const primaryArtifact = artifacts[0].artifact;
     const frontend = (primaryArtifact.metadata as any)?.frontendAnalysis;
 
-    expect(frontend?.frameworks).toContain('react');
+    expect(frontend?.frameworks).toContain("react");
     const greetingComponent = frontend?.components?.find(
-      (component: any) => component.name === 'Greeting'
+      (component: any) => component.name === "Greeting",
     );
     expect(greetingComponent).toBeDefined();
     if (greetingComponent?.props) {
-      expect(greetingComponent.props.some((prop: any) => prop.name === 'name')).toBeTrue();
+      expect(greetingComponent.props.some((prop: any) => prop.name === "name")).toBeTrue();
     }
 
-    const router = frontend?.routers?.find((entry: any) => entry.type === 'react-router');
+    const router = frontend?.routers?.find((entry: any) => entry.type === "react-router");
     expect(router).toBeDefined();
-    expect(router?.routes?.some((route: any) => route.path === '/dashboard')).toBeTrue();
+    expect(router?.routes?.some((route: any) => route.path === "/dashboard")).toBeTrue();
 
     await fs.remove(projectRoot);
   });
 
-  it('detects Next.js routes', async () => {
-    const projectRoot = await createTempDir('nodejs-next-');
+  it("detects Next.js routes", async () => {
+    const projectRoot = await createTempDir("nodejs-next-");
 
     const pkgJson = {
-      name: 'next-sample',
-      version: '1.0.0',
+      name: "next-sample",
+      version: "1.0.0",
       dependencies: {
-        next: '14.0.0',
-        react: '^18.0.0',
-        'react-dom': '^18.0.0',
+        next: "14.0.0",
+        react: "^18.0.0",
+        "react-dom": "^18.0.0",
       },
     };
 
-    await writeFile(projectRoot, 'package.json', JSON.stringify(pkgJson, null, 2));
+    await writeFile(projectRoot, "package.json", JSON.stringify(pkgJson, null, 2));
     await writeFile(
       projectRoot,
-      'tsconfig.json',
+      "tsconfig.json",
       JSON.stringify(
         {
           compilerOptions: {
-            target: 'ES2020',
-            module: 'ESNext',
-            jsx: 'react-jsx',
+            target: "ES2020",
+            module: "ESNext",
+            jsx: "react-jsx",
             strict: true,
             esModuleInterop: true,
           },
         },
         null,
-        2
-      )
+        2,
+      ),
     );
     await writeFile(
       projectRoot,
-      'pages/index.tsx',
+      "pages/index.tsx",
       `export default function Home() {
   return <main>Home</main>;
 }
-`
+`,
     );
     await writeFile(
       projectRoot,
-      'pages/about.tsx',
+      "pages/about.tsx",
       `export default function About() {
   return <main>About</main>;
 }
-`
+`,
     );
     await writeFile(
       projectRoot,
-      'pages/blog/[slug].tsx',
+      "pages/blog/[slug].tsx",
       `type Props = { params: { slug: string } };
 
 export default function BlogPost({ params }: Props) {
   return <article>{params.slug}</article>;
 }
-`
+`,
     );
 
     const fileInfos = await Promise.all([
-      createFileInfo(projectRoot, 'package.json'),
-      createFileInfo(projectRoot, 'tsconfig.json'),
-      createFileInfo(projectRoot, 'pages/index.tsx'),
-      createFileInfo(projectRoot, 'pages/about.tsx'),
-      createFileInfo(projectRoot, 'pages/blog/[slug].tsx'),
+      createFileInfo(projectRoot, "package.json"),
+      createFileInfo(projectRoot, "tsconfig.json"),
+      createFileInfo(projectRoot, "pages/index.tsx"),
+      createFileInfo(projectRoot, "pages/about.tsx"),
+      createFileInfo(projectRoot, "pages/blog/[slug].tsx"),
     ]);
 
     const fileIndex: FileIndex = {
       root: projectRoot,
-      files: new Map(fileInfos.map(info => [info.path, info])),
+      files: new Map(fileInfos.map((info) => [info.path, info])),
       directories: new Map(),
       timestamp: Date.now(),
     };
 
     const plugin = new NodeJSPlugin();
     const parseContext = createParseContext(projectRoot, fileIndex);
-    const pkgContent = await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8');
+    const pkgContent = await fs.readFile(path.join(projectRoot, "package.json"), "utf-8");
     const evidence = await plugin.parse(
-      path.join(projectRoot, 'package.json'),
+      path.join(projectRoot, "package.json"),
       pkgContent,
-      parseContext
+      parseContext,
     );
     const inferenceContext = createInferenceContext(projectRoot, fileIndex, evidence, pkgJson.name);
     const artifacts = await plugin.infer(evidence, inferenceContext);
@@ -275,31 +275,31 @@ export default function BlogPost({ params }: Props) {
     const primaryArtifact = artifacts[0].artifact;
     const frontend = (primaryArtifact.metadata as any)?.frontendAnalysis;
 
-    expect(frontend?.frameworks).toContain('next');
-    const router = frontend?.routers?.find((entry: any) => entry.type === 'next');
+    expect(frontend?.frameworks).toContain("next");
+    const router = frontend?.routers?.find((entry: any) => entry.type === "next");
     expect(router).toBeDefined();
-    expect(router?.routes?.some((route: any) => route.path === '/')).toBeTrue();
-    expect(router?.routes?.some((route: any) => route.path === '/about')).toBeTrue();
-    expect(router?.routes?.some((route: any) => route.path === '/blog/:slug')).toBeTrue();
+    expect(router?.routes?.some((route: any) => route.path === "/")).toBeTrue();
+    expect(router?.routes?.some((route: any) => route.path === "/about")).toBeTrue();
+    expect(router?.routes?.some((route: any) => route.path === "/blog/:slug")).toBeTrue();
 
     await fs.remove(projectRoot);
   });
 
-  it('detects Vue single-file components', async () => {
-    const projectRoot = await createTempDir('nodejs-vue-');
+  it("detects Vue single-file components", async () => {
+    const projectRoot = await createTempDir("nodejs-vue-");
 
     const pkgJson = {
-      name: 'vue-sample',
-      version: '1.0.0',
+      name: "vue-sample",
+      version: "1.0.0",
       dependencies: {
-        vue: '^3.4.0',
+        vue: "^3.4.0",
       },
     };
 
-    await writeFile(projectRoot, 'package.json', JSON.stringify(pkgJson, null, 2));
+    await writeFile(projectRoot, "package.json", JSON.stringify(pkgJson, null, 2));
     await writeFile(
       projectRoot,
-      'src/components/BaseButton.vue',
+      "src/components/BaseButton.vue",
       `<template>
   <button class="base-button"><slot /></button>
 </template>
@@ -308,28 +308,28 @@ export default {
   name: 'BaseButton',
 };
 </script>
-`
+`,
     );
 
     const fileInfos = await Promise.all([
-      createFileInfo(projectRoot, 'package.json'),
-      createFileInfo(projectRoot, 'src/components/BaseButton.vue'),
+      createFileInfo(projectRoot, "package.json"),
+      createFileInfo(projectRoot, "src/components/BaseButton.vue"),
     ]);
 
     const fileIndex: FileIndex = {
       root: projectRoot,
-      files: new Map(fileInfos.map(info => [info.path, info])),
+      files: new Map(fileInfos.map((info) => [info.path, info])),
       directories: new Map(),
       timestamp: Date.now(),
     };
 
     const plugin = new NodeJSPlugin();
     const parseContext = createParseContext(projectRoot, fileIndex);
-    const pkgContent = await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8');
+    const pkgContent = await fs.readFile(path.join(projectRoot, "package.json"), "utf-8");
     const evidence = await plugin.parse(
-      path.join(projectRoot, 'package.json'),
+      path.join(projectRoot, "package.json"),
       pkgContent,
-      parseContext
+      parseContext,
     );
     const inferenceContext = createInferenceContext(projectRoot, fileIndex, evidence, pkgJson.name);
     const artifacts = await plugin.infer(evidence, inferenceContext);
@@ -337,34 +337,34 @@ export default {
     const primaryArtifact = artifacts[0].artifact;
     const frontend = (primaryArtifact.metadata as any)?.frontendAnalysis;
 
-    expect(frontend?.frameworks).toContain('vue');
+    expect(frontend?.frameworks).toContain("vue");
     expect(
-      frontend?.components?.some((component: any) => component.name === 'BaseButton')
+      frontend?.components?.some((component: any) => component.name === "BaseButton"),
     ).toBeTrue();
 
     await fs.remove(projectRoot);
   });
 
-  it('classifies CLI packages as tools when CLI dependencies are present', async () => {
-    const projectRoot = await createTempDir('nodejs-cli-');
+  it("classifies CLI packages as tools when CLI dependencies are present", async () => {
+    const projectRoot = await createTempDir("nodejs-cli-");
 
     const pkgJson = {
-      name: 'cli-runner',
-      version: '1.0.0',
-      bin: './bin/cli.js',
+      name: "cli-runner",
+      version: "1.0.0",
+      bin: "./bin/cli.js",
       dependencies: {
-        commander: '^12.0.0',
-        chalk: '^5.0.0',
+        commander: "^12.0.0",
+        chalk: "^5.0.0",
       },
       scripts: {
-        start: 'node bin/cli.js',
+        start: "node bin/cli.js",
       },
     };
 
-    await writeFile(projectRoot, 'package.json', JSON.stringify(pkgJson, null, 2));
+    await writeFile(projectRoot, "package.json", JSON.stringify(pkgJson, null, 2));
     await writeFile(
       projectRoot,
-      'bin/cli.js',
+      "bin/cli.js",
       `#!/usr/bin/env node
 import { program } from 'commander';
 
@@ -376,36 +376,36 @@ program
   });
 
 program.parse(process.argv);
-`
+`,
     );
 
     const fileInfos = await Promise.all([
-      createFileInfo(projectRoot, 'package.json'),
-      createFileInfo(projectRoot, 'bin/cli.js'),
+      createFileInfo(projectRoot, "package.json"),
+      createFileInfo(projectRoot, "bin/cli.js"),
     ]);
 
     const fileIndex: FileIndex = {
       root: projectRoot,
-      files: new Map(fileInfos.map(info => [info.path, info])),
+      files: new Map(fileInfos.map((info) => [info.path, info])),
       directories: new Map(),
       timestamp: Date.now(),
     };
 
     const plugin = new NodeJSPlugin();
     const parseContext = createParseContext(projectRoot, fileIndex);
-    const pkgContent = await fs.readFile(path.join(projectRoot, 'package.json'), 'utf-8');
+    const pkgContent = await fs.readFile(path.join(projectRoot, "package.json"), "utf-8");
     const evidence = await plugin.parse(
-      path.join(projectRoot, 'package.json'),
+      path.join(projectRoot, "package.json"),
       pkgContent,
-      parseContext
+      parseContext,
     );
     const inferenceContext = createInferenceContext(projectRoot, fileIndex, evidence, pkgJson.name);
     const artifacts = await plugin.infer(evidence, inferenceContext);
 
     expect(artifacts.length).toBeGreaterThan(0);
-    const cliArtifact = artifacts.find(artifact => artifact.artifact.name === pkgJson.name);
-    expect(cliArtifact?.artifact.type).toBe('tool');
-    expect((cliArtifact?.artifact.metadata as any)?.detectedType).toBe('tool');
+    const cliArtifact = artifacts.find((artifact) => artifact.artifact.name === pkgJson.name);
+    expect(cliArtifact?.artifact.type).toBe("tool");
+    expect((cliArtifact?.artifact.metadata as any)?.detectedType).toBe("tool");
 
     await fs.remove(projectRoot);
   });

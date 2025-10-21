@@ -6,6 +6,10 @@ The Arbiter CLI is designed to be **agent-first**, with non-interactive
 commands, structured outputs, and comprehensive APIs that make it ideal for both
 human developers and AI automation.
 
+Looking for the code-generation internals (template engines, GitHub issue template
+managers, or language plugins)? See
+[`CLI Generation Architecture`](./cli-generation-architecture.md).
+
 ## Installation
 
 ```bash

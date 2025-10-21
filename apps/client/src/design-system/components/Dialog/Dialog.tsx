@@ -4,13 +4,13 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import React, { type ReactNode } from 'react';
-import Button from '../Button';
-import Modal from '../Modal';
+import React, { type ReactNode } from "react";
+import Button from "../Button";
+import Modal from "../Modal";
 
 export interface DialogAction {
   label: string;
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  variant?: "primary" | "secondary" | "danger" | "ghost";
   onClick: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -30,7 +30,7 @@ export interface DialogProps {
   description: string | undefined;
 
   /** Dialog type */
-  type?: 'default' | 'confirmation' | 'destructive' | 'success' | 'warning' | 'error' | 'info';
+  type?: "default" | "confirmation" | "destructive" | "success" | "warning" | "error" | "info";
 
   /** Custom dialog content */
   children?: ReactNode;
@@ -55,43 +55,43 @@ export interface DialogProps {
 }
 
 const typeToVariant = {
-  default: 'default',
-  confirmation: 'info',
-  destructive: 'error',
-  success: 'success',
-  warning: 'warning',
-  error: 'error',
-  info: 'info',
+  default: "default",
+  confirmation: "info",
+  destructive: "error",
+  success: "success",
+  warning: "warning",
+  error: "error",
+  info: "info",
 } as const;
 
 const typeDefaults = {
   default: {
-    primaryLabel: 'OK',
-    primaryVariant: 'primary' as const,
+    primaryLabel: "OK",
+    primaryVariant: "primary" as const,
   },
   confirmation: {
-    primaryLabel: 'Confirm',
-    primaryVariant: 'primary' as const,
+    primaryLabel: "Confirm",
+    primaryVariant: "primary" as const,
   },
   destructive: {
-    primaryLabel: 'Delete',
-    primaryVariant: 'danger' as const,
+    primaryLabel: "Delete",
+    primaryVariant: "danger" as const,
   },
   success: {
-    primaryLabel: 'Continue',
-    primaryVariant: 'primary' as const,
+    primaryLabel: "Continue",
+    primaryVariant: "primary" as const,
   },
   warning: {
-    primaryLabel: 'Proceed',
-    primaryVariant: 'primary' as const,
+    primaryLabel: "Proceed",
+    primaryVariant: "primary" as const,
   },
   error: {
-    primaryLabel: 'OK',
-    primaryVariant: 'primary' as const,
+    primaryLabel: "OK",
+    primaryVariant: "primary" as const,
   },
   info: {
-    primaryLabel: 'OK',
-    primaryVariant: 'primary' as const,
+    primaryLabel: "OK",
+    primaryVariant: "primary" as const,
   },
 } as const;
 
@@ -100,11 +100,11 @@ export function Dialog({
   onClose,
   title,
   description,
-  type = 'default',
+  type = "default",
   children,
   actions,
   showCancel = true,
-  cancelLabel = 'Cancel',
+  cancelLabel = "Cancel",
   closeOnBackdropClick = false,
   closeOnEscape = true,
   className,
@@ -118,7 +118,7 @@ export function Dialog({
       ? [
           {
             label: cancelLabel,
-            variant: 'secondary' as const,
+            variant: "secondary" as const,
             onClick: onClose,
           },
         ]
@@ -135,7 +135,7 @@ export function Dialog({
       {finalActions.map((action, index) => (
         <Button
           key={index}
-          variant={action.variant || 'secondary'}
+          variant={action.variant || "secondary"}
           onClick={action.onClick}
           disabled={action.disabled}
           loading={action.loading ?? false}
@@ -175,7 +175,7 @@ export interface ConfirmDialogProps {
   description: string | undefined;
   confirmLabel?: string;
   cancelLabel?: string;
-  type?: 'confirmation' | 'destructive';
+  type?: "confirmation" | "destructive";
   loading?: boolean;
 }
 
@@ -186,8 +186,8 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
-  cancelLabel = 'Cancel',
-  type = 'confirmation',
+  cancelLabel = "Cancel",
+  type = "confirmation",
   loading = false,
 }: ConfirmDialogProps) {
   const defaults = typeDefaults[type];
@@ -195,7 +195,7 @@ export function ConfirmDialog({
   const actions: DialogAction[] = [
     {
       label: cancelLabel,
-      variant: 'secondary',
+      variant: "secondary",
       onClick: onClose,
       disabled: loading,
     },
@@ -227,7 +227,7 @@ export interface AlertDialogProps {
   onClose: () => void;
   title: string;
   description: string | undefined;
-  type?: 'success' | 'warning' | 'error' | 'info';
+  type?: "success" | "warning" | "error" | "info";
   okLabel?: string;
   children?: ReactNode;
 }
@@ -237,14 +237,14 @@ export function AlertDialog({
   onClose,
   title,
   description,
-  type = 'info',
-  okLabel = 'OK',
+  type = "info",
+  okLabel = "OK",
   children,
 }: AlertDialogProps) {
   const actions: DialogAction[] = [
     {
       label: okLabel,
-      variant: 'primary',
+      variant: "primary",
       onClick: onClose,
     },
   ];
@@ -266,9 +266,9 @@ export function AlertDialog({
 
 // Hook for imperative usage
 export interface UseDialogReturn {
-  confirm: (options: Omit<ConfirmDialogProps, 'open' | 'onClose'>) => Promise<boolean>;
-  alert: (options: Omit<AlertDialogProps, 'open' | 'onClose'>) => Promise<void>;
-  dialog: (options: Omit<DialogProps, 'open' | 'onClose'>) => Promise<void>;
+  confirm: (options: Omit<ConfirmDialogProps, "open" | "onClose">) => Promise<boolean>;
+  alert: (options: Omit<AlertDialogProps, "open" | "onClose">) => Promise<void>;
+  dialog: (options: Omit<DialogProps, "open" | "onClose">) => Promise<void>;
   DialogProvider: () => React.ReactNode;
 }
 
@@ -283,32 +283,32 @@ export function useDialog(): UseDialogReturn {
 
   const createDialog = React.useCallback(
     <T,>(component: React.ReactNode, defaultValue: T): Promise<T> => {
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         const id = Math.random().toString(36).substr(2, 9);
-        setDialogs(prev => [...prev, { id, component, resolve }]);
+        setDialogs((prev) => [...prev, { id, component, resolve }]);
 
         // Auto-resolve with default value if no action taken
         setTimeout(() => {
-          setDialogs(prev => {
-            const exists = prev.find(d => d.id === id);
+          setDialogs((prev) => {
+            const exists = prev.find((d) => d.id === id);
             if (exists) {
               exists.resolve(defaultValue);
-              return prev.filter(d => d.id !== id);
+              return prev.filter((d) => d.id !== id);
             }
             return prev;
           });
         }, 30000); // 30 second timeout
       });
     },
-    []
+    [],
   );
 
   const removeDialog = React.useCallback((id: string) => {
-    setDialogs(prev => prev.filter(d => d.id !== id));
+    setDialogs((prev) => prev.filter((d) => d.id !== id));
   }, []);
 
   const confirm = React.useCallback(
-    (options: Omit<ConfirmDialogProps, 'open' | 'onClose'>) => {
+    (options: Omit<ConfirmDialogProps, "open" | "onClose">) => {
       return createDialog<boolean>(
         <ConfirmDialog
           {...options}
@@ -328,14 +328,14 @@ export function useDialog(): UseDialogReturn {
             }
           }}
         />,
-        false
+        false,
       );
     },
-    [createDialog, dialogs, removeDialog]
+    [createDialog, dialogs, removeDialog],
   );
 
   const alert = React.useCallback(
-    (options: Omit<AlertDialogProps, 'open' | 'onClose'>) => {
+    (options: Omit<AlertDialogProps, "open" | "onClose">) => {
       return createDialog<void>(
         <AlertDialog
           {...options}
@@ -348,14 +348,14 @@ export function useDialog(): UseDialogReturn {
             }
           }}
         />,
-        undefined
+        undefined,
       );
     },
-    [createDialog, dialogs, removeDialog]
+    [createDialog, dialogs, removeDialog],
   );
 
   const dialog = React.useCallback(
-    (options: Omit<DialogProps, 'open' | 'onClose'>) => {
+    (options: Omit<DialogProps, "open" | "onClose">) => {
       return createDialog<void>(
         <Dialog
           {...options}
@@ -368,22 +368,22 @@ export function useDialog(): UseDialogReturn {
             }
           }}
         />,
-        undefined
+        undefined,
       );
     },
-    [createDialog, dialogs, removeDialog]
+    [createDialog, dialogs, removeDialog],
   );
 
   // Render all active dialogs
   const DialogProvider = React.useCallback(
     () => (
       <>
-        {dialogs.map(d => (
+        {dialogs.map((d) => (
           <React.Fragment key={d.id}>{d.component}</React.Fragment>
         ))}
       </>
     ),
-    [dialogs]
+    [dialogs],
   );
 
   return React.useMemo(
@@ -393,7 +393,7 @@ export function useDialog(): UseDialogReturn {
       dialog,
       DialogProvider,
     }),
-    [confirm, alert, dialog, DialogProvider]
+    [confirm, alert, dialog, DialogProvider],
   );
 }
 

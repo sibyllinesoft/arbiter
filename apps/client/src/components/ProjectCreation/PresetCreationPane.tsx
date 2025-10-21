@@ -2,13 +2,13 @@
  * PresetCreationPane - Left pane for creating projects from presets
  */
 
-import { useSetCurrentProject } from '@contexts/ProjectContext';
-import { Button, cn } from '@design-system';
-import { useProjects } from '@hooks/api-hooks';
-import { apiService } from '@services/api';
-import { Component, FileText, Globe, Server, Smartphone } from 'lucide-react';
-import React, { useState } from 'react';
-import { toast } from 'react-toastify';
+import { useSetCurrentProject } from "@contexts/ProjectContext";
+import { Button, cn } from "@design-system";
+import { useProjects } from "@hooks/api-hooks";
+import { apiService } from "@services/api";
+import { Component, FileText, Globe, Server, Smartphone } from "lucide-react";
+import React, { useState } from "react";
+import { toast } from "react-toastify";
 
 interface PresetCreationPaneProps {
   onClose: () => void;
@@ -16,36 +16,36 @@ interface PresetCreationPaneProps {
 
 const presets = [
   {
-    id: 'web-app',
-    name: 'Web Application',
-    description: 'Full-stack web application with React frontend and Node.js backend',
+    id: "web-app",
+    name: "Web Application",
+    description: "Full-stack web application with React frontend and Node.js backend",
     icon: Globe,
-    color: 'blue',
-    features: ['React Frontend', 'Node.js API', 'Database', 'Authentication'],
+    color: "blue",
+    features: ["React Frontend", "Node.js API", "Database", "Authentication"],
   },
   {
-    id: 'mobile-app',
-    name: 'Mobile Application',
-    description: 'Cross-platform mobile app with React Native',
+    id: "mobile-app",
+    name: "Mobile Application",
+    description: "Cross-platform mobile app with React Native",
     icon: Smartphone,
-    color: 'green',
-    features: ['React Native', 'Push Notifications', 'Offline Support', 'App Store Ready'],
+    color: "green",
+    features: ["React Native", "Push Notifications", "Offline Support", "App Store Ready"],
   },
   {
-    id: 'api-service',
-    name: 'API Service',
-    description: 'RESTful API service with database integration',
+    id: "api-service",
+    name: "API Service",
+    description: "RESTful API service with database integration",
     icon: Server,
-    color: 'purple',
-    features: ['REST API', 'Database Schema', 'Documentation', 'Testing'],
+    color: "purple",
+    features: ["REST API", "Database Schema", "Documentation", "Testing"],
   },
   {
-    id: 'microservice',
-    name: 'Microservice',
-    description: 'Containerized microservice with monitoring',
+    id: "microservice",
+    name: "Microservice",
+    description: "Containerized microservice with monitoring",
     icon: Component,
-    color: 'orange',
-    features: ['Docker', 'Health Checks', 'Metrics', 'Service Discovery'],
+    color: "orange",
+    features: ["Docker", "Health Checks", "Metrics", "Service Discovery"],
   },
 ];
 
@@ -53,7 +53,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
   const { refetch: refetchProjects } = useProjects();
   const setCurrentProject = useSetCurrentProject();
   const [selectedPreset, setSelectedPreset] = useState<any>(null);
-  const [projectName, setProjectName] = useState('');
+  const [projectName, setProjectName] = useState("");
   const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const handleCreateProjectFromPreset = async (preset: any, projectName: string) => {
@@ -65,8 +65,8 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
       onClose();
       toast.success(`Project "${newProject.name}" created from ${preset.name} preset`);
     } catch (error) {
-      toast.error('Failed to create project');
-      console.error('Failed to create project:', error);
+      toast.error("Failed to create project");
+      console.error("Failed to create project:", error);
     } finally {
       setIsCreatingProject(false);
     }
@@ -74,7 +74,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
 
   const handlePresetSelect = (preset: any) => {
     setSelectedPreset(preset);
-    setProjectName(preset.name.replace(/\s+/g, '-').toLowerCase());
+    setProjectName(preset.name.replace(/\s+/g, "-").toLowerCase());
   };
 
   const handleCreateFromPreset = () => {
@@ -91,29 +91,29 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
       </h3>
 
       <div className="mb-6 space-y-3">
-        {presets.map(preset => (
+        {presets.map((preset) => (
           <div
             key={preset.id}
             onClick={() => handlePresetSelect(preset)}
             className={cn(
-              'cursor-pointer rounded-lg border p-4 transition-all',
+              "cursor-pointer rounded-lg border p-4 transition-all",
               selectedPreset?.id === preset.id
-                ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-400 dark:bg-blue-500/10 dark:ring-blue-400'
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800'
+                ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500 dark:border-blue-400 dark:bg-blue-500/10 dark:ring-blue-400"
+                : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-graphite-700 dark:hover:border-graphite-600 dark:hover:bg-graphite-800",
             )}
           >
             <div className="flex items-start gap-3">
               <div
                 className={cn(
-                  'rounded-lg p-2',
-                  preset.color === 'blue' &&
-                    'bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300',
-                  preset.color === 'green' &&
-                    'bg-green-100 text-green-600 dark:bg-green-500/10 dark:text-green-300',
-                  preset.color === 'purple' &&
-                    'bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300',
-                  preset.color === 'orange' &&
-                    'bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300'
+                  "rounded-lg p-2",
+                  preset.color === "blue" &&
+                    "bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-300",
+                  preset.color === "green" &&
+                    "bg-green-100 text-green-600 dark:bg-green-500/10 dark:text-green-300",
+                  preset.color === "purple" &&
+                    "bg-purple-100 text-purple-600 dark:bg-purple-500/10 dark:text-purple-300",
+                  preset.color === "orange" &&
+                    "bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300",
                 )}
               >
                 <preset.icon className="w-5 h-5" />
@@ -124,7 +124,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
                   {preset.description}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {preset.features.map(feature => (
+                  {preset.features.map((feature) => (
                     <span
                       key={feature}
                       className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 dark:bg-graphite-800 dark:text-graphite-300"
@@ -148,7 +148,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
             <input
               type="text"
               value={projectName}
-              onChange={e => setProjectName(e.target.value)}
+              onChange={(e) => setProjectName(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-graphite-600 dark:bg-graphite-800 dark:text-gray-100 dark:placeholder:text-graphite-400 dark:focus:ring-blue-400"
               placeholder="Enter project name..."
             />
@@ -159,7 +159,7 @@ export function PresetCreationPane({ onClose }: PresetCreationPaneProps) {
             disabled={!projectName.trim() || isCreatingProject}
             className="w-full"
           >
-            {isCreatingProject ? 'Creating...' : `Create ${selectedPreset.name}`}
+            {isCreatingProject ? "Creating..." : `Create ${selectedPreset.name}`}
           </Button>
         </div>
       )}

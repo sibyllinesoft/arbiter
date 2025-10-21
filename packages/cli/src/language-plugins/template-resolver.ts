@@ -1,5 +1,5 @@
-import path from 'node:path';
-import fs from 'fs-extra';
+import path from "node:path";
+import fs from "fs-extra";
 
 export interface TemplateResolverOptions {
   language: string;
@@ -33,7 +33,7 @@ export class TemplateResolver {
   async renderTemplate(
     templatePath: string,
     context: Record<string, unknown>,
-    fallback: string
+    fallback: string,
   ): Promise<string> {
     const templateContent = await this.readTemplate(templatePath);
 
@@ -46,7 +46,7 @@ export class TemplateResolver {
 
   private normalizeDirectories(directories: string[]): string[] {
     const normalized = directories
-      .map(dir => (dir ? path.resolve(dir) : dir))
+      .map((dir) => (dir ? path.resolve(dir) : dir))
       .filter((dir): dir is string => Boolean(dir));
 
     // Deduplicate while preserving order
@@ -59,7 +59,7 @@ export class TemplateResolver {
     for (const baseDir of searchPaths) {
       const candidatePath = path.join(baseDir, templatePath);
       if (await fs.pathExists(candidatePath)) {
-        return fs.readFile(candidatePath, 'utf-8');
+        return fs.readFile(candidatePath, "utf-8");
       }
     }
 
@@ -73,9 +73,9 @@ export class TemplateResolver {
       const key = tripleKey || doubleKey;
       const value = this.lookupValue(context, key);
       if (value === undefined || value === null) {
-        return '';
+        return "";
       }
-      if (Array.isArray(value) || typeof value === 'object') {
+      if (Array.isArray(value) || typeof value === "object") {
         return JSON.stringify(value, null, 2);
       }
       return String(value);
@@ -83,7 +83,7 @@ export class TemplateResolver {
   }
 
   private lookupValue(context: Record<string, unknown>, key: string): unknown {
-    const segments = key.split('.');
+    const segments = key.split(".");
     let current: any = context;
 
     for (const segment of segments) {

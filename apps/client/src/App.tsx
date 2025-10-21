@@ -1,19 +1,21 @@
-import React, { useEffect } from 'react';
-import { Route, Routes } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useEffect } from "react";
+import { Route, Routes } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { clsx } from "clsx";
 
-import { AppProvider } from './contexts/AppContext';
-import { ProjectProvider } from './contexts/ProjectContext';
+import { AppProvider } from "./contexts/AppContext";
+import { ProjectProvider } from "./contexts/ProjectContext";
 // Providers
-import { QueryProvider } from './providers/QueryProvider';
+import { QueryProvider } from "./providers/QueryProvider";
 
-import { useTheme } from './stores/ui-store';
+import { useTheme } from "./stores/ui-store";
 
-import { ConfigScreen } from './pages/ConfigScreen';
+import { ConfigScreen } from "./pages/ConfigScreen";
 // Pages
-import { LandingPage } from './pages/LandingPage';
-import { ProjectView } from './pages/project-view';
+import { LandingPage } from "./pages/LandingPage";
+import { OAuthCallback } from "./pages/OAuthCallback";
+import { ProjectView } from "./pages/project-view";
 
 // Error boundary component
 export class ErrorBoundary extends React.Component<
@@ -30,7 +32,7 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error boundary caught an error:', error, errorInfo);
+    console.error("Error boundary caught an error:", error, errorInfo);
   }
 
   render() {
@@ -74,15 +76,13 @@ function App() {
   useEffect(() => {
     const root = document.documentElement;
     if (isDark) {
-      root.classList.add('dark');
-      root.style.colorScheme = 'dark';
+      root.classList.add("dark");
+      root.style.colorScheme = "dark";
     } else {
-      root.classList.remove('dark');
-      root.style.colorScheme = 'light';
+      root.classList.remove("dark");
+      root.style.colorScheme = "light";
     }
   }, [isDark]);
-
-  const toastTheme = isDark ? 'dark' : 'light';
 
   return (
     <ErrorBoundary>
@@ -92,6 +92,7 @@ function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/project/:projectId" element={<ProjectView />} />
+              <Route path="/oauth/callback" element={<OAuthCallback />} />
             </Routes>
             <ToastContainer
               position="bottom-right"
@@ -103,7 +104,18 @@ function App() {
               pauseOnFocusLoss
               draggable
               pauseOnHover
-              theme={toastTheme}
+              toastClassName={() =>
+                clsx("graphite-toast", isDark ? "graphite-toast-dark" : "graphite-toast-light")
+              }
+              bodyClassName={() =>
+                clsx(
+                  "graphite-toast-body",
+                  isDark ? "graphite-toast-body-dark" : "graphite-toast-body-light",
+                )
+              }
+              progressClassName={() =>
+                isDark ? "graphite-toast-progress-dark" : "graphite-toast-progress-light"
+              }
             />
           </ProjectProvider>
         </AppProvider>

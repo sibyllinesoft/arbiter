@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useState } from "react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
-import { AppProvider } from './contexts/AppContext';
-import { ProjectProvider } from './contexts/ProjectContext';
+import { AppProvider } from "./contexts/AppContext";
+import { ProjectProvider } from "./contexts/ProjectContext";
 // Providers
-import { QueryProvider } from './providers/QueryProvider';
+import { QueryProvider } from "./providers/QueryProvider";
 
-import { ConfigScreen } from './pages/ConfigScreen';
+import { ConfigScreen } from "./pages/ConfigScreen";
 // Pages
-import { LandingPage } from './pages/LandingPage';
+import { LandingPage } from "./pages/LandingPage";
 
 // Error boundary component
 class ErrorBoundary extends React.Component<
@@ -26,7 +26,7 @@ class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error boundary caught an error:', error, errorInfo);
+    console.error("Error boundary caught an error:", error, errorInfo);
   }
 
   render() {
@@ -61,15 +61,15 @@ class ErrorBoundary extends React.Component<
 
 // Main app content with simple routing
 function AppContent() {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'config'>('dashboard');
+  const [currentView, setCurrentView] = useState<"dashboard" | "config">("dashboard");
 
-  const navigateToConfig = () => setCurrentView('config');
-  const navigateToDashboard = () => setCurrentView('dashboard');
+  const navigateToConfig = () => setCurrentView("config");
+  const navigateToDashboard = () => setCurrentView("dashboard");
 
   return (
     <>
-      {currentView === 'dashboard' && <LandingPage onNavigateToConfig={navigateToConfig} />}
-      {currentView === 'config' && <ConfigScreen isModal onClose={navigateToDashboard} />}
+      {currentView === "dashboard" && <LandingPage onNavigateToConfig={navigateToConfig} />}
+      {currentView === "config" && <ConfigScreen isModal onClose={navigateToDashboard} />}
     </>
   );
 }

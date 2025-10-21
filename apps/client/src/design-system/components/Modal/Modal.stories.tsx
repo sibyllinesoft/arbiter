@@ -1,33 +1,33 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { Bell, Code, Database, Download, FileText, Settings, Shield, User } from 'lucide-react';
-import { useState } from 'react';
-import Button from '../Button';
-import Checkbox from '../Checkbox';
-import Input from '../Input';
-import Select from '../Select';
-import { Modal } from './Modal';
+import type { Meta, StoryObj } from "@storybook/react";
+import { Bell, Code, Database, Download, FileText, Settings, Shield, User } from "lucide-react";
+import { useState } from "react";
+import Button from "../Button";
+import Checkbox from "../Checkbox";
+import Input from "../Input";
+import Select from "../Select";
+import { Modal } from "./Modal";
 
 const meta: Meta<typeof Modal> = {
-  title: 'Design System/Overlays/Modal',
+  title: "Design System/Overlays/Modal",
   component: Modal,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional modal dialog component with comprehensive variants, accessibility features, and elegant animations. Perfect for complex forms, settings panels, and detailed content.',
+          "Professional modal dialog component with comprehensive variants, accessibility features, and elegant animations. Perfect for complex forms, settings panels, and detailed content.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['default', 'success', 'warning', 'error', 'info'],
+      control: { type: "select" },
+      options: ["default", "success", "warning", "error", "info"],
     },
     size: {
-      control: { type: 'select' },
-      options: ['xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl', 'full'],
+      control: { type: "select" },
+      options: ["xs", "sm", "md", "lg", "xl", "2xl", "3xl", "full"],
     },
   },
 };
@@ -199,7 +199,7 @@ Expected valid regex pattern`}
   parameters: {
     docs: {
       description: {
-        story: 'Modal variants with semantic colors and icons for different message types.',
+        story: "Modal variants with semantic colors and icons for different message types.",
       },
     },
   },
@@ -210,17 +210,17 @@ export const SizeVariants: Story = {
     const [sizes, setSizes] = useState<Record<string, boolean>>({});
 
     const toggleSize = (size: string) => {
-      setSizes(prev => ({ ...prev, [size]: !prev[size] }));
+      setSizes((prev) => ({ ...prev, [size]: !prev[size] }));
     };
 
     const sizeOptions = [
-      { key: 'xs', label: 'Extra Small (xs)' },
-      { key: 'sm', label: 'Small (sm)' },
-      { key: 'md', label: 'Medium (md)' },
-      { key: 'lg', label: 'Large (lg)' },
-      { key: 'xl', label: 'Extra Large (xl)' },
-      { key: '2xl', label: '2X Large (2xl)' },
-      { key: '3xl', label: '3X Large (3xl)' },
+      { key: "xs", label: "Extra Small (xs)" },
+      { key: "sm", label: "Small (sm)" },
+      { key: "md", label: "Medium (md)" },
+      { key: "lg", label: "Large (lg)" },
+      { key: "xl", label: "Extra Large (xl)" },
+      { key: "2xl", label: "2X Large (2xl)" },
+      { key: "3xl", label: "3X Large (3xl)" },
     ];
 
     return (
@@ -247,7 +247,7 @@ export const SizeVariants: Story = {
                 Modal content scales appropriately with the size variant. This allows you to choose
                 the right modal size based on your content requirements.
               </p>
-              {key === '3xl' && (
+              {key === "3xl" && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Left Column</label>
@@ -255,7 +255,7 @@ export const SizeVariants: Story = {
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Right Column</label>
-                    <Select options={[{ value: 'option1', label: 'Option 1' }]} />
+                    <Select options={[{ value: "option1", label: "Option 1" }]} />
                   </div>
                 </div>
               )}
@@ -268,7 +268,7 @@ export const SizeVariants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different size variants of the modal component for various content requirements.',
+        story: "Different size variants of the modal component for various content requirements.",
       },
     },
   },
@@ -281,7 +281,7 @@ export const SettingsModal: Story = {
 
     const handleSave = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       setLoading(false);
       setOpen(false);
     };
@@ -343,9 +343,9 @@ export const SettingsModal: Story = {
                     </label>
                     <Select
                       options={[
-                        { value: 'utc', label: 'UTC' },
-                        { value: 'pst', label: 'Pacific Standard Time' },
-                        { value: 'est', label: 'Eastern Standard Time' },
+                        { value: "utc", label: "UTC" },
+                        { value: "pst", label: "Pacific Standard Time" },
+                        { value: "est", label: "Eastern Standard Time" },
                       ]}
                       defaultValue="utc"
                     />
@@ -394,7 +394,7 @@ export const SettingsModal: Story = {
     docs: {
       description: {
         story:
-          'Complex settings modal with form controls, loading states, and custom footer actions.',
+          "Complex settings modal with form controls, loading states, and custom footer actions.",
       },
     },
   },
@@ -436,21 +436,21 @@ export const DataExportModal: Story = {
             <div>
               <h3 className="text-sm font-semibold text-graphite-900 mb-3">Export Format</h3>
               <div className="grid grid-cols-3 gap-3">
-                {['JSON', 'YAML', 'CUE'].map(format => (
+                {["JSON", "YAML", "CUE"].map((format) => (
                   <label key={format} className="relative">
                     <input
                       type="radio"
                       name="format"
                       value={format}
-                      defaultChecked={format === 'JSON'}
+                      defaultChecked={format === "JSON"}
                       className="sr-only peer"
                     />
                     <div className="p-3 border border-graphite-200 rounded-lg cursor-pointer peer-checked:border-blue-500 peer-checked:bg-blue-50">
                       <div className="text-sm font-medium text-graphite-900">{format}</div>
                       <div className="text-xs text-graphite-500 mt-1">
-                        {format === 'JSON' && 'Standard JSON format'}
-                        {format === 'YAML' && 'Human-readable YAML'}
-                        {format === 'CUE' && 'Native CUE format'}
+                        {format === "JSON" && "Standard JSON format"}
+                        {format === "YAML" && "Human-readable YAML"}
+                        {format === "CUE" && "Native CUE format"}
                       </div>
                     </div>
                   </label>
@@ -490,7 +490,7 @@ export const DataExportModal: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Data export modal with complex form controls and informational content.',
+        story: "Data export modal with complex form controls and informational content.",
       },
     },
   },
@@ -544,7 +544,7 @@ export const LoadingModal: Story = {
     docs: {
       description: {
         story:
-          'Modal with loading overlay that prevents interaction until the operation completes.',
+          "Modal with loading overlay that prevents interaction until the operation completes.",
       },
     },
   },

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Card } from '../../design-system/components/Card';
-import { StatusBadge, type StatusVariant } from '../../design-system/components/StatusBadge';
-import { Tabs } from '../../design-system/components/Tabs';
+import React, { useState } from "react";
+import { Card } from "../../design-system/components/Card";
+import { StatusBadge, type StatusVariant } from "../../design-system/components/StatusBadge";
+import { Tabs } from "../../design-system/components/Tabs";
 import {
   assemblySpecCue,
   basicRequirementsCue,
@@ -9,9 +9,9 @@ import {
   rustMicroserviceCue,
   sampleResolvedData,
   validationErrorsCue,
-} from '../../test/cue-samples';
-import { CueViewer } from './CueViewer';
-import { DataViewer } from './DataViewer';
+} from "../../test/cue-samples";
+import { CueViewer } from "./CueViewer";
+import { DataViewer } from "./DataViewer";
 
 interface CueShowcaseProps {
   className?: string;
@@ -27,182 +27,182 @@ interface CueExample {
     line: number;
     column: number;
     message: string;
-    severity: 'error' | 'warning' | 'info';
+    severity: "error" | "warning" | "info";
   }>;
-  type: 'requirements' | 'assembly' | 'validation' | 'project' | 'service';
-  status: 'implemented' | 'draft' | 'planned' | 'error';
+  type: "requirements" | "assembly" | "validation" | "project" | "service";
+  status: "implemented" | "draft" | "planned" | "error";
 }
 
 const CUE_EXAMPLES: CueExample[] = [
   {
-    id: 'requirements',
-    title: 'Requirements Specification',
-    description: 'Security, performance, and compliance requirements for user authentication',
+    id: "requirements",
+    title: "Requirements Specification",
+    description: "Security, performance, and compliance requirements for user authentication",
     cueSource: basicRequirementsCue,
     resolvedData: {
       security_requirements: 2,
       performance_requirements: 1,
       compliance_requirements: 1,
       total_requirements: 4,
-      implementation_status: 'partial',
+      implementation_status: "partial",
     },
-    type: 'requirements',
-    status: 'implemented',
+    type: "requirements",
+    status: "implemented",
   },
   {
-    id: 'assembly',
-    title: 'System Assembly',
-    description: 'Microservices architecture definition with infrastructure and deployment',
+    id: "assembly",
+    title: "System Assembly",
+    description: "Microservices architecture definition with infrastructure and deployment",
     cueSource: assemblySpecCue,
     resolvedData: sampleResolvedData.resolved,
-    type: 'assembly',
-    status: 'implemented',
+    type: "assembly",
+    status: "implemented",
   },
   {
-    id: 'validation-errors',
-    title: 'Validation Errors Demo',
-    description: 'CUE file with various validation errors to demonstrate error handling',
+    id: "validation-errors",
+    title: "Validation Errors Demo",
+    description: "CUE file with various validation errors to demonstrate error handling",
     cueSource: validationErrorsCue,
     validationErrors: [
       {
         line: 6,
         column: 10,
         message: 'Cannot unify int 12345 and string "user123"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 9,
         column: 6,
-        message: 'Value 150 exceeds maximum allowed age of 120',
-        severity: 'error',
+        message: "Value 150 exceeds maximum allowed age of 120",
+        severity: "error",
       },
       {
         line: 23,
         column: 1,
         message: 'Missing required field "email"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 24,
         column: 1,
         message: 'Missing required field "age"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 30,
         column: 15,
-        message: 'Cannot unify string and int 12345',
-        severity: 'error',
+        message: "Cannot unify string and int 12345",
+        severity: "error",
       },
       {
         line: 34,
         column: 10,
         message:
           'String "invalid-email" does not match pattern "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 38,
         column: 9,
-        message: 'Value -50 is below minimum allowed value 0',
-        severity: 'error',
+        message: "Value -50 is below minimum allowed value 0",
+        severity: "error",
       },
       {
         line: 52,
         column: 12,
         message: '"PATCH" is not a valid method. Must be one of: "GET", "POST", "PUT", "DELETE"',
-        severity: 'error',
+        severity: "error",
       },
       {
         line: 62,
         column: 14,
         message: '"unknown" is not in the list of valid statuses',
-        severity: 'error',
+        severity: "error",
       },
     ],
-    type: 'validation',
-    status: 'error',
+    type: "validation",
+    status: "error",
   },
   {
-    id: 'typescript-project',
-    title: 'TypeScript Project Spec',
-    description: 'Advanced TypeScript trading platform with performance requirements',
+    id: "typescript-project",
+    title: "TypeScript Project Spec",
+    description: "Advanced TypeScript trading platform with performance requirements",
     cueSource: complexTypescriptProjectCue,
     resolvedData: {
-      project_name: 'Advanced TypeScript Microservice',
-      version: 'v3.2.1',
+      project_name: "Advanced TypeScript Microservice",
+      version: "v3.2.1",
       performance_targets: {
-        api_latency_p99: '<=100ms',
-        throughput_orders: '>=10000/sec',
-        memory_limit: '<=2GB',
+        api_latency_p99: "<=100ms",
+        throughput_orders: ">=10000/sec",
+        memory_limit: "<=2GB",
       },
       architecture_layers: 4,
       test_coverage_target: 90,
       deployment_replicas: 20,
     },
-    type: 'project',
-    status: 'implemented',
+    type: "project",
+    status: "implemented",
   },
   {
-    id: 'rust-service',
-    title: 'Rust High-Performance Service',
-    description: 'Ultra-low latency trading engine with microsecond performance targets',
+    id: "rust-service",
+    title: "Rust High-Performance Service",
+    description: "Ultra-low latency trading engine with microsecond performance targets",
     cueSource: rustMicroserviceCue,
     resolvedData: {
-      project_name: 'High-Frequency Trading Engine',
-      version: 'v1.5.0',
+      project_name: "High-Frequency Trading Engine",
+      version: "v1.5.0",
       performance_targets: {
-        order_processing: '<=100μs',
-        market_data_ingestion: '<=50μs',
-        throughput: '>=1,000,000 orders/sec',
+        order_processing: "<=100μs",
+        market_data_ingestion: "<=50μs",
+        throughput: ">=1,000,000 orders/sec",
       },
       memory_management: {
         zero_copy: true,
-        heap_allocations_per_order: '<=5',
+        heap_allocations_per_order: "<=5",
         gc_pauses: 0,
       },
-      safety_guarantees: ['memory_safety', 'thread_safety'],
+      safety_guarantees: ["memory_safety", "thread_safety"],
     },
-    type: 'service',
-    status: 'implemented',
+    type: "service",
+    status: "implemented",
   },
 ];
 
-export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
+export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = "" }) => {
   const [selectedExample, setSelectedExample] = useState<CueExample>(() => CUE_EXAMPLES[0]!);
-  const [viewMode, setViewMode] = useState<'overview' | 'source' | 'resolved' | 'split'>(
-    'overview'
+  const [viewMode, setViewMode] = useState<"overview" | "source" | "resolved" | "split">(
+    "overview",
   );
 
-  const getStatusColor = (status: CueExample['status']): StatusVariant => {
+  const getStatusColor = (status: CueExample["status"]): StatusVariant => {
     switch (status) {
-      case 'implemented':
-        return 'success';
-      case 'draft':
-        return 'warning';
-      case 'planned':
-        return 'info';
-      case 'error':
-        return 'error';
+      case "implemented":
+        return "success";
+      case "draft":
+        return "warning";
+      case "planned":
+        return "info";
+      case "error":
+        return "error";
       default:
-        return 'neutral';
+        return "neutral";
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'requirements':
-        return '📋';
-      case 'assembly':
-        return '🏗️';
-      case 'validation':
-        return '⚠️';
-      case 'project':
-        return '📦';
-      case 'service':
-        return '⚡';
+      case "requirements":
+        return "📋";
+      case "assembly":
+        return "🏗️";
+      case "validation":
+        return "⚠️";
+      case "project":
+        return "📦";
+      case "service":
+        return "⚡";
       default:
-        return '📄';
+        return "📄";
     }
   };
 
@@ -212,14 +212,14 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
       <div className="lg:col-span-1">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">CUE Examples</h3>
         <div className="space-y-3">
-          {CUE_EXAMPLES.map(example => (
+          {CUE_EXAMPLES.map((example) => (
             <button
               key={example.id}
               onClick={() => setSelectedExample(example)}
               className={`w-full text-left p-4 rounded-lg border transition-all ${
                 selectedExample.id === example.id
-                  ? 'border-blue-500 bg-blue-50 shadow-sm'
-                  : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                  ? "border-blue-500 bg-blue-50 shadow-sm"
+                  : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -249,20 +249,20 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
                 {selectedExample.status}
               </StatusBadge>
               <span className="text-xs text-gray-500 uppercase font-medium tracking-wide">
-                {selectedExample.type.replace('_', ' ')}
+                {selectedExample.type.replace("_", " ")}
               </span>
             </div>
 
             <div className="flex space-x-2">
               <button
-                onClick={() => setViewMode('source')}
+                onClick={() => setViewMode("source")}
                 className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
               >
                 View Source
               </button>
               {selectedExample.resolvedData && (
                 <button
-                  onClick={() => setViewMode('resolved')}
+                  onClick={() => setViewMode("resolved")}
                   className="px-3 py-1 text-xs bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors"
                 >
                   View Resolved
@@ -270,7 +270,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
               )}
               {selectedExample.resolvedData && (
                 <button
-                  onClick={() => setViewMode('split')}
+                  onClick={() => setViewMode("split")}
                   className="px-3 py-1 text-xs bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors"
                 >
                   Split View
@@ -338,10 +338,10 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
   );
 
   const tabItems = [
-    { id: 'overview', label: 'Overview', content: <OverviewPanel /> },
-    { id: 'source', label: 'CUE Source', content: <SourcePanel /> },
-    { id: 'resolved', label: 'Resolved Data', content: <ResolvedPanel /> },
-    { id: 'split', label: 'Split View', content: <SplitPanel /> },
+    { id: "overview", label: "Overview", content: <OverviewPanel /> },
+    { id: "source", label: "CUE Source", content: <SourcePanel /> },
+    { id: "resolved", label: "Resolved Data", content: <ResolvedPanel /> },
+    { id: "split", label: "Split View", content: <SplitPanel /> },
   ];
 
   return (
@@ -357,7 +357,7 @@ export const CueShowcase: React.FC<CueShowcaseProps> = ({ className = '' }) => {
       <Tabs
         items={tabItems}
         activeTab={viewMode}
-        onChange={tab => setViewMode(tab as typeof viewMode)}
+        onChange={(tab) => setViewMode(tab as typeof viewMode)}
         className="h-full"
       />
     </div>

@@ -3,9 +3,9 @@
  * Implements the `generate` command which powers Arbiter code generation.
  */
 
-import { spawn } from 'node:child_process';
-import path from 'node:path';
-import { promisify } from 'node:util';
+import { spawn } from "node:child_process";
+import path from "node:path";
+import { promisify } from "node:util";
 import type {
   AppSpec,
   AssemblyConfig,
@@ -21,26 +21,26 @@ import type {
   TestCase,
   TestCompositionResult,
   TestSuite,
-} from '@arbiter/shared';
-import chalk from 'chalk';
-import fs from 'fs-extra';
-import * as YAML from 'yaml';
-import { ApiClient } from '../api-client.js';
-import { DEFAULT_PROJECT_STRUCTURE } from '../config.js';
+} from "@arbiter/shared";
+import chalk from "chalk";
+import fs from "fs-extra";
+import * as YAML from "yaml";
+import { ApiClient } from "../api-client.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
 import {
   generateComponent,
   generateService,
   initializeProject,
   registry as languageRegistry,
-} from '../language-plugins/index.js';
+} from "../language-plugins/index.js";
 import type {
   EndpointAssertionDefinition,
   EndpointTestCaseDefinition,
   EndpointTestGenerationConfig,
   ProjectConfig as LanguageProjectConfig,
   ServiceConfig as LanguageServiceConfig,
-} from '../language-plugins/index.js';
-import { extractVariablesFromCue, templateManager } from '../templates/index.js';
+} from "../language-plugins/index.js";
+import { extractVariablesFromCue, templateManager } from "../templates/index.js";
 import type {
   CLIConfig,
   CapabilitySpec,
@@ -48,16 +48,16 @@ import type {
   LanguageTestingConfig,
   MasterTestRunnerConfig,
   ProjectStructureConfig,
-} from '../types.js';
-import { GenerationHookManager } from '../utils/generation-hooks.js';
+} from "../types.js";
+import { GenerationHookManager } from "../utils/generation-hooks.js";
 import {
   createRepositoryConfig,
   getSmartRepositoryConfig,
   validateRepositoryConfig,
-} from '../utils/git-detection.js';
-import { GitHubSyncClient } from '../utils/github-sync.js';
-import { ShardedCUEStorage } from '../utils/sharded-storage.js';
-import { formatWarnings, validateSpecification } from '../validation/warnings.js';
+} from "../utils/git-detection.js";
+import { GitHubSyncClient } from "../utils/github-sync.js";
+import { ShardedCUEStorage } from "../utils/sharded-storage.js";
+import { formatWarnings, validateSpecification } from "../validation/warnings.js";
 
 export interface GenerateOptions {
   outputDir?: string;
@@ -77,12 +77,12 @@ function toPathSegments(value: string): string[] {
 
 function joinRelativePath(...parts: string[]): string {
   return parts
-    .flatMap(part => part.split(PATH_SEPARATOR_REGEX))
+    .flatMap((part) => part.split(PATH_SEPARATOR_REGEX))
     .filter(Boolean)
-    .join('/');
+    .join("/");
 }
 
-function slugify(value: string | undefined, fallback = 'app'): string {
+function slugify(value: string | undefined, fallback = "app"): string {
   if (!value || value.trim().length === 0) {
     return fallback;
   }
@@ -90,9 +90,9 @@ function slugify(value: string | undefined, fallback = 'app'): string {
   const normalized = value
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-+/g, '-');
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-+/g, "-");
 
   return normalized.length > 0 ? normalized : fallback;
 }
@@ -106,9 +106,9 @@ function normalizeCapabilities(input: any): Record<string, CapabilitySpec> | nul
     const entries: Record<string, CapabilitySpec> = {};
     input.forEach((raw, index) => {
       const base: CapabilitySpec =
-        typeof raw === 'string' ? { name: raw } : { ...(raw as CapabilitySpec) };
+        typeof raw === "string" ? { name: raw } : { ...(raw as CapabilitySpec) };
       const idSource =
-        (typeof (raw as any)?.id === 'string' && (raw as any).id) ||
+        (typeof (raw as any)?.id === "string" && (raw as any).id) ||
         base.name ||
         `capability_${index + 1}`;
       const key = slugify(String(idSource), `capability_${index + 1}`);
@@ -117,7 +117,7 @@ function normalizeCapabilities(input: any): Record<string, CapabilitySpec> | nul
     return entries;
   }
 
-  if (typeof input === 'object') {
+  if (typeof input === "object") {
     return { ...(input as Record<string, CapabilitySpec>) };
   }
 
@@ -134,8 +134,8 @@ function configureLanguagePluginRuntime(language: string, cliConfig: CLIConfig):
       : [];
 
   const baseDir = cliConfig.configDir || cliConfig.projectDir || process.cwd();
-  const resolvedOverrides = overrideList.map(dir =>
-    path.isAbsolute(dir) ? dir : path.resolve(baseDir, dir)
+  const resolvedOverrides = overrideList.map((dir) =>
+    path.isAbsolute(dir) ? dir : path.resolve(baseDir, dir),
   );
 
   languageRegistry.configure(language, {
@@ -156,7 +156,7 @@ async function writeFileWithHooks(
   filePath: string,
   content: string,
   options: GenerateOptions,
-  mode?: number
+  mode?: number,
 ): Promise<void> {
   let finalContent = content;
   if (activeHookManager) {
@@ -199,11 +199,11 @@ interface ServiceGenerationContext {
 function createClientContext(
   appSpec: AppSpec,
   structure: ProjectStructureConfig,
-  outputDir: string
+  outputDir: string,
 ): ClientGenerationContext {
-  const slug = slugify(appSpec.product?.name, 'app');
+  const slug = slugify(appSpec.product?.name, "app");
   const root = path.join(outputDir, structure.clientsDirectory, slug);
-  const routesDir = path.join(root, 'src', 'routes');
+  const routesDir = path.join(root, "src", "routes");
 
   return { slug, root, routesDir };
 }
@@ -212,12 +212,12 @@ function createServiceContext(
   serviceName: string,
   serviceConfig: any,
   structure: ProjectStructureConfig,
-  outputDir: string
+  outputDir: string,
 ): ServiceGenerationContext {
   const slug = slugify(serviceName, serviceName);
   const root = path.join(outputDir, structure.servicesDirectory, slug);
-  const routesDir = path.join(root, 'src', 'routes');
-  const language = (serviceConfig?.language as string | undefined) || 'typescript';
+  const routesDir = path.join(root, "src", "routes");
+  const language = (serviceConfig?.language as string | undefined) || "typescript";
 
   return { name: slug, root, routesDir, language };
 }
@@ -225,7 +225,7 @@ function createServiceContext(
 async function ensureBaseStructure(
   structure: ProjectStructureConfig,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
 ): Promise<void> {
   const baseDirs = [
     structure.clientsDirectory,
@@ -246,26 +246,26 @@ async function ensureBaseStructure(
 async function executeCommand(
   command: string,
   args: string[],
-  options: { cwd?: string; timeout?: number } = {}
+  options: { cwd?: string; timeout?: number } = {},
 ): Promise<{ success: boolean; stdout: string; stderr: string }> {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const proc = spawn(command, args, {
       cwd: options.cwd || process.cwd(),
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ["ignore", "pipe", "pipe"],
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = "";
+    let stderr = "";
 
-    proc.stdout?.on('data', data => (stdout += data.toString()));
-    proc.stderr?.on('data', data => (stderr += data.toString()));
+    proc.stdout?.on("data", (data) => (stdout += data.toString()));
+    proc.stderr?.on("data", (data) => (stderr += data.toString()));
 
     const timeout = setTimeout(() => {
       proc.kill();
-      resolve({ success: false, stdout, stderr: 'Command timed out' });
+      resolve({ success: false, stdout, stderr: "Command timed out" });
     }, options.timeout || 10000);
 
-    proc.on('close', code => {
+    proc.on("close", (code) => {
       clearTimeout(timeout);
       resolve({
         success: code === 0,
@@ -274,7 +274,7 @@ async function executeCommand(
       });
     });
 
-    proc.on('error', error => {
+    proc.on("error", (error) => {
       clearTimeout(timeout);
       resolve({ success: false, stdout, stderr: error.message });
     });
@@ -287,14 +287,14 @@ async function executeCommand(
 function discoverSpecs(): Array<{ name: string; path: string }> {
   const specs: Array<{ name: string; path: string }> = [];
 
-  if (fs.existsSync('.arbiter')) {
+  if (fs.existsSync(".arbiter")) {
     const specDirs = fs
-      .readdirSync('.arbiter', { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name);
+      .readdirSync(".arbiter", { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name);
 
     for (const specName of specDirs) {
-      const assemblyPath = path.join('.arbiter', specName, 'assembly.cue');
+      const assemblyPath = path.join(".arbiter", specName, "assembly.cue");
       if (fs.existsSync(assemblyPath)) {
         specs.push({ name: specName, path: assemblyPath });
       }
@@ -309,7 +309,7 @@ function discoverSpecs(): Array<{ name: string; path: string }> {
  */
 async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Promise<void> {
   if (options.verbose) {
-    console.log(chalk.dim('🔄 Starting GitHub sync handler...'));
+    console.log(chalk.dim("🔄 Starting GitHub sync handler..."));
   }
 
   try {
@@ -320,14 +320,14 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 
     // Handle case where no repository info could be determined
     if (!smartRepoConfig) {
-      console.error(chalk.red('❌ No GitHub repository configuration found'));
-      console.log(chalk.dim('Options to fix this:'));
+      console.error(chalk.red("❌ No GitHub repository configuration found"));
+      console.log(chalk.dim("Options to fix this:"));
       console.log(
         chalk.dim(
-          '  1. Initialize Git and add GitHub remote: git remote add origin https://github.com/owner/repo.git'
-        )
+          "  1. Initialize Git and add GitHub remote: git remote add origin https://github.com/owner/repo.git",
+        ),
       );
-      console.log(chalk.dim('  2. Or add GitHub configuration to your .arbiter/config.json:'));
+      console.log(chalk.dim("  2. Or add GitHub configuration to your .arbiter/config.json:"));
       console.log(
         chalk.dim(`{
   "github": {
@@ -347,10 +347,10 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
       "syncAssignees": false
     }
   }
-}`)
+}`),
       );
-      console.log(chalk.dim('\\nAnd set your GitHub token as an environment variable:'));
-      console.log(chalk.dim('  export GITHUB_TOKEN=your_github_personal_access_token'));
+      console.log(chalk.dim("\\nAnd set your GitHub token as an environment variable:"));
+      console.log(chalk.dim("  export GITHUB_TOKEN=your_github_personal_access_token"));
       return;
     }
 
@@ -359,13 +359,13 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
     // Validate the final repository configuration
     const validation = validateRepositoryConfig(finalRepo);
     if (!validation.valid) {
-      console.error(chalk.red('❌ Invalid repository configuration:'));
-      validation.errors.forEach(error => {
+      console.error(chalk.red("❌ Invalid repository configuration:"));
+      validation.errors.forEach((error) => {
         console.log(chalk.red(`  • ${error}`));
       });
       if (validation.suggestions.length > 0) {
-        console.log(chalk.dim('\\nSuggestions:'));
-        validation.suggestions.forEach(suggestion => {
+        console.log(chalk.dim("\\nSuggestions:"));
+        validation.suggestions.forEach((suggestion) => {
           console.log(chalk.dim(`  • ${suggestion}`));
         });
       }
@@ -374,11 +374,11 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 
     // Ensure we have owner and repo from somewhere
     if (!finalRepo.owner || !finalRepo.repo) {
-      console.error(chalk.red('❌ Repository owner and name are required'));
+      console.error(chalk.red("❌ Repository owner and name are required"));
       console.log(
         chalk.dim(
-          'Either configure them in .arbiter/config.json or ensure your Git remote is set correctly'
-        )
+          "Either configure them in .arbiter/config.json or ensure your Git remote is set correctly",
+        ),
       );
       return;
     }
@@ -387,9 +387,9 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
     const githubConfig = {
       repository: finalRepo,
       mapping: config.github?.mapping || {
-        epicPrefix: '[Epic]',
-        taskPrefix: '[Task]',
-        defaultLabels: ['arbiter-generated'],
+        epicPrefix: "[Epic]",
+        taskPrefix: "[Task]",
+        defaultLabels: ["arbiter-generated"],
       },
       behavior: config.github?.behavior || {
         createMilestones: true,
@@ -400,33 +400,33 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
     };
 
     // Display repository info
-    if (options.verbose || smartRepoConfig.source !== 'config') {
+    if (options.verbose || smartRepoConfig.source !== "config") {
       const sourceInfo =
-        smartRepoConfig.source === 'detected'
-          ? 'auto-detected from Git remote'
-          : smartRepoConfig.source === 'merged'
-            ? 'merged from config and Git remote'
-            : 'from configuration';
+        smartRepoConfig.source === "detected"
+          ? "auto-detected from Git remote"
+          : smartRepoConfig.source === "merged"
+            ? "merged from config and Git remote"
+            : "from configuration";
 
       console.log(chalk.dim(`📁 Repository: ${finalRepo.owner}/${finalRepo.repo} (${sourceInfo})`));
     }
 
     // Load epics from the project
-    console.log(chalk.blue('📋 Loading epics and tasks...'));
+    console.log(chalk.blue("📋 Loading epics and tasks..."));
     const storage = new ShardedCUEStorage();
     await storage.initialize();
     const epics = await storage.listEpics();
 
     if (epics.length === 0) {
-      console.log(chalk.yellow('⚠️  No epics found to sync'));
-      console.log(chalk.dim('Create epics with: arbiter epic create <name>'));
+      console.log(chalk.yellow("⚠️  No epics found to sync"));
+      console.log(chalk.dim("Create epics with: arbiter epic create <name>"));
       return;
     }
 
     console.log(
       chalk.dim(
-        `Found ${epics.length} epics with ${epics.reduce((sum, epic) => sum + epic.tasks.length, 0)} total tasks`
-      )
+        `Found ${epics.length} epics with ${epics.reduce((sum, epic) => sum + epic.tasks.length, 0)} total tasks`,
+      ),
     );
 
     // Create GitHub sync client
@@ -436,18 +436,18 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
     const isDryRun = options.githubDryRun || options.dryRun;
 
     if (isDryRun) {
-      console.log(chalk.blue('🔍 GitHub Sync Preview (dry run)'));
+      console.log(chalk.blue("🔍 GitHub Sync Preview (dry run)"));
 
       // Generate preview
       const preview = await githubClient.generateSyncPreview(epics);
 
       // Display preview results
-      console.log(chalk.green('\\n📊 Sync Preview:'));
+      console.log(chalk.green("\\n📊 Sync Preview:"));
 
       // Epics
       if (preview.epics.create.length > 0) {
         console.log(chalk.cyan(`\\n  📝 Epics to create: ${preview.epics.create.length}`));
-        preview.epics.create.forEach(epic => {
+        preview.epics.create.forEach((epic) => {
           console.log(chalk.dim(`    • ${epic.name}`));
         });
       }
@@ -469,7 +469,7 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
       // Tasks
       if (preview.tasks.create.length > 0) {
         console.log(chalk.cyan(`\\n  🔧 Tasks to create: ${preview.tasks.create.length}`));
-        preview.tasks.create.forEach(task => {
+        preview.tasks.create.forEach((task) => {
           console.log(chalk.dim(`    • ${task.name} (${task.type})`));
         });
       }
@@ -491,16 +491,16 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
       // Milestones
       if (preview.milestones.create.length > 0) {
         console.log(
-          chalk.cyan(`\\n  🎯 Milestones to create: ${preview.milestones.create.length}`)
+          chalk.cyan(`\\n  🎯 Milestones to create: ${preview.milestones.create.length}`),
         );
-        preview.milestones.create.forEach(epic => {
+        preview.milestones.create.forEach((epic) => {
           console.log(chalk.dim(`    • Epic: ${epic.name}`));
         });
       }
 
       if (preview.milestones.update.length > 0) {
         console.log(
-          chalk.yellow(`\\n  🎯 Milestones to update: ${preview.milestones.update.length}`)
+          chalk.yellow(`\\n  🎯 Milestones to update: ${preview.milestones.update.length}`),
         );
         preview.milestones.update.forEach(({ epic }) => {
           console.log(chalk.dim(`    • Epic: ${epic.name}`));
@@ -526,32 +526,32 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
         preview.milestones.close.length;
 
       if (totalChanges === 0) {
-        console.log(chalk.green('\\n✅ No changes needed - everything is already in sync'));
+        console.log(chalk.green("\\n✅ No changes needed - everything is already in sync"));
       } else {
         console.log(
-          chalk.blue('\\n💡 Run without --github-dry-run or --dry-run to apply these changes')
+          chalk.blue("\\n💡 Run without --github-dry-run or --dry-run to apply these changes"),
         );
       }
     } else {
-      console.log(chalk.blue('🚀 Syncing to GitHub...'));
+      console.log(chalk.blue("🚀 Syncing to GitHub..."));
 
       // Perform actual sync
       const syncResults = await githubClient.syncToGitHub(epics, false);
 
       // Group and display results
-      const created = syncResults.filter(r => r.action === 'created');
-      const updated = syncResults.filter(r => r.action === 'updated');
-      const closed = syncResults.filter(r => r.action === 'closed');
-      const skipped = syncResults.filter(r => r.action === 'skipped');
+      const created = syncResults.filter((r) => r.action === "created");
+      const updated = syncResults.filter((r) => r.action === "updated");
+      const closed = syncResults.filter((r) => r.action === "closed");
+      const skipped = syncResults.filter((r) => r.action === "skipped");
 
-      console.log(chalk.green('\\n✅ GitHub Sync Complete:'));
+      console.log(chalk.green("\\n✅ GitHub Sync Complete:"));
 
       if (created.length > 0) {
         console.log(chalk.cyan(`  📝 Created: ${created.length} items`));
-        created.forEach(result => {
+        created.forEach((result) => {
           if (result.githubNumber) {
             console.log(
-              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`)
+              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`),
             );
           } else {
             console.log(chalk.dim(`    • ${result.type}: ${result.details}`));
@@ -561,10 +561,10 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 
       if (updated.length > 0) {
         console.log(chalk.yellow(`  📝 Updated: ${updated.length} items`));
-        updated.forEach(result => {
+        updated.forEach((result) => {
           if (result.githubNumber) {
             console.log(
-              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`)
+              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`),
             );
           } else {
             console.log(chalk.dim(`    • ${result.type}: ${result.details}`));
@@ -574,10 +574,10 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 
       if (closed.length > 0) {
         console.log(chalk.red(`  📝 Closed: ${closed.length} items`));
-        closed.forEach(result => {
+        closed.forEach((result) => {
           if (result.githubNumber) {
             console.log(
-              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`)
+              chalk.dim(`    • ${result.type} #${result.githubNumber}: ${result.details}`),
             );
           } else {
             console.log(chalk.dim(`    • ${result.type}: ${result.details}`));
@@ -591,29 +591,29 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 
       console.log(
         chalk.green(
-          `\\n🔗 Check your GitHub repository: https://github.com/${finalRepo.owner}/${finalRepo.repo}/issues`
-        )
+          `\\n🔗 Check your GitHub repository: https://github.com/${finalRepo.owner}/${finalRepo.repo}/issues`,
+        ),
       );
     }
   } catch (error) {
     console.error(
-      chalk.red('❌ GitHub sync failed:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("❌ GitHub sync failed:"),
+      error instanceof Error ? error.message : String(error),
     );
     if (options.verbose) {
-      console.error(chalk.dim('Full error:'), error);
+      console.error(chalk.dim("Full error:"), error);
     }
 
-    console.log(chalk.dim('\\nTroubleshooting tips:'));
+    console.log(chalk.dim("\\nTroubleshooting tips:"));
     console.log(
-      chalk.dim('  • Ensure GITHUB_TOKEN environment variable is set with proper permissions')
+      chalk.dim("  • Ensure GITHUB_TOKEN environment variable is set with proper permissions"),
     );
     console.log(chalk.dim("  • Verify your GitHub token has 'repo' or 'issues:write' permission"));
-    console.log(chalk.dim('  • Check that the repository owner/name is correct'));
-    console.log(chalk.dim('  • Ensure Git remote origin points to the correct GitHub repository'));
-    console.log(chalk.dim('  • Use --verbose for more error details'));
+    console.log(chalk.dim("  • Check that the repository owner/name is correct"));
+    console.log(chalk.dim("  • Ensure Git remote origin points to the correct GitHub repository"));
+    console.log(chalk.dim("  • Use --verbose for more error details"));
     console.log(
-      chalk.dim('  • Use --use-config or --use-git-remote to resolve repository conflicts')
+      chalk.dim("  • Use --use-config or --use-git-remote to resolve repository conflicts"),
     );
   }
 }
@@ -629,16 +629,22 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
 export async function generateCommand(
   options: GenerateOptions,
   config: CLIConfig,
-  specName?: string
+  specName?: string,
 ): Promise<number> {
   if (options.verbose) {
-    console.log(chalk.dim('🔧 Generate options:'), JSON.stringify(options, null, 2));
+    console.log(chalk.dim("🔧 Generate options:"), JSON.stringify(options, null, 2));
   }
   try {
-    console.log(chalk.blue('🏗️  Generating project artifacts from assembly.cue...'));
+    console.log(chalk.blue("🏗️  Generating project artifacts from assembly.cue..."));
 
     // First, try to emit the CUE file from stored specification in service
-    await emitSpecificationFromService(config);
+    if (config.localMode) {
+      if (options.verbose) {
+        console.log(chalk.dim("📁 Local mode enabled: using existing .arbiter CUE files"));
+      }
+    } else {
+      await emitSpecificationFromService(config);
+    }
 
     let assemblyPath: string;
     let assemblyContent: string;
@@ -647,7 +653,7 @@ export async function generateCommand(
     if (specName || options.spec) {
       // Use specified spec name
       const targetSpec = specName || options.spec!;
-      assemblyPath = path.join('.arbiter', targetSpec, 'assembly.cue');
+      assemblyPath = path.join(".arbiter", targetSpec, "assembly.cue");
 
       if (!fs.existsSync(assemblyPath)) {
         console.error(chalk.red(`❌ Spec "${targetSpec}" not found at ${assemblyPath}`));
@@ -655,13 +661,13 @@ export async function generateCommand(
         // Show available specs
         const availableSpecs = discoverSpecs();
         if (availableSpecs.length > 0) {
-          console.log(chalk.yellow('\n📋 Available specs:'));
-          availableSpecs.forEach(spec => {
+          console.log(chalk.yellow("\n📋 Available specs:"));
+          availableSpecs.forEach((spec) => {
             console.log(chalk.cyan(`  • ${spec.name}`));
           });
           console.log(chalk.dim(`\n💡 Usage: arbiter generate ${availableSpecs[0].name}`));
         } else {
-          console.log(chalk.dim('No specs found in .arbiter/ directory'));
+          console.log(chalk.dim("No specs found in .arbiter/ directory"));
         }
         return 1;
       }
@@ -673,15 +679,15 @@ export async function generateCommand(
 
       if (availableSpecs.length === 0) {
         // Check for assembly.cue in .arbiter directory first
-        const arbiterPath = path.resolve('.arbiter', 'assembly.cue');
+        const arbiterPath = path.resolve(".arbiter", "assembly.cue");
 
         if (fs.existsSync(arbiterPath)) {
           assemblyPath = arbiterPath;
-          console.log(chalk.dim('📁 Using .arbiter/assembly.cue'));
+          console.log(chalk.dim("📁 Using .arbiter/assembly.cue"));
         } else {
-          console.error(chalk.red('❌ No assembly specifications found'));
-          console.log(chalk.dim('Create a spec with: arbiter add service <name>'));
-          console.log(chalk.dim('Or initialize with: arbiter init'));
+          console.error(chalk.red("❌ No assembly specifications found"));
+          console.log(chalk.dim("Create a spec with: arbiter add service <name>"));
+          console.log(chalk.dim("Or initialize with: arbiter init"));
           return 1;
         }
       } else if (availableSpecs.length === 1) {
@@ -690,70 +696,70 @@ export async function generateCommand(
         console.log(chalk.green(`✅ Auto-detected spec: ${availableSpecs[0].name}`));
       } else {
         // Multiple specs found - require user to specify
-        console.error(chalk.red('❌ Multiple specs found. Please specify which one to use:'));
-        console.log(chalk.yellow('\n📋 Available specs:'));
-        availableSpecs.forEach(spec => {
+        console.error(chalk.red("❌ Multiple specs found. Please specify which one to use:"));
+        console.log(chalk.yellow("\n📋 Available specs:"));
+        availableSpecs.forEach((spec) => {
           console.log(chalk.cyan(`  • arbiter generate ${spec.name}`));
         });
         return 1;
       }
     }
 
-    assemblyContent = fs.readFileSync(assemblyPath, 'utf-8');
+    assemblyContent = fs.readFileSync(assemblyPath, "utf-8");
     const configWithVersion = await parseAssemblyFile(assemblyPath);
 
     if (options.verbose) {
-      console.log(chalk.dim('Assembly configuration:'));
+      console.log(chalk.dim("Assembly configuration:"));
       console.log(
         chalk.dim(
-          `Schema version: ${configWithVersion.schema.version} (detected from: ${configWithVersion.schema.detected_from})`
-        )
+          `Schema version: ${configWithVersion.schema.version} (detected from: ${configWithVersion.schema.detected_from})`,
+        ),
       );
       console.log(chalk.dim(JSON.stringify(configWithVersion, null, 2)));
     }
 
     // Validate specification completeness
-    console.log(chalk.blue('🔍 Validating specification completeness...'));
+    console.log(chalk.blue("🔍 Validating specification completeness..."));
     const validationResult = validateSpecification(configWithVersion.app || configWithVersion);
 
     if (validationResult.hasErrors) {
       console.log(formatWarnings(validationResult));
       console.error(
-        chalk.red('\n❌ Cannot generate with errors present. Please fix the errors above.')
+        chalk.red("\n❌ Cannot generate with errors present. Please fix the errors above."),
       );
       return 1;
     }
 
     if (validationResult.hasWarnings) {
-      console.log('\n' + chalk.yellow('⚠️  Specification validation warnings found:'));
+      console.log("\n" + chalk.yellow("⚠️  Specification validation warnings found:"));
       console.log(formatWarnings(validationResult));
 
       if (!options.force) {
-        console.log(chalk.blue('\n💡 To proceed: Add --force flag to generate with warnings'));
+        console.log(chalk.blue("\n💡 To proceed: Add --force flag to generate with warnings"));
         console.log(
           chalk.dim(
-            'Recommendation: Fix the warnings above for a complete, production-ready specification.'
-          )
+            "Recommendation: Fix the warnings above for a complete, production-ready specification.",
+          ),
         );
         return 1;
       }
 
-      console.log(chalk.yellow('\n⚠️  Generating despite warnings (--force used)'));
-      console.log(chalk.red.bold('\n🚨 REMINDER FOR AI AGENTS:'));
+      console.log(chalk.yellow("\n⚠️  Generating despite warnings (--force used)"));
+      console.log(chalk.red.bold("\n🚨 REMINDER FOR AI AGENTS:"));
       console.log(
         chalk.yellow(
-          'You should have requested user approval before using --force with incomplete specifications.'
-        )
+          "You should have requested user approval before using --force with incomplete specifications.",
+        ),
       );
       console.log(
-        chalk.dim('This may result in production issues that require additional work later.')
+        chalk.dim("This may result in production issues that require additional work later."),
       );
     } else {
-      console.log(chalk.green('✅ Specification validation passed'));
+      console.log(chalk.green("✅ Specification validation passed"));
     }
 
     // Determine output directory
-    const outputDir = options.outputDir || '.';
+    const outputDir = options.outputDir || ".";
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
@@ -779,7 +785,7 @@ export async function generateCommand(
     try {
       // Generate application artifacts
       if (configWithVersion.app) {
-        console.log(chalk.blue('🎨 Generating application artifacts...'));
+        console.log(chalk.blue("🎨 Generating application artifacts..."));
         const projectStructure: ProjectStructureConfig = {
           ...DEFAULT_PROJECT_STRUCTURE,
           ...config.projectStructure,
@@ -790,20 +796,20 @@ export async function generateCommand(
           outputDir,
           options,
           projectStructure,
-          config
+          config,
         );
         results.push(...appResults);
       } else {
-        throw new Error('Invalid configuration: missing app specification data');
+        throw new Error("Invalid configuration: missing app specification data");
       }
 
       // Report results
       if (options.dryRun) {
-        console.log(chalk.yellow('🔍 Dry run - files that would be generated:'));
-        results.forEach(file => console.log(chalk.dim(`  ${file}`)));
+        console.log(chalk.yellow("🔍 Dry run - files that would be generated:"));
+        results.forEach((file) => console.log(chalk.dim(`  ${file}`)));
       } else {
         console.log(chalk.green(`✅ Generated ${results.length} files:`));
-        results.forEach(file => console.log(chalk.dim(`  ✓ ${file}`)));
+        results.forEach((file) => console.log(chalk.dim(`  ✓ ${file}`)));
       }
 
       if (hookManager) {
@@ -823,8 +829,8 @@ export async function generateCommand(
     }
   } catch (error) {
     console.error(
-      chalk.red('❌ Generate failed:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("❌ Generate failed:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 1;
   }
@@ -836,12 +842,12 @@ export async function generateCommand(
 async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersion> {
   try {
     // Use CUE to evaluate and export as JSON
-    const result = await executeCommand('cue', ['eval', '--out', 'json', assemblyPath], {
+    const result = await executeCommand("cue", ["eval", "--out", "json", assemblyPath], {
       timeout: 10000,
     });
 
     if (!result.success) {
-      console.error('CUE evaluation failed:', result.stderr);
+      console.error("CUE evaluation failed:", result.stderr);
       return fallbackParseAssembly(assemblyPath);
     }
 
@@ -853,7 +859,7 @@ async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersio
     // Parse app schema
     return parseAppSchema(cueData, schemaVersion);
   } catch (error) {
-    console.error('Error parsing CUE file:', error);
+    console.error("Error parsing CUE file:", error);
     return fallbackParseAssembly(assemblyPath);
   }
 }
@@ -864,8 +870,8 @@ async function parseAssemblyFile(assemblyPath: string): Promise<ConfigWithVersio
 function detectSchemaVersion(cueData: any): SchemaVersion {
   // Always use app schema - it's the primary and only supported schema now
   return {
-    version: 'app',
-    detected_from: 'metadata',
+    version: "app",
+    detected_from: "metadata",
   };
 }
 
@@ -875,7 +881,7 @@ function detectSchemaVersion(cueData: any): SchemaVersion {
 function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithVersion {
   const appSpec: AppSpec = {
     product: cueData.product || {
-      name: 'Unknown App',
+      name: "Unknown App",
     },
     config: cueData.config,
     ui: cueData.ui || {
@@ -905,18 +911,18 @@ function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithV
 
 // Fallback to file-based regex parsing if CUE evaluation fails
 async function fallbackParseAssembly(assemblyPath: string): Promise<ConfigWithVersion> {
-  const content = await fs.readFile(assemblyPath, 'utf-8');
+  const content = await fs.readFile(assemblyPath, "utf-8");
 
   // Always use app schema
-  const schemaVersion: SchemaVersion = { version: 'app', detected_from: 'default' };
+  const schemaVersion: SchemaVersion = { version: "app", detected_from: "default" };
 
-  console.warn('⚠️  CUE evaluation failed - using limited fallback parsing');
+  console.warn("⚠️  CUE evaluation failed - using limited fallback parsing");
 
   // Extract basic information from the CUE file
   const nameMatch = content.match(/name:\s*"([^"]+)"/);
   const languageMatch = content.match(/language:\s*"([^"]+)"/);
-  const productName = nameMatch ? nameMatch[1] : 'Unknown App';
-  const language = languageMatch ? languageMatch[1] : 'typescript';
+  const productName = nameMatch ? nameMatch[1] : "Unknown App";
+  const language = languageMatch ? languageMatch[1] : "typescript";
 
   const appSpec: AppSpec = {
     product: { name: productName },
@@ -945,7 +951,7 @@ async function generateAppArtifacts(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const appSpec = configWithVersion.app;
@@ -963,17 +969,17 @@ async function generateAppArtifacts(
 
   const routeFiles = await generateUIComponents(appSpec, clientContext, options);
   files.push(
-    ...routeFiles.map(file =>
-      joinRelativePath(structure.clientsDirectory, clientContext.slug, file)
-    )
+    ...routeFiles.map((file) =>
+      joinRelativePath(structure.clientsDirectory, clientContext.slug, file),
+    ),
   );
 
   if (Object.keys(appSpec.locators).length > 0) {
     const locatorFiles = await generateLocatorDefinitions(appSpec, clientContext, options);
     files.push(
-      ...locatorFiles.map(file =>
-        joinRelativePath(structure.clientsDirectory, clientContext.slug, file)
-      )
+      ...locatorFiles.map((file) =>
+        joinRelativePath(structure.clientsDirectory, clientContext.slug, file),
+      ),
     );
   }
 
@@ -983,7 +989,7 @@ async function generateAppArtifacts(
       outputDir,
       options,
       structure,
-      clientContext
+      clientContext,
     );
     files.push(...testFiles);
   }
@@ -993,7 +999,7 @@ async function generateAppArtifacts(
     outputDir,
     options,
     structure,
-    cliConfig
+    cliConfig,
   );
   files.push(...endpointAssertionFiles);
 
@@ -1001,7 +1007,7 @@ async function generateAppArtifacts(
     appSpec,
     outputDir,
     options,
-    structure
+    structure,
   );
   files.push(...capabilityFeatureFiles);
 
@@ -1016,7 +1022,7 @@ async function generateAppArtifacts(
       outputDir,
       options,
       structure,
-      cliConfig
+      cliConfig,
     );
     files.push(...serviceFiles);
   }
@@ -1036,7 +1042,7 @@ async function generateAppArtifacts(
     options,
     structure,
     clientContext,
-    cliConfig
+    cliConfig,
   );
   files.push(...clientProjectFiles);
 
@@ -1047,7 +1053,7 @@ async function generateAppArtifacts(
     structure,
     appSpec,
     clientContext,
-    cliConfig
+    cliConfig,
   );
   files.push(...infraFiles);
 
@@ -1059,7 +1065,7 @@ async function generateAppArtifacts(
     outputDir,
     options,
     structure,
-    cliConfig
+    cliConfig,
   );
   files.push(...testRunnerFiles);
 
@@ -1072,28 +1078,28 @@ async function generateAppArtifacts(
 async function generateUIComponents(
   appSpec: AppSpec,
   clientContext: ClientGenerationContext,
-  options: GenerateOptions
+  options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
-  const language = appSpec.config?.language || 'typescript';
+  const language = appSpec.config?.language || "typescript";
 
-  if (language !== 'typescript') {
+  if (language !== "typescript") {
     console.log(
       chalk.yellow(
-        `⚠️  UI route generation currently supports TypeScript React projects. Skipping for '${language}'.`
-      )
+        `⚠️  UI route generation currently supports TypeScript React projects. Skipping for '${language}'.`,
+      ),
     );
     return files;
   }
 
   await ensureDirectory(clientContext.routesDir, options);
 
-  const typeFilePath = path.join(clientContext.routesDir, 'types.ts');
-  const typeFileRelative = joinRelativePath('src', 'routes', 'types.ts');
+  const typeFilePath = path.join(clientContext.routesDir, "types.ts");
+  const typeFileRelative = joinRelativePath("src", "routes", "types.ts");
   await writeFileWithHooks(
     typeFilePath,
     `import type { ComponentType } from 'react';\n\nexport interface RouteDefinition {\n  id: string;\n  path: string;\n  Component: ComponentType;\n  description?: string;\n  children?: RouteDefinition[];\n}\n\nexport type RouteDefinitions = RouteDefinition[];\n`,
-    options
+    options,
   );
   files.push(typeFileRelative);
 
@@ -1101,31 +1107,31 @@ async function generateUIComponents(
 
   for (const route of appSpec.ui.routes) {
     const baseName = route.id
-      .split(':')
-      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-      .join('');
+      .split(":")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join("");
     const componentName = `${baseName}View`;
     const definitionName = `${baseName}Route`;
     const fileName = `${definitionName}.tsx`;
-    const relPath = joinRelativePath('src', 'routes', fileName);
+    const relPath = joinRelativePath("src", "routes", fileName);
     const filePath = path.join(clientContext.routesDir, fileName);
-    const rawPath = route.path || `/${route.id.replace(/:/g, '/')}`;
-    const safePath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+    const rawPath = route.path || `/${route.id.replace(/:/g, "/")}`;
+    const safePath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
     const title = route.name || baseName;
     const description =
       route.summary ||
       route.description ||
       (Array.isArray(route.capabilities) && route.capabilities.length > 0
-        ? `Capabilities: ${route.capabilities.join(', ')}`
-        : 'Auto-generated view');
+        ? `Capabilities: ${route.capabilities.join(", ")}`
+        : "Auto-generated view");
 
     const capabilityList = Array.isArray(route.capabilities)
-      ? route.capabilities.map(cap => `          <li>${cap}</li>`).join('\n')
-      : '';
+      ? route.capabilities.map((cap) => `          <li>${cap}</li>`).join("\n")
+      : "";
 
     const capabilityBlock = capabilityList
       ? `        <section className="route-capabilities">\n          <h2>Capabilities</h2>\n          <ul>\n${capabilityList}\n          </ul>\n        </section>\n`
-      : '';
+      : "";
 
     const componentContent = `import React from 'react';\nimport type { RouteDefinition } from './types';\n\nconst ${componentName}: React.FC = () => {\n  return (\n    <section data-route="${route.id}" role="main">\n      <header>\n        <h1>${title}</h1>\n        <p>${description}</p>\n      </header>\n${capabilityBlock}    </section>\n  );\n};\n\nexport const ${definitionName}: RouteDefinition = {\n  id: '${route.id}',\n  path: '${safePath}',\n  Component: ${componentName},\n};\n`;
 
@@ -1134,20 +1140,20 @@ async function generateUIComponents(
     routeDefinitions.push({ importName: definitionName });
   }
 
-  const aggregatorPath = path.join(clientContext.routesDir, 'index.tsx');
-  const aggregatorRelative = joinRelativePath('src', 'routes', 'index.tsx');
+  const aggregatorPath = path.join(clientContext.routesDir, "index.tsx");
+  const aggregatorRelative = joinRelativePath("src", "routes", "index.tsx");
   const imports = routeDefinitions
-    .map(definition => `import { ${definition.importName} } from './${definition.importName}';`)
-    .join('\n');
-  const definitionsArray = routeDefinitions.map(definition => definition.importName).join(', ');
+    .map((definition) => `import { ${definition.importName} } from './${definition.importName}';`)
+    .join("\n");
+  const definitionsArray = routeDefinitions.map((definition) => definition.importName).join(", ");
 
-  const aggregatorContent = `import React from 'react';\nimport type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from './types';\n${imports ? `${imports}\n` : ''}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from './types';\n`;
+  const aggregatorContent = `import React from 'react';\nimport type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from './types';\n${imports ? `${imports}\n` : ""}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from './types';\n`;
 
   await writeFileWithHooks(aggregatorPath, aggregatorContent, options);
   files.push(aggregatorRelative);
 
-  const appRoutesPath = path.join(clientContext.routesDir, 'AppRoutes.tsx');
-  const appRoutesRelative = joinRelativePath('src', 'routes', 'AppRoutes.tsx');
+  const appRoutesPath = path.join(clientContext.routesDir, "AppRoutes.tsx");
+  const appRoutesRelative = joinRelativePath("src", "routes", "AppRoutes.tsx");
   const appRoutesContent = `import React from 'react';
 import { useRoutes } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
@@ -1175,26 +1181,26 @@ async function generateFlowBasedTests(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContext?: ClientGenerationContext
+  clientContext?: ClientGenerationContext,
 ): Promise<string[]> {
   const files: string[] = [];
 
-  console.log(chalk.blue('🧪 Generating tests from flows...'));
+  console.log(chalk.blue("🧪 Generating tests from flows..."));
 
   // Determine language for test generation
-  const language = appSpec.config?.language || 'typescript';
+  const language = appSpec.config?.language || "typescript";
   const plugin = languageRegistry.get(language);
 
   if (!plugin) {
     console.log(
-      chalk.yellow(`⚠️  No plugin available for ${language}, using default Playwright tests`)
+      chalk.yellow(`⚠️  No plugin available for ${language}, using default Playwright tests`),
     );
   }
 
   const testsDirSegments = [
     ...toPathSegments(structure.testsDirectory),
-    clientContext?.slug ?? 'app',
-    'flows',
+    clientContext?.slug ?? "app",
+    "flows",
   ];
   const testsDir = path.join(outputDir, ...testsDirSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
@@ -1209,8 +1215,8 @@ async function generateFlowBasedTests(
       // Generate using language plugin
       const testConfig = {
         name: flow.id,
-        type: 'e2e',
-        framework: 'playwright',
+        type: "e2e",
+        framework: "playwright",
         flow: flow,
         locators: appSpec.locators,
       };
@@ -1222,7 +1228,7 @@ async function generateFlowBasedTests(
 import { test, expect } from '@playwright/test';`;
       } catch (error) {
         console.warn(
-          chalk.yellow(`⚠️  Plugin test generation failed, using default: ${error.message}`)
+          chalk.yellow(`⚠️  Plugin test generation failed, using default: ${error.message}`),
         );
         testContent = generateDefaultFlowTest(flow, appSpec.locators);
       }
@@ -1230,16 +1236,16 @@ import { test, expect } from '@playwright/test';`;
       testContent = generateDefaultFlowTest(flow, appSpec.locators);
     }
 
-    const testFileName = `${flow.id.replace(/:/g, '_')}.test.ts`;
+    const testFileName = `${flow.id.replace(/:/g, "_")}.test.ts`;
     const testPath = path.join(testsDir, testFileName);
     await writeFileWithHooks(testPath, testContent, options);
     files.push(
       joinRelativePath(
         structure.testsDirectory,
-        clientContext?.slug ?? 'app',
-        'flows',
-        testFileName
-      )
+        clientContext?.slug ?? "app",
+        "flows",
+        testFileName,
+      ),
     );
   }
 
@@ -1251,7 +1257,7 @@ async function generateEndpointAssertionTests(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const cases = collectEndpointAssertionCases(appSpec);
@@ -1260,21 +1266,21 @@ async function generateEndpointAssertionTests(
     return files;
   }
 
-  console.log(chalk.blue('🧪 Generating endpoint assertion tests...'));
+  console.log(chalk.blue("🧪 Generating endpoint assertion tests..."));
 
-  const language = (appSpec.config?.language || 'typescript').toLowerCase();
+  const language = (appSpec.config?.language || "typescript").toLowerCase();
   const testingConfig = cliConfig.generator?.testing?.[language];
   const framework = resolveTestingFramework(language, testingConfig?.framework);
   const plugin = languageRegistry.get(language);
 
-  const defaultDirSegments = [...toPathSegments(structure.testsDirectory), 'api', 'assertions'];
+  const defaultDirSegments = [...toPathSegments(structure.testsDirectory), "api", "assertions"];
   const configuredSegments = testingConfig?.outputDir
     ? toPathSegments(testingConfig.outputDir)
     : defaultDirSegments;
 
   const testsDir =
     configuredSegments.length > 0 ? path.join(outputDir, ...configuredSegments) : outputDir;
-  const relativeDir = configuredSegments.length > 0 ? joinRelativePath(...configuredSegments) : '.';
+  const relativeDir = configuredSegments.length > 0 ? joinRelativePath(...configuredSegments) : ".";
 
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
@@ -1296,21 +1302,21 @@ async function generateEndpointAssertionTests(
       const generation = await plugin.generateEndpointTests(generationConfig);
 
       for (const file of generation.files) {
-        const relativePath = file.path.replace(/^\/+/, '');
+        const relativePath = file.path.replace(/^\/+/, "");
         const destination = path.join(testsDir, relativePath);
         const mode = file.executable ? 0o755 : undefined;
 
         await writeFileWithHooks(destination, file.content, options, mode);
         const relativeFile =
           configuredSegments.length > 0
-            ? joinRelativePath(...configuredSegments, relativePath.replace(/^\.\//, ''))
-            : relativePath.replace(/^\.\//, '');
+            ? joinRelativePath(...configuredSegments, relativePath.replace(/^\.\//, ""))
+            : relativePath.replace(/^\.\//, "");
         files.push(relativeFile);
       }
 
       if (generation.instructions && generation.instructions.length > 0) {
-        generation.instructions.forEach(instruction =>
-          console.log(chalk.green(`✅ ${instruction}`))
+        generation.instructions.forEach((instruction) =>
+          console.log(chalk.green(`✅ ${instruction}`)),
         );
       }
 
@@ -1319,8 +1325,8 @@ async function generateEndpointAssertionTests(
       const message = error instanceof Error ? error.message : String(error);
       console.warn(
         chalk.yellow(
-          `⚠️  Plugin endpoint test generation failed for ${plugin.name}, falling back to default: ${message}`
-        )
+          `⚠️  Plugin endpoint test generation failed for ${plugin.name}, falling back to default: ${message}`,
+        ),
       );
     }
   }
@@ -1330,63 +1336,71 @@ async function generateEndpointAssertionTests(
   }
 
   switch (language) {
-    case 'typescript':
-    case 'javascript': {
-      const normalized = language === 'javascript' ? 'javascript' : 'typescript';
+    case "typescript":
+    case "javascript": {
+      const normalized = language === "javascript" ? "javascript" : "typescript";
       const frameworkChoice = normalizeJsFramework(normalized, framework);
       console.log(
         chalk.dim(
-          `   • Using ${frameworkChoice.toUpperCase()} template for ${normalized} endpoint assertions`
-        )
+          `   • Using ${frameworkChoice.toUpperCase()} template for ${normalized} endpoint assertions`,
+        ),
       );
-      const fileName = `endpoint-assertions.test.${normalized === 'javascript' ? 'js' : 'ts'}`;
+      const fileName = `endpoint-assertions.test.${normalized === "javascript" ? "js" : "ts"}`;
       const filePath = path.join(testsDir, fileName);
       const content = generateJsTsEndpointAssertionTest(normalized, frameworkChoice, cases);
       await writeFileWithHooks(filePath, content, options);
       files.push(
-        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+        configuredSegments.length > 0
+          ? joinRelativePath(...configuredSegments, fileName)
+          : fileName,
       );
       break;
     }
-    case 'python': {
-      const frameworkChoice = framework === 'pytest' ? 'pytest' : 'pytest';
-      console.log(chalk.dim('   • Using PYTEST template for python endpoint assertions'));
-      const fileName = 'test_endpoint_assertions.py';
+    case "python": {
+      const frameworkChoice = framework === "pytest" ? "pytest" : "pytest";
+      console.log(chalk.dim("   • Using PYTEST template for python endpoint assertions"));
+      const fileName = "test_endpoint_assertions.py";
       const filePath = path.join(testsDir, fileName);
       const content = generatePythonEndpointAssertionTest(frameworkChoice, cases);
       await writeFileWithHooks(filePath, content, options);
       files.push(
-        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+        configuredSegments.length > 0
+          ? joinRelativePath(...configuredSegments, fileName)
+          : fileName,
       );
       break;
     }
-    case 'rust': {
-      console.log(chalk.dim('   • Using Rust std test template for endpoint assertions'));
-      const fileName = 'endpoint_assertions.rs';
+    case "rust": {
+      console.log(chalk.dim("   • Using Rust std test template for endpoint assertions"));
+      const fileName = "endpoint_assertions.rs";
       const filePath = path.join(testsDir, fileName);
       const content = generateRustEndpointAssertionTest(cases);
       await writeFileWithHooks(filePath, content, options);
       files.push(
-        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+        configuredSegments.length > 0
+          ? joinRelativePath(...configuredSegments, fileName)
+          : fileName,
       );
       break;
     }
-    case 'go': {
-      console.log(chalk.dim('   • Using Go testing template for endpoint assertions'));
-      const fileName = 'endpoint_assertions_test.go';
+    case "go": {
+      console.log(chalk.dim("   • Using Go testing template for endpoint assertions"));
+      const fileName = "endpoint_assertions_test.go";
       const filePath = path.join(testsDir, fileName);
       const content = generateGoEndpointAssertionTest(cases);
       await writeFileWithHooks(filePath, content, options);
       files.push(
-        configuredSegments.length > 0 ? joinRelativePath(...configuredSegments, fileName) : fileName
+        configuredSegments.length > 0
+          ? joinRelativePath(...configuredSegments, fileName)
+          : fileName,
       );
       break;
     }
     default: {
       console.log(
         chalk.yellow(
-          `⚠️  Endpoint assertion tests not generated for language '${language}'. Provide a language plugin implementation or add a generator fallback.`
-        )
+          `⚠️  Endpoint assertion tests not generated for language '${language}'. Provide a language plugin implementation or add a generator fallback.`,
+        ),
       );
     }
   }
@@ -1398,7 +1412,7 @@ async function generateCapabilityFeatures(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const capabilities = appSpec.capabilities;
 
@@ -1408,23 +1422,23 @@ async function generateCapabilityFeatures(
 
   const entries = Object.entries(capabilities).filter(([, capability]) => {
     const spec = capability?.gherkin;
-    return typeof spec === 'string' && spec.trim().length > 0;
+    return typeof spec === "string" && spec.trim().length > 0;
   });
 
   if (entries.length === 0) {
     return [];
   }
 
-  const featuresDir = path.join(outputDir, structure.testsDirectory, 'features', 'capabilities');
+  const featuresDir = path.join(outputDir, structure.testsDirectory, "features", "capabilities");
   await ensureDirectory(featuresDir, options);
 
   const files: string[] = [];
 
   for (const [capabilityId, capability] of entries) {
-    const identifier = capabilityId || capability.name || 'capability';
+    const identifier = capabilityId || capability.name || "capability";
     const slug = slugify(
-      typeof identifier === 'string' ? identifier : String(capabilityId),
-      'capability'
+      typeof identifier === "string" ? identifier : String(capabilityId),
+      "capability",
     );
     const fileName = `${slug}.feature`;
     const filePath = path.join(featuresDir, fileName);
@@ -1438,41 +1452,41 @@ async function generateCapabilityFeatures(
       headerLines.push(`# Owner: ${capability.owner}`);
     }
     if (Array.isArray(capability.depends_on) && capability.depends_on.length > 0) {
-      headerLines.push(`# Depends on: ${capability.depends_on.join(', ')}`);
+      headerLines.push(`# Depends on: ${capability.depends_on.join(", ")}`);
     }
     if (Array.isArray(capability.tags) && capability.tags.length > 0) {
-      headerLines.push(`# Tags: ${capability.tags.join(', ')}`);
+      headerLines.push(`# Tags: ${capability.tags.join(", ")}`);
     }
 
-    headerLines.push('');
+    headerLines.push("");
 
-    const normalizedSpec = capability.gherkin!.replace(/\r\n?/g, '\n').trim();
-    const featureBody = normalizedSpec.startsWith('Feature:')
+    const normalizedSpec = capability.gherkin!.replace(/\r\n?/g, "\n").trim();
+    const featureBody = normalizedSpec.startsWith("Feature:")
       ? normalizedSpec
       : `Feature: ${capability.name ?? slug}\n${normalizedSpec}`;
 
-    const content = [...headerLines, featureBody, ''].join('\n');
+    const content = [...headerLines, featureBody, ""].join("\n");
     await writeFileWithHooks(filePath, content, options);
-    files.push(joinRelativePath(structure.testsDirectory, 'features', 'capabilities', fileName));
+    files.push(joinRelativePath(structure.testsDirectory, "features", "capabilities", fileName));
   }
 
   return files;
 }
 
-const SUPPORTED_HTTP_METHODS: Array<keyof PathSpec> = ['get', 'post', 'put', 'patch', 'delete'];
+const SUPPORTED_HTTP_METHODS: Array<keyof PathSpec> = ["get", "post", "put", "patch", "delete"];
 
 function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefinition[] {
   const cases: EndpointTestCaseDefinition[] = [];
   const pathEntries = Object.entries(appSpec.paths ?? {});
 
   for (const [pathKey, pathSpec] of pathEntries) {
-    if (!pathSpec || typeof pathSpec !== 'object') {
+    if (!pathSpec || typeof pathSpec !== "object") {
       continue;
     }
 
     for (const method of SUPPORTED_HTTP_METHODS) {
       const operation = (pathSpec as Record<string, any>)[method];
-      if (!operation || typeof operation !== 'object') {
+      if (!operation || typeof operation !== "object") {
         continue;
       }
 
@@ -1485,8 +1499,8 @@ function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefini
       let primaryResponseStatus: number | undefined;
       let primaryResponse: Record<string, unknown> | undefined;
 
-      if (responses && typeof responses === 'object') {
-        const preferredOrder = ['200', '201', '202', '204'];
+      if (responses && typeof responses === "object") {
+        const preferredOrder = ["200", "201", "202", "204"];
         const entries = Object.entries(responses).filter(([status]) => status);
         const preferredEntry = entries.find(([status]) => preferredOrder.includes(status));
         const fallbackEntry = entries[0];
@@ -1500,11 +1514,11 @@ function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefini
       const requestBody = operation.requestBody as Record<string, unknown> | undefined;
       const metadata: Record<string, unknown> = {};
 
-      if (requestBody && typeof requestBody === 'object') {
+      if (requestBody && typeof requestBody === "object") {
         const requestContent = requestBody.content as
           | Record<string, Record<string, unknown>>
           | undefined;
-        if (requestContent && typeof requestContent === 'object') {
+        if (requestContent && typeof requestContent === "object") {
           const [contentType, media] = Object.entries(requestContent)[0] ?? [];
           metadata.requestBody = {
             contentType,
@@ -1518,7 +1532,7 @@ function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefini
         const responseContent = primaryResponse.content as
           | Record<string, Record<string, unknown>>
           | undefined;
-        if (responseContent && typeof responseContent === 'object') {
+        if (responseContent && typeof responseContent === "object") {
           const [contentType, media] = Object.entries(responseContent)[0] ?? [];
           metadata.response = {
             status: primaryResponseStatus,
@@ -1543,13 +1557,13 @@ function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefini
 }
 
 function normalizeCueAssertionBlock(
-  block?: CueAssertionBlock
-): EndpointTestCaseDefinition['assertions'] {
-  if (!block || typeof block !== 'object') {
+  block?: CueAssertionBlock,
+): EndpointTestCaseDefinition["assertions"] {
+  if (!block || typeof block !== "object") {
     return [];
   }
 
-  const result: EndpointTestCaseDefinition['assertions'] = [];
+  const result: EndpointTestCaseDefinition["assertions"] = [];
 
   for (const [name, value] of Object.entries(block)) {
     const normalized = normalizeCueAssertion(name, value as CueAssertion);
@@ -1563,27 +1577,27 @@ function normalizeCueAssertionBlock(
 
 function normalizeCueAssertion(
   name: string,
-  value: CueAssertion
+  value: CueAssertion,
 ): EndpointAssertionDefinition | null {
-  if (typeof value === 'boolean') {
+  if (typeof value === "boolean") {
     return {
       name,
       result: value,
-      severity: 'error',
+      severity: "error",
       raw: value,
     };
   }
 
-  if (value && typeof value === 'object') {
+  if (value && typeof value === "object") {
     const severity =
-      value.severity === 'warn' || value.severity === 'info' ? value.severity : 'error';
+      value.severity === "warn" || value.severity === "info" ? value.severity : "error";
     const tags = Array.isArray(value.tags)
-      ? value.tags.filter((tag): tag is string => typeof tag === 'string')
+      ? value.tags.filter((tag): tag is string => typeof tag === "string")
       : undefined;
 
     return {
       name,
-      result: typeof value.assert === 'boolean' ? value.assert : null,
+      result: typeof value.assert === "boolean" ? value.assert : null,
       severity,
       message: value.message,
       tags,
@@ -1600,32 +1614,32 @@ function resolveTestingFramework(language: string, configuredFramework?: string 
   }
 
   switch (language) {
-    case 'javascript':
-      return 'jest';
-    case 'typescript':
-      return 'vitest';
-    case 'python':
-      return 'pytest';
-    case 'rust':
-      return 'builtin';
-    case 'go':
-      return 'go-test';
+    case "javascript":
+      return "jest";
+    case "typescript":
+      return "vitest";
+    case "python":
+      return "pytest";
+    case "rust":
+      return "builtin";
+    case "go":
+      return "go-test";
     default:
-      return 'vitest';
+      return "vitest";
   }
 }
 
 function normalizeJsFramework(
-  language: 'typescript' | 'javascript',
-  framework: string
-): 'vitest' | 'jest' {
-  if (framework === 'jest') {
-    return 'jest';
+  language: "typescript" | "javascript",
+  framework: string,
+): "vitest" | "jest" {
+  if (framework === "jest") {
+    return "jest";
   }
-  if (framework === 'vitest') {
-    return 'vitest';
+  if (framework === "vitest") {
+    return "vitest";
   }
-  return language === 'javascript' ? 'jest' : 'vitest';
+  return language === "javascript" ? "jest" : "vitest";
 }
 
 function normalizeCasesForSerialization(cases: EndpointTestCaseDefinition[]): Array<{
@@ -1643,8 +1657,8 @@ function normalizeCasesForSerialization(cases: EndpointTestCaseDefinition[]): Ar
   return cases.map(({ path, method, status, assertions }) => ({
     path,
     method,
-    status: typeof status === 'number' ? status : null,
-    assertions: assertions.map(assertion => ({
+    status: typeof status === "number" ? status : null,
+    assertions: assertions.map((assertion) => ({
       name: assertion.name,
       result: assertion.result,
       severity: assertion.severity,
@@ -1655,24 +1669,24 @@ function normalizeCasesForSerialization(cases: EndpointTestCaseDefinition[]): Ar
 }
 
 function generateJsTsEndpointAssertionTest(
-  language: 'typescript' | 'javascript',
-  framework: 'vitest' | 'jest',
-  cases: EndpointTestCaseDefinition[]
+  language: "typescript" | "javascript",
+  framework: "vitest" | "jest",
+  cases: EndpointTestCaseDefinition[],
 ): string {
   const payload = normalizeCasesForSerialization(cases);
   const serialized = JSON.stringify(payload, null, 2);
   const importLine =
-    framework === 'jest'
+    framework === "jest"
       ? "import { describe, it, expect } from '@jest/globals';"
       : "import { describe, it, expect } from 'vitest';";
 
   const typeDefinitions =
-    language === 'typescript'
+    language === "typescript"
       ? `\ntype EndpointAssertion = {\n  name: string;\n  result: boolean | null;\n  severity: 'error' | 'warn' | 'info';\n  message: string | null;\n  tags: string[];\n};\n\ntype EndpointTestCase = {\n  path: string;\n  method: string;\n  status: number | null;\n  assertions: EndpointAssertion[];\n};\n`
-      : '';
+      : "";
 
   const casesDeclaration =
-    language === 'typescript'
+    language === "typescript"
       ? `const endpointCases: EndpointTestCase[] = ${serialized};`
       : `const endpointCases = ${serialized};`;
 
@@ -1681,7 +1695,7 @@ function generateJsTsEndpointAssertionTest(
 
 function generatePythonEndpointAssertionTest(
   _framework: string,
-  cases: EndpointTestCaseDefinition[]
+  cases: EndpointTestCaseDefinition[],
 ): string {
   const serialized = JSON.stringify(normalizeCasesForSerialization(cases), null, 2);
 
@@ -1690,28 +1704,28 @@ function generatePythonEndpointAssertionTest(
 
 function generateRustEndpointAssertionTest(cases: EndpointTestCaseDefinition[]): string {
   const renderedCases = normalizeCasesForSerialization(cases)
-    .map(caseItem => {
+    .map((caseItem) => {
       const assertions = caseItem.assertions
-        .map(assertion => {
+        .map((assertion) => {
           const result =
-            assertion.result === null ? 'None' : `Some(${assertion.result ? 'true' : 'false'})`;
+            assertion.result === null ? "None" : `Some(${assertion.result ? "true" : "false"})`;
           const message = assertion.message
             ? `Some("${escapeRustString(assertion.message)}")`
-            : 'None';
+            : "None";
           const tags =
             assertion.tags.length > 0
-              ? `vec![${assertion.tags.map(tag => `"${escapeRustString(tag)}"`).join(', ')}]`
-              : 'Vec::new()';
+              ? `vec![${assertion.tags.map((tag) => `"${escapeRustString(tag)}"`).join(", ")}]`
+              : "Vec::new()";
 
           return `                EndpointAssertion {\n                    name: "${escapeRustString(assertion.name)}",\n                    result: ${result},\n                    severity: "${escapeRustString(assertion.severity)}",\n                    message: ${message},\n                    tags: ${tags},\n                }`;
         })
-        .join(',\n');
+        .join(",\n");
 
-      const status = caseItem.status !== null ? `Some(${caseItem.status})` : 'None';
+      const status = caseItem.status !== null ? `Some(${caseItem.status})` : "None";
 
       return `            EndpointCase {\n                path: "${escapeRustString(caseItem.path)}",\n                method: "${escapeRustString(caseItem.method)}",\n                status: ${status},\n                assertions: vec![\n${assertions}\n                ],\n            }`;
     })
-    .join(',\n');
+    .join(",\n");
 
   return `// Generated by Arbiter - Endpoint assertion tests\n#[cfg(test)]\nmod tests {\n    struct EndpointAssertion<'a> {\n        name: &'a str,\n        result: Option<bool>,\n        severity: &'a str,\n        message: Option<&'a str>,\n        tags: Vec<&'a str>,\n    }\n\n    struct EndpointCase<'a> {\n        path: &'a str,\n        method: &'a str,\n        status: Option<u16>,\n        assertions: Vec<EndpointAssertion<'a>>,\n    }\n\n    fn endpoint_cases() -> Vec<EndpointCase<'static>> {\n        vec![\n${renderedCases}\n        ]\n    }\n\n    #[test]\n    fn endpoint_assertions_pass() {\n        for case in endpoint_cases() {\n            for assertion in case.assertions {\n                match assertion.result {\n                    Some(true) => {}\n                    Some(false) => {\n                        let message = assertion.message.unwrap_or(assertion.name);\n                        panic!(\"{} {} -> {} failed: {}\", case.method, case.path, assertion.name, message);\n                    }\n                    None => {\n                        println!(\"skipping {} {} -> {}\", case.method, case.path, assertion.name);\n                    }\n                }\n            }\n        }\n    }\n}\n`;
 }
@@ -1744,19 +1758,19 @@ function generateGoEndpointAssertionTest(cases: EndpointTestCaseDefinition[]): s
 }
 
 function escapeRustString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
 }
 
 function escapeGoString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
 }
 
 const DEFAULT_TEST_COMMANDS: Record<string, string> = {
-  typescript: 'npm test',
-  javascript: 'npm test',
-  python: 'pytest',
-  rust: 'cargo test',
-  go: 'go test ./...',
+  typescript: "npm test",
+  javascript: "npm test",
+  python: "pytest",
+  rust: "cargo test",
+  go: "go test ./...",
 };
 
 type TestTask = {
@@ -1767,24 +1781,24 @@ type TestTask = {
 
 function getLanguageTestingConfig(
   testing: GeneratorTestingConfig | undefined,
-  language: string
+  language: string,
 ): LanguageTestingConfig | undefined {
   if (!testing) return undefined;
-  if (language === 'master') return undefined;
+  if (language === "master") return undefined;
   const base = testing as Record<
     string,
     LanguageTestingConfig | MasterTestRunnerConfig | undefined
   >;
   const value = base[language];
   if (!value) return undefined;
-  if (typeof value === 'object' && 'type' in (value as MasterTestRunnerConfig)) {
+  if (typeof value === "object" && "type" in (value as MasterTestRunnerConfig)) {
     return undefined;
   }
   return value as LanguageTestingConfig;
 }
 
 function getMasterRunnerConfig(
-  testing: GeneratorTestingConfig | undefined
+  testing: GeneratorTestingConfig | undefined,
 ): MasterTestRunnerConfig | undefined {
   return testing?.master;
 }
@@ -1794,20 +1808,20 @@ async function generateMasterTestRunner(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const testingConfig = cliConfig.generator?.testing;
   const masterConfig = getMasterRunnerConfig(testingConfig);
-  const runnerType = masterConfig?.type ?? 'make';
+  const runnerType = masterConfig?.type ?? "make";
 
   const tasks: TestTask[] = [];
 
   const serviceEntries = Object.entries(appSpec.services ?? {});
   for (const [serviceName, serviceConfig] of serviceEntries) {
-    if (!serviceConfig || typeof serviceConfig !== 'object') continue;
+    if (!serviceConfig || typeof serviceConfig !== "object") continue;
     const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
-    const language = (serviceConfig.language as string | undefined)?.toLowerCase() ?? 'typescript';
+    const language = (serviceConfig.language as string | undefined)?.toLowerCase() ?? "typescript";
     const languageConfig = getLanguageTestingConfig(testingConfig, language);
     const testCommand = resolveTestingCommand(language, languageConfig);
     if (!testCommand) continue;
@@ -1829,21 +1843,21 @@ async function generateMasterTestRunner(
     appSpec,
     outputDir,
     structure,
-    testingConfig
+    testingConfig,
   );
   if (assertionTask) {
     tasks.push(assertionTask);
   }
 
-  if (runnerType === 'node') {
+  if (runnerType === "node") {
     const scriptPath = path.join(
       outputDir,
-      masterConfig?.output ?? path.join('tests', 'run-all.mjs')
+      masterConfig?.output ?? path.join("tests", "run-all.mjs"),
     );
     await ensureDirectory(path.dirname(scriptPath), options);
     const scriptContent = createNodeRunnerScript(tasks);
     await writeFileWithHooks(scriptPath, scriptContent, options, 0o755);
-    const relativePath = path.relative(outputDir, scriptPath).replace(/\\\\/g, '/');
+    const relativePath = path.relative(outputDir, scriptPath).replace(/\\\\/g, "/");
     files.push(relativePath.length > 0 ? relativePath : path.basename(scriptPath));
     if (options.verbose) {
       console.log(chalk.dim(`🧰 Master test runner written to ${scriptPath}`));
@@ -1851,19 +1865,19 @@ async function generateMasterTestRunner(
     return files;
   }
 
-  const makefilePath = path.join(outputDir, masterConfig?.output ?? 'Makefile');
+  const makefilePath = path.join(outputDir, masterConfig?.output ?? "Makefile");
   await ensureDirectory(path.dirname(makefilePath), options);
 
-  const targets = tasks.map(task => task.name);
-  let makefile = '';
+  const targets = tasks.map((task) => task.name);
+  let makefile = "";
   if (targets.length > 0) {
-    makefile += `.PHONY: test ${targets.join(' ')}\n\n`;
-    makefile += `test: ${targets.join(' ')}\n\n`;
+    makefile += `.PHONY: test ${targets.join(" ")}\n\n`;
+    makefile += `test: ${targets.join(" ")}\n\n`;
     for (const task of tasks) {
-      makefile += `${task.name}:\n\tcd ${task.cwd || '.'} && ${task.command}\n\n`;
+      makefile += `${task.name}:\n\tcd ${task.cwd || "."} && ${task.command}\n\n`;
     }
   } else {
-    makefile += '.PHONY: test\n\n';
+    makefile += ".PHONY: test\n\n";
     makefile += 'test:\n\t@echo "No automated tests are configured yet."\n\n';
   }
 
@@ -1871,7 +1885,7 @@ async function generateMasterTestRunner(
   if (options.verbose) {
     console.log(chalk.dim(`🧰 Master test runner written to ${makefilePath}`));
   }
-  const relativeMake = path.relative(outputDir, makefilePath).replace(/\\\\/g, '/');
+  const relativeMake = path.relative(outputDir, makefilePath).replace(/\\\\/g, "/");
   files.push(relativeMake.length > 0 ? relativeMake : path.basename(makefilePath));
 
   return files;
@@ -1879,7 +1893,7 @@ async function generateMasterTestRunner(
 
 function resolveTestingCommand(
   language: string,
-  config?: LanguageTestingConfig
+  config?: LanguageTestingConfig,
 ): string | undefined {
   if (config?.command && config.command.trim().length > 0) {
     return config.command.trim();
@@ -1891,10 +1905,10 @@ async function buildClientTestTask(
   appSpec: AppSpec,
   outputDir: string,
   structure: ProjectStructureConfig,
-  testingConfig: GeneratorTestingConfig | undefined
+  testingConfig: GeneratorTestingConfig | undefined,
 ): Promise<TestTask | null> {
   const clientLanguage = appSpec.config?.language?.toLowerCase();
-  if (clientLanguage !== 'typescript' && clientLanguage !== 'javascript') {
+  if (clientLanguage !== "typescript" && clientLanguage !== "javascript") {
     return null;
   }
 
@@ -1905,7 +1919,7 @@ async function buildClientTestTask(
   const context = createClientContext(appSpec, structure, outputDir);
   const clientDir = joinRelativePath(structure.clientsDirectory, context.slug);
   return {
-    name: 'test-client',
+    name: "test-client",
     command,
     cwd: clientDir,
   };
@@ -1915,18 +1929,18 @@ async function buildEndpointAssertionTask(
   appSpec: AppSpec,
   outputDir: string,
   structure: ProjectStructureConfig,
-  testingConfig: GeneratorTestingConfig | undefined
+  testingConfig: GeneratorTestingConfig | undefined,
 ): Promise<TestTask | null> {
   const tsServices = Object.entries(appSpec.services ?? {}).filter(
-    ([, svc]) => (svc?.language as string | undefined)?.toLowerCase() === 'typescript'
+    ([, svc]) => (svc?.language as string | undefined)?.toLowerCase() === "typescript",
   );
 
   if (tsServices.length === 0) {
     return null;
   }
 
-  const tsConfig = getLanguageTestingConfig(testingConfig, 'typescript');
-  const assertionsDir = tsConfig?.outputDir ?? 'tests/assertions/ts';
+  const tsConfig = getLanguageTestingConfig(testingConfig, "typescript");
+  const assertionsDir = tsConfig?.outputDir ?? "tests/assertions/ts";
   const assertionsPath = path.join(outputDir, assertionsDir);
   const exists = await fs.pathExists(assertionsPath);
   if (!exists) {
@@ -1936,13 +1950,13 @@ async function buildEndpointAssertionTask(
   const [serviceName, serviceConfig] = tsServices[0];
   const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
   const serviceDir = joinRelativePath(structure.servicesDirectory, context.name);
-  const relativeAssertions = path.relative(path.join(outputDir, serviceDir), assertionsPath) || '.';
+  const relativeAssertions = path.relative(path.join(outputDir, serviceDir), assertionsPath) || ".";
   const command = tsConfig?.command
     ? tsConfig.command
     : `npm exec vitest -- run ${relativeAssertions} --run`;
 
   return {
-    name: 'test-endpoint-assertions',
+    name: "test-endpoint-assertions",
     command,
     cwd: serviceDir,
   };
@@ -1951,50 +1965,50 @@ async function buildEndpointAssertionTask(
 function createNodeRunnerScript(tasks: TestTask[]): string {
   const taskList = JSON.stringify(tasks, null, 2);
   return [
-    '#!/usr/bin/env node',
+    "#!/usr/bin/env node",
     "import { spawn } from 'node:child_process';",
     "import { resolve } from 'node:path';",
-    '',
-    'const rootDir = process.cwd();',
+    "",
+    "const rootDir = process.cwd();",
     `const tasks = ${taskList};`,
-    '',
-    'async function runTask(task) {',
-    '  return new Promise((resolvePromise, rejectPromise) => {',
+    "",
+    "async function runTask(task) {",
+    "  return new Promise((resolvePromise, rejectPromise) => {",
     "    const cwd = resolve(rootDir, task.cwd || '.');",
     "    console.log('\n▶ ' + task.name + ' (cwd: ' + (task.cwd || '.') + ')');",
-    '    const child = spawn(task.command, {',
-    '      cwd,',
-    '      shell: true,',
+    "    const child = spawn(task.command, {",
+    "      cwd,",
+    "      shell: true,",
     "      stdio: 'inherit',",
-    '    });',
+    "    });",
     "    child.on('close', code => {",
-    '      if (code === 0) {',
-    '        resolvePromise();',
-    '      } else {',
+    "      if (code === 0) {",
+    "        resolvePromise();",
+    "      } else {",
     "        rejectPromise(new Error(task.name + ' exited with code ' + code));",
-    '      }',
-    '    });',
+    "      }",
+    "    });",
     "    child.on('error', rejectPromise);",
-    '  });',
-    '}',
-    '',
-    'async function main() {',
-    '  if (tasks.length === 0) {',
+    "  });",
+    "}",
+    "",
+    "async function main() {",
+    "  if (tasks.length === 0) {",
     "    console.log('No automated tests are configured yet.');",
-    '    return;',
-    '  }',
-    '  for (const task of tasks) {',
-    '    await runTask(task);',
-    '  }',
+    "    return;",
+    "  }",
+    "  for (const task of tasks) {",
+    "    await runTask(task);",
+    "  }",
     "  console.log('\n✅ All tests completed successfully');",
-    '}',
-    '',
-    'main().catch(error => {',
+    "}",
+    "",
+    "main().catch(error => {",
     "  console.error('\n❌ ' + error.message);",
-    '  process.exit(1);',
-    '});',
-    '',
-  ].join('\n');
+    "  process.exit(1);",
+    "});",
+    "",
+  ].join("\n");
 }
 
 /**
@@ -2005,24 +2019,24 @@ function generateDefaultFlowTest(flow: any, locators: any): string {
     ? `
   test.beforeEach(async ({ page }) => {
     // Setup preconditions
-    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ''}
-    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ''}
+    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ""}
+    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ""}
     ${
       flow.preconditions.seed
         ? flow.preconditions.seed
             .map((seed: any) => `// Seed: ${seed.factory} as ${seed.as}`)
-            .join('\n    ')
-        : ''
+            .join("\n    ")
+        : ""
     }
   });
   `
-    : '';
+    : "";
 
   const stepsCode = flow.steps
     .map((step: any, index: number) => {
       if (step.visit) {
         return `// Step ${index + 1}: Visit ${step.visit}
-    await page.goto('${typeof step.visit === 'string' ? step.visit : `/${step.visit.replace(':', '/')}`}');`;
+    await page.goto('${typeof step.visit === "string" ? step.visit : `/${step.visit.replace(":", "/")}`}');`;
       }
       if (step.click) {
         const locator = locators[step.click];
@@ -2036,8 +2050,8 @@ function generateDefaultFlowTest(flow: any, locators: any): string {
       }
       if (step.expect) {
         const locator = locators[step.expect.locator];
-        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || 'visible'}
-    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === 'visible' ? 'toBeVisible' : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
+        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || "visible"}
+    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === "visible" ? "toBeVisible" : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
       }
       if (step.expect_api) {
         return `// Step ${index + 1}: Expect API ${step.expect_api.method} ${step.expect_api.path} to return ${step.expect_api.status}
@@ -2045,7 +2059,7 @@ function generateDefaultFlowTest(flow: any, locators: any): string {
       }
       return `// Step ${index + 1}: Unknown step type`;
     })
-    .join('\n    ');
+    .join("\n    ");
 
   const variantsCode = flow.variants
     ? flow.variants
@@ -2053,10 +2067,10 @@ function generateDefaultFlowTest(flow: any, locators: any): string {
           (variant: any) => `
   test('${flow.id} - ${variant.name} variant', async ({ page }) => {
     // TODO: Implement variant testing with override: ${JSON.stringify(variant.override)}
-  });`
+  });`,
         )
-        .join('')
-    : '';
+        .join("")
+    : "";
 
   return `// ${flow.id} flow test - Generated by Arbiter
 import { test, expect } from '@playwright/test';
@@ -2077,17 +2091,17 @@ async function generateAPISpecifications(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
-  console.log(chalk.blue('📋 Generating API specifications...'));
+  console.log(chalk.blue("📋 Generating API specifications..."));
 
   // Determine language for API generation
-  const language = appSpec.config?.language || 'typescript';
+  const language = appSpec.config?.language || "typescript";
   const plugin = languageRegistry.get(language);
 
-  const apiDir = path.join(outputDir, structure.docsDirectory, 'api');
+  const apiDir = path.join(outputDir, structure.docsDirectory, "api");
   if (!fs.existsSync(apiDir) && !options.dryRun) {
     fs.mkdirSync(apiDir, { recursive: true });
   }
@@ -2101,7 +2115,7 @@ async function generateAPISpecifications(
       if (component.methods && component.methods.length > 0) {
         const serviceConfig: LanguageServiceConfig = {
           name: componentName,
-          type: 'api',
+          type: "api",
           methods: component.methods,
           validation: true,
         };
@@ -2111,7 +2125,7 @@ async function generateAPISpecifications(
 
           // Write all generated files
           for (const file of result.files) {
-            const fullPath = path.join(apiDir, file.path.replace(/^src\//i, ''));
+            const fullPath = path.join(apiDir, file.path.replace(/^src\//i, ""));
             const dir = path.dirname(fullPath);
 
             if (!fs.existsSync(dir) && !options.dryRun) {
@@ -2121,13 +2135,13 @@ async function generateAPISpecifications(
             await writeFileWithHooks(fullPath, file.content, options);
 
             files.push(
-              joinRelativePath(structure.docsDirectory, 'api', file.path.replace(/^src\//i, ''))
+              joinRelativePath(structure.docsDirectory, "api", file.path.replace(/^src\//i, "")),
             );
           }
         } catch (error) {
           console.error(
             chalk.red(`❌ Failed to generate ${language} service for ${componentName}:`),
-            error.message
+            error.message,
           );
         }
       }
@@ -2137,11 +2151,11 @@ async function generateAPISpecifications(
   // Generate OpenAPI spec if paths are defined (universal, not language-specific)
   if (appSpec.paths) {
     const openApiSpec = {
-      openapi: '3.0.3',
+      openapi: "3.0.3",
       info: {
         title: appSpec.product.name,
-        version: '1.0.0',
-        description: appSpec.product.goals?.join('; ') || 'Generated API specification',
+        version: "1.0.0",
+        description: appSpec.product.goals?.join("; ") || "Generated API specification",
       },
       paths: {} as Record<string, any>,
       components: { schemas: {} as Record<string, any> },
@@ -2153,16 +2167,16 @@ async function generateAPISpecifications(
         Object.entries(appSpec.components.schemas).map(([name, schema]) => [
           name,
           {
-            type: 'object',
+            type: "object",
             example: schema.example,
             ...(schema.examples && { examples: schema.examples }),
           },
-        ])
+        ]),
       );
     }
 
     const resolveMediaContent = (content?: Record<string, any>) => {
-      if (!content || typeof content !== 'object') {
+      if (!content || typeof content !== "object") {
         return undefined;
       }
       const entries = Object.entries(content).map(([contentType, media]) => {
@@ -2170,13 +2184,13 @@ async function generateAPISpecifications(
           return null;
         }
         const mediaObject: Record<string, unknown> = {};
-        if (media && typeof media === 'object') {
+        if (media && typeof media === "object") {
           const schemaCandidate = (media as Record<string, unknown>).schema;
           const schemaRefCandidate = (media as Record<string, unknown>).schemaRef;
-          if (schemaCandidate && typeof schemaCandidate === 'object') {
+          if (schemaCandidate && typeof schemaCandidate === "object") {
             mediaObject.schema = schemaCandidate;
           } else if (
-            typeof schemaRefCandidate === 'string' &&
+            typeof schemaRefCandidate === "string" &&
             schemaRefCandidate.trim().length > 0
           ) {
             mediaObject.schema = { $ref: schemaRefCandidate.trim() };
@@ -2205,38 +2219,38 @@ async function generateAPISpecifications(
       }
 
       const converted = parameters
-        .filter(parameter => parameter && typeof parameter === 'object')
-        .map(parameter => {
+        .filter((parameter) => parameter && typeof parameter === "object")
+        .map((parameter) => {
           const coerced = parameter as Record<string, unknown>;
           const schemaCandidate = coerced.schema;
           const schemaRefCandidate = coerced.schemaRef;
           let schema: unknown;
-          if (schemaCandidate && typeof schemaCandidate === 'object') {
+          if (schemaCandidate && typeof schemaCandidate === "object") {
             schema = schemaCandidate;
           } else if (
-            typeof schemaRefCandidate === 'string' &&
+            typeof schemaRefCandidate === "string" &&
             schemaRefCandidate.trim().length > 0
           ) {
             schema = { $ref: schemaRefCandidate.trim() };
           }
           return {
             name: coerced.name,
-            in: coerced['in'],
+            in: coerced["in"],
             description: coerced.description,
             required:
-              typeof coerced.required === 'boolean' ? coerced.required : coerced['in'] === 'path',
+              typeof coerced.required === "boolean" ? coerced.required : coerced["in"] === "path",
             deprecated: coerced.deprecated,
             example: coerced.example,
             ...(schema ? { schema } : {}),
           };
         })
-        .filter(param => typeof param.name === 'string' && param.name.trim().length > 0);
+        .filter((param) => typeof param.name === "string" && param.name.trim().length > 0);
 
       return converted.length > 0 ? converted : undefined;
     };
 
     const convertRequestBody = (requestBody: unknown): any => {
-      if (!requestBody || typeof requestBody !== 'object') {
+      if (!requestBody || typeof requestBody !== "object") {
         return undefined;
       }
       const coerced = requestBody as Record<string, unknown>;
@@ -2246,20 +2260,20 @@ async function generateAPISpecifications(
       }
       return {
         description: coerced.description,
-        required: typeof coerced.required === 'boolean' ? coerced.required : undefined,
+        required: typeof coerced.required === "boolean" ? coerced.required : undefined,
         content,
       };
     };
 
     const convertResponses = (responses: unknown): Record<string, any> | undefined => {
-      if (!responses || typeof responses !== 'object') {
+      if (!responses || typeof responses !== "object") {
         return undefined;
       }
 
       const convertedEntries = Object.entries(responses)
         .filter(([status]) => status)
         .map(([status, value]) => {
-          if (!value || typeof value !== 'object') {
+          if (!value || typeof value !== "object") {
             return null;
           }
           const responseRecord = value as Record<string, unknown>;
@@ -2269,10 +2283,10 @@ async function generateAPISpecifications(
             status,
             {
               description:
-                typeof responseRecord.description === 'string'
+                typeof responseRecord.description === "string"
                   ? responseRecord.description
-                  : 'Response',
-              ...(headers && typeof headers === 'object' ? { headers } : {}),
+                  : "Response",
+              ...(headers && typeof headers === "object" ? { headers } : {}),
               ...(content ? { content } : {}),
             },
           ] as [string, Record<string, unknown>];
@@ -2295,18 +2309,18 @@ async function generateAPISpecifications(
         }
 
         const isLegacyOperation =
-          typeof (operation as any).response !== 'undefined' ||
-          typeof (operation as any).request !== 'undefined';
+          typeof (operation as any).response !== "undefined" ||
+          typeof (operation as any).request !== "undefined";
 
         if (isLegacyOperation) {
           const legacyOperation = operation as Record<string, any>;
-          const responseStatus = legacyOperation.status || (method === 'get' ? 200 : 201);
+          const responseStatus = legacyOperation.status || (method === "get" ? 200 : 201);
           openApiSpec.paths[pathKey][method] = {
             summary: `${method.toUpperCase()} ${pathKey}`,
             ...(legacyOperation.request && {
               requestBody: {
                 content: {
-                  'application/json': {
+                  "application/json": {
                     schema: legacyOperation.request.$ref
                       ? { $ref: legacyOperation.request.$ref }
                       : {},
@@ -2317,9 +2331,9 @@ async function generateAPISpecifications(
             }),
             responses: {
               [responseStatus]: {
-                description: 'Success',
+                description: "Success",
                 content: {
-                  'application/json': {
+                  "application/json": {
                     schema: legacyOperation.response?.$ref
                       ? { $ref: legacyOperation.response.$ref }
                       : {},
@@ -2328,7 +2342,7 @@ async function generateAPISpecifications(
                 },
               },
             },
-            ...(legacyOperation.assertions ? { 'x-assertions': legacyOperation.assertions } : {}),
+            ...(legacyOperation.assertions ? { "x-assertions": legacyOperation.assertions } : {}),
           };
           continue;
         }
@@ -2340,37 +2354,37 @@ async function generateAPISpecifications(
 
         openApiSpec.paths[pathKey][method] = {
           summary:
-            typeof modernOperation.summary === 'string'
+            typeof modernOperation.summary === "string"
               ? modernOperation.summary
               : `${method.toUpperCase()} ${pathKey}`,
           description:
-            typeof modernOperation.description === 'string'
+            typeof modernOperation.description === "string"
               ? modernOperation.description
               : undefined,
           operationId:
-            typeof modernOperation.operationId === 'string'
+            typeof modernOperation.operationId === "string"
               ? modernOperation.operationId
               : undefined,
           tags: Array.isArray(modernOperation.tags) ? modernOperation.tags : undefined,
           deprecated:
-            typeof modernOperation.deprecated === 'boolean'
+            typeof modernOperation.deprecated === "boolean"
               ? modernOperation.deprecated
               : undefined,
           ...(parameters ? { parameters } : {}),
           ...(requestBody ? { requestBody } : {}),
           responses: responses ?? {
             default: {
-              description: 'Response',
+              description: "Response",
             },
           },
-          ...(modernOperation.assertions ? { 'x-assertions': modernOperation.assertions } : {}),
+          ...(modernOperation.assertions ? { "x-assertions": modernOperation.assertions } : {}),
         };
       }
     }
 
-    const specPath = path.join(apiDir, 'openapi.json');
+    const specPath = path.join(apiDir, "openapi.json");
     await writeFileWithHooks(specPath, JSON.stringify(openApiSpec, null, 2), options);
-    files.push(joinRelativePath(structure.docsDirectory, 'api', 'openapi.json'));
+    files.push(joinRelativePath(structure.docsDirectory, "api", "openapi.json"));
   }
 
   return files;
@@ -2380,7 +2394,7 @@ async function generateModuleArtifacts(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -2401,19 +2415,19 @@ async function generateModuleArtifacts(
   }
 
   if (appSpec.domain) {
-    const domainPath = path.join(modulesRoot, 'domain.json');
+    const domainPath = path.join(modulesRoot, "domain.json");
     await writeFileWithHooks(domainPath, JSON.stringify(appSpec.domain, null, 2), options);
-    files.push(joinRelativePath(structure.modulesDirectory, 'domain.json'));
+    files.push(joinRelativePath(structure.modulesDirectory, "domain.json"));
   }
 
   if (appSpec.stateModels) {
-    const stateModelsPath = path.join(modulesRoot, 'state-models.json');
+    const stateModelsPath = path.join(modulesRoot, "state-models.json");
     await writeFileWithHooks(
       stateModelsPath,
       JSON.stringify(appSpec.stateModels, null, 2),
-      options
+      options,
     );
-    files.push(joinRelativePath(structure.modulesDirectory, 'state-models.json'));
+    files.push(joinRelativePath(structure.modulesDirectory, "state-models.json"));
   }
 
   return files;
@@ -2423,7 +2437,7 @@ async function generateDocumentationArtifacts(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const docsRoot = path.join(outputDir, structure.docsDirectory);
@@ -2432,61 +2446,61 @@ async function generateDocumentationArtifacts(
   const overviewSections: string[] = [];
   overviewSections.push(`# ${appSpec.product.name}
 
-${appSpec.product.description || 'Auto-generated documentation overview.'}
+${appSpec.product.description || "Auto-generated documentation overview."}
 `);
 
   if (appSpec.product.goals?.length) {
-    overviewSections.push('## Product Goals\n');
-    overviewSections.push(appSpec.product.goals.map(goal => `- ${goal}`).join('\n'));
-    overviewSections.push('');
+    overviewSections.push("## Product Goals\n");
+    overviewSections.push(appSpec.product.goals.map((goal) => `- ${goal}`).join("\n"));
+    overviewSections.push("");
   }
 
   if (appSpec.ui.routes.length > 0) {
-    overviewSections.push('## Routes\n');
+    overviewSections.push("## Routes\n");
     overviewSections.push(
       appSpec.ui.routes
-        .map(route => {
-          const routePath = route.path ?? route.id ?? '';
+        .map((route) => {
+          const routePath = route.path ?? route.id ?? "";
           const displayName = route.name ?? route.id ?? routePath;
           return `- \`${routePath}\`: ${displayName}`;
         })
-        .join('\n')
+        .join("\n"),
     );
-    overviewSections.push('');
+    overviewSections.push("");
   }
 
   if (appSpec.services && Object.keys(appSpec.services).length > 0) {
-    overviewSections.push('## Services\n');
+    overviewSections.push("## Services\n");
     overviewSections.push(
       Object.entries(appSpec.services)
         .map(
           ([name, svc]) =>
-            `- **${name}**: ${svc?.description || svc?.technology || 'Service definition'}`
+            `- **${name}**: ${svc?.description || svc?.technology || "Service definition"}`,
         )
-        .join('\n')
+        .join("\n"),
     );
-    overviewSections.push('');
+    overviewSections.push("");
   }
 
-  const overviewPath = path.join(docsRoot, 'overview.md');
-  await writeFileWithHooks(overviewPath, overviewSections.join('\n'), options);
-  files.push(joinRelativePath(structure.docsDirectory, 'overview.md'));
+  const overviewPath = path.join(docsRoot, "overview.md");
+  await writeFileWithHooks(overviewPath, overviewSections.join("\n"), options);
+  files.push(joinRelativePath(structure.docsDirectory, "overview.md"));
 
   if (appSpec.flows.length > 0) {
-    const flowsPath = path.join(docsRoot, 'flows.md');
-    const flowsContent = ['# User Flows', '']
+    const flowsPath = path.join(docsRoot, "flows.md");
+    const flowsContent = ["# User Flows", ""]
       .concat(
-        appSpec.flows.map(flow => {
+        appSpec.flows.map((flow) => {
           const steps = flow.steps
             ?.map((step: any, idx: number) => `  ${idx + 1}. ${JSON.stringify(step)}`)
-            .join('\n');
-          return `## ${flow.id}\n\n${flow.description || 'Generated flow'}\n\n${steps ? '**Steps:**\n' + steps + '\n' : ''}`;
-        })
+            .join("\n");
+          return `## ${flow.id}\n\n${flow.description || "Generated flow"}\n\n${steps ? "**Steps:**\n" + steps + "\n" : ""}`;
+        }),
       )
-      .join('\n');
+      .join("\n");
 
     await writeFileWithHooks(flowsPath, flowsContent, options);
-    files.push(joinRelativePath(structure.docsDirectory, 'flows.md'));
+    files.push(joinRelativePath(structure.docsDirectory, "flows.md"));
   }
 
   return files;
@@ -2496,7 +2510,7 @@ async function generateToolingArtifacts(
   appSpec: AppSpec,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const toolsRoot = path.join(outputDir, structure.toolsDirectory);
@@ -2505,21 +2519,21 @@ async function generateToolingArtifacts(
   const automationNotes = appSpec.ops?.automation?.notes || [];
   const toolingContent = [
     `# Tooling for ${appSpec.product.name}`,
-    '',
+    "",
     appSpec.ops?.automation?.tools?.length
-      ? '## Automated Tools\n' +
-        appSpec.ops.automation.tools.map((tool: string) => `- ${tool}`).join('\n')
-      : '## Automated Tools\n- No tooling defined in specification.\n',
+      ? "## Automated Tools\n" +
+        appSpec.ops.automation.tools.map((tool: string) => `- ${tool}`).join("\n")
+      : "## Automated Tools\n- No tooling defined in specification.\n",
     automationNotes.length
-      ? ['## Notes\n', ...automationNotes.map((note: string) => `- ${note}`), ''].join('\n')
-      : '',
+      ? ["## Notes\n", ...automationNotes.map((note: string) => `- ${note}`), ""].join("\n")
+      : "",
   ]
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 
-  const toolingPath = path.join(toolsRoot, 'README.md');
+  const toolingPath = path.join(toolsRoot, "README.md");
   await writeFileWithHooks(toolingPath, toolingContent, options);
-  files.push(joinRelativePath(structure.toolsDirectory, 'README.md'));
+  files.push(joinRelativePath(structure.toolsDirectory, "README.md"));
 
   return files;
 }
@@ -2531,7 +2545,7 @@ async function generateInfrastructureArtifacts(
   structure: ProjectStructureConfig,
   appSpec: AppSpec,
   clientContext?: ClientGenerationContext,
-  _cliConfig?: CLIConfig
+  _cliConfig?: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const cueData = (configWithVersion as any)._fullCueData;
@@ -2540,10 +2554,10 @@ async function generateInfrastructureArtifacts(
     return files;
   }
 
-  const projectName = slugify(appSpec.product?.name, 'app');
+  const projectName = slugify(appSpec.product?.name, "app");
   const baseConfig = {
     name: projectName,
-    language: appSpec.config?.language || 'typescript',
+    language: appSpec.config?.language || "typescript",
   };
 
   const terraformFiles = await generateTerraformKubernetes(
@@ -2551,7 +2565,7 @@ async function generateInfrastructureArtifacts(
     outputDir,
     configWithVersion,
     options,
-    structure
+    structure,
   );
   files.push(...terraformFiles);
 
@@ -2561,7 +2575,7 @@ async function generateInfrastructureArtifacts(
     configWithVersion,
     options,
     structure,
-    clientContext
+    clientContext,
   );
   files.push(...composeFiles);
 
@@ -2574,11 +2588,11 @@ async function generateInfrastructureArtifacts(
 async function generateLocatorDefinitions(
   appSpec: AppSpec,
   clientContext: ClientGenerationContext,
-  options: GenerateOptions
+  options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
 
-  console.log(chalk.blue('🎯 Generating locator definitions...'));
+  console.log(chalk.blue("🎯 Generating locator definitions..."));
 
   const locatorsContent = `// UI Locators - Generated by Arbiter
 // These locators provide a stable contract between tests and UI implementation
@@ -2586,7 +2600,7 @@ async function generateLocatorDefinitions(
 export const locators = {
 ${Object.entries(appSpec.locators)
   .map(([token, selector]) => `  '${token}': '${selector}',`)
-  .join('\n')}
+  .join("\n")}
 } as const;
 
 export type LocatorToken = keyof typeof locators;
@@ -2602,13 +2616,13 @@ export function loc(token: LocatorToken): string {
 }
 `;
 
-  const locatorsDir = path.join(clientContext.root, 'src', 'routes');
-  const locatorsPath = path.join(locatorsDir, 'locators.ts');
+  const locatorsDir = path.join(clientContext.root, "src", "routes");
+  const locatorsPath = path.join(locatorsDir, "locators.ts");
 
   await ensureDirectory(locatorsDir, options);
 
   await writeFileWithHooks(locatorsPath, locatorsContent, options);
-  files.push(joinRelativePath('src', 'routes', 'locators.ts'));
+  files.push(joinRelativePath("src", "routes", "locators.ts"));
 
   return files;
 }
@@ -2622,12 +2636,12 @@ async function generateProjectStructure(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   clientContext: ClientGenerationContext,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
   // Determine language from app spec config
-  const language = appSpec.config?.language || 'typescript';
+  const language = appSpec.config?.language || "typescript";
   const plugin = languageRegistry.get(language);
 
   if (plugin) {
@@ -2637,8 +2651,8 @@ async function generateProjectStructure(
 
     // Create project configuration for the language plugin
     const projectConfig: LanguageProjectConfig = {
-      name: appSpec.product.name.toLowerCase().replace(/\s+/g, '-'),
-      description: appSpec.product.goals?.join('; ') || 'Generated by Arbiter',
+      name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
+      description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
       features: [],
       testing: true,
     };
@@ -2657,7 +2671,7 @@ async function generateProjectStructure(
           fullPath,
           file.content,
           options,
-          file.executable ? 0o755 : undefined
+          file.executable ? 0o755 : undefined,
         );
 
         files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, file.path));
@@ -2665,7 +2679,7 @@ async function generateProjectStructure(
 
       // Log additional setup instructions from the language plugin
       if (result.instructions) {
-        result.instructions.forEach(instruction => console.log(chalk.green(`✅ ${instruction}`)));
+        result.instructions.forEach((instruction) => console.log(chalk.green(`✅ ${instruction}`)));
       }
     } catch (error) {
       console.error(chalk.red(`❌ Failed to initialize ${language} project:`), error.message);
@@ -2673,14 +2687,14 @@ async function generateProjectStructure(
     }
   } else {
     console.log(
-      chalk.yellow(`⚠️  No language plugin available for '${language}', using minimal structure`)
+      chalk.yellow(`⚠️  No language plugin available for '${language}', using minimal structure`),
     );
 
     // Fallback: create minimal project structure
     const packageJson = {
-      name: appSpec.product.name.toLowerCase().replace(/\s+/g, '-'),
-      version: '1.0.0',
-      description: appSpec.product.goals?.join('; ') || 'Generated by Arbiter',
+      name: appSpec.product.name.toLowerCase().replace(/\s+/g, "-"),
+      version: "1.0.0",
+      description: appSpec.product.goals?.join("; ") || "Generated by Arbiter",
       arbiter: {
         projectStructure: {
           services: structure.servicesDirectory,
@@ -2693,10 +2707,10 @@ async function generateProjectStructure(
       },
     };
 
-    const packagePath = path.join(clientContext.root, 'package.json');
+    const packagePath = path.join(clientContext.root, "package.json");
     await ensureDirectory(path.dirname(packagePath), options);
     await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
-    files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, 'package.json'));
+    files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, "package.json"));
   }
 
   // Generate README
@@ -2706,25 +2720,25 @@ Generated by Arbiter from app specification.
 
 ## Overview
 
-${appSpec.product.goals ? appSpec.product.goals.map(goal => `- ${goal}`).join('\n') : 'No goals specified'}
+${appSpec.product.goals ? appSpec.product.goals.map((goal) => `- ${goal}`).join("\n") : "No goals specified"}
 
 ${
   appSpec.product.constraints
     ? `
 ## Constraints
 
-${appSpec.product.constraints.map(constraint => `- ${constraint}`).join('\n')}
+${appSpec.product.constraints.map((constraint) => `- ${constraint}`).join("\n")}
 `
-    : ''
+    : ""
 }
 
 ## Routes
 
-${appSpec.ui.routes.map(route => `- **${route.path}** (${route.id}): ${route.capabilities.join(', ')}`).join('\n')}
+${appSpec.ui.routes.map((route) => `- **${route.path}** (${route.id}): ${route.capabilities.join(", ")}`).join("\n")}
 
 ## Flows
 
-${appSpec.flows.map(flow => `- **${flow.id}**: ${flow.steps.length} steps`).join('\n')}
+${appSpec.flows.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).join("\n")}
 
 ## Development
 
@@ -2747,21 +2761,21 @@ npm run build
 \`\`\`
 `;
 
-  const readmePath = path.join(clientContext.root, 'README.md');
+  const readmePath = path.join(clientContext.root, "README.md");
   await writeFileWithHooks(readmePath, readmeContent, options);
-  files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, 'README.md'));
+  files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, "README.md"));
 
   const dockerArtifacts = await generateClientDockerArtifacts(
     clientContext,
     appSpec,
     options,
-    cliConfig
+    cliConfig,
   );
 
   files.push(
-    ...dockerArtifacts.map(artifact =>
-      joinRelativePath(structure.clientsDirectory, clientContext.slug, artifact)
-    )
+    ...dockerArtifacts.map((artifact) =>
+      joinRelativePath(structure.clientsDirectory, clientContext.slug, artifact),
+    ),
   );
 
   return files;
@@ -2775,7 +2789,7 @@ async function generateServiceStructures(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -2783,10 +2797,10 @@ async function generateServiceStructures(
     return files;
   }
 
-  console.log(chalk.blue('🔧 Generating service structures...'));
+  console.log(chalk.blue("🔧 Generating service structures..."));
 
   for (const [serviceName, serviceConfig] of Object.entries(appSpec.services)) {
-    if (!serviceConfig || typeof serviceConfig !== 'object') continue;
+    if (!serviceConfig || typeof serviceConfig !== "object") continue;
 
     const serviceContext = createServiceContext(serviceName, serviceConfig, structure, outputDir);
     await ensureDirectory(serviceContext.root, options);
@@ -2795,12 +2809,12 @@ async function generateServiceStructures(
     const relativePrefix = [structure.servicesDirectory, serviceContext.name];
 
     console.log(
-      chalk.dim(`  • ${serviceName} (${language}) -> ${joinRelativePath(...relativePrefix)}`)
+      chalk.dim(`  • ${serviceName} (${language}) -> ${joinRelativePath(...relativePrefix)}`),
     );
 
     const generationPayload = {
       name: serviceContext.name,
-      version: '1.0.0',
+      version: "1.0.0",
       service: serviceConfig,
       routesDir: serviceContext.routesDir,
     };
@@ -2808,53 +2822,53 @@ async function generateServiceStructures(
     let generated: string[] = [];
 
     switch (language) {
-      case 'typescript':
+      case "typescript":
         generated = await generateTypeScriptFiles(
           generationPayload,
           serviceContext.root,
           options,
           structure,
-          serviceContext
+          serviceContext,
         );
         break;
-      case 'python':
+      case "python":
         generated = await generatePythonFiles(
           generationPayload,
           serviceContext.root,
           options,
           structure,
-          serviceContext
+          serviceContext,
         );
         break;
-      case 'go':
+      case "go":
         generated = await generateGoFiles(
           generationPayload,
           serviceContext.root,
           options,
           structure,
-          serviceContext
+          serviceContext,
         );
         break;
-      case 'rust':
+      case "rust":
         generated = await generateRustFiles(
           generationPayload,
           serviceContext.root,
           options,
           structure,
-          serviceContext
+          serviceContext,
         );
         break;
       default:
         console.log(
           chalk.yellow(
-            `    ⚠️  Service language '${language}' not supported for automated scaffolding.`
-          )
+            `    ⚠️  Service language '${language}' not supported for automated scaffolding.`,
+          ),
         );
         continue;
     }
 
     files.push(
-      ...generated.map(file => joinRelativePath(...relativePrefix, file.replace(/^\.\//, '')))
+      ...generated.map((file) => joinRelativePath(...relativePrefix, file.replace(/^\.\//, ""))),
     );
 
     const dockerArtifacts = await generateServiceDockerArtifacts(
@@ -2862,10 +2876,10 @@ async function generateServiceStructures(
       serviceConfig,
       options,
       cliConfig,
-      structure
+      structure,
     );
 
-    files.push(...dockerArtifacts.map(artifact => joinRelativePath(...relativePrefix, artifact)));
+    files.push(...dockerArtifacts.map((artifact) => joinRelativePath(...relativePrefix, artifact)));
   }
 
   return files;
@@ -2881,10 +2895,10 @@ async function generateServiceDockerArtifacts(
   serviceSpec: any,
   options: GenerateOptions,
   cliConfig: CLIConfig,
-  _structure: ProjectStructureConfig
+  _structure: ProjectStructureConfig,
 ): Promise<string[]> {
-  const language = serviceContext.language?.toLowerCase() || 'typescript';
-  const override = resolveDockerTemplateSelection(cliConfig, 'service', language);
+  const language = serviceContext.language?.toLowerCase() || "typescript";
+  const override = resolveDockerTemplateSelection(cliConfig, "service", language);
 
   const defaults = buildDefaultServiceDockerArtifacts(language, serviceContext, serviceSpec);
 
@@ -2903,15 +2917,15 @@ async function generateServiceDockerArtifacts(
   const written: string[] = [];
 
   if (dockerfileContent) {
-    const dockerfilePath = path.join(serviceContext.root, 'Dockerfile');
+    const dockerfilePath = path.join(serviceContext.root, "Dockerfile");
     await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
-    written.push('Dockerfile');
+    written.push("Dockerfile");
   }
 
   if (dockerignoreContent) {
-    const dockerignorePath = path.join(serviceContext.root, '.dockerignore');
+    const dockerignorePath = path.join(serviceContext.root, ".dockerignore");
     await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
-    written.push('.dockerignore');
+    written.push(".dockerignore");
   }
 
   return written;
@@ -2921,10 +2935,10 @@ async function generateClientDockerArtifacts(
   clientContext: ClientGenerationContext,
   appSpec: AppSpec,
   options: GenerateOptions,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string[]> {
-  const language = appSpec.config?.language?.toLowerCase() || 'typescript';
-  const override = resolveDockerTemplateSelection(cliConfig, 'client', language);
+  const language = appSpec.config?.language?.toLowerCase() || "typescript";
+  const override = resolveDockerTemplateSelection(cliConfig, "client", language);
   const defaults = buildDefaultClientDockerArtifacts(language, clientContext, appSpec);
 
   if (!override && !defaults) {
@@ -2942,15 +2956,15 @@ async function generateClientDockerArtifacts(
   const written: string[] = [];
 
   if (dockerfileContent) {
-    const dockerfilePath = path.join(clientContext.root, 'Dockerfile');
+    const dockerfilePath = path.join(clientContext.root, "Dockerfile");
     await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
-    written.push('Dockerfile');
+    written.push("Dockerfile");
   }
 
   if (dockerignoreContent) {
-    const dockerignorePath = path.join(clientContext.root, '.dockerignore');
+    const dockerignorePath = path.join(clientContext.root, ".dockerignore");
     await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
-    written.push('.dockerignore');
+    written.push(".dockerignore");
   }
 
   return written;
@@ -2958,8 +2972,8 @@ async function generateClientDockerArtifacts(
 
 function resolveDockerTemplateSelection(
   cliConfig: CLIConfig,
-  kind: 'service' | 'client',
-  identifier: string
+  kind: "service" | "client",
+  identifier: string,
 ): DockerTemplateSelection | null {
   const dockerConfig = cliConfig.generator?.docker;
   if (!dockerConfig) {
@@ -2968,8 +2982,8 @@ function resolveDockerTemplateSelection(
 
   const normalizedId = identifier.toLowerCase();
   const defaults =
-    kind === 'service' ? dockerConfig.defaults?.service : dockerConfig.defaults?.client;
-  const catalog = kind === 'service' ? dockerConfig.services : dockerConfig.clients;
+    kind === "service" ? dockerConfig.defaults?.service : dockerConfig.defaults?.client;
+  const catalog = kind === "service" ? dockerConfig.services : dockerConfig.clients;
 
   let selected: DockerTemplateSelection | undefined = defaults ? { ...defaults } : undefined;
 
@@ -2999,7 +3013,7 @@ function resolveDockerTemplateSelection(
 
 async function loadDockerTemplateContent(
   templatePath: string,
-  cliConfig: CLIConfig
+  cliConfig: CLIConfig,
 ): Promise<string> {
   const baseDir = cliConfig.configDir || cliConfig.projectDir || process.cwd();
   const resolved = path.isAbsolute(templatePath)
@@ -3007,7 +3021,7 @@ async function loadDockerTemplateContent(
     : path.resolve(baseDir, templatePath);
 
   try {
-    return await fs.readFile(resolved, 'utf-8');
+    return await fs.readFile(resolved, "utf-8");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Failed to read Docker template at ${resolved}: ${message}`);
@@ -3015,29 +3029,29 @@ async function loadDockerTemplateContent(
 }
 
 function ensureTrailingNewline(content: string): string {
-  return content.endsWith('\n') ? content : `${content}\n`;
+  return content.endsWith("\n") ? content : `${content}\n`;
 }
 
 function buildDefaultServiceDockerArtifacts(
   language: string,
   context: ServiceGenerationContext,
-  serviceSpec: any
+  serviceSpec: any,
 ): DockerTemplateSelection | null {
   switch (language) {
-    case 'typescript':
-    case 'javascript':
+    case "typescript":
+    case "javascript":
       return buildTypeScriptServiceDockerArtifacts(serviceSpec);
-    case 'python':
+    case "python":
       return buildPythonServiceDockerArtifacts(serviceSpec);
-    case 'go':
+    case "go":
       return buildGoServiceDockerArtifacts(serviceSpec);
-    case 'rust':
+    case "rust":
       return buildRustServiceDockerArtifacts(serviceSpec, context);
     default:
       console.log(
         chalk.dim(
-          `    Skipping Dockerfile generation for unsupported service language '${language}'.`
-        )
+          `    Skipping Dockerfile generation for unsupported service language '${language}'.`,
+        ),
       );
       return null;
   }
@@ -3046,17 +3060,17 @@ function buildDefaultServiceDockerArtifacts(
 function buildDefaultClientDockerArtifacts(
   language: string,
   _context: ClientGenerationContext,
-  _appSpec: AppSpec
+  _appSpec: AppSpec,
 ): DockerTemplateSelection | null {
   switch (language) {
-    case 'typescript':
-    case 'javascript':
+    case "typescript":
+    case "javascript":
       return buildTypeScriptClientDockerArtifacts();
     default:
       console.log(
         chalk.dim(
-          `    Skipping client Dockerfile generation for unsupported language '${language}'.`
-        )
+          `    Skipping client Dockerfile generation for unsupported language '${language}'.`,
+        ),
       );
       return null;
   }
@@ -3187,7 +3201,7 @@ Dockerfile
 
 function buildRustServiceDockerArtifacts(
   serviceSpec: any,
-  context: ServiceGenerationContext
+  context: ServiceGenerationContext,
 ): DockerTemplateSelection {
   const port = getPrimaryServicePort(serviceSpec, 3000);
   const binaryName = context.name;
@@ -3272,12 +3286,12 @@ async function generateLanguageFiles(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   assemblyConfig?: any,
-  cliConfig?: CLIConfig
+  cliConfig?: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
   // Use language plugin system for code generation
-  const language = config.language || 'typescript';
+  const language = config.language || "typescript";
   const plugin = languageRegistry.get(language);
 
   if (plugin) {
@@ -3311,7 +3325,7 @@ async function generateLanguageFiles(
           fullPath,
           file.content,
           options,
-          file.executable ? 0o755 : undefined
+          file.executable ? 0o755 : undefined,
         );
 
         files.push(file.path);
@@ -3319,19 +3333,19 @@ async function generateLanguageFiles(
 
       // Log additional setup instructions
       if (result.instructions) {
-        result.instructions.forEach(instruction => console.log(chalk.green(`✅ ${instruction}`)));
+        result.instructions.forEach((instruction) => console.log(chalk.green(`✅ ${instruction}`)));
       }
     } catch (error) {
       console.error(chalk.red(`❌ Failed to generate ${language} project:`), error.message);
       // Fallback to legacy generation for unsupported languages
-      if (language === 'shell' || language === 'bash') {
+      if (language === "shell" || language === "bash") {
         files.push(...(await generateShellFiles(config, outputDir, options, structure)));
       }
     }
   } else {
     console.log(chalk.yellow(`⚠️  No plugin available for language: ${language}`));
     // Fallback for unsupported languages
-    if (language === 'shell' || language === 'bash') {
+    if (language === "shell" || language === "bash") {
       files.push(...(await generateShellFiles(config, outputDir, options, structure)));
     }
   }
@@ -3347,7 +3361,7 @@ async function generateTypeScriptFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext
+  serviceContext?: ServiceGenerationContext,
 ): Promise<string[]> {
   const files: string[] = [];
   const serviceSpec = config.service ?? {};
@@ -3355,52 +3369,52 @@ async function generateTypeScriptFiles(
   const packageJson = {
     name: config.name,
     version: config.version,
-    type: 'module',
+    type: "module",
     scripts: {
-      dev: 'ts-node-dev --respawn src/index.ts',
-      start: 'node dist/index.js',
-      build: 'tsc -p tsconfig.json',
-      test: 'vitest',
+      dev: "ts-node-dev --respawn src/index.ts",
+      start: "node dist/index.js",
+      build: "tsc -p tsconfig.json",
+      test: "vitest",
       lint: 'eslint "src/**/*.ts"',
     },
     dependencies: {
-      fastify: '^4.25.0',
-      '@fastify/cors': '^9.0.0',
+      fastify: "^4.25.0",
+      "@fastify/cors": "^9.0.0",
     },
     devDependencies: {
-      '@types/node': '^20.0.0',
-      typescript: '^5.0.0',
-      'ts-node-dev': '^2.0.0',
-      eslint: '^8.0.0',
-      vitest: '^1.2.0',
+      "@types/node": "^20.0.0",
+      typescript: "^5.0.0",
+      "ts-node-dev": "^2.0.0",
+      eslint: "^8.0.0",
+      vitest: "^1.2.0",
     },
   };
 
-  const packagePath = path.join(outputDir, 'package.json');
+  const packagePath = path.join(outputDir, "package.json");
   await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
-  files.push('package.json');
+  files.push("package.json");
 
   const tsconfigJson = {
     compilerOptions: {
-      outDir: 'dist',
-      rootDir: 'src',
-      module: 'ESNext',
-      target: 'ES2022',
-      moduleResolution: 'Node',
+      outDir: "dist",
+      rootDir: "src",
+      module: "ESNext",
+      target: "ES2022",
+      moduleResolution: "Node",
       resolveJsonModule: true,
       esModuleInterop: true,
       strict: true,
       skipLibCheck: true,
     },
-    include: ['src'],
-    exclude: ['dist', 'node_modules'],
+    include: ["src"],
+    exclude: ["dist", "node_modules"],
   };
 
-  const tsconfigPath = path.join(outputDir, 'tsconfig.json');
+  const tsconfigPath = path.join(outputDir, "tsconfig.json");
   await writeFileWithHooks(tsconfigPath, JSON.stringify(tsconfigJson, null, 2), options);
-  files.push('tsconfig.json');
+  files.push("tsconfig.json");
 
-  const srcDir = path.join(outputDir, 'src');
+  const srcDir = path.join(outputDir, "src");
   await ensureDirectory(srcDir, options);
 
   const indexContent = `import Fastify from 'fastify';
@@ -3431,34 +3445,34 @@ if (process.env.NODE_ENV !== 'test') {
 export { bootstrap };
 `;
 
-  const indexPath = path.join(srcDir, 'index.ts');
+  const indexPath = path.join(srcDir, "index.ts");
   await writeFileWithHooks(indexPath, indexContent, options);
-  files.push('src/index.ts');
+  files.push("src/index.ts");
 
-  const routesDir = serviceContext?.routesDir || path.join(srcDir, 'routes');
+  const routesDir = serviceContext?.routesDir || path.join(srcDir, "routes");
   await ensureDirectory(routesDir, options);
 
   const endpoints = Array.isArray(serviceSpec.endpoints) ? serviceSpec.endpoints : [];
   const parsedRoutes = endpoints.map((endpoint: any, index: number) => {
-    if (typeof endpoint === 'string') {
+    if (typeof endpoint === "string") {
       const [methodPart, ...urlParts] = endpoint.trim().split(/\s+/);
       return {
-        method: (methodPart || 'GET').toUpperCase(),
-        url: urlParts.join(' ') || `/${config.name}`,
+        method: (methodPart || "GET").toUpperCase(),
+        url: urlParts.join(" ") || `/${config.name}`,
         summary: undefined,
         reply: `not_implemented_${index}`,
       };
     }
 
     return {
-      method: (endpoint.method || 'GET').toUpperCase(),
+      method: (endpoint.method || "GET").toUpperCase(),
       url: endpoint.path || endpoint.url || `/${config.name}`,
       summary: endpoint.summary,
       reply: endpoint.replyExample || `not_implemented_${index}`,
     };
   });
 
-  const routesIndexPath = path.join(routesDir, 'index.ts');
+  const routesIndexPath = path.join(routesDir, "index.ts");
   const routesIndexContent = `import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 interface RouteBinding {
@@ -3491,10 +3505,10 @@ export const routes = routeDefinitions;
 `;
 
   await writeFileWithHooks(routesIndexPath, routesIndexContent, options);
-  files.push('src/routes/index.ts');
+  files.push("src/routes/index.ts");
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
   const testsDirRelative = joinRelativePath(...effectiveTestSegments);
   const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
@@ -3515,39 +3529,39 @@ async function generatePythonFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext
+  serviceContext?: ServiceGenerationContext,
 ): Promise<string[]> {
   const files: string[] = [];
   const serviceSpec = config.service ?? {};
 
   const pyprojectToml = `[build-system]\nrequires = [\"setuptools>=45\", \"wheel\"]\nbuild-backend = \"setuptools.build_meta\"\n\n[project]\nname = \"${config.name}\"\nversion = \"${config.version}\"\ndescription = \"Generated by Arbiter\"\nrequires-python = \">=3.10\"\ndependencies = [\n    \"fastapi>=0.110.0\",\n    \"uvicorn[standard]>=0.27.0\",\n    \"pydantic>=2.5.0\"\n]\n`;
 
-  const pyprojectPath = path.join(outputDir, 'pyproject.toml');
+  const pyprojectPath = path.join(outputDir, "pyproject.toml");
   await writeFileWithHooks(pyprojectPath, pyprojectToml, options);
-  files.push('pyproject.toml');
+  files.push("pyproject.toml");
 
-  const requirementsPath = path.join(outputDir, 'requirements.txt');
+  const requirementsPath = path.join(outputDir, "requirements.txt");
   const requirementsContent = `fastapi>=0.110.0\nuvicorn[standard]>=0.27.0\n`;
   await writeFileWithHooks(requirementsPath, requirementsContent, options);
-  files.push('requirements.txt');
+  files.push("requirements.txt");
 
-  const appDir = path.join(outputDir, 'app');
+  const appDir = path.join(outputDir, "app");
   await ensureDirectory(appDir, options);
-  const routesDir = path.join(appDir, 'routes');
+  const routesDir = path.join(appDir, "routes");
   await ensureDirectory(routesDir, options);
 
-  const port = typeof serviceSpec.port === 'number' ? serviceSpec.port : 8000;
+  const port = typeof serviceSpec.port === "number" ? serviceSpec.port : 8000;
   const mainContent = `from fastapi import FastAPI\nfrom .routes import register_routes\n\napp = FastAPI(title=\"${config.name}\")\n\n@app.on_event(\"startup\")\nasync def startup_event() -> None:\n    await register_routes(app)\n\n\n@app.get(\"/health\")\nasync def healthcheck() -> dict[str, str]:\n    return {\"status\": \"ok\"}\n\n\ndef build_app() -> FastAPI:\n    return app\n\n\nif __name__ == \"__main__\":\n    import uvicorn\n\n    uvicorn.run(app, host=\"0.0.0.0\", port=${port})\n`;
 
-  await writeFileWithHooks(path.join(appDir, 'main.py'), mainContent, options);
-  files.push('app/main.py');
+  await writeFileWithHooks(path.join(appDir, "main.py"), mainContent, options);
+  files.push("app/main.py");
 
   const endpoints = Array.isArray(serviceSpec.endpoints) ? serviceSpec.endpoints : [];
   const parsedRoutes = endpoints.map((endpoint: any, index: number) => {
-    if (typeof endpoint === 'string') {
+    if (typeof endpoint === "string") {
       const [methodPart, ...urlParts] = endpoint.trim().split(/\\s+/);
-      const method = (methodPart ?? 'GET').toLowerCase();
-      const url = urlParts.join(' ') || `/${config.name}`;
+      const method = (methodPart ?? "GET").toLowerCase();
+      const url = urlParts.join(" ") || `/${config.name}`;
       return {
         method,
         url,
@@ -3556,7 +3570,7 @@ async function generatePythonFiles(
       };
     }
 
-    const method = (endpoint?.method ?? 'GET').toLowerCase();
+    const method = (endpoint?.method ?? "GET").toLowerCase();
     const url = endpoint?.path ?? endpoint?.url ?? `/${config.name}`;
     return {
       method,
@@ -3567,48 +3581,48 @@ async function generatePythonFiles(
   });
 
   const defaultRoute = {
-    method: 'get',
-    url: '/',
+    method: "get",
+    url: "/",
     name: `${config.name}_root`,
     summary: `Default endpoint for ${config.name}`,
   };
 
   const routeBlocks = (parsedRoutes.length > 0 ? parsedRoutes : [defaultRoute])
-    .map(route => {
-      const summary = (route.summary ?? 'Generated endpoint stub')
+    .map((route) => {
+      const summary = (route.summary ?? "Generated endpoint stub")
         .replace(/"/g, '\\"')
-        .replace(/\n/g, ' ');
+        .replace(/\n/g, " ");
       return [
         `@router.${route.method}(\"${route.url}\")`,
         `async def ${route.name}() -> dict[str, str]:`,
         `    \"\"\"${summary}\"\"\"`,
         `    return {\"route\": \"${route.url}\", \"status\": \"not_implemented\"}`,
-        '',
-      ].join('\n');
+        "",
+      ].join("\n");
     })
-    .join('\n');
+    .join("\n");
 
   const routesInit = [
-    'from fastapi import APIRouter, FastAPI',
-    '',
-    'router = APIRouter()',
-    '',
+    "from fastapi import APIRouter, FastAPI",
+    "",
+    "router = APIRouter()",
+    "",
     routeBlocks,
-    'async def register_routes(app: FastAPI) -> None:',
-    '    app.include_router(router)',
-    '',
+    "async def register_routes(app: FastAPI) -> None:",
+    "    app.include_router(router)",
+    "",
   ]
     .filter(Boolean)
-    .join('\n');
+    .join("\n");
 
-  await writeFileWithHooks(path.join(routesDir, '__init__.py'), routesInit, options);
-  files.push('app/routes/__init__.py');
+  await writeFileWithHooks(path.join(routesDir, "__init__.py"), routesInit, options);
+  files.push("app/routes/__init__.py");
 
-  await writeFileWithHooks(path.join(appDir, '__init__.py'), '', options);
-  files.push('app/__init__.py');
+  await writeFileWithHooks(path.join(appDir, "__init__.py"), "", options);
+  files.push("app/__init__.py");
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
   const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
     fs.mkdirSync(testsDir, { recursive: true });
@@ -3629,11 +3643,11 @@ async function generateRustFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext
+  serviceContext?: ServiceGenerationContext,
 ): Promise<string[]> {
   const files: string[] = [];
   const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
   const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   const cargoToml = `[package]
@@ -3653,11 +3667,11 @@ hyper = "1"
 tokio = { version = "1", features = ["full"] }
 `;
 
-  const cargoPath = path.join(outputDir, 'Cargo.toml');
+  const cargoPath = path.join(outputDir, "Cargo.toml");
   await writeFileWithHooks(cargoPath, cargoToml, options);
-  files.push('Cargo.toml');
+  files.push("Cargo.toml");
 
-  const srcDir = path.join(outputDir, 'src');
+  const srcDir = path.join(outputDir, "src");
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
@@ -3714,8 +3728,8 @@ mod tests {
 }
 `;
 
-  await writeFileWithHooks(path.join(srcDir, 'main.rs'), mainContent, options);
-  files.push('src/main.rs');
+  await writeFileWithHooks(path.join(srcDir, "main.rs"), mainContent, options);
+  files.push("src/main.rs");
 
   const testsDir = path.join(outputDir, ...effectiveTestSegments);
   if (!fs.existsSync(testsDir) && !options.dryRun) {
@@ -3733,11 +3747,11 @@ async function generateGoFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext
+  serviceContext?: ServiceGenerationContext,
 ): Promise<string[]> {
   const files: string[] = [];
   const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
   const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // go.mod
@@ -3748,9 +3762,9 @@ go 1.21
 require ()
 `;
 
-  const goModPath = path.join(outputDir, 'go.mod');
+  const goModPath = path.join(outputDir, "go.mod");
   await writeFileWithHooks(goModPath, goMod, options);
-  files.push('go.mod');
+  files.push("go.mod");
 
   // main.go
   const mainGo = `// ${config.name} - Generated by Arbiter
@@ -3764,16 +3778,16 @@ func main() {
 }
 `;
 
-  const mainGoPath = path.join(outputDir, 'main.go');
+  const mainGoPath = path.join(outputDir, "main.go");
   await writeFileWithHooks(mainGoPath, mainGo, options);
-  files.push('main.go');
+  files.push("main.go");
 
   // Create test directory
-  const testDir = path.join(outputDir, 'test');
+  const testDir = path.join(outputDir, "test");
   if (!fs.existsSync(testDir) && !options.dryRun) {
     fs.mkdirSync(testDir, { recursive: true });
   }
-  files.push('test/');
+  files.push("test/");
 
   return files;
 }
@@ -3785,12 +3799,12 @@ async function generateShellFiles(
   config: any,
   outputDir: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
   const testsDirRelative = joinRelativePath(...effectiveTestSegments);
 
   // Makefile
@@ -3809,12 +3823,12 @@ clean:
 \trm -f *.log *.tmp
 `;
 
-  const makefilePath = path.join(outputDir, 'Makefile');
+  const makefilePath = path.join(outputDir, "Makefile");
   await writeFileWithHooks(makefilePath, makefile, options);
-  files.push('Makefile');
+  files.push("Makefile");
 
   // Create src directory
-  const srcDir = path.join(outputDir, 'src');
+  const srcDir = path.join(outputDir, "src");
   if (!fs.existsSync(srcDir) && !options.dryRun) {
     fs.mkdirSync(srcDir, { recursive: true });
   }
@@ -3851,8 +3865,8 @@ fi
   return files;
 }
 
-const ARBITER_APP_JOB_ID = 'arbiter_app';
-const ARBITER_SERVICE_JOB_PREFIX = 'arbiter_service_';
+const ARBITER_APP_JOB_ID = "arbiter_app";
+const ARBITER_SERVICE_JOB_PREFIX = "arbiter_service_";
 
 /**
  * Generate or update GitHub Actions workflows based on the current specification.
@@ -3863,7 +3877,7 @@ const ARBITER_SERVICE_JOB_PREFIX = 'arbiter_service_';
 async function generateCIWorkflows(
   configWithVersion: ConfigWithVersion,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
   const appSpec = configWithVersion.app;
@@ -3872,18 +3886,18 @@ async function generateCIWorkflows(
     return files;
   }
 
-  const workflowDir = path.join(outputDir, '.github', 'workflows');
+  const workflowDir = path.join(outputDir, ".github", "workflows");
   await ensureDirectory(workflowDir, options);
 
-  const workflowPath = path.join(workflowDir, 'ci.yml');
-  let workflowContent = '';
+  const workflowPath = path.join(workflowDir, "ci.yml");
+  let workflowContent = "";
   let workflow: Record<string, any> = {};
 
   if (fs.existsSync(workflowPath)) {
     try {
-      workflowContent = await fs.readFile(workflowPath, 'utf-8');
+      workflowContent = await fs.readFile(workflowPath, "utf-8");
       const parsed = YAML.parse(workflowContent);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         workflow = parsed as Record<string, any>;
       }
     } catch (error) {
@@ -3891,14 +3905,14 @@ async function generateCIWorkflows(
         chalk.yellow(
           `⚠️  Unable to parse existing workflow at ${workflowPath}: ${
             error instanceof Error ? error.message : String(error)
-          }\n    A fresh workflow will be generated.`
-        )
+          }\n    A fresh workflow will be generated.`,
+        ),
       );
       workflow = {};
     }
   }
 
-  const applicationName = appSpec.product?.name ?? 'Application';
+  const applicationName = appSpec.product?.name ?? "Application";
   const managedServices = extractServiceSummaries(configWithVersion);
   const primaryLanguage = inferPrimaryLanguage(appSpec, managedServices);
   const buildTool = appSpec.config?.buildTool;
@@ -3908,7 +3922,7 @@ async function generateCIWorkflows(
   workflow.on = ensureDefaultWorkflowTriggers(workflow.on);
 
   const jobs: Record<string, any> =
-    workflow.jobs && typeof workflow.jobs === 'object' ? { ...workflow.jobs } : {};
+    workflow.jobs && typeof workflow.jobs === "object" ? { ...workflow.jobs } : {};
 
   const managedJobIds = new Set<string>();
 
@@ -3926,7 +3940,7 @@ async function generateCIWorkflows(
   }
 
   for (const service of managedServices) {
-    if (service.serviceType !== 'bespoke') {
+    if (service.serviceType !== "bespoke") {
       const jobId = `${ARBITER_SERVICE_JOB_PREFIX}${service.slug}`;
       delete jobs[jobId];
       continue;
@@ -3962,18 +3976,18 @@ async function generateCIWorkflows(
   const headerComment = `# ${applicationName} CI workflow\n# Arbiter-managed jobs (prefixed with '${ARBITER_SERVICE_JOB_PREFIX}' and '${ARBITER_APP_JOB_ID}') are kept in sync with your specifications.\n`;
 
   const serializedWorkflow =
-    headerComment + YAML.stringify(workflow, { indent: 2, lineWidth: 0 }).trimEnd() + '\n';
+    headerComment + YAML.stringify(workflow, { indent: 2, lineWidth: 0 }).trimEnd() + "\n";
 
   const normalizedExisting = workflowContent
-    ? workflowContent.replace(/\r\n/g, '\n').trimEnd() + '\n'
-    : '';
+    ? workflowContent.replace(/\r\n/g, "\n").trimEnd() + "\n"
+    : "";
 
   if (normalizedExisting === serializedWorkflow) {
     return files;
   }
 
   await writeFileWithHooks(workflowPath, serializedWorkflow, options);
-  files.push('.github/workflows/ci.yml');
+  files.push(".github/workflows/ci.yml");
 
   return files;
 }
@@ -3985,13 +3999,13 @@ interface ServiceSummary {
   language: string;
   buildTool?: string;
   workingDirectory?: string;
-  serviceType: 'bespoke' | 'prebuilt' | 'external';
+  serviceType: "bespoke" | "prebuilt" | "external";
 }
 
 function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceSummary[] {
   const cueData = (configWithVersion as any)._fullCueData || {};
   const servicesInput =
-    cueData.services && typeof cueData.services === 'object' ? cueData.services : {};
+    cueData.services && typeof cueData.services === "object" ? cueData.services : {};
   const summaries: ServiceSummary[] = [];
 
   for (const [serviceName, rawConfig] of Object.entries(servicesInput)) {
@@ -4000,16 +4014,16 @@ function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceS
       continue;
     }
 
-    const language = parsed.language || configWithVersion.app?.config?.language || 'typescript';
+    const language = parsed.language || configWithVersion.app?.config?.language || "typescript";
     const buildTool =
       (rawConfig as any)?.buildTool ||
       (rawConfig as any)?.build?.tool ||
       configWithVersion.app?.config?.buildTool;
 
     const workingDirectory =
-      typeof parsed.sourceDirectory === 'string'
+      typeof parsed.sourceDirectory === "string"
         ? parsed.sourceDirectory
-        : typeof (rawConfig as any)?.sourceDirectory === 'string'
+        : typeof (rawConfig as any)?.sourceDirectory === "string"
           ? (rawConfig as any).sourceDirectory
           : undefined;
 
@@ -4029,14 +4043,14 @@ function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceS
 
 function ensureDefaultWorkflowTriggers(onConfig: any): Record<string, any> {
   const triggers: Record<string, any> =
-    onConfig && typeof onConfig === 'object' && !Array.isArray(onConfig) ? { ...onConfig } : {};
+    onConfig && typeof onConfig === "object" && !Array.isArray(onConfig) ? { ...onConfig } : {};
 
   if (!triggers.push) {
-    triggers.push = { branches: ['main', 'develop'] };
+    triggers.push = { branches: ["main", "develop"] };
   }
 
   if (!triggers.pull_request) {
-    triggers.pull_request = { branches: ['main'] };
+    triggers.pull_request = { branches: ["main"] };
   }
 
   return triggers;
@@ -4055,35 +4069,35 @@ interface WorkflowStep {
   run?: string;
   with?: Record<string, any>;
   env?: Record<string, string>;
-  'working-directory'?: string;
+  "working-directory"?: string;
   shell?: string;
 }
 
 function createLanguageJob(params: LanguageJobParams): Record<string, any> | null {
   const { jobName, language, buildTool, workingDirectory } = params;
 
-  if (!language || language === 'container') {
+  if (!language || language === "container") {
     return null;
   }
 
   const steps: WorkflowStep[] = [];
 
   steps.push({
-    name: 'Checkout repository',
-    uses: 'actions/checkout@v4',
+    name: "Checkout repository",
+    uses: "actions/checkout@v4",
   });
 
   steps.push(...getSetupSteps(language, buildTool));
 
   pushRunStep(
     steps,
-    'Install dependencies',
+    "Install dependencies",
     getInstallCommand(language, buildTool),
-    workingDirectory
+    workingDirectory,
   );
-  pushRunStep(steps, 'Lint', getLintCommand(language, buildTool), workingDirectory);
-  pushRunStep(steps, 'Test', getTestCommand(language, buildTool), workingDirectory);
-  pushRunStep(steps, 'Build', getBuildCommand(language, buildTool), workingDirectory);
+  pushRunStep(steps, "Lint", getLintCommand(language, buildTool), workingDirectory);
+  pushRunStep(steps, "Test", getTestCommand(language, buildTool), workingDirectory);
+  pushRunStep(steps, "Build", getBuildCommand(language, buildTool), workingDirectory);
 
   if (steps.length <= 1) {
     return null;
@@ -4091,58 +4105,58 @@ function createLanguageJob(params: LanguageJobParams): Record<string, any> | nul
 
   return {
     name: jobName,
-    'runs-on': 'ubuntu-latest',
+    "runs-on": "ubuntu-latest",
     steps,
   };
 }
 
 function getSetupSteps(language: string, buildTool?: string): WorkflowStep[] {
   switch (language) {
-    case 'typescript': {
+    case "typescript": {
       const steps: WorkflowStep[] = [
         {
-          name: 'Setup Node.js',
-          uses: 'actions/setup-node@v4',
+          name: "Setup Node.js",
+          uses: "actions/setup-node@v4",
           with: {
-            'node-version': '20',
-            cache: buildTool === 'bun' ? undefined : 'npm',
+            "node-version": "20",
+            cache: buildTool === "bun" ? undefined : "npm",
           },
         },
       ];
 
-      if (buildTool === 'bun') {
+      if (buildTool === "bun") {
         steps.push({
-          name: 'Setup Bun',
-          uses: 'oven-sh/setup-bun@v1',
+          name: "Setup Bun",
+          uses: "oven-sh/setup-bun@v1",
         });
       }
 
       return steps;
     }
-    case 'python':
+    case "python":
       return [
         {
-          name: 'Setup Python',
-          uses: 'actions/setup-python@v5',
+          name: "Setup Python",
+          uses: "actions/setup-python@v5",
           with: {
-            'python-version': '3.11',
+            "python-version": "3.11",
           },
         },
       ];
-    case 'rust':
+    case "rust":
       return [
         {
-          name: 'Setup Rust toolchain',
-          uses: 'dtolnay/rust-toolchain@stable',
+          name: "Setup Rust toolchain",
+          uses: "dtolnay/rust-toolchain@stable",
         },
       ];
-    case 'go':
+    case "go":
       return [
         {
-          name: 'Setup Go',
-          uses: 'actions/setup-go@v5',
+          name: "Setup Go",
+          uses: "actions/setup-go@v5",
           with: {
-            'go-version': '1.21',
+            "go-version": "1.21",
           },
         },
       ];
@@ -4155,7 +4169,7 @@ function pushRunStep(
   steps: WorkflowStep[],
   name: string,
   command: string,
-  workingDirectory?: string
+  workingDirectory?: string,
 ): void {
   if (!command || isNoopCommand(command)) {
     return;
@@ -4166,8 +4180,8 @@ function pushRunStep(
     run: command,
   };
 
-  if (workingDirectory && workingDirectory !== '.' && workingDirectory !== './') {
-    step['working-directory'] = workingDirectory;
+  if (workingDirectory && workingDirectory !== "." && workingDirectory !== "./") {
+    step["working-directory"] = workingDirectory;
   }
 
   steps.push(step);
@@ -4186,25 +4200,25 @@ function inferPrimaryLanguage(appSpec: AppSpec | undefined, services: ServiceSum
     return appSpec.config.language;
   }
 
-  const bespokeService = services.find(service => service.serviceType === 'bespoke');
+  const bespokeService = services.find((service) => service.serviceType === "bespoke");
   if (bespokeService) {
     return bespokeService.language;
   }
 
   if (services.length > 0) {
-    return services[0]?.language ?? 'typescript';
+    return services[0]?.language ?? "typescript";
   }
 
-  return 'typescript';
+  return "typescript";
 }
 
 function friendlyServiceName(name: string): string {
-  return name.replace(/[-_]+/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+  return name.replace(/[-_]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 function formatLanguage(language: string): string {
   if (!language) {
-    return 'Unknown';
+    return "Unknown";
   }
   return language.charAt(0).toUpperCase() + language.slice(1);
 }
@@ -4215,7 +4229,7 @@ function formatLanguage(language: string): string {
 async function generateDocumentation(
   _config: any,
   _outputDir: string,
-  _options: GenerateOptions
+  _options: GenerateOptions,
 ): Promise<string[]> {
   // Documentation generation will be handled by the docs command
   return [];
@@ -4223,18 +4237,18 @@ async function generateDocumentation(
 
 function getPrerequisites(language: string, buildTool?: string): string {
   switch (language) {
-    case 'typescript':
-      return buildTool === 'bun'
-        ? '- [Bun](https://bun.sh) v1.0+'
-        : '- [Node.js](https://nodejs.org) v18+\n- [npm](https://npmjs.com) or [yarn](https://yarnpkg.com)';
-    case 'python':
-      return '- [Python](https://python.org) 3.8+\n- [pip](https://pip.pypa.io)';
-    case 'rust':
-      return '- [Rust](https://rustup.rs) 1.70+';
-    case 'go':
-      return '- [Go](https://golang.org) 1.21+';
-    case 'shell':
-      return '- [Bash](https://www.gnu.org/software/bash/) 4.0+';
+    case "typescript":
+      return buildTool === "bun"
+        ? "- [Bun](https://bun.sh) v1.0+"
+        : "- [Node.js](https://nodejs.org) v18+\n- [npm](https://npmjs.com) or [yarn](https://yarnpkg.com)";
+    case "python":
+      return "- [Python](https://python.org) 3.8+\n- [pip](https://pip.pypa.io)";
+    case "rust":
+      return "- [Rust](https://rustup.rs) 1.70+";
+    case "go":
+      return "- [Go](https://golang.org) 1.21+";
+    case "shell":
+      return "- [Bash](https://www.gnu.org/software/bash/) 4.0+";
     default:
       return `- Development environment for ${language}`;
   }
@@ -4242,16 +4256,16 @@ function getPrerequisites(language: string, buildTool?: string): string {
 
 function getInstallCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case 'typescript':
-      return buildTool === 'bun' ? 'bun install' : 'npm install';
-    case 'python':
-      return 'pip install -e .';
-    case 'rust':
-      return 'cargo build';
-    case 'go':
-      return 'go mod tidy';
-    case 'shell':
-      return 'make install';
+    case "typescript":
+      return buildTool === "bun" ? "bun install" : "npm install";
+    case "python":
+      return "pip install -e .";
+    case "rust":
+      return "cargo build";
+    case "go":
+      return "go mod tidy";
+    case "shell":
+      return "make install";
     default:
       return 'echo "Install command not defined"';
   }
@@ -4259,16 +4273,16 @@ function getInstallCommand(language: string, buildTool?: string): string {
 
 function getRunCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case 'typescript':
-      return buildTool === 'bun' ? 'bun run src/index.ts' : 'npm start';
-    case 'python':
-      return 'python -m ' + 'PLACEHOLDER';
-    case 'rust':
-      return 'cargo run';
-    case 'go':
-      return 'go run main.go';
-    case 'shell':
-      return './src/PLACEHOLDER';
+    case "typescript":
+      return buildTool === "bun" ? "bun run src/index.ts" : "npm start";
+    case "python":
+      return "python -m " + "PLACEHOLDER";
+    case "rust":
+      return "cargo run";
+    case "go":
+      return "go run main.go";
+    case "shell":
+      return "./src/PLACEHOLDER";
     default:
       return 'echo "Run command not defined"';
   }
@@ -4276,16 +4290,16 @@ function getRunCommand(language: string, buildTool?: string): string {
 
 function getTestCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case 'typescript':
-      return buildTool === 'bun' ? 'bun test' : 'npm test';
-    case 'python':
-      return 'pytest';
-    case 'rust':
-      return 'cargo test';
-    case 'go':
-      return 'go test ./...';
-    case 'shell':
-      return 'make test';
+    case "typescript":
+      return buildTool === "bun" ? "bun test" : "npm test";
+    case "python":
+      return "pytest";
+    case "rust":
+      return "cargo test";
+    case "go":
+      return "go test ./...";
+    case "shell":
+      return "make test";
     default:
       return 'echo "Test command not defined"';
   }
@@ -4293,15 +4307,15 @@ function getTestCommand(language: string, buildTool?: string): string {
 
 function getBuildCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case 'typescript':
-      return buildTool === 'bun' ? 'bun build' : 'npm run build';
-    case 'python':
-      return 'python -m build';
-    case 'rust':
-      return 'cargo build --release';
-    case 'go':
-      return 'go build';
-    case 'shell':
+    case "typescript":
+      return buildTool === "bun" ? "bun build" : "npm run build";
+    case "python":
+      return "python -m build";
+    case "rust":
+      return "cargo build --release";
+    case "go":
+      return "go build";
+    case "shell":
       return 'echo "No build step needed"';
     default:
       return 'echo "Build command not defined"';
@@ -4310,16 +4324,16 @@ function getBuildCommand(language: string, buildTool?: string): string {
 
 function getLintCommand(language: string, buildTool?: string): string {
   switch (language) {
-    case 'typescript':
-      return buildTool === 'bun' ? 'bun run lint' : 'npm run lint';
-    case 'python':
-      return 'ruff check . && mypy .';
-    case 'rust':
-      return 'cargo clippy -- -D warnings';
-    case 'go':
-      return 'golangci-lint run';
-    case 'shell':
-      return 'shellcheck src/*';
+    case "typescript":
+      return buildTool === "bun" ? "bun run lint" : "npm run lint";
+    case "python":
+      return "ruff check . && mypy .";
+    case "rust":
+      return "cargo clippy -- -D warnings";
+    case "go":
+      return "golangci-lint run";
+    case "shell":
+      return "shellcheck src/*";
     default:
       return 'echo "Lint command not defined"';
   }
@@ -4331,11 +4345,11 @@ async function generateTerraformKubernetes(
   outputDir: string,
   assemblyConfig: any,
   options: GenerateOptions,
-  structure: ProjectStructureConfig
+  structure: ProjectStructureConfig,
 ): Promise<string[]> {
   const files: string[] = [];
   const infraDirSegments = toPathSegments(structure.infraDirectory);
-  const effectiveInfraSegments = infraDirSegments.length > 0 ? infraDirSegments : ['terraform'];
+  const effectiveInfraSegments = infraDirSegments.length > 0 ? infraDirSegments : ["terraform"];
   const infraDirRelative = joinRelativePath(...effectiveInfraSegments);
   await ensureDirectory(path.join(outputDir, ...effectiveInfraSegments), options);
 
@@ -4344,33 +4358,33 @@ async function generateTerraformKubernetes(
 
   // Generate main.tf with provider configuration
   const mainTf = generateTerraformMain(cluster, config.name);
-  const mainPath = path.join(outputDir, ...effectiveInfraSegments, 'main.tf');
+  const mainPath = path.join(outputDir, ...effectiveInfraSegments, "main.tf");
   await writeFileWithHooks(mainPath, mainTf, options);
-  files.push(joinRelativePath(infraDirRelative, 'main.tf'));
+  files.push(joinRelativePath(infraDirRelative, "main.tf"));
 
   // Generate variables.tf
   const variablesTf = generateTerraformVariables(services, cluster);
-  const variablesPath = path.join(outputDir, ...effectiveInfraSegments, 'variables.tf');
+  const variablesPath = path.join(outputDir, ...effectiveInfraSegments, "variables.tf");
   await writeFileWithHooks(variablesPath, variablesTf, options);
-  files.push(joinRelativePath(infraDirRelative, 'variables.tf'));
+  files.push(joinRelativePath(infraDirRelative, "variables.tf"));
 
   // Generate services.tf with Kubernetes resources
   const servicesTf = generateTerraformServices(services, config.name);
-  const servicesPath = path.join(outputDir, ...effectiveInfraSegments, 'services.tf');
+  const servicesPath = path.join(outputDir, ...effectiveInfraSegments, "services.tf");
   await writeFileWithHooks(servicesPath, servicesTf, options);
-  files.push(joinRelativePath(infraDirRelative, 'services.tf'));
+  files.push(joinRelativePath(infraDirRelative, "services.tf"));
 
   // Generate outputs.tf
   const outputsTf = generateTerraformOutputs(services, config.name);
-  const outputsPath = path.join(outputDir, ...effectiveInfraSegments, 'outputs.tf');
+  const outputsPath = path.join(outputDir, ...effectiveInfraSegments, "outputs.tf");
   await writeFileWithHooks(outputsPath, outputsTf, options);
-  files.push(joinRelativePath(infraDirRelative, 'outputs.tf'));
+  files.push(joinRelativePath(infraDirRelative, "outputs.tf"));
 
   // Generate README for Terraform deployment
   const readme = generateTerraformReadme(services, cluster, config.name);
-  const readmePath = path.join(outputDir, ...effectiveInfraSegments, 'README.md');
+  const readmePath = path.join(outputDir, ...effectiveInfraSegments, "README.md");
   await writeFileWithHooks(readmePath, readme, options);
-  files.push(joinRelativePath(infraDirRelative, 'README.md'));
+  files.push(joinRelativePath(infraDirRelative, "README.md"));
 
   return files;
 }
@@ -4388,10 +4402,10 @@ function parseDeploymentServices(assemblyConfig: any): {
   // Extract cluster configuration
   if (cueData?.deployment?.cluster) {
     cluster = {
-      name: cueData.deployment.cluster.name || 'default',
-      provider: cueData.deployment.cluster.provider || 'kubernetes',
+      name: cueData.deployment.cluster.name || "default",
+      provider: cueData.deployment.cluster.provider || "kubernetes",
       context: cueData.deployment.cluster.context,
-      namespace: cueData.deployment.cluster.namespace || 'default',
+      namespace: cueData.deployment.cluster.namespace || "default",
       config: cueData.deployment.cluster.config || {},
     };
   }
@@ -4412,8 +4426,8 @@ function parseDeploymentServices(assemblyConfig: any): {
 interface DeploymentService {
   name: string;
   language: string;
-  serviceType: 'bespoke' | 'prebuilt' | 'external';
-  type: 'deployment' | 'statefulset' | 'daemonset' | 'job' | 'cronjob';
+  serviceType: "bespoke" | "prebuilt" | "external";
+  type: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
   image?: string;
   sourceDirectory?: string;
   buildContext?: {
@@ -4427,7 +4441,7 @@ interface DeploymentService {
     name: string;
     path: string;
     size?: string;
-    type?: 'persistentVolumeClaim' | 'configMap' | 'secret';
+    type?: "persistentVolumeClaim" | "configMap" | "secret";
   }>;
   config?: {
     files?: Array<{ name: string; content: string | Record<string, any> }>;
@@ -4450,7 +4464,7 @@ interface DeploymentService {
 
 interface ClusterConfig {
   name: string;
-  provider: 'kubernetes' | 'eks' | 'gke' | 'aks';
+  provider: "kubernetes" | "eks" | "gke" | "aks";
   context?: string;
   namespace: string;
   config: Record<string, any>;
@@ -4458,24 +4472,24 @@ interface ClusterConfig {
 
 function parseDeploymentServiceConfig(name: string, config: any): DeploymentService | null {
   // Determine service type based on configuration
-  let serviceType: 'bespoke' | 'prebuilt' | 'external' = 'prebuilt';
+  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
 
   if (
     config.sourceDirectory ||
-    (config.language && config.language !== 'container' && !config.image)
+    (config.language && config.language !== "container" && !config.image)
   ) {
-    serviceType = 'bespoke';
-  } else if (config.image && (config.language === 'container' || !config.language)) {
-    serviceType = 'prebuilt';
+    serviceType = "bespoke";
+  } else if (config.image && (config.language === "container" || !config.language)) {
+    serviceType = "prebuilt";
   } else if (config.external) {
-    serviceType = 'external';
+    serviceType = "external";
   }
 
   const service: DeploymentService = {
     name: name,
-    language: config.language || 'container',
+    language: config.language || "container",
     serviceType: serviceType,
-    type: config.type || 'deployment',
+    type: config.type || "deployment",
     replicas: config.replicas || 1,
   };
 
@@ -4488,7 +4502,7 @@ function parseDeploymentServiceConfig(name: string, config: any): DeploymentServ
   if (config.volumes) {
     service.volumes = config.volumes.map((vol: any) => ({
       ...vol,
-      type: vol.type || 'persistentVolumeClaim',
+      type: vol.type || "persistentVolumeClaim",
     }));
   }
   if (config.resources) service.resources = config.resources;
@@ -4502,7 +4516,7 @@ function parseDeploymentServiceConfig(name: string, config: any): DeploymentServ
 
 // Terraform generation functions
 function generateTerraformMain(cluster: ClusterConfig | null, projectName: string): string {
-  const clusterName = cluster?.name || 'default';
+  const clusterName = cluster?.name || "default";
   const namespace = cluster?.namespace || projectName.toLowerCase();
 
   return `terraform {
@@ -4523,7 +4537,7 @@ provider "kubernetes" {
 }
 
 # Create namespace if it doesn't exist
-resource "kubernetes_namespace" "${namespace.replace(/-/g, '_')}" {
+resource "kubernetes_namespace" "${namespace.replace(/-/g, "_")}" {
   metadata {
     name = "${namespace}"
     labels = {
@@ -4537,9 +4551,9 @@ resource "kubernetes_namespace" "${namespace.replace(/-/g, '_')}" {
 
 function generateTerraformVariables(
   services: DeploymentService[],
-  cluster: ClusterConfig | null
+  cluster: ClusterConfig | null,
 ): string {
-  const clusterName = cluster?.name || 'default';
+  const clusterName = cluster?.name || "default";
 
   return `variable "kubeconfig_path" {
   description = "Path to the kubeconfig file"
@@ -4556,7 +4570,7 @@ variable "cluster_context" {
 variable "namespace" {
   description = "Kubernetes namespace for deployment"
   type        = string
-  default     = "${cluster?.namespace || 'default'}"
+  default     = "${cluster?.namespace || "default"}"
 }
 
 variable "image_tag" {
@@ -4566,48 +4580,48 @@ variable "image_tag" {
 }
 
 ${services
-  .map(service => {
-    const serviceName = service.name.replace(/-/g, '_');
+  .map((service) => {
+    const serviceName = service.name.replace(/-/g, "_");
     return `variable "${serviceName}_replicas" {
   description = "Number of replicas for ${service.name}"
   type        = number
   default     = ${service.replicas || 1}
 }`;
   })
-  .join('\n\n')}
+  .join("\n\n")}
 `;
 }
 
 function generateTerraformServices(services: DeploymentService[], projectName: string): string {
-  return services.map(service => generateTerraformService(service, projectName)).join('\n\n');
+  return services.map((service) => generateTerraformService(service, projectName)).join("\n\n");
 }
 
 function generateTerraformService(service: DeploymentService, projectName: string): string {
-  const serviceName = service.name.replace(/-/g, '_');
+  const serviceName = service.name.replace(/-/g, "_");
   const namespace = projectName.toLowerCase();
 
   let terraform = `# ${service.name} ${service.type}
 resource "kubernetes_${service.type}" "${serviceName}" {
   metadata {
     name      = "${service.name}"
-    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, "_")}.metadata[0].name
     labels = {
       app     = "${service.name}"
       project = "${projectName.toLowerCase()}"${
         service.labels
           ? Object.entries(service.labels)
               .map(([k, v]) => `\n      ${k} = "${v}"`)
-              .join('')
-          : ''
+              .join("")
+          : ""
       }
     }${
       service.annotations
         ? `
     annotations = {${Object.entries(service.annotations)
       .map(([k, v]) => `\n      "${k}" = "${v}"`)
-      .join('')}
+      .join("")}
     }`
-        : ''
+        : ""
     }
   }
 
@@ -4636,12 +4650,12 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 
   // Add ports
   if (service.ports && service.ports.length > 0) {
-    service.ports.forEach(port => {
+    service.ports.forEach((port) => {
       terraform += `
           port {
             name           = "${port.name}"
             container_port = ${port.targetPort || port.port}
-            protocol       = "${port.protocol || 'TCP'}"
+            protocol       = "${port.protocol || "TCP"}"
           }`;
     });
   }
@@ -4691,7 +4705,7 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 
   // Add volume mounts
   if (service.volumes && service.volumes.length > 0) {
-    service.volumes.forEach(volume => {
+    service.volumes.forEach((volume) => {
       terraform += `
           volume_mount {
             name       = "${volume.name}"
@@ -4705,12 +4719,12 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 
   // Add volumes
   if (service.volumes && service.volumes.length > 0) {
-    service.volumes.forEach(volume => {
+    service.volumes.forEach((volume) => {
       terraform += `
         volume {
           name = "${volume.name}"
           persistent_volume_claim {
-            claim_name = kubernetes_persistent_volume_claim.${serviceName}_${volume.name.replace(/-/g, '_')}.metadata[0].name
+            claim_name = kubernetes_persistent_volume_claim.${serviceName}_${volume.name.replace(/-/g, "_")}.metadata[0].name
           }
         }`;
     });
@@ -4729,7 +4743,7 @@ resource "kubernetes_${service.type}" "${serviceName}" {
 resource "kubernetes_service" "${serviceName}" {
   metadata {
     name      = "${service.name}"
-    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, "_")}.metadata[0].name
     labels = {
       app     = "${service.name}"
       project = "${projectName.toLowerCase()}"
@@ -4743,34 +4757,34 @@ resource "kubernetes_service" "${serviceName}" {
 
 ${service.ports
   .map(
-    port => `    port {
+    (port) => `    port {
       name        = "${port.name}"
       port        = ${port.port}
       target_port = ${port.targetPort || port.port}
-      protocol    = "${port.protocol || 'TCP'}"
-    }`
+      protocol    = "${port.protocol || "TCP"}"
+    }`,
   )
-  .join('\n')}
+  .join("\n")}
   }
 }`;
   }
 
   // Generate PVCs for volumes
   if (service.volumes && service.volumes.length > 0) {
-    service.volumes.forEach(volume => {
+    service.volumes.forEach((volume) => {
       terraform += `
 
-resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.replace(/-/g, '_')}" {
+resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.replace(/-/g, "_")}" {
   metadata {
     name      = "${service.name}-${volume.name}"
-    namespace = kubernetes_namespace.${namespace.replace(/-/g, '_')}.metadata[0].name
+    namespace = kubernetes_namespace.${namespace.replace(/-/g, "_")}.metadata[0].name
   }
 
   spec {
     access_modes = ["ReadWriteOnce"]
     resources {
       requests = {
-        storage = "${volume.size || '10Gi'}"
+        storage = "${volume.size || "10Gi"}"
       }
     }
   }
@@ -4783,9 +4797,9 @@ resource "kubernetes_persistent_volume_claim" "${serviceName}_${volume.name.repl
 
 function generateTerraformOutputs(services: DeploymentService[], projectName: string): string {
   const outputs = services
-    .filter(service => service.ports && service.ports.length > 0)
-    .map(service => {
-      const serviceName = service.name.replace(/-/g, '_');
+    .filter((service) => service.ports && service.ports.length > 0)
+    .map((service) => {
+      const serviceName = service.name.replace(/-/g, "_");
       return `output "${serviceName}_service_ip" {
   description = "Cluster IP of the ${service.name} service"
   value       = kubernetes_service.${serviceName}.spec[0].cluster_ip
@@ -4793,25 +4807,25 @@ function generateTerraformOutputs(services: DeploymentService[], projectName: st
 
 output "${serviceName}_ports" {
   description = "Ports exposed by ${service.name} service"
-  value       = [${service.ports?.map(p => `"${p.port}"`).join(', ')}]
+  value       = [${service.ports?.map((p) => `"${p.port}"`).join(", ")}]
 }`;
     });
 
   return `output "namespace" {
   description = "Kubernetes namespace"
-  value       = kubernetes_namespace.${projectName.toLowerCase().replace(/-/g, '_')}.metadata[0].name
+  value       = kubernetes_namespace.${projectName.toLowerCase().replace(/-/g, "_")}.metadata[0].name
 }
 
-${outputs.join('\n\n')}
+${outputs.join("\n\n")}
 `;
 }
 
 function generateTerraformReadme(
   services: DeploymentService[],
   cluster: ClusterConfig | null,
-  projectName: string
+  projectName: string,
 ): string {
-  const clusterName = cluster?.name || 'default';
+  const clusterName = cluster?.name || "default";
   const namespace = cluster?.namespace || projectName.toLowerCase();
 
   return `# ${projectName} - Terraform Kubernetes Deployment
@@ -4835,23 +4849,23 @@ This directory contains Terraform configurations for deploying ${projectName} to
 
 ${services
   .map(
-    service => `### ${service.name}
+    (service) => `### ${service.name}
 - **Language**: ${service.language}
 - **Type**: ${service.type}
 - **Image**: ${service.image || `${service.name}:latest`}${
       service.ports
         ? `
-- **Ports**: ${service.ports.map(p => `${p.port}/${p.protocol || 'TCP'} (${p.name})`).join(', ')}`
-        : ''
+- **Ports**: ${service.ports.map((p) => `${p.port}/${p.protocol || "TCP"} (${p.name})`).join(", ")}`
+        : ""
     }
 - **Replicas**: ${service.replicas || 1}${
       service.volumes
         ? `
-- **Storage**: ${service.volumes.map(v => `${v.name} → ${v.path} (${v.size || '10Gi'})`).join(', ')}`
-        : ''
-    }`
+- **Storage**: ${service.volumes.map((v) => `${v.name} → ${v.path} (${v.size || "10Gi"})`).join(", ")}`
+        : ""
+    }`,
   )
-  .join('\n\n')}
+  .join("\n\n")}
 
 ## Deployment
 
@@ -4889,22 +4903,22 @@ namespace       = "${namespace}"
 image_tag = "v1.0.0"
 
 # Service scaling
-${services.map(service => `${service.name.replace(/-/g, '_')}_replicas = ${service.replicas || 1}`).join('\n')}
+${services.map((service) => `${service.name.replace(/-/g, "_")}_replicas = ${service.replicas || 1}`).join("\n")}
 \`\`\`
 
 ## Access Services
 
 ${services
-  .filter(s => s.ports && s.ports.length > 0)
+  .filter((s) => s.ports && s.ports.length > 0)
   .map(
-    service => `### ${service.name}
+    (service) => `### ${service.name}
 \`\`\`bash
 kubectl port-forward -n ${namespace} service/${service.name} ${service.ports?.[0].port}:${service.ports?.[0].port}
 \`\`\`
 Access at: http://localhost:${service.ports?.[0].port}
-`
+`,
   )
-  .join('\n')}
+  .join("\n")}
 
 ## State Management
 
@@ -4960,7 +4974,7 @@ type ComposeServiceConfig = DeploymentServiceConfig & {
   resolvedSourceDirectory?: string;
 };
 
-const CLIENT_COMPONENT_LABEL = 'arbiter.io/component';
+const CLIENT_COMPONENT_LABEL = "arbiter.io/component";
 
 async function generateDockerCompose(
   config: any,
@@ -4968,10 +4982,10 @@ async function generateDockerCompose(
   assemblyConfig: any,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContext?: ClientGenerationContext
+  clientContext?: ClientGenerationContext,
 ): Promise<string[]> {
   const files: string[] = [];
-  const composeSegments = [...toPathSegments(structure.infraDirectory), 'compose'];
+  const composeSegments = [...toPathSegments(structure.infraDirectory), "compose"];
   const composeRoot = path.join(outputDir, ...composeSegments);
   const composeRelativeRoot = composeSegments;
 
@@ -4986,35 +5000,35 @@ async function generateDockerCompose(
     structure,
     composeRoot,
     composeRelativeRoot,
-    clientContext
+    clientContext,
   );
 
   // Generate docker-compose.yml
   const composeYml = generateDockerComposeFile(resolvedServices, deployment, config.name);
-  const composePath = path.join(composeRoot, 'docker-compose.yml');
+  const composePath = path.join(composeRoot, "docker-compose.yml");
   await writeFileWithHooks(composePath, composeYml, options);
-  files.push(joinRelativePath(...composeRelativeRoot, 'docker-compose.yml'));
+  files.push(joinRelativePath(...composeRelativeRoot, "docker-compose.yml"));
 
   // Generate .env template
   const envTemplate = generateComposeEnvTemplate(resolvedServices, config.name);
-  const envPath = path.join(composeRoot, '.env.template');
+  const envPath = path.join(composeRoot, ".env.template");
   await writeFileWithHooks(envPath, envTemplate, options);
-  files.push(joinRelativePath(...composeRelativeRoot, '.env.template'));
+  files.push(joinRelativePath(...composeRelativeRoot, ".env.template"));
 
   // Generate build contexts for bespoke services
   const buildFiles = await generateBuildContexts(
     resolvedServices,
     composeRoot,
     options,
-    composeRelativeRoot
+    composeRelativeRoot,
   );
   files.push(...buildFiles);
 
   // Generate compose README
   const readme = generateComposeReadme(resolvedServices, deployment, config.name);
-  const readmePath = path.join(composeRoot, 'README.md');
+  const readmePath = path.join(composeRoot, "README.md");
   await writeFileWithHooks(readmePath, readme, options);
-  files.push(joinRelativePath(...composeRelativeRoot, 'README.md'));
+  files.push(joinRelativePath(...composeRelativeRoot, "README.md"));
 
   return files;
 }
@@ -5028,9 +5042,9 @@ function parseDockerComposeServices(assemblyConfig: any): {
 
   // Extract deployment configuration
   const deployment: DeploymentConfig = {
-    target: cueData?.deployment?.target || 'compose',
+    target: cueData?.deployment?.target || "compose",
     compose: {
-      version: cueData?.deployment?.compose?.version || '3.8',
+      version: cueData?.deployment?.compose?.version || "3.8",
       networks: cueData?.deployment?.compose?.networks || {},
       volumes: cueData?.deployment?.compose?.volumes || {},
       profiles: cueData?.deployment?.compose?.profiles || [],
@@ -5053,22 +5067,22 @@ function parseDockerComposeServices(assemblyConfig: any): {
 
 function parseServiceForCompose(name: string, config: any): DeploymentServiceConfig | null {
   // Detect service type based on configuration
-  let serviceType: 'bespoke' | 'prebuilt' | 'external' = 'prebuilt';
+  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
 
   if (config.sourceDirectory) {
-    serviceType = 'bespoke';
+    serviceType = "bespoke";
   } else if (config.image) {
-    serviceType = 'prebuilt';
+    serviceType = "prebuilt";
   } else if (config.language && !config.image) {
     // Language specified but no image - likely bespoke
-    serviceType = 'bespoke';
+    serviceType = "bespoke";
   }
 
   const service: DeploymentServiceConfig = {
     name: name,
     serviceType: serviceType,
-    language: config.language || 'container',
-    type: config.type || 'deployment',
+    language: config.language || "container",
+    type: config.type || "deployment",
     replicas: config.replicas || 1,
     image: config.image,
     sourceDirectory: config.sourceDirectory,
@@ -5091,10 +5105,10 @@ function prepareComposeServices(
   structure: ProjectStructureConfig,
   composeRoot: string,
   composeSegments: string[],
-  clientContext?: ClientGenerationContext
+  clientContext?: ClientGenerationContext,
 ): ComposeServiceConfig[] {
   const collected: DeploymentServiceConfig[] = [...services];
-  const usedNames = new Set<string>(services.map(service => service.name));
+  const usedNames = new Set<string>(services.map((service) => service.name));
 
   if (clientContext) {
     const frontendService = createFrontendComposeService(clientContext, structure, usedNames);
@@ -5103,15 +5117,15 @@ function prepareComposeServices(
     }
   }
 
-  return collected.map(service =>
+  return collected.map((service) =>
     resolveComposeServiceConfig(
       service,
       outputDir,
       structure,
       composeRoot,
       composeSegments,
-      clientContext
-    )
+      clientContext,
+    ),
   );
 }
 
@@ -5121,10 +5135,10 @@ function resolveComposeServiceConfig(
   structure: ProjectStructureConfig,
   composeRoot: string,
   composeSegments: string[],
-  clientContext?: ClientGenerationContext
+  clientContext?: ClientGenerationContext,
 ): ComposeServiceConfig {
-  const isBespoke = service.serviceType === 'bespoke';
-  const isClientService = service.labels?.[CLIENT_COMPONENT_LABEL] === 'client';
+  const isBespoke = service.serviceType === "bespoke";
+  const isClientService = service.labels?.[CLIENT_COMPONENT_LABEL] === "client";
 
   let generatedRoot: string | undefined;
   let generatedSource: string | undefined;
@@ -5164,9 +5178,9 @@ function resolveComposeServiceConfig(
 function createFrontendComposeService(
   clientContext: ClientGenerationContext,
   structure: ProjectStructureConfig,
-  usedNames: Set<string>
+  usedNames: Set<string>,
 ): DeploymentServiceConfig {
-  const baseName = clientContext.slug.includes('client')
+  const baseName = clientContext.slug.includes("client")
     ? clientContext.slug
     : `${clientContext.slug}-client`;
   const name = ensureUniqueComposeName(baseName, usedNames);
@@ -5175,13 +5189,13 @@ function createFrontendComposeService(
 
   return {
     name,
-    serviceType: 'bespoke',
-    language: 'typescript',
-    type: 'deployment',
+    serviceType: "bespoke",
+    language: "typescript",
+    type: "deployment",
     sourceDirectory,
     ports: [
       {
-        name: 'web',
+        name: "web",
         port,
         targetPort: port,
       },
@@ -5190,13 +5204,13 @@ function createFrontendComposeService(
       PORT: String(port),
     },
     labels: {
-      [CLIENT_COMPONENT_LABEL]: 'client',
+      [CLIENT_COMPONENT_LABEL]: "client",
     },
   };
 }
 
 function ensureUniqueComposeName(base: string, usedNames: Set<string>): string {
-  const normalizedBase = slugify(base, 'client');
+  const normalizedBase = slugify(base, "client");
   let candidate = normalizedBase;
   let counter = 2;
 
@@ -5210,16 +5224,16 @@ function ensureUniqueComposeName(base: string, usedNames: Set<string>): string {
 }
 
 function normalizeRelativeForCompose(value: string): string {
-  if (!value || value === '.') {
-    return '.';
+  if (!value || value === ".") {
+    return ".";
   }
 
-  const normalized = value.replace(/\\/g, '/');
-  return normalized.length > 0 ? normalized : '.';
+  const normalized = value.replace(/\\/g, "/");
+  return normalized.length > 0 ? normalized : ".";
 }
 
 function buildFallbackComposeContext(value: string, composeSegments: string[]): string {
-  const ups = new Array(composeSegments.length).fill('..');
+  const ups = new Array(composeSegments.length).fill("..");
   const segments = value.split(PATH_SEPARATOR_REGEX).filter(Boolean);
   return joinRelativePath(...ups, ...segments);
 }
@@ -5231,14 +5245,14 @@ function normalizeSpecPath(value: string): string {
 function generateDockerComposeFile(
   services: ComposeServiceConfig[],
   deployment: DeploymentConfig,
-  projectName: string
+  projectName: string,
 ): string {
-  const version = deployment.compose?.version || '3.8';
+  const version = deployment.compose?.version || "3.8";
 
   let compose = `version: "${version}"
 
 services:
-${services.map(service => generateComposeService(service, projectName)).join('\n')}`;
+${services.map((service) => generateComposeService(service, projectName)).join("\n")}`;
 
   // Add networks if specified
   if (deployment.compose?.networks && Object.keys(deployment.compose.networks).length > 0) {
@@ -5250,24 +5264,24 @@ ${Object.entries(deployment.compose.networks)
     ([name, config]) =>
       `  ${name}:
 ${Object.entries(config as any)
-  .map(([k, v]) => `    ${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
-  .join('\n')}`
+  .map(([k, v]) => `    ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
+  .join("\n")}`,
   )
-  .join('\n')}`;
+  .join("\n")}`;
   }
 
   // Add named volumes if any services use them
-  const namedVolumes = services.flatMap(s =>
+  const namedVolumes = services.flatMap((s) =>
     (s.volumes || [])
-      .filter(v => v.type === 'persistentVolumeClaim')
-      .map(v => `${s.name}_${v.name}`)
+      .filter((v) => v.type === "persistentVolumeClaim")
+      .map((v) => `${s.name}_${v.name}`),
   );
 
   if (namedVolumes.length > 0) {
     compose += `
 
 volumes:
-${namedVolumes.map(volume => `  ${volume}:`).join('\n')}`;
+${namedVolumes.map((volume) => `  ${volume}:`).join("\n")}`;
   }
 
   return compose;
@@ -5278,7 +5292,7 @@ function generateComposeService(service: ComposeServiceConfig, projectName: stri
   let serviceConfig = `  ${serviceName}:`;
 
   // Image or build configuration
-  if (service.serviceType === 'bespoke') {
+  if (service.serviceType === "bespoke") {
     // Build from source
     if (service.resolvedBuildContext) {
       serviceConfig += `
@@ -5300,7 +5314,7 @@ function generateComposeService(service: ComposeServiceConfig, projectName: stri
       args:
 ${Object.entries(service.buildContext.buildArgs)
   .map(([k, v]) => `        ${k}: ${v}`)
-  .join('\n')}`;
+  .join("\n")}`;
       }
     } else {
       // Fallback to image for bespoke without sourceDirectory
@@ -5325,7 +5339,7 @@ ${Object.entries(service.buildContext.buildArgs)
   if (service.ports && service.ports.length > 0) {
     serviceConfig += `
     ports:
-${service.ports.map(p => `      - "${p.port}:${p.targetPort || p.port}"`).join('\n')}`;
+${service.ports.map((p) => `      - "${p.port}:${p.targetPort || p.port}"`).join("\n")}`;
   }
 
   // Environment variables
@@ -5334,7 +5348,7 @@ ${service.ports.map(p => `      - "${p.port}:${p.targetPort || p.port}"`).join('
     environment:
 ${Object.entries(service.env)
   .map(([k, v]) => `      ${k}: ${v}`)
-  .join('\n')}`;
+  .join("\n")}`;
   }
 
   // Volumes
@@ -5342,13 +5356,13 @@ ${Object.entries(service.env)
     serviceConfig += `
     volumes:`;
 
-    service.volumes.forEach(volume => {
-      if (volume.type === 'persistentVolumeClaim') {
+    service.volumes.forEach((volume) => {
+      if (volume.type === "persistentVolumeClaim") {
         serviceConfig += `
       - ${serviceName}_${volume.name}:${volume.path}`;
-      } else if (volume.type === 'configMap' && service.config?.files) {
+      } else if (volume.type === "configMap" && service.config?.files) {
         // Handle config files
-        const configFile = service.config.files.find(f => f.name === volume.name);
+        const configFile = service.config.files.find((f) => f.name === volume.name);
         if (configFile) {
           serviceConfig += `
       - ./config/${serviceName}/${configFile.name}:${volume.path}:ro`;
@@ -5365,7 +5379,7 @@ ${Object.entries(service.env)
   const labels = {
     project: projectName,
     service: serviceName,
-    'service-type': service.serviceType,
+    "service-type": service.serviceType,
     ...service.labels,
   };
 
@@ -5373,11 +5387,11 @@ ${Object.entries(service.env)
     labels:
 ${Object.entries(labels)
   .map(([k, v]) => `      ${k}: "${v}"`)
-  .join('\n')}`;
+  .join("\n")}`;
 
   // Health check (basic)
   if (service.ports && service.ports.length > 0) {
-    const httpPort = service.ports.find(p => p.name === 'http' || p.name === 'web');
+    const httpPort = service.ports.find((p) => p.name === "http" || p.name === "web");
     if (httpPort) {
       serviceConfig += `
     healthcheck:
@@ -5393,10 +5407,10 @@ ${Object.entries(labels)
     const limits = service.resources.limits;
     if (limits.memory) {
       serviceConfig += `
-    mem_limit: ${limits.memory.replace('Mi', 'm').replace('Gi', 'g')}`;
+    mem_limit: ${limits.memory.replace("Mi", "m").replace("Gi", "g")}`;
     }
     if (limits.cpu) {
-      const cpuLimit = limits.cpu.replace('m', '');
+      const cpuLimit = limits.cpu.replace("m", "");
       const cpuFloat = (Number.parseInt(cpuLimit) / 1000).toFixed(2);
       serviceConfig += `
     cpus: "${cpuFloat}"`;
@@ -5410,9 +5424,9 @@ function generateComposeEnvTemplate(services: ComposeServiceConfig[], projectNam
   const envVars = new Set<string>();
 
   // Collect all environment variables from services
-  services.forEach(service => {
+  services.forEach((service) => {
     if (service.env) {
-      Object.keys(service.env).forEach(key => envVars.add(key));
+      Object.keys(service.env).forEach((key) => envVars.add(key));
     }
   });
 
@@ -5429,7 +5443,7 @@ IMAGE_TAG=latest
 `;
 
   // Add service-specific environment variables
-  services.forEach(service => {
+  services.forEach((service) => {
     if (service.env && Object.keys(service.env).length > 0) {
       envContent += `# ${service.name} Service
 `;
@@ -5437,7 +5451,7 @@ IMAGE_TAG=latest
         envContent += `${key}=${value}
 `;
       });
-      envContent += '\n';
+      envContent += "\n";
     }
   });
 
@@ -5448,25 +5462,25 @@ async function generateBuildContexts(
   services: ComposeServiceConfig[],
   composeRoot: string,
   options: GenerateOptions,
-  relativeRoot: string[]
+  relativeRoot: string[],
 ): Promise<string[]> {
   const files: string[] = [];
 
   for (const service of services) {
-    if (service.serviceType === 'bespoke' && service.config?.files) {
+    if (service.serviceType === "bespoke" && service.config?.files) {
       // Generate config files for bespoke services
-      const configDir = path.join(composeRoot, 'config', service.name);
+      const configDir = path.join(composeRoot, "config", service.name);
       await ensureDirectory(configDir, options);
 
       for (const configFile of service.config.files) {
         const content =
-          typeof configFile.content === 'string'
+          typeof configFile.content === "string"
             ? configFile.content
             : JSON.stringify(configFile.content, null, 2);
 
         const filePath = path.join(configDir, configFile.name);
         await writeFileWithHooks(filePath, content, options);
-        files.push(joinRelativePath(...relativeRoot, 'config', service.name, configFile.name));
+        files.push(joinRelativePath(...relativeRoot, "config", service.name, configFile.name));
       }
     }
   }
@@ -5477,7 +5491,7 @@ async function generateBuildContexts(
 function generateComposeReadme(
   services: ComposeServiceConfig[],
   deployment: DeploymentConfig,
-  projectName: string
+  projectName: string,
 ): string {
   return `# ${projectName} - Docker Compose Deployment
 
@@ -5492,28 +5506,28 @@ This directory contains Docker Compose configurations for running ${projectName}
 
 ${services
   .map(
-    service => `### ${service.name} (${service.serviceType})
+    (service) => `### ${service.name} (${service.serviceType})
 - **Language**: ${service.language}
 - **Type**: ${service.type}
 ${
-  service.serviceType === 'bespoke'
+  service.serviceType === "bespoke"
     ? `- **Source**: ${
-        service.resolvedSourceDirectory || service.sourceDirectory || 'Built from local source'
+        service.resolvedSourceDirectory || service.sourceDirectory || "Built from local source"
       }`
     : `- **Image**: ${service.image}`
 }${
-      service.ports
-        ? `
-- **Ports**: ${service.ports.map(p => `${p.port}:${p.targetPort || p.port}`).join(', ')}`
-        : ''
-    }${
-      service.volumes
-        ? `
-- **Volumes**: ${service.volumes.map(v => `${v.name} → ${v.path}`).join(', ')}`
-        : ''
-    }`
+  service.ports
+    ? `
+- **Ports**: ${service.ports.map((p) => `${p.port}:${p.targetPort || p.port}`).join(", ")}`
+    : ""
+}${
+  service.volumes
+    ? `
+- **Volumes**: ${service.volumes.map((v) => `${v.name} → ${v.path}`).join(", ")}`
+    : ""
+}`,
   )
-  .join('\n\n')}
+  .join("\n\n")}
 
 ## Quick Start
 
@@ -5543,23 +5557,23 @@ docker compose down
 ### Build specific service
 \`\`\`bash
 ${services
-  .filter(s => s.serviceType === 'bespoke')
-  .map(s => `docker compose build ${s.name}`)
-  .join('\n')}
+  .filter((s) => s.serviceType === "bespoke")
+  .map((s) => `docker compose build ${s.name}`)
+  .join("\n")}
 \`\`\`
 
 ### Access services
 ${services
-  .filter(s => s.ports && s.ports.length > 0)
+  .filter((s) => s.ports && s.ports.length > 0)
   .map(
-    service => `
-**${service.name}**: http://localhost:${service.ports?.[0].port}`
+    (service) => `
+**${service.name}**: http://localhost:${service.ports?.[0].port}`,
   )
-  .join('')}
+  .join("")}
 
 ### Scale services
 \`\`\`bash
-${services.map(s => `docker compose up -d --scale ${s.name}=${s.replicas || 1}`).join('\n')}
+${services.map((s) => `docker compose up -d --scale ${s.name}=${s.replicas || 1}`).join("\n")}
 \`\`\`
 
 ## Development Workflow
@@ -5636,7 +5650,7 @@ Check that all source directories exist and contain proper build files (Dockerfi
 Check logs with \`docker compose logs <service>\` and verify configuration files.
 
 ### Network issues
-Services communicate using service names as hostnames (e.g., \`http://${services.length > 1 ? services[1].name : 'api'}:${services.find(s => s.ports)?.ports?.[0]?.port || '3000'}\`).
+Services communicate using service names as hostnames (e.g., \`http://${services.length > 1 ? services[1].name : "api"}:${services.find((s) => s.ports)?.ports?.[0]?.port || "3000"}\`).
 `;
 }
 
@@ -5661,7 +5675,7 @@ class TestCompositionEngine {
    */
   async discoverExistingTests(outputDir: string): Promise<TestSuite[]> {
     const testSuites: TestSuite[] = [];
-    const testDirs = ['tests', 'test', '__tests__', 'spec'];
+    const testDirs = ["tests", "test", "__tests__", "spec"];
 
     for (const testDir of testDirs) {
       const fullPath = path.join(outputDir, testDir);
@@ -5683,7 +5697,7 @@ class TestCompositionEngine {
    * Generate namespace for new tests based on spec and service
    */
   generateTestNamespace(serviceName: string): string {
-    return `${this.namespace}.${serviceName}`.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+    return `${this.namespace}.${serviceName}`.toLowerCase().replace(/[^a-z0-9.]/g, "_");
   }
 
   /**
@@ -5699,7 +5713,7 @@ class TestCompositionEngine {
 
     // Create a map of existing tests by namespace
     const existingMap = new Map<string, TestSuite>();
-    existing.forEach(suite => existingMap.set(suite.namespace, suite));
+    existing.forEach((suite) => existingMap.set(suite.namespace, suite));
 
     // Process new test suites
     for (const newSuite of newSuites) {
@@ -5723,7 +5737,7 @@ class TestCompositionEngine {
     }
 
     // Add remaining existing suites (no conflicts)
-    existingMap.forEach(suite => {
+    existingMap.forEach((suite) => {
       result.merged.push(suite);
       result.preserved.push(...suite.cases);
     });
@@ -5736,10 +5750,10 @@ class TestCompositionEngine {
    */
   private mergeConflictingSuites(
     existing: TestSuite,
-    newSuite: TestSuite
+    newSuite: TestSuite,
   ): {
     suite: TestSuite;
-    conflicts: Array<{ test: string; reason: string; resolution: 'skip' | 'merge' | 'replace' }>;
+    conflicts: Array<{ test: string; reason: string; resolution: "skip" | "merge" | "replace" }>;
     generated: TestCase[];
     preserved: TestCase[];
   } {
@@ -5748,7 +5762,7 @@ class TestCompositionEngine {
       conflicts: [] as Array<{
         test: string;
         reason: string;
-        resolution: 'skip' | 'merge' | 'replace';
+        resolution: "skip" | "merge" | "replace";
       }>,
       generated: [] as TestCase[],
       preserved: [...existing.cases] as TestCase[],
@@ -5756,7 +5770,7 @@ class TestCompositionEngine {
 
     // Create a map of existing test cases by name
     const existingCases = new Map<string, TestCase>();
-    existing.cases.forEach(testCase => existingCases.set(testCase.name, testCase));
+    existing.cases.forEach((testCase) => existingCases.set(testCase.name, testCase));
 
     // Process new test cases
     for (const newCase of newSuite.cases) {
@@ -5768,14 +5782,14 @@ class TestCompositionEngine {
         result.generated.push(newCase);
       } else if (this.isGeneratedTest(existingCase)) {
         // Existing test is generated - safe to replace
-        const index = result.suite.cases.findIndex(c => c.name === newCase.name);
+        const index = result.suite.cases.findIndex((c) => c.name === newCase.name);
         if (index >= 0) {
           result.suite.cases[index] = newCase;
           result.generated.push(newCase);
           result.conflicts.push({
             test: newCase.name,
-            reason: 'Generated test updated',
-            resolution: 'replace',
+            reason: "Generated test updated",
+            resolution: "replace",
           });
         }
       } else {
@@ -5789,8 +5803,8 @@ class TestCompositionEngine {
         result.generated.push(renamedCase);
         result.conflicts.push({
           test: newCase.name,
-          reason: 'Custom test exists',
-          resolution: 'skip',
+          reason: "Custom test exists",
+          resolution: "skip",
         });
       }
     }
@@ -5804,8 +5818,8 @@ class TestCompositionEngine {
   private isGeneratedTest(testCase: TestCase): boolean {
     return (
       testCase.metadata?.generated === true ||
-      testCase.metadata?.source === 'arbiter' ||
-      testCase.namespace.includes('generated')
+      testCase.metadata?.source === "arbiter" ||
+      testCase.namespace.includes("generated")
     );
   }
 
@@ -5813,7 +5827,7 @@ class TestCompositionEngine {
    * Generate base namespace from spec name
    */
   private generateBaseNamespace(specName: string): string {
-    return `arbiter.${specName}`.toLowerCase().replace(/[^a-z0-9.]/g, '_');
+    return `arbiter.${specName}`.toLowerCase().replace(/[^a-z0-9.]/g, "_");
   }
 
   /**
@@ -5846,7 +5860,7 @@ class TestCompositionEngine {
       /test_.*\.(py)$/,
     ];
 
-    return testPatterns.some(pattern => pattern.test(filename));
+    return testPatterns.some((pattern) => pattern.test(filename));
   }
 
   /**
@@ -5854,13 +5868,13 @@ class TestCompositionEngine {
    */
   private async parseTestFile(filePath: string): Promise<TestSuite | null> {
     try {
-      const content = await fs.readFile(filePath, 'utf-8');
+      const content = await fs.readFile(filePath, "utf-8");
       const ext = path.extname(filePath);
 
       // Basic parsing - in real implementation would use proper AST parsing
       const testCases: TestCase[] = [];
 
-      if (ext === '.js' || ext === '.ts') {
+      if (ext === ".js" || ext === ".ts") {
         // JavaScript/TypeScript test parsing
         const testMatches = content.match(/(?:test|it)\s*\(\s*['"`]([^'"`]+)['"`]/g);
         testMatches?.forEach((match, index) => {
@@ -5872,16 +5886,16 @@ class TestCompositionEngine {
               steps: [], // Would extract from test body in real implementation
               metadata: {
                 generated: false,
-                source: 'existing',
+                source: "existing",
                 lastModified: new Date().toISOString(),
               },
             });
           }
         });
-      } else if (ext === '.py') {
+      } else if (ext === ".py") {
         // Python test parsing
         const testMatches = content.match(/def\s+(test_\w+)/g);
-        testMatches?.forEach(match => {
+        testMatches?.forEach((match) => {
           const nameMatch = match.match(/def\s+(test_\w+)/);
           if (nameMatch) {
             testCases.push({
@@ -5890,7 +5904,7 @@ class TestCompositionEngine {
               steps: [],
               metadata: {
                 generated: false,
-                source: 'existing',
+                source: "existing",
                 lastModified: new Date().toISOString(),
               },
             });
@@ -5923,14 +5937,14 @@ class TestCompositionEngine {
 
     // Remove file extension and test suffix
     const fileName = path.basename(filePath, path.extname(filePath));
-    const cleanFileName = fileName.replace(/\.(test|spec)$/, '');
+    const cleanFileName = fileName.replace(/\.(test|spec)$/, "");
 
     // Build namespace from path
     const namespaceParts = [...parts.slice(0, -1), cleanFileName];
     return namespaceParts
-      .join('.')
+      .join(".")
       .toLowerCase()
-      .replace(/[^a-z0-9.]/g, '_');
+      .replace(/[^a-z0-9.]/g, "_");
   }
 }
 
@@ -5955,9 +5969,9 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         description: `Health check for ${service.name} service`,
         steps: [
           {
-            action: 'http_request',
+            action: "http_request",
             params: {
-              method: 'GET',
+              method: "GET",
               url: `http://localhost:${service.ports[0].port}/health`,
               timeout: 5000,
             },
@@ -5966,7 +5980,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         ],
         metadata: {
           generated: true,
-          source: 'arbiter',
+          source: "arbiter",
           lastModified: new Date().toISOString(),
         },
       });
@@ -5979,9 +5993,9 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
           description: `Test ${port.name || port.port} port connectivity`,
           steps: [
             {
-              action: 'tcp_connect',
+              action: "tcp_connect",
               params: {
-                host: 'localhost',
+                host: "localhost",
                 port: port.port,
                 timeout: 3000,
               },
@@ -5990,7 +6004,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
           ],
           metadata: {
             generated: true,
-            source: 'arbiter',
+            source: "arbiter",
             lastModified: new Date().toISOString(),
           },
         });
@@ -6005,7 +6019,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         description: `Verify environment variables for ${service.name}`,
         steps: [
           {
-            action: 'check_environment',
+            action: "check_environment",
             params: {
               service: service.name,
               variables: Object.keys(service.env),
@@ -6015,7 +6029,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         ],
         metadata: {
           generated: true,
-          source: 'arbiter',
+          source: "arbiter",
           lastModified: new Date().toISOString(),
         },
       });
@@ -6030,7 +6044,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
           description: `Verify ${volume.name} volume is mounted at ${volume.path}`,
           steps: [
             {
-              action: 'check_volume_mount',
+              action: "check_volume_mount",
               params: {
                 service: service.name,
                 path: volume.path,
@@ -6041,7 +6055,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
           ],
           metadata: {
             generated: true,
-            source: 'arbiter',
+            source: "arbiter",
             lastModified: new Date().toISOString(),
           },
         });
@@ -6049,7 +6063,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
     }
 
     // Generate service-type specific tests
-    if (service.serviceType === 'prebuilt') {
+    if (service.serviceType === "prebuilt") {
       // Test for pre-built services (like ClickHouse, Redis)
       testCases.push({
         name: `${service.name}_image_version`,
@@ -6057,7 +6071,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         description: `Verify ${service.name} is running expected image`,
         steps: [
           {
-            action: 'check_image',
+            action: "check_image",
             params: {
               service: service.name,
               expectedImage: service.image,
@@ -6067,7 +6081,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         ],
         metadata: {
           generated: true,
-          source: 'arbiter',
+          source: "arbiter",
           lastModified: new Date().toISOString(),
         },
       });
@@ -6080,7 +6094,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
         cases: testCases,
         setup: [
           {
-            action: 'wait_for_service',
+            action: "wait_for_service",
             params: {
               service: service.name,
               timeout: 30000,
@@ -6103,11 +6117,11 @@ async function writeTestFiles(
   outputDir: string,
   language: string,
   options: GenerateOptions,
-  structure: ProjectStructureConfig = DEFAULT_PROJECT_STRUCTURE
+  structure: ProjectStructureConfig = DEFAULT_PROJECT_STRUCTURE,
 ): Promise<string[]> {
   const files: string[] = [];
   const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ['tests'];
+  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
   const testsDirRelative = joinRelativePath(...effectiveTestSegments);
   const testsDir = path.join(outputDir, ...effectiveTestSegments);
 
@@ -6127,7 +6141,7 @@ async function writeTestFiles(
   }
 
   // Write test composition report
-  const reportPath = path.join(testsDir, 'composition_report.json');
+  const reportPath = path.join(testsDir, "composition_report.json");
   const report = {
     timestamp: new Date().toISOString(),
     summary: {
@@ -6138,44 +6152,44 @@ async function writeTestFiles(
     },
     details: {
       conflicts: testResult.conflicts,
-      generated: testResult.generated.map(t => ({ name: t.name, namespace: t.namespace })),
-      preserved: testResult.preserved.map(t => ({ name: t.name, namespace: t.namespace })),
+      generated: testResult.generated.map((t) => ({ name: t.name, namespace: t.namespace })),
+      preserved: testResult.preserved.map((t) => ({ name: t.name, namespace: t.namespace })),
     },
   };
 
   await writeFileWithHooks(reportPath, JSON.stringify(report, null, 2), options);
-  files.push(joinRelativePath(testsDirRelative, 'composition_report.json'));
+  files.push(joinRelativePath(testsDirRelative, "composition_report.json"));
 
   return files;
 }
 
 function getTestFileExtension(language: string): string {
   switch (language) {
-    case 'typescript':
-      return 'test.ts';
-    case 'javascript':
-      return 'test.js';
-    case 'python':
-      return 'test.py';
-    case 'rust':
-      return 'rs';
-    case 'go':
-      return 'go';
+    case "typescript":
+      return "test.ts";
+    case "javascript":
+      return "test.js";
+    case "python":
+      return "test.py";
+    case "rust":
+      return "rs";
+    case "go":
+      return "go";
     default:
-      return 'test.js';
+      return "test.js";
   }
 }
 
 function generateTestFileContent(suite: TestSuite, language: string): string {
   switch (language) {
-    case 'typescript':
-    case 'javascript':
+    case "typescript":
+    case "javascript":
       return generateJavaScriptTestContent(suite);
-    case 'python':
+    case "python":
       return generatePythonTestContent(suite);
-    case 'rust':
+    case "rust":
       return generateRustTestContent(suite);
-    case 'go':
+    case "go":
       return generateGoTestContent(suite);
     default:
       return generateJavaScriptTestContent(suite);
@@ -6193,34 +6207,34 @@ describe('${suite.name}', () => {
 ${
   suite.setup && suite.setup.length > 0
     ? `  beforeAll(async () => {
-${suite.setup.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+${suite.setup.map((step) => `    // ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
   });
 
 `
-    : ''
+    : ""
 }${suite.cases
-    .map(
-      testCase => `  test('${testCase.name}', async () => {
-    // ${testCase.description || 'Generated test'}
+  .map(
+    (testCase) => `  test('${testCase.name}', async () => {
+    // ${testCase.description || "Generated test"}
 ${testCase.steps
   .map(
-    step => `    // ${step.action}: ${JSON.stringify(step.params)}
-    // Expected: ${JSON.stringify(step.expected)}`
+    (step) => `    // ${step.action}: ${JSON.stringify(step.params)}
+    // Expected: ${JSON.stringify(step.expected)}`,
   )
-  .join('\n')}
+  .join("\n")}
     
     // TODO: Implement test logic
     expect(true).toBe(true); // Placeholder
-  });`
-    )
-    .join('\n\n')}
+  });`,
+  )
+  .join("\n\n")}
 ${
   suite.teardown && suite.teardown.length > 0
     ? `
   afterAll(async () => {
-${suite.teardown.map(step => `    // ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+${suite.teardown.map((step) => `    // ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
   });`
-    : ''
+    : ""
 }
 });
 `;
@@ -6237,7 +6251,7 @@ import asyncio
 from typing import Dict, Any
 
 
-class Test${suite.name.replace(/_/g, '')}:
+class Test${suite.name.replace(/_/g, "")}:
     """Test suite for ${suite.name}"""
 ${
   suite.setup && suite.setup.length > 0
@@ -6245,35 +6259,37 @@ ${
     @pytest.fixture(scope="class", autouse=True)
     async def setup_class(self):
         """Setup for test class"""
-${suite.setup.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+${suite.setup.map((step) => `        # ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
         pass
 `
-    : ''
+    : ""
 }
 ${suite.cases
   .map(
-    testCase => `    async def test_${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}(self):
-        """${testCase.description || 'Generated test'}"""
+    (
+      testCase,
+    ) => `    async def test_${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}(self):
+        """${testCase.description || "Generated test"}"""
 ${testCase.steps
   .map(
-    step => `        # ${step.action}: ${JSON.stringify(step.params)}
-        # Expected: ${JSON.stringify(step.expected)}`
+    (step) => `        # ${step.action}: ${JSON.stringify(step.params)}
+        # Expected: ${JSON.stringify(step.expected)}`,
   )
-  .join('\n')}
+  .join("\n")}
         
         # TODO: Implement test logic
-        assert True  # Placeholder`
+        assert True  # Placeholder`,
   )
-  .join('\n\n')}
+  .join("\n\n")}
 ${
   suite.teardown && suite.teardown.length > 0
     ? `
     @pytest.fixture(scope="class", autouse=True)
     async def teardown_class(self):
         """Teardown for test class"""
-${suite.teardown.map(step => `        # ${step.action}: ${JSON.stringify(step.params)}`).join('\n')}
+${suite.teardown.map((step) => `        # ${step.action}: ${JSON.stringify(step.params)}`).join("\n")}
         pass`
-    : ''
+    : ""
 }
 `;
 }
@@ -6284,27 +6300,27 @@ function generateRustTestContent(suite: TestSuite): string {
 // Generated: ${new Date().toISOString()}
 
 #[cfg(test)]
-mod ${suite.name.replace(/-/g, '_')} {
+mod ${suite.name.replace(/-/g, "_")} {
     use super::*;
     use tokio_test;
 
 ${suite.cases
   .map(
-    testCase => `    #[tokio::test]
-    async fn ${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, '_')}() {
-        // ${testCase.description || 'Generated test'}
+    (testCase) => `    #[tokio::test]
+    async fn ${testCase.name.toLowerCase().replace(/[^a-z0-9]/g, "_")}() {
+        // ${testCase.description || "Generated test"}
 ${testCase.steps
   .map(
-    step => `        // ${step.action}: ${JSON.stringify(step.params)}
-        // Expected: ${JSON.stringify(step.expected)}`
+    (step) => `        // ${step.action}: ${JSON.stringify(step.params)}
+        // Expected: ${JSON.stringify(step.expected)}`,
   )
-  .join('\n')}
+  .join("\n")}
         
         // TODO: Implement test logic
         assert!(true); // Placeholder
-    }`
+    }`,
   )
-  .join('\n\n')}
+  .join("\n\n")}
 }
 `;
 }
@@ -6324,22 +6340,22 @@ import (
 
 ${suite.cases
   .map(
-    testCase => `func Test${testCase.name.replace(/[^a-zA-Z0-9]/g, '')}(t *testing.T) {
-    // ${testCase.description || 'Generated test'}
+    (testCase) => `func Test${testCase.name.replace(/[^a-zA-Z0-9]/g, "")}(t *testing.T) {
+    // ${testCase.description || "Generated test"}
 ${testCase.steps
   .map(
-    step => `    // ${step.action}: ${JSON.stringify(step.params)}
-    // Expected: ${JSON.stringify(step.expected)}`
+    (step) => `    // ${step.action}: ${JSON.stringify(step.params)}
+    // Expected: ${JSON.stringify(step.expected)}`,
   )
-  .join('\n')}
+  .join("\n")}
     
     // TODO: Implement test logic
     if true != true { // Placeholder
         t.Errorf("Test failed")
     }
-}`
+}`,
   )
-  .join('\n\n')}
+  .join("\n\n")}
 `;
 }
 
@@ -6349,7 +6365,7 @@ ${testCase.steps
 async function generateAndComposeTests(
   assemblyConfig: any,
   outputDir: string,
-  options: GenerateOptions
+  options: GenerateOptions,
 ): Promise<string[]> {
   try {
     const testConfig = extractTestConfiguration(assemblyConfig);
@@ -6358,7 +6374,7 @@ async function generateAndComposeTests(
       testComposition.result,
       outputDir,
       testConfig.language,
-      options
+      options,
     );
 
     if (options.verbose) {
@@ -6376,8 +6392,8 @@ async function generateAndComposeTests(
  */
 function extractTestConfiguration(assemblyConfig: any) {
   const { services } = parseDockerComposeServices(assemblyConfig);
-  const specName = assemblyConfig?.metadata?.name || 'default';
-  const language = assemblyConfig?.config?.language || 'typescript';
+  const specName = assemblyConfig?.metadata?.name || "default";
+  const language = assemblyConfig?.config?.language || "typescript";
 
   return { services, specName, language };
 }
@@ -6387,7 +6403,7 @@ function extractTestConfiguration(assemblyConfig: any) {
  */
 async function composeTestSuites(
   config: { services: any; specName: string; language: string },
-  outputDir: string
+  outputDir: string,
 ) {
   const engine = new TestCompositionEngine(config.specName);
 
@@ -6402,7 +6418,7 @@ async function composeTestSuites(
  * Report test composition results
  */
 function reportTestComposition(testResult: any): void {
-  console.log(chalk.blue('\n📋 Test Composition Summary:'));
+  console.log(chalk.blue("\n📋 Test Composition Summary:"));
   console.log(chalk.dim(`  Generated: ${testResult.generated.length} test cases`));
   console.log(chalk.dim(`  Preserved: ${testResult.preserved.length} existing test cases`));
   console.log(chalk.dim(`  Conflicts: ${testResult.conflicts.length} resolved`));
@@ -6416,8 +6432,8 @@ function reportTestComposition(testResult: any): void {
  * Report test conflict resolution details
  */
 function reportTestConflicts(conflicts: any[]): void {
-  console.log(chalk.yellow('\n⚠️  Test Conflicts Resolved:'));
-  conflicts.forEach(conflict => {
+  console.log(chalk.yellow("\n⚠️  Test Conflicts Resolved:"));
+  conflicts.forEach((conflict) => {
     console.log(chalk.dim(`  • ${conflict.test}: ${conflict.reason} (${conflict.resolution})`));
   });
 }
@@ -6428,8 +6444,8 @@ function reportTestConflicts(conflicts: any[]): void {
 function handleTestGenerationError(error: unknown): string[] {
   console.warn(
     chalk.yellow(
-      `⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`
-    )
+      `⚠️  Test generation failed: ${error instanceof Error ? error.message : String(error)}`,
+    ),
   );
   return [];
 }
@@ -6438,7 +6454,11 @@ function handleTestGenerationError(error: unknown): string[] {
  * Emit sharded CUE specifications from service to .arbiter directory before generation
  */
 async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
-  if (process.env.ARBITER_SKIP_REMOTE_SPEC === '1') {
+  if (config.localMode) {
+    return;
+  }
+
+  if (process.env.ARBITER_SKIP_REMOTE_SPEC === "1") {
     return;
   }
 
@@ -6446,27 +6466,27 @@ async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
     const apiClient = new ApiClient(config);
 
     // Ensure .arbiter directory exists
-    await fs.ensureDir('.arbiter');
+    await fs.ensureDir(".arbiter");
 
     // Try to get the stored specifications from service (sharded)
-    const assemblyPath = path.resolve('.arbiter', 'assembly.cue');
-    const storedSpec = await apiClient.getSpecification('assembly', assemblyPath);
+    const assemblyPath = path.resolve(".arbiter", "assembly.cue");
+    const storedSpec = await apiClient.getSpecification("assembly", assemblyPath);
 
     if (storedSpec.success && storedSpec.data && storedSpec.data.content) {
       // Emit the main assembly CUE file to .arbiter directory
-      await fs.writeFile(assemblyPath, storedSpec.data.content, 'utf-8');
+      await fs.writeFile(assemblyPath, storedSpec.data.content, "utf-8");
       console.log(
-        chalk.green('📄 Emitted CUE specification from service to .arbiter/assembly.cue')
+        chalk.green("📄 Emitted CUE specification from service to .arbiter/assembly.cue"),
       );
 
       // Also try to get any sharded specification files
       await emitShardedSpecifications(apiClient);
     } else {
-      console.log(chalk.dim('💡 No stored specification found, using existing CUE files'));
+      console.log(chalk.dim("💡 No stored specification found, using existing CUE files"));
     }
   } catch (error) {
     // Service unavailable, continue with existing file-based workflow
-    console.log(chalk.dim('💡 Service unavailable, using existing CUE files'));
+    console.log(chalk.dim("💡 Service unavailable, using existing CUE files"));
   }
 }
 
@@ -6476,14 +6496,14 @@ async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
 async function emitShardedSpecifications(apiClient: ApiClient): Promise<void> {
   try {
     // Try to get any additional sharded files (services, endpoints, etc.)
-    const shardTypes = ['services', 'endpoints', 'schemas', 'flows'];
+    const shardTypes = ["services", "endpoints", "schemas", "flows"];
 
     for (const shardType of shardTypes) {
-      const shardPath = path.resolve('.arbiter', `${shardType}.cue`);
+      const shardPath = path.resolve(".arbiter", `${shardType}.cue`);
       const shardSpec = await apiClient.getSpecification(shardType, shardPath);
 
       if (shardSpec.success && shardSpec.data && shardSpec.data.content) {
-        await fs.writeFile(shardPath, shardSpec.data.content, 'utf-8');
+        await fs.writeFile(shardPath, shardSpec.data.content, "utf-8");
         console.log(chalk.dim(`  📄 Emitted ${shardType} shard to .arbiter/${shardType}.cue`));
       }
     }

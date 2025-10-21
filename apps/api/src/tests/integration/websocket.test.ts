@@ -2,6 +2,7 @@
  * Integration tests for WebSocket real-time collaboration functionality
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "bun:test";
+import { SpecWorkbenchDB } from "../../db.ts";
 import { SpecWorkbenchServer } from "../../server.ts";
 import type { ServerConfig } from "../../types.ts";
 import { generateId } from "../../utils.ts";
@@ -61,6 +62,7 @@ class MockWebSocket {
 (process.env.ARBITER_FULL_API === "1" ? describe : describe.skip)(
   "WebSocket Integration Tests",
   () => {
+    let db: SpecWorkbenchDB;
     let server: SpecWorkbenchServer;
     let baseUrl: string;
     let wsUrl: string;
@@ -90,7 +92,8 @@ class MockWebSocket {
         },
       };
 
-      server = new SpecWorkbenchServer(testConfig);
+      db = await SpecWorkbenchDB.create(testConfig);
+      server = new SpecWorkbenchServer(testConfig, db);
       baseUrl = `http://localhost:${port}`;
       wsUrl = `ws://localhost:${port}/ws`;
 

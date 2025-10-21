@@ -1,15 +1,15 @@
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import fs from 'fs-extra';
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import fs from "fs-extra";
 
 export const ARRAY_UI_OPTION_KEYS = [
-  'frontendFrameworks',
-  'serviceLanguages',
-  'databaseEngines',
-  'infrastructureScopes',
+  "frontendFrameworks",
+  "serviceLanguages",
+  "databaseEngines",
+  "infrastructureScopes",
 ] as const;
 
-export const MAP_UI_OPTION_KEYS = ['serviceFrameworks'] as const;
+export const MAP_UI_OPTION_KEYS = ["serviceFrameworks"] as const;
 
 export const UI_OPTION_KEYS = [...ARRAY_UI_OPTION_KEYS, ...MAP_UI_OPTION_KEYS] as const;
 
@@ -26,17 +26,17 @@ export type UIOptionCatalog = {
 };
 
 export const DEFAULT_UI_OPTION_CATALOG: UIOptionCatalog = {
-  frontendFrameworks: ['React', 'Next.js', 'React Native', 'Expo', 'Flutter'],
-  serviceLanguages: ['JavaScript', 'TypeScript', 'Python', 'Go', 'Rust'],
+  frontendFrameworks: ["React", "Next.js", "React Native", "Expo", "Flutter"],
+  serviceLanguages: ["JavaScript", "TypeScript", "Python", "Go", "Rust"],
   serviceFrameworks: {
-    JavaScript: ['Express', 'Fastify', 'Hapi'],
-    TypeScript: ['NestJS', 'tRPC', 'Fastify'],
-    Python: ['FastAPI', 'Django', 'Flask'],
-    Go: ['Gin', 'Echo', 'Fiber'],
-    Rust: ['Actix', 'Axum', 'Rocket'],
+    JavaScript: ["Express", "Fastify", "Hapi"],
+    TypeScript: ["NestJS", "tRPC", "Fastify"],
+    Python: ["FastAPI", "Django", "Flask"],
+    Go: ["Gin", "Echo", "Fiber"],
+    Rust: ["Actix", "Axum", "Rocket"],
   },
-  databaseEngines: ['PostgreSQL', 'MySQL', 'MariaDB', 'MongoDB', 'Redis', 'SQLite'],
-  infrastructureScopes: ['Kubernetes Cluster', 'Terraform Stack', 'Serverless Platform'],
+  databaseEngines: ["PostgreSQL", "MySQL", "MariaDB", "MongoDB", "Redis", "SQLite"],
+  infrastructureScopes: ["Kubernetes Cluster", "Terraform Stack", "Serverless Platform"],
 };
 
 export type UIOptionGeneratorMap = Partial<Record<UIOptionKey, string>>;
@@ -74,22 +74,22 @@ function normalizeValues(values: unknown): string[] {
   if (!values) return [];
   if (Array.isArray(values)) {
     return values
-      .map(value => (typeof value === 'string' ? value.trim() : ''))
-      .filter(value => value.length > 0);
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter((value) => value.length > 0);
   }
 
-  if (typeof values === 'string') {
+  if (typeof values === "string") {
     return values
-      .split(',')
-      .map(value => value.trim())
-      .filter(value => value.length > 0);
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
   }
 
   return [];
 }
 
 function normalizeFrameworkMap(values: unknown): Record<string, string[]> {
-  if (!values || typeof values !== 'object') {
+  if (!values || typeof values !== "object") {
     return {};
   }
 
@@ -111,7 +111,7 @@ function normalizeFrameworkMap(values: unknown): Record<string, string[]> {
 async function executeGenerator(
   generatorPath: string,
   baseDir: string,
-  key: UIOptionKey
+  key: UIOptionKey,
 ): Promise<unknown> {
   const resolvedPath = path.isAbsolute(generatorPath)
     ? generatorPath
@@ -126,9 +126,9 @@ async function executeGenerator(
 
   let result: unknown;
 
-  if (typeof imported.generate === 'function') {
+  if (typeof imported.generate === "function") {
     result = await imported.generate();
-  } else if (typeof imported.default === 'function') {
+  } else if (typeof imported.default === "function") {
     result = await (imported.default as () => unknown)();
   } else if (Array.isArray(imported.default)) {
     result = imported.default;
@@ -136,7 +136,7 @@ async function executeGenerator(
     result = imported.options;
   } else {
     throw new Error(
-      `Generator script for "${key}" must export a function or array (default export, generate())`
+      `Generator script for "${key}" must export a function or array (default export, generate())`,
     );
   }
 
@@ -157,7 +157,7 @@ function unique(values: string[]): string[] {
 
 export async function resolveUIOptionCatalog(
   config: UIOptionConfig,
-  params: ResolveUIOptionsParams = {}
+  params: ResolveUIOptionsParams = {},
 ): Promise<ResolveUIOptionsResult> {
   const catalog: UIOptionCatalog = {};
   const diagnostics: string[] = [];
@@ -176,14 +176,14 @@ export async function resolveUIOptionCatalog(
           resolvedValues = normalized;
         } else {
           diagnostics.push(
-            `Generator for "${key}" returned no values, falling back to static configuration.`
+            `Generator for "${key}" returned no values, falling back to static configuration.`,
           );
         }
       } catch (error) {
         diagnostics.push(
           `Failed to execute generator for "${key}": ${
             error instanceof Error ? error.message : String(error)
-          }`
+          }`,
         );
       }
     }
@@ -206,21 +206,21 @@ export async function resolveUIOptionCatalog(
           resolvedMap = normalized;
         } else {
           diagnostics.push(
-            `Generator for "${key}" returned no values, falling back to static configuration.`
+            `Generator for "${key}" returned no values, falling back to static configuration.`,
           );
         }
       } catch (error) {
         diagnostics.push(
           `Failed to execute generator for "${key}": ${
             error instanceof Error ? error.message : String(error)
-          }`
+          }`,
         );
       }
     }
 
     if (Object.keys(resolvedMap).length > 0) {
       catalog.serviceFrameworks = Object.fromEntries(
-        Object.entries(resolvedMap).map(([language, frameworks]) => [language, unique(frameworks)])
+        Object.entries(resolvedMap).map(([language, frameworks]) => [language, unique(frameworks)]),
       );
     }
   }
@@ -230,7 +230,7 @@ export async function resolveUIOptionCatalog(
 
 export function buildUIOptionConfig(
   catalog: UIOptionCatalog | undefined,
-  generators: UIOptionGeneratorMap | undefined
+  generators: UIOptionGeneratorMap | undefined,
 ): UIOptionConfig {
   const config: UIOptionConfig = {};
 
@@ -253,7 +253,7 @@ export function buildUIOptionConfig(
             Object.entries(catalog.serviceFrameworks).map(([language, frameworks]) => [
               language,
               [...frameworks],
-            ])
+            ]),
           )
         : undefined,
       generator: generators?.serviceFrameworks,

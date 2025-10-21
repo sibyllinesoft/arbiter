@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono } from "hono";
 
 type Dependencies = Record<string, unknown>;
 
@@ -6,7 +6,7 @@ export function createWebhooksRouter(deps: Dependencies) {
   const router = new Hono();
 
   // Setup webhook
-  router.post('/github/setup', async c => {
+  router.post("/github/setup", async (c) => {
     const { repoOwner, repoName, events, tunnelUrl } = await c.req.json();
 
     const githubToken = process.env.GITHUB_TOKEN;
@@ -14,35 +14,35 @@ export function createWebhooksRouter(deps: Dependencies) {
       return c.json(
         {
           success: false,
-          error: 'GITHUB_TOKEN environment variable not set',
+          error: "GITHUB_TOKEN environment variable not set",
         },
-        400
+        400,
       );
     }
 
     try {
       // Create webhook on GitHub
       const webhookUrl =
-        tunnelUrl || process.env.TUNNEL_URL || 'https://your-tunnel.cfargotunnel.com';
+        tunnelUrl || process.env.TUNNEL_URL || "https://your-tunnel.cfargotunnel.com";
       const webhookPayload = {
-        name: 'web',
+        name: "web",
         active: true,
-        events: events || ['push', 'pull_request'],
+        events: events || ["push", "pull_request"],
         config: {
           url: `${webhookUrl}/webhooks/github`,
-          content_type: 'json',
+          content_type: "json",
           secret: process.env.GITHUB_WEBHOOK_SECRET || process.env.WEBHOOK_SECRET,
-          insecure_ssl: '0',
+          insecure_ssl: "0",
         },
       };
 
       const response = await fetch(`https://api.github.com/repos/${repoOwner}/${repoName}/hooks`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${githubToken}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/json',
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(webhookPayload),
       });
@@ -55,7 +55,7 @@ export function createWebhooksRouter(deps: Dependencies) {
             error: `GitHub API error: ${errorData.message}`,
             details: errorData,
           },
-          400
+          400,
         );
       }
 
@@ -74,31 +74,31 @@ export function createWebhooksRouter(deps: Dependencies) {
         message: `Webhook created successfully for ${repoOwner}/${repoName}`,
       });
     } catch (error) {
-      console.error('Failed to create GitHub webhook:', error);
+      console.error("Failed to create GitHub webhook:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to create webhook',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to create webhook",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
   // List webhooks
-  router.get('/github/list/:owner/:repo', async c => {
-    const owner = c.req.param('owner');
-    const repo = c.req.param('repo');
+  router.get("/github/list/:owner/:repo", async (c) => {
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
 
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
       return c.json(
         {
           success: false,
-          error: 'GITHUB_TOKEN environment variable not set',
+          error: "GITHUB_TOKEN environment variable not set",
         },
-        400
+        400,
       );
     }
 
@@ -106,8 +106,8 @@ export function createWebhooksRouter(deps: Dependencies) {
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks`, {
         headers: {
           Authorization: `Bearer ${githubToken}`,
-          Accept: 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
         },
       });
 
@@ -118,7 +118,7 @@ export function createWebhooksRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          400
+          400,
         );
       }
 
@@ -137,32 +137,32 @@ export function createWebhooksRouter(deps: Dependencies) {
         })),
       });
     } catch (error) {
-      console.error('Failed to list GitHub webhooks:', error);
+      console.error("Failed to list GitHub webhooks:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to list webhooks',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to list webhooks",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });
 
   // Delete webhook
-  router.delete('/github/:owner/:repo/:hookId', async c => {
-    const owner = c.req.param('owner');
-    const repo = c.req.param('repo');
-    const hookId = c.req.param('hookId');
+  router.delete("/github/:owner/:repo/:hookId", async (c) => {
+    const owner = c.req.param("owner");
+    const repo = c.req.param("repo");
+    const hookId = c.req.param("hookId");
 
     const githubToken = process.env.GITHUB_TOKEN;
     if (!githubToken) {
       return c.json(
         {
           success: false,
-          error: 'GITHUB_TOKEN environment variable not set',
+          error: "GITHUB_TOKEN environment variable not set",
         },
-        400
+        400,
       );
     }
 
@@ -170,13 +170,13 @@ export function createWebhooksRouter(deps: Dependencies) {
       const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/hooks/${hookId}`,
         {
-          method: 'DELETE',
+          method: "DELETE",
           headers: {
             Authorization: `Bearer ${githubToken}`,
-            Accept: 'application/vnd.github+json',
-            'X-GitHub-Api-Version': '2022-11-28',
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -186,7 +186,7 @@ export function createWebhooksRouter(deps: Dependencies) {
             success: false,
             error: `GitHub API error: ${errorData.message}`,
           },
-          400
+          400,
         );
       }
 
@@ -195,14 +195,14 @@ export function createWebhooksRouter(deps: Dependencies) {
         message: `Webhook ${hookId} deleted successfully from ${owner}/${repo}`,
       });
     } catch (error) {
-      console.error('Failed to delete GitHub webhook:', error);
+      console.error("Failed to delete GitHub webhook:", error);
       return c.json(
         {
           success: false,
-          error: 'Failed to delete webhook',
-          details: error instanceof Error ? error.message : 'Unknown error',
+          error: "Failed to delete webhook",
+          details: error instanceof Error ? error.message : "Unknown error",
         },
-        500
+        500,
       );
     }
   });

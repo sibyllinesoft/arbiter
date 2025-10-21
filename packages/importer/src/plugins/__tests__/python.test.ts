@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it } from 'bun:test';
-import type { Evidence, InferenceContext, ParseContext } from '../../types';
-import { PythonPlugin } from '../python';
+import { beforeEach, describe, expect, it } from "bun:test";
+import type { Evidence, InferenceContext, ParseContext } from "../../types";
+import { PythonPlugin } from "../python";
 
-describe('PythonPlugin', () => {
+describe("PythonPlugin", () => {
   let plugin: PythonPlugin;
   let baseParseContext: ParseContext;
 
   beforeEach(() => {
     plugin = new PythonPlugin();
     baseParseContext = {
-      projectRoot: '/project',
+      projectRoot: "/project",
       fileIndex: {
-        root: '/project',
+        root: "/project",
         files: new Map(),
         directories: new Map(),
         timestamp: Date.now(),
@@ -21,14 +21,14 @@ describe('PythonPlugin', () => {
         targetLanguages: [],
         maxFileSize: 1024 * 1024,
         includeBinaries: false,
-        patterns: { include: ['**/*'], exclude: [] },
+        patterns: { include: ["**/*"], exclude: [] },
       },
       cache: new Map(),
     };
   });
 
   const buildInferenceContext = (evidence: Evidence[]): InferenceContext => ({
-    projectRoot: '/project',
+    projectRoot: "/project",
     fileIndex: baseParseContext.fileIndex,
     allEvidence: evidence,
     options: {
@@ -39,8 +39,8 @@ describe('PythonPlugin', () => {
     },
     cache: new Map(),
     projectMetadata: {
-      name: 'project',
-      root: '/project',
+      name: "project",
+      root: "/project",
       languages: [],
       frameworks: [],
       fileCount: 0,
@@ -48,7 +48,7 @@ describe('PythonPlugin', () => {
     },
   });
 
-  it('classifies FastAPI pyproject as service', async () => {
+  it("classifies FastAPI pyproject as service", async () => {
     const pyproject = `
 [project]
 name = "smith-http"
@@ -58,22 +58,22 @@ dependencies = ["fastapi", "uvicorn"]
 `;
 
     const evidence = await plugin.parse(
-      '/project/service/pyproject.toml',
+      "/project/service/pyproject.toml",
       pyproject,
-      baseParseContext
+      baseParseContext,
     );
 
     const artifacts = await plugin.infer(evidence, buildInferenceContext(evidence));
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe('service');
-    expect(artifact.metadata.framework).toBe('fastapi');
-    expect(artifact.metadata.detectedType).toBe('service');
-    expect(artifact.description).toBe('HTTP gateway');
+    expect(artifact.type).toBe("service");
+    expect(artifact.metadata.framework).toBe("fastapi");
+    expect(artifact.metadata.detectedType).toBe("service");
+    expect(artifact.description).toBe("HTTP gateway");
   });
 
-  it('classifies setup.py with console scripts as binary tool', async () => {
+  it("classifies setup.py with console scripts as binary tool", async () => {
     const setupPy = `
 from setuptools import setup
 
@@ -90,17 +90,17 @@ setup(
 )
 `;
 
-    const evidence = await plugin.parse('/project/tools/setup.py', setupPy, baseParseContext);
+    const evidence = await plugin.parse("/project/tools/setup.py", setupPy, baseParseContext);
     const artifacts = await plugin.infer(evidence, buildInferenceContext(evidence));
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe('binary');
-    expect(artifact.metadata.detectedType).toBe('cli');
-    expect(artifact.tags).toContain('tool');
+    expect(artifact.type).toBe("binary");
+    expect(artifact.metadata.detectedType).toBe("cli");
+    expect(artifact.tags).toContain("tool");
   });
 
-  it('defaults to module when no web or cli signals present', async () => {
+  it("defaults to module when no web or cli signals present", async () => {
     const pyproject = `
 [project]
 name = "smith-library"
@@ -110,17 +110,17 @@ dependencies = ["pydantic"]
 `;
 
     const evidence = await plugin.parse(
-      '/project/shared/pyproject.toml',
+      "/project/shared/pyproject.toml",
       pyproject,
-      baseParseContext
+      baseParseContext,
     );
 
     const artifacts = await plugin.infer(evidence, buildInferenceContext(evidence));
 
     expect(artifacts).toHaveLength(1);
     const artifact = artifacts[0].artifact;
-    expect(artifact.type).toBe('module');
-    expect(artifact.metadata.detectedType).toBe('module');
-    expect(artifact.description).toBe('Shared utilities');
+    expect(artifact.type).toBe("module");
+    expect(artifact.metadata.detectedType).toBe("module");
+    expect(artifact.description).toBe("Shared utilities");
   });
 });

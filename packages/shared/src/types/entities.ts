@@ -1,18 +1,18 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Component types that can be detected and imported
  */
 export const ComponentTypeSchema = z.enum([
-  'service',
-  'module',
-  'tool',
-  'frontend',
-  'database',
-  'external',
-  'binary',
-  'infrastructure',
-  'view',
+  "service",
+  "module",
+  "tool",
+  "frontend",
+  "database",
+  "external",
+  "binary",
+  "infrastructure",
+  "view",
 ]);
 
 export type ComponentType = z.infer<typeof ComponentTypeSchema>;
@@ -77,7 +77,7 @@ export type Component = z.infer<typeof ComponentSchema>;
 export const ProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
-  status: z.enum(['active', 'archived', 'draft']).default('active'),
+  status: z.enum(["active", "archived", "draft"]).default("active"),
   entities: ProjectEntitiesSchema,
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -105,28 +105,28 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
     let type = component.type;
 
     switch (type) {
-      case 'service':
+      case "service":
         counts.services++;
         break;
-      case 'module':
+      case "module":
         counts.modules++;
         break;
-      case 'tool':
+      case "tool":
         counts.tools++;
         break;
-      case 'binary':
+      case "binary":
         counts.tools++;
         break;
-      case 'frontend':
+      case "frontend":
         counts.frontends++;
         break;
-      case 'view':
+      case "view":
         counts.views++;
         break;
-      case 'database':
+      case "database":
         counts.databases++;
         break;
-      case 'infrastructure':
+      case "infrastructure":
         counts.infrastructure = (counts.infrastructure || 0) + 1;
         break;
       default:

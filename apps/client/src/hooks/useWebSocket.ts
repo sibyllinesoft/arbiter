@@ -2,8 +2,8 @@
  * WebSocket hook for real-time updates
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { toast } from 'react-toastify';
+import { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 
 interface WebSocketOptions {
   autoReconnect?: boolean;
@@ -39,9 +39,9 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
 
   const connect = () => {
     try {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/events${projectId ? `?projectId=${projectId}` : ''}`;
+      const wsUrl = `${protocol}//${host}/events${projectId ? `?projectId=${projectId}` : ""}`;
       const ws = new WebSocket(wsUrl);
 
       // Handle immediate connection (if already open)
@@ -51,8 +51,8 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
         reconnectAttemptsRef.current = 0;
 
         if (showToastNotifications) {
-          toast.success('Connected to real-time updates', {
-            position: 'bottom-right',
+          toast.success("Connected to real-time updates", {
+            position: "bottom-right",
             autoClose: 2000,
           });
         }
@@ -67,8 +67,8 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
             reconnectAttemptsRef.current = 0;
 
             if (showToastNotifications) {
-              toast.success('Connected to real-time updates', {
-                position: 'bottom-right',
+              toast.success("Connected to real-time updates", {
+                position: "bottom-right",
                 autoClose: 2000,
               });
             }
@@ -76,7 +76,7 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
         }, 100);
       };
 
-      ws.onmessage = event => {
+      ws.onmessage = (event) => {
         try {
           const raw = JSON.parse(event.data);
           const normalized: WebSocketMessage = {
@@ -90,33 +90,33 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
           // Show notifications for specific event types
           if (showToastNotifications) {
             switch (normalized.type) {
-              case 'webhook_received':
-                toast.info('Webhook received', {
-                  position: 'bottom-right',
+              case "webhook_received":
+                toast.info("Webhook received", {
+                  position: "bottom-right",
                   autoClose: 3000,
                 });
                 break;
-              case 'handler_executed':
+              case "handler_executed":
                 {
                   const success = normalized.payload?.success;
-                  const handlerMessage = normalized.payload?.message || 'Handler executed';
+                  const handlerMessage = normalized.payload?.message || "Handler executed";
                   if (success) {
                     toast.success(handlerMessage, {
-                      position: 'bottom-right',
+                      position: "bottom-right",
                       autoClose: 3000,
                     });
                   } else {
                     toast.error(handlerMessage, {
-                      position: 'bottom-right',
+                      position: "bottom-right",
                       autoClose: 5000,
                     });
                   }
                 }
                 break;
-              case 'validation_completed':
+              case "validation_completed":
                 if (normalized.payload?.success) {
-                  toast.success('Validation completed', {
-                    position: 'bottom-right',
+                  toast.success("Validation completed", {
+                    position: "bottom-right",
                     autoClose: 2000,
                   });
                 }
@@ -124,7 +124,7 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
             }
           }
         } catch (error) {
-          console.warn('Failed to parse WebSocket message:', error);
+          console.warn("Failed to parse WebSocket message:", error);
         }
       };
 
@@ -139,9 +139,9 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
             toast.warning(
               `Connection lost. Reconnecting... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
               {
-                position: 'bottom-right',
+                position: "bottom-right",
                 autoClose: 3000,
-              }
+              },
             );
           }
 
@@ -151,16 +151,14 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
         }
       };
 
-      ws.onerror = error => {
-        console.log('WebSocket error, readyState:', ws.readyState, error);
-
+      ws.onerror = (_error) => {
         // Only treat as error if we're not in a normal connecting state
         if (ws.readyState !== WebSocket.CONNECTING) {
-          setConnectionError('WebSocket connection error');
+          setConnectionError("WebSocket connection error");
 
           if (showToastNotifications) {
-            toast.error('Real-time connection error', {
-              position: 'bottom-right',
+            toast.error("Real-time connection error", {
+              position: "bottom-right",
               autoClose: 5000,
             });
           }
@@ -169,8 +167,8 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
 
       wsRef.current = ws;
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      setConnectionError('Failed to establish connection');
+      console.error("Failed to create WebSocket connection:", error);
+      setConnectionError("Failed to establish connection");
     }
   };
 
@@ -193,8 +191,8 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
       wsRef.current.send(JSON.stringify(message));
     } else {
       console.warn(
-        'WebSocket not ready for sending message, readyState:',
-        wsRef.current?.readyState
+        "WebSocket not ready for sending message, readyState:",
+        wsRef.current?.readyState,
       );
     }
   };

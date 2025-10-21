@@ -1,7 +1,7 @@
-import { AlertCircle, BarChart3, Loader2 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../../services/api';
-import { CuePlotViewer } from '../charts/CuePlotViewer';
+import { AlertCircle, BarChart3, Loader2 } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { apiService } from "../../services/api";
+import { CuePlotViewer } from "../charts/CuePlotViewer";
 
 interface PlotsDiagramProps {
   projectId: string;
@@ -24,16 +24,16 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
         const samplePlots = {
           plots: {
             lineChart: {
-              title: 'Server Response Time',
-              type: 'line',
+              title: "Server Response Time",
+              type: "line",
               data: {
-                labels: ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00'],
+                labels: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00"],
                 datasets: [
                   {
-                    label: 'Response Time (ms)',
+                    label: "Response Time (ms)",
                     data: [120, 150, 180, 160, 140, 130, 125],
-                    backgroundColor: '#dbeafe',
-                    borderColor: '#3b82f6',
+                    backgroundColor: "#dbeafe",
+                    borderColor: "#3b82f6",
                     fill: false,
                   },
                 ],
@@ -45,29 +45,29 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
                     beginAtZero: true,
                     title: {
                       display: true,
-                      text: 'Response Time (ms)',
+                      text: "Response Time (ms)",
                     },
                   },
                   x: {
                     title: {
                       display: true,
-                      text: 'Time',
+                      text: "Time",
                     },
                   },
                 },
               },
             },
             barChart: {
-              title: 'Service Usage by Hour',
-              type: 'bar',
+              title: "Service Usage by Hour",
+              type: "bar",
               data: {
-                labels: ['API', 'Database', 'Cache', 'Queue', 'Storage'],
+                labels: ["API", "Database", "Cache", "Queue", "Storage"],
                 datasets: [
                   {
-                    label: 'Requests per Second',
+                    label: "Requests per Second",
                     data: [65, 59, 80, 81, 56],
-                    backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'],
-                    borderColor: ['#dc2626', '#d97706', '#059669', '#2563eb', '#7c3aed'],
+                    backgroundColor: ["#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6"],
+                    borderColor: ["#dc2626", "#d97706", "#059669", "#2563eb", "#7c3aed"],
                     borderWidth: 1,
                   },
                 ],
@@ -79,37 +79,37 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
                     beginAtZero: true,
                     title: {
                       display: true,
-                      text: 'Requests/sec',
+                      text: "Requests/sec",
                     },
                   },
                 },
               },
             },
             timeSeriesChart: {
-              title: 'System Metrics Over Time',
-              type: 'line',
+              title: "System Metrics Over Time",
+              type: "line",
               data: {
                 labels: [
-                  '2024-01-01T00:00:00Z',
-                  '2024-01-01T01:00:00Z',
-                  '2024-01-01T02:00:00Z',
-                  '2024-01-01T03:00:00Z',
-                  '2024-01-01T04:00:00Z',
-                  '2024-01-01T05:00:00Z',
+                  "2024-01-01T00:00:00Z",
+                  "2024-01-01T01:00:00Z",
+                  "2024-01-01T02:00:00Z",
+                  "2024-01-01T03:00:00Z",
+                  "2024-01-01T04:00:00Z",
+                  "2024-01-01T05:00:00Z",
                 ],
                 datasets: [
                   {
-                    label: 'CPU Usage (%)',
+                    label: "CPU Usage (%)",
                     data: [45, 52, 48, 61, 55, 47],
-                    borderColor: '#3b82f6',
-                    backgroundColor: '#dbeafe',
+                    borderColor: "#3b82f6",
+                    backgroundColor: "#dbeafe",
                     fill: false,
                   },
                   {
-                    label: 'Memory Usage (%)',
+                    label: "Memory Usage (%)",
                     data: [62, 68, 71, 75, 73, 69],
-                    borderColor: '#10b981',
-                    backgroundColor: '#d1fae5',
+                    borderColor: "#10b981",
+                    backgroundColor: "#d1fae5",
                     fill: false,
                   },
                 ],
@@ -117,7 +117,7 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
               options: {
                 responsive: true,
                 interaction: {
-                  mode: 'index',
+                  mode: "index",
                   intersect: false,
                 },
                 scales: {
@@ -125,14 +125,14 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
                     display: true,
                     title: {
                       display: true,
-                      text: 'Time',
+                      text: "Time",
                     },
                   },
                   y: {
                     display: true,
                     title: {
                       display: true,
-                      text: 'Usage (%)',
+                      text: "Usage (%)",
                     },
                     min: 0,
                     max: 100,
@@ -140,11 +140,11 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
                 },
                 plugins: {
                   legend: {
-                    position: 'top',
+                    position: "top",
                   },
                   title: {
                     display: true,
-                    text: 'System Resource Usage',
+                    text: "System Resource Usage",
                   },
                 },
               },
@@ -161,8 +161,8 @@ const PlotsDiagram: React.FC<PlotsDiagramProps> = ({ projectId }) => {
         // }
       } catch (err) {
         if (!mounted) return;
-        console.error('Failed to load plot data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load plot data');
+        console.error("Failed to load plot data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load plot data");
       } finally {
         if (mounted) {
           setLoading(false);

@@ -17,15 +17,15 @@ import {
   TrendingUp,
   X,
   XCircle,
-} from 'lucide-react';
-import React, { useState, useEffect, useCallback } from 'react';
-import { toast } from 'react-toastify';
-import { Button, Card, StatusBadge, cn } from '../../design-system';
-import { apiService } from '../../services/api';
-import type { HandlerExecution, HandlerStats as StatsData, WebhookHandler } from '../../types/api';
-import { createLogger } from '../../utils/logger';
+} from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
+import { Button, Card, StatusBadge, cn } from "../../design-system";
+import { apiService } from "../../services/api";
+import type { HandlerExecution, HandlerStats as StatsData, WebhookHandler } from "../../types/api";
+import { createLogger } from "../../utils/logger";
 
-const log = createLogger('HandlerStats');
+const log = createLogger("HandlerStats");
 
 interface HandlerStatsProps {
   handler: WebhookHandler;
@@ -51,11 +51,11 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
 
       setStats(statsData);
       setExecutions(executionsData);
-      log.debug('Loaded handler stats:', { statsData, executionsData });
+      log.debug("Loaded handler stats:", { statsData, executionsData });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load handler statistics';
+      const message = err instanceof Error ? err.message : "Failed to load handler statistics";
       setError(message);
-      log.error('Failed to load handler stats:', err);
+      log.error("Failed to load handler stats:", err);
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -69,19 +69,19 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
 
   // Format duration
   const formatDuration = (ms?: number) => {
-    if (!ms) return 'N/A';
+    if (!ms) return "N/A";
     if (ms < 1000) return `${Math.round(ms)}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
   };
 
   // Format date
   const formatDate = (timestamp: string) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     }).format(new Date(timestamp));
   };
 
@@ -94,7 +94,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
@@ -107,26 +107,26 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
   };
 
   // Get status icon
-  const getStatusIcon = (status: HandlerExecution['status']) => {
+  const getStatusIcon = (status: HandlerExecution["status"]) => {
     switch (status) {
-      case 'success':
+      case "success":
         return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'error':
+      case "error":
         return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'timeout':
+      case "timeout":
         return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
     }
   };
 
   // Get status color
-  const getStatusColor = (status: HandlerExecution['status']) => {
+  const getStatusColor = (status: HandlerExecution["status"]) => {
     switch (status) {
-      case 'success':
-        return 'text-green-600 bg-green-50';
-      case 'error':
-        return 'text-red-600 bg-red-50';
-      case 'timeout':
-        return 'text-yellow-600 bg-yellow-50';
+      case "success":
+        return "text-green-600 bg-green-50";
+      case "error":
+        return "text-red-600 bg-red-50";
+      case "timeout":
+        return "text-yellow-600 bg-yellow-50";
     }
   };
 
@@ -186,8 +186,8 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <StatusBadge variant={handler.enabled ? 'success' : 'error'} size="sm">
-            {handler.enabled ? 'Enabled' : 'Disabled'}
+          <StatusBadge variant={handler.enabled ? "success" : "error"} size="sm">
+            {handler.enabled ? "Enabled" : "Disabled"}
           </StatusBadge>
 
           <Button
@@ -253,7 +253,7 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-gray-900">
-                    {stats?.last_execution ? getRelativeTime(stats.last_execution) : 'Never'}
+                    {stats?.last_execution ? getRelativeTime(stats.last_execution) : "Never"}
                   </div>
                   <div className="text-sm text-gray-500">Last Execution</div>
                 </div>
@@ -333,8 +333,8 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Status:</span>
-                  <StatusBadge variant={handler.enabled ? 'success' : 'error'} size="sm">
-                    {handler.enabled ? 'Enabled' : 'Disabled'}
+                  <StatusBadge variant={handler.enabled ? "success" : "error"} size="sm">
+                    {handler.enabled ? "Enabled" : "Disabled"}
                   </StatusBadge>
                 </div>
               </div>
@@ -361,12 +361,12 @@ export function HandlerStats({ handler, onClose }: HandlerStatsProps) {
                   <div
                     key={execution.id}
                     className={cn(
-                      'flex items-center justify-between p-4 rounded-lg border',
-                      index < 5 ? 'bg-gray-50' : 'bg-white' // Highlight recent ones
+                      "flex items-center justify-between p-4 rounded-lg border",
+                      index < 5 ? "bg-gray-50" : "bg-white", // Highlight recent ones
                     )}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={cn('p-2 rounded-full', getStatusColor(execution.status))}>
+                      <div className={cn("p-2 rounded-full", getStatusColor(execution.status))}>
                         {getStatusIcon(execution.status)}
                       </div>
 

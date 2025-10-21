@@ -2,9 +2,9 @@
  * NATS integration service for external agent communication
  * Publishes spec events to NATS topics for external AI agents to consume
  */
-import { type ConnectionOptions, type NatsConnection, connect } from 'nats';
-import type { Event, NatsConfig, NatsSpecEvent } from './types';
-import { getCurrentTimestamp, logger } from './utils';
+import { type ConnectionOptions, type NatsConnection, connect } from "nats";
+import type { Event, NatsConfig, NatsSpecEvent } from "./types";
+import { getCurrentTimestamp, logger } from "./utils";
 
 export class NatsService {
   private connection: NatsConnection | null = null;
@@ -16,18 +16,18 @@ export class NatsService {
 
   constructor(config?: NatsConfig) {
     this.config = {
-      url: process.env.NATS_URL || 'nats://localhost:4222',
+      url: process.env.NATS_URL || "nats://localhost:4222",
       enabled: !!process.env.NATS_URL || false,
       reconnectTimeWait: 2000, // Start with 2 seconds
       maxReconnectAttempts: 10,
-      topicPrefix: 'spec',
+      topicPrefix: "spec",
       ...config,
     };
 
     if (this.config.enabled) {
       this.initialize();
     } else {
-      logger.info('NATS integration disabled - no NATS_URL configured');
+      logger.info("NATS integration disabled - no NATS_URL configured");
     }
   }
 
@@ -48,7 +48,7 @@ export class NatsService {
         maxPingOut: 2,
       };
 
-      logger.info('Connecting to NATS server', {
+      logger.info("Connecting to NATS server", {
         url: this.config.url,
         options: connectionOptions,
       });
@@ -57,7 +57,7 @@ export class NatsService {
       this.isConnected = true;
       this.reconnectAttempts = 0;
 
-      logger.info('Successfully connected to NATS server', {
+      logger.info("Successfully connected to NATS server", {
         server: this.connection.getServer(),
       });
 
@@ -66,7 +66,7 @@ export class NatsService {
     } catch (error) {
       this.isConnected = false;
 
-      logger.error('Failed to connect to NATS server', error instanceof Error ? error : undefined, {
+      logger.error("Failed to connect to NATS server", error instanceof Error ? error : undefined, {
         url: this.config.url,
         attempts: this.reconnectAttempts,
       });
@@ -82,17 +82,17 @@ export class NatsService {
     if (!this.connection) return;
 
     // Monitor connection state
-    this.connection.closed().then(error => {
+    this.connection.closed().then((error) => {
       this.isConnected = false;
 
       if (error) {
         logger.error(
-          'NATS connection closed with error',
-          error instanceof Error ? error : undefined
+          "NATS connection closed with error",
+          error instanceof Error ? error : undefined,
         );
         this.scheduleReconnect();
       } else {
-        logger.info('NATS connection closed normally');
+        logger.info("NATS connection closed normally");
       }
     });
   }
@@ -102,7 +102,7 @@ export class NatsService {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-      logger.error('Max NATS reconnect attempts reached, giving up', undefined, {
+      logger.error("Max NATS reconnect attempts reached, giving up", undefined, {
         maxAttempts: this.config.maxReconnectAttempts,
       });
       return;
@@ -110,12 +110,12 @@ export class NatsService {
 
     const delay = Math.min(
       this.config.reconnectTimeWait * 2 ** this.reconnectAttempts,
-      30000 // Max 30 seconds
+      30000, // Max 30 seconds
     );
 
     this.reconnectAttempts++;
 
-    logger.info('Scheduling NATS reconnect', {
+    logger.info("Scheduling NATS reconnect", {
       attempt: this.reconnectAttempts,
       delay,
       maxAttempts: this.config.maxReconnectAttempts,
@@ -131,8 +131,8 @@ export class NatsService {
    */
   async publishEvent(
     projectId: string,
-    event: Omit<Event, 'id' | 'created_at' | 'is_active' | 'reverted_at'>,
-    specHash?: string
+    event: Omit<Event, "id" | "created_at" | "is_active" | "reverted_at">,
+    specHash?: string,
   ): Promise<void> {
     // Always return early if NATS is disabled - no impact on core functionality
     if (!this.config.enabled || !this.connection || !this.isConnected) {
@@ -158,7 +158,7 @@ export class NatsService {
       // Publish to NATS (fire and forget for performance)
       this.connection.publish(topic, JSON.stringify(natsEvent));
 
-      logger.debug('Published event to NATS', {
+      logger.debug("Published event to NATS", {
         topic,
         projectId,
         eventType: event.event_type,
@@ -166,7 +166,7 @@ export class NatsService {
       });
     } catch (error) {
       // Log error but don't throw - NATS failures should never break core functionality
-      logger.error('Failed to publish event to NATS', error instanceof Error ? error : undefined, {
+      logger.error("Failed to publish event to NATS", error instanceof Error ? error : undefined, {
         projectId,
         eventType: event.event_type,
       });
@@ -178,21 +178,21 @@ export class NatsService {
    */
   private getTopicSuffix(eventType: string): string {
     switch (eventType) {
-      case 'fragment_created':
-      case 'fragment_updated':
-      case 'fragment_deleted':
-        return 'fragment';
+      case "fragment_created":
+      case "fragment_updated":
+      case "fragment_deleted":
+        return "fragment";
 
-      case 'validation_started':
-      case 'validation_completed':
-      case 'validation_failed':
-        return 'validation';
+      case "validation_started":
+      case "validation_completed":
+      case "validation_failed":
+        return "validation";
 
-      case 'version_frozen':
-        return 'version';
+      case "version_frozen":
+        return "version";
 
       default:
-        return 'general';
+        return "general";
     }
   }
 
@@ -257,9 +257,9 @@ export class NatsService {
     if (this.connection) {
       try {
         await this.connection.close();
-        logger.info('NATS connection closed successfully');
+        logger.info("NATS connection closed successfully");
       } catch (error) {
-        logger.error('Error closing NATS connection', error instanceof Error ? error : undefined);
+        logger.error("Error closing NATS connection", error instanceof Error ? error : undefined);
       }
 
       this.connection = null;

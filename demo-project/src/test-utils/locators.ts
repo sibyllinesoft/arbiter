@@ -2,7 +2,7 @@
 // These locators provide a stable contract between tests and UI implementation
 
 export const locators = {
-  'page:plotService': '[data-testid="plotService-page"]',
+  "page:plotService": '[data-testid="plotService-page"]',
 } as const;
 
 export type LocatorToken = keyof typeof locators;

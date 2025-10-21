@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Activity,
   Bell,
@@ -16,23 +16,23 @@ import {
   Shield,
   Users,
   Zap,
-} from 'lucide-react';
-import { useState } from 'react';
-import { Sidebar, type SidebarNavItem } from './Sidebar';
+} from "lucide-react";
+import { useState } from "react";
+import { Sidebar, type SidebarNavItem } from "./Sidebar";
 
 const meta: Meta<typeof Sidebar> = {
-  title: 'Design System/Navigation/Sidebar',
+  title: "Design System/Navigation/Sidebar",
   component: Sidebar,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component:
-          'Professional sidebar navigation with collapsible sections, nested items, and elegant hierarchy. Perfect for developer tools and complex applications.',
+          "Professional sidebar navigation with collapsible sections, nested items, and elegant hierarchy. Perfect for developer tools and complex applications.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
 };
 
 export default meta;
@@ -41,163 +41,163 @@ type Story = StoryObj<typeof Sidebar>;
 // Sample navigation data
 const basicNavItems: SidebarNavItem[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: "dashboard",
+    label: "Dashboard",
     icon: <Home className="h-4 w-4" />,
     active: true,
   },
   {
-    id: 'projects',
-    label: 'Projects',
+    id: "projects",
+    label: "Projects",
     icon: <Folder className="h-4 w-4" />,
-    badge: '12',
+    badge: "12",
   },
   {
-    id: 'files',
-    label: 'Files',
+    id: "files",
+    label: "Files",
     icon: <File className="h-4 w-4" />,
   },
   {
-    id: 'team',
-    label: 'Team',
+    id: "team",
+    label: "Team",
     icon: <Users className="h-4 w-4" />,
-    badge: '3',
+    badge: "3",
   },
   {
-    id: 'settings',
-    label: 'Settings',
+    id: "settings",
+    label: "Settings",
     icon: <Settings className="h-4 w-4" />,
   },
 ];
 
 const nestedNavItems: SidebarNavItem[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: "dashboard",
+    label: "Dashboard",
     icon: <Activity className="h-4 w-4" />,
     active: true,
   },
   {
-    id: 'development',
-    label: 'Development',
+    id: "development",
+    label: "Development",
     icon: <Code className="h-4 w-4" />,
     collapsible: true,
     children: [
       {
-        id: 'repositories',
-        label: 'Repositories',
+        id: "repositories",
+        label: "Repositories",
         icon: <GitBranch className="h-4 w-4" />,
-        badge: '8',
+        badge: "8",
       },
       {
-        id: 'deployments',
-        label: 'Deployments',
+        id: "deployments",
+        label: "Deployments",
         icon: <Zap className="h-4 w-4" />,
       },
       {
-        id: 'databases',
-        label: 'Databases',
+        id: "databases",
+        label: "Databases",
         icon: <Database className="h-4 w-4" />,
       },
     ],
   },
   {
-    id: 'monitoring',
-    label: 'Monitoring',
+    id: "monitoring",
+    label: "Monitoring",
     icon: <Shield className="h-4 w-4" />,
     collapsible: true,
     collapsed: false,
     children: [
       {
-        id: 'alerts',
-        label: 'Alerts',
+        id: "alerts",
+        label: "Alerts",
         icon: <Bell className="h-4 w-4" />,
-        badge: '2',
+        badge: "2",
       },
       {
-        id: 'metrics',
-        label: 'Metrics',
+        id: "metrics",
+        label: "Metrics",
         icon: <Activity className="h-4 w-4" />,
       },
     ],
   },
   {
-    id: 'settings',
-    label: 'Settings',
+    id: "settings",
+    label: "Settings",
     icon: <Settings className="h-4 w-4" />,
   },
 ];
 
 const projectExplorerItems: SidebarNavItem[] = [
   {
-    id: 'search',
-    label: 'Search',
+    id: "search",
+    label: "Search",
     icon: <Search className="h-4 w-4" />,
   },
   {
-    id: 'src',
-    label: 'src',
+    id: "src",
+    label: "src",
     icon: <FolderOpen className="h-4 w-4" />,
     collapsible: true,
     collapsed: false,
     children: [
       {
-        id: 'components',
-        label: 'components',
+        id: "components",
+        label: "components",
         icon: <Folder className="h-4 w-4" />,
         collapsible: true,
         children: [
           {
-            id: 'button-tsx',
-            label: 'Button.tsx',
+            id: "button-tsx",
+            label: "Button.tsx",
             icon: <File className="h-4 w-4" />,
           },
           {
-            id: 'input-tsx',
-            label: 'Input.tsx',
+            id: "input-tsx",
+            label: "Input.tsx",
             icon: <File className="h-4 w-4" />,
             active: true,
           },
         ],
       },
       {
-        id: 'utils',
-        label: 'utils',
+        id: "utils",
+        label: "utils",
         icon: <Folder className="h-4 w-4" />,
         collapsible: true,
         collapsed: true,
         children: [
           {
-            id: 'helpers-ts',
-            label: 'helpers.ts',
+            id: "helpers-ts",
+            label: "helpers.ts",
             icon: <File className="h-4 w-4" />,
           },
         ],
       },
       {
-        id: 'app-tsx',
-        label: 'App.tsx',
+        id: "app-tsx",
+        label: "App.tsx",
         icon: <File className="h-4 w-4" />,
       },
     ],
   },
   {
-    id: 'public',
-    label: 'public',
+    id: "public",
+    label: "public",
     icon: <Folder className="h-4 w-4" />,
     collapsible: true,
     collapsed: true,
     children: [
       {
-        id: 'index-html',
-        label: 'index.html',
+        id: "index-html",
+        label: "index.html",
         icon: <File className="h-4 w-4" />,
       },
     ],
   },
   {
-    id: 'package-json',
-    label: 'package.json',
+    id: "package-json",
+    label: "package.json",
     icon: <File className="h-4 w-4" />,
   },
 ];
@@ -207,7 +207,7 @@ export const Default: Story = {
     items: basicNavItems,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -233,7 +233,7 @@ export const WithHeader: Story = {
     ),
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -260,7 +260,7 @@ export const WithFooter: Story = {
     ),
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -275,7 +275,7 @@ export const NestedNavigation: Story = {
     items: nestedNavItems,
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -298,7 +298,7 @@ export const ProjectExplorer: Story = {
     ),
   },
   decorators: [
-    Story => (
+    (Story) => (
       <div className="h-screen bg-gray-50 p-4">
         <div className="h-full max-w-sm">
           <Story />
@@ -358,7 +358,7 @@ export const CollapsibleSidebar: Story = {
     docs: {
       description: {
         story:
-          'Interactive example showing how to implement a collapsible sidebar with toggle functionality.',
+          "Interactive example showing how to implement a collapsible sidebar with toggle functionality.",
       },
     },
   },
@@ -396,7 +396,7 @@ export const SizeVariants: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Different width variants of the sidebar component.',
+        story: "Different width variants of the sidebar component.",
       },
     },
   },
@@ -404,13 +404,13 @@ export const SizeVariants: Story = {
 
 export const InteractiveExample: Story = {
   render: () => {
-    const [activeItem, setActiveItem] = useState('dashboard');
+    const [activeItem, setActiveItem] = useState("dashboard");
 
-    const interactiveItems: SidebarNavItem[] = nestedNavItems.map(item => ({
+    const interactiveItems: SidebarNavItem[] = nestedNavItems.map((item) => ({
       ...item,
       active: item.id === activeItem,
       children: item.children
-        ? item.children.map(child => ({
+        ? item.children.map((child) => ({
             ...child,
             active: child.id === activeItem,
           }))
@@ -422,7 +422,7 @@ export const InteractiveExample: Story = {
         <div className="max-w-sm">
           <Sidebar
             items={interactiveItems}
-            onItemClick={item => setActiveItem(item.id)}
+            onItemClick={(item) => setActiveItem(item.id)}
             header={
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
@@ -450,11 +450,11 @@ export const InteractiveExample: Story = {
         </div>
         <div className="flex-1 p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            {interactiveItems.find(item => item.active)?.label ||
+            {interactiveItems.find((item) => item.active)?.label ||
               interactiveItems
-                .find(item => item.children?.some(child => child.active))
-                ?.children?.find(child => child.active)?.label ||
-              'Select an item'}
+                .find((item) => item.children?.some((child) => child.active))
+                ?.children?.find((child) => child.active)?.label ||
+              "Select an item"}
           </h1>
           <p className="text-gray-600">
             Click on different navigation items to see the active state change. Current active item
@@ -467,7 +467,7 @@ export const InteractiveExample: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Interactive sidebar example with state management and click handling.',
+        story: "Interactive sidebar example with state management and click handling.",
       },
     },
   },

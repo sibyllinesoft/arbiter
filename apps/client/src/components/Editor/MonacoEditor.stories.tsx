@@ -3,54 +3,54 @@
  * Comprehensive documentation for the Monaco code editor wrapper with CUE language support
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { useState } from 'react';
-import MonacoEditor from './MonacoEditor';
+import type { Meta, StoryObj } from "@storybook/react";
+import { useState } from "react";
+import MonacoEditor from "./MonacoEditor";
 
 const meta = {
-  title: 'Editor/MonacoEditor',
+  title: "Editor/MonacoEditor",
   component: MonacoEditor,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component:
-          'A Monaco Editor wrapper component with CUE syntax highlighting, custom themes, and developer-friendly features. Includes auto-completion, hover documentation, and keyboard shortcuts.',
+          "A Monaco Editor wrapper component with CUE syntax highlighting, custom themes, and developer-friendly features. Includes auto-completion, hover documentation, and keyboard shortcuts.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     value: {
-      control: { type: 'text' },
-      description: 'The editor content value',
+      control: { type: "text" },
+      description: "The editor content value",
     },
     language: {
-      control: { type: 'select' },
-      options: ['cue', 'typescript', 'javascript', 'json', 'yaml'],
-      description: 'Programming language for syntax highlighting',
+      control: { type: "select" },
+      options: ["cue", "typescript", "javascript", "json", "yaml"],
+      description: "Programming language for syntax highlighting",
     },
     theme: {
-      control: { type: 'select' },
-      options: ['vs', 'vs-dark', 'hc-black', 'cue-light'],
-      description: 'Editor theme',
+      control: { type: "select" },
+      options: ["vs", "vs-dark", "hc-black", "cue-light"],
+      description: "Editor theme",
     },
     onChange: {
-      description: 'Callback fired when the editor content changes',
+      description: "Callback fired when the editor content changes",
     },
     onSave: {
-      description: 'Callback fired when Ctrl+S is pressed',
+      description: "Callback fired when Ctrl+S is pressed",
     },
     onEditorReady: {
-      description: 'Callback fired when the editor is ready',
+      description: "Callback fired when the editor is ready",
     },
     fragmentId: {
-      control: { type: 'text' },
-      description: 'Optional fragment ID for context',
+      control: { type: "text" },
+      description: "Optional fragment ID for context",
     },
     className: {
-      control: { type: 'text' },
-      description: 'Additional CSS classes',
+      control: { type: "text" },
+      description: "Additional CSS classes",
     },
   },
 } satisfies Meta<typeof MonacoEditor>;
@@ -201,7 +201,7 @@ export const Default: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Default Monaco editor with CUE syntax highlighting and the custom CUE light theme.',
+        story: "Default Monaco editor with CUE syntax highlighting and the custom CUE light theme.",
       },
     },
   },
@@ -221,7 +221,7 @@ export const DarkTheme: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Monaco editor with dark theme, perfect for low-light environments.',
+        story: "Monaco editor with dark theme, perfect for low-light environments.",
       },
     },
   },
@@ -242,12 +242,12 @@ export const TypeScriptEditor: Story = {
           options={{
             automaticLayout: true,
             fontSize: 14,
-            lineNumbers: 'on',
+            lineNumbers: "on",
             minimap: { enabled: true },
-            wordWrap: 'on',
+            wordWrap: "on",
             folding: true,
-            bracketMatching: 'always',
-            autoIndent: 'advanced',
+            bracketMatching: "always",
+            autoIndent: "advanced",
           }}
         />
       </div>
@@ -257,7 +257,7 @@ export const TypeScriptEditor: Story = {
     docs: {
       description: {
         story:
-          'Monaco editor configured for TypeScript with IntelliSense support, type checking, and advanced code completion.',
+          "Monaco editor configured for TypeScript with IntelliSense support, type checking, and advanced code completion.",
       },
     },
   },
@@ -278,9 +278,9 @@ export const JsonEditor: Story = {
           options={{
             automaticLayout: true,
             fontSize: 14,
-            lineNumbers: 'on',
+            lineNumbers: "on",
             minimap: { enabled: false },
-            wordWrap: 'on',
+            wordWrap: "on",
             formatOnPaste: true,
             formatOnType: true,
           }}
@@ -291,7 +291,7 @@ export const JsonEditor: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'Monaco editor for JSON editing with validation, formatting, and schema support.',
+        story: "Monaco editor for JSON editing with validation, formatting, and schema support.",
       },
     },
   },
@@ -312,15 +312,15 @@ export const CustomOptions: Story = {
           options={{
             automaticLayout: true,
             fontSize: 16,
-            lineNumbers: 'off',
+            lineNumbers: "off",
             minimap: { enabled: false },
-            wordWrap: 'on',
+            wordWrap: "on",
             folding: false,
-            renderLineHighlight: 'none',
+            renderLineHighlight: "none",
             scrollBeyondLastLine: false,
             padding: { top: 20, bottom: 20 },
             fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-            renderWhitespace: 'all',
+            renderWhitespace: "all",
             rulers: [80, 120],
           }}
         />
@@ -331,7 +331,7 @@ export const CustomOptions: Story = {
     docs: {
       description: {
         story:
-          'Customized editor with larger font, no line numbers, disabled minimap, custom font family, whitespace rendering, and ruler guides.',
+          "Customized editor with larger font, no line numbers, disabled minimap, custom font family, whitespace rendering, and ruler guides.",
       },
     },
   },
@@ -351,11 +351,11 @@ export const ReadOnly: Story = {
             readOnly: true,
             automaticLayout: true,
             fontSize: 14,
-            lineNumbers: 'on',
+            lineNumbers: "on",
             minimap: { enabled: true },
-            wordWrap: 'on',
-            cursorStyle: 'line-thin',
-            renderLineHighlight: 'gutter',
+            wordWrap: "on",
+            cursorStyle: "line-thin",
+            renderLineHighlight: "gutter",
           }}
         />
       </div>
@@ -365,7 +365,7 @@ export const ReadOnly: Story = {
     docs: {
       description: {
         story:
-          'Read-only editor for displaying code that should not be modified. The cursor is thinner to indicate non-editable state.',
+          "Read-only editor for displaying code that should not be modified. The cursor is thinner to indicate non-editable state.",
       },
     },
   },
@@ -379,7 +379,7 @@ export const WithSaveCallback: Story = {
 
     const handleSave = () => {
       setLastSaved(new Date().toLocaleTimeString());
-      alert('File saved! Check the timestamp below the editor.');
+      alert("File saved! Check the timestamp below the editor.");
     };
 
     return (
@@ -404,7 +404,7 @@ export const WithSaveCallback: Story = {
     docs: {
       description: {
         story:
-          'Editor with save functionality. Press Ctrl+S or Cmd+S to trigger the save callback.',
+          "Editor with save functionality. Press Ctrl+S or Cmd+S to trigger the save callback.",
       },
     },
   },
@@ -430,7 +430,7 @@ export const MultipleEditors: Story = {
               theme="cue-light"
               options={{
                 minimap: { enabled: false },
-                lineNumbers: 'on',
+                lineNumbers: "on",
                 fontSize: 13,
               }}
             />
@@ -448,7 +448,7 @@ export const MultipleEditors: Story = {
               theme="vs"
               options={{
                 minimap: { enabled: false },
-                lineNumbers: 'on',
+                lineNumbers: "on",
                 fontSize: 13,
               }}
             />
@@ -461,7 +461,7 @@ export const MultipleEditors: Story = {
     docs: {
       description: {
         story:
-          'Side-by-side editors showing CUE and TypeScript files. Useful for diff views or multi-file editing.',
+          "Side-by-side editors showing CUE and TypeScript files. Useful for diff views or multi-file editing.",
       },
     },
   },
@@ -487,17 +487,17 @@ app: {
             options={{
               automaticLayout: true,
               fontSize: 12,
-              lineNumbers: 'off',
+              lineNumbers: "off",
               minimap: { enabled: false },
-              wordWrap: 'on',
+              wordWrap: "on",
               folding: false,
               scrollBeyondLastLine: false,
               padding: { top: 8, bottom: 8 },
               overviewRulerLanes: 0,
               hideCursorInOverviewRuler: true,
               scrollbar: {
-                vertical: 'hidden',
-                horizontal: 'hidden',
+                vertical: "hidden",
+                horizontal: "hidden",
               },
             }}
           />
@@ -510,7 +510,7 @@ app: {
     docs: {
       description: {
         story:
-          'Compact editor suitable for embedding in forms or small spaces. Simplified interface with minimal chrome.',
+          "Compact editor suitable for embedding in forms or small spaces. Simplified interface with minimal chrome.",
       },
     },
   },
@@ -585,12 +585,12 @@ for user in users {
           options={{
             automaticLayout: true,
             fontSize: 14,
-            lineNumbers: 'on',
+            lineNumbers: "on",
             minimap: { enabled: true, scale: 0.8 },
-            wordWrap: 'on',
+            wordWrap: "on",
             folding: true,
-            foldingStrategy: 'indentation',
-            showFoldingControls: 'always',
+            foldingStrategy: "indentation",
+            showFoldingControls: "always",
           }}
         />
       </div>
@@ -600,7 +600,7 @@ for user in users {
     docs: {
       description: {
         story:
-          'Comprehensive example showcasing CUE language features: types, constraints, defaults, conditionals, templates, and computed values with proper syntax highlighting.',
+          "Comprehensive example showcasing CUE language features: types, constraints, defaults, conditionals, templates, and computed values with proper syntax highlighting.",
       },
     },
   },
@@ -608,7 +608,7 @@ for user in users {
 
 // Interactive playground
 export const Interactive: Story = {
-  render: args => {
+  render: (args) => {
     const [code, setCode] = useState(sampleCueCode);
 
     return (
@@ -618,15 +618,15 @@ export const Interactive: Story = {
     );
   },
   args: {
-    language: 'cue',
-    theme: 'cue-light',
-    fragmentId: 'interactive-demo',
+    language: "cue",
+    theme: "cue-light",
+    fragmentId: "interactive-demo",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with MonacoEditor props. Use the controls panel to test different languages, themes, and configurations.',
+          "Interactive playground to experiment with MonacoEditor props. Use the controls panel to test different languages, themes, and configurations.",
       },
     },
   },

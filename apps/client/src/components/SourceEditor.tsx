@@ -2,8 +2,8 @@
  * SourceEditor - Standalone source code editor component
  */
 
-import React from 'react';
-import { SourceDiagram } from './diagrams';
+import React from "react";
+import { SourceDiagram } from "./diagrams";
 
 interface SourceEditorProps {
   projectId: string;
@@ -12,7 +12,7 @@ interface SourceEditorProps {
 
 export function SourceEditor({ projectId, className }: SourceEditorProps) {
   return (
-    <div className={`h-full ${className || ''}`}>
+    <div className={`h-full ${className || ""}`}>
       <SourceDiagram projectId={projectId} />
     </div>
   );

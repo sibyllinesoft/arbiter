@@ -1,17 +1,17 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import * as YAML from 'yaml';
-import { generateCommand } from '../commands/generate.js';
-import { DEFAULT_PROJECT_STRUCTURE } from '../config.js';
-import type { CLIConfig } from '../types.js';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from "bun:test";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import * as YAML from "yaml";
+import { generateCommand } from "../commands/generate.js";
+import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
+import type { CLIConfig } from "../types.js";
 
 function buildConfig(projectDir: string): CLIConfig {
   return {
-    apiUrl: 'http://127.0.0.1:65535',
+    apiUrl: "http://127.0.0.1:65535",
     timeout: 500,
-    format: 'table',
+    format: "table",
     color: false,
     projectDir,
     projectStructure: { ...DEFAULT_PROJECT_STRUCTURE },
@@ -52,27 +52,27 @@ function cueService(name: string, language: string, directory: string): string {
 }
 
 function splitHeaderAndBody(content: string): { header: string; body: string } {
-  const normalized = content.replace(/\r\n/g, '\n');
-  const lines = normalized.split('\n');
+  const normalized = content.replace(/\r\n/g, "\n");
+  const lines = normalized.split("\n");
   let index = 0;
-  while (index < lines.length && lines[index].startsWith('#')) {
+  while (index < lines.length && lines[index].startsWith("#")) {
     index += 1;
   }
 
-  const header = lines.slice(0, index).join('\n');
-  const body = lines.slice(index).join('\n').replace(/^\n/, '');
+  const header = lines.slice(0, index).join("\n");
+  const body = lines.slice(index).join("\n").replace(/^\n/, "");
 
   return {
-    header: header ? `${header}\n` : '',
+    header: header ? `${header}\n` : "",
     body,
   };
 }
 
-describe('Generate command workflows', () => {
-  let consoleErrorSpy: ReturnType<typeof spyOn<typeof console, 'error'>>;
+describe("Generate command workflows", () => {
+  let consoleErrorSpy: ReturnType<typeof spyOn<typeof console, "error">>;
 
   beforeAll(() => {
-    consoleErrorSpy = spyOn(console, 'error');
+    consoleErrorSpy = spyOn(console, "error");
     consoleErrorSpy.mockImplementation(() => {});
   });
 
@@ -80,18 +80,18 @@ describe('Generate command workflows', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  const PROJECT_ROOT = path.resolve(__dirname, '../../../..');
+  const PROJECT_ROOT = path.resolve(__dirname, "../../../..");
   let tmpDir: string;
   let config: CLIConfig;
   let previousSkipRemoteSpec: string | undefined;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'arbiter-generate-workflow-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-generate-workflow-"));
     process.chdir(PROJECT_ROOT);
     process.chdir(tmpDir);
     config = buildConfig(tmpDir);
     previousSkipRemoteSpec = process.env.ARBITER_SKIP_REMOTE_SPEC;
-    process.env.ARBITER_SKIP_REMOTE_SPEC = '1';
+    process.env.ARBITER_SKIP_REMOTE_SPEC = "1";
   });
 
   afterEach(async () => {
@@ -106,34 +106,34 @@ describe('Generate command workflows', () => {
   });
 
   async function writeSpec(serviceBlocks: string): Promise<void> {
-    const specDir = path.join(tmpDir, '.arbiter', 'test-app');
+    const specDir = path.join(tmpDir, ".arbiter", "test-app");
     await fs.mkdir(specDir, { recursive: true });
-    await fs.writeFile(path.join(specDir, 'assembly.cue'), createSpecContent(serviceBlocks));
+    await fs.writeFile(path.join(specDir, "assembly.cue"), createSpecContent(serviceBlocks));
   }
 
   async function readWorkflow(): Promise<string> {
-    const workflowPath = path.join(tmpDir, '.github', 'workflows', 'ci.yml');
-    return fs.readFile(workflowPath, 'utf8');
+    const workflowPath = path.join(tmpDir, ".github", "workflows", "ci.yml");
+    return fs.readFile(workflowPath, "utf8");
   }
 
-  it('creates modular workflow jobs for application and services', async () => {
-    await writeSpec([cueService('api', 'typescript', './services/api')].join('\n'));
+  it("creates modular workflow jobs for application and services", async () => {
+    await writeSpec([cueService("api", "typescript", "./services/api")].join("\n"));
 
-    const exitCode = await generateCommand({ outputDir: '.', force: true }, config);
+    const exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);
 
     const workflowContent = await readWorkflow();
 
-    expect(workflowContent).toContain('arbiter_app:');
-    expect(workflowContent).toContain('arbiter_service_api:');
-    expect(workflowContent).toContain('npm install');
-    expect(workflowContent).toContain('npm run lint');
+    expect(workflowContent).toContain("arbiter_app:");
+    expect(workflowContent).toContain("arbiter_service_api:");
+    expect(workflowContent).toContain("npm install");
+    expect(workflowContent).toContain("npm run lint");
   });
 
-  it('updates workflows idempotently while preserving manual jobs', async () => {
-    await writeSpec([cueService('api', 'typescript', './services/api')].join('\n'));
+  it("updates workflows idempotently while preserving manual jobs", async () => {
+    await writeSpec([cueService("api", "typescript", "./services/api")].join("\n"));
 
-    let exitCode = await generateCommand({ outputDir: '.', force: true }, config);
+    let exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);
 
     const firstWorkflow = await readWorkflow();
@@ -141,40 +141,40 @@ describe('Generate command workflows', () => {
     const doc = YAML.parse(body) as Record<string, any>;
     doc.jobs = doc.jobs || {};
     doc.jobs.manual_health = {
-      'runs-on': 'ubuntu-latest',
+      "runs-on": "ubuntu-latest",
       steps: [{ run: 'echo "manual job"' }],
     };
     const manualWorkflow =
-      header + YAML.stringify(doc, { indent: 2, lineWidth: 0 }).trimEnd() + '\n';
-    await fs.writeFile(path.join(tmpDir, '.github', 'workflows', 'ci.yml'), manualWorkflow);
+      header + YAML.stringify(doc, { indent: 2, lineWidth: 0 }).trimEnd() + "\n";
+    await fs.writeFile(path.join(tmpDir, ".github", "workflows", "ci.yml"), manualWorkflow);
 
     // Add a new Python service and regenerate
     await writeSpec(
       [
-        cueService('api', 'typescript', './services/api'),
-        cueService('reporting', 'python', './services/reporting'),
-      ].join('\n')
+        cueService("api", "typescript", "./services/api"),
+        cueService("reporting", "python", "./services/reporting"),
+      ].join("\n"),
     );
 
-    exitCode = await generateCommand({ outputDir: '.', force: true }, config);
+    exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);
 
     const updatedWorkflow = await readWorkflow();
-    expect(updatedWorkflow).toContain('arbiter_service_api:');
-    expect(updatedWorkflow).toContain('arbiter_service_reporting:');
-    expect(updatedWorkflow).toContain('pip install -e .');
-    expect(updatedWorkflow).toContain('manual_health:');
+    expect(updatedWorkflow).toContain("arbiter_service_api:");
+    expect(updatedWorkflow).toContain("arbiter_service_reporting:");
+    expect(updatedWorkflow).toContain("pip install -e .");
+    expect(updatedWorkflow).toContain("manual_health:");
     expect(updatedWorkflow).toContain('echo "manual job"');
 
     // Remove the original TypeScript service and ensure it is dropped
-    await writeSpec([cueService('reporting', 'python', './services/reporting')].join('\n'));
+    await writeSpec([cueService("reporting", "python", "./services/reporting")].join("\n"));
 
-    exitCode = await generateCommand({ outputDir: '.', force: true }, config);
+    exitCode = await generateCommand({ outputDir: ".", force: true }, config);
     expect(exitCode).toBe(0);
 
     const finalWorkflow = await readWorkflow();
-    expect(finalWorkflow).not.toContain('arbiter_service_api:');
-    expect(finalWorkflow).toContain('arbiter_service_reporting:');
-    expect(finalWorkflow).toContain('manual_health:');
+    expect(finalWorkflow).not.toContain("arbiter_service_api:");
+    expect(finalWorkflow).toContain("arbiter_service_reporting:");
+    expect(finalWorkflow).toContain("manual_health:");
   });
 });

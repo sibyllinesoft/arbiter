@@ -4,17 +4,17 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { AlertCircle, CheckCircle, Info, Loader2, X, XCircle } from 'lucide-react';
-import React, { useState, useEffect, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { cn, statusVariants } from '../../variants';
+import { AlertCircle, CheckCircle, Info, Loader2, X, XCircle } from "lucide-react";
+import React, { useState, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { cn, statusVariants } from "../../variants";
 
 export interface ToastProps {
   /** Unique identifier for the toast */
   id?: string;
 
   /** Toast variant determines the visual style and icon */
-  variant?: 'success' | 'warning' | 'error' | 'info' | 'loading' | 'neutral';
+  variant?: "success" | "warning" | "error" | "info" | "loading" | "neutral";
 
   /** Toast title */
   title: string;
@@ -30,12 +30,12 @@ export interface ToastProps {
 
   /** Position of the toast */
   position?:
-    | 'top-right'
-    | 'top-left'
-    | 'bottom-right'
-    | 'bottom-left'
-    | 'top-center'
-    | 'bottom-center';
+    | "top-right"
+    | "top-left"
+    | "bottom-right"
+    | "bottom-left"
+    | "top-center"
+    | "bottom-center";
 
   /** Whether to show close button */
   closable?: boolean;
@@ -72,23 +72,23 @@ const icons = {
 } as const;
 
 const positionClasses = {
-  'top-right': 'top-4 right-4',
-  'top-left': 'top-4 left-4',
-  'bottom-right': 'bottom-4 right-4',
-  'bottom-left': 'bottom-4 left-4',
-  'top-center': 'top-4 left-1/2 -translate-x-1/2',
-  'bottom-center': 'bottom-4 left-1/2 -translate-x-1/2',
+  "top-right": "top-4 right-4",
+  "top-left": "top-4 left-4",
+  "bottom-right": "bottom-4 right-4",
+  "bottom-left": "bottom-4 left-4",
+  "top-center": "top-4 left-1/2 -translate-x-1/2",
+  "bottom-center": "bottom-4 left-1/2 -translate-x-1/2",
 } as const;
 
 // Extended status variants for additional toast types
 const extendedStatusVariants = {
   ...statusVariants,
   loading: {
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    text: 'text-blue-700',
-    icon: 'text-blue-500',
-    dot: 'bg-blue-500',
+    bg: "bg-blue-50",
+    border: "border-blue-200",
+    text: "text-blue-700",
+    icon: "text-blue-500",
+    dot: "bg-blue-500",
   },
 };
 
@@ -98,7 +98,7 @@ const extendedStatusVariants = {
 function createProgressUpdater(
   startTimeRef: React.MutableRefObject<number | undefined>,
   duration: number,
-  setProgress: (progress: number) => void
+  setProgress: (progress: number) => void,
 ) {
   return () => {
     if (!startTimeRef.current) return;
@@ -121,12 +121,12 @@ function createProgressUpdater(
 function setupAutoDismiss(
   duration: number,
   isVisible: boolean,
-  variant: NonNullable<ToastProps['variant']> = 'info',
+  variant: NonNullable<ToastProps["variant"]> = "info",
   showProgress: boolean,
   setProgress: (progress: number) => void,
-  handleClose: () => void
+  handleClose: () => void,
 ) {
-  if (duration <= 0 || !isVisible || variant === 'loading') {
+  if (duration <= 0 || !isVisible || variant === "loading") {
     return () => {}; // No cleanup needed
   }
 
@@ -170,13 +170,13 @@ function createToastHandlers(dismissible: boolean, onClose?: () => void, onClick
 /**
  * Render toast icon based on variant and custom icon
  */
-function renderToastIcon(variant: ToastProps['variant'], icon?: ReactNode, statusClasses?: string) {
-  const IconComponent = icons[variant || 'info'];
+function renderToastIcon(variant: ToastProps["variant"], icon?: ReactNode, statusClasses?: string) {
+  const IconComponent = icons[variant || "info"];
 
   return (
-    <div className={cn('flex-shrink-0 mt-0.5', statusClasses)}>
+    <div className={cn("flex-shrink-0 mt-0.5", statusClasses)}>
       {icon ||
-        (variant === 'loading' ? (
+        (variant === "loading" ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
           <IconComponent className="h-5 w-5" />
@@ -191,14 +191,14 @@ function renderToastIcon(variant: ToastProps['variant'], icon?: ReactNode, statu
 function renderToastContent(title: string, description?: string, action?: ReactNode) {
   return (
     <div className="flex-1 min-w-0">
-      <h3 className={cn('font-semibold text-sm text-graphite-900')}>{title}</h3>
+      <h3 className={cn("font-semibold text-sm text-graphite-900")}>{title}</h3>
 
       {description && (
-        <p className={cn('mt-1 text-sm text-graphite-600 leading-relaxed')}>{description}</p>
+        <p className={cn("mt-1 text-sm text-graphite-600 leading-relaxed")}>{description}</p>
       )}
 
       {action && (
-        <div className="mt-3" onClick={e => e.stopPropagation()}>
+        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
           {action}
         </div>
       )}
@@ -216,9 +216,9 @@ function renderCloseButton(closable: boolean, handleCloseClick: (e: React.MouseE
     <button
       type="button"
       className={cn(
-        'flex-shrink-0 rounded-md p-1.5 transition-colors',
-        'hover:bg-graphite-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
-        'text-graphite-400 hover:text-graphite-600'
+        "flex-shrink-0 rounded-md p-1.5 transition-colors",
+        "hover:bg-graphite-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500",
+        "text-graphite-400 hover:text-graphite-600",
       )}
       onClick={handleCloseClick}
       aria-label="Close notification"
@@ -234,11 +234,11 @@ function renderCloseButton(closable: boolean, handleCloseClick: (e: React.MouseE
 function renderProgressBar(
   showProgress: boolean,
   duration: number,
-  variant: NonNullable<ToastProps['variant']> = 'info',
+  variant: NonNullable<ToastProps["variant"]> = "info",
   progress: number,
-  statusDot: string
+  statusDot: string,
 ) {
-  if (!showProgress || duration <= 0 || variant === 'loading') {
+  if (!showProgress || duration <= 0 || variant === "loading") {
     return null;
   }
 
@@ -246,8 +246,8 @@ function renderProgressBar(
     <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 rounded-b-lg overflow-hidden">
       <div
         className={cn(
-          'h-full transition-all duration-100 ease-linear',
-          statusDot.replace('bg-', 'bg-')
+          "h-full transition-all duration-100 ease-linear",
+          statusDot.replace("bg-", "bg-"),
         )}
         style={{ width: `${progress}%` }}
       />
@@ -256,12 +256,12 @@ function renderProgressBar(
 }
 
 export function Toast({
-  variant = 'info',
+  variant = "info",
   title,
   description,
   visible = true,
   duration = 5000,
-  position = 'top-right',
+  position = "top-right",
   closable = true,
   showProgress = false,
   dismissible = false,
@@ -281,7 +281,7 @@ export function Toast({
       setIsVisible(false);
       onClose?.();
     },
-    onClick
+    onClick,
   );
 
   // Auto-dismiss effect with progress
@@ -299,22 +299,22 @@ export function Toast({
 
   if (!isVisible) return null;
 
-  const status = extendedStatusVariants[variant || 'info'];
+  const status = extendedStatusVariants[variant || "info"];
 
   const toast = (
     <div
       className={cn(
         // Base styles
-        'fixed z-50 pointer-events-auto',
-        'max-w-sm w-full',
-        'transform transition-all duration-300 ease-out',
-        'animate-in slide-in-from-top-2 fade-in',
+        "fixed z-50 pointer-events-auto",
+        "max-w-sm w-full",
+        "transform transition-all duration-300 ease-out",
+        "animate-in slide-in-from-top-2 fade-in",
 
         // Position
         positionClasses[position],
 
         // Custom className
-        className
+        className,
       )}
       role="alert"
       aria-live="polite"
@@ -323,15 +323,15 @@ export function Toast({
       <div
         className={cn(
           // Base container styles
-          'relative flex items-start gap-3 p-4 rounded-lg shadow-lg border',
-          'backdrop-blur-sm bg-white/95',
-          'transform transition-transform hover:scale-[1.02]',
+          "relative flex items-start gap-3 p-4 rounded-lg shadow-lg border",
+          "backdrop-blur-sm bg-white/95",
+          "transform transition-transform hover:scale-[1.02]",
 
           // Variant styles
           status.border,
 
           // Clickable styles
-          (dismissible || onClick) && 'cursor-pointer hover:shadow-xl'
+          (dismissible || onClick) && "cursor-pointer hover:shadow-xl",
         )}
         onClick={handleClick}
       >
@@ -352,31 +352,31 @@ export interface ToastContainerProps {
   limit?: number;
 
   /** Position of toasts */
-  position?: ToastProps['position'];
+  position?: ToastProps["position"];
 
   /** Gap between toasts */
-  gap?: 'sm' | 'md' | 'lg';
+  gap?: "sm" | "md" | "lg";
 
   /** Custom className for the container */
   className?: string;
 
   /** Array of toasts to display */
-  toasts?: Omit<ToastProps, 'position'>[];
+  toasts?: Omit<ToastProps, "position">[];
 
   /** Callback when a toast is closed */
   onToastClose?: (id: string) => void;
 }
 
 const gapClasses = {
-  sm: 'space-y-1',
-  md: 'space-y-2',
-  lg: 'space-y-4',
+  sm: "space-y-1",
+  md: "space-y-2",
+  lg: "space-y-4",
 } as const;
 
 export function ToastContainer({
   limit = 5,
-  position = 'top-right',
-  gap = 'md',
+  position = "top-right",
+  gap = "md",
   className,
   toasts = [],
   onToastClose,
@@ -386,23 +386,23 @@ export function ToastContainer({
   return (
     <div
       className={cn(
-        'fixed z-50 pointer-events-none',
-        'max-w-sm w-full',
+        "fixed z-50 pointer-events-none",
+        "max-w-sm w-full",
         gapClasses[gap],
         positionClasses[position],
-        className
+        className,
       )}
       aria-live="polite"
       aria-label="Notifications"
     >
-      {visibleToasts.map(toast => (
+      {visibleToasts.map((toast) => (
         <Toast
           key={toast.id}
           {...toast}
           position={position}
           onClose={() => {
             toast.onClose?.();
-            onToastClose?.(toast.id || '');
+            onToastClose?.(toast.id || "");
           }}
         />
       ))}
@@ -411,7 +411,7 @@ export function ToastContainer({
 }
 
 // Toast Hook for easy management (would typically be in a separate hooks file)
-export interface ToastOptions extends Omit<ToastProps, 'visible'> {
+export interface ToastOptions extends Omit<ToastProps, "visible"> {
   id?: string; // Optional id, will be auto-generated if not provided
 }
 
@@ -433,7 +433,7 @@ export class ToastManager {
   }
 
   private notify() {
-    this.listeners.forEach(callback => callback());
+    this.listeners.forEach((callback) => callback());
   }
 
   getToasts(): ToastProps[] {
@@ -471,7 +471,7 @@ export class ToastManager {
   success(title: string, description?: string, options?: Partial<ToastOptions>) {
     return this.show({
       ...options,
-      variant: 'success',
+      variant: "success",
       title,
       ...(description !== undefined && { description }),
     });
@@ -480,7 +480,7 @@ export class ToastManager {
   error(title: string, description?: string, options?: Partial<ToastOptions>) {
     return this.show({
       ...options,
-      variant: 'error',
+      variant: "error",
       title,
       ...(description !== undefined && { description }),
     });
@@ -489,7 +489,7 @@ export class ToastManager {
   warning(title: string, description?: string, options?: Partial<ToastOptions>) {
     return this.show({
       ...options,
-      variant: 'warning',
+      variant: "warning",
       title,
       ...(description !== undefined && { description }),
     });
@@ -498,7 +498,7 @@ export class ToastManager {
   info(title: string, description?: string, options?: Partial<ToastOptions>) {
     return this.show({
       ...options,
-      variant: 'info',
+      variant: "info",
       title,
       ...(description !== undefined && { description }),
     });
@@ -507,7 +507,7 @@ export class ToastManager {
   loading(title: string, description?: string, options?: Partial<ToastOptions>) {
     return this.show({
       ...options,
-      variant: 'loading',
+      variant: "loading",
       title,
       ...(description !== undefined && { description }),
       duration: 0, // Loading toasts don't auto-dismiss

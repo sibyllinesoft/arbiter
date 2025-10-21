@@ -1,21 +1,21 @@
-import { useTheme } from '@/stores/ui-store';
-import { Excalidraw } from '@excalidraw/excalidraw';
+import { useTheme } from "@/stores/ui-store";
+import { Excalidraw } from "@excalidraw/excalidraw";
 import type {
   ExcalidrawElement,
   ExcalidrawTextElement,
-} from '@excalidraw/excalidraw/types/element/types';
-import type { AppState } from '@excalidraw/excalidraw/types/types';
-import { clsx } from 'clsx';
-import { type FC, useEffect, useState } from 'react';
-import { apiService } from '../../services/api';
-import type { IRResponse } from '../../types/api';
+} from "@excalidraw/excalidraw/types/element/types";
+import type { AppState } from "@excalidraw/excalidraw/types/types";
+import { clsx } from "clsx";
+import { type FC, useEffect, useState } from "react";
+import { apiService } from "../../services/api";
+import type { IRResponse } from "../../types/api";
 
 interface ViewDiagramProps {
   projectId: string;
   className?: string;
 }
 
-type WidgetType = 'button' | 'input' | 'table';
+type WidgetType = "button" | "input" | "table";
 
 interface Widget {
   type: WidgetType;
@@ -38,14 +38,14 @@ interface ViewIRData {
 type UnknownRecord = Record<string, unknown>;
 
 const isRecord = (value: unknown): value is UnknownRecord =>
-  typeof value === 'object' && value !== null;
+  typeof value === "object" && value !== null;
 
-const isString = (value: unknown): value is string => typeof value === 'string';
+const isString = (value: unknown): value is string => typeof value === "string";
 
 const toStringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter(isString) : [];
 
-const widgetTypes: readonly WidgetType[] = ['button', 'input', 'table'] as const;
+const widgetTypes: readonly WidgetType[] = ["button", "input", "table"] as const;
 
 const normalizeWidget = (value: unknown, index: number): Widget | null => {
   if (!isRecord(value)) {
@@ -55,7 +55,7 @@ const normalizeWidget = (value: unknown, index: number): Widget | null => {
   const typeValue =
     isString(value.type) && widgetTypes.includes(value.type as WidgetType)
       ? (value.type as WidgetType)
-      : 'button';
+      : "button";
   const token = isString(value.token) ? value.token : `widget_${index}`;
   const widget: Widget = {
     type: typeValue,
@@ -107,7 +107,7 @@ const normalizeViewData = (raw: unknown): ViewIRData => {
     return { views: [] };
   }
 
-  const viewsSource = raw['views'];
+  const viewsSource = raw["views"];
   const views = Array.isArray(viewsSource)
     ? viewsSource
         .map((view, index) => normalizeView(view, index))
@@ -118,7 +118,7 @@ const normalizeViewData = (raw: unknown): ViewIRData => {
     views,
   };
 
-  const specHash = isString(raw['specHash']) ? (raw['specHash'] as string) : undefined;
+  const specHash = isString(raw["specHash"]) ? (raw["specHash"] as string) : undefined;
   if (specHash !== undefined) {
     viewData.specHash = specHash;
   }
@@ -126,13 +126,13 @@ const normalizeViewData = (raw: unknown): ViewIRData => {
   return viewData;
 };
 
-const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
+const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = "" }) => {
   const { isDark } = useTheme();
   const [viewData, setViewData] = useState<ViewIRData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [excalidrawElements, setExcalidrawElements] = useState<ExcalidrawElement[]>([]);
-  const viewBackgroundColor = isDark ? '#141821' : '#ffffff';
+  const viewBackgroundColor = isDark ? "#141821" : "#ffffff";
 
   useEffect(() => {
     if (!projectId) return;
@@ -142,11 +142,11 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
         setLoading(true);
         setError(null);
 
-        const response: IRResponse = await apiService.getIR(projectId, 'view');
+        const response: IRResponse = await apiService.getIR(projectId, "view");
         setViewData(normalizeViewData(response.data));
       } catch (err) {
-        console.error('Failed to load view data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load view diagram');
+        console.error("Failed to load view data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load view diagram");
       } finally {
         setLoading(false);
       }
@@ -174,7 +174,7 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     locked: false,
   });
 
-  const DEFAULT_LINE_HEIGHT = 1.25 as ExcalidrawTextElement['lineHeight'];
+  const DEFAULT_LINE_HEIGHT = 1.25 as ExcalidrawTextElement["lineHeight"];
 
   const createButtonElement = (widget: Widget, x: number, y: number): ExcalidrawElement => {
     const text = widget.text || widget.token;
@@ -185,17 +185,17 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
 
     return {
       ...base,
-      type: 'rectangle',
+      type: "rectangle",
       x,
       y,
       width,
       height,
       angle: 0,
-      strokeColor: '#1e40af',
-      backgroundColor: '#3b82f6',
-      fillStyle: 'solid',
+      strokeColor: "#1e40af",
+      backgroundColor: "#3b82f6",
+      fillStyle: "solid",
       strokeWidth: 2,
-      strokeStyle: 'solid',
+      strokeStyle: "solid",
       roughness: 0,
       opacity: 100,
       groupIds: [],
@@ -211,23 +211,23 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     y: number,
     width: number,
     height: number,
-    color = '#ffffff'
+    color = "#ffffff",
   ): ExcalidrawElement => {
     const base = createCommonElementProps();
 
     return {
       ...base,
-      type: 'text',
+      type: "text",
       x: x + width / 2,
       y: y + height / 2,
       width: width - 10,
       height: 20,
       angle: 0,
       strokeColor: color,
-      backgroundColor: 'transparent',
-      fillStyle: 'solid',
+      backgroundColor: "transparent",
+      fillStyle: "solid",
       strokeWidth: 1,
-      strokeStyle: 'solid',
+      strokeStyle: "solid",
       roughness: 0,
       opacity: 100,
       groupIds: [],
@@ -237,8 +237,8 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
       text,
       fontSize: 14,
       fontFamily: 1,
-      textAlign: 'center',
-      verticalAlign: 'middle',
+      textAlign: "center",
+      verticalAlign: "middle",
       baseline: 14,
       containerId: null,
       originalText: text,
@@ -255,17 +255,17 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
 
     const inputRect = {
       ...rectBase,
-      type: 'rectangle',
+      type: "rectangle",
       x,
       y,
       width,
       height,
       angle: 0,
-      strokeColor: '#6b7280',
-      backgroundColor: '#ffffff',
-      fillStyle: 'solid',
+      strokeColor: "#6b7280",
+      backgroundColor: "#ffffff",
+      fillStyle: "solid",
       strokeWidth: 2,
-      strokeStyle: 'solid',
+      strokeStyle: "solid",
       roughness: 0,
       opacity: 100,
       groupIds: [],
@@ -274,13 +274,13 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
       boundElements: null,
     } as unknown as ExcalidrawElement;
 
-    const labelText = createTextElement(label, x - 120, y, 100, height, '#374151');
+    const labelText = createTextElement(label, x - 120, y, 100, height, "#374151");
 
     return [inputRect, labelText];
   };
 
   const createTableElement = (widget: Widget, x: number, y: number): ExcalidrawElement[] => {
-    const columns = widget.columns || ['Column 1', 'Column 2'];
+    const columns = widget.columns || ["Column 1", "Column 2"];
     const columnWidth = 120;
     const headerHeight = 40;
     const rowHeight = 30;
@@ -292,17 +292,17 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     // Table container
     const tableContainer = {
       ...createCommonElementProps(),
-      type: 'rectangle',
+      type: "rectangle",
       x,
       y,
       width: tableWidth,
       height: tableHeight,
       angle: 0,
-      strokeColor: '#374151',
-      backgroundColor: '#ffffff',
-      fillStyle: 'solid',
+      strokeColor: "#374151",
+      backgroundColor: "#ffffff",
+      fillStyle: "solid",
       strokeWidth: 2,
-      strokeStyle: 'solid',
+      strokeStyle: "solid",
       roughness: 0,
       opacity: 100,
       groupIds: [],
@@ -315,17 +315,17 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     // Header row background
     const headerBg = {
       ...createCommonElementProps(),
-      type: 'rectangle',
+      type: "rectangle",
       x: x + 2,
       y: y + 2,
       width: tableWidth - 4,
       height: headerHeight - 4,
       angle: 0,
-      strokeColor: 'transparent',
-      backgroundColor: '#f3f4f6',
-      fillStyle: 'solid',
+      strokeColor: "transparent",
+      backgroundColor: "#f3f4f6",
+      fillStyle: "solid",
       strokeWidth: 0,
-      strokeStyle: 'solid',
+      strokeStyle: "solid",
       roughness: 0,
       opacity: 100,
       groupIds: [],
@@ -343,7 +343,7 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
         y,
         columnWidth,
         headerHeight,
-        '#374151'
+        "#374151",
       );
       elements.push(headerText);
     });
@@ -352,17 +352,17 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     for (let i = 1; i < columns.length; i++) {
       const divider = {
         ...createCommonElementProps(),
-        type: 'line',
+        type: "line",
         x: x + i * columnWidth,
         y: y + 2,
         width: 0,
         height: tableHeight - 4,
         angle: 0,
-        strokeColor: '#d1d5db',
-        backgroundColor: 'transparent',
-        fillStyle: 'solid',
+        strokeColor: "#d1d5db",
+        backgroundColor: "transparent",
+        fillStyle: "solid",
         strokeWidth: 1,
-        strokeStyle: 'solid',
+        strokeStyle: "solid",
         roughness: 0,
         opacity: 100,
         groupIds: [],
@@ -384,17 +384,17 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     // Row divider
     const rowDivider = {
       ...createCommonElementProps(),
-      type: 'line',
+      type: "line",
       x: x + 2,
       y: y + headerHeight,
       width: tableWidth - 4,
       height: 0,
       angle: 0,
-      strokeColor: '#d1d5db',
-      backgroundColor: 'transparent',
-      fillStyle: 'solid',
+      strokeColor: "#d1d5db",
+      backgroundColor: "transparent",
+      fillStyle: "solid",
       strokeWidth: 1,
-      strokeStyle: 'solid',
+      strokeStyle: "solid",
       roughness: 0,
       opacity: 100,
       groupIds: [],
@@ -415,26 +415,26 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     return elements;
   };
 
-  const convertWidgetsToElements = (views: ViewIRData['views']): ExcalidrawElement[] => {
+  const convertWidgetsToElements = (views: ViewIRData["views"]): ExcalidrawElement[] => {
     if (!views || views.length === 0) return [];
 
     const elements: ExcalidrawElement[] = [];
     let currentY = 50;
 
-    views.forEach(view => {
+    views.forEach((view) => {
       // Add view title
-      const viewTitle = createTextElement(`View: ${view.id}`, 50, currentY, 200, 30, '#111827');
+      const viewTitle = createTextElement(`View: ${view.id}`, 50, currentY, 200, 30, "#111827");
       elements.push(viewTitle);
       currentY += 50;
 
       let currentX = 50;
       const rowHeight = 80;
 
-      view.widgets.forEach(widget => {
+      view.widgets.forEach((widget) => {
         let widgetElements: ExcalidrawElement[] = [];
 
         switch (widget.type) {
-          case 'button':
+          case "button":
             const buttonElement = createButtonElement(widget, currentX, currentY);
             const buttonText = createTextElement(
               widget.text || widget.token,
@@ -442,18 +442,18 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
               currentY,
               buttonElement.width,
               buttonElement.height,
-              '#ffffff'
+              "#ffffff",
             );
             widgetElements = [buttonElement, buttonText];
             currentX += buttonElement.width + 20;
             break;
 
-          case 'input':
+          case "input":
             widgetElements = createInputElement(widget, currentX, currentY);
             currentX += 300;
             break;
 
-          case 'table':
+          case "table":
             widgetElements = createTableElement(widget, currentX, currentY);
             if (widgetElements.length > 0) {
               const firstElement = widgetElements[0];
@@ -490,8 +490,8 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     return (
       <div
         className={clsx(
-          'flex h-full items-center justify-center bg-white text-gray-600 transition-colors dark:bg-graphite-950 dark:text-graphite-300',
-          className
+          "flex h-full items-center justify-center bg-white text-gray-600 transition-colors dark:bg-graphite-950 dark:text-graphite-300",
+          className,
         )}
       >
         <div className="text-center">
@@ -506,8 +506,8 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
     return (
       <div
         className={clsx(
-          'flex h-full items-center justify-center bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
-          className
+          "flex h-full items-center justify-center bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200",
+          className,
         )}
       >
         <div className="text-center">
@@ -542,8 +542,8 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
   return (
     <div
       className={clsx(
-        'h-full bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
-        className
+        "h-full bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200",
+        className,
       )}
     >
       {viewData?.views && viewData.views.length > 0 && (
@@ -556,27 +556,27 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
       )}
       <div className="h-full bg-white transition-colors dark:bg-graphite-950">
         <Excalidraw
-          key={isDark ? 'view-diagram-dark' : 'view-diagram-light'}
+          key={isDark ? "view-diagram-dark" : "view-diagram-light"}
           initialData={{
             elements: excalidrawElements,
             appState: {
               viewBackgroundColor: viewBackgroundColor,
-              currentItemStrokeColor: '#000000',
-              currentItemBackgroundColor: 'transparent',
-              currentItemFillStyle: 'solid',
+              currentItemStrokeColor: "#000000",
+              currentItemBackgroundColor: "transparent",
+              currentItemFillStyle: "solid",
               currentItemStrokeWidth: 2,
-              currentItemStrokeStyle: 'solid',
+              currentItemStrokeStyle: "solid",
               currentItemRoughness: 0,
               currentItemOpacity: 100,
               currentItemFontFamily: 1,
               currentItemFontSize: 20,
-              currentItemTextAlign: 'left',
+              currentItemTextAlign: "left",
               currentItemStartArrowhead: null,
-              currentItemEndArrowhead: 'arrow',
+              currentItemEndArrowhead: "arrow",
               scrollX: 0,
               scrollY: 0,
               zoom: { value: 1 },
-              currentItemRoundness: 'round',
+              currentItemRoundness: "round",
               gridSize: null,
               colorPalette: {},
             } as unknown as Partial<AppState>,
@@ -584,7 +584,7 @@ const ViewDiagram: FC<ViewDiagramProps> = ({ projectId, className = '' }) => {
           viewModeEnabled={false}
           zenModeEnabled={false}
           gridModeEnabled={false}
-          theme={isDark ? 'dark' : 'light'}
+          theme={isDark ? "dark" : "light"}
         />
       </div>
     </div>

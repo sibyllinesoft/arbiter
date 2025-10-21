@@ -2,23 +2,23 @@
  * Tests for the Artifact Detector Engine
  */
 
-import { ArtifactDetector, type DetectionContext, detectArtifactType } from '../artifact-detector';
+import { ArtifactDetector, type DetectionContext, detectArtifactType } from "../artifact-detector";
 
-describe('ArtifactDetector', () => {
-  describe('CLI Detection Integration', () => {
-    it('should detect JavaScript CLI with high confidence', () => {
+describe("ArtifactDetector", () => {
+  describe("CLI Detection Integration", () => {
+    it("should detect JavaScript CLI with high confidence", () => {
       const context: DetectionContext = {
-        language: 'javascript',
-        dependencies: ['commander', 'chalk', 'ora'],
+        language: "javascript",
+        dependencies: ["commander", "chalk", "ora"],
         scripts: {
-          start: 'node bin/cli.js',
-          build: 'npm run compile',
+          start: "node bin/cli.js",
+          build: "npm run compile",
         },
-        filePatterns: ['bin/cli.js', 'src/commands/'],
+        filePatterns: ["bin/cli.js", "src/commands/"],
         packageConfig: {
-          name: 'my-cli-tool',
+          name: "my-cli-tool",
           bin: {
-            mycli: 'bin/cli.js',
+            mycli: "bin/cli.js",
           },
           preferGlobal: true,
         },
@@ -38,25 +38,25 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('tool');
+      expect(result.primaryType).toBe("tool");
       expect(result.confidence).toBeGreaterThan(0.8);
-      expect(result.explanation).toContain('Dependencies:');
-      expect(result.explanation.some(line => line.includes('commander'))).toBe(true);
+      expect(result.explanation).toContain("Dependencies:");
+      expect(result.explanation.some((line) => line.includes("commander"))).toBe(true);
     });
 
-    it('should detect Python CLI correctly', () => {
+    it("should detect Python CLI correctly", () => {
       const context: DetectionContext = {
-        language: 'python',
-        dependencies: ['click', 'rich', 'typer'],
+        language: "python",
+        dependencies: ["click", "rich", "typer"],
         scripts: {
-          run: 'python -m myapp.cli',
+          run: "python -m myapp.cli",
         },
-        filePatterns: ['myapp/cli.py', 'myapp/__main__.py'],
+        filePatterns: ["myapp/cli.py", "myapp/__main__.py"],
         packageConfig: {
-          name: 'my-python-cli',
+          name: "my-python-cli",
           entry_points: {
             console_scripts: {
-              mycli: 'myapp.cli:main',
+              mycli: "myapp.cli:main",
             },
           },
         },
@@ -76,22 +76,22 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('tool');
+      expect(result.primaryType).toBe("tool");
       expect(result.confidence).toBeGreaterThan(0.8);
     });
 
-    it('should detect Rust CLI correctly', () => {
+    it("should detect Rust CLI correctly", () => {
       const context: DetectionContext = {
-        language: 'rust',
-        dependencies: ['clap', 'anyhow', 'indicatif'],
+        language: "rust",
+        dependencies: ["clap", "anyhow", "indicatif"],
         scripts: {
-          build: 'cargo build',
-          run: 'cargo run',
+          build: "cargo build",
+          run: "cargo run",
         },
-        filePatterns: ['src/main.rs', 'src/cli/'],
+        filePatterns: ["src/main.rs", "src/cli/"],
         packageConfig: {
-          name: 'rust-cli-tool',
-          bin: [{ name: 'mytool', path: 'src/main.rs' }],
+          name: "rust-cli-tool",
+          bin: [{ name: "mytool", path: "src/main.rs" }],
         },
         sourceAnalysis: {
           hasBinaryExecution: true,
@@ -109,23 +109,23 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('tool');
+      expect(result.primaryType).toBe("tool");
       expect(result.confidence).toBeGreaterThan(0.8);
     });
   });
 
-  describe('Web Service vs CLI Disambiguation', () => {
-    it('should correctly distinguish web service from CLI when both patterns exist', () => {
+  describe("Web Service vs CLI Disambiguation", () => {
+    it("should correctly distinguish web service from CLI when both patterns exist", () => {
       const webContext: DetectionContext = {
-        language: 'javascript',
-        dependencies: ['express', 'cors', 'morgan'], // Strong web indicators
+        language: "javascript",
+        dependencies: ["express", "cors", "morgan"], // Strong web indicators
         scripts: {
-          start: 'node server.js',
-          dev: 'nodemon server.js',
+          start: "node server.js",
+          dev: "nodemon server.js",
         },
-        filePatterns: ['server.js', 'routes/', 'middleware/'],
+        filePatterns: ["server.js", "routes/", "middleware/"],
         packageConfig: {
-          name: 'my-web-api',
+          name: "my-web-api",
           private: true,
         },
         sourceAnalysis: {
@@ -143,15 +143,15 @@ describe('ArtifactDetector', () => {
       };
 
       const cliContext: DetectionContext = {
-        language: 'javascript',
-        dependencies: ['commander', 'chalk', 'axios'], // axios could be used by web too
+        language: "javascript",
+        dependencies: ["commander", "chalk", "axios"], // axios could be used by web too
         scripts: {
-          start: 'node bin/cli.js',
+          start: "node bin/cli.js",
         },
-        filePatterns: ['bin/cli.js', 'src/commands/'],
+        filePatterns: ["bin/cli.js", "src/commands/"],
         packageConfig: {
-          name: 'my-cli',
-          bin: { mycli: 'bin/cli.js' },
+          name: "my-cli",
+          bin: { mycli: "bin/cli.js" },
         },
         sourceAnalysis: {
           hasBinaryExecution: true,
@@ -170,22 +170,22 @@ describe('ArtifactDetector', () => {
       const webResult = detectArtifactType(webContext);
       const cliResult = detectArtifactType(cliContext);
 
-      expect(webResult.primaryType).toBe('web_service');
-      expect(cliResult.primaryType).toBe('tool');
+      expect(webResult.primaryType).toBe("web_service");
+      expect(cliResult.primaryType).toBe("tool");
     });
   });
 
-  describe('Multi-factor Detection', () => {
-    it('should aggregate scores from dependencies, scripts, config, and source analysis', () => {
+  describe("Multi-factor Detection", () => {
+    it("should aggregate scores from dependencies, scripts, config, and source analysis", () => {
       const context: DetectionContext = {
-        language: 'javascript',
-        dependencies: ['commander'], // CLI dependency
+        language: "javascript",
+        dependencies: ["commander"], // CLI dependency
         scripts: {
-          mycli: 'node bin/cli.js', // CLI script
+          mycli: "node bin/cli.js", // CLI script
         },
-        filePatterns: ['bin/cli.js'],
+        filePatterns: ["bin/cli.js"],
         packageConfig: {
-          bin: { mycli: 'bin/cli.js' }, // CLI config
+          bin: { mycli: "bin/cli.js" }, // CLI config
         },
         sourceAnalysis: {
           hasBinaryExecution: true, // CLI source pattern
@@ -203,7 +203,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('tool');
+      expect(result.primaryType).toBe("tool");
       expect(result.confidence).toBeGreaterThan(0.9); // High confidence due to multiple factors
       expect(result.factors.dependencyFactors.length).toBeGreaterThan(0);
       expect(result.factors.scriptFactors.length).toBeGreaterThan(0);
@@ -211,16 +211,16 @@ describe('ArtifactDetector', () => {
       expect(result.factors.sourceFactors?.length).toBeGreaterThan(0);
     });
 
-    it('should provide detailed breakdown of detection factors', () => {
+    it("should provide detailed breakdown of detection factors", () => {
       const context: DetectionContext = {
-        language: 'python',
-        dependencies: ['click', 'requests'],
+        language: "python",
+        dependencies: ["click", "requests"],
         scripts: {},
-        filePatterns: ['cli.py'],
+        filePatterns: ["cli.py"],
         packageConfig: {
           entry_points: {
             console_scripts: {
-              mytool: 'mypackage.cli:main',
+              mytool: "mypackage.cli:main",
             },
           },
         },
@@ -234,18 +234,18 @@ describe('ArtifactDetector', () => {
     });
   });
 
-  describe('Alternative Type Ranking', () => {
-    it('should provide ranked alternatives when detection is ambiguous', () => {
+  describe("Alternative Type Ranking", () => {
+    it("should provide ranked alternatives when detection is ambiguous", () => {
       const ambiguousContext: DetectionContext = {
-        language: 'javascript',
-        dependencies: ['express', 'commander'], // Both web and CLI
+        language: "javascript",
+        dependencies: ["express", "commander"], // Both web and CLI
         scripts: {
-          start: 'node app.js',
-          cli: 'node bin/cli.js',
+          start: "node app.js",
+          cli: "node bin/cli.js",
         },
-        filePatterns: ['app.js', 'bin/cli.js'],
+        filePatterns: ["app.js", "bin/cli.js"],
         packageConfig: {
-          name: 'multi-purpose-tool',
+          name: "multi-purpose-tool",
         },
       };
 
@@ -255,58 +255,58 @@ describe('ArtifactDetector', () => {
       expect(result.alternativeTypes[0].confidence).toBeLessThanOrEqual(result.confidence);
 
       // Should contain both web_service and tool as possibilities
-      const typeNames = [result.primaryType, ...result.alternativeTypes.map(alt => alt.type)];
-      expect(typeNames).toContain('web_service');
-      expect(typeNames).toContain('tool');
+      const typeNames = [result.primaryType, ...result.alternativeTypes.map((alt) => alt.type)];
+      expect(typeNames).toContain("web_service");
+      expect(typeNames).toContain("tool");
     });
   });
 
-  describe('Language-Specific Patterns', () => {
-    it('should handle Go import patterns correctly', () => {
+  describe("Language-Specific Patterns", () => {
+    it("should handle Go import patterns correctly", () => {
       const context: DetectionContext = {
-        language: 'go',
-        dependencies: ['github.com/spf13/cobra', 'github.com/fatih/color'],
+        language: "go",
+        dependencies: ["github.com/spf13/cobra", "github.com/fatih/color"],
         scripts: {
-          build: 'go build',
-          run: 'go run main.go',
+          build: "go build",
+          run: "go run main.go",
         },
-        filePatterns: ['main.go', 'cmd/'],
+        filePatterns: ["main.go", "cmd/"],
         packageConfig: {
-          name: 'go-cli-tool',
+          name: "go-cli-tool",
         },
       };
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('tool');
+      expect(result.primaryType).toBe("tool");
       expect(result.confidence).toBeGreaterThan(0.7);
     });
 
-    it('should handle C# namespace patterns correctly', () => {
+    it("should handle C# namespace patterns correctly", () => {
       const context: DetectionContext = {
-        language: 'csharp',
-        dependencies: ['CommandLineParser', 'Spectre.Console'],
+        language: "csharp",
+        dependencies: ["CommandLineParser", "Spectre.Console"],
         scripts: {
-          build: 'dotnet build',
-          run: 'dotnet run',
+          build: "dotnet build",
+          run: "dotnet run",
         },
-        filePatterns: ['Program.cs', 'Commands/'],
+        filePatterns: ["Program.cs", "Commands/"],
         packageConfig: {
-          name: 'CSharpCliTool',
+          name: "CSharpCliTool",
         },
       };
 
       const result = detectArtifactType(context);
 
-      expect(result.primaryType).toBe('tool');
+      expect(result.primaryType).toBe("tool");
       expect(result.confidence).toBeGreaterThan(0.7);
     });
   });
 
-  describe('Error Handling and Edge Cases', () => {
-    it('should handle minimal context gracefully', () => {
+  describe("Error Handling and Edge Cases", () => {
+    it("should handle minimal context gracefully", () => {
       const minimalContext: DetectionContext = {
-        language: 'javascript',
+        language: "javascript",
         dependencies: [],
         scripts: {},
         filePatterns: [],
@@ -315,14 +315,14 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(minimalContext);
 
-      expect(result.primaryType).toBe('module'); // Default fallback
+      expect(result.primaryType).toBe("module"); // Default fallback
       expect(result.confidence).toBeLessThan(0.5);
     });
 
-    it('should handle unknown language gracefully', () => {
+    it("should handle unknown language gracefully", () => {
       const unknownLangContext: DetectionContext = {
-        language: 'unknown-language',
-        dependencies: ['some-dependency'],
+        language: "unknown-language",
+        dependencies: ["some-dependency"],
         scripts: {},
         filePatterns: [],
         packageConfig: {},
@@ -330,7 +330,7 @@ describe('ArtifactDetector', () => {
 
       const result = detectArtifactType(unknownLangContext);
 
-      expect(result.primaryType).toBe('module');
+      expect(result.primaryType).toBe("module");
       expect(result.confidence).toBe(0);
     });
   });

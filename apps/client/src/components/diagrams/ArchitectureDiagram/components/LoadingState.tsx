@@ -1,16 +1,16 @@
-import { clsx } from 'clsx';
-import React from 'react';
+import { clsx } from "clsx";
+import React from "react";
 
 interface LoadingStateProps {
   className?: string;
 }
 
-export const LoadingState: React.FC<LoadingStateProps> = ({ className = '' }) => {
+export const LoadingState: React.FC<LoadingStateProps> = ({ className = "" }) => {
   return (
     <div
       className={clsx(
-        'h-full overflow-auto bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200',
-        className
+        "h-full overflow-auto bg-white text-gray-700 transition-colors dark:bg-graphite-950 dark:text-graphite-200",
+        className,
       )}
     >
       <div className="border-b border-gray-200 bg-gray-50 p-4 dark:border-graphite-700 dark:bg-graphite-900">

@@ -1,5 +1,5 @@
-import { type ReactNode } from 'react';
-import Card from '../../design-system/components/Card';
+import { type ReactNode } from "react";
+import Card from "../../design-system/components/Card";
 
 interface SplitViewShowcaseProps {
   title: string;
@@ -16,9 +16,9 @@ export function SplitViewShowcase({
   description,
   dataPanel,
   diagramPanel,
-  dataPanelTitle = 'Specification Data',
-  diagramPanelTitle = 'Generated Diagram',
-  className = '',
+  dataPanelTitle = "Specification Data",
+  diagramPanelTitle = "Generated Diagram",
+  className = "",
 }: SplitViewShowcaseProps) {
   return (
     <div className={`w-full h-full ${className}`}>

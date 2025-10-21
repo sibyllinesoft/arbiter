@@ -2,8 +2,8 @@
  * Project context for managing current project state
  */
 
-import { type ReactNode, createContext, useContext, useState } from 'react';
-import type { Project } from '../types/api';
+import { type ReactNode, createContext, useContext, useState } from "react";
+import type { Project } from "../types/api";
 
 interface ProjectContextValue {
   currentProject: Project | null;
@@ -30,7 +30,7 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
 export function useCurrentProject(): Project | null {
   const context = useContext(ProjectContext);
   if (context === undefined) {
-    throw new Error('useCurrentProject must be used within a ProjectProvider');
+    throw new Error("useCurrentProject must be used within a ProjectProvider");
   }
   return context.currentProject;
 }
@@ -38,7 +38,7 @@ export function useCurrentProject(): Project | null {
 export function useSetCurrentProject(): (project: Project | null) => void {
   const context = useContext(ProjectContext);
   if (context === undefined) {
-    throw new Error('useSetCurrentProject must be used within a ProjectProvider');
+    throw new Error("useSetCurrentProject must be used within a ProjectProvider");
   }
   return context.setCurrentProject;
 }

@@ -3,16 +3,16 @@
  * Persistence helpers for storing importer artefacts during iterative scans.
  */
 
-import * as crypto from 'crypto';
-import * as path from 'path';
-import * as fs from 'fs-extra';
+import * as crypto from "crypto";
+import * as path from "path";
+import * as fs from "fs-extra";
 import type {
   ActionType,
   ArtifactLogEntry as ArtifactLog,
   ArtifactType,
   InferredArtifact,
   Spec,
-} from './types';
+} from "./types";
 
 /**
  * Minimal persistence contract used by the importer.
@@ -69,8 +69,8 @@ export class SimpleJsonPersister implements IPersister {
    */
   constructor(projectRoot: string) {
     this.projectRoot = projectRoot;
-    this.specsPath = path.join(projectRoot, 'importer-specs.json');
-    this.logsPath = path.join(projectRoot, 'importer-artifact-log.json');
+    this.specsPath = path.join(projectRoot, "importer-specs.json");
+    this.logsPath = path.join(projectRoot, "importer-artifact-log.json");
     this.ensureFiles();
   }
 
@@ -97,7 +97,7 @@ export class SimpleJsonPersister implements IPersister {
       metadata: artifact.artifact.metadata,
       provenance: artifact.provenance,
     });
-    return crypto.createHash('sha256').update(data).digest('hex');
+    return crypto.createHash("sha256").update(data).digest("hex");
   }
 
   async createSpec(scope: string, config_files?: string[]): Promise<string> {
@@ -152,7 +152,7 @@ export class SimpleJsonPersister implements IPersister {
       artifact_hash: lastAddLog.artifact_hash,
       artifact_data: lastAddLog.artifact_data,
       provenance_data: lastAddLog.provenance_data,
-      action: 'remove',
+      action: "remove",
       timestamp: Date.now(),
     };
     logs.push(logEntry);
@@ -164,7 +164,7 @@ export class SimpleJsonPersister implements IPersister {
     if (!latestSpecId) return false;
     const allLogs = await this.getAllLogsForSpecChain(latestSpecId);
     const nameLogs = allLogs
-      .filter(l => l.artifact_name === artifact.artifact.name && l.action === 'add')
+      .filter((l) => l.artifact_name === artifact.artifact.name && l.action === "add")
       .sort((a, b) => b.timestamp - a.timestamp);
     if (nameLogs.length === 0) return false;
     const lastHash = nameLogs[0].artifact_hash;
@@ -176,7 +176,7 @@ export class SimpleJsonPersister implements IPersister {
     if (!latestSpecId) return null;
     const allLogs = await this.getAllLogsForSpecChain(latestSpecId);
     const nameLogs = allLogs
-      .filter(l => l.artifact_name === artifactName && l.action === 'add')
+      .filter((l) => l.artifact_name === artifactName && l.action === "add")
       .sort((a, b) => b.timestamp - a.timestamp);
     return nameLogs.length > 0 ? nameLogs[0] : null;
   }
@@ -220,7 +220,7 @@ export class SimpleJsonPersister implements IPersister {
 
     for (const [name, nameLogs] of logsByName) {
       const adds = nameLogs
-        .filter(log => log.action === 'add')
+        .filter((log) => log.action === "add")
         .sort((a, b) => b.timestamp - a.timestamp);
       if (adds.length === 0) continue;
       const lastAdd = adds[0];
@@ -234,7 +234,7 @@ export class SimpleJsonPersister implements IPersister {
             plugins: [],
             rules: [],
             timestamp: lastAdd.timestamp,
-            pipelineVersion: '1.0',
+            pipelineVersion: "1.0",
           };
       const reconstructed: InferredArtifact = {
         artifact: artifactData,

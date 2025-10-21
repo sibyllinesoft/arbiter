@@ -4,9 +4,9 @@
  * Designed for developer tools with sophisticated graphite theme
  */
 
-import { AlertCircle, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from 'react';
-import { cn } from '../../variants';
+import { AlertCircle, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import React, { forwardRef, type InputHTMLAttributes, type ReactNode } from "react";
+import { cn } from "../../variants";
 
 export interface RadioOption {
   /** Value for the radio option */
@@ -21,12 +21,12 @@ export interface RadioOption {
   icon?: ReactNode;
 }
 
-export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
   /** Radio variant determines the visual style */
-  variant?: 'default' | 'error' | 'success' | 'warning';
+  variant?: "default" | "error" | "success" | "warning";
 
   /** Radio size affects the radio and font size */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Label text for the radio */
   label?: string;
@@ -68,8 +68,8 @@ export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(
   (
     {
-      variant = 'default',
-      size = 'md',
+      variant = "default",
+      size = "md",
       label,
       description,
       helperText,
@@ -87,10 +87,10 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
       id,
       ...props
     },
-    ref
+    ref,
   ) => {
     // Determine actual variant based on state props
-    const actualVariant = error ? 'error' : warning ? 'warning' : success ? 'success' : variant;
+    const actualVariant = error ? "error" : warning ? "warning" : success ? "success" : variant;
     const actualHelperText = error || warning || success || helperText;
 
     // Generate unique ID
@@ -112,22 +112,22 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
     // Radio size classes
     const sizeClasses = {
       sm: {
-        radio: 'h-4 w-4',
-        text: 'text-sm',
-        dot: 'h-1.5 w-1.5',
-        gap: 'gap-2',
+        radio: "h-4 w-4",
+        text: "text-sm",
+        dot: "h-1.5 w-1.5",
+        gap: "gap-2",
       },
       md: {
-        radio: 'h-5 w-5',
-        text: 'text-base',
-        dot: 'h-2 w-2',
-        gap: 'gap-3',
+        radio: "h-5 w-5",
+        text: "text-base",
+        dot: "h-2 w-2",
+        gap: "gap-3",
       },
       lg: {
-        radio: 'h-6 w-6',
-        text: 'text-lg',
-        dot: 'h-2.5 w-2.5',
-        gap: 'gap-3',
+        radio: "h-6 w-6",
+        text: "text-lg",
+        dot: "h-2.5 w-2.5",
+        gap: "gap-3",
       },
     };
 
@@ -136,36 +136,36 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
     // Radio variant classes
     const variantClasses = {
       default: cn(
-        'border-graphite-300 text-blue-600 focus:ring-blue-500',
-        'checked:border-blue-600',
-        'hover:border-graphite-400',
-        'disabled:bg-graphite-50 disabled:border-graphite-200'
+        "border-graphite-300 text-blue-600 focus:ring-blue-500",
+        "checked:border-blue-600",
+        "hover:border-graphite-400",
+        "disabled:bg-graphite-50 disabled:border-graphite-200",
       ),
       error: cn(
-        'border-red-300 text-red-600 focus:ring-red-500',
-        'checked:border-red-600',
-        'hover:border-red-400',
-        'disabled:bg-red-50 disabled:border-red-200'
+        "border-red-300 text-red-600 focus:ring-red-500",
+        "checked:border-red-600",
+        "hover:border-red-400",
+        "disabled:bg-red-50 disabled:border-red-200",
       ),
       warning: cn(
-        'border-amber-300 text-amber-600 focus:ring-amber-500',
-        'checked:border-amber-600',
-        'hover:border-amber-400',
-        'disabled:bg-amber-50 disabled:border-amber-200'
+        "border-amber-300 text-amber-600 focus:ring-amber-500",
+        "checked:border-amber-600",
+        "hover:border-amber-400",
+        "disabled:bg-amber-50 disabled:border-amber-200",
       ),
       success: cn(
-        'border-emerald-300 text-emerald-600 focus:ring-emerald-500',
-        'checked:border-emerald-600',
-        'hover:border-emerald-400',
-        'disabled:bg-emerald-50 disabled:border-emerald-200'
+        "border-emerald-300 text-emerald-600 focus:ring-emerald-500",
+        "checked:border-emerald-600",
+        "hover:border-emerald-400",
+        "disabled:bg-emerald-50 disabled:border-emerald-200",
       ),
     };
 
     const radioClasses = cn(
       // Base styles
-      'relative rounded-full border-2 bg-white transition-all duration-150 ease-in-out',
-      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50',
-      'disabled:cursor-not-allowed',
+      "relative rounded-full border-2 bg-white transition-all duration-150 ease-in-out",
+      "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-opacity-50",
+      "disabled:cursor-not-allowed",
 
       // Size
       sizeClass.radio,
@@ -174,37 +174,37 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
       variantClasses[actualVariant],
 
       // Loading state
-      loading && 'cursor-wait',
+      loading && "cursor-wait",
 
-      className
+      className,
     );
 
     const wrapperClasses = cn(
-      'flex items-start',
+      "flex items-start",
       sizeClass.gap,
-      disabled && 'opacity-60 cursor-not-allowed',
-      wrapperClassName
+      disabled && "opacity-60 cursor-not-allowed",
+      wrapperClassName,
     );
 
     const labelClasses = cn(
-      'flex-1',
+      "flex-1",
       sizeClass.text,
-      'text-graphite-900 font-medium cursor-pointer select-none',
-      actualVariant === 'error' && 'text-red-900',
-      actualVariant === 'warning' && 'text-amber-900',
-      actualVariant === 'success' && 'text-emerald-900',
-      disabled && 'cursor-not-allowed text-graphite-500',
-      labelClassName
+      "text-graphite-900 font-medium cursor-pointer select-none",
+      actualVariant === "error" && "text-red-900",
+      actualVariant === "warning" && "text-amber-900",
+      actualVariant === "success" && "text-emerald-900",
+      disabled && "cursor-not-allowed text-graphite-500",
+      labelClassName,
     );
 
     const dotClasses = cn(
-      'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-150',
+      "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-150",
       sizeClass.dot,
-      actualVariant === 'default' && 'bg-blue-600',
-      actualVariant === 'error' && 'bg-red-600',
-      actualVariant === 'warning' && 'bg-amber-600',
-      actualVariant === 'success' && 'bg-emerald-600',
-      checked ? 'scale-100 opacity-100' : 'scale-0 opacity-0'
+      actualVariant === "default" && "bg-blue-600",
+      actualVariant === "error" && "bg-red-600",
+      actualVariant === "warning" && "bg-amber-600",
+      actualVariant === "success" && "bg-emerald-600",
+      checked ? "scale-100 opacity-100" : "scale-0 opacity-0",
     );
 
     return (
@@ -220,7 +220,7 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
             className="sr-only"
             aria-describedby={cn(
               actualHelperText && `${radioId}-description`,
-              description && `${radioId}-desc`
+              description && `${radioId}-desc`,
             )}
             {...props}
           />
@@ -256,7 +256,7 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
               {description && (
                 <p
                   id={`${radioId}-desc`}
-                  className={cn('text-sm text-graphite-600', disabled && 'text-graphite-400')}
+                  className={cn("text-sm text-graphite-600", disabled && "text-graphite-400")}
                 >
                   {description}
                 </p>
@@ -270,11 +270,11 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
           <p
             id={`${radioId}-description`}
             className={cn(
-              'text-sm ml-7 flex items-start gap-1',
-              actualVariant === 'error' && 'text-red-600',
-              actualVariant === 'warning' && 'text-amber-600',
-              actualVariant === 'success' && 'text-green-600',
-              actualVariant === 'default' && 'text-graphite-600'
+              "text-sm ml-7 flex items-start gap-1",
+              actualVariant === "error" && "text-red-600",
+              actualVariant === "warning" && "text-amber-600",
+              actualVariant === "success" && "text-green-600",
+              actualVariant === "default" && "text-graphite-600",
             )}
           >
             {actualHelperText}
@@ -282,10 +282,10 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
-Radio.displayName = 'Radio';
+Radio.displayName = "Radio";
 
 // RadioGroup component for handling groups of radio buttons
 export interface RadioGroupProps {
@@ -305,10 +305,10 @@ export interface RadioGroupProps {
   options: RadioOption[];
 
   /** Radio group variant */
-  variant?: 'default' | 'error' | 'success' | 'warning';
+  variant?: "default" | "error" | "success" | "warning";
 
   /** Radio group size */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
 
   /** Group label */
   label?: string;
@@ -335,7 +335,7 @@ export interface RadioGroupProps {
   required?: boolean;
 
   /** Layout direction */
-  direction?: 'vertical' | 'horizontal';
+  direction?: "vertical" | "horizontal";
 
   /** Custom className */
   className?: string;
@@ -347,8 +347,8 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   onChange,
   name,
   options,
-  variant = 'default',
-  size = 'md',
+  variant = "default",
+  size = "md",
   label,
   description,
   helperText,
@@ -357,21 +357,21 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
   success,
   disabled = false,
   required = false,
-  direction = 'vertical',
+  direction = "vertical",
   className,
 }) => {
-  const [selectedValue, setSelectedValue] = React.useState(value || defaultValue || '');
+  const [selectedValue, setSelectedValue] = React.useState(value || defaultValue || "");
 
   const handleChange = (optionValue: string) => {
     setSelectedValue(optionValue);
     onChange?.(optionValue);
   };
 
-  const actualVariant = error ? 'error' : warning ? 'warning' : success ? 'success' : variant;
+  const actualVariant = error ? "error" : warning ? "warning" : success ? "success" : variant;
   const actualHelperText = error || warning || success || helperText;
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn("space-y-2", className)}>
       {/* Group label */}
       {label && (
         <legend className="text-sm font-medium text-graphite-700">
@@ -385,9 +385,9 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
 
       {/* Radio options */}
       <div
-        className={cn('space-y-2', direction === 'horizontal' && 'flex flex-wrap gap-6 space-y-0')}
+        className={cn("space-y-2", direction === "horizontal" && "flex flex-wrap gap-6 space-y-0")}
       >
-        {options.map(option => (
+        {options.map((option) => (
           <Radio
             key={option.value}
             name={name}
@@ -399,7 +399,7 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
             label={option.label}
             description={option.description}
             disabled={disabled || option.disabled}
-            className={direction === 'horizontal' ? 'mb-0' : undefined}
+            className={direction === "horizontal" ? "mb-0" : undefined}
           >
             {option.icon && (
               <div className="flex items-center gap-2">
@@ -415,11 +415,11 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
       {actualHelperText && (
         <p
           className={cn(
-            'text-sm',
-            actualVariant === 'error' && 'text-red-600',
-            actualVariant === 'warning' && 'text-amber-600',
-            actualVariant === 'success' && 'text-green-600',
-            actualVariant === 'default' && 'text-graphite-600'
+            "text-sm",
+            actualVariant === "error" && "text-red-600",
+            actualVariant === "warning" && "text-amber-600",
+            actualVariant === "success" && "text-green-600",
+            actualVariant === "default" && "text-graphite-600",
           )}
         >
           {actualHelperText}

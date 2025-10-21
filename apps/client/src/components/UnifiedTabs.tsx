@@ -2,19 +2,16 @@
  * UnifiedTabs - Combines editor and diagram tabs into a single tab list
  */
 
-import React from 'react';
-import type { Project } from '../types/api';
+import React from "react";
+import type { Project } from "../types/api";
 import {
   ArchitectureReport,
+  ClientsReport,
   EventsReport,
-  FlowReport,
-  HandlersReport,
   ServicesReport,
-  SourceEditor,
   TasksReport,
-  ViewReport,
   WebhooksReport,
-} from './';
+} from "./";
 
 interface DiagramPlaceholderProps {
   type: string;
@@ -42,38 +39,9 @@ interface UnifiedTabsProps {
 
 export function useUnifiedTabs({ project }: UnifiedTabsProps) {
   const allTabs = [
-    // Editor tabs
     {
-      id: 'source',
-      label: 'Source',
-      content: project ? (
-        <SourceEditor projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Source Code" />
-      ),
-    },
-    // Diagram tabs
-    {
-      id: 'flow',
-      label: 'Flow',
-      content: project ? (
-        <FlowReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Flow Diagram" />
-      ),
-    },
-    {
-      id: 'view',
-      label: 'View',
-      content: project ? (
-        <ViewReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="View Wireframes" />
-      ),
-    },
-    {
-      id: 'architecture',
-      label: 'Sources',
+      id: "architecture",
+      label: "Sources",
       content: project ? (
         <ArchitectureReport projectId={project.id} />
       ) : (
@@ -81,8 +49,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'services',
-      label: 'Services',
+      id: "services",
+      label: "Services",
       content: project ? (
         <ServicesReport projectId={project.id} />
       ) : (
@@ -90,8 +58,17 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'tasks',
-      label: 'Tasks',
+      id: "clients",
+      label: "Clients",
+      content: project ? (
+        <ClientsReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Client Catalog" />
+      ),
+    },
+    {
+      id: "tasks",
+      label: "Tasks",
       content: project ? (
         <TasksReport projectId={project.id} />
       ) : (
@@ -99,8 +76,8 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'events',
-      label: 'Events',
+      id: "events",
+      label: "Events",
       content: project ? (
         <EventsReport projectId={project.id} />
       ) : (
@@ -108,18 +85,13 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
       ),
     },
     {
-      id: 'webhooks',
-      label: 'Webhooks',
+      id: "webhooks",
+      label: "Webhooks",
       content: project ? (
         <WebhooksReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Webhook Configuration" />
       ),
-    },
-    {
-      id: 'handlers',
-      label: 'Handlers',
-      content: <HandlersReport />,
     },
   ];
 

@@ -6,7 +6,7 @@
  * requirements.txt, and source files to infer application architecture.
  */
 
-import * as path from 'path';
+import * as path from "path";
 import {
   type ArtifactType,
   type Evidence,
@@ -15,7 +15,7 @@ import {
   type InferredArtifact,
   type ParseContext,
   type Provenance,
-} from '../types';
+} from "../types";
 
 // ============================================================================
 // Python Configuration Data Types
@@ -51,26 +51,26 @@ interface PythonSourceData extends Record<string, unknown> {
 
 // Simplified heuristics to align with Node and Rust manifest classification
 const PYTHON_WEB_FRAMEWORKS = [
-  'django',
-  'flask',
-  'fastapi',
-  'tornado',
-  'sanic',
-  'starlette',
-  'bottle',
-  'falcon',
-  'pyramid',
+  "django",
+  "flask",
+  "fastapi",
+  "tornado",
+  "sanic",
+  "starlette",
+  "bottle",
+  "falcon",
+  "pyramid",
 ];
 
-const PYTHON_CLI_LIBRARIES = ['click', 'typer', 'argparse', 'fire', 'docopt'];
+const PYTHON_CLI_LIBRARIES = ["click", "typer", "argparse", "fire", "docopt"];
 
-const PYTHON_FRONTEND_LIBRARIES = ['streamlit', 'dash', 'gradio', 'panel'];
+const PYTHON_FRONTEND_LIBRARIES = ["streamlit", "dash", "gradio", "panel"];
 
 function normalizeDependencyName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/[^a-z0-9_.-].*$/i, '')
-    .replace(/_/g, '-');
+    .replace(/[^a-z0-9_.-].*$/i, "")
+    .replace(/_/g, "-");
 }
 
 function collectNormalizedDependencies(values: string[] | undefined): Set<string> {
@@ -99,15 +99,15 @@ function classifyPythonPackage(packageData: PythonPackageData): PythonClassifica
   const combinedDeps = new Set<string>([...dependencySet, ...devDependencySet]);
 
   const findDependency = (candidates: string[]): string | undefined => {
-    return candidates.find(candidate => combinedDeps.has(candidate));
+    return candidates.find((candidate) => combinedDeps.has(candidate));
   };
 
   const matchedWebFramework = findDependency(PYTHON_WEB_FRAMEWORKS);
   if (matchedWebFramework) {
     return {
-      artifactType: 'service',
-      detectedType: 'service',
-      reason: 'web-framework',
+      artifactType: "service",
+      detectedType: "service",
+      reason: "web-framework",
       framework: matchedWebFramework,
     };
   }
@@ -115,17 +115,17 @@ function classifyPythonPackage(packageData: PythonPackageData): PythonClassifica
   const hasScripts = Object.keys(packageData.scripts || {}).length > 0;
   const hasConsoleEntry = Boolean(
     packageData.entryPoints &&
-      typeof packageData.entryPoints === 'object' &&
+      typeof packageData.entryPoints === "object" &&
       Object.keys((packageData.entryPoints as Record<string, unknown>).console_scripts ?? {})
-        .length > 0
+        .length > 0,
   );
   const matchedCliLibrary = findDependency(PYTHON_CLI_LIBRARIES);
 
   if (matchedCliLibrary || hasScripts || hasConsoleEntry) {
     return {
-      artifactType: 'binary',
-      detectedType: 'cli',
-      reason: matchedCliLibrary ? 'cli-library' : 'console-script',
+      artifactType: "binary",
+      detectedType: "cli",
+      reason: matchedCliLibrary ? "cli-library" : "console-script",
       framework: matchedCliLibrary,
     };
   }
@@ -133,17 +133,17 @@ function classifyPythonPackage(packageData: PythonPackageData): PythonClassifica
   const matchedFrontendLibrary = findDependency(PYTHON_FRONTEND_LIBRARIES);
   if (matchedFrontendLibrary) {
     return {
-      artifactType: 'frontend',
-      detectedType: 'frontend',
-      reason: 'frontend-library',
+      artifactType: "frontend",
+      detectedType: "frontend",
+      reason: "frontend-library",
       framework: matchedFrontendLibrary,
     };
   }
 
   return {
-    artifactType: 'module',
-    detectedType: 'module',
-    reason: 'default-module',
+    artifactType: "module",
+    detectedType: "module",
+    reason: "default-module",
   };
 }
 
@@ -162,25 +162,25 @@ function classifyPythonSource(evidence: PythonSourceData[]): PythonClassificatio
 
   if (matchedFramework) {
     return {
-      artifactType: 'service',
-      detectedType: 'service',
-      reason: 'source-web-framework',
+      artifactType: "service",
+      detectedType: "service",
+      reason: "source-web-framework",
       framework: matchedFramework,
     };
   }
 
   if (hasCli) {
     return {
-      artifactType: 'binary',
-      detectedType: 'cli',
-      reason: 'source-cli-pattern',
+      artifactType: "binary",
+      detectedType: "cli",
+      reason: "source-cli-pattern",
     };
   }
 
   return {
-    artifactType: 'module',
-    detectedType: 'module',
-    reason: 'source-default',
+    artifactType: "module",
+    detectedType: "module",
+    reason: "source-default",
   };
 }
 
@@ -190,7 +190,7 @@ function classifyPythonSource(evidence: PythonSourceData[]): PythonClassificatio
 
 export class PythonPlugin implements ImporterPlugin {
   name(): string {
-    return 'python';
+    return "python";
   }
 
   supports(filePath: string, fileContent?: string): boolean {
@@ -200,21 +200,21 @@ export class PythonPlugin implements ImporterPlugin {
     // Support Python configuration files
     if (
       [
-        'setup.py',
-        'pyproject.toml',
-        'requirements.txt',
-        'Pipfile',
-        'poetry.lock',
-        'setup.cfg',
-        'environment.yml',
-        'conda.yml',
+        "setup.py",
+        "pyproject.toml",
+        "requirements.txt",
+        "Pipfile",
+        "poetry.lock",
+        "setup.cfg",
+        "environment.yml",
+        "conda.yml",
       ].includes(fileName)
     ) {
       return true;
     }
 
     // Support Python source files
-    if (['.py', '.pyx', '.pyi'].includes(extension)) {
+    if ([".py", ".pyx", ".pyi"].includes(extension)) {
       return true;
     }
 
@@ -229,15 +229,15 @@ export class PythonPlugin implements ImporterPlugin {
     const baseId = path.relative(context?.projectRoot ?? process.cwd(), filePath);
 
     try {
-      if (fileName === 'setup.py') {
+      if (fileName === "setup.py") {
         evidence.push(...(await this.parseSetupPy(filePath, fileContent, baseId)));
-      } else if (fileName === 'pyproject.toml') {
+      } else if (fileName === "pyproject.toml") {
         evidence.push(...(await this.parsePyprojectToml(filePath, fileContent, baseId)));
-      } else if (fileName === 'requirements.txt') {
+      } else if (fileName === "requirements.txt") {
         evidence.push(...(await this.parseRequirementsTxt(filePath, fileContent, baseId)));
-      } else if (fileName === 'Pipfile') {
+      } else if (fileName === "Pipfile") {
         evidence.push(...(await this.parsePipfile(filePath, fileContent, baseId)));
-      } else if (path.extname(filePath) === '.py') {
+      } else if (path.extname(filePath) === ".py") {
         evidence.push(...(await this.parsePythonSource(filePath, fileContent, baseId)));
       }
     } catch (error) {
@@ -248,17 +248,17 @@ export class PythonPlugin implements ImporterPlugin {
   }
 
   async infer(evidence: Evidence[], context: InferenceContext): Promise<InferredArtifact[]> {
-    const pythonEvidence = evidence.filter(e => e.source === 'python');
+    const pythonEvidence = evidence.filter((e) => e.source === "python");
     if (pythonEvidence.length === 0) return [];
 
     const artifacts: InferredArtifact[] = [];
 
     try {
       // Infer from package configuration evidence
-      const packageEvidence = pythonEvidence.filter(e => {
-        if (e.type !== 'config') return false;
-        const configType = typeof e.data?.configType === 'string' ? e.data.configType : '';
-        return ['setup', 'pyproject', 'package'].some(token => configType.includes(token));
+      const packageEvidence = pythonEvidence.filter((e) => {
+        if (e.type !== "config") return false;
+        const configType = typeof e.data?.configType === "string" ? e.data.configType : "";
+        return ["setup", "pyproject", "package"].some((token) => configType.includes(token));
       });
 
       for (const pkg of packageEvidence) {
@@ -270,7 +270,7 @@ export class PythonPlugin implements ImporterPlugin {
         artifacts.push(...(await this.inferFromSourceOnly(pythonEvidence, context)));
       }
     } catch (error) {
-      console.warn('Python plugin inference failed:', error);
+      console.warn("Python plugin inference failed:", error);
     }
 
     return artifacts;
@@ -283,7 +283,7 @@ export class PythonPlugin implements ImporterPlugin {
   private async parseSetupPy(
     filePath: string,
     content: string,
-    baseId: string
+    baseId: string,
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
@@ -296,21 +296,21 @@ export class PythonPlugin implements ImporterPlugin {
 
       // Extract basic metadata
       const name =
-        this.extractPythonStringField(setupContent, 'name') ||
+        this.extractPythonStringField(setupContent, "name") ||
         path.basename(path.dirname(filePath));
-      const version = this.extractPythonStringField(setupContent, 'version');
-      const description = this.extractPythonStringField(setupContent, 'description');
+      const version = this.extractPythonStringField(setupContent, "version");
+      const description = this.extractPythonStringField(setupContent, "description");
 
       // Extract dependencies
-      const installRequires = this.extractPythonListField(setupContent, 'install_requires');
-      const extraRequires = this.extractPythonDictField(setupContent, 'extras_require');
+      const installRequires = this.extractPythonListField(setupContent, "install_requires");
+      const extraRequires = this.extractPythonDictField(setupContent, "extras_require");
 
       // Extract entry points
-      const entryPoints = this.extractPythonDictField(setupContent, 'entry_points');
-      const scripts = this.extractPythonListField(setupContent, 'scripts');
+      const entryPoints = this.extractPythonDictField(setupContent, "entry_points");
+      const scripts = this.extractPythonListField(setupContent, "scripts");
 
       const packageData: PythonPackageData = {
-        configType: 'setup-py',
+        configType: "setup-py",
         name,
         version,
         description,
@@ -318,15 +318,15 @@ export class PythonPlugin implements ImporterPlugin {
         devDependencies: Object.values(extraRequires).flat(),
         scripts: this.convertToScripts(entryPoints as any, scripts),
         entryPoints: entryPoints as any,
-        author: this.extractPythonStringField(setupContent, 'author'),
-        license: this.extractPythonStringField(setupContent, 'license'),
-        homepage: this.extractPythonStringField(setupContent, 'url'),
+        author: this.extractPythonStringField(setupContent, "author"),
+        license: this.extractPythonStringField(setupContent, "license"),
+        homepage: this.extractPythonStringField(setupContent, "url"),
       };
 
       evidence.push({
         id: baseId,
-        source: 'python',
-        type: 'config',
+        source: "python",
+        type: "config",
         filePath,
         data: packageData,
         metadata: {
@@ -335,7 +335,7 @@ export class PythonPlugin implements ImporterPlugin {
         },
       });
     } catch (error) {
-      console.warn('Failed to parse setup.py:', error);
+      console.warn("Failed to parse setup.py:", error);
     }
 
     return evidence;
@@ -344,7 +344,7 @@ export class PythonPlugin implements ImporterPlugin {
   private async parsePyprojectToml(
     filePath: string,
     content: string,
-    baseId: string
+    baseId: string,
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
@@ -358,30 +358,30 @@ export class PythonPlugin implements ImporterPlugin {
 
       // Extract from [project] section (PEP 621)
       const name =
-        this.extractTomlField(projectSection, 'name') ||
-        this.extractTomlField(poetrySection, 'name') ||
+        this.extractTomlField(projectSection, "name") ||
+        this.extractTomlField(poetrySection, "name") ||
         path.basename(path.dirname(filePath));
       const version =
-        this.extractTomlField(projectSection, 'version') ||
-        this.extractTomlField(poetrySection, 'version');
+        this.extractTomlField(projectSection, "version") ||
+        this.extractTomlField(poetrySection, "version");
       const description =
-        this.extractTomlField(projectSection, 'description') ||
-        this.extractTomlField(poetrySection, 'description');
+        this.extractTomlField(projectSection, "description") ||
+        this.extractTomlField(poetrySection, "description");
 
       // Extract dependencies
       const dependencies =
-        this.extractTomlArray(projectSection, 'dependencies') ||
+        this.extractTomlArray(projectSection, "dependencies") ||
         this.extractTomlDependencies(poetrySection);
       const devDependencies = this.extractTomlDevDependencies(content);
 
       // Extract scripts
       const scripts =
-        this.extractTomlTable(projectSection, 'scripts') ||
-        this.extractTomlTable(poetrySection, 'scripts') ||
+        this.extractTomlTable(projectSection, "scripts") ||
+        this.extractTomlTable(poetrySection, "scripts") ||
         {};
 
       const packageData: PythonPackageData = {
-        configType: 'pyproject-toml',
+        configType: "pyproject-toml",
         name,
         version,
         description,
@@ -389,20 +389,20 @@ export class PythonPlugin implements ImporterPlugin {
         devDependencies,
         scripts,
         author:
-          this.extractTomlField(projectSection, 'authors') ||
-          this.extractTomlField(poetrySection, 'authors'),
+          this.extractTomlField(projectSection, "authors") ||
+          this.extractTomlField(poetrySection, "authors"),
         license:
-          this.extractTomlField(projectSection, 'license') ||
-          this.extractTomlField(poetrySection, 'license'),
+          this.extractTomlField(projectSection, "license") ||
+          this.extractTomlField(poetrySection, "license"),
         homepage:
-          this.extractTomlField(projectSection, 'homepage') ||
-          this.extractTomlField(poetrySection, 'homepage'),
+          this.extractTomlField(projectSection, "homepage") ||
+          this.extractTomlField(poetrySection, "homepage"),
       };
 
       evidence.push({
         id: baseId,
-        source: 'python',
-        type: 'config',
+        source: "python",
+        type: "config",
         filePath,
         data: packageData,
         metadata: {
@@ -411,7 +411,7 @@ export class PythonPlugin implements ImporterPlugin {
         },
       });
     } catch (error) {
-      console.warn('Failed to parse pyproject.toml:', error);
+      console.warn("Failed to parse pyproject.toml:", error);
     }
 
     return evidence;
@@ -420,24 +420,24 @@ export class PythonPlugin implements ImporterPlugin {
   private async parseRequirementsTxt(
     filePath: string,
     content: string,
-    baseId: string
+    baseId: string,
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
     try {
       const dependencies = content
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith('#') && !line.startsWith('-'))
-        .map(line => line.split(/[>=<~!]/)[0].trim());
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith("#") && !line.startsWith("-"))
+        .map((line) => line.split(/[>=<~!]/)[0].trim());
 
       evidence.push({
         id: baseId,
-        source: 'python',
-        type: 'dependency',
+        source: "python",
+        type: "dependency",
         filePath,
         data: {
-          configType: 'requirements-txt',
+          configType: "requirements-txt",
           dependencies,
           devDependencies: [],
         },
@@ -447,7 +447,7 @@ export class PythonPlugin implements ImporterPlugin {
         },
       });
     } catch (error) {
-      console.warn('Failed to parse requirements.txt:', error);
+      console.warn("Failed to parse requirements.txt:", error);
     }
 
     return evidence;
@@ -456,7 +456,7 @@ export class PythonPlugin implements ImporterPlugin {
   private async parsePipfile(
     filePath: string,
     content: string,
-    baseId: string
+    baseId: string,
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
@@ -470,11 +470,11 @@ export class PythonPlugin implements ImporterPlugin {
 
       evidence.push({
         id: baseId,
-        source: 'python',
-        type: 'dependency',
+        source: "python",
+        type: "dependency",
         filePath,
         data: {
-          configType: 'pipfile',
+          configType: "pipfile",
           dependencies,
           devDependencies,
         },
@@ -484,7 +484,7 @@ export class PythonPlugin implements ImporterPlugin {
         },
       });
     } catch (error) {
-      console.warn('Failed to parse Pipfile:', error);
+      console.warn("Failed to parse Pipfile:", error);
     }
 
     return evidence;
@@ -493,7 +493,7 @@ export class PythonPlugin implements ImporterPlugin {
   private async parsePythonSource(
     filePath: string,
     content: string,
-    baseId: string
+    baseId: string,
   ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
@@ -506,7 +506,7 @@ export class PythonPlugin implements ImporterPlugin {
       const hasIfMain = /if\s+__name__\s*==\s*['""]__main__['""]/.test(content);
 
       // Check if this is a package __init__.py
-      const isPackageInit = path.basename(filePath) === '__init__.py';
+      const isPackageInit = path.basename(filePath) === "__init__.py";
 
       // Detect web framework usage
       const webFrameworks = this.detectWebFrameworks(content, imports);
@@ -518,7 +518,7 @@ export class PythonPlugin implements ImporterPlugin {
       const dataProcessingPatterns = this.detectDataProcessingPatterns(content, imports);
 
       const sourceData: PythonSourceData = {
-        configType: 'source-file',
+        configType: "source-file",
         filePath,
         hasImports,
         hasIfMain,
@@ -531,8 +531,8 @@ export class PythonPlugin implements ImporterPlugin {
 
       evidence.push({
         id: baseId,
-        source: 'python',
-        type: hasIfMain ? 'function' : hasImports ? 'import' : 'export',
+        source: "python",
+        type: hasIfMain ? "function" : hasImports ? "import" : "export",
         filePath,
         data: sourceData,
         metadata: {
@@ -541,7 +541,7 @@ export class PythonPlugin implements ImporterPlugin {
         },
       });
     } catch (error) {
-      console.warn('Failed to parse Python source:', error);
+      console.warn("Failed to parse Python source:", error);
     }
 
     return evidence;
@@ -554,7 +554,7 @@ export class PythonPlugin implements ImporterPlugin {
   private async inferFromPackageConfig(
     packageEvidence: Evidence,
     allEvidence: Evidence[],
-    context: InferenceContext
+    context: InferenceContext,
   ): Promise<InferredArtifact[]> {
     const packageData = packageEvidence.data as unknown as PythonPackageData;
     const classification = classifyPythonPackage(packageData);
@@ -586,13 +586,13 @@ export class PythonPlugin implements ImporterPlugin {
 
   private async inferFromSourceOnly(
     allEvidence: Evidence[],
-    context: InferenceContext
+    context: InferenceContext,
   ): Promise<InferredArtifact[]> {
-    const sourceEvidence = allEvidence.filter(e => e.data?.configType === 'source-file');
+    const sourceEvidence = allEvidence.filter((e) => e.data?.configType === "source-file");
 
     if (sourceEvidence.length === 0) return [];
 
-    const sourceData = sourceEvidence.map(e => e.data as unknown as PythonSourceData);
+    const sourceData = sourceEvidence.map((e) => e.data as unknown as PythonSourceData);
     const classification = classifyPythonSource(sourceData);
     const projectName = path.basename(context.projectRoot ?? process.cwd());
     const sourceFilePath = sourceEvidence[0]?.filePath ?? context.projectRoot ?? process.cwd();
@@ -619,7 +619,7 @@ export class PythonPlugin implements ImporterPlugin {
 
   private deriveNameFromPath(filePath: string): string {
     const basename = path.basename(path.dirname(filePath));
-    return basename || 'python-project';
+    return basename || "python-project";
   }
 
   private buildArtifactFromClassification(params: {
@@ -643,15 +643,15 @@ export class PythonPlugin implements ImporterPlugin {
       metadataExtras,
     } = params;
 
-    const tags = new Set<string>(['python']);
-    if (artifactType === 'binary') {
-      tags.add('tool');
-    } else if (artifactType === 'service') {
-      tags.add('service');
-    } else if (artifactType === 'frontend') {
-      tags.add('frontend');
+    const tags = new Set<string>(["python"]);
+    if (artifactType === "binary") {
+      tags.add("tool");
+    } else if (artifactType === "service") {
+      tags.add("service");
+    } else if (artifactType === "frontend") {
+      tags.add("frontend");
     } else {
-      tags.add('module');
+      tags.add("module");
     }
 
     if (framework) {
@@ -692,11 +692,11 @@ export class PythonPlugin implements ImporterPlugin {
       tags: Array.from(tags),
       metadata: {
         sourceFile: filePath,
-        language: 'python',
+        language: "python",
         framework,
         detectedType,
         classification: {
-          source: 'python-analysis',
+          source: "python-analysis",
           reason,
         },
         ...metadataExtras,
@@ -710,26 +710,26 @@ export class PythonPlugin implements ImporterPlugin {
 
   private extractImports(content: string): string[] {
     const imports: string[] = [];
-    const lines = content.split('\n');
+    const lines = content.split("\n");
 
     for (const line of lines) {
       const trimmed = line.trim();
 
       // import module
       const importMatch = trimmed.match(
-        /^import\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)/
+        /^import\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)/,
       );
       if (importMatch) {
-        imports.push(importMatch[1].split('.')[0]);
+        imports.push(importMatch[1].split(".")[0]);
         continue;
       }
 
       // from module import ...
       const fromMatch = trimmed.match(
-        /^from\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s+import/
+        /^from\s+([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\s+import/,
       );
       if (fromMatch) {
-        imports.push(fromMatch[1].split('.')[0]);
+        imports.push(fromMatch[1].split(".")[0]);
       }
     }
 
@@ -738,33 +738,33 @@ export class PythonPlugin implements ImporterPlugin {
 
   private detectWebFrameworks(content: string, imports: string[]): string[] {
     const webFrameworks = [
-      'django',
-      'flask',
-      'fastapi',
-      'tornado',
-      'sanic',
-      'starlette',
-      'bottle',
-      'falcon',
-      'pyramid',
+      "django",
+      "flask",
+      "fastapi",
+      "tornado",
+      "sanic",
+      "starlette",
+      "bottle",
+      "falcon",
+      "pyramid",
     ];
-    return imports.filter(imp => webFrameworks.includes(imp));
+    return imports.filter((imp) => webFrameworks.includes(imp));
   }
 
   private detectCliPatterns(content: string, imports: string[]): string[] {
-    const cliLibraries = ['click', 'argparse', 'typer', 'fire', 'docopt'];
+    const cliLibraries = ["click", "argparse", "typer", "fire", "docopt"];
     const patterns: string[] = [];
 
     // Check for CLI library imports
-    patterns.push(...imports.filter(imp => cliLibraries.includes(imp)));
+    patterns.push(...imports.filter((imp) => cliLibraries.includes(imp)));
 
     // Check for CLI patterns in code
     if (/if\s+__name__\s*==\s*['""]__main__['""]/.test(content)) {
-      patterns.push('main_guard');
+      patterns.push("main_guard");
     }
 
     if (/sys\.argv/.test(content)) {
-      patterns.push('argv_usage');
+      patterns.push("argv_usage");
     }
 
     return patterns;
@@ -772,16 +772,16 @@ export class PythonPlugin implements ImporterPlugin {
 
   private detectDataProcessingPatterns(content: string, imports: string[]): string[] {
     const dataLibraries = [
-      'pandas',
-      'numpy',
-      'scipy',
-      'matplotlib',
-      'seaborn',
-      'plotly',
-      'dask',
-      'polars',
+      "pandas",
+      "numpy",
+      "scipy",
+      "matplotlib",
+      "seaborn",
+      "plotly",
+      "dask",
+      "polars",
     ];
-    return imports.filter(imp => dataLibraries.includes(imp));
+    return imports.filter((imp) => dataLibraries.includes(imp));
   }
 
   // Utility methods for parsing Python/TOML content
@@ -792,14 +792,14 @@ export class PythonPlugin implements ImporterPlugin {
   }
 
   private extractPythonListField(content: string, field: string): string[] {
-    const regex = new RegExp(`${field}\\s*=\\s*\\[(.*?)\\]`, 's');
+    const regex = new RegExp(`${field}\\s*=\\s*\\[(.*?)\\]`, "s");
     const match = content.match(regex);
     if (!match) return [];
 
     return match[1]
-      .split(',')
-      .map(item => item.trim().replace(/['"]/g, ''))
-      .filter(item => item.length > 0);
+      .split(",")
+      .map((item) => item.trim().replace(/['"]/g, ""))
+      .filter((item) => item.length > 0);
   }
 
   private extractPythonDictField(content: string, field: string): Record<string, string[]> {
@@ -816,14 +816,14 @@ export class PythonPlugin implements ImporterPlugin {
 
   private extractTomlArray(content: string | undefined, field: string): string[] {
     if (!content) return [];
-    const regex = new RegExp(`${field}\\s*=\\s*\\[(.*?)\\]`, 's');
+    const regex = new RegExp(`${field}\\s*=\\s*\\[(.*?)\\]`, "s");
     const match = content.match(regex);
     if (!match) return [];
 
     return match[1]
-      .split(',')
-      .map(item => item.trim().replace(/['"]/g, ''))
-      .filter(item => item.length > 0);
+      .split(",")
+      .map((item) => item.trim().replace(/['"]/g, ""))
+      .filter((item) => item.length > 0);
   }
 
   private extractTomlTable(content: string | undefined, field: string): Record<string, string> {
@@ -835,12 +835,12 @@ export class PythonPlugin implements ImporterPlugin {
   private extractTomlDependencies(content: string | undefined): string[] {
     if (!content) return [];
     const dependencies: string[] = [];
-    const lines = content.split('\n');
+    const lines = content.split("\n");
 
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith('#')) {
-        const eqIndex = trimmed.indexOf('=');
+      if (trimmed && !trimmed.startsWith("#")) {
+        const eqIndex = trimmed.indexOf("=");
         if (eqIndex > 0) {
           const depName = trimmed.substring(0, eqIndex).trim();
           if (depName && /^[a-zA-Z_-]+$/.test(depName)) {
@@ -855,7 +855,7 @@ export class PythonPlugin implements ImporterPlugin {
 
   private extractTomlDevDependencies(content: string): string[] {
     const devMatch = content.match(
-      /\[tool\.poetry\.group\.dev\.dependencies\]([\s\S]*?)(?=\n\[|\n$)/
+      /\[tool\.poetry\.group\.dev\.dependencies\]([\s\S]*?)(?=\n\[|\n$)/,
     );
     if (devMatch) {
       return this.extractTomlDependencies(devMatch[1]);
@@ -865,7 +865,7 @@ export class PythonPlugin implements ImporterPlugin {
 
   private convertToScripts(
     entryPoints: Record<string, any>,
-    scripts: string[]
+    scripts: string[],
   ): Record<string, string> {
     const result: Record<string, string> = {};
 
@@ -877,7 +877,7 @@ export class PythonPlugin implements ImporterPlugin {
     }
 
     // Convert scripts array
-    scripts.forEach(script => {
+    scripts.forEach((script) => {
       const name = path.basename(script, path.extname(script));
       result[name] = script;
     });
@@ -887,11 +887,11 @@ export class PythonPlugin implements ImporterPlugin {
 
   private createProvenance(evidence: Evidence[]): Provenance {
     return {
-      evidence: evidence.map(e => e.id),
-      plugins: ['python'],
-      rules: ['package-config-analysis', 'source-file-analysis'],
+      evidence: evidence.map((e) => e.id),
+      plugins: ["python"],
+      rules: ["package-config-analysis", "source-file-analysis"],
       timestamp: Date.now(),
-      pipelineVersion: '1.0.0',
+      pipelineVersion: "1.0.0",
     };
   }
 }

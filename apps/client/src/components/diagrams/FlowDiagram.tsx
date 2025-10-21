@@ -1,7 +1,7 @@
-import mermaid from 'mermaid';
-import React, { useEffect, useRef, useState } from 'react';
-import { apiService } from '../../services/api';
-import type { IRResponse } from '../../types/api';
+import mermaid from "mermaid";
+import React, { useEffect, useRef, useState } from "react";
+import { apiService } from "../../services/api";
+import type { IRResponse } from "../../types/api";
 
 interface FlowDiagramProps {
   projectId: string;
@@ -14,7 +14,7 @@ interface FlowIRData {
     id: string;
     nodes: {
       id: string;
-      kind: 'visit' | 'click' | 'fill' | 'expect' | 'expect_api';
+      kind: "visit" | "click" | "fill" | "expect" | "expect_api";
       label: string;
     }[];
     edges: {
@@ -25,7 +25,7 @@ interface FlowIRData {
   }[];
 }
 
-const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) => {
+const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = "" }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [flowData, setFlowData] = useState<FlowIRData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,14 +35,14 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
     // Initialize mermaid with configuration
     mermaid.initialize({
       startOnLoad: true,
-      theme: 'default',
-      securityLevel: 'loose',
+      theme: "default",
+      securityLevel: "loose",
       flowchart: {
         useMaxWidth: true,
         htmlLabels: true,
-        curve: 'basis',
+        curve: "basis",
       },
-      fontFamily: 'Inter, system-ui, sans-serif',
+      fontFamily: "Inter, system-ui, sans-serif",
     });
   }, []);
 
@@ -54,11 +54,11 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
         setLoading(true);
         setError(null);
 
-        const response: IRResponse = await apiService.getIR(projectId, 'flow');
+        const response: IRResponse = await apiService.getIR(projectId, "flow");
         setFlowData(response.data as unknown as FlowIRData);
       } catch (err) {
-        console.error('Failed to load flow data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load flow diagram');
+        console.error("Failed to load flow data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load flow diagram");
       } finally {
         setLoading(false);
       }
@@ -67,14 +67,14 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
     loadFlowData();
   }, [projectId]);
 
-  const convertFlowToMermaid = (flows: FlowIRData['flows']): string => {
+  const convertFlowToMermaid = (flows: FlowIRData["flows"]): string => {
     if (!flows || flows.length === 0) {
       return `graph TD
         A[No flows defined]
         style A fill:#2F394B,stroke:#6B7A92,stroke-dasharray: 5 5,color:#B3BBC8`;
     }
 
-    let mermaidCode = 'graph TD\n';
+    let mermaidCode = "graph TD\n";
 
     // Process each flow
     flows.forEach((flow, flowIndex) => {
@@ -82,28 +82,28 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
       mermaidCode += `    %% Flow: ${flow.id}\n`;
 
       // Add nodes with appropriate styling based on their kind
-      flow.nodes.forEach(node => {
+      flow.nodes.forEach((node) => {
         const nodeId = `${flowIndex}_${node.id}`;
         const label = node.label || node.id;
 
         switch (node.kind) {
-          case 'visit':
+          case "visit":
             mermaidCode += `    ${nodeId}[${label}]\n`;
             mermaidCode += `    style ${nodeId} fill:#1E466B,stroke:#25557E,color:#A9C7DF\n`;
             break;
-          case 'click':
+          case "click":
             mermaidCode += `    ${nodeId}{${label}}\n`;
             mermaidCode += `    style ${nodeId} fill:#3A2A70,stroke:#4A378B,color:#A19BD2\n`;
             break;
-          case 'fill':
+          case "fill":
             mermaidCode += `    ${nodeId}[/${label}/]\n`;
             mermaidCode += `    style ${nodeId} fill:#1D6A5B,stroke:#45A190,color:#79C0B0\n`;
             break;
-          case 'expect':
+          case "expect":
             mermaidCode += `    ${nodeId}((${label}))\n`;
             mermaidCode += `    style ${nodeId} fill:#803131,stroke:#BA5956,color:#D98A86\n`;
             break;
-          case 'expect_api':
+          case "expect_api":
             mermaidCode += `    ${nodeId}{{${label}}}\n`;
             mermaidCode += `    style ${nodeId} fill:#725718,stroke:#A6842A,color:#C8A656\n`;
             break;
@@ -114,16 +114,16 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
       });
 
       // Add edges
-      flow.edges.forEach(edge => {
+      flow.edges.forEach((edge) => {
         const fromId = `${flowIndex}_${edge.from}`;
         const toId = `${flowIndex}_${edge.to}`;
-        const label = edge.label ? `|${edge.label}|` : '';
+        const label = edge.label ? `|${edge.label}|` : "";
         mermaidCode += `    ${fromId} -->${label} ${toId}\n`;
       });
 
       // Add spacing between flows
       if (flowIndex < flows.length - 1) {
-        mermaidCode += '\n';
+        mermaidCode += "\n";
       }
     });
 
@@ -135,7 +135,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
 
     try {
       // Clear previous content
-      containerRef.current.innerHTML = '';
+      containerRef.current.innerHTML = "";
 
       // Generate unique ID for this diagram
       const diagramId = `mermaid-${Date.now()}`;
@@ -147,14 +147,14 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
       containerRef.current.innerHTML = svg;
 
       // Make sure the SVG is responsive
-      const svgElement = containerRef.current.querySelector('svg');
+      const svgElement = containerRef.current.querySelector("svg");
       if (svgElement) {
-        svgElement.style.maxWidth = '100%';
-        svgElement.style.height = 'auto';
+        svgElement.style.maxWidth = "100%";
+        svgElement.style.height = "auto";
       }
     } catch (err) {
-      console.error('Failed to render mermaid diagram:', err);
-      setError('Failed to render flow diagram');
+      console.error("Failed to render mermaid diagram:", err);
+      setError("Failed to render flow diagram");
     }
   };
 
@@ -217,7 +217,7 @@ const FlowDiagram: React.FC<FlowDiagramProps> = ({ projectId, className = '' }) 
               Flow Diagrams
             </h3>
             <p className="text-sm text-gray-600 dark:text-graphite-400">
-              Showing {flowData.flows.length} flow{flowData.flows.length !== 1 ? 's' : ''}
+              Showing {flowData.flows.length} flow{flowData.flows.length !== 1 ? "s" : ""}
             </p>
           </div>
         )}

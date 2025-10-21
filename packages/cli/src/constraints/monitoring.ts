@@ -1,8 +1,8 @@
-import { EventEmitter } from 'node:events';
-import path from 'node:path';
-import chalk from 'chalk';
-import fs from 'fs-extra';
-import type { ConstraintViolationError } from './core.js';
+import { EventEmitter } from "node:events";
+import path from "node:path";
+import chalk from "chalk";
+import fs from "fs-extra";
+import type { ConstraintViolationError } from "./core.js";
 
 /**
  * Violation event data
@@ -111,7 +111,7 @@ export class ConstraintMonitor extends EventEmitter {
     this.logViolation(event);
 
     // Emit monitoring event
-    this.emit('violation_recorded', event);
+    this.emit("violation_recorded", event);
   }
 
   /**
@@ -121,7 +121,7 @@ export class ConstraintMonitor extends EventEmitter {
     operation: string,
     duration: number,
     success: boolean,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ): void {
     if (!this.config.enableMetrics) return;
 
@@ -158,7 +158,7 @@ export class ConstraintMonitor extends EventEmitter {
     this.checkPerformanceAlerts(operation, metrics);
 
     // Emit monitoring event
-    this.emit('operation_recorded', { operation, duration, success, metrics });
+    this.emit("operation_recorded", { operation, duration, success, metrics });
   }
 
   /**
@@ -168,10 +168,10 @@ export class ConstraintMonitor extends EventEmitter {
     const lines: string[] = [];
     const uptime = Date.now() - this.startTime;
 
-    lines.push(chalk.bold('🔍 Constraint System Monitoring Report'));
+    lines.push(chalk.bold("🔍 Constraint System Monitoring Report"));
     lines.push(chalk.dim(`Generated: ${new Date().toISOString()}`));
     lines.push(chalk.dim(`Uptime: ${this.formatDuration(uptime)}`));
-    lines.push('');
+    lines.push("");
 
     return lines;
   }
@@ -182,15 +182,15 @@ export class ConstraintMonitor extends EventEmitter {
   private generateViolationsSummary(): string[] {
     const lines: string[] = [];
 
-    lines.push(chalk.bold('Violations Summary:'));
+    lines.push(chalk.bold("Violations Summary:"));
     lines.push(
-      `Total Violations: ${this.getViolationColor(this.violationCounts.total)}${this.violationCounts.total}`
+      `Total Violations: ${this.getViolationColor(this.violationCounts.total)}${this.violationCounts.total}`,
     );
     lines.push(
-      `Last Hour: ${this.getViolationColor(this.violationCounts.lastHour)}${this.violationCounts.lastHour}`
+      `Last Hour: ${this.getViolationColor(this.violationCounts.lastHour)}${this.violationCounts.lastHour}`,
     );
     lines.push(`Violation Rate: ${this.calculateViolationRate()} violations/hour`);
-    lines.push('');
+    lines.push("");
 
     return lines;
   }
@@ -202,16 +202,16 @@ export class ConstraintMonitor extends EventEmitter {
     const lines: string[] = [];
 
     if (this.violationCounts.byConstraint.size > 0) {
-      lines.push(chalk.bold('Violations by Constraint:'));
+      lines.push(chalk.bold("Violations by Constraint:"));
       const sortedConstraints = Array.from(this.violationCounts.byConstraint.entries()).sort(
-        ([, a], [, b]) => b - a
+        ([, a], [, b]) => b - a,
       );
 
       for (const [constraint, count] of sortedConstraints) {
         const percentage = ((count / this.violationCounts.total) * 100).toFixed(1);
         lines.push(`  ${chalk.red(constraint)}: ${count} (${percentage}%)`);
       }
-      lines.push('');
+      lines.push("");
     }
 
     return lines;
@@ -224,15 +224,15 @@ export class ConstraintMonitor extends EventEmitter {
     const lines: string[] = [];
 
     if (this.violationCounts.byOperation.size > 0) {
-      lines.push(chalk.bold('Violations by Operation:'));
+      lines.push(chalk.bold("Violations by Operation:"));
       const sortedOperations = Array.from(this.violationCounts.byOperation.entries()).sort(
-        ([, a], [, b]) => b - a
+        ([, a], [, b]) => b - a,
       );
 
       for (const [operation, count] of sortedOperations.slice(0, 10)) {
         lines.push(`  ${chalk.yellow(operation)}: ${count}`);
       }
-      lines.push('');
+      lines.push("");
     }
 
     return lines;
@@ -245,9 +245,9 @@ export class ConstraintMonitor extends EventEmitter {
     const lines: string[] = [];
 
     if (this.operationMetrics.size > 0) {
-      lines.push(chalk.bold('Performance Metrics:'));
+      lines.push(chalk.bold("Performance Metrics:"));
       const sortedMetrics = Array.from(this.operationMetrics.entries()).sort(
-        ([, a], [, b]) => b.operationCount - a.operationCount
+        ([, a], [, b]) => b.operationCount - a.operationCount,
       );
 
       for (const [operation, metrics] of sortedMetrics.slice(0, 10)) {
@@ -270,7 +270,7 @@ export class ConstraintMonitor extends EventEmitter {
         lines.push(`    Avg Duration: ${avgColor(`${Math.round(metrics.averageDuration)}ms`)}`);
         lines.push(`    Max Duration: ${Math.round(metrics.maxDuration)}ms`);
       }
-      lines.push('');
+      lines.push("");
     }
 
     return lines;
@@ -283,7 +283,7 @@ export class ConstraintMonitor extends EventEmitter {
     const lines: string[] = [];
 
     if (this.violations.length > 0) {
-      lines.push(chalk.bold('Recent Violations (Last 10):'));
+      lines.push(chalk.bold("Recent Violations (Last 10):"));
       const recentViolations = this.violations.slice(-10).reverse();
 
       for (const violation of recentViolations) {
@@ -294,7 +294,7 @@ export class ConstraintMonitor extends EventEmitter {
           lines.push(`    Operation: ${chalk.yellow(violation.operation)}`);
         }
       }
-      lines.push('');
+      lines.push("");
     }
 
     return lines;
@@ -306,22 +306,22 @@ export class ConstraintMonitor extends EventEmitter {
   private generateHealthStatus(): string[] {
     const lines: string[] = [];
 
-    lines.push(chalk.bold('System Health:'));
+    lines.push(chalk.bold("System Health:"));
     const healthStatus = this.getSystemHealth();
     const healthColor = healthStatus.isHealthy ? chalk.green : chalk.red;
-    lines.push(`Overall Status: ${healthColor(healthStatus.isHealthy ? 'HEALTHY' : 'UNHEALTHY')}`);
+    lines.push(`Overall Status: ${healthColor(healthStatus.isHealthy ? "HEALTHY" : "UNHEALTHY")}`);
 
     if (healthStatus.issues.length > 0) {
-      lines.push('Issues:');
+      lines.push("Issues:");
       for (const issue of healthStatus.issues) {
-        lines.push(`  ${chalk.red('•')} ${issue}`);
+        lines.push(`  ${chalk.red("•")} ${issue}`);
       }
     }
 
     if (healthStatus.recommendations.length > 0) {
-      lines.push('Recommendations:');
+      lines.push("Recommendations:");
       for (const rec of healthStatus.recommendations) {
-        lines.push(`  ${chalk.yellow('•')} ${rec}`);
+        lines.push(`  ${chalk.yellow("•")} ${rec}`);
       }
     }
 
@@ -355,7 +355,7 @@ export class ConstraintMonitor extends EventEmitter {
    * Format and join all report sections
    */
   private formatReportSections(sections: string[][]): string {
-    return sections.flat().join('\n');
+    return sections.flat().join("\n");
   }
 
   /**
@@ -379,7 +379,7 @@ export class ConstraintMonitor extends EventEmitter {
     await fs.ensureDir(path.dirname(outputPath));
     await fs.writeJson(outputPath, data, { spaces: 2 });
 
-    this.emit('data_exported', { outputPath, recordCount: this.violations.length });
+    this.emit("data_exported", { outputPath, recordCount: this.violations.length });
   }
 
   /**
@@ -391,14 +391,14 @@ export class ConstraintMonitor extends EventEmitter {
 
     // Remove old violations
     const beforeCount = this.violations.length;
-    const filtered = this.violations.filter(v => v.timestamp >= cutoff);
+    const filtered = this.violations.filter((v) => v.timestamp >= cutoff);
     this.violations.length = 0;
     this.violations.push(...filtered);
 
     const cleaned = beforeCount - this.violations.length;
 
     if (cleaned > 0) {
-      this.emit('cleanup_completed', {
+      this.emit("cleanup_completed", {
         recordsCleaned: cleaned,
         remaining: this.violations.length,
       });
@@ -428,7 +428,7 @@ export class ConstraintMonitor extends EventEmitter {
 
     if (violationRate > this.config.alertThresholds.maxViolationsPerHour) {
       issues.push(`High violation rate: ${violationRate.toFixed(1)}/hour`);
-      recommendations.push('Review constraint configurations and operation patterns');
+      recommendations.push("Review constraint configurations and operation patterns");
     }
 
     // Check performance metrics
@@ -450,11 +450,11 @@ export class ConstraintMonitor extends EventEmitter {
     // Calculate availability score
     const totalOperations = Array.from(this.operationMetrics.values()).reduce(
       (sum, m) => sum + m.operationCount,
-      0
+      0,
     );
     const successfulOperations = Array.from(this.operationMetrics.values()).reduce(
       (sum, m) => sum + (m.operationCount - m.violationsCount),
-      0
+      0,
     );
 
     const availabilityScore =
@@ -485,7 +485,7 @@ export class ConstraintMonitor extends EventEmitter {
       () => {
         this.violationCounts.lastHour = 0;
       },
-      60 * 60 * 1000
+      60 * 60 * 1000,
     ); // Every hour
 
     // Cleanup old data
@@ -493,7 +493,7 @@ export class ConstraintMonitor extends EventEmitter {
       () => {
         this.cleanup();
       },
-      24 * 60 * 60 * 1000
+      24 * 60 * 60 * 1000,
     ); // Daily
 
     // Performance monitoring
@@ -501,7 +501,7 @@ export class ConstraintMonitor extends EventEmitter {
       () => {
         this.checkSystemHealth();
       },
-      5 * 60 * 1000
+      5 * 60 * 1000,
     ); // Every 5 minutes
   }
 
@@ -512,8 +512,8 @@ export class ConstraintMonitor extends EventEmitter {
     const violationRate = this.calculateViolationRate();
 
     if (violationRate > this.config.alertThresholds.maxViolationsPerHour) {
-      this.emit('alert', {
-        type: 'high_violation_rate',
+      this.emit("alert", {
+        type: "high_violation_rate",
         message: `Violation rate exceeded threshold: ${violationRate.toFixed(1)}/hour`,
         threshold: this.config.alertThresholds.maxViolationsPerHour,
         actual: violationRate,
@@ -526,8 +526,8 @@ export class ConstraintMonitor extends EventEmitter {
    */
   private checkPerformanceAlerts(operation: string, metrics: PerformanceMetrics): void {
     if (metrics.averageDuration > this.config.alertThresholds.maxAverageResponseTime) {
-      this.emit('alert', {
-        type: 'slow_operation',
+      this.emit("alert", {
+        type: "slow_operation",
         message: `${operation} average response time exceeded threshold`,
         operation,
         threshold: this.config.alertThresholds.maxAverageResponseTime,
@@ -536,8 +536,8 @@ export class ConstraintMonitor extends EventEmitter {
     }
 
     if (metrics.successRate < this.config.alertThresholds.minSuccessRate) {
-      this.emit('alert', {
-        type: 'low_success_rate',
+      this.emit("alert", {
+        type: "low_success_rate",
         message: `${operation} success rate below threshold`,
         operation,
         threshold: this.config.alertThresholds.minSuccessRate,
@@ -553,9 +553,9 @@ export class ConstraintMonitor extends EventEmitter {
     const health = this.getSystemHealth();
 
     if (!health.isHealthy) {
-      this.emit('alert', {
-        type: 'system_health',
-        message: 'System health degraded',
+      this.emit("alert", {
+        type: "system_health",
+        message: "System health degraded",
         issues: health.issues,
         score: health.scores.overallScore,
       });
@@ -580,7 +580,7 @@ export class ConstraintMonitor extends EventEmitter {
       const logLine = `${JSON.stringify(logEntry)}\n`;
       await fs.appendFile(this.config.violationLogPath, logLine);
     } catch (error) {
-      this.emit('error', { type: 'log_violation_failed', error });
+      this.emit("error", { type: "log_violation_failed", error });
     }
   }
 
@@ -591,7 +591,7 @@ export class ConstraintMonitor extends EventEmitter {
     operation: string,
     duration: number,
     success: boolean,
-    context?: Record<string, unknown>
+    context?: Record<string, unknown>,
   ): Promise<void> {
     if (!this.config.metricsLogPath) return;
 
@@ -607,7 +607,7 @@ export class ConstraintMonitor extends EventEmitter {
       const logLine = `${JSON.stringify(logEntry)}\n`;
       await fs.appendFile(this.config.metricsLogPath, logLine);
     } catch (error) {
-      this.emit('error', { type: 'log_metric_failed', error });
+      this.emit("error", { type: "log_metric_failed", error });
     }
   }
 

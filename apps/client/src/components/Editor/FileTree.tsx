@@ -3,7 +3,7 @@
  * Professional hierarchy styling with smooth animations and accessibility
  */
 
-import { clsx } from 'clsx';
+import { clsx } from "clsx";
 import {
   Archive,
   ChevronDown,
@@ -20,40 +20,40 @@ import {
   Plus,
   Settings,
   Trash2,
-} from 'lucide-react';
-import React, { useState, useCallback } from 'react';
-import { toast } from 'react-toastify';
-import { useApp } from '../../contexts/AppContext';
-import { useCurrentProject } from '../../contexts/ProjectContext';
-import { Button, Input, cn } from '../../design-system';
-import { apiService } from '../../services/api';
-import type { Fragment } from '../../types/api';
-import type { FileTreeItem } from '../../types/ui';
+} from "lucide-react";
+import React, { useState, useCallback } from "react";
+import { toast } from "react-toastify";
+import { useApp } from "../../contexts/AppContext";
+import { useCurrentProject } from "../../contexts/ProjectContext";
+import { Button, Input, cn } from "../../design-system";
+import { apiService } from "../../services/api";
+import type { Fragment } from "../../types/api";
+import type { FileTreeItem } from "../../types/ui";
 
 // File type detection for better icons
 const getFileIcon = (fileName: string) => {
-  const ext = fileName.split('.').pop()?.toLowerCase();
+  const ext = fileName.split(".").pop()?.toLowerCase();
   switch (ext) {
-    case 'cue':
+    case "cue":
       return Code;
-    case 'json':
+    case "json":
       return FileText;
-    case 'yaml':
-    case 'yml':
+    case "yaml":
+    case "yml":
       return Settings;
-    case 'md':
+    case "md":
       return FileText;
-    case 'png':
-    case 'jpg':
-    case 'jpeg':
-    case 'svg':
-    case 'gif':
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "svg":
+    case "gif":
       return Image;
-    case 'zip':
-    case 'tar':
-    case 'gz':
+    case "zip":
+    case "tar":
+    case "gz":
       return Archive;
-    case 'sql':
+    case "sql":
       return Database;
     default:
       return File;
@@ -74,14 +74,14 @@ export interface FileTreeRef {
 
 export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function FileTree(
   { className, multiSelect = false, onSelectionChange },
-  ref
+  ref,
 ) {
   const { state, dispatch, setActiveFragment, setError } = useApp();
   const currentProject = useCurrentProject();
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newFragmentPath, setNewFragmentPath] = useState('');
+  const [newFragmentPath, setNewFragmentPath] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
   // Build tree structure from flat fragment list
@@ -95,24 +95,24 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
 
       for (const fragment of sortedFragments) {
         const parts = fragment.path
-          .split('/')
+          .split("/")
           .filter((segment): segment is string => Boolean(segment));
-        let currentPath: string = '';
+        let currentPath: string = "";
         let currentLevel = tree;
 
         for (let i = 0; i < parts.length; i++) {
           const part = parts[i]!;
-          currentPath = currentPath !== '' ? `${currentPath}/${part}` : part;
+          currentPath = currentPath !== "" ? `${currentPath}/${part}` : part;
           const isFile = i === parts.length - 1;
 
           // Check if item already exists at this level
-          let existingItem = currentLevel.find(item => item.path === currentPath);
+          let existingItem = currentLevel.find((item) => item.path === currentPath);
 
           if (!existingItem) {
             const newItem: FileTreeItem = {
               id: isFile ? fragment.id : currentPath,
               path: currentPath,
-              type: isFile ? 'file' : 'directory',
+              type: isFile ? "file" : "directory",
             };
 
             if (!isFile) {
@@ -140,14 +140,14 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
 
       return tree;
     },
-    [state.unsavedChanges]
+    [state.unsavedChanges],
   );
 
   const fileTree = buildFileTree(state.fragments);
 
   // Handle folder toggle
   const toggleFolder = useCallback((path: string) => {
-    setExpandedFolders(prev => {
+    setExpandedFolders((prev) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(path)) {
         newExpanded.delete(path);
@@ -164,7 +164,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       if (multiSelect && event) {
         if (event.ctrlKey || event.metaKey) {
           // Toggle selection for ctrl/cmd+click
-          setSelectedFiles(prev => {
+          setSelectedFiles((prev) => {
             const newSelection = new Set(prev);
             if (newSelection.has(fragmentId)) {
               newSelection.delete(fragmentId);
@@ -180,16 +180,16 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
         } else if (event.shiftKey && selectedFiles.size > 0) {
           // Range selection for shift+click
           const fragments = state.fragments;
-          const currentIndex = fragments.findIndex(f => f.id === fragmentId);
+          const currentIndex = fragments.findIndex((f) => f.id === fragmentId);
           const lastSelectedId = Array.from(selectedFiles).pop();
-          const lastIndex = fragments.findIndex(f => f.id === lastSelectedId);
+          const lastIndex = fragments.findIndex((f) => f.id === lastSelectedId);
 
           if (currentIndex !== -1 && lastIndex !== -1) {
             const start = Math.min(currentIndex, lastIndex);
             const end = Math.max(currentIndex, lastIndex);
-            const rangeIds = fragments.slice(start, end + 1).map(f => f.id);
+            const rangeIds = fragments.slice(start, end + 1).map((f) => f.id);
 
-            setSelectedFiles(prev => {
+            setSelectedFiles((prev) => {
               const newSelection = new Set([...prev, ...rangeIds]);
               if (onSelectionChange) {
                 onSelectionChange(Array.from(newSelection));
@@ -215,7 +215,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       // Always set active fragment for editing
       setActiveFragment(fragmentId);
     },
-    [setActiveFragment, multiSelect, selectedFiles, state.fragments, onSelectionChange]
+    [setActiveFragment, multiSelect, selectedFiles, state.fragments, onSelectionChange],
   );
 
   // Expose methods via ref
@@ -237,7 +237,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
         onSelectionChange(fileIds);
       }
     },
-    [onSelectionChange]
+    [onSelectionChange],
   );
 
   // Expose methods via ref
@@ -248,7 +248,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       clearSelection,
       selectFiles,
     }),
-    [getSelectedFiles, clearSelection, selectFiles]
+    [getSelectedFiles, clearSelection, selectFiles],
   );
 
   // Notify parent of selection changes
@@ -267,7 +267,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
     try {
       const response = await apiService.createFragment(currentProject.id, {
         path: newFragmentPath.trim(),
-        content: '// New CUE fragment\n',
+        content: "// New CUE fragment\n",
       });
 
       // Add to fragments list
@@ -275,19 +275,19 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
         id: response.id,
         project_id: currentProject.id,
         path: response.path,
-        content: '// New CUE fragment\n',
+        content: "// New CUE fragment\n",
         created_at: response.created_at,
         updated_at: response.created_at,
       };
 
-      dispatch({ type: 'UPDATE_FRAGMENT', payload: newFragment });
+      dispatch({ type: "UPDATE_FRAGMENT", payload: newFragment });
       setActiveFragment(response.id);
       setShowCreateForm(false);
-      setNewFragmentPath('');
+      setNewFragmentPath("");
 
       toast.success(`Created fragment: ${response.path}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create fragment';
+      const message = error instanceof Error ? error.message : "Failed to create fragment";
       setError(message);
       toast.error(message);
     }
@@ -304,20 +304,20 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
 
       try {
         await apiService.deleteFragment(currentProject.id, fragmentId);
-        dispatch({ type: 'DELETE_FRAGMENT', payload: fragmentId });
+        dispatch({ type: "DELETE_FRAGMENT", payload: fragmentId });
 
         toast.success(`Deleted fragment: ${fragmentPath}`);
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to delete fragment';
+        const message = error instanceof Error ? error.message : "Failed to delete fragment";
         setError(message);
         toast.error(message);
       }
     },
-    [currentProject, dispatch, setError]
+    [currentProject, dispatch, setError],
   );
 
   return (
-    <div className={cn('h-full flex flex-col bg-white', className)}>
+    <div className={cn("h-full flex flex-col bg-white", className)}>
       {/* Header */}
       <div className="px-4 py-3 border-b border-graphite-200 bg-gradient-to-r from-graphite-50 to-white rounded-t-lg">
         <div className="flex items-center justify-between">
@@ -333,9 +333,9 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
             size="xs"
             onClick={() => setShowCreateForm(!showCreateForm)}
             className={cn(
-              'text-graphite-500 hover:text-graphite-700 hover:bg-graphite-100/80',
-              'transition-all duration-200 rounded-md',
-              showCreateForm && 'bg-blue-50 text-blue-700 hover:text-blue-800 hover:bg-blue-100'
+              "text-graphite-500 hover:text-graphite-700 hover:bg-graphite-100/80",
+              "transition-all duration-200 rounded-md",
+              showCreateForm && "bg-blue-50 text-blue-700 hover:text-blue-800 hover:bg-blue-100",
             )}
           >
             <Plus className="h-3.5 w-3.5" />
@@ -351,14 +351,14 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
                 size="sm"
                 placeholder="api/routes.cue"
                 value={newFragmentPath}
-                onChange={e => setNewFragmentPath(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
+                onChange={(e) => setNewFragmentPath(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
                     e.preventDefault();
                     handleCreateFragment();
-                  } else if (e.key === 'Escape') {
+                  } else if (e.key === "Escape") {
                     setShowCreateForm(false);
-                    setNewFragmentPath('');
+                    setNewFragmentPath("");
                   }
                 }}
                 autoFocus
@@ -374,7 +374,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
                 size="xs"
                 onClick={() => {
                   setShowCreateForm(false);
-                  setNewFragmentPath('');
+                  setNewFragmentPath("");
                 }}
                 className="text-graphite-600 hover:text-graphite-800"
               >
@@ -415,7 +415,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
           </div>
         ) : (
           <div className="space-y-0.5">
-            {fileTree.map(item => (
+            {fileTree.map((item) => (
               <FileTreeItemComponent
                 key={item.id}
                 item={item}
@@ -460,12 +460,12 @@ function FileTreeItemComponent({
   onDeleteFragment,
 }: FileTreeItemComponentProps) {
   const isExpanded = expandedFolders.has(item.path);
-  const isActive = item.type === 'file' && activeFragmentId === item.id;
-  const isSelected = item.type === 'file' && selectedFiles.has(item.id);
+  const isActive = item.type === "file" && activeFragmentId === item.id;
+  const isSelected = item.type === "file" && selectedFiles.has(item.id);
   const [showActions, setShowActions] = useState(false);
 
   const handleClick = (event: React.MouseEvent) => {
-    if (item.type === 'directory') {
+    if (item.type === "directory") {
       onToggleFolder(item.path);
     } else {
       onFileSelect(item.id, event);
@@ -477,8 +477,8 @@ function FileTreeItemComponent({
     onDeleteFragment(item.id, item.path);
   };
 
-  const fileName = item.path.split('/').pop() || item.path;
-  const FileIcon = item.type === 'file' ? getFileIcon(fileName) : null;
+  const fileName = item.path.split("/").pop() || item.path;
+  const FileIcon = item.type === "file" ? getFileIcon(fileName) : null;
 
   // Enhanced indentation with connecting lines
   const indentationElements = [];
@@ -487,10 +487,10 @@ function FileTreeItemComponent({
       <div
         key={i}
         className="w-4 flex justify-center"
-        style={{ marginLeft: i === 0 ? '0px' : '0px' }}
+        style={{ marginLeft: i === 0 ? "0px" : "0px" }}
       >
         <div className="w-px bg-graphite-200 h-full"></div>
-      </div>
+      </div>,
     );
   }
 
@@ -498,38 +498,38 @@ function FileTreeItemComponent({
     <>
       <div
         className={cn(
-          'group relative flex items-center gap-1.5 py-1 px-2 text-sm cursor-pointer rounded-lg',
-          'hover:bg-graphite-50 active:bg-graphite-100',
-          'transition-all duration-200 ease-out',
-          'focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-graphite-50',
+          "group relative flex items-center gap-1.5 py-1 px-2 text-sm cursor-pointer rounded-lg",
+          "hover:bg-graphite-50 active:bg-graphite-100",
+          "transition-all duration-200 ease-out",
+          "focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-graphite-50",
           // Active state for files (editing)
           isActive && [
-            'bg-gradient-to-r from-blue-50 to-blue-50/30',
-            'border border-blue-200/60',
-            'shadow-sm shadow-blue-100/50',
-            'text-blue-700',
+            "bg-gradient-to-r from-blue-50 to-blue-50/30",
+            "border border-blue-200/60",
+            "shadow-sm shadow-blue-100/50",
+            "text-blue-700",
           ],
           // Selected state for files (multi-select)
           multiSelect &&
             isSelected &&
             !isActive && [
-              'bg-gradient-to-r from-green-50 to-green-50/30',
-              'border border-green-200/60',
-              'shadow-sm shadow-green-100/50',
-              'text-green-700',
+              "bg-gradient-to-r from-green-50 to-green-50/30",
+              "border border-green-200/60",
+              "shadow-sm shadow-green-100/50",
+              "text-green-700",
             ],
           // Directory styling
-          item.type === 'directory' && 'font-medium',
+          item.type === "directory" && "font-medium",
           // Unsaved changes styling
-          item.hasUnsavedChanges && 'bg-amber-50/50 border border-amber-200/50'
+          item.hasUnsavedChanges && "bg-amber-50/50 border border-amber-200/50",
         )}
         onClick={handleClick}
         onMouseEnter={() => setShowActions(true)}
         onMouseLeave={() => setShowActions(false)}
         tabIndex={0}
         role="button"
-        aria-expanded={item.type === 'directory' ? isExpanded : undefined}
-        aria-label={`${item.type === 'directory' ? 'Folder' : 'File'} ${fileName}`}
+        aria-expanded={item.type === "directory" ? isExpanded : undefined}
+        aria-label={`${item.type === "directory" ? "Folder" : "File"} ${fileName}`}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
       >
         {/* Hierarchy connector line */}
@@ -538,7 +538,7 @@ function FileTreeItemComponent({
         )}
 
         {/* Expand/collapse chevron for directories */}
-        {item.type === 'directory' && (
+        {item.type === "directory" && (
           <div className="flex-shrink-0 p-0.5 rounded transition-transform duration-200">
             {isExpanded ? (
               <ChevronDown className="h-3 w-3 text-graphite-500" />
@@ -551,13 +551,13 @@ function FileTreeItemComponent({
         {/* Icon */}
         <div
           className={cn(
-            'flex-shrink-0 transition-all duration-200',
-            item.type === 'directory' ? 'text-graphite-600' : 'text-graphite-500'
+            "flex-shrink-0 transition-all duration-200",
+            item.type === "directory" ? "text-graphite-600" : "text-graphite-500",
           )}
         >
-          {item.type === 'directory' ? (
+          {item.type === "directory" ? (
             isExpanded ? (
-              <FolderOpen className={cn('h-4 w-4', isExpanded && 'text-blue-600')} />
+              <FolderOpen className={cn("h-4 w-4", isExpanded && "text-blue-600")} />
             ) : (
               <Folder className="h-4 w-4" />
             )
@@ -565,10 +565,10 @@ function FileTreeItemComponent({
             FileIcon && (
               <FileIcon
                 className={cn(
-                  'h-4 w-4',
-                  isActive ? 'text-blue-600' : 'text-graphite-500',
+                  "h-4 w-4",
+                  isActive ? "text-blue-600" : "text-graphite-500",
                   // Special styling for CUE files
-                  fileName.endsWith('.cue') && 'text-purple-500'
+                  fileName.endsWith(".cue") && "text-purple-500",
                 )}
               />
             )
@@ -578,24 +578,24 @@ function FileTreeItemComponent({
         {/* Name */}
         <span
           className={cn(
-            'flex-1 truncate transition-colors duration-200',
-            isActive ? 'text-blue-800 font-medium' : 'text-graphite-700',
-            item.type === 'directory' && 'font-medium',
-            item.hasUnsavedChanges && 'text-amber-800 font-semibold'
+            "flex-1 truncate transition-colors duration-200",
+            isActive ? "text-blue-800 font-medium" : "text-graphite-700",
+            item.type === "directory" && "font-medium",
+            item.hasUnsavedChanges && "text-amber-800 font-semibold",
           )}
         >
           {fileName}
         </span>
 
         {/* Multi-select checkbox */}
-        {multiSelect && item.type === 'file' && (
+        {multiSelect && item.type === "file" && (
           <div className="flex-shrink-0 flex items-center mr-2">
             <div
               className={cn(
-                'w-4 h-4 border-2 rounded transition-all duration-200 flex items-center justify-center',
+                "w-4 h-4 border-2 rounded transition-all duration-200 flex items-center justify-center",
                 isSelected
-                  ? 'bg-green-500 border-green-500 text-white'
-                  : 'border-graphite-300 hover:border-green-400'
+                  ? "bg-green-500 border-green-500 text-white"
+                  : "border-graphite-300 hover:border-green-400",
               )}
             >
               {isSelected && (
@@ -619,20 +619,20 @@ function FileTreeItemComponent({
         )}
 
         {/* Actions */}
-        {item.type === 'file' && (
+        {item.type === "file" && (
           <div
             className={cn(
-              'flex-shrink-0 flex items-center gap-0.5 transition-all duration-200',
-              showActions ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+              "flex-shrink-0 flex items-center gap-0.5 transition-all duration-200",
+              showActions ? "opacity-100 translate-x-0" : "opacity-0 translate-x-2",
             )}
           >
             <button
               type="button"
               className={cn(
-                'p-1.5 rounded-md transition-all duration-200',
-                'text-graphite-400 hover:text-red-600 hover:bg-red-50',
-                'focus:outline-none focus:ring-1 focus:ring-red-500/50',
-                'shadow-sm hover:shadow'
+                "p-1.5 rounded-md transition-all duration-200",
+                "text-graphite-400 hover:text-red-600 hover:bg-red-50",
+                "focus:outline-none focus:ring-1 focus:ring-red-500/50",
+                "shadow-sm hover:shadow",
               )}
               onClick={handleDelete}
               title="Delete fragment"
@@ -644,7 +644,7 @@ function FileTreeItemComponent({
         )}
 
         {/* File type badge for special files */}
-        {item.type === 'file' && fileName.endsWith('.cue') && (
+        {item.type === "file" && fileName.endsWith(".cue") && (
           <div className="flex-shrink-0">
             <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
               CUE
@@ -654,18 +654,18 @@ function FileTreeItemComponent({
       </div>
 
       {/* Children with smooth animation */}
-      {item.type === 'directory' && item.children && (
+      {item.type === "directory" && item.children && (
         <div
           className={cn(
-            'overflow-hidden transition-all duration-300 ease-out',
-            isExpanded ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0'
+            "overflow-hidden transition-all duration-300 ease-out",
+            isExpanded ? "max-h-screen opacity-100" : "max-h-0 opacity-0",
           )}
           style={{
-            transitionProperty: 'max-height, opacity',
+            transitionProperty: "max-height, opacity",
           }}
         >
           <div className="space-y-0.5">
-            {item.children.map(child => (
+            {item.children.map((child) => (
               <FileTreeItemComponent
                 key={child.id}
                 item={child}

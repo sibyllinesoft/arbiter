@@ -3,39 +3,39 @@
  * Comprehensive documentation for the tab navigation component
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { Bell, Code, Database, FileText, Globe, Settings, Shield, User } from 'lucide-react';
-import { useState } from 'react';
-import type { TabItem } from '../../types/ui';
-import Tabs from './Tabs';
+import type { Meta, StoryObj } from "@storybook/react";
+import { Bell, Code, Database, FileText, Globe, Settings, Shield, User } from "lucide-react";
+import { useState } from "react";
+import type { TabItem } from "../../types/ui";
+import Tabs from "./Tabs";
 
 const meta = {
-  title: 'Layout/Tabs',
+  title: "Layout/Tabs",
   component: Tabs,
   parameters: {
-    layout: 'fullscreen',
+    layout: "fullscreen",
     docs: {
       description: {
         component:
-          'A flexible tab navigation component for organizing content into separate panels. Features badge support, disabled states, and accessible keyboard navigation.',
+          "A flexible tab navigation component for organizing content into separate panels. Features badge support, disabled states, and accessible keyboard navigation.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     activeTab: {
-      control: { type: 'text' },
-      description: 'ID of the currently active tab',
+      control: { type: "text" },
+      description: "ID of the currently active tab",
     },
     onTabChange: {
-      description: 'Callback function called when tab changes',
+      description: "Callback function called when tab changes",
     },
     tabs: {
-      description: 'Array of tab items with content',
+      description: "Array of tab items with content",
     },
     className: {
-      control: { type: 'text' },
-      description: 'Additional CSS classes',
+      control: { type: "text" },
+      description: "Additional CSS classes",
     },
   },
 } satisfies Meta<typeof Tabs>;
@@ -72,8 +72,8 @@ const SampleContent = ({
 // Basic tabs data
 const basicTabs: TabItem[] = [
   {
-    id: 'overview',
-    label: 'Overview',
+    id: "overview",
+    label: "Overview",
     content: (
       <SampleContent
         title="Overview"
@@ -82,8 +82,8 @@ const basicTabs: TabItem[] = [
     ),
   },
   {
-    id: 'details',
-    label: 'Details',
+    id: "details",
+    label: "Details",
     content: (
       <SampleContent
         title="Details"
@@ -92,8 +92,8 @@ const basicTabs: TabItem[] = [
     ),
   },
   {
-    id: 'settings',
-    label: 'Settings',
+    id: "settings",
+    label: "Settings",
     content: (
       <SampleContent
         title="Settings"
@@ -106,9 +106,9 @@ const basicTabs: TabItem[] = [
 // Tabs with badges
 const tabsWithBadges: TabItem[] = [
   {
-    id: 'code',
-    label: 'Code',
-    badge: '12',
+    id: "code",
+    label: "Code",
+    badge: "12",
     content: (
       <SampleContent
         title="Code Files"
@@ -118,9 +118,9 @@ const tabsWithBadges: TabItem[] = [
     ),
   },
   {
-    id: 'docs',
-    label: 'Documentation',
-    badge: '5',
+    id: "docs",
+    label: "Documentation",
+    badge: "5",
     content: (
       <SampleContent
         title="Documentation"
@@ -130,9 +130,9 @@ const tabsWithBadges: TabItem[] = [
     ),
   },
   {
-    id: 'issues',
-    label: 'Issues',
-    badge: 'NEW',
+    id: "issues",
+    label: "Issues",
+    badge: "NEW",
     content: (
       <SampleContent
         title="Issues"
@@ -141,8 +141,8 @@ const tabsWithBadges: TabItem[] = [
     ),
   },
   {
-    id: 'config',
-    label: 'Config',
+    id: "config",
+    label: "Config",
     content: (
       <SampleContent
         title="Configuration"
@@ -156,8 +156,8 @@ const tabsWithBadges: TabItem[] = [
 // Tabs with some disabled
 const tabsWithDisabled: TabItem[] = [
   {
-    id: 'database',
-    label: 'Database',
+    id: "database",
+    label: "Database",
     content: (
       <SampleContent
         title="Database"
@@ -167,15 +167,15 @@ const tabsWithDisabled: TabItem[] = [
     ),
   },
   {
-    id: 'api',
-    label: 'API',
+    id: "api",
+    label: "API",
     content: (
       <SampleContent title="API" icon={Globe} content="RESTful API endpoints and documentation." />
     ),
   },
   {
-    id: 'users',
-    label: 'Users',
+    id: "users",
+    label: "Users",
     disabled: true,
     content: (
       <SampleContent
@@ -186,8 +186,8 @@ const tabsWithDisabled: TabItem[] = [
     ),
   },
   {
-    id: 'analytics',
-    label: 'Analytics',
+    id: "analytics",
+    label: "Analytics",
     disabled: true,
     content: (
       <SampleContent title="Analytics" content="Advanced analytics and reporting (coming soon)." />
@@ -198,7 +198,7 @@ const tabsWithDisabled: TabItem[] = [
 // Default tabs
 export const Default: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState("overview");
     return (
       <div className="h-80 border border-gray-200 rounded-lg">
         <Tabs activeTab={activeTab} onTabChange={setActiveTab} tabs={basicTabs} />
@@ -209,7 +209,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          'Basic tab navigation with three simple tabs. Click tabs to switch between content panels.',
+          "Basic tab navigation with three simple tabs. Click tabs to switch between content panels.",
       },
     },
   },
@@ -218,7 +218,7 @@ export const Default: Story = {
 // Tabs with badges
 export const WithBadges: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('code');
+    const [activeTab, setActiveTab] = useState("code");
     return (
       <div className="h-80 border border-gray-200 rounded-lg">
         <Tabs activeTab={activeTab} onTabChange={setActiveTab} tabs={tabsWithBadges} />
@@ -229,7 +229,7 @@ export const WithBadges: Story = {
     docs: {
       description: {
         story:
-          'Tabs can display badges for notifications, counts, or status indicators. Badges adapt their styling based on the active state.',
+          "Tabs can display badges for notifications, counts, or status indicators. Badges adapt their styling based on the active state.",
       },
     },
   },
@@ -238,7 +238,7 @@ export const WithBadges: Story = {
 // Tabs with disabled states
 export const WithDisabledTabs: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('database');
+    const [activeTab, setActiveTab] = useState("database");
     return (
       <div className="h-80 border border-gray-200 rounded-lg">
         <Tabs activeTab={activeTab} onTabChange={setActiveTab} tabs={tabsWithDisabled} />
@@ -249,7 +249,7 @@ export const WithDisabledTabs: Story = {
     docs: {
       description: {
         story:
-          'Some tabs can be disabled to indicate unavailable functionality. Disabled tabs are not clickable and have reduced opacity.',
+          "Some tabs can be disabled to indicate unavailable functionality. Disabled tabs are not clickable and have reduced opacity.",
       },
     },
   },
@@ -258,7 +258,7 @@ export const WithDisabledTabs: Story = {
 // Many tabs (scrolling behavior)
 export const ManyTabs: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('tab1');
+    const [activeTab, setActiveTab] = useState("tab1");
 
     const manyTabs: TabItem[] = Array.from({ length: 12 }, (_, i) => ({
       id: `tab${i + 1}`,
@@ -283,7 +283,7 @@ export const ManyTabs: Story = {
     docs: {
       description: {
         story:
-          'When there are many tabs, they will wrap to maintain usability. The last two tabs are disabled to demonstrate mixed states.',
+          "When there are many tabs, they will wrap to maintain usability. The last two tabs are disabled to demonstrate mixed states.",
       },
     },
   },
@@ -292,12 +292,12 @@ export const ManyTabs: Story = {
 // Developer tool tabs example
 export const DeveloperToolTabs: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('editor');
+    const [activeTab, setActiveTab] = useState("editor");
 
     const devTabs: TabItem[] = [
       {
-        id: 'editor',
-        label: 'Editor',
+        id: "editor",
+        label: "Editor",
         content: (
           <div className="h-64 p-6 bg-gray-50">
             <div className="flex items-center gap-2 mb-4">
@@ -306,17 +306,17 @@ export const DeveloperToolTabs: Story = {
             </div>
             <div className="bg-white p-4 rounded border font-mono text-sm">
               <div className="text-purple-600">import React from 'react';</div>
-              <div className="text-gray-600 mt-2">function MyComponent() {'{'}</div>
-              <div className="text-gray-600 pl-4">return {'<div>Hello World</div>;'}</div>
-              <div className="text-gray-600">{'}'}</div>
+              <div className="text-gray-600 mt-2">function MyComponent() {"{"}</div>
+              <div className="text-gray-600 pl-4">return {"<div>Hello World</div>;"}</div>
+              <div className="text-gray-600">{"}"}</div>
             </div>
           </div>
         ),
       },
       {
-        id: 'console',
-        label: 'Console',
-        badge: '3',
+        id: "console",
+        label: "Console",
+        badge: "3",
         content: (
           <div className="h-64 p-6 bg-gray-900 text-gray-100">
             <div className="flex items-center gap-2 mb-4">
@@ -331,8 +331,8 @@ export const DeveloperToolTabs: Story = {
         ),
       },
       {
-        id: 'network',
-        label: 'Network',
+        id: "network",
+        label: "Network",
         content: (
           <div className="h-64 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -353,8 +353,8 @@ export const DeveloperToolTabs: Story = {
         ),
       },
       {
-        id: 'security',
-        label: 'Security',
+        id: "security",
+        label: "Security",
         disabled: true,
         content: (
           <SampleContent
@@ -376,7 +376,7 @@ export const DeveloperToolTabs: Story = {
     docs: {
       description: {
         story:
-          'Real-world example of tabs in a developer tool interface with editor, console, network monitor, and security tabs.',
+          "Real-world example of tabs in a developer tool interface with editor, console, network monitor, and security tabs.",
       },
     },
   },
@@ -385,13 +385,13 @@ export const DeveloperToolTabs: Story = {
 // Custom styling example
 export const CustomStyling: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState('notifications');
+    const [activeTab, setActiveTab] = useState("notifications");
 
     const styledTabs: TabItem[] = [
       {
-        id: 'notifications',
-        label: 'Notifications',
-        badge: '12',
+        id: "notifications",
+        label: "Notifications",
+        badge: "12",
         content: (
           <div className="h-64 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -415,8 +415,8 @@ export const CustomStyling: Story = {
         ),
       },
       {
-        id: 'profile',
-        label: 'Profile',
+        id: "profile",
+        label: "Profile",
         content: (
           <div className="h-64 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -436,8 +436,8 @@ export const CustomStyling: Story = {
         ),
       },
       {
-        id: 'settings',
-        label: 'Settings',
+        id: "settings",
+        label: "Settings",
         content: (
           <SampleContent
             title="Settings"
@@ -463,7 +463,7 @@ export const CustomStyling: Story = {
     docs: {
       description: {
         story:
-          'Example showing how tabs can be styled with custom backgrounds and integrated into designed interfaces.',
+          "Example showing how tabs can be styled with custom backgrounds and integrated into designed interfaces.",
       },
     },
   },
@@ -471,8 +471,8 @@ export const CustomStyling: Story = {
 
 // Interactive playground
 export const Interactive: Story = {
-  render: args => {
-    const [activeTab, setActiveTab] = useState('overview');
+  render: (args) => {
+    const [activeTab, setActiveTab] = useState("overview");
     return (
       <div className="h-80 border border-gray-200 rounded-lg">
         <Tabs activeTab={activeTab} onTabChange={setActiveTab} tabs={basicTabs} {...args} />
@@ -480,13 +480,13 @@ export const Interactive: Story = {
     );
   },
   args: {
-    className: '',
+    className: "",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with Tabs props. Use the controls panel to test different configurations.',
+          "Interactive playground to experiment with Tabs props. Use the controls panel to test different configurations.",
       },
     },
   },

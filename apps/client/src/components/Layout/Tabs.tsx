@@ -1,15 +1,15 @@
-import Badge from '@/components/Badge';
-import { clsx } from 'clsx';
-import React from 'react';
-import type { TabItem, TabsProps } from '../../types/ui';
+import Badge from "@/components/Badge";
+import { clsx } from "clsx";
+import React from "react";
+import type { TabItem, TabsProps } from "../../types/ui";
 
 export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
-  const activeTabContent = tabs.find(tab => tab.id === activeTab)?.content;
+  const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content;
 
   return (
-    <div className={clsx('flex flex-col h-full min-h-0', className)}>
-      <div className="flex gap-3 bg-transparent">
-        {tabs.map(tab => (
+    <div className={clsx("flex flex-col h-full min-h-0", className)}>
+      <div className="flex items-end gap-1 border-b border-gray-200 bg-gray-50 px-6 dark:border-graphite-800 dark:bg-graphite-950">
+        {tabs.map((tab) => (
           <TabHeader
             key={tab.id}
             tab={tab}
@@ -37,12 +37,12 @@ function TabHeader({ tab, isActive, onClick }: TabHeaderProps) {
     <button
       type="button"
       className={clsx(
-        'px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors duration-150',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0',
+        "px-4 py-2.5 text-sm font-medium rounded-t-md border-b-2 border-transparent transition-colors duration-150",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-0",
         isActive
-          ? 'bg-blue-500/15 text-white shadow-sm shadow-blue-900/20'
-          : 'text-graphite-400 hover:text-graphite-200 hover:bg-graphite-900/50',
-        tab.disabled && 'opacity-50 cursor-not-allowed'
+          ? "bg-white text-blue-600 border-blue-500 shadow-inner shadow-black/5 dark:bg-graphite-900 dark:text-blue-300"
+          : "text-graphite-400 bg-gray-50 hover:text-blue-600 hover:bg-white/80 dark:text-graphite-500 dark:bg-graphite-950 dark:hover:text-blue-300 dark:hover:bg-graphite-900/30",
+        tab.disabled && "opacity-50 cursor-not-allowed",
       )}
       onClick={onClick}
       disabled={tab.disabled}
@@ -52,7 +52,7 @@ function TabHeader({ tab, isActive, onClick }: TabHeaderProps) {
       <span className="flex items-center gap-2.5">
         {tab.label}
         {tab.badge && (
-          <Badge variant={isActive ? 'accent' : 'neutral'} size="sm">
+          <Badge variant={isActive ? "accent" : "neutral"} size="sm">
             {tab.badge}
           </Badge>
         )}

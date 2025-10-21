@@ -3,14 +3,14 @@
  * Enhanced with parallel worker processing for improved performance
  */
 
-import { execFile } from 'child_process';
-import { promises as fs } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
-import { promisify } from 'util';
-import { type FileInfo, FileWorkerPool } from './file-scanner-worker';
-import type { GitScanResult, GitScannerAdapter } from './git-scanner.types';
-import { buildProjectStructure } from './project-analysis';
+import { execFile } from "child_process";
+import { promises as fs } from "fs";
+import { tmpdir } from "os";
+import { join } from "path";
+import { promisify } from "util";
+import { type FileInfo, FileWorkerPool } from "./file-scanner-worker";
+import type { GitScanResult, GitScannerAdapter } from "./git-scanner.types";
+import { buildProjectStructure } from "./project-analysis";
 
 const execFileAsync = promisify(execFile);
 
@@ -26,7 +26,7 @@ export class GitScanner implements GitScannerAdapter {
   private scans: Map<string, StoredScan> = new Map();
 
   constructor(maxWorkers?: number) {
-    this.maxConcurrentWorkers = maxWorkers || Math.max(2, Math.min(8, require('os').cpus().length));
+    this.maxConcurrentWorkers = maxWorkers || Math.max(2, Math.min(8, require("os").cpus().length));
     this.workerPool = new FileWorkerPool(this.maxConcurrentWorkers);
   }
 
@@ -41,7 +41,7 @@ export class GitScanner implements GitScannerAdapter {
       if (!this.isValidGitUrl(gitUrl)) {
         return {
           success: false,
-          error: 'Invalid git URL format',
+          error: "Invalid git URL format",
         };
       }
 
@@ -82,7 +82,7 @@ export class GitScanner implements GitScannerAdapter {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: error instanceof Error ? error.message : "Unknown error occurred",
       };
     }
   }
@@ -97,7 +97,7 @@ export class GitScanner implements GitScannerAdapter {
       if (!stats.isDirectory()) {
         return {
           success: false,
-          error: 'Path is not a directory',
+          error: "Path is not a directory",
         };
       }
 
@@ -114,7 +114,7 @@ export class GitScanner implements GitScannerAdapter {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to scan directory',
+        error: error instanceof Error ? error.message : "Failed to scan directory",
       };
     }
   }
@@ -136,7 +136,7 @@ export class GitScanner implements GitScannerAdapter {
    * Clean up all temporary directories
    */
   async cleanupAll(): Promise<void> {
-    const cleanupPromises = Array.from(this.tempDirs).map(dir => this.cleanup(dir));
+    const cleanupPromises = Array.from(this.tempDirs).map((dir) => this.cleanup(dir));
     await Promise.allSettled(cleanupPromises);
     await this.workerPool.terminate();
     this.scans.clear();
@@ -205,13 +205,13 @@ export class GitScanner implements GitScannerAdapter {
     let totalBatches = 0;
 
     // First, get the top-level directory listing
-    const topLevelFiles = await this.workerPool.scanDirectory(basePath, '', 1, 0);
+    const topLevelFiles = await this.workerPool.scanDirectory(basePath, "", 1, 0);
     allFileInfos.push(...topLevelFiles);
 
     // Collect directories for parallel processing
     const directories = topLevelFiles
-      .filter(file => file.isDirectory)
-      .map(file => ({
+      .filter((file) => file.isDirectory)
+      .map((file) => ({
         path: file.path,
         relativePath: file.relativePath,
       }));
@@ -229,14 +229,14 @@ export class GitScanner implements GitScannerAdapter {
           // Higher priority for first few directories, then normal priority
           const priority = index < 3 ? 3 : 2;
           return await this.workerPool.executeTask(
-            'scan-directory',
+            "scan-directory",
             {
               dirPath: dir.path,
               relativePath: dir.relativePath,
               maxDepth: 8,
               currentDepth: 1,
             },
-            priority
+            priority,
           );
         } catch (error) {
           console.warn(`Failed to scan directory ${dir.path}:`, error);
@@ -253,7 +253,7 @@ export class GitScanner implements GitScannerAdapter {
     }
 
     // Convert FileInfo objects to simple file paths and extract importable files
-    const files = allFileInfos.filter(file => !file.isDirectory).map(file => file.relativePath);
+    const files = allFileInfos.filter((file) => !file.isDirectory).map((file) => file.relativePath);
 
     return {
       files,
@@ -272,7 +272,7 @@ export class GitScanner implements GitScannerAdapter {
   private async tryGitLsFiles(basePath: string): Promise<string[] | null> {
     try {
       // Check if directory is a Git repository
-      const gitDir = join(basePath, '.git');
+      const gitDir = join(basePath, ".git");
       const gitDirExists = await fs
         .stat(gitDir)
         .then(() => true)
@@ -283,7 +283,7 @@ export class GitScanner implements GitScannerAdapter {
       }
 
       // Use git ls-files to list all tracked files
-      const { stdout } = await execFileAsync('git', ['ls-files', '-z'], {
+      const { stdout } = await execFileAsync("git", ["ls-files", "-z"], {
         cwd: basePath,
         timeout: 30000, // 30 second timeout
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large repos
@@ -291,16 +291,16 @@ export class GitScanner implements GitScannerAdapter {
 
       // Parse null-terminated output
       const files = stdout
-        .split('\0')
-        .filter(file => file.length > 0)
-        .map(file => file.trim());
+        .split("\0")
+        .filter((file) => file.length > 0)
+        .map((file) => file.trim());
 
       console.log(`Git ls-files found ${files.length} tracked files in ${basePath}`);
       return files;
     } catch (error) {
       console.warn(
         `Git ls-files failed for ${basePath}, falling back to directory scan:`,
-        error instanceof Error ? error.message : error
+        error instanceof Error ? error.message : error,
       );
       return null;
     }
@@ -317,7 +317,7 @@ export class GitScanner implements GitScannerAdapter {
       /^git@.*:.*\.git$/,
     ];
 
-    return gitUrlPatterns.some(pattern => pattern.test(url));
+    return gitUrlPatterns.some((pattern) => pattern.test(url));
   }
 
   private extractProjectNameFromGitUrl(gitUrl: string): string {
@@ -329,7 +329,7 @@ export class GitScanner implements GitScannerAdapter {
 
     try {
       // Remove .git suffix if present
-      const cleanUrl = gitUrl.replace(/\.git$/, '');
+      const cleanUrl = gitUrl.replace(/\.git$/, "");
 
       // Extract the last part of the path (repo name)
       const match = cleanUrl.match(/\/([^\/]+)$/);
@@ -344,14 +344,14 @@ export class GitScanner implements GitScannerAdapter {
       }
 
       // Fallback: try to get last segment after splitting by / or :
-      const segments = cleanUrl.split(/[\/:]/).filter(s => s.length > 0);
+      const segments = cleanUrl.split(/[\/:]/).filter((s) => s.length > 0);
       if (segments.length > 0) {
         return segments[segments.length - 1];
       }
 
-      return 'imported-project';
+      return "imported-project";
     } catch {
-      return 'imported-project';
+      return "imported-project";
     }
   }
 
@@ -367,12 +367,12 @@ export class GitScanner implements GitScannerAdapter {
   private async cloneRepository(gitUrl: string, targetPath: string): Promise<void> {
     try {
       // Use shallow clone for faster downloads
-      await execFileAsync('git', ['clone', '--depth', '1', '--single-branch', gitUrl, targetPath], {
+      await execFileAsync("git", ["clone", "--depth", "1", "--single-branch", gitUrl, targetPath], {
         timeout: 60000, // 60 second timeout
       });
     } catch (error) {
       throw new Error(
-        `Failed to clone repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to clone repository: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }
@@ -382,16 +382,16 @@ export class GitScanner implements GitScannerAdapter {
 export const gitScanner: GitScannerAdapter = new GitScanner();
 
 // Cleanup on process exit
-process.on('exit', () => {
+process.on("exit", () => {
   gitScanner.cleanupAll().catch(console.error);
 });
 
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   gitScanner.cleanupAll().catch(console.error);
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
+process.on("SIGTERM", () => {
   gitScanner.cleanupAll().catch(console.error);
   process.exit(0);
 });

@@ -1,20 +1,20 @@
-import { getHighlightedCode, normalizeSyntaxLanguage } from '@/utils/syntaxHighlight';
-import { Check, Copy } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { getHighlightedCode, normalizeSyntaxLanguage } from "@/utils/syntaxHighlight";
+import { Check, Copy } from "lucide-react";
+import React, { useMemo, useState } from "react";
 
 interface DataViewerProps {
   data: string | object;
   language?:
-    | 'yaml'
-    | 'yml'
-    | 'json'
-    | 'javascript'
-    | 'typescript'
-    | 'cue'
-    | 'dockerfile'
-    | 'docker'
-    | 'bash'
-    | 'shell';
+    | "yaml"
+    | "yml"
+    | "json"
+    | "javascript"
+    | "typescript"
+    | "cue"
+    | "dockerfile"
+    | "docker"
+    | "bash"
+    | "shell";
   title?: string;
   className?: string;
   showCopyButton?: boolean;
@@ -22,14 +22,14 @@ interface DataViewerProps {
 
 export const DataViewer: React.FC<DataViewerProps> = ({
   data,
-  language = 'yaml',
+  language = "yaml",
   title,
-  className = '',
+  className = "",
   showCopyButton = true,
 }) => {
   const [copied, setCopied] = useState(false);
 
-  const dataString = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+  const dataString = typeof data === "string" ? data : JSON.stringify(data, null, 2);
 
   const handleCopy = async () => {
     try {
@@ -37,7 +37,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -45,29 +45,29 @@ export const DataViewer: React.FC<DataViewerProps> = ({
 
   const highlightedHtml = useMemo(
     () => getHighlightedCode(dataString, language),
-    [dataString, language]
+    [dataString, language],
   );
 
   const getLanguageClass = () => {
     switch (language) {
-      case 'json':
-        return 'language-json';
-      case 'yml':
-      case 'yaml':
-        return 'language-yaml';
-      case 'dockerfile':
-      case 'docker':
-      case 'bash':
-      case 'shell':
-        return 'language-bash';
-      case 'javascript':
-        return 'language-javascript';
-      case 'typescript':
-        return 'language-typescript';
-      case 'cue':
-        return 'language-cue';
+      case "json":
+        return "language-json";
+      case "yml":
+      case "yaml":
+        return "language-yaml";
+      case "dockerfile":
+      case "docker":
+      case "bash":
+      case "shell":
+        return "language-bash";
+      case "javascript":
+        return "language-javascript";
+      case "typescript":
+        return "language-typescript";
+      case "cue":
+        return "language-cue";
       default:
-        return 'language-yaml';
+        return "language-yaml";
     }
   };
 
@@ -80,7 +80,7 @@ export const DataViewer: React.FC<DataViewerProps> = ({
             <button
               onClick={handleCopy}
               className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-              title={copied ? 'Copied!' : 'Copy to clipboard'}
+              title={copied ? "Copied!" : "Copy to clipboard"}
             >
               {copied ? (
                 <>

@@ -2,4 +2,4 @@
  * Project View Module - Main export
  */
 
-export { ProjectView } from './ProjectView';
+export { ProjectView } from "./ProjectView";

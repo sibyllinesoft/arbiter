@@ -7,28 +7,28 @@
 
 // Event types for real-time collaboration
 export type EventType =
-  | 'fragment_created'
-  | 'fragment_updated'
-  | 'fragment_deleted'
-  | 'fragment_revision_created'
-  | 'validation_started'
-  | 'validation_completed'
-  | 'validation_failed'
-  | 'version_frozen'
-  | 'webhook_received'
-  | 'git_push_processed'
-  | 'git_merge_processed'
-  | 'user_joined'
-  | 'user_left'
-  | 'project_activity'
-  | 'entity_created'
-  | 'entity_updated'
-  | 'entity_deleted'
-  | 'entity_restored';
+  | "fragment_created"
+  | "fragment_updated"
+  | "fragment_deleted"
+  | "fragment_revision_created"
+  | "validation_started"
+  | "validation_completed"
+  | "validation_failed"
+  | "version_frozen"
+  | "webhook_received"
+  | "git_push_processed"
+  | "git_merge_processed"
+  | "user_joined"
+  | "user_left"
+  | "project_activity"
+  | "entity_created"
+  | "entity_updated"
+  | "entity_deleted"
+  | "entity_restored";
 
 // WebSocket message types
 export interface WebSocketMessage {
-  type: 'subscribe' | 'unsubscribe' | 'ping' | 'pong' | 'event';
+  type: "subscribe" | "unsubscribe" | "ping" | "pong" | "event";
   project_id?: string;
   event_type?: EventType;
   data?: Record<string, unknown>;
@@ -111,7 +111,7 @@ export interface VersionFrozenEvent {
 
 export interface WebhookReceivedEvent {
   webhook_id: string;
-  provider: 'github' | 'gitlab';
+  provider: "github" | "gitlab";
   event_type: string;
   repository?: string;
   sender?: string;
@@ -152,9 +152,9 @@ export interface UserLeftEvent {
 }
 
 export interface ProjectActivityEvent {
-  activity_type: 'view' | 'edit' | 'validate' | 'export';
+  activity_type: "view" | "edit" | "validate" | "export";
   user_id: string;
-  resource_type: 'fragment' | 'project' | 'version';
+  resource_type: "fragment" | "project" | "version";
   resource_id: string;
   metadata?: Record<string, unknown>;
 }

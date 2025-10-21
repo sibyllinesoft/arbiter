@@ -3,11 +3,11 @@
  * Example of integrating the CUE-driven diagram with real API data
  */
 
-import { apiService } from '@/services/api';
-import type { ResolvedSpecResponse } from '@/types/api';
-import { type CueArchitectureData, type DiagramType } from '@/types/architecture';
-import React, { useState, useEffect } from 'react';
-import { CueDrivenArchitectureDiagram } from './CueDrivenArchitectureDiagram';
+import { apiService } from "@/services/api";
+import type { ResolvedSpecResponse } from "@/types/api";
+import { type CueArchitectureData, type DiagramType } from "@/types/architecture";
+import React, { useState, useEffect } from "react";
+import { CueDrivenArchitectureDiagram } from "./CueDrivenArchitectureDiagram";
 
 interface CueDrivenArchitectureIntegrationProps {
   /** Project ID to fetch CUE data for */
@@ -21,13 +21,13 @@ interface CueDrivenArchitectureIntegrationProps {
 export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureIntegrationProps> = ({
   projectId,
   apiBaseUrl,
-  className = '',
+  className = "",
 }) => {
   const [cueData, setCueData] = useState<CueArchitectureData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [diagramType, setDiagramType] = useState<DiagramType>('system_overview');
-  const [layoutType, setLayoutType] = useState<string>('layered');
+  const [diagramType, setDiagramType] = useState<DiagramType>("system_overview");
+  const [layoutType, setLayoutType] = useState<string>("layered");
   const [suggestedTypes, setSuggestedTypes] = useState<string[]>([]);
 
   // Fetch CUE data from API
@@ -38,14 +38,14 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
         setError(null);
 
         if (!projectId) {
-          throw new Error('No project ID provided');
+          throw new Error("No project ID provided");
         }
 
         // Use the fixed API service to get resolved spec
         const result: ResolvedSpecResponse = await apiService.getResolvedSpec(projectId);
 
         if (!result.resolved) {
-          throw new Error('No resolved CUE data available');
+          throw new Error("No resolved CUE data available");
         }
 
         const resolved = result.resolved as any; // Type assertion to access dynamic CUE-resolved properties safely
@@ -54,9 +54,9 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
           // Extract metadata
           metadata: {
             name: resolved.metadata?.name || projectId,
-            version: resolved.metadata?.version || '1.0.0',
-            apiVersion: resolved.apiVersion || 'v2',
-            kind: resolved.kind || 'Application',
+            version: resolved.metadata?.version || "1.0.0",
+            apiVersion: resolved.apiVersion || "v2",
+            kind: resolved.kind || "Application",
           },
 
           // v2 schema elements from resolved spec
@@ -76,7 +76,7 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
         setCueData(architectureData);
 
         // Import parser dynamically to get suggestions
-        const { CueArchitectureParser } = await import('@/utils/cueArchitectureParser');
+        const { CueArchitectureParser } = await import("@/utils/cueArchitectureParser");
         const suggestions = CueArchitectureParser.suggestDiagramTypes(architectureData);
         setSuggestedTypes(suggestions);
 
@@ -85,8 +85,8 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
           setDiagramType(suggestions[0] as DiagramType);
         }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
-        console.error('Failed to fetch CUE data:', err);
+        setError(err instanceof Error ? err.message : "Unknown error occurred");
+        console.error("Failed to fetch CUE data:", err);
       } finally {
         setLoading(false);
       }
@@ -96,14 +96,10 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
   }, [projectId, apiBaseUrl]);
 
   // Handle component selection for debugging
-  const handleComponentSelect = (component: any) => {
-    console.log('Selected component:', component);
-  };
+  const handleComponentSelect = (_component: any) => {};
 
   // Handle connection selection for debugging
-  const handleConnectionSelect = (connection: any) => {
-    console.log('Selected connection:', connection);
-  };
+  const handleConnectionSelect = (_connection: any) => {};
 
   if (loading) {
     return (
@@ -194,12 +190,12 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
                 <label className="text-sm font-medium text-gray-700">View:</label>
                 <select
                   value={diagramType}
-                  onChange={e => setDiagramType(e.target.value as DiagramType)}
+                  onChange={(e) => setDiagramType(e.target.value as DiagramType)}
                   className="text-sm border border-gray-300 rounded px-3 py-1"
                 >
-                  {suggestedTypes.map(type => (
+                  {suggestedTypes.map((type) => (
                     <option key={type} value={type}>
-                      {type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                     </option>
                   ))}
                 </select>
@@ -211,7 +207,7 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
               <label className="text-sm font-medium text-gray-700">Layout:</label>
               <select
                 value={layoutType}
-                onChange={e => setLayoutType(e.target.value)}
+                onChange={(e) => setLayoutType(e.target.value)}
                 className="text-sm border border-gray-300 rounded px-3 py-1"
               >
                 <option value="layered">Layered</option>

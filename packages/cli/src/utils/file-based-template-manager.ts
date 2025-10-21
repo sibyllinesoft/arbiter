@@ -5,9 +5,9 @@
  * for GitHub issue templates using Handlebars.
  */
 
-import path from 'node:path';
-import fs from 'fs-extra';
-import Handlebars from 'handlebars';
+import path from "node:path";
+import fs from "fs-extra";
+import Handlebars from "handlebars";
 import type {
   GitHubFileTemplateRef,
   GitHubTemplateConfig,
@@ -16,9 +16,9 @@ import type {
   GitHubTemplateSetSource,
   GitHubTemplatesConfig,
   IssueSpec,
-} from '../types.js';
-import { validateIssue } from '../types.js';
-import type { Epic, Task } from './sharded-storage.js';
+} from "../types.js";
+import { validateIssue } from "../types.js";
+import type { Epic, Task } from "./sharded-storage.js";
 
 /** Generated template following exact issue schema specification */
 export interface GeneratedTemplate extends IssueSpec {
@@ -41,7 +41,7 @@ export interface TemplateLoadResult {
 
 export interface TemplateDiscoveryResult {
   templatePath: string;
-  metadata: TemplateLoadResult['metadata'];
+  metadata: TemplateLoadResult["metadata"];
 }
 
 /**
@@ -60,24 +60,24 @@ export class FileBasedTemplateManager {
   }
 
   private isFileReference(value: unknown): value is GitHubFileTemplateRef {
-    return typeof value === 'object' && value !== null && 'file' in value;
+    return typeof value === "object" && value !== null && "file" in value;
   }
 
   private isTemplateSet(value: unknown): value is GitHubTemplateSet {
     return (
-      typeof value === 'object' &&
+      typeof value === "object" &&
       value !== null &&
-      'sections' in value &&
-      typeof (value as GitHubTemplateSet).sections?.description === 'string'
+      "sections" in value &&
+      typeof (value as GitHubTemplateSet).sections?.description === "string"
     );
   }
 
   private isTemplateConfigCandidate(value: unknown): value is GitHubTemplateConfig {
-    if (typeof value !== 'object' || value === null) return false;
+    if (typeof value !== "object" || value === null) return false;
     if (this.isFileReference(value)) return false;
 
     return (
-      'templateFile' in value || 'sections' in value || 'title' in value || 'description' in value
+      "templateFile" in value || "sections" in value || "title" in value || "description" in value
     );
   }
 
@@ -86,11 +86,11 @@ export class FileBasedTemplateManager {
    */
   async generateEpicTemplate(
     epic: Epic,
-    options: GitHubTemplateOptions = {}
+    options: GitHubTemplateOptions = {},
   ): Promise<GeneratedTemplate> {
     const templateRef = this.config.epic;
     if (!templateRef) {
-      throw new Error('Epic template not configured');
+      throw new Error("Epic template not configured");
     }
 
     const template = await this.loadTemplate(templateRef);
@@ -105,11 +105,11 @@ export class FileBasedTemplateManager {
   async generateTaskTemplate(
     task: Task,
     epic: Epic,
-    options: GitHubTemplateOptions = {}
+    options: GitHubTemplateOptions = {},
   ): Promise<GeneratedTemplate> {
     const templateRef = this.config.task;
     if (!templateRef) {
-      throw new Error('Task template not configured');
+      throw new Error("Task template not configured");
     }
 
     const template = await this.loadTemplate(templateRef);
@@ -123,11 +123,11 @@ export class FileBasedTemplateManager {
    */
   async generateBugReportTemplate(
     bugData: any,
-    options: GitHubTemplateOptions = {}
+    options: GitHubTemplateOptions = {},
   ): Promise<GeneratedTemplate> {
     const templateRef = this.config.bugReport;
     if (!templateRef) {
-      throw new Error('Bug report template not configured');
+      throw new Error("Bug report template not configured");
     }
 
     const template = await this.loadTemplate(templateRef);
@@ -141,11 +141,11 @@ export class FileBasedTemplateManager {
    */
   async generateFeatureRequestTemplate(
     featureData: any,
-    options: GitHubTemplateOptions = {}
+    options: GitHubTemplateOptions = {},
   ): Promise<GeneratedTemplate> {
     const templateRef = this.config.featureRequest;
     if (!templateRef) {
-      throw new Error('Feature request template not configured');
+      throw new Error("Feature request template not configured");
     }
 
     const template = await this.loadTemplate(templateRef);
@@ -158,7 +158,7 @@ export class FileBasedTemplateManager {
    * Load template from file or config
    */
   private async loadTemplate(
-    templateRef: GitHubTemplateConfig | GitHubFileTemplateRef | GitHubTemplateSetSource
+    templateRef: GitHubTemplateConfig | GitHubFileTemplateRef | GitHubTemplateSetSource,
   ): Promise<TemplateLoadResult> {
     // Check if it's a file reference
     if (this.isFileReference(templateRef)) {
@@ -178,7 +178,7 @@ export class FileBasedTemplateManager {
     }
 
     if (!this.isTemplateConfigCandidate(templateRef)) {
-      throw new Error('Unsupported template reference type for file-based templates');
+      throw new Error("Unsupported template reference type for file-based templates");
     }
 
     // Handle inline template config with possible file reference
@@ -205,7 +205,7 @@ export class FileBasedTemplateManager {
    * Load template from file with inheritance support
    */
   private async loadTemplateFromFile(
-    templateRef: GitHubFileTemplateRef
+    templateRef: GitHubFileTemplateRef,
   ): Promise<TemplateLoadResult> {
     const filePath = await this.resolveTemplatePath(templateRef.file);
 
@@ -219,7 +219,7 @@ export class FileBasedTemplateManager {
       throw new Error(`Template file not found: ${filePath}`);
     }
 
-    let content = await fs.readFile(filePath, 'utf-8');
+    let content = await fs.readFile(filePath, "utf-8");
     const metadata = this.extractTemplateMetadata(content);
 
     // Merge metadata from reference and file
@@ -250,13 +250,13 @@ export class FileBasedTemplateManager {
    */
   private async loadInheritedTemplate(inheritsRef: string): Promise<TemplateLoadResult> {
     // Check if it's a file path
-    if (inheritsRef.includes('.')) {
+    if (inheritsRef.includes(".")) {
       const fileRef: GitHubFileTemplateRef = { file: inheritsRef };
       return await this.loadTemplateFromFile(fileRef);
     }
 
     // Check if it's a template name in config
-    const baseTemplates = ['base', 'epic', 'task', 'bugReport', 'featureRequest'] as const;
+    const baseTemplates = ["base", "epic", "task", "bugReport", "featureRequest"] as const;
     for (const templateName of baseTemplates) {
       const templateRef = this.config[templateName];
       if (!templateRef) continue;
@@ -289,8 +289,8 @@ export class FileBasedTemplateManager {
   private mergeTemplateContent(baseContent: string, childContent: string): string {
     // Simple merge strategy: if child has "{{> base}}" or similar, replace it with base content
     // Otherwise, prepend base content
-    if (childContent.includes('{{> base}}')) {
-      return childContent.replace('{{> base}}', baseContent);
+    if (childContent.includes("{{> base}}")) {
+      return childContent.replace("{{> base}}", baseContent);
     }
 
     // Look for @inherits comment and replace
@@ -306,8 +306,8 @@ export class FileBasedTemplateManager {
   /**
    * Extract metadata from template file comments
    */
-  private extractTemplateMetadata(content: string): TemplateLoadResult['metadata'] {
-    const metadata: TemplateLoadResult['metadata'] = {};
+  private extractTemplateMetadata(content: string): TemplateLoadResult["metadata"] {
+    const metadata: TemplateLoadResult["metadata"] = {};
 
     // Extract @inherits
     const inheritMatch = content.match(/{{!--\s*@inherits:\s*([^\s]+)\s*--}}/);
@@ -330,7 +330,7 @@ export class FileBasedTemplateManager {
     // Extract @labels
     const labelsMatch = content.match(/{{!--\s*@labels:\s*\[([^\]]+)\]\s*--}}/);
     if (labelsMatch) {
-      metadata.labels = labelsMatch[1].split(',').map(l => l.trim().replace(/['"]/g, ''));
+      metadata.labels = labelsMatch[1].split(",").map((l) => l.trim().replace(/['"]/g, ""));
     }
 
     return metadata;
@@ -346,7 +346,7 @@ export class FileBasedTemplateManager {
     }
 
     // Try discovery paths
-    const discoveryPaths = this.config.discoveryPaths || ['.arbiter/templates/github'];
+    const discoveryPaths = this.config.discoveryPaths || [".arbiter/templates/github"];
 
     for (const discoveryPath of discoveryPaths) {
       const resolvedDiscoveryPath = this.resolveDiscoveryPath(discoveryPath);
@@ -375,10 +375,10 @@ export class FileBasedTemplateManager {
    * Resolve discovery path (handle ~ for home directory)
    */
   private resolveDiscoveryPath(discoveryPath: string): string {
-    if (discoveryPath.startsWith('~')) {
+    if (discoveryPath.startsWith("~")) {
       const homeDir = process.env.HOME || process.env.USERPROFILE;
       if (!homeDir) {
-        throw new Error('Could not resolve home directory for template path');
+        throw new Error("Could not resolve home directory for template path");
       }
       return path.join(homeDir, discoveryPath.slice(1));
     }
@@ -394,7 +394,7 @@ export class FileBasedTemplateManager {
    * Create inline template from config (fallback)
    */
   private createInlineTemplate(config: GitHubTemplateConfig): TemplateLoadResult {
-    let content = '';
+    let content = "";
 
     if (config.sections?.description) {
       content += `${config.sections.description}\n\n`;
@@ -409,7 +409,7 @@ export class FileBasedTemplateManager {
     }
 
     if (config.sections?.additional) {
-      Object.values(config.sections.additional).forEach(section => {
+      Object.values(config.sections.additional).forEach((section) => {
         content += `${section}\n\n`;
       });
     }
@@ -431,7 +431,7 @@ export class FileBasedTemplateManager {
   private async renderTemplate(
     template: TemplateLoadResult,
     context: Record<string, any>,
-    templateRef: GitHubTemplateConfig | GitHubFileTemplateRef
+    templateRef: GitHubTemplateConfig | GitHubFileTemplateRef,
   ): Promise<GeneratedTemplate> {
     // Compile template if not cached
     const cacheKey = template.content;
@@ -446,7 +446,7 @@ export class FileBasedTemplateManager {
     const body = compiledTemplate(context);
 
     // Extract title - prefer context data or use template metadata
-    let title = context.name || context.title || template.metadata?.name || 'Untitled';
+    let title = context.name || context.title || template.metadata?.name || "Untitled";
 
     // Ensure title length limit
     if (title.length > 255) {
@@ -483,7 +483,7 @@ export class FileBasedTemplateManager {
     // Validate against issue schema
     const validation = validateIssue(issue);
     if (!validation.valid) {
-      throw new Error(`Generated template validation failed: ${validation.errors.join(', ')}`);
+      throw new Error(`Generated template validation failed: ${validation.errors.join(", ")}`);
     }
 
     return issue;
@@ -494,11 +494,11 @@ export class FileBasedTemplateManager {
    */
   private processLabels(labelTemplates: string[], context: Record<string, any>): string[] {
     return labelTemplates
-      .map(template => {
+      .map((template) => {
         const compiled = Handlebars.compile(template);
         return compiled(context);
       })
-      .filter(label => label.length > 0);
+      .filter((label) => label.length > 0);
   }
 
   /**
@@ -517,7 +517,7 @@ export class FileBasedTemplateManager {
     }
 
     // Add assignees from template
-    assigneeTemplates.forEach(template => {
+    assigneeTemplates.forEach((template) => {
       const compiled = Handlebars.compile(template);
       const assignee = compiled(context);
       if (assignee && assignee.length > 0) {
@@ -549,26 +549,26 @@ export class FileBasedTemplateManager {
    */
   private registerHelpers(): void {
     // Equality helper
-    Handlebars.registerHelper('eq', (a, b) => a === b);
+    Handlebars.registerHelper("eq", (a, b) => a === b);
 
     // If helper for conditional rendering
-    Handlebars.registerHelper('ifEquals', function (arg1, arg2, options) {
+    Handlebars.registerHelper("ifEquals", function (arg1, arg2, options) {
       return arg1 === arg2 ? options.fn(this) : options.inverse(this);
     });
 
     // Status emoji helper
-    Handlebars.registerHelper('statusEmoji', (status: string) => {
+    Handlebars.registerHelper("statusEmoji", (status: string) => {
       return this.getStatusEmoji(status);
     });
 
     // Capitalize helper
-    Handlebars.registerHelper('capitalize', (str: string) => {
-      return str ? str.charAt(0).toUpperCase() + str.slice(1) : '';
+    Handlebars.registerHelper("capitalize", (str: string) => {
+      return str ? str.charAt(0).toUpperCase() + str.slice(1) : "";
     });
 
     // Format date helper
-    Handlebars.registerHelper('formatDate', (date: string) => {
-      return date ? new Date(date).toLocaleDateString() : '';
+    Handlebars.registerHelper("formatDate", (date: string) => {
+      return date ? new Date(date).toLocaleDateString() : "";
     });
   }
 
@@ -577,15 +577,15 @@ export class FileBasedTemplateManager {
    */
   private getStatusEmoji(status: string): string {
     const emojis: Record<string, string> = {
-      todo: '📋',
-      planning: '📋',
-      in_progress: '🚧',
-      review: '👀',
-      testing: '🧪',
-      completed: '✅',
-      cancelled: '❌',
+      todo: "📋",
+      planning: "📋",
+      in_progress: "🚧",
+      review: "👀",
+      testing: "🧪",
+      completed: "✅",
+      cancelled: "❌",
     };
-    return emojis[status] || '❓';
+    return emojis[status] || "❓";
   }
 
   /**
@@ -593,7 +593,7 @@ export class FileBasedTemplateManager {
    */
   async discoverTemplates(): Promise<TemplateDiscoveryResult[]> {
     const discovered: TemplateDiscoveryResult[] = [];
-    const discoveryPaths: string[] = this.config.discoveryPaths ?? ['.arbiter/templates/github'];
+    const discoveryPaths: string[] = this.config.discoveryPaths ?? [".arbiter/templates/github"];
 
     for (const discoveryPath of discoveryPaths) {
       try {
@@ -603,14 +603,14 @@ export class FileBasedTemplateManager {
         }
 
         const files = await fs.readdir(resolvedPath);
-        const templateFiles = files.filter(file => {
+        const templateFiles = files.filter((file) => {
           const ext = path.extname(file);
-          return ext === '.hbs' || ext === '.md' || ext === '.handlebars';
+          return ext === ".hbs" || ext === ".md" || ext === ".handlebars";
         });
 
         for (const file of templateFiles) {
           const templatePath = path.join(resolvedPath, file);
-          const content = await fs.readFile(templatePath, 'utf-8');
+          const content = await fs.readFile(templatePath, "utf-8");
           const metadata = this.extractTemplateMetadata(content);
 
           discovered.push({
@@ -632,11 +632,11 @@ export class FileBasedTemplateManager {
 
     // Validate template file references
     const templateRefs = [
-      { name: 'base', ref: this.config.base },
-      { name: 'epic', ref: this.config.epic },
-      { name: 'task', ref: this.config.task },
-      { name: 'bugReport', ref: this.config.bugReport },
-      { name: 'featureRequest', ref: this.config.featureRequest },
+      { name: "base", ref: this.config.base },
+      { name: "epic", ref: this.config.epic },
+      { name: "task", ref: this.config.task },
+      { name: "bugReport", ref: this.config.bugReport },
+      { name: "featureRequest", ref: this.config.featureRequest },
     ];
 
     for (const { name, ref } of templateRefs) {
@@ -675,7 +675,7 @@ export class FileBasedTemplateManager {
    * Create checklist items from context data
    */
   private createChecklistFromContext(
-    context: Record<string, any>
+    context: Record<string, any>,
   ): Array<{ id: string; text: string; done?: boolean }> {
     const checklist = [];
 
@@ -685,7 +685,7 @@ export class FileBasedTemplateManager {
         checklist.push({
           id: `task-${index}`,
           text: task.name || task.description || `Task ${index + 1}`,
-          done: task.status === 'completed',
+          done: task.status === "completed",
         });
       });
     }
@@ -704,16 +704,16 @@ export class FileBasedTemplateManager {
     // Add any custom checklist items from context
     if (context.checklist && Array.isArray(context.checklist)) {
       context.checklist.forEach((item: any, index: number) => {
-        if (typeof item === 'string') {
+        if (typeof item === "string") {
           checklist.push({
             id: `custom-${index}`,
             text: item,
             done: false,
           });
-        } else if (item && typeof item === 'object') {
+        } else if (item && typeof item === "object") {
           checklist.push({
             id: item.id || `custom-${index}`,
-            text: item.text || item.description || '',
+            text: item.text || item.description || "",
             done: !!item.done,
           });
         }

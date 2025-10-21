@@ -4,7 +4,7 @@
  * Showcasing professional status indicators with sophisticated graphite theme
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from "@storybook/react";
 import {
   Activity,
   AlertTriangle,
@@ -18,49 +18,49 @@ import {
   Users,
   XCircle,
   Zap,
-} from 'lucide-react';
-import StatusBadge from './StatusBadge';
+} from "lucide-react";
+import StatusBadge from "./StatusBadge";
 
 const meta = {
-  title: 'Design System/StatusBadge',
+  title: "Design System/StatusBadge",
   component: StatusBadge,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
     docs: {
       description: {
         component:
-          'Professional status badge component with comprehensive variants, styles, and states. Designed for developer tools with sophisticated graphite theme.',
+          "Professional status badge component with comprehensive variants, styles, and states. Designed for developer tools with sophisticated graphite theme.",
       },
     },
   },
-  tags: ['autodocs'],
+  tags: ["autodocs"],
   argTypes: {
     variant: {
-      control: { type: 'select' },
-      options: ['success', 'warning', 'error', 'info', 'neutral', 'pending', 'active', 'inactive'],
-      description: 'Semantic variant of the status badge',
+      control: { type: "select" },
+      options: ["success", "warning", "error", "info", "neutral", "pending", "active", "inactive"],
+      description: "Semantic variant of the status badge",
     },
     style: {
-      control: { type: 'select' },
-      options: ['solid', 'outlined', 'subtle'],
-      description: 'Visual style of the badge',
+      control: { type: "select" },
+      options: ["solid", "outlined", "subtle"],
+      description: "Visual style of the badge",
     },
     size: {
-      control: { type: 'select' },
-      options: ['xs', 'sm', 'md', 'lg'],
-      description: 'Size of the badge affecting padding and typography',
+      control: { type: "select" },
+      options: ["xs", "sm", "md", "lg"],
+      description: "Size of the badge affecting padding and typography",
     },
     showDot: {
-      control: { type: 'boolean' },
-      description: 'Whether to show a status dot indicator',
+      control: { type: "boolean" },
+      description: "Whether to show a status dot indicator",
     },
     pulse: {
-      control: { type: 'boolean' },
-      description: 'Whether the dot should pulse (for active states)',
+      control: { type: "boolean" },
+      description: "Whether the dot should pulse (for active states)",
     },
     loading: {
-      control: { type: 'boolean' },
-      description: 'Whether the badge is in a loading state',
+      control: { type: "boolean" },
+      description: "Whether the badge is in a loading state",
     },
   },
 } satisfies Meta<typeof StatusBadge>;
@@ -71,8 +71,8 @@ type Story = StoryObj<typeof meta>;
 // Default badge
 export const Default: Story = {
   args: {
-    variant: 'success',
-    children: 'Active',
+    variant: "success",
+    children: "Active",
     showDot: true,
   },
 };
@@ -108,13 +108,13 @@ export const Variants: Story = {
     </div>
   ),
   args: {
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'All semantic variants of the status badge: success, warning, error, info, neutral, pending, active, and inactive.',
+          "All semantic variants of the status badge: success, warning, error, info, neutral, pending, active, and inactive.",
       },
     },
   },
@@ -189,13 +189,13 @@ export const Styles: Story = {
     </div>
   ),
   args: {
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Different visual styles: solid (default), outlined (transparent background), and subtle (no border).',
+          "Different visual styles: solid (default), outlined (transparent background), and subtle (no border).",
       },
     },
   },
@@ -220,12 +220,12 @@ export const Sizes: Story = {
     </div>
   ),
   args: {
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
-        story: 'Size variants with proportional scaling of text, padding, and indicators.',
+        story: "Size variants with proportional scaling of text, padding, and indicators.",
       },
     },
   },
@@ -256,12 +256,12 @@ export const WithIcons: Story = {
     </div>
   ),
   args: {
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
-        story: 'Status badges with custom icons for enhanced meaning and visual appeal.',
+        story: "Status badges with custom icons for enhanced meaning and visual appeal.",
       },
     },
   },
@@ -286,12 +286,12 @@ export const LoadingStates: Story = {
     </div>
   ),
   args: {
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
-        story: 'Loading states with spinning indicators to show ongoing processes.',
+        story: "Loading states with spinning indicators to show ongoing processes.",
       },
     },
   },
@@ -555,13 +555,13 @@ export const DeveloperToolExamples: Story = {
     </div>
   ),
   args: {
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Real-world examples of status badges in developer tools: build status, service health, team activity, and feature flags.',
+          "Real-world examples of status badges in developer tools: build status, service health, team activity, and feature flags.",
       },
     },
   },
@@ -570,19 +570,19 @@ export const DeveloperToolExamples: Story = {
 // Interactive playground
 export const Interactive: Story = {
   args: {
-    variant: 'success',
-    style: 'solid',
-    size: 'sm',
+    variant: "success",
+    style: "solid",
+    size: "sm",
     showDot: true,
     pulse: false,
     loading: false,
-    children: 'Status Badge',
+    children: "Status Badge",
   },
   parameters: {
     docs: {
       description: {
         story:
-          'Interactive playground to experiment with all status badge props. Use the controls panel below to test different combinations.',
+          "Interactive playground to experiment with all status badge props. Use the controls panel below to test different combinations.",
       },
     },
   },

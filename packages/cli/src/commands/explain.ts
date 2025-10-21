@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import chalk from 'chalk';
-import type { Config } from '../config.js';
+import fs from "node:fs/promises";
+import path from "node:path";
+import chalk from "chalk";
+import type { Config } from "../config.js";
 
 /**
  * Options for explain command
  */
 export interface ExplainOptions {
-  format?: 'text' | 'json';
+  format?: "text" | "json";
   output?: string;
   verbose?: boolean;
   hints?: boolean;
@@ -56,54 +56,54 @@ interface AssemblyExplanation {
  */
 export async function explainCommand(options: ExplainOptions, _config: Config): Promise<number> {
   try {
-    console.log(chalk.blue('🔍 Analyzing specification...'));
+    console.log(chalk.blue("🔍 Analyzing specification..."));
 
     const assemblyPath = await resolveAssemblyPath();
     if (!assemblyPath) {
-      console.log(chalk.red('❌ No assembly specification found'));
-      console.log(chalk.dim('To get started:'));
-      console.log(chalk.dim('  1. Run: arbiter init --template <type>'));
-      console.log(chalk.dim('  2. Or: arbiter add service <name>'));
-      console.log(chalk.dim('  3. Then: arbiter explain'));
+      console.log(chalk.red("❌ No assembly specification found"));
+      console.log(chalk.dim("To get started:"));
+      console.log(chalk.dim("  1. Run: arbiter init --template <type>"));
+      console.log(chalk.dim("  2. Or: arbiter add service <name>"));
+      console.log(chalk.dim("  3. Then: arbiter explain"));
       return 1;
     }
 
     console.log(chalk.green(`✅ Found ${path.relative(process.cwd(), assemblyPath)}`));
 
     // Read and parse assembly file
-    const assemblyContent = await fs.readFile(assemblyPath, 'utf-8');
+    const assemblyContent = await fs.readFile(assemblyPath, "utf-8");
 
     // Parse the assembly configuration
     const explanation = await parseAssemblyForExplanation(assemblyContent);
 
     // Generate explanation based on format
-    const format = options.format || 'text';
+    const format = options.format || "text";
 
-    if (format === 'json') {
+    if (format === "json") {
       return await generateJsonExplanation(explanation, options);
     }
     return await generateTextExplanation(explanation, options);
   } catch (error) {
     console.error(
-      chalk.red('Explanation generation failed:'),
-      error instanceof Error ? error.message : String(error)
+      chalk.red("Explanation generation failed:"),
+      error instanceof Error ? error.message : String(error),
     );
     return 2;
   }
 }
 
 async function resolveAssemblyPath(): Promise<string | null> {
-  const arbiterFile = path.resolve('.arbiter', 'assembly.cue');
+  const arbiterFile = path.resolve(".arbiter", "assembly.cue");
   if (await fileExists(arbiterFile)) {
     return arbiterFile;
   }
 
-  const arbiterDir = path.resolve('.arbiter');
+  const arbiterDir = path.resolve(".arbiter");
   if (await directoryExists(arbiterDir)) {
     const entries = await fs.readdir(arbiterDir, { withFileTypes: true });
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      const candidate = path.join(arbiterDir, entry.name, 'assembly.cue');
+      const candidate = path.join(arbiterDir, entry.name, "assembly.cue");
       if (await fileExists(candidate)) {
         return candidate;
       }
@@ -135,7 +135,7 @@ async function directoryExists(target: string): Promise<boolean> {
  * Parse assembly file and extract explanation information
  */
 async function parseAssemblyForExplanation(content: string): Promise<AssemblyExplanation> {
-  const lines = content.split('\n');
+  const lines = content.split("\n");
   const explanation = initializeEmptyExplanation();
   const context = createParsingContext();
 
@@ -150,20 +150,20 @@ async function parseAssemblyForExplanation(content: string): Promise<AssemblyExp
  */
 function initializeEmptyExplanation(): AssemblyExplanation {
   return {
-    summary: '',
+    summary: "",
     artifact: {
-      type: 'unknown',
-      language: 'unknown',
-      description: '',
+      type: "unknown",
+      language: "unknown",
+      description: "",
       metadata: {},
     },
     profile: {
-      type: 'unknown',
+      type: "unknown",
       configuration: {},
       features: [],
     },
     build: {
-      tool: 'unknown',
+      tool: "unknown",
       targets: [],
       matrix: {},
     },
@@ -188,7 +188,7 @@ function initializeEmptyExplanation(): AssemblyExplanation {
  */
 function createParsingContext(): { currentSection: string; braceDepth: number } {
   return {
-    currentSection: '',
+    currentSection: "",
     braceDepth: 0,
   };
 }
@@ -199,7 +199,7 @@ function createParsingContext(): { currentSection: string; braceDepth: number } 
 function processContentLines(
   lines: string[],
   explanation: AssemblyExplanation,
-  context: { currentSection: string; braceDepth: number }
+  context: { currentSection: string; braceDepth: number },
 ): void {
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -216,7 +216,7 @@ function processIndividualLine(
   trimmedLine: string,
   fullLine: string,
   explanation: AssemblyExplanation,
-  context: { currentSection: string; braceDepth: number }
+  context: { currentSection: string; braceDepth: number },
 ): void {
   extractCommentDescription(trimmedLine, explanation);
   updateBraceDepth(fullLine, context);
@@ -231,8 +231,8 @@ function processIndividualLine(
  * Extract description from comments
  */
 function extractCommentDescription(trimmedLine: string, explanation: AssemblyExplanation): void {
-  if (trimmedLine.startsWith('//') && explanation.artifact.description === '') {
-    explanation.artifact.description += `${trimmedLine.replace(/^\/\/\s*/, '')} `;
+  if (trimmedLine.startsWith("//") && explanation.artifact.description === "") {
+    explanation.artifact.description += `${trimmedLine.replace(/^\/\/\s*/, "")} `;
   }
 }
 
@@ -241,7 +241,7 @@ function extractCommentDescription(trimmedLine: string, explanation: AssemblyExp
  */
 function updateBraceDepth(
   line: string,
-  context: { currentSection: string; braceDepth: number }
+  context: { currentSection: string; braceDepth: number },
 ): void {
   context.braceDepth += (line.match(/{/g) || []).length;
   context.braceDepth -= (line.match(/}/g) || []).length;
@@ -253,12 +253,12 @@ function updateBraceDepth(
 function updateCurrentSection(
   trimmedLine: string,
   context: { currentSection: string; braceDepth: number },
-  explanation: AssemblyExplanation
+  explanation: AssemblyExplanation,
 ): void {
-  if (trimmedLine.includes('Artifact:') && trimmedLine.includes('#Artifact')) {
-    context.currentSection = 'artifact';
-  } else if (trimmedLine.includes('Profile:') && trimmedLine.includes('#')) {
-    context.currentSection = 'profile';
+  if (trimmedLine.includes("Artifact:") && trimmedLine.includes("#Artifact")) {
+    context.currentSection = "artifact";
+  } else if (trimmedLine.includes("Profile:") && trimmedLine.includes("#")) {
+    context.currentSection = "profile";
     const profileMatch = trimmedLine.match(/#(\w+)/);
     if (profileMatch) {
       explanation.profile.type = profileMatch[1];
@@ -272,9 +272,9 @@ function updateCurrentSection(
 function extractSectionSpecificFields(
   trimmedLine: string,
   explanation: AssemblyExplanation,
-  context: { currentSection: string; braceDepth: number }
+  context: { currentSection: string; braceDepth: number },
 ): void {
-  if (context.currentSection === 'artifact') {
+  if (context.currentSection === "artifact") {
     extractArtifactFields(trimmedLine, explanation);
   }
 }
@@ -311,7 +311,7 @@ function extractArtifactFields(trimmedLine: string, explanation: AssemblyExplana
   ];
 
   for (const extractor of fieldExtractors) {
-    if (trimmedLine.includes(extractor.pattern.source.split('\\s')[0])) {
+    if (trimmedLine.includes(extractor.pattern.source.split("\\s")[0])) {
       const match = trimmedLine.match(extractor.pattern);
       if (match) {
         extractor.target(match[1]);
@@ -324,17 +324,17 @@ function extractArtifactFields(trimmedLine: string, explanation: AssemblyExplana
  * Extract global build information
  */
 function extractGlobalBuildInfo(trimmedLine: string, explanation: AssemblyExplanation): void {
-  if (trimmedLine.includes('tool:')) {
+  if (trimmedLine.includes("tool:")) {
     const toolMatch = trimmedLine.match(/tool:\s*"([^"]+)"/);
     if (toolMatch) {
       explanation.build.tool = toolMatch[1];
     }
   }
 
-  if (trimmedLine.includes('targets:')) {
+  if (trimmedLine.includes("targets:")) {
     const targetsMatch = trimmedLine.match(/targets:\s*\[([^\]]+)\]/);
     if (targetsMatch) {
-      explanation.build.targets = targetsMatch[1].split(',').map(t => t.trim().replace(/"/g, ''));
+      explanation.build.targets = targetsMatch[1].split(",").map((t) => t.trim().replace(/"/g, ""));
     }
   }
 }
@@ -343,12 +343,12 @@ function extractGlobalBuildInfo(trimmedLine: string, explanation: AssemblyExplan
  * Extract test information
  */
 function extractTestInformation(trimmedLine: string, explanation: AssemblyExplanation): void {
-  if (trimmedLine.includes('golden:') || trimmedLine.includes('property:')) {
-    if (trimmedLine.includes('golden:')) {
-      explanation.tests.types.push('golden');
+  if (trimmedLine.includes("golden:") || trimmedLine.includes("property:")) {
+    if (trimmedLine.includes("golden:")) {
+      explanation.tests.types.push("golden");
     }
-    if (trimmedLine.includes('property:')) {
-      explanation.tests.types.push('property');
+    if (trimmedLine.includes("property:")) {
+      explanation.tests.types.push("property");
     }
   }
 }
@@ -357,11 +357,11 @@ function extractTestInformation(trimmedLine: string, explanation: AssemblyExplan
  * Extract contract and invariant information
  */
 function extractContractInformation(trimmedLine: string, explanation: AssemblyExplanation): void {
-  if (trimmedLine.includes('invariants:')) {
-    explanation.tests.types.push('contracts');
+  if (trimmedLine.includes("invariants:")) {
+    explanation.tests.types.push("contracts");
   }
 
-  if (trimmedLine.includes('name:') && trimmedLine.includes('formula:')) {
+  if (trimmedLine.includes("name:") && trimmedLine.includes("formula:")) {
     const nameMatch = trimmedLine.match(/name:\s*"([^"]+)"/);
     if (nameMatch) {
       explanation.contracts.invariants.push(nameMatch[1]);
@@ -387,7 +387,7 @@ function generateSummary(explanation: AssemblyExplanation): string {
 
   let summary = `This project is configured as a ${artifact.type}`;
 
-  if (artifact.language !== 'unknown') {
+  if (artifact.language !== "unknown") {
     summary += ` written in ${artifact.language}`;
   }
 
@@ -395,19 +395,19 @@ function generateSummary(explanation: AssemblyExplanation): string {
     summary += ` called "${artifact.metadata.name}"`;
   }
 
-  if (profile.type !== 'unknown') {
+  if (profile.type !== "unknown") {
     summary += `, using the ${profile.type} profile`;
   }
 
-  if (build.tool !== 'unknown') {
+  if (build.tool !== "unknown") {
     summary += `, built with ${build.tool}`;
   }
 
   if (build.targets.length > 0) {
-    summary += `, targeting ${build.targets.join(', ')}`;
+    summary += `, targeting ${build.targets.join(", ")}`;
   }
 
-  summary += '.';
+  summary += ".";
 
   return summary;
 }
@@ -422,7 +422,7 @@ function generateNextSteps(explanation: AssemblyExplanation): string[] {
   // Basic workflow steps
   steps.push('Run "arbiter check" to validate your configuration');
 
-  if (artifact.language !== 'unknown') {
+  if (artifact.language !== "unknown") {
     steps.push(`Generate API surface with "arbiter surface ${artifact.language}"`);
   }
 
@@ -435,7 +435,7 @@ function generateNextSteps(explanation: AssemblyExplanation): string[] {
   }
 
   // Version management
-  if (artifact.type === 'library') {
+  if (artifact.type === "library") {
     steps.push('Set up version planning with "arbiter version plan"');
   }
 
@@ -457,51 +457,51 @@ function generateRecommendations(explanation: AssemblyExplanation): string[] {
   const { artifact, profile, tests, contracts } = explanation;
 
   // Profile-specific recommendations
-  if (artifact.type === 'library' && profile.type !== 'library') {
-    recommendations.push('Consider using profiles.#library for library-specific features');
+  if (artifact.type === "library" && profile.type !== "library") {
+    recommendations.push("Consider using profiles.#library for library-specific features");
   }
 
-  if (artifact.type === 'cli' && profile.type !== 'cli') {
-    recommendations.push('Consider using profiles.#cli for CLI-specific testing');
+  if (artifact.type === "cli" && profile.type !== "cli") {
+    recommendations.push("Consider using profiles.#cli for CLI-specific testing");
   }
 
   // Test recommendations
   if (tests.types.length === 0) {
-    recommendations.push('Add test configurations for automated quality gates');
+    recommendations.push("Add test configurations for automated quality gates");
   }
 
-  if (!tests.types.includes('golden')) {
-    recommendations.push('Add golden tests for stable output verification');
+  if (!tests.types.includes("golden")) {
+    recommendations.push("Add golden tests for stable output verification");
   }
 
-  if (!tests.types.includes('property')) {
-    recommendations.push('Add property tests for comprehensive validation');
+  if (!tests.types.includes("property")) {
+    recommendations.push("Add property tests for comprehensive validation");
   }
 
   // Contract recommendations
   if (contracts.invariants.length === 0) {
-    recommendations.push('Define invariants to enable contract-based testing');
+    recommendations.push("Define invariants to enable contract-based testing");
   }
 
   // Build recommendations
   if (explanation.build.matrix && Object.keys(explanation.build.matrix).length === 0) {
-    recommendations.push('Configure build matrix for multi-platform testing');
+    recommendations.push("Configure build matrix for multi-platform testing");
   }
 
   // Language-specific recommendations
-  if (artifact.language === 'typescript') {
-    recommendations.push('Use strict TypeScript configuration for better type safety');
-    recommendations.push('Enable API surface tracking for semver compliance');
+  if (artifact.language === "typescript") {
+    recommendations.push("Use strict TypeScript configuration for better type safety");
+    recommendations.push("Enable API surface tracking for semver compliance");
   }
 
-  if (artifact.language === 'python') {
-    recommendations.push('Use async patterns for better performance');
-    recommendations.push('Add type hints for better tooling support');
+  if (artifact.language === "python") {
+    recommendations.push("Use async patterns for better performance");
+    recommendations.push("Add type hints for better tooling support");
   }
 
-  if (artifact.language === 'rust') {
-    recommendations.push('Leverage zero-cost abstractions for performance');
-    recommendations.push('Use compile-time checks for safety guarantees');
+  if (artifact.language === "rust") {
+    recommendations.push("Leverage zero-cost abstractions for performance");
+    recommendations.push("Use compile-time checks for safety guarantees");
   }
 
   return recommendations;
@@ -515,39 +515,39 @@ function generatePotentialIssues(explanation: AssemblyExplanation): string[] {
   const { artifact, build, tests } = explanation;
 
   // Missing information issues
-  if (artifact.type === 'unknown') {
-    issues.push('Artifact kind not clearly specified');
+  if (artifact.type === "unknown") {
+    issues.push("Artifact kind not clearly specified");
   }
 
-  if (artifact.language === 'unknown') {
-    issues.push('Programming language not specified');
+  if (artifact.language === "unknown") {
+    issues.push("Programming language not specified");
   }
 
-  if (build.tool === 'unknown') {
-    issues.push('Build tool not configured');
+  if (build.tool === "unknown") {
+    issues.push("Build tool not configured");
   }
 
   if (build.targets.length === 0) {
-    issues.push('No build targets specified');
+    issues.push("No build targets specified");
   }
 
   // Testing issues
   if (tests.types.length === 0) {
-    issues.push('No test strategy configured - consider adding test specifications');
+    issues.push("No test strategy configured - consider adding test specifications");
   }
 
   // Version management issues
-  if (artifact.type === 'library' && !artifact.metadata.version) {
-    issues.push('Library version not specified - semver tracking may not work correctly');
+  if (artifact.type === "library" && !artifact.metadata.version) {
+    issues.push("Library version not specified - semver tracking may not work correctly");
   }
 
   // Profile mismatch issues
-  if (artifact.type === 'cli' && explanation.profile.type === 'library') {
-    issues.push('Profile mismatch: CLI artifact using library profile');
+  if (artifact.type === "cli" && explanation.profile.type === "library") {
+    issues.push("Profile mismatch: CLI artifact using library profile");
   }
 
-  if (artifact.type === 'library' && explanation.profile.type === 'cli') {
-    issues.push('Profile mismatch: Library artifact using CLI profile');
+  if (artifact.type === "library" && explanation.profile.type === "cli") {
+    issues.push("Profile mismatch: Library artifact using CLI profile");
   }
 
   return issues;
@@ -558,9 +558,9 @@ function generatePotentialIssues(explanation: AssemblyExplanation): string[] {
  */
 async function generateJsonExplanation(
   explanation: AssemblyExplanation,
-  options: ExplainOptions
+  options: ExplainOptions,
 ): Promise<number> {
-  console.log(chalk.blue('📄 Generating JSON explanation...'));
+  console.log(chalk.blue("📄 Generating JSON explanation..."));
 
   const output = {
     timestamp: new Date().toISOString(),
@@ -580,7 +580,7 @@ async function generateJsonExplanation(
   const jsonContent = JSON.stringify(output, null, 2);
 
   if (options.output) {
-    await fs.writeFile(options.output, jsonContent, 'utf-8');
+    await fs.writeFile(options.output, jsonContent, "utf-8");
     console.log(chalk.green(`✅ JSON explanation saved to: ${options.output}`));
   } else {
     console.log(`\n${jsonContent}`);
@@ -594,20 +594,20 @@ async function generateJsonExplanation(
  */
 async function generateTextExplanation(
   explanation: AssemblyExplanation,
-  options: ExplainOptions
+  options: ExplainOptions,
 ): Promise<number> {
-  console.log(chalk.blue('📝 Generating plain-English explanation...\n'));
+  console.log(chalk.blue("📝 Generating plain-English explanation...\n"));
 
   // Header
-  console.log(chalk.bold.cyan('🏗️  Project Configuration Summary'));
-  console.log(chalk.dim('─'.repeat(50)));
+  console.log(chalk.bold.cyan("🏗️  Project Configuration Summary"));
+  console.log(chalk.dim("─".repeat(50)));
 
   // Main summary
   console.log(chalk.white(explanation.summary));
   console.log();
 
   // Detailed breakdown
-  console.log(chalk.bold.yellow('📦 Artifact Details:'));
+  console.log(chalk.bold.yellow("📦 Artifact Details:"));
   console.log(`  Type: ${chalk.cyan(explanation.artifact.type)}`);
   console.log(`  Language: ${chalk.cyan(explanation.artifact.language)}`);
   if (explanation.artifact.metadata.name) {
@@ -622,34 +622,34 @@ async function generateTextExplanation(
   console.log();
 
   // Profile information
-  console.log(chalk.bold.yellow('⚙️  Profile Configuration:'));
+  console.log(chalk.bold.yellow("⚙️  Profile Configuration:"));
   console.log(`  Profile Type: ${chalk.cyan(explanation.profile.type)}`);
   if (explanation.profile.features.length > 0) {
-    console.log(`  Features: ${explanation.profile.features.map(f => chalk.cyan(f)).join(', ')}`);
+    console.log(`  Features: ${explanation.profile.features.map((f) => chalk.cyan(f)).join(", ")}`);
   }
   console.log();
 
   // Build configuration
-  console.log(chalk.bold.yellow('🔨 Build Configuration:'));
+  console.log(chalk.bold.yellow("🔨 Build Configuration:"));
   console.log(`  Build Tool: ${chalk.cyan(explanation.build.tool)}`);
   if (explanation.build.targets.length > 0) {
-    console.log(`  Targets: ${explanation.build.targets.map(t => chalk.cyan(t)).join(', ')}`);
+    console.log(`  Targets: ${explanation.build.targets.map((t) => chalk.cyan(t)).join(", ")}`);
   }
   if (explanation.build.matrix && Object.keys(explanation.build.matrix).length > 0) {
-    console.log(`  Build Matrix: ${chalk.gray('Configured')}`);
+    console.log(`  Build Matrix: ${chalk.gray("Configured")}`);
   }
   console.log();
 
   // Test configuration
   if (explanation.tests.types.length > 0) {
-    console.log(chalk.bold.yellow('🧪 Test Configuration:'));
-    console.log(`  Test Types: ${explanation.tests.types.map(t => chalk.cyan(t)).join(', ')}`);
+    console.log(chalk.bold.yellow("🧪 Test Configuration:"));
+    console.log(`  Test Types: ${explanation.tests.types.map((t) => chalk.cyan(t)).join(", ")}`);
     console.log();
   }
 
   // Contracts and invariants
   if (explanation.contracts.invariants.length > 0) {
-    console.log(chalk.bold.yellow('📋 Contracts & Invariants:'));
+    console.log(chalk.bold.yellow("📋 Contracts & Invariants:"));
     for (const invariant of explanation.contracts.invariants) {
       console.log(`  • ${chalk.cyan(invariant)}`);
     }
@@ -658,7 +658,7 @@ async function generateTextExplanation(
 
   // Next steps
   if (explanation.nextSteps.length > 0) {
-    console.log(chalk.bold.green('🎯 Recommended Next Steps:'));
+    console.log(chalk.bold.green("🎯 Recommended Next Steps:"));
     for (let i = 0; i < explanation.nextSteps.length; i++) {
       console.log(`  ${i + 1}. ${explanation.nextSteps[i]}`);
     }
@@ -667,7 +667,7 @@ async function generateTextExplanation(
 
   // Recommendations
   if (explanation.recommendations.length > 0) {
-    console.log(chalk.bold.blue('💡 Recommendations:'));
+    console.log(chalk.bold.blue("💡 Recommendations:"));
     for (const recommendation of explanation.recommendations) {
       console.log(`  • ${recommendation}`);
     }
@@ -676,7 +676,7 @@ async function generateTextExplanation(
 
   // Potential issues
   if (explanation.potentialIssues.length > 0) {
-    console.log(chalk.bold.yellow('⚠️  Potential Issues:'));
+    console.log(chalk.bold.yellow("⚠️  Potential Issues:"));
     for (const issue of explanation.potentialIssues) {
       console.log(`  • ${chalk.yellow(issue)}`);
     }
@@ -685,20 +685,20 @@ async function generateTextExplanation(
 
   // Helpful hints if requested
   if (options.hints !== false) {
-    console.log(chalk.bold.magenta('🔮 Helpful Hints:'));
+    console.log(chalk.bold.magenta("🔮 Helpful Hints:"));
     console.log(
-      `  • Use ${chalk.cyan('arbiter watch')} for continuous validation during development`
+      `  • Use ${chalk.cyan("arbiter watch")} for continuous validation during development`,
     );
-    console.log(`  • Run ${chalk.cyan('arbiter docs schema')} to generate documentation`);
-    console.log(`  • Try ${chalk.cyan('arbiter examples')} to see working project templates`);
-    console.log(`  • Get detailed help with ${chalk.cyan('arbiter <command> --help')}`);
+    console.log(`  • Run ${chalk.cyan("arbiter docs schema")} to generate documentation`);
+    console.log(`  • Try ${chalk.cyan("arbiter examples")} to see working project templates`);
+    console.log(`  • Get detailed help with ${chalk.cyan("arbiter <command> --help")}`);
     console.log();
   }
 
   // Save to file if requested
   if (options.output) {
     const textContent = generateMarkdownExplanation(explanation);
-    await fs.writeFile(options.output, textContent, 'utf-8');
+    await fs.writeFile(options.output, textContent, "utf-8");
     console.log(chalk.green(`✅ Explanation saved to: ${options.output}`));
   }
 
@@ -745,7 +745,7 @@ class MarkdownExplanationGenerator {
    * Combine sections with filtering
    */
   private combineSections(sections: string[]): string {
-    return sections.filter(section => section.trim()).join('');
+    return sections.filter((section) => section.trim()).join("");
   }
 
   // Section generation methods - each with single responsibility
@@ -815,9 +815,9 @@ function generateMarkdownSummary(summary: string): string {
 /**
  * Generate markdown artifact details section
  */
-function generateMarkdownArtifactDetails(artifact: AssemblyExplanation['artifact']): string {
+function generateMarkdownArtifactDetails(artifact: AssemblyExplanation["artifact"]): string {
   const lines = [
-    '## Artifact Details\n',
+    "## Artifact Details\n",
     `- **Type**: ${artifact.type}`,
     `- **Language**: ${artifact.language}`,
   ];
@@ -832,60 +832,60 @@ function generateMarkdownArtifactDetails(artifact: AssemblyExplanation['artifact
     lines.push(`- **Description**: ${artifact.description.trim()}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }
 
 /**
  * Generate markdown profile configuration section
  */
-function generateMarkdownProfileConfiguration(profile: AssemblyExplanation['profile']): string {
-  const lines = ['## Profile Configuration\n', `- **Profile Type**: ${profile.type}`];
+function generateMarkdownProfileConfiguration(profile: AssemblyExplanation["profile"]): string {
+  const lines = ["## Profile Configuration\n", `- **Profile Type**: ${profile.type}`];
 
   if (profile.features.length > 0) {
-    lines.push(`- **Features**: ${profile.features.join(', ')}`);
+    lines.push(`- **Features**: ${profile.features.join(", ")}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }
 
 /**
  * Generate markdown build configuration section
  */
-function generateMarkdownBuildConfiguration(build: AssemblyExplanation['build']): string {
-  const lines = ['## Build Configuration\n', `- **Build Tool**: ${build.tool}`];
+function generateMarkdownBuildConfiguration(build: AssemblyExplanation["build"]): string {
+  const lines = ["## Build Configuration\n", `- **Build Tool**: ${build.tool}`];
 
   if (build.targets.length > 0) {
-    lines.push(`- **Targets**: ${build.targets.join(', ')}`);
+    lines.push(`- **Targets**: ${build.targets.join(", ")}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }
 
 /**
  * Generate markdown test configuration section
  */
-function generateMarkdownTestConfiguration(tests: AssemblyExplanation['tests']): string {
+function generateMarkdownTestConfiguration(tests: AssemblyExplanation["tests"]): string {
   if (tests.types.length === 0) {
-    return '';
+    return "";
   }
 
-  return `## Test Configuration\n\n- **Test Types**: ${tests.types.join(', ')}\n\n`;
+  return `## Test Configuration\n\n- **Test Types**: ${tests.types.join(", ")}\n\n`;
 }
 
 /**
  * Generate markdown contracts section
  */
-function generateMarkdownContracts(contracts: AssemblyExplanation['contracts']): string {
+function generateMarkdownContracts(contracts: AssemblyExplanation["contracts"]): string {
   if (contracts.invariants.length === 0) {
-    return '';
+    return "";
   }
 
-  const lines = ['## Contracts & Invariants\n'];
+  const lines = ["## Contracts & Invariants\n"];
   for (const invariant of contracts.invariants) {
     lines.push(`- ${invariant}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }
 
 /**
@@ -893,15 +893,15 @@ function generateMarkdownContracts(contracts: AssemblyExplanation['contracts']):
  */
 function generateMarkdownNextSteps(nextSteps: string[]): string {
   if (nextSteps.length === 0) {
-    return '';
+    return "";
   }
 
-  const lines = ['## Recommended Next Steps\n'];
+  const lines = ["## Recommended Next Steps\n"];
   for (let i = 0; i < nextSteps.length; i++) {
     lines.push(`${i + 1}. ${nextSteps[i]}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }
 
 /**
@@ -909,15 +909,15 @@ function generateMarkdownNextSteps(nextSteps: string[]): string {
  */
 function generateMarkdownRecommendations(recommendations: string[]): string {
   if (recommendations.length === 0) {
-    return '';
+    return "";
   }
 
-  const lines = ['## Recommendations\n'];
+  const lines = ["## Recommendations\n"];
   for (const recommendation of recommendations) {
     lines.push(`- ${recommendation}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }
 
 /**
@@ -925,13 +925,13 @@ function generateMarkdownRecommendations(recommendations: string[]): string {
  */
 function generateMarkdownPotentialIssues(potentialIssues: string[]): string {
   if (potentialIssues.length === 0) {
-    return '';
+    return "";
   }
 
-  const lines = ['## Potential Issues\n'];
+  const lines = ["## Potential Issues\n"];
   for (const issue of potentialIssues) {
     lines.push(`- ⚠️ ${issue}`);
   }
 
-  return `${lines.join('\n')}\n\n`;
+  return `${lines.join("\n")}\n\n`;
 }

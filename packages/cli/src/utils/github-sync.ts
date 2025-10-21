@@ -1,16 +1,16 @@
-import { Octokit } from '@octokit/rest';
-import chalk from 'chalk';
-import type { GitHubSyncConfig, IssueSpec } from '../types.js';
-import { FileBasedTemplateManager } from './file-based-template-manager.js';
-import { ConfigurableTemplateManager } from './github-template-config.js';
-import type { Epic, Task } from './sharded-storage.js';
-import { UnifiedGitHubTemplateManager } from './unified-github-template-manager.js';
+import { Octokit } from "@octokit/rest";
+import chalk from "chalk";
+import type { GitHubSyncConfig, IssueSpec } from "../types.js";
+import { FileBasedTemplateManager } from "./file-based-template-manager.js";
+import { ConfigurableTemplateManager } from "./github-template-config.js";
+import type { Epic, Task } from "./sharded-storage.js";
+import { UnifiedGitHubTemplateManager } from "./unified-github-template-manager.js";
 
 export interface GitHubIssue {
   number: number;
   title: string;
   body?: string;
-  state: 'open' | 'closed';
+  state: "open" | "closed";
   labels: string[];
   milestone?: {
     number: number;
@@ -32,13 +32,13 @@ export interface GitHubIssueTemplate extends IssueSpec {
 export interface GitHubMilestone {
   number: number;
   title: string;
-  state: 'open' | 'closed';
+  state: "open" | "closed";
   description?: string;
 }
 
 export interface SyncResult {
-  action: 'created' | 'updated' | 'skipped' | 'closed';
-  type: 'epic' | 'task' | 'milestone';
+  action: "created" | "updated" | "skipped" | "closed";
+  type: "epic" | "task" | "milestone";
   itemId: string;
   githubNumber?: number;
   details?: string;
@@ -78,24 +78,24 @@ export class GitHubSyncClient {
     this.fileBasedTemplateManager = new FileBasedTemplateManager(config.templates || {});
 
     // Get GitHub token from configured environment variable
-    const tokenEnvName = config.repository.tokenEnv || 'GITHUB_TOKEN';
+    const tokenEnvName = config.repository.tokenEnv || "GITHUB_TOKEN";
     const token =
       process.env[tokenEnvName] || process.env.GITHUB_TOKEN || process.env.ARBITER_GITHUB_TOKEN;
 
     if (!token) {
       const envVarMessage =
-        tokenEnvName !== 'GITHUB_TOKEN'
+        tokenEnvName !== "GITHUB_TOKEN"
           ? `${tokenEnvName} (or GITHUB_TOKEN as fallback)`
-          : 'GITHUB_TOKEN';
+          : "GITHUB_TOKEN";
 
       throw new Error(
-        `GitHub token not found. Set the ${envVarMessage} environment variable.\nTo create a token:\n1. Go to https://github.com/settings/tokens\n2. Generate a new token with 'repo' scope\n3. Set ${tokenEnvName}=your_token_here in your environment`
+        `GitHub token not found. Set the ${envVarMessage} environment variable.\nTo create a token:\n1. Go to https://github.com/settings/tokens\n2. Generate a new token with 'repo' scope\n3. Set ${tokenEnvName}=your_token_here in your environment`,
       );
     }
 
     this.octokit = new Octokit({
       auth: token,
-      baseUrl: config.repository.baseUrl || 'https://api.github.com',
+      baseUrl: config.repository.baseUrl || "https://api.github.com",
     });
   }
 
@@ -122,8 +122,8 @@ export class GitHubSyncClient {
         preview.epics.update.push({ epic, existing: existingIssue });
       }
 
-      if (epic.status === 'completed' || epic.status === 'cancelled') {
-        if (existingIssue && existingIssue.state === 'open') {
+      if (epic.status === "completed" || epic.status === "cancelled") {
+        if (existingIssue && existingIssue.state === "open") {
           preview.epics.close.push({ epic, existing: existingIssue });
         }
       }
@@ -139,8 +139,8 @@ export class GitHubSyncClient {
           preview.milestones.update.push({ epic, existing: existingMilestone });
         }
 
-        if (epic.status === 'completed' || epic.status === 'cancelled') {
-          if (existingMilestone && existingMilestone.state === 'open') {
+        if (epic.status === "completed" || epic.status === "cancelled") {
+          if (existingMilestone && existingMilestone.state === "open") {
             preview.milestones.close.push({ epic, existing: existingMilestone });
           }
         }
@@ -157,8 +157,8 @@ export class GitHubSyncClient {
           preview.tasks.update.push({ task, existing: existingTaskIssue });
         }
 
-        if (task.status === 'completed' || task.status === 'cancelled') {
-          if (existingTaskIssue && existingTaskIssue.state === 'open') {
+        if (task.status === "completed" || task.status === "cancelled") {
+          if (existingTaskIssue && existingTaskIssue.state === "open") {
             preview.tasks.close.push({ task, existing: existingTaskIssue });
           }
         }
@@ -207,7 +207,7 @@ export class GitHubSyncClient {
       const issues = await this.octokit.paginate(this.octokit.rest.issues.listForRepo, {
         owner,
         repo,
-        state: 'all',
+        state: "all",
         per_page: 100,
       });
 
@@ -218,9 +218,9 @@ export class GitHubSyncClient {
             number: issue.number,
             title: issue.title,
             body: issue.body || undefined,
-            state: issue.state as 'open' | 'closed',
-            labels: issue.labels.map(label =>
-              typeof label === 'string' ? label : label.name || ''
+            state: issue.state as "open" | "closed",
+            labels: issue.labels.map((label) =>
+              typeof label === "string" ? label : label.name || "",
             ),
             milestone: issue.milestone
               ? {
@@ -250,7 +250,7 @@ export class GitHubSyncClient {
         const milestones = await this.octokit.paginate(this.octokit.rest.issues.listMilestones, {
           owner,
           repo,
-          state: 'all',
+          state: "all",
           per_page: 100,
         });
 
@@ -258,7 +258,7 @@ export class GitHubSyncClient {
           const githubMilestone: GitHubMilestone = {
             number: milestone.number,
             title: milestone.title,
-            state: milestone.state as 'open' | 'closed',
+            state: milestone.state as "open" | "closed",
             description: milestone.description || undefined,
           };
 
@@ -273,7 +273,7 @@ export class GitHubSyncClient {
       }
     } catch (error) {
       throw new Error(
-        `Failed to load existing GitHub data: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to load existing GitHub data: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -312,7 +312,7 @@ export class GitHubSyncClient {
         }
 
         // Map semantic labels to GitHub labels
-        const mappedLabels = this.mapSemanticLabels(template.labels, 'epic', epic);
+        const mappedLabels = this.mapSemanticLabels(template.labels, "epic", epic);
 
         const newIssue = await this.octokit.rest.issues.create({
           owner,
@@ -330,13 +330,13 @@ export class GitHubSyncClient {
           number: newIssue.data.number,
           title: newIssue.data.title,
           body: newIssue.data.body || undefined,
-          state: newIssue.data.state as 'open' | 'closed',
-          labels: newIssue.data.labels.map(l => (typeof l === 'string' ? l : l.name || '')),
+          state: newIssue.data.state as "open" | "closed",
+          labels: newIssue.data.labels.map((l) => (typeof l === "string" ? l : l.name || "")),
         });
 
         results.push({
-          action: 'created',
-          type: 'epic',
+          action: "created",
+          type: "epic",
           itemId: epic.id,
           githubNumber: newIssue.data.number,
           details: `Created GitHub issue #${newIssue.data.number}`,
@@ -364,7 +364,7 @@ export class GitHubSyncClient {
         }
 
         // Map semantic labels to GitHub labels
-        const mappedLabels = this.mapSemanticLabels(template.labels, 'epic', epic);
+        const mappedLabels = this.mapSemanticLabels(template.labels, "epic", epic);
 
         await this.octokit.rest.issues.update({
           owner,
@@ -380,16 +380,16 @@ export class GitHubSyncClient {
         });
 
         results.push({
-          action: 'updated',
-          type: 'epic',
+          action: "updated",
+          type: "epic",
           itemId: epic.id,
           githubNumber: existingIssue.number,
           details: `Updated GitHub issue #${existingIssue.number}`,
         });
       } else {
         results.push({
-          action: 'skipped',
-          type: 'epic',
+          action: "skipped",
+          type: "epic",
           itemId: epic.id,
           githubNumber: existingIssue.number,
           details: `No changes needed for GitHub issue #${existingIssue.number}`,
@@ -398,21 +398,21 @@ export class GitHubSyncClient {
 
       // Handle epic completion/cancellation
       if (
-        (epic.status === 'completed' || epic.status === 'cancelled') &&
+        (epic.status === "completed" || epic.status === "cancelled") &&
         existingIssue &&
-        existingIssue.state === 'open' &&
+        existingIssue.state === "open" &&
         this.config.behavior?.autoClose
       ) {
         await this.octokit.rest.issues.update({
           owner,
           repo,
           issue_number: existingIssue.number,
-          state: 'closed',
+          state: "closed",
         });
 
         results.push({
-          action: 'closed',
-          type: 'epic',
+          action: "closed",
+          type: "epic",
           itemId: epic.id,
           githubNumber: existingIssue.number,
           details: `Closed GitHub issue #${existingIssue.number}`,
@@ -426,8 +426,8 @@ export class GitHubSyncClient {
       }
     } catch (error) {
       results.push({
-        action: 'skipped',
-        type: 'epic',
+        action: "skipped",
+        type: "epic",
         itemId: epic.id,
         details: `Failed to sync epic: ${error instanceof Error ? error.message : String(error)}`,
       });
@@ -471,7 +471,7 @@ export class GitHubSyncClient {
         const milestone = this.findMilestoneForEpic(epic);
 
         // Map semantic labels to GitHub labels
-        const mappedLabels = this.mapSemanticLabels(template.labels, 'task', task);
+        const mappedLabels = this.mapSemanticLabels(template.labels, "task", task);
 
         const newIssue = await this.octokit.rest.issues.create({
           owner,
@@ -487,8 +487,8 @@ export class GitHubSyncClient {
         });
 
         results.push({
-          action: 'created',
-          type: 'task',
+          action: "created",
+          type: "task",
           itemId: task.id,
           githubNumber: newIssue.data.number,
           details: `Created GitHub issue #${newIssue.data.number}`,
@@ -517,7 +517,7 @@ export class GitHubSyncClient {
         const milestone = this.findMilestoneForEpic(epic);
 
         // Map semantic labels to GitHub labels
-        const mappedLabels = this.mapSemanticLabels(template.labels, 'task', task);
+        const mappedLabels = this.mapSemanticLabels(template.labels, "task", task);
 
         await this.octokit.rest.issues.update({
           owner,
@@ -534,16 +534,16 @@ export class GitHubSyncClient {
         });
 
         results.push({
-          action: 'updated',
-          type: 'task',
+          action: "updated",
+          type: "task",
           itemId: task.id,
           githubNumber: existingIssue.number,
           details: `Updated GitHub issue #${existingIssue.number}`,
         });
       } else {
         results.push({
-          action: 'skipped',
-          type: 'task',
+          action: "skipped",
+          type: "task",
           itemId: task.id,
           githubNumber: existingIssue.number,
           details: `No changes needed for GitHub issue #${existingIssue.number}`,
@@ -552,21 +552,21 @@ export class GitHubSyncClient {
 
       // Handle task completion/cancellation
       if (
-        (task.status === 'completed' || task.status === 'cancelled') &&
+        (task.status === "completed" || task.status === "cancelled") &&
         existingIssue &&
-        existingIssue.state === 'open' &&
+        existingIssue.state === "open" &&
         this.config.behavior?.autoClose
       ) {
         await this.octokit.rest.issues.update({
           owner,
           repo,
           issue_number: existingIssue.number,
-          state: 'closed',
+          state: "closed",
         });
 
         results.push({
-          action: 'closed',
-          type: 'task',
+          action: "closed",
+          type: "task",
           itemId: task.id,
           githubNumber: existingIssue.number,
           details: `Closed GitHub issue #${existingIssue.number}`,
@@ -574,8 +574,8 @@ export class GitHubSyncClient {
       }
     } catch (error) {
       results.push({
-        action: 'skipped',
-        type: 'task',
+        action: "skipped",
+        type: "task",
         itemId: task.id,
         details: `Failed to sync task: ${error instanceof Error ? error.message : String(error)}`,
       });
@@ -611,13 +611,13 @@ export class GitHubSyncClient {
         this.milestoneCache.set(milestoneTitle, {
           number: newMilestone.data.number,
           title: newMilestone.data.title,
-          state: newMilestone.data.state as 'open' | 'closed',
+          state: newMilestone.data.state as "open" | "closed",
           description: newMilestone.data.description || undefined,
         });
 
         results.push({
-          action: 'created',
-          type: 'milestone',
+          action: "created",
+          type: "milestone",
           itemId: epic.id,
           githubNumber: newMilestone.data.number,
           details: `Created GitHub milestone #${newMilestone.data.number}`,
@@ -637,8 +637,8 @@ export class GitHubSyncClient {
         });
 
         results.push({
-          action: 'updated',
-          type: 'milestone',
+          action: "updated",
+          type: "milestone",
           itemId: epic.id,
           githubNumber: existingMilestone.number,
           details: `Updated GitHub milestone #${existingMilestone.number}`,
@@ -647,20 +647,20 @@ export class GitHubSyncClient {
 
       // Handle milestone completion
       if (
-        (epic.status === 'completed' || epic.status === 'cancelled') &&
+        (epic.status === "completed" || epic.status === "cancelled") &&
         existingMilestone &&
-        existingMilestone.state === 'open'
+        existingMilestone.state === "open"
       ) {
         await this.octokit.rest.issues.updateMilestone({
           owner,
           repo,
           milestone_number: existingMilestone.number,
-          state: 'closed',
+          state: "closed",
         });
 
         results.push({
-          action: 'closed',
-          type: 'milestone',
+          action: "closed",
+          type: "milestone",
           itemId: epic.id,
           githubNumber: existingMilestone.number,
           details: `Closed GitHub milestone #${existingMilestone.number}`,
@@ -668,8 +668,8 @@ export class GitHubSyncClient {
       }
     } catch (error) {
       results.push({
-        action: 'skipped',
-        type: 'milestone',
+        action: "skipped",
+        type: "milestone",
         itemId: epic.id,
         details: `Failed to sync milestone: ${error instanceof Error ? error.message : String(error)}`,
       });
@@ -782,7 +782,7 @@ export class GitHubSyncClient {
   private async shouldUpdateTask(
     task: Task,
     existingIssue: GitHubIssue,
-    epic: Epic
+    epic: Epic,
   ): Promise<boolean> {
     let template;
     try {
@@ -822,8 +822,8 @@ export class GitHubSyncClient {
    */
   private mapSemanticLabels(
     labels: string[],
-    itemType: 'epic' | 'task',
-    item: Epic | Task
+    itemType: "epic" | "task",
+    item: Epic | Task,
   ): string[] {
     const mappedLabels: string[] = [];
 
@@ -836,7 +836,7 @@ export class GitHubSyncClient {
     for (const label of labels) {
       // Check type-specific mappings first
       const typeSpecificLabels =
-        itemType === 'epic'
+        itemType === "epic"
           ? this.config.mapping.epicLabels?.[label]
           : this.config.mapping.taskLabels?.[label];
 
@@ -849,11 +849,11 @@ export class GitHubSyncClient {
     }
 
     // Add contextual labels based on item properties
-    if (itemType === 'epic') {
+    if (itemType === "epic") {
       const epic = item as Epic;
       mappedLabels.push(`priority:${epic.priority}`);
       mappedLabels.push(`status:${epic.status}`);
-      mappedLabels.push('type:epic');
+      mappedLabels.push("type:epic");
     } else {
       const task = item as Task;
       mappedLabels.push(`priority:${task.priority}`);
@@ -863,13 +863,13 @@ export class GitHubSyncClient {
 
     // Add prefix labels if configured
     const prefix =
-      itemType === 'epic' ? this.config.mapping.epicPrefix : this.config.mapping.taskPrefix;
+      itemType === "epic" ? this.config.mapping.epicPrefix : this.config.mapping.taskPrefix;
     if (prefix) {
       mappedLabels.unshift(prefix);
     }
 
     // Remove duplicates and return
-    return Array.from(new Set(mappedLabels)).filter(label => label.trim() !== '');
+    return Array.from(new Set(mappedLabels)).filter((label) => label.trim() !== "");
   }
 
   // Helper method to convert preview to results format
@@ -877,10 +877,10 @@ export class GitHubSyncClient {
     const results: SyncResult[] = [];
 
     // Process epics
-    preview.epics.create.forEach(epic => {
+    preview.epics.create.forEach((epic) => {
       results.push({
-        action: 'created',
-        type: 'epic',
+        action: "created",
+        type: "epic",
         itemId: epic.id,
         details: `Would create epic: ${epic.name}`,
       });
@@ -888,8 +888,8 @@ export class GitHubSyncClient {
 
     preview.epics.update.forEach(({ epic }) => {
       results.push({
-        action: 'updated',
-        type: 'epic',
+        action: "updated",
+        type: "epic",
         itemId: epic.id,
         details: `Would update epic: ${epic.name}`,
       });
@@ -897,18 +897,18 @@ export class GitHubSyncClient {
 
     preview.epics.close.forEach(({ epic }) => {
       results.push({
-        action: 'closed',
-        type: 'epic',
+        action: "closed",
+        type: "epic",
         itemId: epic.id,
         details: `Would close epic: ${epic.name}`,
       });
     });
 
     // Process tasks
-    preview.tasks.create.forEach(task => {
+    preview.tasks.create.forEach((task) => {
       results.push({
-        action: 'created',
-        type: 'task',
+        action: "created",
+        type: "task",
         itemId: task.id,
         details: `Would create task: ${task.name}`,
       });
@@ -916,8 +916,8 @@ export class GitHubSyncClient {
 
     preview.tasks.update.forEach(({ task }) => {
       results.push({
-        action: 'updated',
-        type: 'task',
+        action: "updated",
+        type: "task",
         itemId: task.id,
         details: `Would update task: ${task.name}`,
       });
@@ -925,18 +925,18 @@ export class GitHubSyncClient {
 
     preview.tasks.close.forEach(({ task }) => {
       results.push({
-        action: 'closed',
-        type: 'task',
+        action: "closed",
+        type: "task",
         itemId: task.id,
         details: `Would close task: ${task.name}`,
       });
     });
 
     // Process milestones
-    preview.milestones.create.forEach(epic => {
+    preview.milestones.create.forEach((epic) => {
       results.push({
-        action: 'created',
-        type: 'milestone',
+        action: "created",
+        type: "milestone",
         itemId: epic.id,
         details: `Would create milestone: ${epic.name}`,
       });
@@ -944,8 +944,8 @@ export class GitHubSyncClient {
 
     preview.milestones.update.forEach(({ epic }) => {
       results.push({
-        action: 'updated',
-        type: 'milestone',
+        action: "updated",
+        type: "milestone",
         itemId: epic.id,
         details: `Would update milestone: ${epic.name}`,
       });
@@ -953,8 +953,8 @@ export class GitHubSyncClient {
 
     preview.milestones.close.forEach(({ epic }) => {
       results.push({
-        action: 'closed',
-        type: 'milestone',
+        action: "closed",
+        type: "milestone",
         itemId: epic.id,
         details: `Would close milestone: ${epic.name}`,
       });

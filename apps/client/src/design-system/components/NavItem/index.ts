@@ -1,2 +1,2 @@
-export { default, NavGroup } from './NavItem';
-export type { NavItemProps, NavGroupProps } from './NavItem';
+export { default, NavGroup } from "./NavItem";
+export type { NavItemProps, NavGroupProps } from "./NavItem";
