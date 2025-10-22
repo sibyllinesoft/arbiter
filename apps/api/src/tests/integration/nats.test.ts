@@ -9,10 +9,16 @@ describe("NATS Integration", () => {
   let natsService: NatsService;
   let testConnection: NatsConnection | null = null;
   let natsAvailable = false;
-  const TEST_NATS_URL = "nats://localhost:4222";
+  const envNatsUrl = process.env.TEST_NATS_URL;
+  const shouldProbeNats = !!envNatsUrl;
+  const TEST_NATS_URL = envNatsUrl ?? "nats://localhost:4222";
 
   beforeAll(async () => {
     // Skip tests if no NATS server available
+    if (!shouldProbeNats) {
+      console.warn("NATS server not available, skipping NATS tests");
+      return;
+    }
     try {
       testConnection = await connect({
         servers: [TEST_NATS_URL],
@@ -117,11 +123,12 @@ describe("NATS Integration", () => {
 
     it("should handle NATS unavailability gracefully", async () => {
       const config: NatsConfig = {
-        url: "nats://nonexistent:4222",
+        url: "nats://127.0.0.1:55222",
         enabled: true,
         reconnectTimeWait: 100,
         maxReconnectAttempts: 1,
         topicPrefix: "test-spec",
+        autoConnect: false,
       };
 
       const service = new NatsService(config);

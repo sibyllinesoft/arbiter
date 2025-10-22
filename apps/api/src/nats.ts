@@ -13,18 +13,23 @@ export class NatsService {
   private reconnectAttempts = 0;
   private eventSequence = 0;
   private reconnectTimer?: Timer;
+  private autoConnect = true;
 
   constructor(config?: NatsConfig) {
+    const { autoConnect = true, ...configOverrides } = config ?? {};
+
     this.config = {
       url: process.env.NATS_URL || "nats://localhost:4222",
       enabled: !!process.env.NATS_URL || false,
       reconnectTimeWait: 2000, // Start with 2 seconds
       maxReconnectAttempts: 10,
       topicPrefix: "spec",
-      ...config,
+      ...configOverrides,
+      autoConnect,
     };
+    this.autoConnect = autoConnect;
 
-    if (this.config.enabled) {
+    if (this.config.enabled && this.autoConnect) {
       this.initialize();
     } else {
       logger.info("NATS integration disabled - no NATS_URL configured");
@@ -105,6 +110,9 @@ export class NatsService {
       logger.error("Max NATS reconnect attempts reached, giving up", undefined, {
         maxAttempts: this.config.maxReconnectAttempts,
       });
+      return;
+    }
+    if (!this.autoConnect) {
       return;
     }
 

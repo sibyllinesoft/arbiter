@@ -42,6 +42,7 @@ export class SpecWorkbenchServer {
   private wsHandler: WebSocketHandler;
   private mcpApp: ReturnType<typeof createMcpApp>;
   private staticHandler: StaticFileHandler;
+  private httpServer?: ReturnType<typeof Bun.serve>;
 
   constructor(
     private config: ServerConfig,
@@ -251,11 +252,20 @@ export class SpecWorkbenchServer {
       },
     });
 
+    this.httpServer = _server;
+    if (this.config.port === 0) {
+      this.config.port = _server.port;
+    }
+
     logger.info("🚀 Arbiter API server started", {
       port: this.config.port,
       host: this.config.host,
       environment: process.env.NODE_ENV || "development",
     });
+  }
+
+  getPort(): number {
+    return this.httpServer?.port ?? this.config.port;
   }
 
   /**
@@ -414,6 +424,11 @@ export class SpecWorkbenchServer {
     logger.info("Shutting down server...");
 
     try {
+      if (this.httpServer) {
+        this.httpServer.stop();
+        this.httpServer = undefined;
+      }
+
       // Close database connections
       await this.db.close();
 

@@ -787,6 +787,7 @@ export class SpecWorkbenchDB {
         .set({
           content,
           headRevisionId: revision.id,
+          updatedAt: sql`(strftime('%Y-%m-%d %H:%M:%f', 'now'))`,
         })
         .where(and(eq(fragments.projectId, projectId), eq(fragments.path, path)))
         .returning();

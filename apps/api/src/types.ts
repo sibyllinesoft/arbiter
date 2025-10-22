@@ -227,6 +227,7 @@ export interface NatsConfig {
   reconnectTimeWait: number;
   maxReconnectAttempts: number;
   topicPrefix: string;
+  autoConnect?: boolean;
 }
 
 // Error response structure (RFC 7807 Problem Details)
