@@ -2,6 +2,7 @@
  * Authentication and authorization module
  */
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 import {
   type JWTPayload,
   type JWTVerifyOptions,
@@ -19,6 +20,7 @@ export interface OAuthToken {
   expires_in: number;
   scope: string;
   user_id?: string;
+  issued_at?: number;
 }
 
 export interface OAuthService {
@@ -79,8 +81,25 @@ export class AuthService {
   private authorizationServer: AuthorizationServer | null = null;
   private oauthProvider: OAuthProvider | null = null;
   private oauthAdapter: OAuthIntegrationAdapter | null = null;
+  private tokenEpochId: string | null;
+  private tokenEpochIssuedAt: number | null;
 
   constructor(private config: ServerConfig) {
+    const epochFromEnv = (process.env.AUTH_TOKEN_EPOCH || "").trim();
+    if (epochFromEnv.length > 0) {
+      this.tokenEpochId = epochFromEnv;
+      this.tokenEpochIssuedAt = Math.floor(Date.now() / 1000);
+    } else if (process.env.NODE_ENV === "development") {
+      this.tokenEpochId = randomUUID();
+      this.tokenEpochIssuedAt = Math.floor(Date.now() / 1000);
+      logger.debug("Development token epoch initialized", {
+        tokenEpoch: this.tokenEpochId,
+      });
+    } else {
+      this.tokenEpochId = null;
+      this.tokenEpochIssuedAt = null;
+    }
+
     // Initialize with development tokens only in development mode
     const devTokensEnabled =
       process.env.NODE_ENV === "development" && process.env.DISABLE_DEV_AUTH_TOKEN !== "1";
@@ -475,6 +494,28 @@ export class AuthService {
         if (this.oauthService) {
           const oauthToken = await this.oauthService.validateToken(token);
           if (oauthToken) {
+            if (!this.isOAuthTokenCurrent(oauthToken)) {
+              logger.warn("Rejecting OAuth token due to epoch mismatch");
+              return {
+                authorized: false,
+                response: new Response(
+                  JSON.stringify({
+                    type: "https://httpstatuses.com/401",
+                    title: "Unauthorized",
+                    status: 401,
+                    detail: "Authentication token is no longer valid. Please sign in again.",
+                  }),
+                  {
+                    status: 401,
+                    headers: {
+                      "Content-Type": "application/problem+json",
+                      "WWW-Authenticate": "Bearer",
+                    },
+                  },
+                ),
+              };
+            }
+
             // Set OAuth context
             const authContext: AuthContext = {
               token,
@@ -523,6 +564,10 @@ export class AuthService {
     try {
       const oauthToken = await this.oauthService.validateToken(token);
       if (!oauthToken) {
+        return null;
+      }
+      if (!this.isOAuthTokenCurrent(oauthToken)) {
+        logger.warn("OAuth token rejected during validation due to epoch mismatch");
         return null;
       }
 
@@ -576,6 +621,22 @@ export class AuthService {
 
     return Array.from(projectAccess);
   }
+
+  getTokenEpoch(): string | null {
+    return this.tokenEpochId;
+  }
+
+  private isOAuthTokenCurrent(token: OAuthToken): boolean {
+    if (this.tokenEpochIssuedAt == null) {
+      return true;
+    }
+
+    if (typeof token.issued_at !== "number") {
+      return true;
+    }
+
+    return token.issued_at >= this.tokenEpochIssuedAt;
+  }
 }
 class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
   public readonly name = "supertokens";
@@ -620,6 +681,7 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
           expires_in: adapter.computeExpiresIn(payload),
           scope,
           user_id: userId,
+          issued_at: typeof payload.iat === "number" ? payload.iat : undefined,
         };
       },
 
@@ -1297,6 +1359,8 @@ class SupertokensOAuthAdapter implements OAuthIntegrationAdapter {
       expires_in: expiresIn,
       scope,
       user_id: userId,
+      issued_at:
+        typeof record.issued_at === "number" ? record.issued_at : Math.floor(Date.now() / 1000),
     };
   }
 

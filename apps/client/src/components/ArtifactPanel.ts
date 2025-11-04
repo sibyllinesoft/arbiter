@@ -1,5 +1,5 @@
 export const ARTIFACT_PANEL_CLASS =
-  "rounded-[6px] border border-gray-200/70 dark:border-graphite-700/70 bg-gradient-to-br from-white/[0.85] via-white/50 to-white/25 dark:from-graphite-900/70 dark:via-graphite-900/50 dark:to-graphite-900/30 shadow-sm shadow-black/5 backdrop-blur-md transition-colors";
+  "rounded-lg border border-graphite-200 dark:border-graphite-700 bg-white dark:bg-graphite-950 shadow-sm transition-colors";
 
 export const ARTIFACT_PANEL_BODY_CLASS =
-  "border border-white/40 dark:border-graphite-700/60 bg-white/[0.85] dark:bg-graphite-950/40 backdrop-blur-sm";
+  "rounded-b-lg border-t border-graphite-200/60 dark:border-graphite-700/60 bg-white dark:bg-graphite-950 transition-colors";

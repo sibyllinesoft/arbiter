@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { toast } from "react-toastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useApp, useCueFileState, useValidationState } from "../../contexts/AppContext";
+import type { AppContextState } from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
 import { apiService } from "../../services/api";
 import TopBar from "./TopBar";
@@ -46,6 +47,61 @@ const mockUseCueFileState = vi.mocked(useCueFileState);
 const mockUseValidationState = vi.mocked(useValidationState);
 const mockUseCurrentProject = vi.mocked(useCurrentProject);
 
+const defaultAppSettings = {
+  showNotifications: false,
+  appsDirectory: "apps",
+  packagesDirectory: "packages",
+  servicesDirectory: "services",
+  testsDirectory: "tests",
+  infraDirectory: "infra",
+  endpointDirectory: "apps/api/src/endpoints",
+};
+
+function buildAppState(overrides: Partial<AppContextState> = {}): AppContextState {
+  const { settings: overrideSettings, ...rest } = overrides;
+
+  const state: AppContextState = {
+    projects: [],
+    fragments: [],
+    activeFragmentId: null,
+    isConnected: true,
+    reconnectAttempts: 0,
+    lastSync: null,
+    isValidating: false,
+    errors: [],
+    warnings: [],
+    specHash: null,
+    lastValidation: null,
+    selectedCueFile: null,
+    availableCueFiles: [],
+    unsavedChanges: new Set<string>(),
+    editorContent: {},
+    loading: false,
+    error: null,
+    settings: {
+      ...defaultAppSettings,
+      ...((overrideSettings as Record<string, unknown> | undefined) ?? {}),
+    },
+    activeTab: "source",
+    currentView: "dashboard",
+    gitUrl: "",
+    modalTab: "git",
+    gitHubRepos: [],
+    gitHubOrgs: [],
+    selectedRepos: new Set<number>(),
+    reposByOwner: {},
+    isLoadingGitHub: false,
+  };
+
+  if (overrideSettings) {
+    state.settings = { ...state.settings, ...overrideSettings };
+  }
+
+  Object.assign(state, rest);
+
+  return state;
+}
+
 describe("TopBar", () => {
   const user = userEvent.setup();
 
@@ -53,22 +109,51 @@ describe("TopBar", () => {
   const setLoading = vi.fn();
   const setError = vi.fn();
   const setSelectedCueFile = vi.fn();
+  const updateSettings = vi.fn();
+  const setActiveTab = vi.fn();
+  const setCurrentView = vi.fn();
+  const setGitUrl = vi.fn();
+  const setModalTab = vi.fn();
+  const setGitHubRepos = vi.fn();
+  const setGitHubOrgs = vi.fn();
+  const setSelectedRepos = vi.fn();
+  const toggleRepoSelection = vi.fn();
+  const setReposByOwner = vi.fn();
+  const setLoadingGitHub = vi.fn();
+  const updateEditorContent = vi.fn();
+  const markUnsaved = vi.fn();
+  const markSaved = vi.fn();
+  const setActiveFragment = vi.fn();
+  const toggleTheme = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
 
+    const state = buildAppState();
+
     mockUseApp.mockReturnValue({
-      state: {
-        unsavedChanges: new Set<string>(),
-        editorContent: {},
-        projects: [],
-      },
+      state,
       dispatch,
       setLoading,
       setError,
       setSelectedCueFile,
+      updateSettings,
+      setActiveTab,
+      setCurrentView,
+      setGitUrl,
+      setModalTab,
+      setGitHubRepos,
+      setGitHubOrgs,
+      setSelectedRepos,
+      toggleRepoSelection,
+      setReposByOwner,
+      setLoadingGitHub,
+      updateEditorContent,
+      markUnsaved,
+      markSaved,
+      setActiveFragment,
       isDark: false,
-      toggleTheme: vi.fn(),
+      toggleTheme,
     });
 
     mockUseValidationState.mockReturnValue({
@@ -76,12 +161,12 @@ describe("TopBar", () => {
       errors: [],
       warnings: [],
       specHash: "abc123",
+      lastValidation: null,
     });
 
     mockUseCueFileState.mockReturnValue({
       selectedCueFile: null,
       availableCueFiles: ["main.cue"],
-      setSelectedCueFile,
     });
 
     mockUseCurrentProject.mockReturnValue({
@@ -100,17 +185,32 @@ describe("TopBar", () => {
 
   it("saves each unsaved fragment and clears the flag", async () => {
     mockUseApp.mockReturnValue({
-      state: {
+      state: buildAppState({
         unsavedChanges: new Set(["fragment-1"]),
         editorContent: { "fragment-1": "updated" },
-        projects: [],
-      },
+        fragments: [],
+      }),
       dispatch,
       setLoading,
       setError,
       setSelectedCueFile,
+      updateSettings,
+      setActiveTab,
+      setCurrentView,
+      setGitUrl,
+      setModalTab,
+      setGitHubRepos,
+      setGitHubOrgs,
+      setSelectedRepos,
+      toggleRepoSelection,
+      setReposByOwner,
+      setLoadingGitHub,
+      updateEditorContent,
+      markUnsaved,
+      markSaved,
+      setActiveFragment,
       isDark: false,
-      toggleTheme: vi.fn(),
+      toggleTheme,
     });
 
     mockedApi.updateFragment.mockResolvedValue({

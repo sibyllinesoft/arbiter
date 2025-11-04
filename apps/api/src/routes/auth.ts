@@ -31,6 +31,7 @@ export function createAuthRouter(deps: Dependencies) {
 
     const metadata = normalizeMetadata(auth.getProtectedResourceMetadata());
     const oauthConfig = config.oauth;
+    const tokenEpoch = auth.getTokenEpoch();
 
     if (!metadata || !metadata.authorizationEndpoint || !metadata.tokenEndpoint) {
       return c.json({
@@ -47,6 +48,7 @@ export function createAuthRouter(deps: Dependencies) {
       clientId: oauthConfig.clientId ?? null,
       scopes: oauthConfig.requiredScopes ?? [],
       redirectUri: oauthConfig.redirectUri ?? null,
+      tokenEpoch: tokenEpoch ?? undefined,
     });
   });
 

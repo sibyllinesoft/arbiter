@@ -82,7 +82,7 @@ describe("HandlersList", () => {
   });
 
   it("toggles handler status and updates list", async () => {
-    const updatedHandler: WebhookHandler = { ...mockHandlers[0], enabled: false };
+    const updatedHandler: WebhookHandler = { ...mockHandlers[0]!, enabled: false };
     mockedApi.toggleHandler.mockResolvedValue(updatedHandler);
 
     render(<HandlersList {...baseProps} />);
@@ -106,7 +106,8 @@ describe("HandlersList", () => {
       expect(screen.getByText("GitHub Push Handler")).toBeInTheDocument();
     });
 
-    const [deleteButton] = screen.getAllByTitle("Delete handler");
+    const deleteButtons = screen.getAllByTitle("Delete handler");
+    const deleteButton = deleteButtons[0]!;
     await user.click(deleteButton);
 
     await waitFor(() => {

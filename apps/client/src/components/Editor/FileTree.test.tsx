@@ -5,6 +5,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useApp } from "../../contexts/AppContext";
+import type { AppContextState } from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
 import type { Fragment } from "../../types/api";
 import FileTree from "./FileTree";
@@ -53,6 +54,49 @@ const mockFragments: Fragment[] = [
 const mockUseApp = vi.mocked(useApp);
 const mockUseCurrentProject = vi.mocked(useCurrentProject);
 
+const defaultAppSettings = {
+  showNotifications: false,
+  appsDirectory: "apps",
+  packagesDirectory: "packages",
+  servicesDirectory: "services",
+  testsDirectory: "tests",
+  infraDirectory: "infra",
+  endpointDirectory: "apps/api/src/endpoints",
+};
+
+function buildAppState(): AppContextState {
+  const state: AppContextState = {
+    projects: [],
+    fragments: mockFragments,
+    activeFragmentId: mockFragments[0]?.id ?? null,
+    isConnected: true,
+    reconnectAttempts: 0,
+    lastSync: null,
+    isValidating: false,
+    errors: [],
+    warnings: [],
+    specHash: null,
+    lastValidation: null,
+    selectedCueFile: null,
+    availableCueFiles: [],
+    unsavedChanges: new Set<string>(),
+    editorContent: {},
+    loading: false,
+    error: null,
+    settings: { ...defaultAppSettings },
+    activeTab: "source",
+    currentView: "dashboard",
+    gitUrl: "",
+    modalTab: "git",
+    gitHubRepos: [],
+    gitHubOrgs: [],
+    selectedRepos: new Set<number>(),
+    reposByOwner: {},
+    isLoadingGitHub: false,
+  };
+  return state;
+}
+
 describe("FileTree", () => {
   const user = userEvent.setup();
 
@@ -62,15 +106,31 @@ describe("FileTree", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
+    const state = buildAppState();
+
     mockUseApp.mockReturnValue({
-      state: {
-        fragments: mockFragments,
-        unsavedChanges: new Set<string>(),
-        activeFragmentId: mockFragments[0]!.id,
-      },
+      state,
       dispatch,
+      setLoading: vi.fn(),
       setActiveFragment,
       setError: vi.fn(),
+      setSelectedCueFile: vi.fn(),
+      updateSettings: vi.fn(),
+      setActiveTab: vi.fn(),
+      setCurrentView: vi.fn(),
+      setGitUrl: vi.fn(),
+      setModalTab: vi.fn(),
+      setGitHubRepos: vi.fn(),
+      setGitHubOrgs: vi.fn(),
+      setSelectedRepos: vi.fn(),
+      toggleRepoSelection: vi.fn(),
+      setReposByOwner: vi.fn(),
+      setLoadingGitHub: vi.fn(),
+      updateEditorContent: vi.fn(),
+      markUnsaved: vi.fn(),
+      markSaved: vi.fn(),
+      isDark: false,
+      toggleTheme: vi.fn(),
     });
 
     mockUseCurrentProject.mockReturnValue({

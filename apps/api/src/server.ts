@@ -253,7 +253,7 @@ export class SpecWorkbenchServer {
     });
 
     this.httpServer = _server;
-    if (this.config.port === 0) {
+    if (this.config.port === 0 && typeof _server.port === "number") {
       this.config.port = _server.port;
     }
 

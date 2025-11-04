@@ -52,6 +52,8 @@ interface AppState {
   isLoadingGitHub: boolean;
 }
 
+export type AppContextState = AppState;
+
 type AppAction =
   | { type: "SET_PROJECTS"; payload: Project[] }
   | { type: "SET_FRAGMENTS"; payload: Fragment[] }
@@ -152,6 +154,13 @@ function createInitialState(): AppState {
 
   const storedSettings = readStoredJson<AppSettings>(STORAGE_KEYS.settings, DEFAULT_APP_SETTINGS);
   const settings = { ...DEFAULT_APP_SETTINGS, ...storedSettings };
+
+  if (isBrowser) {
+    const storedToken = window.localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    if (storedToken) {
+      apiService.setAuthToken(storedToken);
+    }
+  }
 
   return {
     projects: [],

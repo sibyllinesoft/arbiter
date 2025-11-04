@@ -83,7 +83,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
   return (
     <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden")}>
       {/* Group Header */}
-      <div className="flex items-center gap-3 border-b border-white/40 px-2 py-1.5 dark:border-graphite-700/60">
+      <div className="flex items-center gap-3 border-b border-graphite-200/60 bg-gray-50 px-2 py-1.5 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <button
           type="button"
           onClick={hasComponents ? handleToggle : undefined}

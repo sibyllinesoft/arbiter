@@ -29,7 +29,12 @@ import { createLogger } from "../utils/logger";
 
 const log = createLogger("API");
 
+export interface ApiServiceOptions {
+  baseUrl?: string;
+}
+
 export const AUTH_TOKEN_STORAGE_KEY = "arbiter:authToken";
+export const AUTH_TOKEN_EPOCH_STORAGE_KEY = "arbiter:authTokenEpoch";
 
 export class ApiError extends Error {
   status: number;
@@ -48,7 +53,7 @@ export interface EnvironmentInfo {
   cloudflareTunnelSupported: boolean;
 }
 
-interface AuthMetadataResponse {
+export interface AuthMetadataResponse {
   enabled: boolean;
   provider?: string | null;
   authorizationEndpoint?: string | null;
@@ -57,6 +62,7 @@ interface AuthMetadataResponse {
   scopes?: string[];
   redirectUri?: string | null;
   reason?: string;
+  tokenEpoch?: string | null;
 }
 
 export interface ProjectStructureSettings {
@@ -137,15 +143,24 @@ interface OAuthTokenExchangeResponse {
 }
 
 export class ApiService {
-  private baseUrl = import.meta.env.VITE_API_URL || "";
+  static readonly OAUTH_PENDING_STORAGE_KEY = "arbiter:oauthPending";
+
+  private baseUrl: string;
   private defaultHeaders: Record<string, string | undefined> = {
     "Content-Type": "application/json",
   };
   private authMetadata?: AuthMetadataResponse | null;
   private authMetadataPromise: Promise<AuthMetadataResponse | null> | null = null;
 
-  constructor() {
-    // Constructor
+  constructor(options: ApiServiceOptions = {}) {
+    const envBaseUrl =
+      typeof import.meta !== "undefined" &&
+      import.meta.env &&
+      typeof import.meta.env.VITE_API_URL === "string" &&
+      import.meta.env.VITE_API_URL.length > 0
+        ? import.meta.env.VITE_API_URL
+        : "";
+    this.baseUrl = options.baseUrl ?? envBaseUrl;
   }
 
   private buildRequestConfig(
@@ -860,17 +875,39 @@ export class ApiService {
     });
   }
 
-  private async handleAuthRedirect(): Promise<void> {
+  async startOAuthFlow(): Promise<void> {
     if (typeof window === "undefined") {
       return;
     }
 
     const metadata = await this.getAuthMetadata();
-    if (!metadata?.enabled || !metadata.authorizationEndpoint) {
-      return;
+    if (!metadata?.enabled) {
+      throw new Error("OAuth is not enabled.");
     }
 
-    const authorizeUrl = new URL(metadata.authorizationEndpoint);
+    if (!metadata.authorizationEndpoint) {
+      throw new Error("OAuth authorization endpoint unavailable.");
+    }
+
+    try {
+      window.sessionStorage.setItem(ApiService.OAUTH_PENDING_STORAGE_KEY, "1");
+    } catch {
+      // ignore
+    }
+
+    window.location.href = this.buildAuthorizeUrl(metadata);
+  }
+
+  async loadAuthMetadata(options: { force?: boolean } = {}): Promise<AuthMetadataResponse | null> {
+    if (options.force) {
+      this.authMetadata = null;
+      this.authMetadataPromise = null;
+    }
+    return this.getAuthMetadata();
+  }
+
+  private buildAuthorizeUrl(metadata: AuthMetadataResponse): string {
+    const authorizeUrl = new URL(metadata.authorizationEndpoint!);
     const clientId = metadata.clientId ?? "dev-cli";
     authorizeUrl.searchParams.set("client_id", clientId);
 
@@ -887,7 +924,7 @@ export class ApiService {
     authorizeUrl.searchParams.set("scope", scopes.join(" "));
 
     const statePayload = {
-      returnTo: window.location.href,
+      returnTo: typeof window !== "undefined" ? window.location.href : "/",
       timestamp: Date.now(),
     };
     const stateEncoded =
@@ -896,7 +933,46 @@ export class ApiService {
         : JSON.stringify(statePayload);
     authorizeUrl.searchParams.set("state", stateEncoded);
 
-    window.location.href = authorizeUrl.toString();
+    return authorizeUrl.toString();
+  }
+
+  private async handleAuthRedirect(): Promise<void> {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      if (window.location.pathname.startsWith("/oauth/callback")) {
+        return;
+      }
+
+      const metadata = await this.getAuthMetadata();
+      if (!metadata?.enabled || !metadata.authorizationEndpoint) {
+        return;
+      }
+
+      try {
+        window.sessionStorage.setItem(ApiService.OAUTH_PENDING_STORAGE_KEY, "1");
+      } catch {
+        // ignore
+      }
+
+      try {
+        window.localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      try {
+        window.localStorage.removeItem(AUTH_TOKEN_EPOCH_STORAGE_KEY);
+      } catch {
+        // ignore
+      }
+      this.clearAuthToken();
+
+      window.location.href = this.buildAuthorizeUrl(metadata);
+    } catch (error) {
+      console.warn("Failed to initiate OAuth redirect", error);
+    }
   }
 
   private async getAuthMetadata(): Promise<AuthMetadataResponse | null> {

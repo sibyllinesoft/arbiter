@@ -11,6 +11,7 @@ import { QueryProvider } from "./providers/QueryProvider";
 
 import { useTheme } from "./stores/ui-store";
 
+import { AuthGate } from "./components/AuthGate";
 import { ConfigScreen } from "./pages/ConfigScreen";
 // Pages
 import { LandingPage } from "./pages/LandingPage";
@@ -90,8 +91,22 @@ function App() {
         <AppProvider>
           <ProjectProvider>
             <Routes>
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/project/:projectId" element={<ProjectView />} />
+              <Route
+                path="/"
+                element={
+                  <AuthGate>
+                    <LandingPage />
+                  </AuthGate>
+                }
+              />
+              <Route
+                path="/project/:projectId"
+                element={
+                  <AuthGate>
+                    <ProjectView />
+                  </AuthGate>
+                }
+              />
               <Route path="/oauth/callback" element={<OAuthCallback />} />
             </Routes>
             <ToastContainer

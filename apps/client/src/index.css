@@ -335,16 +335,7 @@ body {
   border: 1px solid rgba(80, 97, 122, 0.25);
   padding: 0.75rem 1rem;
   backdrop-filter: blur(16px);
-}
-
-.graphite-toast-light {
-  background: linear-gradient(145deg, rgba(238, 241, 245, 0.9), rgba(211, 217, 226, 0.82));
-  color: #0f1115;
-}
-
-.graphite-toast-dark {
-  background: linear-gradient(145deg, rgba(20, 24, 33, 0.95), rgba(27, 33, 48, 0.88));
-  color: #eef1f5;
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .graphite-toast-body {

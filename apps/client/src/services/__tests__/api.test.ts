@@ -60,8 +60,7 @@ describe("ApiService", () => {
     fetchMock = vi.fn();
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    service = new ApiService();
-    (service as { baseUrl: string }).baseUrl = "https://api.test";
+    service = new ApiService({ baseUrl: "https://api.test" });
   });
 
   afterEach(() => {
@@ -144,9 +143,7 @@ describe("ApiService", () => {
       }),
     );
 
-    (service as { handleAuthRedirect: () => Promise<void> }).handleAuthRedirect = vi
-      .fn()
-      .mockResolvedValue();
+    vi.spyOn(service as any, "handleAuthRedirect").mockResolvedValue(undefined);
 
     await expect(service.getProject("project-1")).rejects.toMatchObject({
       message: "Missing permission",

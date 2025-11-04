@@ -300,12 +300,12 @@ const ServiceCard: React.FC<{
 
   return (
     <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-      <div className="border-b border-white/40 px-3 py-2 dark:border-graphite-700/60">
+      <div className="border-b border-graphite-200/60 bg-gray-50 px-3 py-2 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <button
           type="button"
           onClick={handleToggle}
           aria-expanded={expanded}
-          className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-1.5 text-left transition-colors font-semibold"
+          className="flex w-full items-center justify-between gap-3 px-1 py-1.5 text-left transition-colors font-semibold"
         >
           <div className="flex items-center gap-3">
             <div
@@ -1048,7 +1048,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
           </div>
         ) : (
           <div className="flex-1 overflow-hidden">
-            <div className="border-b border-gray-200 bg-white px-6 py-6 dark:border-graphite-800 dark:bg-graphite-900">
+            <div className="border-b border-graphite-200/60 bg-gray-50 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
@@ -1095,7 +1095,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
 
                 {externalCards.length > 0 ? (
                   <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-                    <div className="border-b border-white/40 px-4 py-3 dark:border-graphite-700/60">
+                    <div className="border-b border-graphite-200/60 bg-gray-50 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
                           <Network className="h-4 w-4" />

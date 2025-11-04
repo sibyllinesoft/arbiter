@@ -18,6 +18,7 @@ interface OAuthMetadataResponse {
   clientId?: string | null;
   scopes?: string[];
   redirectUri?: string | null;
+  tokenEpoch?: string | null;
 }
 
 interface OAuthTokenResponse {

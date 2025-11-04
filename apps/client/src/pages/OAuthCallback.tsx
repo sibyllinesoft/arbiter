@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AUTH_TOKEN_STORAGE_KEY, apiService } from "../services/api";
+import {
+  AUTH_TOKEN_EPOCH_STORAGE_KEY,
+  AUTH_TOKEN_STORAGE_KEY,
+  ApiService,
+  apiService,
+} from "../services/api";
 
 interface OAuthStatePayload {
   returnTo?: string;
@@ -54,6 +59,24 @@ export function OAuthCallback() {
         apiService.setAuthToken(response.token.access_token);
         window.localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, response.token.access_token);
 
+        try {
+          window.sessionStorage.removeItem(ApiService.OAUTH_PENDING_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
+
+        try {
+          const metadata = await apiService.loadAuthMetadata({ force: import.meta.env.DEV });
+          const tokenEpoch = metadata?.tokenEpoch ?? null;
+          if (tokenEpoch) {
+            window.localStorage.setItem(AUTH_TOKEN_EPOCH_STORAGE_KEY, tokenEpoch);
+          } else {
+            window.localStorage.removeItem(AUTH_TOKEN_EPOCH_STORAGE_KEY);
+          }
+        } catch {
+          // ignore
+        }
+
         const destination = (() => {
           const target = statePayload?.returnTo;
           if (!target) return "/";
@@ -67,6 +90,16 @@ export function OAuthCallback() {
 
         navigate(destination, { replace: true });
       } catch (err) {
+        try {
+          window.sessionStorage.removeItem(ApiService.OAUTH_PENDING_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
+        try {
+          window.localStorage.removeItem(AUTH_TOKEN_EPOCH_STORAGE_KEY);
+        } catch {
+          // ignore
+        }
         setError(err instanceof Error ? err.message : "OAuth exchange failed.");
         setProcessing(false);
       }

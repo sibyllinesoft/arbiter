@@ -15,6 +15,7 @@ declare module "react-toastify/dist/ReactToastify.css";
 declare global {
   interface ImportMetaEnv {
     readonly VITE_API_URL?: string;
+    readonly VITE_REQUIRE_AUTH?: string;
     readonly [key: string]: string | undefined;
   }
 
