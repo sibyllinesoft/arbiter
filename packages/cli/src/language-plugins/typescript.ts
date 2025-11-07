@@ -51,6 +51,7 @@ interface ViteProjectTemplateContext extends Record<string, unknown> {
   packageJson: string;
   tsconfig: string;
   tsconfigBuild: string;
+  tsconfigNode: string;
   projectName: string;
   projectDescription: string;
   devServerPort: number;
@@ -63,6 +64,34 @@ interface NextProjectTemplateContext extends Record<string, unknown> {
   projectName: string;
   projectDescription: string;
 }
+
+const VITE_DEPENDENCY_VERSIONS: Record<string, string> = {
+  react: "^18.2.0",
+  "react-dom": "^18.2.0",
+  "react-router-dom": "^6.26.2",
+  "@reduxjs/toolkit": "^1.9.7",
+  "react-redux": "^8.1.3",
+  zustand: "^4.5.2",
+  "styled-components": "^5.3.11",
+};
+
+const VITE_DEV_DEPENDENCY_VERSIONS: Record<string, string> = {
+  typescript: "^5.5.4",
+  vite: "^5.1.6",
+  "@vitejs/plugin-react": "^4.2.1",
+  "@types/react": "^18.3.5",
+  "@types/react-dom": "^18.3.0",
+  vitest: "^1.2.2",
+  "@testing-library/react": "^14.1.2",
+  "@testing-library/jest-dom": "^6.4.2",
+  jest: "^29.7.0",
+  "@types/jest": "^29.5.5",
+  "ts-jest": "^29.2.5",
+  tailwindcss: "^3.4.14",
+  postcss: "^8.4.38",
+  autoprefixer: "^10.4.20",
+  "@types/styled-components": "^5.1.34",
+};
 
 export class TypeScriptPlugin implements LanguagePlugin {
   readonly name = "TypeScript Plugin";
@@ -412,16 +441,18 @@ export class TypeScriptPlugin implements LanguagePlugin {
 
   private async initializeViteProject(config: ProjectConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
-    const dependencies = this.collectViteDependencies();
+    const { dependencies, devDependencies } = this.collectViteDependencies();
 
-    const packageJson = this.createVitePackageJson(config);
+    const packageJson = this.createVitePackageJson(config, dependencies, devDependencies);
     const tsconfig = JSON.stringify(this.createViteTsconfig(), null, 2);
     const tsconfigBuild = JSON.stringify(this.createViteBuildTsconfig(), null, 2);
+    const tsconfigNode = JSON.stringify(this.createViteNodeTsconfig(), null, 2);
 
     const context: ViteProjectTemplateContext = {
       packageJson,
       tsconfig,
       tsconfigBuild,
+      tsconfigNode,
       projectName: config.name,
       projectDescription: config.description || `A modern TypeScript project: ${config.name}`,
       devServerPort: 3000,
@@ -455,6 +486,13 @@ export class TypeScriptPlugin implements LanguagePlugin {
       tsconfigBuild,
     );
     files.push({ path: "tsconfig.build.json", content: tsconfigBuildContent });
+
+    const tsconfigNodeContent = await this.runtime.templateResolver.renderTemplate(
+      "project/vite/tsconfig.node.json.tpl",
+      context,
+      tsconfigNode,
+    );
+    files.push({ path: "tsconfig.node.json", content: tsconfigNodeContent });
 
     const appContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/App.tsx.tpl",
@@ -577,38 +615,45 @@ export class TypeScriptPlugin implements LanguagePlugin {
     };
   }
 
-  private collectViteDependencies(): string[] {
-    const deps = new Set<string>([
-      "react",
-      "react-dom",
-      "@types/react",
-      "@types/react-dom",
-      "typescript",
-      "vite",
-      "@vitejs/plugin-react",
-      "react-router-dom",
-      "@types/react-router-dom",
-    ]);
+  private collectViteDependencies(): {
+    dependencies: Array<[string, string]>;
+    devDependencies: Array<[string, string]>;
+  } {
+    const deps = new Map<string, string>();
+    const devDeps = new Map<string, string>();
+
+    const addDep = (name: string) => deps.set(name, VITE_DEPENDENCY_VERSIONS[name] ?? "latest");
+    const addDevDep = (name: string) =>
+      devDeps.set(name, VITE_DEV_DEPENDENCY_VERSIONS[name] ?? "latest");
+
+    addDep("react");
+    addDep("react-dom");
+    addDep("react-router-dom");
+    addDevDep("@types/react");
+    addDevDep("@types/react-dom");
+    addDevDep("typescript");
+    addDevDep("vite");
+    addDevDep("@vitejs/plugin-react");
 
     if (this.runtime.testRunner === "vitest") {
-      deps.add("vitest");
-      deps.add("@testing-library/react");
-      deps.add("@testing-library/jest-dom");
+      addDevDep("vitest");
+      addDevDep("@testing-library/react");
+      addDevDep("@testing-library/jest-dom");
     } else {
-      deps.add("jest");
-      deps.add("@types/jest");
-      deps.add("ts-jest");
+      addDevDep("jest");
+      addDevDep("@types/jest");
+      addDevDep("ts-jest");
     }
 
     switch (this.runtime.styling) {
       case "tailwind":
-        deps.add("tailwindcss");
-        deps.add("postcss");
-        deps.add("autoprefixer");
+        addDevDep("tailwindcss");
+        addDevDep("postcss");
+        addDevDep("autoprefixer");
         break;
       case "styled-components":
-        deps.add("styled-components");
-        deps.add("@types/styled-components");
+        addDep("styled-components");
+        addDevDep("@types/styled-components");
         break;
       default:
         break;
@@ -617,14 +662,17 @@ export class TypeScriptPlugin implements LanguagePlugin {
     if (this.runtime.stateManagement) {
       const lower = this.runtime.stateManagement.toLowerCase();
       if (lower === "redux") {
-        deps.add("@reduxjs/toolkit");
-        deps.add("react-redux");
+        addDep("@reduxjs/toolkit");
+        addDep("react-redux");
       } else if (lower === "zustand") {
-        deps.add("zustand");
+        addDep("zustand");
       }
     }
 
-    return Array.from(deps);
+    return {
+      dependencies: Array.from(deps.entries()),
+      devDependencies: Array.from(devDeps.entries()),
+    };
   }
 
   private collectNextDependencies(): string[] {
@@ -670,7 +718,11 @@ export class TypeScriptPlugin implements LanguagePlugin {
     return Array.from(deps);
   }
 
-  private createVitePackageJson(config: ProjectConfig): string {
+  private createVitePackageJson(
+    config: ProjectConfig,
+    dependencies: Array<[string, string]>,
+    devDependencies: Array<[string, string]>,
+  ): string {
     const scripts = this.createViteScripts();
 
     const packageJson = pruneUndefined({
@@ -680,8 +732,8 @@ export class TypeScriptPlugin implements LanguagePlugin {
       type: "module",
       description: config.description || `A modern TypeScript project: ${config.name}`,
       scripts,
-      dependencies: {},
-      devDependencies: {},
+      dependencies: Object.fromEntries(dependencies),
+      devDependencies: Object.fromEntries(devDependencies),
       engines: {
         node: ">=18.0.0",
       },
@@ -734,6 +786,20 @@ export class TypeScriptPlugin implements LanguagePlugin {
         outDir: "./dist",
       },
       exclude: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    };
+  }
+
+  private createViteNodeTsconfig(): Record<string, unknown> {
+    return {
+      compilerOptions: {
+        composite: true,
+        module: "ESNext",
+        moduleResolution: "bundler",
+        resolveJsonModule: true,
+        isolatedModules: true,
+        types: ["vitest/importMeta"],
+      },
+      include: ["vite.config.ts"],
     };
   }
 

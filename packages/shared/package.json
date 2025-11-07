@@ -36,6 +36,7 @@
   "dependencies": {
     "@arbiter/shared-types": "workspace:*",
     "fs-extra": "^11.2.0",
-    "glob": "^10.3.10"
+    "glob": "^10.3.10",
+    "zod": "^3.22.4"
   }
 }

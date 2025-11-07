@@ -15,6 +15,9 @@ export const LAYER_STYLE_CLASSES: Record<string, string> = {
   view: "bg-[#725718] border-[#5D4614] text-white/70 dark:bg-[#5D4614] dark:border-[#3D2E0C] dark:text-white/70",
   route:
     "bg-indigo-500 border-indigo-700 text-white/70 dark:bg-indigo-600 dark:border-indigo-800 dark:text-white/70",
+  flow: "bg-sky-500 border-sky-700 text-white/70 dark:bg-sky-600 dark:border-sky-800 dark:text-white/70",
+  capability:
+    "bg-pink-500 border-pink-700 text-white/70 dark:bg-pink-600 dark:border-pink-800 dark:text-white/70",
   external:
     "bg-slate-300 border-slate-500 text-slate-900/70 dark:bg-slate-600 dark:border-slate-700 dark:text-white/70",
   "task-completed":

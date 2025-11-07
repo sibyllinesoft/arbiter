@@ -200,13 +200,13 @@ export async function removeCommand(
       }
 
       throw new Error(storeResult.error || "Failed to store specification");
-    } catch (_error) {
-      console.log(chalk.yellow("⚠️  Service unavailable, storing locally as fallback"));
-      await persistLocalAssembly(assemblyDir, assemblyPath, assemblyContent, updatedContent, {
-        verbose: options.verbose,
-        reason: "local fallback",
-      });
-      return 0;
+    } catch (error) {
+      console.error(
+        chalk.red("❌ Failed to update specification with Arbiter service:"),
+        error instanceof Error ? error.message : String(error),
+      );
+      console.error(chalk.dim("Tip: rerun with --local to operate against local files only."));
+      return 1;
     }
   } catch (error) {
     console.error(

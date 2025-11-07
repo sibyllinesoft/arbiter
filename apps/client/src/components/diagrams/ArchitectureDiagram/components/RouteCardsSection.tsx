@@ -54,9 +54,9 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
   };
 
   return (
-    <div className="bg-white dark:bg-graphite-900 border border-gray-200 dark:border-graphite-700 rounded-lg overflow-hidden">
-      <div className="px-4 py-3 bg-gray-50 dark:bg-graphite-800 border-b border-gray-200 dark:border-graphite-700 flex items-center justify-between">
-        <h3 className="font-medium text-gray-900 dark:text-graphite-25">{title}</h3>
+    <section className="space-y-3">
+      <div className="flex items-center justify-between px-2 py-1 text-sm font-semibold text-gray-900 dark:text-graphite-25">
+        <h3>{title}</h3>
         <StatusBadge
           variant="secondary"
           style="solid"
@@ -67,7 +67,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
         </StatusBadge>
       </div>
 
-      <div className="divide-y divide-gray-200 dark:divide-graphite-800">
+      <div className="space-y-3">
         {packages.map((pkg) => {
           const packageExpanded = expandedPackages[pkg.packageName] ?? true;
           const routeCount = pkg.routes?.length ?? 0;
@@ -77,11 +77,11 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
           }
 
           return (
-            <div key={pkg.packageName} className="bg-white dark:bg-graphite-900">
+            <div key={pkg.packageName} className="space-y-2">
               <button
                 type="button"
                 onClick={() => togglePackage(pkg.packageName)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-graphite-800 transition-colors"
+                className="w-full rounded-md px-3 py-2 flex items-center justify-between text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:text-graphite-200 dark:hover:bg-graphite-800"
               >
                 <div className="flex flex-col items-start text-left">
                   <span className="text-sm font-medium text-gray-900 dark:text-graphite-25">
@@ -98,7 +98,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
                     variant="secondary"
                     style="solid"
                     size="xs"
-                    className="rounded-full text-[10px] px-2 py-0.5 !bg-graphite-900 !text-graphite-200 !border-graphite-600"
+                    className="rounded-full text-[10px] px-2 py-0.5"
                   >
                     {routeCount}
                   </StatusBadge>
@@ -429,7 +429,7 @@ const RouteCardsSection: React.FC<RouteCardsSectionProps> = ({ title, packages }
           );
         })}
       </div>
-    </div>
+    </section>
   );
 };
 

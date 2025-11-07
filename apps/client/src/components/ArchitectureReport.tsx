@@ -92,7 +92,7 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
 
   return (
     <div className={clsx("h-full flex flex-col bg-gray-50 dark:bg-graphite-950", className)}>
-      <div className="border-b border-graphite-200/60 bg-gray-50 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+      <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shadow-sm dark:bg-indigo-900/30 dark:text-indigo-200">
@@ -112,7 +112,7 @@ export function ArchitectureReport({ projectId, className }: ArchitectureReportP
       </div>
 
       <div className="flex-1 overflow-hidden px-6 py-6">
-        <div className="h-full rounded-xl border border-gray-200 bg-white/60 shadow-sm dark:border-graphite-700 dark:bg-graphite-900/40">
+        <div className="h-full rounded-xl bg-white/60 shadow-sm dark:bg-graphite-900/40">
           <ArchitectureDiagram projectId={projectId} onOpenEntityModal={handleOpenEntityModal} />
         </div>
       </div>

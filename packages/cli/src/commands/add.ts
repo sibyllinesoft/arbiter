@@ -32,6 +32,7 @@ import {
 } from "../templates/index.js";
 import type { CLIConfig } from "../types.js";
 import { detectPlatform, getPlatformServiceDefaults } from "../utils/platform-detection.js";
+import { ensureProjectExists } from "../utils/project.js";
 
 export interface AddOptions {
   verbose?: boolean;
@@ -193,6 +194,7 @@ export async function addCommand(
     } else {
       // Initialize API client and store specification in service database
       const apiClient = new ApiClient(config);
+      let storeSucceeded = false;
 
       try {
         // Determine shard type based on subcommand
@@ -207,6 +209,7 @@ export async function addCommand(
         });
 
         if (storeResult.success) {
+          storeSucceeded = true;
           console.log(chalk.green(`✅ Updated specification in service (${subcommand}: ${name})`));
           console.log(
             chalk.dim("💡 CUE files will be generated to .arbiter/ when specification is complete"),
@@ -224,9 +227,18 @@ export async function addCommand(
           throw new Error(storeResult.error || "Failed to store specification");
         }
       } catch (apiError) {
-        // Fallback to file system if API is not available
-        console.log(chalk.yellow("⚠️  Service unavailable, storing locally as fallback"));
-        await persistLocalAssembly(updatedContent, "local fallback");
+        console.error(
+          chalk.red("❌ Failed to store specification with Arbiter service:"),
+          apiError instanceof Error ? apiError.message : String(apiError),
+        );
+        console.error(
+          chalk.dim("Tip: re-run with --local if you intentionally want to work offline."),
+        );
+        return 1;
+      }
+
+      if (storeSucceeded) {
+        await syncEntityWithProject(apiClient, config, subcommand, name, options);
       }
     }
 
@@ -1463,4 +1475,178 @@ function getShardTypeForSubcommand(subcommand: string): string {
   };
 
   return shardMapping[subcommand] || "assembly";
+}
+
+async function syncEntityWithProject(
+  client: ApiClient,
+  config: CLIConfig,
+  subcommand: string,
+  name: string,
+  options: Record<string, any>,
+): Promise<void> {
+  if (!["service", "database"].includes(subcommand)) {
+    return;
+  }
+
+  const projectId = await ensureProjectExists(client, config);
+
+  switch (subcommand) {
+    case "service":
+      await upsertServiceEntity(client, projectId, name, options);
+      console.log(chalk.dim(`🗄️  Synced service "${name}" with project catalog`));
+      break;
+    case "database":
+      await upsertDatabaseEntity(client, projectId, name, options);
+      console.log(chalk.dim(`🗄️  Synced database "${name}" with project catalog`));
+      break;
+    default:
+      break;
+  }
+}
+
+async function upsertServiceEntity(
+  client: ApiClient,
+  projectId: string,
+  name: string,
+  options: Record<string, any>,
+): Promise<void> {
+  const artifactId = await findExistingArtifactId(client, projectId, "service", name);
+  const values = buildServiceEntityValues(name, options);
+
+  if (artifactId) {
+    const result = await client.updateProjectEntity(projectId, artifactId, {
+      type: "service",
+      values,
+    });
+    if (!result.success) {
+      throw new Error(result.error || `Failed to update service "${name}" in project catalog`);
+    }
+  } else {
+    const result = await client.createProjectEntity(projectId, { type: "service", values });
+    if (!result.success) {
+      throw new Error(result.error || `Failed to register service "${name}" in project catalog`);
+    }
+  }
+}
+
+async function upsertDatabaseEntity(
+  client: ApiClient,
+  projectId: string,
+  name: string,
+  options: Record<string, any>,
+): Promise<void> {
+  const artifactId = await findExistingArtifactId(client, projectId, "database", name);
+  const values = buildDatabaseEntityValues(name, options);
+
+  if (artifactId) {
+    const result = await client.updateProjectEntity(projectId, artifactId, {
+      type: "database",
+      values,
+    });
+    if (!result.success) {
+      throw new Error(result.error || `Failed to update database "${name}" in project catalog`);
+    }
+  } else {
+    const result = await client.createProjectEntity(projectId, { type: "database", values });
+    if (!result.success) {
+      throw new Error(result.error || `Failed to register database "${name}" in project catalog`);
+    }
+  }
+}
+
+async function findExistingArtifactId(
+  client: ApiClient,
+  projectId: string,
+  type: "service" | "database",
+  name: string,
+): Promise<string | null> {
+  const projectResult = await client.getProject(projectId);
+  if (!projectResult.success) {
+    throw new Error(projectResult.error || `Failed to fetch project ${projectId} details`);
+  }
+
+  const spec = projectResult.data?.resolved?.spec ?? projectResult.data?.spec;
+  if (!spec || typeof spec !== "object") {
+    return null;
+  }
+
+  const collectionKey = type === "service" ? "services" : "databases";
+  const collection = spec[collectionKey] as Record<string, any> | undefined;
+  if (!collection || typeof collection !== "object") {
+    return null;
+  }
+
+  const target = name.trim().toLowerCase();
+  for (const entry of Object.values(collection)) {
+    if (!entry || typeof entry !== "object") continue;
+    const entryNameRaw =
+      typeof (entry as any).name === "string"
+        ? (entry as any).name
+        : typeof (entry as any).displayName === "string"
+          ? (entry as any).displayName
+          : typeof (entry as any).metadata?.name === "string"
+            ? (entry as any).metadata.name
+            : undefined;
+    if (!entryNameRaw) continue;
+
+    if (entryNameRaw.trim().toLowerCase() !== target) {
+      continue;
+    }
+
+    const idCandidate =
+      typeof (entry as any).artifactId === "string"
+        ? (entry as any).artifactId
+        : typeof (entry as any).metadata?.artifactId === "string"
+          ? (entry as any).metadata.artifactId
+          : typeof (entry as any).id === "string"
+            ? (entry as any).id
+            : undefined;
+    if (idCandidate) {
+      return idCandidate;
+    }
+  }
+
+  return null;
+}
+
+function buildServiceEntityValues(
+  name: string,
+  options: Record<string, any>,
+): Record<string, unknown> {
+  const language =
+    typeof options.language === "string" && options.language.trim().length > 0
+      ? options.language.trim()
+      : "typescript";
+
+  const values: Record<string, unknown> = {
+    name,
+    language,
+  };
+
+  if (typeof options.port === "number" && Number.isFinite(options.port)) {
+    values.port = options.port;
+  }
+
+  if (typeof options.serviceType === "string" && options.serviceType.trim().length > 0) {
+    values.serviceType = options.serviceType.trim();
+  }
+
+  const inferredSource =
+    typeof options.directory === "string" && options.directory.trim().length > 0
+      ? options.directory.trim()
+      : `./src/${name}`;
+  values.sourcePath = inferredSource;
+
+  return values;
+}
+
+function buildDatabaseEntityValues(
+  name: string,
+  options: Record<string, any>,
+): Record<string, unknown> {
+  const values: Record<string, unknown> = { name };
+  if (typeof options.type === "string" && options.type.trim().length > 0) {
+    values.type = options.type.trim();
+  }
+  return values;
 }

@@ -6,9 +6,9 @@ import {
   type TaskEpicOption,
   type UiOptionCatalog,
 } from "@/components/modals/AddEntityModal";
-import StatusBadge from "@/design-system/components/StatusBadge";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
 import { apiService } from "@/services/api";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import {
@@ -190,22 +190,6 @@ const computeGroupedComponents = (
     task: { label: "Tasks", layout: "grid" },
     other: { label: "Other", layout: "grid" },
   };
-
-  const DESIRED_GROUP_ORDER = [
-    "Frontends",
-    "Services",
-    "Modules",
-    "Tools",
-    "Routes",
-    "Views",
-    "Flows",
-    "Capabilities",
-    "Databases",
-    "Infrastructure",
-    "Epics",
-    "Tasks",
-    "Other",
-  ];
 
   const getTypeConfig = (type: string) => TYPE_CONFIG[type] ?? TYPE_CONFIG.other;
 
@@ -552,19 +536,13 @@ const computeGroupedComponents = (
     })
     .filter((group) => group.type !== "component");
 
-  const orderedGroups: GroupedComponentGroup[] = [];
-  const remainingGroups = new Map(dedupedGroups.map((group) => [group.label, group] as const));
-
-  DESIRED_GROUP_ORDER.forEach((label) => {
-    if (remainingGroups.has(label)) {
-      orderedGroups.push(remainingGroups.get(label)!);
-      remainingGroups.delete(label);
+  return dedupedGroups.sort((a, b) => {
+    const diff = b.items.length - a.items.length;
+    if (diff !== 0) {
+      return diff;
     }
+    return a.label.localeCompare(b.label);
   });
-
-  orderedGroups.push(...remainingGroups.values());
-
-  return orderedGroups;
 };
 
 const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
@@ -583,6 +561,10 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
     useState<UiOptionCatalog>(DEFAULT_UI_OPTION_CATALOG);
   const [optimisticRemovals, setOptimisticRemovals] = useState<Set<string>>(new Set());
   const queryClient = useQueryClient();
+  const [groupListRef] = useAutoAnimate<HTMLDivElement>({
+    duration: 220,
+    easing: "ease-in-out",
+  });
 
   const toggleOptimisticRemoval = useCallback((artifactId: string, shouldAdd: boolean) => {
     setOptimisticRemovals((prev) => {
@@ -1032,11 +1014,6 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
     );
   }
 
-  const totalComponents = groupedComponents.reduce(
-    (sum: number, group: GroupedComponentGroup) => sum + group.items.length,
-    0,
-  );
-
   const buildPackagesFromGroup = (group: GroupedComponentGroup): FrontendPackage[] => {
     const packages = new Map<string, FrontendPackage>();
 
@@ -1471,67 +1448,47 @@ const ArchitectureDiagram: React.FC<ArchitectureDiagramProps> = ({
   return (
     <div
       className={clsx(
-        "h-full overflow-auto bg-gray-50 dark:bg-graphite-950 scrollbar-transparent",
+        "h-full overflow-auto px-6 py-6 bg-gray-50 dark:bg-graphite-950 scrollbar-transparent",
         className,
       )}
     >
-      {/* Header */}
-      <div className="p-4 bg-white dark:bg-graphite-900 border-b border-gray-200 dark:border-graphite-700 flex items-center justify-between">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-graphite-25">Components</h3>
-        {totalComponents > 0 && (
-          <StatusBadge
-            variant="secondary"
-            style="solid"
-            size="xs"
-            className="rounded-full text-[10px] px-2 py-0.5 !bg-graphite-900 !text-graphite-200 !border-graphite-600"
-          >
-            {totalComponents}
-          </StatusBadge>
-        )}
-      </div>
+      {groupedComponents.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div ref={groupListRef} className="space-y-6">
+          {groupedComponents.map((group: GroupedComponentGroup) => {
+            const icon = groupIconMap[group.type];
+            return (
+              <SourceGroup
+                key={group.label}
+                groupLabel={group.label}
+                components={group.items}
+                groupType={group.type}
+                expandedSources={expandedSources}
+                setExpandedSources={setExpandedSources}
+                onComponentClick={({ name, data }) => {
+                  handleEditComponent({ group, item: { name, data } });
+                }}
+                onAddClick={() => openAddDialog(group)}
+                onDeleteComponent={({ artifactId, label }) => handleDeleteEntity(artifactId, label)}
+                {...(icon ? { icon } : {})}
+              />
+            );
+          })}
+        </div>
+      )}
 
-      {/* Components by Source File */}
-      <div className="p-4 space-y-6">
-        {groupedComponents.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="space-y-4">
-            {groupedComponents.map((group: GroupedComponentGroup) => {
-              const icon = groupIconMap[group.type];
-              return (
-                <SourceGroup
-                  key={group.label}
-                  groupLabel={group.label}
-                  components={group.items}
-                  groupType={group.type}
-                  expandedSources={expandedSources}
-                  setExpandedSources={setExpandedSources}
-                  onComponentClick={({ name, data }) => {
-                    handleEditComponent({ group, item: { name, data } });
-                  }}
-                  onAddClick={() => openAddDialog(group)}
-                  onDeleteComponent={({ artifactId, label }) =>
-                    handleDeleteEntity(artifactId, label)
-                  }
-                  {...(icon ? { icon } : {})}
-                />
-              );
-            })}
-          </div>
-        )}
-
-        {addDialogConfig && !onOpenEntityModal && (
-          <AddEntityModal
-            open
-            entityType={addDialogConfig.type}
-            groupLabel={addDialogConfig.label}
-            optionCatalog={optionCatalogWithTasks}
-            onClose={() => setAddDialogConfig(null)}
-            mode="create"
-            onSubmit={handleAddEntity}
-          />
-        )}
-      </div>
+      {addDialogConfig && !onOpenEntityModal && (
+        <AddEntityModal
+          open
+          entityType={addDialogConfig.type}
+          groupLabel={addDialogConfig.label}
+          optionCatalog={optionCatalogWithTasks}
+          onClose={() => setAddDialogConfig(null)}
+          mode="create"
+          onSubmit={handleAddEntity}
+        />
+      )}
     </div>
   );
 };

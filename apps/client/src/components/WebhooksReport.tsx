@@ -87,7 +87,7 @@ export function WebhooksReport({ projectId }: WebhooksReportProps) {
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
-      <div className="border-b border-graphite-200/60 bg-gray-50 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+      <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-900/30">

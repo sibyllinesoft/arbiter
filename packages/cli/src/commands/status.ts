@@ -133,15 +133,18 @@ export async function statusCommand(options: StatusOptions, config: Config): Pro
 
     // Get project status with progress indicator
     const result = await withProgress({ text: "Getting project status..." }, () =>
-      client.getProjectStatus(),
+      client.getProjectStatus(config.projectId),
     );
 
     if (!result.success) {
       console.error(chalk.red("Status check failed:"), result.error);
-      return 1;
+      console.log(chalk.yellow("Falling back to local specification status...\n"));
+      const fallbackStatus = await getLocalProjectStatus(config);
+      displayStatusTable(fallbackStatus, options.detailed ?? false);
+      return fallbackStatus.health === "error" ? 1 : 0;
     }
 
-    const status = result.data;
+    const status = normalizeRemoteProjectStatus(result.data, config.projectId);
 
     // Format and display results based on output format
     switch (config.format) {
@@ -160,8 +163,6 @@ export async function statusCommand(options: StatusOptions, config: Config): Pro
     // Return appropriate exit code based on project health
     if (status.health === "error") {
       return 1;
-    } else if (status.health === "degraded") {
-      return 0; // Still successful, just with warnings
     }
 
     return 0;
@@ -173,9 +174,10 @@ export async function statusCommand(options: StatusOptions, config: Config): Pro
 
 function displayStatusTable(status: ProjectStatus, detailed: boolean): void {
   // Project health header
-  const healthColor = getHealthColor(status.health);
-  const healthIcon = getHealthIcon(status.health);
-  console.log(`${healthIcon} Project Health: ${healthColor(status.health.toUpperCase())}`);
+  const normalizedHealth = status.health ?? "degraded";
+  const healthColor = getHealthColor(normalizedHealth);
+  const healthIcon = getHealthIcon(normalizedHealth);
+  console.log(`${healthIcon} Project Health: ${healthColor(normalizedHealth.toUpperCase())}`);
 
   if (status.lastUpdated) {
     console.log(chalk.gray(`Last Updated: ${new Date(status.lastUpdated).toLocaleString()}`));
@@ -382,6 +384,73 @@ function formatTable(rows: string[][]): string {
 // Helper to strip ANSI codes for length calculation
 function stripAnsi(text: string): string {
   return text.replace(/\u001b\[[0-9;]*m/g, "");
+}
+
+function normalizeRemoteProjectStatus(payload: any, projectId?: string): ProjectStatus {
+  if (!payload || typeof payload !== "object") {
+    return buildFallbackStatus("Remote status payload was empty");
+  }
+
+  const resolvedRoot = payload.resolved ?? payload;
+  const project = resolvedRoot.project ?? payload.project ?? null;
+  const services = resolvedRoot.services;
+  const lastUpdated =
+    project?.lastActivity ??
+    project?.updatedAt ??
+    resolvedRoot.updatedAt ??
+    resolvedRoot.timestamp ??
+    null;
+
+  const components: ProjectStatus["components"] = [];
+
+  if (services && typeof services === "object") {
+    for (const [serviceName, serviceSpec] of Object.entries<any>(services)) {
+      const dependencyList =
+        serviceSpec?.dependencies ??
+        serviceSpec?.metadata?.dependencies ??
+        serviceSpec?.metadata?.depends_on ??
+        [];
+      components.push({
+        type: "service",
+        name: serviceName,
+        status: "active",
+        lastModified: project?.lastActivity ?? new Date().toISOString(),
+        dependencies: Array.isArray(dependencyList) ? dependencyList.map((dep) => String(dep)) : [],
+      });
+    }
+  }
+
+  const entityCounts = project?.entities ?? {};
+  const health = components.length > 0 || (entityCounts.services ?? 0) > 0 ? "healthy" : "degraded";
+
+  return {
+    health,
+    healthDetails:
+      components.length > 0
+        ? `Detected ${components.length} services and ${entityCounts.databases ?? 0} databases in ${
+            project?.name ?? projectId ?? "project"
+          }.`
+        : "Remote project responded without service metadata.",
+    lastUpdated: lastUpdated ?? undefined,
+    components,
+    validations: {
+      total: 0,
+      passed: 0,
+      failed: 0,
+      warnings: 0,
+    },
+    specifications: [],
+  };
+}
+
+function buildFallbackStatus(reason: string): ProjectStatus {
+  return {
+    health: "degraded",
+    healthDetails: reason,
+    components: [],
+    validations: { total: 0, passed: 0, failed: 0, warnings: 0 },
+    specifications: [],
+  };
 }
 
 // Remove unused import once formatting.js is handled separately if needed

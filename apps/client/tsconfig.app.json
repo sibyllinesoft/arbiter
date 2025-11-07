@@ -18,6 +18,7 @@
       "@design-system/*": ["./src/design-system/*"],
       "@design-system": ["./src/design-system"],
       "@utils/*": ["./src/utils/*"],
+      "@arbiter/shared": ["../../packages/shared/src"],
       "@assets/*": ["./src/assets/*"],
       "@stores/*": ["./src/stores/*"],
       "@types/*": ["./src/types/*"],

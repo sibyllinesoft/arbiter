@@ -635,6 +635,15 @@ export interface AppSpec {
   testability?: TestabilitySpec;
   ops?: OpsSpec;
   stateModels?: Record<Slug, FSMSpec>;
+  tests?: any[];
+  epics?: any[];
+  docs?: any;
+  security?: any;
+  performance?: any;
+  observability?: any;
+  environments?: any;
+  data?: any;
+  metadata?: Record<string, unknown>;
 }
 
 // Schema version detection and configuration

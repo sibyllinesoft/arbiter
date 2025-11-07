@@ -121,8 +121,8 @@ export async function checkCompatibility(
   return {
     compatible,
     issues,
-    recommendations: recommendations.length > 0 ? recommendations : undefined,
-    version_mismatches: mismatches.length > 0 ? mismatches : undefined,
+    recommendations: recommendations.length > 0 ? recommendations : [],
+    version_mismatches: mismatches,
     migration_required: migrationRequired,
     migration_path: migrationRequired
       ? {
@@ -134,7 +134,11 @@ export async function checkCompatibility(
             "Update project dependencies",
           ],
         }
-      : undefined,
+      : {
+          fromVersion: versions.arbiter || "",
+          toVersion: versions.arbiter || CURRENT_VERSIONS.arbiter,
+          steps: [],
+        },
     timestamp: new Date().toISOString(),
   };
 }
@@ -211,9 +215,9 @@ function parseSemanticVersion(
   if (!match) return null;
 
   return {
-    major: parseInt(match[1], 10),
-    minor: parseInt(match[2], 10),
-    patch: parseInt(match[3], 10),
+    major: parseInt(match[1] ?? "0", 10),
+    minor: parseInt(match[2] ?? "0", 10),
+    patch: parseInt(match[3] ?? "0", 10),
   };
 }
 
@@ -346,7 +350,6 @@ export function getRuntimeVersionInfo(): {
     },
     build_info: {
       timestamp: new Date().toISOString(),
-      commit_hash: undefined,
       deterministic: false,
       reproducible: false,
     },

@@ -1,7 +1,17 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
 import type { LucideIcon } from "lucide-react";
-import { Boxes, ChevronUp, Folder, Languages, Network, Plus, Server, Workflow } from "lucide-react";
+import {
+  Boxes,
+  ChevronDown,
+  ChevronUp,
+  Folder,
+  Languages,
+  Network,
+  Plus,
+  Server,
+  Workflow,
+} from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -62,6 +72,91 @@ const TYPE_BADGE_STYLES: Record<string, string> = {
   worker: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200",
   job: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200",
   queue: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200",
+};
+
+const getPackageJson = (raw: unknown): Record<string, unknown> | null => {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const rawRecord = raw as Record<string, unknown>;
+  const metadata = rawRecord.metadata;
+  if (metadata && typeof metadata === "object") {
+    const packageJson = (metadata as Record<string, unknown>).packageJson;
+    if (packageJson && typeof packageJson === "object") {
+      return packageJson as Record<string, unknown>;
+    }
+  }
+  const direct = rawRecord.packageJson;
+  if (direct && typeof direct === "object") {
+    return direct as Record<string, unknown>;
+  }
+  return null;
+};
+
+const hasPackageBin = (raw: unknown): boolean => {
+  const packageJson = getPackageJson(raw);
+  if (!packageJson) {
+    return false;
+  }
+
+  const rawRecord = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const metadata =
+    rawRecord.metadata && typeof rawRecord.metadata === "object"
+      ? (rawRecord.metadata as Record<string, unknown>)
+      : undefined;
+
+  const candidateSources = [
+    (packageJson as Record<string, unknown>).bin,
+    metadata?.bin,
+    rawRecord.bin,
+  ];
+  for (const candidate of candidateSources) {
+    if (!candidate) continue;
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return true;
+    }
+    if (typeof candidate === "object") {
+      const keys = Object.keys(candidate as Record<string, unknown>);
+      if (keys.length > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+const isServiceDetected = (service: NormalizedService): boolean => {
+  const raw = service.raw;
+  if (raw && typeof raw === "object") {
+    const rawRecord = raw as Record<string, unknown>;
+    const metadata =
+      rawRecord.metadata && typeof rawRecord.metadata === "object"
+        ? (rawRecord.metadata as Record<string, unknown>)
+        : undefined;
+
+    const candidates: Array<unknown> = [
+      rawRecord.type,
+      rawRecord.category,
+      metadata?.detectedType,
+      metadata?.type,
+      metadata?.category,
+      service.typeLabel,
+    ];
+
+    return candidates.some((candidate) => {
+      if (typeof candidate !== "string") {
+        return false;
+      }
+      const value = candidate.toLowerCase();
+      return value.includes("service");
+    });
+  }
+
+  if (typeof service.typeLabel === "string") {
+    return service.typeLabel.toLowerCase().includes("service");
+  }
+
+  return false;
 };
 
 const slugify = (value: string): string =>
@@ -151,12 +246,19 @@ const PATH_PRIORITY_CANDIDATES = [
   "file_path",
   "sourcePath",
   "source_path",
+  "sourceDir",
+  "source_dir",
+  "source",
+  "sourceDirectory",
+  "source_directory",
   "path",
   "root",
   "rootPath",
   "root_path",
   "projectPath",
   "project_path",
+  "workspacePath",
+  "workspace_path",
   "repositoryPath",
   "repository_path",
   "directory",
@@ -202,15 +304,42 @@ const isLikelyCodePath = (value: string): boolean => {
 };
 
 const isInfrastructurePath = (value: string): boolean => {
-  const lower = value.toLowerCase();
-  return (
-    lower.includes("dockerfile") ||
-    lower.includes("docker-compose") ||
-    lower.endsWith(".yaml") ||
-    lower.endsWith(".yml") ||
-    lower.includes("compose.yml") ||
-    lower.includes("compose.yaml")
-  );
+  const normalized = value.toLowerCase().replace(/\\/g, "/");
+  if (!normalized) {
+    return false;
+  }
+
+  if (
+    normalized.includes("dockerfile") ||
+    normalized.includes("docker-compose") ||
+    normalized.endsWith(".yaml") ||
+    normalized.endsWith(".yml") ||
+    normalized.includes("compose.yml") ||
+    normalized.includes("compose.yaml")
+  ) {
+    return true;
+  }
+
+  if (
+    normalized.includes("/docker/") ||
+    normalized.startsWith("docker/") ||
+    normalized.includes("/compose/") ||
+    normalized.startsWith("compose/") ||
+    normalized.endsWith("/compose")
+  ) {
+    return true;
+  }
+
+  if (
+    normalized.includes("/helm/") ||
+    normalized.includes("/charts/") ||
+    normalized.includes("/chart/") ||
+    normalized.endsWith("/chart")
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 const collectPathCandidates = (raw: any): string[] => {
@@ -271,18 +400,6 @@ const resolveSourcePath = (raw: any): { path: string | undefined; hasSource: boo
   return { path: candidates[0], hasSource: false };
 };
 
-const isContainerOnlyService = (raw: any): boolean => {
-  const metadata = raw?.metadata ?? {};
-  return Boolean(
-    metadata?.image ||
-      metadata?.containerImage ||
-      metadata?.compose ||
-      metadata?.dockerfile ||
-      metadata?.helmChart ||
-      metadata?.chart,
-  );
-};
-
 const ServiceCard: React.FC<{
   service: NormalizedService;
   onAddEndpoint: (service: NormalizedService) => void;
@@ -297,44 +414,64 @@ const ServiceCard: React.FC<{
   const handleAddEndpoint = () => {
     onAddEndpoint(service);
   };
+  const [showSourcePath, setShowSourcePath] = useState(false);
+  const sourcePath =
+    service.sourcePath ?? service.metadataItems.find((item) => item.label === "Source")?.value;
+  const metadataWithoutSource = service.metadataItems.filter((item) => item.label !== "Source");
 
   return (
     <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-      <div className="border-b border-graphite-200/60 bg-gray-50 px-3 py-2 dark:border-graphite-700/60 dark:bg-graphite-900/70">
-        <button
-          type="button"
-          onClick={handleToggle}
-          aria-expanded={expanded}
-          className="flex w-full items-center justify-between gap-3 px-1 py-1.5 text-left transition-colors font-semibold"
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={clsx(
-                "flex h-10 w-10 items-center justify-center rounded-lg shadow-sm",
-                service.typeLabel
-                  ? (TYPE_BADGE_STYLES[service.typeLabel.toLowerCase()] ??
-                      "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200")
-                  : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200",
+      <div className="border-b border-graphite-200/60 bg-gray-100 px-3 py-2 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-expanded={expanded}
+            className="flex flex-1 items-center gap-3 px-1 py-1.5 text-left font-semibold transition-colors hover:text-graphite-900 dark:hover:text-graphite-25"
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={clsx(
+                  "flex h-10 w-10 items-center justify-center rounded-lg shadow-sm",
+                  service.typeLabel
+                    ? (TYPE_BADGE_STYLES[service.typeLabel.toLowerCase()] ??
+                        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200")
+                    : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200",
+                )}
+              >
+                <Server className="h-4 w-4" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {service.displayName || service.identifier}
+              </h3>
+              {hasDistinctName && (
+                <span className="font-mono text-xs lowercase text-gray-400 dark:text-graphite-400">
+                  {service.identifier}
+                </span>
               )}
-            >
-              <Server className="h-4 w-4" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              {service.displayName || service.identifier}
-            </h3>
-            {hasDistinctName && (
-              <span className="font-mono text-xs lowercase text-gray-400 dark:text-graphite-400">
-                {service.identifier}
-              </span>
-            )}
-          </div>
-          <ChevronUp
-            className={clsx(
-              "h-4 w-4 text-gray-500 transition-transform dark:text-graphite-300",
-              expanded ? "rotate-180" : "rotate-0",
-            )}
-          />
-        </button>
+          </button>
+          <button
+            type="button"
+            onClick={handleAddEndpoint}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-400/10"
+            aria-label="Add endpoint"
+          >
+            <Plus className="h-4 w-4 text-blue-600 dark:text-blue-300" />
+            <span className="hidden sm:inline">Add endpoint</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleToggle}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Collapse service details" : "Expand service details"}
+            className="flex items-center justify-center rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-graphite-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1 dark:text-graphite-300 dark:hover:bg-graphite-800/70 dark:hover:text-graphite-50 dark:focus-visible:ring-offset-0"
+          >
+            <ChevronUp
+              className={clsx("h-4 w-4 transition-transform", expanded ? "rotate-180" : "rotate-0")}
+            />
+          </button>
+        </div>
         <div
           className={clsx(
             "overflow-hidden transition-[max-height,opacity] duration-300 ease-out",
@@ -342,28 +479,53 @@ const ServiceCard: React.FC<{
           )}
           aria-hidden={!expanded}
         >
-          <div className="mt-3 flex flex-wrap items-start justify-around gap-4">
-            {service.description ? (
-              <p className="text-sm leading-relaxed text-gray-600/70 dark:text-graphite-200/70 max-w-prose flex-1 basis-full md:basis-[55%] font-medium">
-                {service.description}
-              </p>
-            ) : null}
-            <div className="flex flex-1 min-w-[220px] flex-wrap justify-around gap-4 font-medium text-sm">
-              {service.metadataItems.length > 0 &&
-                service.metadataItems.map((item) => (
-                  <div
-                    key={`${service.key}-${item.label}`}
-                    className="flex items-baseline gap-1 text-gray-700/80 dark:text-graphite-200/80"
-                  >
-                    <span className="uppercase tracking-wide text-[11px] font-medium text-gray-500/80 dark:text-graphite-300/80">
-                      {item.label}:
-                    </span>
-                    <span className="font-semibold text-gray-900 dark:text-white">
-                      {item.value}
-                    </span>
-                  </div>
-                ))}
+          <div className="mt-3 space-y-4">
+            <div className="flex flex-wrap items-start justify-around gap-4">
+              {service.description ? (
+                <p className="text-sm leading-relaxed text-gray-600/70 dark:text-graphite-200/70 max-w-prose flex-1 basis-full md:basis-[55%] font-medium">
+                  {service.description}
+                </p>
+              ) : null}
+              <div className="flex flex-1 min-w-[220px] flex-wrap justify-around gap-4 font-medium text-sm">
+                {metadataWithoutSource.length > 0 &&
+                  metadataWithoutSource.map((item) => (
+                    <div
+                      key={`${service.key}-${item.label}`}
+                      className="flex items-baseline gap-1 text-gray-700/80 dark:text-graphite-200/80"
+                    >
+                      <span className="uppercase tracking-wide text-[11px] font-medium text-gray-500/80 dark:text-graphite-300/80">
+                        {item.label}:
+                      </span>
+                      <span className="font-semibold text-gray-900 dark:text-white">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+              </div>
             </div>
+
+            {sourcePath && (
+              <div className="rounded-md border border-graphite-200/50 bg-white/80 dark:border-graphite-700/60 dark:bg-graphite-900/40">
+                <button
+                  type="button"
+                  onClick={() => setShowSourcePath((prev) => !prev)}
+                  className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:text-blue-600 dark:text-graphite-100 dark:hover:text-blue-300"
+                >
+                  <span>Source</span>
+                  <ChevronDown
+                    className={clsx(
+                      "h-4 w-4 transition-transform",
+                      showSourcePath ? "rotate-180" : "rotate-0",
+                    )}
+                  />
+                </button>
+                {showSourcePath && (
+                  <pre className="max-h-64 overflow-auto border-t border-graphite-200/50 bg-gray-950/90 px-3 py-2 text-xs text-gray-100 dark:border-graphite-700/60 dark:bg-graphite-900/80">
+                    <code className="whitespace-pre-wrap font-mono">{sourcePath}</code>
+                  </pre>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -376,24 +538,9 @@ const ServiceCard: React.FC<{
         aria-hidden={!expanded}
       >
         <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4 font-medium")}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
-              <span className="pl-7">Endpoints</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-500/70 dark:text-graphite-300/70">
-                {service.endpoints.length}{" "}
-                {service.endpoints.length === 1 ? "endpoint" : "endpoints"}
-              </span>
-              <button
-                type="button"
-                onClick={handleAddEndpoint}
-                className="inline-flex items-center gap-1 text-xs lowercase text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold"
-              >
-                <Plus className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-                <span>Add endpoint</span>
-              </button>
-            </div>
+          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500/70 dark:text-graphite-300/70">
+            Endpoints · {service.endpoints.length}{" "}
+            {service.endpoints.length === 1 ? "endpoint" : "endpoints"}
           </div>
 
           {service.endpoints.length > 0 ? (
@@ -639,8 +786,7 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
     undefined;
 
   const { path: sourcePathCandidate, hasSource } = resolveSourcePath(raw);
-  const containerOnly = isContainerOnlyService(raw);
-  const sourcePath = hasSource && !containerOnly ? sourcePathCandidate : undefined;
+  const sourcePath = hasSource ? sourcePathCandidate : undefined;
 
   const ports = collectPorts(raw);
   const envCount = (() => {
@@ -965,7 +1111,18 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     const external: ExternalArtifactCard[] = [];
 
     normalizedServices.forEach((service) => {
-      if (service.hasSource) {
+      const packageJson = getPackageJson(service.raw);
+      const hasPackage = Boolean(packageJson);
+      const detectedAsService = isServiceDetected(service);
+      const hasBin = hasPackageBin(service.raw);
+      const hasEndpoints = Array.isArray(service.endpoints) && service.endpoints.length > 0;
+
+      const qualifiesByDetection = hasPackage && detectedAsService;
+      const qualifiesByBin = hasPackage && hasBin;
+      const qualifiesByEndpoints = hasPackage && hasEndpoints;
+      const isInternal = qualifiesByDetection || qualifiesByBin || qualifiesByEndpoints;
+
+      if (isInternal) {
         internal.push(service);
       } else {
         external.push(createExternalArtifactCard(service.identifier, service.raw));
@@ -1036,8 +1193,8 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   );
 
   return (
-    <div className={clsx("h-full", className)}>
-      <div className="flex h-full flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
+    <div className={clsx("h-full min-h-0", className)}>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center text-gray-600 dark:text-graphite-300">
             Loading services...
@@ -1047,8 +1204,8 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
             {error instanceof Error ? error.message : "Unable to load services for this project."}
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden">
-            <div className="border-b border-graphite-200/60 bg-gray-50 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+          <div className="flex-1 overflow-hidden min-h-0">
+            <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
@@ -1075,7 +1232,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-6">
+            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 scrollbar-transparent">
               <div className="space-y-6">
                 {internalServices.length > 0 ? (
                   internalServices.map((service) => (
@@ -1095,7 +1252,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
 
                 {externalCards.length > 0 ? (
                   <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-                    <div className="border-b border-graphite-200/60 bg-gray-50 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                    <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
                           <Network className="h-4 w-4" />

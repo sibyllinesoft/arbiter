@@ -238,26 +238,45 @@ export function buildUIOptionConfig(
     const values = catalog?.[key];
     const generator = generators?.[key];
 
-    if (values || generator) {
-      config[key] = {
-        values: values ? [...values] : undefined,
-        generator,
-      };
+    const entry: UIOptionConfigEntry = {};
+
+    if (values) {
+      entry.values = [...values];
+    }
+
+    if (generator) {
+      entry.generator = generator;
+    }
+
+    if ("values" in entry || "generator" in entry) {
+      config[key] = entry;
     }
   }
 
   if (catalog?.serviceFrameworks || generators?.serviceFrameworks) {
-    config.serviceFrameworks = {
-      values: catalog?.serviceFrameworks
-        ? Object.fromEntries(
-            Object.entries(catalog.serviceFrameworks).map(([language, frameworks]) => [
-              language,
-              [...frameworks],
-            ]),
-          )
-        : undefined,
-      generator: generators?.serviceFrameworks,
-    };
+    const values = catalog?.serviceFrameworks
+      ? Object.fromEntries(
+          Object.entries(catalog.serviceFrameworks).map(([language, frameworks]) => [
+            language,
+            [...frameworks],
+          ]),
+        )
+      : undefined;
+    const generator = generators?.serviceFrameworks;
+
+    const entry: UIOptionConfigEntry = {};
+
+    if (values) {
+      entry.values = values;
+    }
+
+    if (generator) {
+      entry.generator = generator;
+    }
+
+    if ("values" in entry || "generator" in entry) {
+      config.serviceFrameworks = entry;
+    }
   }
 
   return config;

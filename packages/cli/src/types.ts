@@ -366,6 +366,20 @@ export interface AppSpec {
   flows: FlowSpec[];
   ops?: OpsSpec | null;
   capabilities?: Record<string, CapabilitySpec> | null;
+  tests?: any[];
+  epics?: any[];
+  docs?: any;
+  security?: any;
+  performance?: any;
+  observability?: any;
+  environments?: any;
+  locators?: any;
+  data?: any;
+  metadata?: Record<string, unknown>;
+  components?: any;
+  paths?: any;
+  testability?: any;
+  stateModels?: any;
 }
 
 /**

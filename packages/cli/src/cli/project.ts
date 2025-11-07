@@ -8,6 +8,7 @@ import { checkCommand } from "../commands/check.js";
 import { diffCommand } from "../commands/diff.js";
 import { initCommand, listTemplates } from "../commands/init.js";
 import { listCommand } from "../commands/list.js";
+import { importSpecCommand } from "../commands/spec-import.js";
 import { statusCommand } from "../commands/status.js";
 import { surfaceCommand } from "../commands/surface.js";
 import { watchCommand } from "../commands/watch.js";
@@ -118,6 +119,47 @@ export function createProjectCommands(program: Command): void {
       } catch (error) {
         console.error(
           chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    });
+
+  // Spec import command
+  program
+    .command("spec-import [cue-file]")
+    .description("import a local CUE spec fragment into the Arbiter service")
+    .option("--project <id>", "project identifier to target (defaults to configured projectId)")
+    .option("--remote-path <path>", "logical fragment path (defaults to relative path)")
+    .option("--skip-validate", "skip local CUE validation before upload")
+    .option("--author <name>", "revision author metadata")
+    .option("--message <message>", "revision message metadata")
+    .action(async (cueFile: string | undefined, options, command) => {
+      try {
+        const directConfig = (command as any)?.config;
+        const parentConfig = (command.parent as any)?.config;
+        const config = directConfig ?? parentConfig ?? (await loadConfig());
+        const parentOptions = command.parent?.opts?.();
+        const cliLocalFlag = process.argv.includes("--local");
+        if (parentOptions?.local || options?.local || cliLocalFlag) {
+          config.localMode = true;
+        }
+
+        const exitCode = await importSpecCommand(
+          cueFile,
+          {
+            project: options.project,
+            remotePath: options.remotePath,
+            skipValidate: Boolean(options.skipValidate),
+            author: options.author,
+            message: options.message,
+          },
+          config,
+        );
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Spec import failed:"),
           error instanceof Error ? error.message : String(error),
         );
         process.exit(2);

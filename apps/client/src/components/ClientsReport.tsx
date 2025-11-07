@@ -173,14 +173,70 @@ const resolveSourcePath = (raw: any): { path: string | undefined; hasSource: boo
 };
 
 const extractTypeLabel = (raw: any): string | undefined => {
-  const metadataType = raw?.metadata?.type;
-  if (typeof metadataType === "string" && metadataType.trim()) {
-    return metadataType.trim().replace(/_/g, " ");
+  const normalize = (value: unknown): string | null => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  };
+
+  // Prefer detailed framework information from frontend analysis if present
+  const analysisFrameworks = raw?.metadata?.frontendAnalysis?.frameworks;
+  if (Array.isArray(analysisFrameworks)) {
+    const framework = analysisFrameworks.map(normalize).find(Boolean);
+    if (framework) return framework;
   }
-  const type = raw?.type;
-  if (typeof type === "string" && type.trim()) {
-    return type.trim().replace(/_/g, " ");
+
+  const classification = raw?.metadata?.classification;
+  if (classification && typeof classification === "object") {
+    const classificationFields = [
+      "detail",
+      "label",
+      "platform",
+      "detectedType",
+      "type",
+      "category",
+    ];
+    for (const field of classificationFields) {
+      const value = normalize((classification as Record<string, unknown>)[field]);
+      if (value && value.toLowerCase() !== "frontend") {
+        return value;
+      }
+    }
   }
+
+  const clientMeta = raw?.metadata?.client;
+  if (clientMeta && typeof clientMeta === "object") {
+    const clientFields = ["platform", "type", "variant", "category"];
+    for (const field of clientFields) {
+      const value = normalize((clientMeta as Record<string, unknown>)[field]);
+      if (value) return value;
+    }
+  }
+
+  const explicitCandidates = [
+    raw?.metadata?.clientType,
+    raw?.metadata?.client_type,
+    raw?.metadata?.frontendType,
+    raw?.metadata?.frontend_type,
+    raw?.metadata?.platform,
+  ];
+  for (const candidate of explicitCandidates) {
+    const value = normalize(candidate);
+    if (value && value.toLowerCase() !== "frontend") {
+      return value;
+    }
+  }
+
+  const metadataType = normalize(raw?.metadata?.type);
+  if (metadataType) {
+    return metadataType.replace(/_/g, " ");
+  }
+
+  const type = normalize(raw?.type);
+  if (type) {
+    return type.replace(/_/g, " ");
+  }
+
   return undefined;
 };
 
@@ -303,7 +359,10 @@ const normalizeClient = (
   const { path: sourcePath, hasSource } = resolveSourcePath(raw);
   const language = coerceDisplayValue(raw?.metadata?.language ?? raw?.language);
   const framework = coerceDisplayValue(raw?.metadata?.framework ?? raw?.framework);
-  const typeLabel = extractTypeLabel(raw);
+  const typeLabelRaw = extractTypeLabel(raw);
+  const typeLabel = typeLabelRaw
+    ? typeLabelRaw.charAt(0).toUpperCase() + typeLabelRaw.slice(1)
+    : undefined;
   const baseViews = extractClientViews(raw);
 
   const metaFilePath =
@@ -319,6 +378,12 @@ const normalizeClient = (
   }
   if (framework) {
     metadataItems.push({ label: "Framework", value: framework });
+  }
+  if (typeLabel) {
+    metadataItems.push({
+      label: "Type",
+      value: typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1),
+    });
   }
   if (sourcePath) {
     metadataItems.push({ label: "Source", value: sourcePath });
@@ -403,7 +468,7 @@ const ClientCard: FC<{
 
   return (
     <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-      <div className="border-b border-graphite-200/60 bg-gray-50 px-3 py-2 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+      <div className="border-b border-graphite-200/60 bg-gray-100 px-3 py-2 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
@@ -417,6 +482,28 @@ const ClientCard: FC<{
             </span>
           </button>
           <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleAddView}
+              className={clsx(
+                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1",
+                addViewDisabled
+                  ? "cursor-not-allowed text-gray-400 dark:text-graphite-500"
+                  : "text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-400/10",
+              )}
+              disabled={addViewDisabled}
+              aria-label="Add view"
+            >
+              <Plus
+                className={clsx(
+                  "h-4 w-4",
+                  addViewDisabled
+                    ? "text-gray-400 dark:text-graphite-500"
+                    : "text-blue-600 dark:text-blue-300",
+                )}
+              />
+              <span className="hidden sm:inline">Add view</span>
+            </button>
             <button
               type="button"
               onClick={handleDelete}
@@ -483,54 +570,18 @@ const ClientCard: FC<{
         aria-hidden={!expanded}
       >
         <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4 font-medium")}>
-          <div className="mb-3 flex items-center justify-between text-sm text-gray-700/80 dark:text-graphite-200/80">
-            <span className="pl-7">Views</span>
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-gray-500/70 dark:text-graphite-300/70">
-                {client.views.length} {client.views.length === 1 ? "view" : "views"}
-              </span>
-              <button
-                type="button"
-                onClick={handleAddView}
-                className={clsx(
-                  "inline-flex items-center gap-1 text-xs lowercase font-semibold",
-                  addViewDisabled
-                    ? "cursor-not-allowed text-gray-400 dark:text-graphite-500"
-                    : "text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300",
-                )}
-                disabled={addViewDisabled}
-              >
-                <Plus
-                  className={clsx(
-                    "h-3.5 w-3.5",
-                    addViewDisabled
-                      ? "text-gray-400 dark:text-graphite-500"
-                      : "text-blue-600 dark:text-blue-400",
-                  )}
-                />
-                <span>Add view</span>
-              </button>
-            </div>
+          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500/70 dark:text-graphite-300/70">
+            Views · {client.views.length} {client.views.length === 1 ? "view" : "views"}
           </div>
           {client.views.length > 0 ? (
             <div className="space-y-2">
               {client.views.map((view) => (
-                <div
-                  key={view.key}
-                  className="rounded-lg border border-gray-200/70 bg-white/80 px-3 py-2 text-sm shadow-sm transition-colors dark:border-graphite-700/70 dark:bg-graphite-900/50"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">
-                      {view.path}
-                    </span>
-                    {view.routerType && (
-                      <span className="text-xs uppercase tracking-wide text-gray-500/80 dark:text-graphite-300/80">
-                        {view.routerType}
-                      </span>
-                    )}
-                  </div>
+                <div key={view.key} className="space-y-1 rounded-md px-1 py-1 text-sm">
+                  <span className="block font-semibold text-blue-600 dark:text-blue-400">
+                    {view.path}
+                  </span>
                   {view.component && (
-                    <div className="mt-1 text-xs text-gray-600/80 dark:text-graphite-200/80">
+                    <div className="text-xs text-gray-600/80 dark:text-graphite-200/80">
                       Component:{" "}
                       <span className="font-medium text-gray-900 dark:text-white">
                         {view.component}
@@ -956,7 +1007,7 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">
-              <div className="border-b border-graphite-200/60 bg-gray-50 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+              <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600 shadow-sm dark:bg-teal-900/30 dark:text-teal-200">
@@ -1006,7 +1057,7 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
 
                   {externalClients.length > 0 && (
                     <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-                      <div className="border-b border-graphite-200/60 bg-gray-50 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                      <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
                             <Monitor className="h-4 w-4" />

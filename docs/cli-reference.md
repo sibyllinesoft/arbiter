@@ -713,25 +713,30 @@ arbiter rename --dry-run
 arbiter rename --types cue,typescript
 ```
 
-#### `arbiter spec`
+#### `arbiter spec-import [file]`
 
-Manage spec fragments and revisions with git-style operations.
+Import a local CUE specification fragment into the Arbiter service.
 
 **Usage:**
 
 ```bash
-# List spec revisions
-arbiter spec list
+# Import the default .arbiter/assembly.cue for the configured project
+arbiter spec-import
 
-# Create spec snapshot
-arbiter spec snapshot "Before refactoring"
+# Import a custom file and store it at an explicit fragment path
+arbiter spec-import specs/catalog.cue --remote-path assembly.cue
 
-# Restore spec from snapshot
-arbiter spec restore abc123
-
-# Show spec differences
-arbiter spec diff HEAD~1
+# Import into a specific project without running local validation
+arbiter spec-import --project proj_123 --skip-validate
 ```
+
+**Options:**
+
+- `--project <id>` – Target project id (defaults to the configured projectId or `cli-project`)
+- `--remote-path <path>` – Logical fragment path stored in Arbiter (defaults to the file’s relative path)
+- `--skip-validate` – Skip local `cue` validation before upload
+- `--author <name>` – Revision author metadata
+- `--message <message>` – Revision message metadata
 
 #### `arbiter github-templates`
 

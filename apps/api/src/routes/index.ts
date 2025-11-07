@@ -5,6 +5,7 @@ import { createCliRouter } from "./cli";
 import { createConfigRouter } from "./config";
 import { createCoreRouter } from "./core";
 import { createEventsRouter } from "./events";
+import { createFragmentsRouter } from "./fragments";
 import { createGapsRouter } from "./gaps";
 import { createGithubRouter } from "./github";
 import { createHandlersRouter } from "./handlers";
@@ -33,6 +34,7 @@ export { createImportRouter } from "./import";
 export { createGithubRouter } from "./github";
 export { createEventsRouter } from "./events";
 export { createAuthRouter } from "./auth";
+export { createFragmentsRouter } from "./fragments";
 
 export function createApiRouter(deps: Dependencies) {
   const app = new Hono();
@@ -101,6 +103,7 @@ export function createApiRouter(deps: Dependencies) {
   app.route("/api", createConfigRouter(deps));
   app.route("/api", createCliRouter(deps));
   app.route("/api", createProjectsRouter(deps));
+  app.route("/api", createFragmentsRouter(deps));
   app.route("/api", createSpecsRouter(deps));
   app.route("/api", createIrRouter(deps));
   app.route("/api", createGapsRouter(deps));

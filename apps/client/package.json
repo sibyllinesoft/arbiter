@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@excalidraw/excalidraw": "^0.17.0",
+    "@formkit/auto-animate": "^0.8.3",
     "@hpcc-js/wasm": "^2.13.0",
     "@monaco-editor/react": "^4.6.0",
     "@tailwindcss/postcss": "^4.1.12",

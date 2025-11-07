@@ -658,6 +658,21 @@ export class SpecWorkbenchDB {
     return this.mapProject(project);
   }
 
+  async updateProjectCounts(
+    projectId: string,
+    serviceCount: number,
+    databaseCount: number,
+  ): Promise<void> {
+    await this.drizzle
+      .update(projects)
+      .set({
+        serviceCount,
+        databaseCount,
+        updatedAt: getCurrentTimestamp(),
+      })
+      .where(eq(projects.id, projectId));
+  }
+
   async getProject(id: string): Promise<DbProject | null> {
     const [project] = await this.drizzle
       .select()

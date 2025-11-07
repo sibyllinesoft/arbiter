@@ -887,11 +887,20 @@ function parseAppSchema(cueData: any, schemaVersion: SchemaVersion): ConfigWithV
     ui: cueData.ui || {
       routes: [],
     },
-    locators: cueData.locators || {},
     flows: cueData.flows || [],
     services: cueData.services,
     domain: cueData.domain,
     capabilities: normalizeCapabilities(cueData.capabilities),
+    locators: cueData.locators || {},
+    tests: cueData.tests,
+    epics: cueData.epics,
+    docs: cueData.docs,
+    security: cueData.security,
+    performance: cueData.performance,
+    observability: cueData.observability,
+    environments: cueData.environments,
+    data: cueData.data,
+    metadata: cueData.metadata,
     components: cueData.components,
     paths: cueData.paths,
     testability: cueData.testability,
@@ -1133,7 +1142,7 @@ async function generateUIComponents(
       ? `        <section className="route-capabilities">\n          <h2>Capabilities</h2>\n          <ul>\n${capabilityList}\n          </ul>\n        </section>\n`
       : "";
 
-    const componentContent = `import React from 'react';\nimport type { RouteDefinition } from './types';\n\nconst ${componentName}: React.FC = () => {\n  return (\n    <section data-route="${route.id}" role="main">\n      <header>\n        <h1>${title}</h1>\n        <p>${description}</p>\n      </header>\n${capabilityBlock}    </section>\n  );\n};\n\nexport const ${definitionName}: RouteDefinition = {\n  id: '${route.id}',\n  path: '${safePath}',\n  Component: ${componentName},\n};\n`;
+    const componentContent = `import type { FC } from 'react';\nimport type { RouteDefinition } from './types';\n\nconst ${componentName}: FC = () => {\n  return (\n    <section data-route="${route.id}" role="main">\n      <header>\n        <h1>${title}</h1>\n        <p>${description}</p>\n      </header>\n${capabilityBlock}    </section>\n  );\n};\n\nexport const ${definitionName}: RouteDefinition = {\n  id: '${route.id}',\n  path: '${safePath}',\n  Component: ${componentName},\n};\n`;
 
     await writeFileWithHooks(filePath, componentContent, options);
     files.push(relPath);
@@ -1147,15 +1156,14 @@ async function generateUIComponents(
     .join("\n");
   const definitionsArray = routeDefinitions.map((definition) => definition.importName).join(", ");
 
-  const aggregatorContent = `import React from 'react';\nimport type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from './types';\n${imports ? `${imports}\n` : ""}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from './types';\n`;
+  const aggregatorContent = `import type { RouteObject } from 'react-router-dom';\nimport type { RouteDefinition } from './types';\n${imports ? `${imports}\n` : ""}\nconst definitions: RouteDefinition[] = [${definitionsArray}];\n\nconst toRouteObject = (definition: RouteDefinition): RouteObject => {\n  const View = definition.Component;\n  return {\n    path: definition.path,\n    element: <View />,\n    children: definition.children?.map(toRouteObject),\n  };\n};\n\nexport const routes: RouteObject[] = definitions.map(toRouteObject);\nexport type { RouteDefinition } from './types';\n`;
 
   await writeFileWithHooks(aggregatorPath, aggregatorContent, options);
   files.push(aggregatorRelative);
 
   const appRoutesPath = path.join(clientContext.routesDir, "AppRoutes.tsx");
   const appRoutesRelative = joinRelativePath("src", "routes", "AppRoutes.tsx");
-  const appRoutesContent = `import React from 'react';
-import { useRoutes } from 'react-router-dom';
+  const appRoutesContent = `import { useRoutes } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
 export interface AppRoutesProps {
@@ -2820,6 +2828,7 @@ async function generateServiceStructures(
     };
 
     let generated: string[] = [];
+    let supportsCodeScaffold = true;
 
     switch (language) {
       case "typescript":
@@ -2858,28 +2867,54 @@ async function generateServiceStructures(
           serviceContext,
         );
         break;
+      case "container":
+      case "prebuilt":
+      case "image":
+        console.log(
+          chalk.dim("    ℹ️  Using prebuilt/container workload; generating infrastructure only."),
+        );
+        supportsCodeScaffold = false;
+        break;
       default:
         console.log(
           chalk.yellow(
             `    ⚠️  Service language '${language}' not supported for automated scaffolding.`,
           ),
         );
-        continue;
+        supportsCodeScaffold = false;
+        break;
     }
 
-    files.push(
-      ...generated.map((file) => joinRelativePath(...relativePrefix, file.replace(/^\.\//, ""))),
-    );
+    if (generated.length > 0) {
+      files.push(
+        ...generated.map((file) => joinRelativePath(...relativePrefix, file.replace(/^\.\//, ""))),
+      );
+    }
 
-    const dockerArtifacts = await generateServiceDockerArtifacts(
+    if (supportsCodeScaffold) {
+      const dockerArtifacts = await generateServiceDockerArtifacts(
+        serviceContext,
+        serviceConfig,
+        options,
+        cliConfig,
+        structure,
+      );
+
+      files.push(
+        ...dockerArtifacts.map((artifact) => joinRelativePath(...relativePrefix, artifact)),
+      );
+    }
+
+    const infraArtifacts = await generateServiceInfrastructureArtifacts(
       serviceContext,
       serviceConfig,
       options,
-      cliConfig,
-      structure,
     );
-
-    files.push(...dockerArtifacts.map((artifact) => joinRelativePath(...relativePrefix, artifact)));
+    files.push(
+      ...infraArtifacts.map((artifact) =>
+        joinRelativePath(...relativePrefix, artifact.replace(/^\.\//, "")),
+      ),
+    );
   }
 
   return files;
@@ -3009,6 +3044,295 @@ function resolveDockerTemplateSelection(
   }
 
   return selected;
+}
+
+async function generateServiceInfrastructureArtifacts(
+  serviceContext: ServiceGenerationContext,
+  serviceSpec: any,
+  options: GenerateOptions,
+): Promise<string[]> {
+  const outputs: string[] = [];
+  const envBlock = collectServiceEnvironmentVariables(serviceSpec);
+
+  const readmeLines = [
+    `# ${serviceContext.name}`,
+    "",
+    "This directory contains application code and infrastructure references generated by Arbiter.",
+    "",
+    "## Runtime Image",
+    "",
+    `- **Image:** ${serviceSpec?.image ?? `ghcr.io/your-org/${serviceContext.name}:latest`}`,
+    serviceSpec?.serviceType ? `- **Service Type:** ${serviceSpec.serviceType}` : "",
+    "",
+    "## Ports",
+    "",
+  ];
+
+  const ports = Array.isArray(serviceSpec?.ports) ? serviceSpec.ports : [];
+  if (ports.length > 0) {
+    for (const port of ports) {
+      readmeLines.push(
+        `- ${port.name || "port"}: ${port.port}${port.targetPort ? ` → ${port.targetPort}` : ""}`,
+      );
+    }
+  } else {
+    readmeLines.push("- None declared (update the spec to expose health or admin ports).");
+  }
+
+  readmeLines.push("", "## Environment", "");
+  if (Object.keys(envBlock).length > 0) {
+    for (const [key, value] of Object.entries(envBlock)) {
+      readmeLines.push(`- ${key}=${value}`);
+    }
+  } else {
+    readmeLines.push("- No environment variables declared.");
+  }
+
+  if (Array.isArray(serviceSpec?.dependencies) && serviceSpec.dependencies.length > 0) {
+    readmeLines.push("", "## Dependencies", "");
+    for (const dep of serviceSpec.dependencies) {
+      readmeLines.push(`- ${dep}`);
+    }
+  }
+
+  const readmePath = path.join(serviceContext.root, "README.md");
+  await writeFileWithHooks(readmePath, ensureTrailingNewline(readmeLines.join("\n")), options);
+  outputs.push("README.md");
+
+  const manifestDir = path.join(serviceContext.root, "manifests");
+  await ensureDirectory(manifestDir, options);
+  const primaryPort = getPrimaryServicePort(serviceSpec, 8080);
+  const manifestImage = serviceSpec?.image ?? `ghcr.io/your-org/${serviceContext.name}:latest`;
+  const healthConfig = resolveHealthConfiguration(serviceSpec, primaryPort);
+  const probeBlock = buildKubernetesProbeBlock(healthConfig);
+  const envYaml =
+    Object.keys(envBlock).length > 0
+      ? Object.entries(envBlock)
+          .map(
+            ([key, value]) =>
+              `        - name: ${key}\n          value: "${String(value).replace(/"/g, '\\"')}"`,
+          )
+          .join("\n")
+      : '        # - name: SAMPLE_VAR\n        #   value: "example"';
+
+  const volumeMounts =
+    Array.isArray(serviceSpec?.volumes) && serviceSpec.volumes.length > 0
+      ? serviceSpec.volumes
+          .map(
+            (volume: any) =>
+              `        - name: ${volume.name || "data"}\n          mountPath: ${volume.path || "/data"}`,
+          )
+          .join("\n")
+      : "";
+
+  const volumes =
+    Array.isArray(serviceSpec?.volumes) && serviceSpec.volumes.length > 0
+      ? serviceSpec.volumes
+          .map(
+            (volume: any) =>
+              `      - name: ${volume.name || "data"}\n        persistentVolumeClaim:\n          claimName: ${volume.name || "data"}-pvc`,
+          )
+          .join("\n")
+      : "";
+
+  const deploymentYaml = [
+    "apiVersion: apps/v1",
+    "kind: Deployment",
+    `metadata:\n  name: ${serviceContext.name}`,
+    "spec:",
+    "  replicas: 1",
+    "  selector:",
+    "    matchLabels:",
+    `      app: ${serviceContext.name}`,
+    "  template:",
+    "    metadata:",
+    "      labels:",
+    `        app: ${serviceContext.name}`,
+    "    spec:",
+    "      containers:",
+    "        - name: app",
+    `          image: ${manifestImage}`,
+    "          ports:",
+    `            - containerPort: ${primaryPort}`,
+    "          env:",
+    envYaml,
+    probeBlock,
+    volumeMounts ? "          volumeMounts:\n" + volumeMounts : "",
+    volumes ? "      volumes:\n" + volumes : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const manifestPath = path.join(manifestDir, "deployment.yaml");
+  await writeFileWithHooks(manifestPath, ensureTrailingNewline(deploymentYaml), options);
+  outputs.push(path.join("manifests", "deployment.yaml"));
+
+  if (Object.keys(envBlock).length > 0) {
+    const envExample = Object.entries(envBlock)
+      .map(([key, value]) => `${key}=${value}`)
+      .join("\n");
+    const envPath = path.join(serviceContext.root, ".env.example");
+    await writeFileWithHooks(envPath, ensureTrailingNewline(envExample), options);
+    outputs.push(".env.example");
+  }
+
+  return outputs;
+}
+
+function collectServiceEnvironmentVariables(serviceSpec: any): Record<string, string> {
+  const env: Record<string, string> = {};
+  mergeEnvironmentBlock(env, serviceSpec?.env);
+  mergeEnvironmentBlock(env, serviceSpec?.config?.environment);
+  return env;
+}
+
+function mergeEnvironmentBlock(
+  target: Record<string, string>,
+  source?: Record<string, unknown>,
+): void {
+  if (!source) return;
+  for (const [key, rawValue] of Object.entries(source)) {
+    const normalized = normalizeEnvironmentValue(rawValue);
+    if (typeof normalized === "string" && key) {
+      target[key] = normalized;
+    }
+  }
+}
+
+function normalizeEnvironmentValue(value: unknown): string | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+
+    if (record && Object.prototype.hasOwnProperty.call(record, "value")) {
+      const resolved = record.value;
+      if (resolved !== undefined && resolved !== null) {
+        return String(resolved);
+      }
+    }
+
+    if (record && Object.prototype.hasOwnProperty.call(record, "default")) {
+      const resolved = record.default;
+      if (resolved !== undefined && resolved !== null) {
+        return String(resolved);
+      }
+    }
+
+    if (typeof record?.secret === "string" && record.secret.length > 0) {
+      return `\${${record.secret}}`;
+    }
+
+    if (typeof record?.name === "string" && typeof record?.from === "string") {
+      return `\${${record.name}}`;
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return undefined;
+}
+
+interface HealthConfiguration {
+  path: string;
+  port: number;
+  interval: string;
+  timeout: string;
+  initialDelaySeconds: number;
+}
+
+function resolveHealthConfiguration(
+  serviceSpec: any,
+  defaultPort: number,
+): HealthConfiguration | null {
+  const config = serviceSpec?.healthCheck;
+  const rawPath =
+    (typeof config?.path === "string" && config.path.trim().length > 0
+      ? config.path
+      : "/healthz") || "/healthz";
+  const normalizedPath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  const port =
+    typeof config?.port === "number" && Number.isFinite(config.port) ? config.port : defaultPort;
+  const interval =
+    (typeof config?.interval === "string" && config.interval.trim().length > 0
+      ? config.interval
+      : null) || "30s";
+  const timeout =
+    (typeof config?.timeout === "string" && config.timeout.trim().length > 0
+      ? config.timeout
+      : null) || "10s";
+
+  return {
+    path: normalizedPath,
+    port,
+    interval,
+    timeout,
+    initialDelaySeconds:
+      typeof config?.initialDelaySeconds === "number" ? config.initialDelaySeconds : 5,
+  };
+}
+
+function durationToSeconds(value: string | number | undefined, fallback: number): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(\d+)(ms|s|m)$/i);
+    if (match) {
+      const amount = Number.parseInt(match[1], 10);
+      const unit = match[2].toLowerCase();
+      switch (unit) {
+        case "ms":
+          return Math.max(1, Math.round(amount / 1000));
+        case "s":
+          return amount;
+        case "m":
+          return amount * 60;
+      }
+    }
+  }
+
+  return fallback;
+}
+
+function buildKubernetesProbeBlock(config: HealthConfiguration | null): string {
+  if (!config) {
+    return "";
+  }
+
+  const periodSeconds = durationToSeconds(config.interval, 30);
+  const timeoutSeconds = durationToSeconds(config.timeout, 10);
+  const readinessDelay = Math.max(2, Math.floor(config.initialDelaySeconds / 2));
+
+  return [
+    "          livenessProbe:",
+    "            httpGet:",
+    `              path: ${config.path}`,
+    `              port: ${config.port}`,
+    `            initialDelaySeconds: ${config.initialDelaySeconds}`,
+    `            periodSeconds: ${periodSeconds}`,
+    `            timeoutSeconds: ${timeoutSeconds}`,
+    "          readinessProbe:",
+    "            httpGet:",
+    `              path: ${config.path}`,
+    `              port: ${config.port}`,
+    `            initialDelaySeconds: ${readinessDelay}`,
+    `            periodSeconds: ${Math.max(5, periodSeconds)}`,
+    `            timeoutSeconds: ${timeoutSeconds}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function loadDockerTemplateContent(
@@ -3398,9 +3722,9 @@ async function generateTypeScriptFiles(
     compilerOptions: {
       outDir: "dist",
       rootDir: "src",
-      module: "ESNext",
+      module: "NodeNext",
       target: "ES2022",
-      moduleResolution: "Node",
+      moduleResolution: "NodeNext",
       resolveJsonModule: true,
       esModuleInterop: true,
       strict: true,
@@ -3419,7 +3743,7 @@ async function generateTypeScriptFiles(
 
   const indexContent = `import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { registerRoutes } from './routes';
+import { registerRoutes } from './routes/index.js';
 
 async function bootstrap() {
   const app = Fastify({ logger: true });
@@ -3483,8 +3807,17 @@ interface RouteBinding {
 }
 
 const routeDefinitions: RouteBinding[] = ${JSON.stringify(parsedRoutes, null, 2)};
+const SERVICE_NAME = "${config.name}";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
+  app.get('/healthz', async (_request: FastifyRequest, reply: FastifyReply) => {
+    reply.status(200).send({
+      status: 'ok',
+      service: SERVICE_NAME,
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   for (const definition of routeDefinitions) {
     app.route({
       method: definition.method as any,
@@ -3497,6 +3830,16 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           example: definition.reply,
         });
       },
+    });
+  }
+
+  if (routeDefinitions.length === 0) {
+    app.get('/', async (_request: FastifyRequest, reply: FastifyReply) => {
+      reply.status(200).send({
+        service: SERVICE_NAME,
+        status: 'pending_implementation',
+        message: 'Update src/routes/index.ts to expose application endpoints.',
+      });
     });
   }
 }
@@ -4972,6 +5315,7 @@ terraform apply
 type ComposeServiceConfig = DeploymentServiceConfig & {
   resolvedBuildContext?: string;
   resolvedSourceDirectory?: string;
+  dependencies?: string[];
 };
 
 const CLIENT_COMPONENT_LABEL = "arbiter.io/component";
@@ -5034,17 +5378,18 @@ async function generateDockerCompose(
 }
 
 function parseDockerComposeServices(assemblyConfig: any): {
-  services: DeploymentServiceConfig[];
+  services: ComposeServiceConfig[];
   deployment: DeploymentConfig;
 } {
-  const services: DeploymentServiceConfig[] = [];
+  const services: ComposeServiceConfig[] = [];
   const cueData = assemblyConfig._fullCueData || assemblyConfig;
 
   // Extract deployment configuration
+  const composeVersion = cueData?.deployment?.compose?.version;
   const deployment: DeploymentConfig = {
     target: cueData?.deployment?.target || "compose",
     compose: {
-      version: cueData?.deployment?.compose?.version || "3.8",
+      version: typeof composeVersion === "string" ? composeVersion : undefined,
       networks: cueData?.deployment?.compose?.networks || {},
       volumes: cueData?.deployment?.compose?.volumes || {},
       profiles: cueData?.deployment?.compose?.profiles || [],
@@ -5065,7 +5410,7 @@ function parseDockerComposeServices(assemblyConfig: any): {
   return { services, deployment };
 }
 
-function parseServiceForCompose(name: string, config: any): DeploymentServiceConfig | null {
+function parseServiceForCompose(name: string, config: any): ComposeServiceConfig | null {
   // Detect service type based on configuration
   let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
 
@@ -5078,7 +5423,7 @@ function parseServiceForCompose(name: string, config: any): DeploymentServiceCon
     serviceType = "bespoke";
   }
 
-  const service: DeploymentServiceConfig = {
+  const service: ComposeServiceConfig = {
     name: name,
     serviceType: serviceType,
     language: config.language || "container",
@@ -5088,26 +5433,41 @@ function parseServiceForCompose(name: string, config: any): DeploymentServiceCon
     sourceDirectory: config.sourceDirectory,
     buildContext: config.buildContext,
     ports: config.ports,
-    env: config.env,
-    volumes: config.volumes,
+    env: collectServiceEnvironmentVariables(config),
+    volumes: Array.isArray(config.volumes)
+      ? config.volumes.map((volume: any) => ({
+          ...volume,
+          type: volume?.type || "persistentVolumeClaim",
+        }))
+      : undefined,
     resources: config.resources,
     config: config.config,
     labels: config.labels,
     annotations: config.annotations,
   };
 
+  if (service.env && Object.keys(service.env).length === 0) {
+    delete service.env;
+  }
+
+  if (Array.isArray(config.dependencies) && config.dependencies.length > 0) {
+    service.dependencies = config.dependencies
+      .map((dependency: unknown) => String(dependency))
+      .filter((value) => value.length > 0);
+  }
+
   return service;
 }
 
 function prepareComposeServices(
-  services: DeploymentServiceConfig[],
+  services: ComposeServiceConfig[],
   outputDir: string,
   structure: ProjectStructureConfig,
   composeRoot: string,
   composeSegments: string[],
   clientContext?: ClientGenerationContext,
 ): ComposeServiceConfig[] {
-  const collected: DeploymentServiceConfig[] = [...services];
+  const collected: ComposeServiceConfig[] = [...services];
   const usedNames = new Set<string>(services.map((service) => service.name));
 
   if (clientContext) {
@@ -5117,20 +5477,32 @@ function prepareComposeServices(
     }
   }
 
-  return collected.map((service) =>
-    resolveComposeServiceConfig(
-      service,
+  const availableNames = new Set(collected.map((service) => service.name));
+
+  return collected.map((service) => {
+    const filteredDependencies = service.dependencies?.filter((dependency) =>
+      availableNames.has(dependency),
+    );
+
+    return resolveComposeServiceConfig(
+      {
+        ...service,
+        dependencies:
+          filteredDependencies && filteredDependencies.length > 0
+            ? filteredDependencies
+            : undefined,
+      },
       outputDir,
       structure,
       composeRoot,
       composeSegments,
       clientContext,
-    ),
-  );
+    );
+  });
 }
 
 function resolveComposeServiceConfig(
-  service: DeploymentServiceConfig,
+  service: ComposeServiceConfig,
   outputDir: string,
   structure: ProjectStructureConfig,
   composeRoot: string,
@@ -5179,7 +5551,7 @@ function createFrontendComposeService(
   clientContext: ClientGenerationContext,
   structure: ProjectStructureConfig,
   usedNames: Set<string>,
-): DeploymentServiceConfig {
+): ComposeServiceConfig {
   const baseName = clientContext.slug.includes("client")
     ? clientContext.slug
     : `${clientContext.slug}-client`;
@@ -5247,11 +5619,14 @@ function generateDockerComposeFile(
   deployment: DeploymentConfig,
   projectName: string,
 ): string {
-  const version = deployment.compose?.version || "3.8";
+  const version = deployment.compose?.version;
+  let compose = "";
 
-  let compose = `version: "${version}"
+  if (version && version !== "auto") {
+    compose += `version: "${version}"\n\n`;
+  }
 
-services:
+  compose += `services:
 ${services.map((service) => generateComposeService(service, projectName)).join("\n")}`;
 
   // Add networks if specified
@@ -5277,11 +5652,13 @@ ${Object.entries(config as any)
       .map((v) => `${s.name}_${v.name}`),
   );
 
-  if (namedVolumes.length > 0) {
+  const uniqueNamedVolumes = Array.from(new Set(namedVolumes));
+
+  if (uniqueNamedVolumes.length > 0) {
     compose += `
 
 volumes:
-${namedVolumes.map((volume) => `  ${volume}:`).join("\n")}`;
+${uniqueNamedVolumes.map((volume) => `  ${volume}:`).join("\n")}`;
   }
 
   return compose;
@@ -5336,10 +5713,15 @@ ${Object.entries(service.buildContext.buildArgs)
     restart: unless-stopped`;
 
   // Ports
-  if (service.ports && service.ports.length > 0) {
+  if (shouldPublishPorts(service) && service.ports && service.ports.length > 0) {
     serviceConfig += `
     ports:
-${service.ports.map((p) => `      - "${p.port}:${p.targetPort || p.port}"`).join("\n")}`;
+${service.ports
+  .map((p) => {
+    const hostVar = buildHostPortVariable(service.name, p.name);
+    return `      - "\${${hostVar}:-${p.port}}:${p.targetPort || p.port}"`;
+  })
+  .join("\n")}`;
   }
 
   // Environment variables
@@ -5349,6 +5731,12 @@ ${service.ports.map((p) => `      - "${p.port}:${p.targetPort || p.port}"`).join
 ${Object.entries(service.env)
   .map(([k, v]) => `      ${k}: ${v}`)
   .join("\n")}`;
+  }
+
+  if (service.dependencies && service.dependencies.length > 0) {
+    serviceConfig += `
+    depends_on:
+${service.dependencies.map((dependency) => `      - ${dependency}`).join("\n")}`;
   }
 
   // Volumes
@@ -5393,11 +5781,16 @@ ${Object.entries(labels)
   if (service.ports && service.ports.length > 0) {
     const httpPort = service.ports.find((p) => p.name === "http" || p.name === "web");
     if (httpPort) {
+      const resolvedPort = httpPort.targetPort || httpPort.port;
+      const healthConfig = resolveHealthConfiguration(service, resolvedPort);
+      const healthPath = healthConfig.path.startsWith("/")
+        ? healthConfig.path
+        : `/${healthConfig.path}`;
       serviceConfig += `
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${httpPort.targetPort || httpPort.port}"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:${resolvedPort}${healthPath}"]
+      interval: ${healthConfig.interval}
+      timeout: ${healthConfig.timeout}
       retries: 3`;
     }
   }
@@ -5418,6 +5811,40 @@ ${Object.entries(labels)
   }
 
   return serviceConfig;
+}
+
+function shouldPublishPorts(service: ComposeServiceConfig): boolean {
+  if (service.type === "statefulset" && service.serviceType === "prebuilt") {
+    return false;
+  }
+  return true;
+}
+
+function buildHostPortVariable(serviceName: string, portName?: string): string {
+  const normalizedService = serviceName.replace(/[^A-Za-z0-9]/g, "_").toUpperCase();
+  const normalizedPort =
+    portName && portName !== "http"
+      ? `_${portName.replace(/[^A-Za-z0-9]/g, "_").toUpperCase()}`
+      : "";
+  return `${normalizedService}${normalizedPort}_PORT`;
+}
+
+function collectHostPortVariables(
+  services: ComposeServiceConfig[],
+): Array<{ name: string; value: number }> {
+  const entries: Array<{ name: string; value: number }> = [];
+  services.forEach((service) => {
+    if (!shouldPublishPorts(service) || !service.ports) {
+      return;
+    }
+    service.ports.forEach((port) => {
+      entries.push({
+        name: buildHostPortVariable(service.name, port.name),
+        value: port.port,
+      });
+    });
+  });
+  return entries;
 }
 
 function generateComposeEnvTemplate(services: ComposeServiceConfig[], projectName: string): string {
@@ -5441,6 +5868,15 @@ COMPOSE_FILE=docker-compose.yml
 IMAGE_TAG=latest
 
 `;
+
+  const hostPortEntries = collectHostPortVariables(services);
+  if (hostPortEntries.length > 0) {
+    envContent += `# Port Overrides (host binding)\n`;
+    hostPortEntries.forEach(({ name, value }) => {
+      envContent += `${name}=${value}\n`;
+    });
+    envContent += "\n";
+  }
 
   // Add service-specific environment variables
   services.forEach((service) => {

@@ -1,4 +1,3 @@
-import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "@/components/ArtifactPanel";
 import StatusBadge from "@/design-system/components/StatusBadge";
 import { clsx } from "clsx";
 import type { LucideIcon } from "lucide-react";
@@ -57,6 +56,7 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
   const hasComponents = components.length > 0;
   const isExpanded = hasComponents ? (expandedSources[groupLabel] ?? false) : false;
   const iconColorClass = getIconColorClass(groupType);
+
   const handleToggle = () => {
     if (!hasComponents) {
       return;
@@ -78,16 +78,21 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
     return trimmed;
   })();
   const addButtonLabel = `Add ${singularLabel}`;
+  const singularLabelLower = singularLabel.toLowerCase();
   const toggleLabel = `Toggle ${groupLabel}`;
 
   return (
-    <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden")}>
-      {/* Group Header */}
-      <div className="flex items-center gap-3 border-b border-graphite-200/60 bg-gray-50 px-2 py-1.5 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+    <section className="space-y-2">
+      <div className="flex items-center gap-2 px-2 py-1">
         <button
           type="button"
           onClick={hasComponents ? handleToggle : undefined}
-          className="flex-1 flex items-center gap-3 text-left hover:text-graphite-900 dark:hover:text-graphite-25 transition-colors"
+          className={clsx(
+            "flex flex-1 items-center gap-3 rounded-md px-1.5 py-1 text-left text-gray-800 transition-colors dark:text-graphite-50",
+            hasComponents
+              ? "hover:bg-gray-100 dark:hover:bg-graphite-800"
+              : "cursor-default opacity-60",
+          )}
           aria-expanded={hasComponents ? isExpanded : undefined}
           aria-label={hasComponents ? toggleLabel : undefined}
           aria-disabled={hasComponents ? undefined : true}
@@ -114,12 +119,30 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <h3
-              className="font-medium text-gray-900 dark:text-graphite-25 truncate"
+              className="truncate font-medium text-gray-900 dark:text-graphite-25"
               title={groupLabel}
             >
               {groupLabel}
             </h3>
           </div>
+          {hasComponents && (
+            <svg
+              className={clsx(
+                "w-4 h-4 text-gray-400 transition-transform dark:text-graphite-400",
+                isExpanded ? "rotate-180" : "",
+              )}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          )}
         </button>
 
         {hasComponents && (
@@ -127,46 +150,25 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
             variant="secondary"
             style="solid"
             size="xs"
-            className="rounded-full text-[10px] px-2 py-0.5 !bg-graphite-900 !text-graphite-200 !border-graphite-600"
+            className="rounded-full px-2 py-0.5"
           >
             {components.length}
           </StatusBadge>
         )}
 
-        <button
-          type="button"
-          onClick={handleAddClick}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium text-graphite-600 hover:text-graphite-900 hover:bg-gray-100 dark:text-graphite-200 dark:hover:text-graphite-25 dark:hover:bg-graphite-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 disabled:opacity-40"
-          title={addButtonLabel}
-          aria-label={addButtonLabel}
-          disabled={!onAddClick}
-        >
-          <PlusCircle className="w-5 h-5 text-graphite-500 dark:text-graphite-200" />
-        </button>
-
-        <button
-          type="button"
-          onClick={hasComponents ? handleToggle : undefined}
-          className={clsx(
-            "p-2 rounded-md text-gray-500 hover:text-graphite-900 hover:bg-gray-100 dark:text-graphite-300 dark:hover:text-graphite-25 dark:hover:bg-graphite-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500",
-            !hasComponents && "invisible pointer-events-none",
-          )}
-          aria-label={hasComponents ? toggleLabel : undefined}
-          aria-expanded={hasComponents ? isExpanded : undefined}
-          disabled={!hasComponents}
-        >
-          <svg
-            className={`w-5 h-5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {onAddClick ? (
+          <button
+            type="button"
+            onClick={handleAddClick}
+            aria-label={addButtonLabel}
+            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+            <PlusCircle className="h-4 w-4" />
+            <span>Add {singularLabelLower}</span>
+          </button>
+        ) : null}
       </div>
 
-      {/* Components Grid */}
       {hasComponents && (
         <div
           className={clsx(
@@ -178,11 +180,11 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           <div
             className={clsx(
               "overflow-hidden transition-opacity duration-200 ease-out",
-              isExpanded ? "opacity-100 delay-100" : "opacity-0 pointer-events-none",
+              isExpanded ? "opacity-100 delay-75" : "opacity-0 pointer-events-none",
             )}
           >
-            <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="px-2 pb-2 md:px-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                 {components.map(({ name, data }) => {
                   const displayLabel =
                     typeof data?.name === "string" && data.name.trim() ? data.name : name;
@@ -216,6 +218,6 @@ export const SourceGroup: React.FC<SourceGroupProps> = ({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };

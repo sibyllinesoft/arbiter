@@ -888,6 +888,38 @@ export class NodeJSPlugin implements ImporterPlugin {
     const hasAnyDependency = (candidates: string[]) =>
       candidates.some((candidate) => depsLower.has(candidate));
 
+    const hasTypesField = typeof pkg.types === "string" || typeof pkg.typings === "string";
+    const hasRuntimeScript = ["start", "serve", "dev", "run"].some((scriptName) => {
+      const command = scripts[scriptName];
+      if (typeof command !== "string") {
+        return false;
+      }
+      const normalized = command.toLowerCase();
+      return (
+        normalized.includes("server") ||
+        normalized.includes("serve") ||
+        normalized.includes("start") ||
+        normalized.includes("node ") ||
+        normalized.includes("bun ") ||
+        normalized.includes("ts-node") ||
+        normalized.includes("tsx") ||
+        normalized.includes("hono") ||
+        normalized.includes("express")
+      );
+    });
+    const hasBin = Boolean(
+      (typeof pkg.bin === "string" && pkg.bin.trim().length > 0) ||
+        (pkg.bin && typeof pkg.bin === "object" && Object.keys(pkg.bin).length > 0),
+    );
+
+    if (hasTypesField && !hasRuntimeScript && !hasBin) {
+      return {
+        artifactType: "module",
+        detectedType: "module",
+        reason: "types-package",
+      };
+    }
+
     const hasWebFramework = hasAnyDependency(NODE_WEB_FRAMEWORKS);
     if (hasWebFramework) {
       return {
@@ -907,9 +939,6 @@ export class NodeJSPlugin implements ImporterPlugin {
       };
     }
 
-    const hasBin = Boolean(
-      typeof pkg.bin === "string" || (pkg.bin && Object.keys(pkg.bin).length > 0),
-    );
     const hasCliDependency = hasAnyDependency(NODE_CLI_FRAMEWORKS);
     if (hasBin || hasCliDependency) {
       return {

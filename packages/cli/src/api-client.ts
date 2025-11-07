@@ -670,16 +670,215 @@ export class ApiClient {
     }
   }
 
+  async listProjects(): Promise<CommandResult<any[]>> {
+    try {
+      await this.enforceRateLimit();
+      const response = await this.fetch("/api/projects");
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Failed to list projects: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+      const projects = Array.isArray(data?.projects) ? data.projects : [];
+
+      return {
+        success: true,
+        data: projects,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error listing projects: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  async createProject(payload: {
+    id?: string;
+    name: string;
+    path?: string;
+    presetId?: string;
+  }): Promise<CommandResult<{ id: string; exists?: boolean }>> {
+    try {
+      await this.enforceRateLimit();
+      const body = JSON.stringify(
+        Object.fromEntries(
+          Object.entries({
+            id: payload.id,
+            name: payload.name,
+            path: payload.path,
+            presetId: payload.presetId,
+          }).filter(([, value]) => value !== undefined && value !== ""),
+        ),
+      );
+
+      const response = await this.fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+
+      if (response.status === 409) {
+        const data = await response.json().catch(() => ({}));
+        return {
+          success: true,
+          data: {
+            id: (data?.projectId as string | undefined) || payload.id || "",
+            exists: true,
+          },
+          exitCode: 0,
+        };
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Failed to create project: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: { id: data?.id ?? payload.id ?? "" },
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error creating project: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  async getProject(projectId: string): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      const response = await this.fetch(`/api/projects/${projectId}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Failed to fetch project: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error fetching project: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  async createProjectEntity(
+    projectId: string,
+    payload: { type: string; values: Record<string, unknown> },
+  ): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      const response = await this.fetch(`/api/projects/${projectId}/entities`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Failed to create project entity: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error creating project entity: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
+  async updateProjectEntity(
+    projectId: string,
+    artifactId: string,
+    payload: { type: string; values: Record<string, unknown> },
+  ): Promise<CommandResult<any>> {
+    try {
+      await this.enforceRateLimit();
+      const response = await this.fetch(`/api/projects/${projectId}/entities/${artifactId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `Failed to update project entity: ${response.status} ${errorText}`,
+          exitCode: 1,
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data,
+        exitCode: 0,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error updating project entity: ${error instanceof Error ? error.message : String(error)}`,
+        exitCode: 2,
+      };
+    }
+  }
+
   /**
    * Fetches aggregate project status details from the API.
    *
    * @returns Command result describing the overall project status.
    */
-  async getProjectStatus(): Promise<CommandResult<any>> {
+  async getProjectStatus(projectId?: string): Promise<CommandResult<any>> {
     try {
       await this.enforceRateLimit();
 
-      const response = await this.fetch("/api/status");
+      const targetProject = projectId || this.projectId || "cli-project";
+      let response = await this.fetch(`/api/projects/${encodeURIComponent(targetProject)}`);
+
+      if (response.status === 404) {
+        response = await this.fetch("/api/projects");
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -691,6 +890,17 @@ export class ApiClient {
       }
 
       const data = await response.json();
+
+      if (data && typeof data === "object" && "success" in data && data.success === false) {
+        return {
+          success: false,
+          error:
+            typeof data.message === "string"
+              ? data.message
+              : "Remote status endpoint returned an error",
+          exitCode: 1,
+        };
+      }
 
       return {
         success: true,

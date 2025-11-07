@@ -2300,15 +2300,26 @@ export function createProjectsRouter(deps: Dependencies) {
     try {
       const db = deps.db as any;
       const body = await c.req.json();
-      const { name, path: projectPath, presetId } = body;
+      const { id: requestedId, name, path: projectPath, presetId } = body;
 
       if (!name) {
         return c.json({ error: "Project name is required" }, 400);
       }
 
-      // Generate project ID
-      const projectId = `project-${Date.now()}`;
+      const trimmedRequestedId =
+        typeof requestedId === "string" && requestedId.trim().length > 0
+          ? requestedId.trim()
+          : undefined;
+      const projectId = trimmedRequestedId ?? `project-${Date.now()}`;
 
+      if (trimmedRequestedId) {
+        const existingProject = await db.getProject(trimmedRequestedId);
+        if (existingProject) {
+          return c.json({ error: "Project already exists", projectId: trimmedRequestedId }, 409);
+        }
+      }
+
+      // Determine project ID (allow caller to provide a stable identifier)
       // Use the provided name (which should be extracted from git URL on frontend)
       let actualProjectName = name;
 

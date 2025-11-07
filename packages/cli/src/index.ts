@@ -12,6 +12,7 @@ export { default as program } from "./cli/index.js";
 // Commands
 export { checkCommand } from "./commands/check.js";
 export { initCommand, listTemplates } from "./commands/init.js";
+export { importSpecCommand } from "./commands/spec-import.js";
 export * from "./config.js";
 export * from "./types.js";
 // Utilities
