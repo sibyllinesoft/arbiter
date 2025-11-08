@@ -594,7 +594,7 @@ package payments
 // Stripe configuration
 stripe: {
 	api_key:     string
-	webhook_secret: string
+	callback_secret: string
 	api_version: "2023-10-16"
 	
 	// Payment methods
@@ -606,15 +606,15 @@ stripe: {
 		"sofort"
 	]
 	
-	// Webhook events
-	webhooks: {
+	// Callback events
+	callbacks: {
 		enabled: true
 		events: [
 			"payment_intent.succeeded",
 			"payment_intent.payment_failed",
 			"charge.dispute.created"
 		]
-		endpoint: "/webhooks/stripe"
+		endpoint: "/callbacks/stripe"
 	}
 }`,
       },

@@ -171,7 +171,7 @@ export interface DeploymentConfig {
 
   // Docker Compose configuration
   compose?: {
-    version: "3.8" | "3.9";
+    version?: string;
     networks?: Record<string, any>;
     volumes?: Record<string, any>;
     profiles?: string[];

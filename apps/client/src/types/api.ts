@@ -70,8 +70,6 @@ export type EventType =
   | "validation_completed"
   | "validation_failed"
   | "version_frozen"
-  | "webhook_received"
-  | "handler_executed"
   | "git_push_processed"
   | "git_merge_processed"
   | "event_head_updated"
@@ -313,68 +311,6 @@ export interface WsIrUpdatedData {
   kind: IRKind;
   data: Record<string, unknown>;
   spec_hash: string;
-}
-
-// Webhook Handler types
-export interface WebhookHandler {
-  id: string;
-  name: string;
-  description?: string;
-  provider: WebhookProvider;
-  event_type: string;
-  events?: string[];
-  enabled: boolean;
-  code: string;
-  created_at: string;
-  updated_at: string;
-  last_execution?: string;
-  execution_count: number;
-  success_count: number;
-  error_count: number;
-  timeout?: number;
-  retries?: number;
-  metadata?: Record<string, unknown>;
-}
-
-export type WebhookProvider = "github" | "gitlab" | "bitbucket" | "slack" | "discord" | "custom";
-
-export interface CreateHandlerRequest {
-  name: string;
-  provider: WebhookProvider;
-  event_type: string;
-  code: string;
-  enabled?: boolean;
-}
-
-export interface UpdateHandlerRequest {
-  name?: string;
-  provider?: WebhookProvider;
-  event_type?: string;
-  code?: string;
-  enabled?: boolean;
-}
-
-export interface HandlerExecution {
-  id: string;
-  handler_id: string;
-  status: "success" | "error" | "timeout";
-  started_at: string;
-  completed_at?: string;
-  duration_ms?: number;
-  payload: Record<string, unknown>;
-  result?: Record<string, unknown>;
-  error_message?: string;
-  error_stack?: string;
-}
-
-export interface HandlerStats {
-  handler_id: string;
-  total_executions: number;
-  successful_executions: number;
-  failed_executions: number;
-  avg_duration_ms: number;
-  last_execution?: string;
-  recent_executions: HandlerExecution[];
 }
 
 // Error response structure (RFC 7807 Problem Details)

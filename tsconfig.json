@@ -16,7 +16,6 @@
       "@arbiter/cue-runner": ["./packages/cue-runner/src"],
       "@arbiter/cli": ["./packages/cli/src"],
       "@arbiter/api-types": ["./packages/api-types/src"],
-      "@arbiter/core": ["./packages/arbiter-core/src"],
       "@arbiter/shared-types": ["./packages/shared-types/src"],
       "@arbiter/shared-types/*": ["./packages/shared-types/src/*"],
       "@arbiter/importer": ["./packages/importer/src"],
@@ -36,9 +35,6 @@
     },
     {
       "path": "./packages/cli"
-    },
-    {
-      "path": "./packages/arbiter-core"
     },
     {
       "path": "./packages/api-types"

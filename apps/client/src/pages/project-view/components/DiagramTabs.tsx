@@ -1,15 +1,8 @@
 /**
- * DiagramTabs - Right pane tabs for diagrams and handlers
+ * DiagramTabs - Right pane tabs for diagrams and activity
  */
 
-import {
-  ArchitectureReport,
-  EventsReport,
-  HandlersReport,
-  ServicesReport,
-  TasksReport,
-  WebhooksReport,
-} from "@/components/index";
+import { ArchitectureReport, EventsReport, ServicesReport, TasksReport } from "@/components/index";
 import type { Project } from "@/types/api";
 import { DiagramPlaceholder } from "./DiagramPlaceholder";
 
@@ -54,20 +47,6 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
       ) : (
         <DiagramPlaceholder type="Event Log" />
       ),
-    },
-    {
-      id: "webhooks",
-      label: "Webhooks",
-      content: project ? (
-        <WebhooksReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Webhook Configuration" />
-      ),
-    },
-    {
-      id: "handlers",
-      label: "Handlers",
-      content: <HandlersReport />,
     },
   ];
 

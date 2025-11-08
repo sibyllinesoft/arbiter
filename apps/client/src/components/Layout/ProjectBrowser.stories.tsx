@@ -78,7 +78,7 @@ const sampleProjects: Project[] = [
     id: "5",
     name: "Notification Service",
     description:
-      "Multi-channel notification system supporting email, SMS, push notifications, and webhooks.",
+      "Multi-channel notification system supporting email, SMS, push notifications, and external callbacks.",
     status: "archived",
     lastModified: "2024-01-10T11:00:00Z",
     fragmentCount: 4,

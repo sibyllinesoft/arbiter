@@ -657,6 +657,8 @@ export interface SyncOptions {
 export interface IntegrateOptions {
   /** CI provider to generate workflows for */
   provider?: "github" | "gitlab" | "azure" | "all";
+  /** Alias for provider to match legacy flag */
+  platform?: "github" | "gitlab" | "azure" | "all";
   /** Workflow type to generate */
   type?: "pr" | "main" | "release" | "all";
   /** Output directory for CI files */
@@ -667,6 +669,8 @@ export interface IntegrateOptions {
   matrix?: boolean;
   /** Generate GitHub issue templates and configuration */
   templates?: boolean;
+  /** Simulate writes without touching the filesystem */
+  dryRun?: boolean;
 }
 
 /**

@@ -64,8 +64,8 @@ function createMcpServer() {
             {
               server: "Arbiter API",
               version: "1.0.0",
-              capabilities: ["webhook_handling", "mcp_integration"],
-              endpoints: ["/health", "/mcp", "/webhooks/*", "/api/*"],
+              capabilities: ["mcp_integration"],
+              endpoints: ["/health", "/mcp", "/api/*"],
               public_url: "https://arbiter-dev.sibylline.dev",
               timestamp: new Date().toISOString(),
               mcp_tools: [
@@ -103,8 +103,7 @@ function createMcpServer() {
     "search",
     {
       title: "Search Arbiter Resources",
-      description:
-        "Search through Arbiter specifications, documentation, handlers, and project resources",
+      description: "Search through Arbiter specifications, documentation, and project resources",
       inputSchema: {
         query: z.string().describe("The search query to find relevant information"),
       },

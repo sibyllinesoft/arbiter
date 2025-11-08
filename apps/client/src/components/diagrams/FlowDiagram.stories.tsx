@@ -570,7 +570,7 @@ outputs:
     frequency: "realtime"
     
   - name: "alert_system"
-    target: "slack_webhook"
+    target: "slack_callback"
     conditions: ["anomaly_detected", "error_rate_high"]
     
   - name: "ml_features"

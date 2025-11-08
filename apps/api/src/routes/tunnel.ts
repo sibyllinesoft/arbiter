@@ -64,9 +64,6 @@ tunnelRoutes.post("/setup", async (c) => {
       zone: body.zone,
       subdomain: body.subdomain,
       localPort: body.localPort || 5050,
-      githubToken: body.githubToken,
-      repository: body.repository,
-      webhookSecret: body.webhookSecret,
     };
 
     // Setup event listeners for logging

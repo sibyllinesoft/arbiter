@@ -59,8 +59,15 @@ const resolveLayerClass = (data: any): string => {
       case "infrastructure":
         return "infrastructure";
       case "database":
+      case "databases":
       case "datastore":
         return "database";
+      case "flow":
+      case "flows":
+        return "flow";
+      case "capability":
+      case "capabilities":
+        return "capability";
       case "backend":
         return "backend";
       default:

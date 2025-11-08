@@ -187,7 +187,6 @@ const expectedTypes: Record<string, string> = {
   "@arbiter/api-types": "module", // Should be module, not service
   "@arbiter/importer": "module",
   "@arbiter/cue-runner": "module",
-  "@arbiter/core": "module",
   "spec-workbench-frontend": "frontend",
   arbiter: "tool", // Root has bin field
 

@@ -15,7 +15,6 @@ export type EventType =
   | "validation_completed"
   | "validation_failed"
   | "version_frozen"
-  | "webhook_received"
   | "git_push_processed"
   | "git_merge_processed"
   | "user_joined"
@@ -109,17 +108,7 @@ export interface VersionFrozenEvent {
   description?: string;
 }
 
-export interface WebhookReceivedEvent {
-  webhook_id: string;
-  provider: "github" | "gitlab";
-  event_type: string;
-  repository?: string;
-  sender?: string;
-  processed: boolean;
-}
-
 export interface GitPushProcessedEvent {
-  webhook_id: string;
   repository: string;
   branch: string;
   commits: number;
@@ -128,7 +117,6 @@ export interface GitPushProcessedEvent {
 }
 
 export interface GitMergeProcessedEvent {
-  webhook_id: string;
   repository: string;
   source_branch: string;
   target_branch: string;

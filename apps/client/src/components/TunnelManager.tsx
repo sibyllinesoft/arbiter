@@ -1,5 +1,5 @@
 /**
- * Tunnel Manager Component - Integrates cloudflare-tunnel.sh functionality
+ * Tunnel Manager Component - Manages Cloudflare tunnel lifecycle
  */
 
 import {
@@ -26,7 +26,6 @@ interface TunnelInfo {
   url: string;
   configPath: string;
   status: "running" | "stopped";
-  hookId?: string;
 }
 
 interface TunnelManagerProps {
@@ -37,10 +36,6 @@ interface TunnelManagerProps {
 export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerProps) {
   const [tunnelInfo, setTunnelInfo] = useState<TunnelInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<"webhook-only" | "full-api" | "custom">(
-    "webhook-only",
-  );
-  const [customConfig, setCustomConfig] = useState("");
   const [logs, setLogs] = useState<string[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
@@ -341,7 +336,7 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
               <p className="text-sm text-gray-500">
                 {isTunnelRunning
                   ? "Your tunnel is running and accepting connections"
-                  : "Start a tunnel to enable webhook connectivity"}
+                  : "Start a tunnel to expose your local Arbiter API"}
               </p>
             </div>
           </div>
@@ -379,72 +374,6 @@ export function TunnelManager({ className, onTunnelUrlChange }: TunnelManagerPro
             </div>
           </div>
         )}
-      </div>
-
-      {/* Tunnel Controls */}
-      <div className="space-y-4">
-        {/* Mode Selection */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Tunnel Mode</label>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                value: "webhook-only",
-                label: "Webhook Only",
-                title: "Secure mode - only webhook endpoints exposed (recommended)",
-              },
-              {
-                value: "full-api",
-                label: "Full API",
-                title: "Development mode - all API endpoints accessible",
-              },
-              {
-                value: "custom",
-                label: "Custom",
-                title: "Advanced configuration with custom settings",
-              },
-            ].map((mode) => (
-              <button
-                key={mode.value}
-                onClick={() => setSelectedMode(mode.value as any)}
-                disabled={isTunnelRunning}
-                title={mode.title}
-                className={cn(
-                  "p-3 text-left border rounded-lg transition-colors",
-                  selectedMode === mode.value
-                    ? "border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300"
-                    : "border-gray-200 dark:border-graphite-700 hover:border-gray-300 dark:hover:border-graphite-600 text-gray-900 dark:text-gray-100",
-                  isTunnelRunning && "opacity-50 cursor-not-allowed",
-                )}
-              >
-                <div className="font-medium text-sm">{mode.label}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom Configuration */}
-        {selectedMode === "custom" && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Custom Configuration
-            </label>
-            <textarea
-              value={customConfig}
-              onChange={(e) => setCustomConfig(e.target.value)}
-              placeholder="Enter custom tunnel configuration..."
-              className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
-              disabled={isTunnelRunning}
-            />
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-start pt-4 border-t border-gray-200 dark:border-graphite-700">
-          <div className="text-sm text-gray-500">
-            Configure the tunnel mode and options above as needed before starting.
-          </div>
-        </div>
       </div>
 
       {/* Logs Section - Collapsible */}

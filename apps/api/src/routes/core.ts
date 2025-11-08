@@ -29,9 +29,7 @@ export function createCoreRouter(deps: Dependencies) {
     const searchPatterns: Record<string, string[]> = {
       all: ["**/*.md", "**/*.ts", "**/*.js", "**/*.cue", "**/*.json", "**/*.yaml", "**/*.yml"],
       specs: ["**/*.cue", "**/spec/**/*", "**/specs/**/*"],
-      handlers: ["**/handlers/**/*", "**/webhooks/**/*"],
       docs: ["**/*.md", "**/docs/**/*", "**/README*"],
-      webhooks: ["**/webhooks/**/*", "**/webhook/**/*", "**/handlers/**/*"],
     };
 
     const patterns = searchPatterns[searchType] || searchPatterns.all;

@@ -531,8 +531,8 @@ export const DeveloperToolPatterns: Story = {
             description="Generate a new key in your API settings"
           />
           <Input
-            label="Webhook URL"
-            placeholder="https://your-app.com/webhooks"
+            label="Callback URL"
+            placeholder="https://your-app.com/callback"
             leftIcon={<Globe />}
             type="url"
             helperText="Endpoint for receiving real-time notifications"
@@ -601,7 +601,7 @@ This story demonstrates how Input components are used in real developer tool sce
 **Featured Patterns:**
 - **Project Configuration**: Repository URLs, database connections, project settings
 - **Build Configuration**: Commands, directories, environment variables  
-- **API Configuration**: Endpoints, authentication keys, webhooks
+- **API Configuration**: Endpoints, authentication keys, callbacks
 - **Search & Filters**: Global search, date filters, time-based queries
 - **Code Editor Integration**: File paths, git branches, commit messages
 

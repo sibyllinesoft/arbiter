@@ -1,9 +1,9 @@
 # Arbiter Platform
 
 Arbiter turns declarative specifications into production-ready tooling. This
-monorepo brings together the CLI, importer, API handlers, and supporting
-packages that collaborate to analyse existing systems, capture intent in CUE,
-and generate consistent project artefacts.
+monorepo brings together the CLI, importer, API, and supporting packages that
+collaborate to analyse existing systems, capture intent in CUE, and generate
+consistent project artefacts.
 
 ## Why Arbiter?
 
@@ -13,8 +13,8 @@ and generate consistent project artefacts.
   bootstrap specs from real projects.
 - **Extensible Tooling** – Language plugins, template overrides, and
   configuration hooks let teams evolve the platform alongside their stack.
-- **Production Awareness** – Integrations with GitHub, container ecosystems, and
-  infrastructure manifests help span the full lifecycle.
+- **Production Awareness** – Integrations with Git hosting, container
+  ecosystems, and infrastructure manifests help span the full lifecycle.
 
 ## Repository Layout
 
@@ -24,7 +24,6 @@ packages/cli/        Arbiter CLI for specification authoring and scaffolding
 packages/importer/   Brownfield detection pipeline and plugins
 packages/shared/     Shared utilities and type definitions
 packages/shared-types API/CLI contract types
-handlers/            Runtime handlers for automated workflows
 scripts/             Utility scripts for local development and CI
 ```
 
@@ -35,19 +34,19 @@ sources for IDE discovery.
 
 1. **Install dependencies**
    ```bash
-   pnpm install
+   bun install
    ```
 2. **Bootstrap the workspace**
    ```bash
-   pnpm build
+   bun run build
    ```
 3. **Launch the development stack** (API + client)
    ```bash
-   pnpm dev
+   bun run dev:full
    ```
 4. **Run the CLI**
    ```bash
-   pnpm --filter @arbiter/cli exec -- node src/cli.ts --help
+   ./arbiter-cli --help
    ```
 
 ## OAuth Setup & Testing
@@ -124,13 +123,12 @@ Following these steps keeps local OAuth iterations quick and reproducible.
 
 ## Development Workflow
 
-- `pnpm lint` – Static analysis and formatting checks
-- `pnpm test --filter <target>` – Run package-specific tests
-- `pnpm build` – Compile TypeScript packages
-- `pnpm changeset` – Stage release notes when contributing upstream
+- `bun run lint` – Static analysis and formatting checks
+- `bun run test` – Run package and application tests
+- `bun run build` – Compile TypeScript packages
 
-The repository uses Turbo + pnpm workspaces, so commands automatically inherit
-correct dependency ordering.
+The repository relies on Bun workspaces, so commands automatically execute in
+dependency order.
 
 ## Key Components
 

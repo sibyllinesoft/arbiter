@@ -218,6 +218,7 @@ const computeGroupedComponents = (
   });
 
   const groups = new Map<string, GroupedComponentGroup>();
+  const recordedTaskKeys = new Set<string>();
 
   const resolveArtifactId = (item: unknown): string | undefined => {
     if (!item || typeof item !== "object") {
@@ -271,6 +272,79 @@ const computeGroupedComponents = (
       groups.set(config.label, baseGroup);
     }
     return groups.get(config.label)!;
+  };
+
+  const registerTask = (
+    rawTask: any,
+    fallbackName: string,
+    context?: { epicId?: string; epicName?: string },
+  ) => {
+    if (!rawTask && typeof rawTask !== "string") {
+      return;
+    }
+
+    const taskData = typeof rawTask === "string" ? { name: rawTask } : { ...rawTask };
+    if (shouldExcludeFromDiagram(taskData)) {
+      return;
+    }
+    const metadata = (taskData.metadata ?? {}) as Record<string, unknown>;
+
+    const identifierCandidates = [
+      taskData.id,
+      metadata.id,
+      taskData.artifactId,
+      metadata.artifactId,
+      metadata.artifact_id,
+    ]
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean);
+
+    const dedupeKey = identifierCandidates[0] || fallbackName;
+    if (dedupeKey && recordedTaskKeys.has(dedupeKey)) {
+      return;
+    }
+
+    const taskName =
+      (typeof taskData.name === "string" && taskData.name.trim().length > 0
+        ? taskData.name.trim()
+        : undefined) ??
+      dedupeKey ??
+      fallbackName ??
+      `Task ${recordedTaskKeys.size + 1}`;
+
+    const statusCandidates = [taskData.status, taskData.state, metadata.status, metadata.state]
+      .map((value) => (typeof value === "string" ? value.toLowerCase() : ""))
+      .filter(Boolean);
+
+    const completedFlag =
+      taskData.completed === true ||
+      taskData.done === true ||
+      taskData.isCompleted === true ||
+      metadata.completed === true ||
+      statusCandidates.includes("completed");
+
+    if (completedFlag) {
+      return;
+    }
+
+    const enrichedTask = enrichDataForGrouping(
+      {
+        ...taskData,
+        name: taskName,
+        metadata: {
+          ...(metadata || {}),
+          ...(context?.epicId ? { epicId: context.epicId } : {}),
+          ...(context?.epicName ? { epicName: context.epicName } : {}),
+        },
+      },
+      "task",
+    );
+
+    addToGroup("task", taskName, enrichedTask);
+
+    if (dedupeKey) {
+      recordedTaskKeys.add(dedupeKey);
+    }
   };
 
   const addToGroup = (type: string, name: string, data: any) => {
@@ -496,23 +570,28 @@ const computeGroupedComponents = (
         : [];
 
     tasksArray.forEach((task, taskIndex) => {
-      if (!task && typeof task !== "string") return;
-      const taskData = typeof task === "string" ? { name: task } : { ...task };
-      const taskName = String(taskData.name || taskData.id || `${epicName} Task ${taskIndex + 1}`);
-      const enrichedTask = enrichDataForGrouping(
-        {
-          ...taskData,
-          name: taskName,
-          metadata: {
-            ...(taskData.metadata || {}),
-            epicId,
-            epicName,
-          },
-        },
-        "task",
-      );
-      addToGroup("task", taskName, enrichedTask);
+      registerTask(task, `${epicName} Task ${taskIndex + 1}`, { epicId, epicName });
     });
+  });
+
+  const normalizeTaskCollection = (source: unknown): any[] => {
+    if (Array.isArray(source)) {
+      return source;
+    }
+    if (source && typeof source === "object") {
+      return Object.values(source as Record<string, any>);
+    }
+    return [];
+  };
+
+  const standaloneSpecTasks = normalizeTaskCollection(projectData?.spec?.tasks);
+  standaloneSpecTasks.forEach((task, index) => {
+    registerTask(task, `Task ${index + 1}`);
+  });
+
+  const projectLevelTasks = normalizeTaskCollection(projectData?.tasks);
+  projectLevelTasks.forEach((task, index) => {
+    registerTask(task, `Task ${standaloneSpecTasks.length + index + 1}`);
   });
 
   Object.keys(TYPE_CONFIG)

@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import { promisify } from "node:util";
-import type { HandlerResult } from "./handlers/types";
 import { logger } from "./utils";
 
 export class McpCliIntegration {
-  async triggerTool(_: string, __: Record<string, unknown>): Promise<HandlerResult> {
+  async triggerTool(
+    _: string,
+    __: Record<string, unknown>,
+  ): Promise<{ success: boolean; message: string }> {
     return {
       success: true,
       message: "MCP tool execution stubbed for tests",

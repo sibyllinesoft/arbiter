@@ -50,10 +50,6 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
       },
-      "/webhooks": {
-        target: "http://localhost:5050",
-        changeOrigin: true,
-      },
     },
   },
   build: {

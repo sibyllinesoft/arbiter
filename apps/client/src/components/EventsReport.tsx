@@ -292,47 +292,6 @@ const formatEventSummary = (
         ) || "Version frozen"
       );
     }
-    case "webhook_received": {
-      const provider = getString("provider");
-      const repo = getString("repository");
-      const ref = getString("ref");
-      const eventName = getString("event_type");
-      const actions = getArray("actions");
-      return (
-        join(
-          `Received ${provider ?? "webhook"}${eventName ? ` ${eventName}` : ""}`,
-          repo ? `for ${repo}` : undefined,
-          ref ? `ref ${ref.split("/").pop() ?? ref}` : undefined,
-          actions.length
-            ? `actions: ${actions.slice(0, 2).map(formatValue).join(", ")}${
-                actions.length > 2 ? ` +${actions.length - 2}` : ""
-              }`
-            : undefined,
-        ) || "Received webhook"
-      );
-    }
-    case "handler_executed": {
-      const handlerName =
-        getString("handlerName") ?? getString("handler") ?? toShortId(getString("handlerId"));
-      const success = data.success === true;
-      const message = getString("message");
-      const duration = formatDuration(getNumber("duration"));
-      const actions = getArray("actions");
-      return (
-        join(
-          handlerName
-            ? `${handlerName} ${success ? "succeeded" : "failed"}`
-            : `Handler ${success ? "succeeded" : "failed"}`,
-          message,
-          actions.length
-            ? `actions: ${actions.slice(0, 2).map(formatValue).join(", ")}${
-                actions.length > 2 ? ` +${actions.length - 2}` : ""
-              }`
-            : undefined,
-          duration ? `in ${duration}` : undefined,
-        ) || "Handler executed"
-      );
-    }
     case "git_push_processed": {
       const commits = getNumber("commits");
       const ref = getString("ref");
@@ -657,39 +616,6 @@ const getEventTargetInfo = (
       const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
       return {
         key: `version:${versionId ?? versionName ?? "frozen"}`,
-        label,
-        ...(description ? { description } : {}),
-      } satisfies EventTargetInfo;
-    }
-    case "webhook_received": {
-      const webhookId = takeString("webhook_id", "webhookId", "id");
-      const provider = takeString("provider");
-      const repository = takeString("repository", "repo");
-      const eventName = takeString("event_type", "eventType");
-      const providerName = capitalize(provider);
-      const label = providerName ? `${providerName} webhook` : "Webhook";
-      const descriptionParts = [repository, eventName ? humanizeKey(eventName) : undefined].filter(
-        (value): value is string => Boolean(value),
-      );
-      const fallbackKey =
-        [provider, repository].filter((value): value is string => Boolean(value)).join(":") ||
-        "general";
-      const keyBase = webhookId ?? fallbackKey;
-      const description = descriptionParts.length ? descriptionParts.join(" · ") : undefined;
-      return {
-        key: `webhook:${keyBase}`,
-        label,
-        ...(description ? { description } : {}),
-      } satisfies EventTargetInfo;
-    }
-    case "handler_executed": {
-      const handlerId = takeString("handler_id", "handlerId");
-      const handlerName = takeString("handler_name", "handlerName", "handler");
-      const label =
-        handlerName ?? (handlerId ? `Handler ${toShortId(handlerId) ?? handlerId}` : "Handler");
-      const description = handlerId ? `ID ${toShortId(handlerId) ?? handlerId}` : undefined;
-      return {
-        key: `handler:${handlerId ?? handlerName ?? "execution"}`,
         label,
         ...(description ? { description } : {}),
       } satisfies EventTargetInfo;

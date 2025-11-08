@@ -51,21 +51,12 @@
       ],
       "@/config": [
         "./src/config.ts"
-      ],
-      "@arbiter/core": [
-        "../arbiter-core/src/index.ts"
-      ],
-      "@arbiter/core/*": [
-        "../arbiter-core/src/*"
       ]
     }
   },
   "references": [
     {
       "path": "../shared"
-    },
-    {
-      "path": "../arbiter-core"
     }
   ],
   "include": [

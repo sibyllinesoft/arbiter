@@ -12,6 +12,7 @@ import { generateCommand } from "../commands/generate.js";
 import { renameCommand, showNamingHelp } from "../commands/rename.js";
 import { loadConfigWithGitDetection } from "../config.js";
 import type { GenerateOptions } from "../types.js";
+import { requireCommandConfig } from "./context.js";
 
 export function createGenerationCommands(program: Command): void {
   // Generate command (with integrated docs functionality)
@@ -27,15 +28,9 @@ export function createGenerationCommands(program: Command): void {
     .option("--verbose", "enable verbose logging for generation flow")
     .action(async (specName: string | undefined, options: GenerateOptions, command) => {
       try {
-        let config = command.parent?.config;
-        if (!config) {
-          throw new Error("Configuration not loaded");
-        }
-
-        // Auto-detect git repository information if needed
-        config = await loadConfigWithGitDetection(config);
-
-        const exitCode = await generateCommand(options, config, specName);
+        const parentConfig = requireCommandConfig(command);
+        const configWithGit = await loadConfigWithGitDetection(parentConfig);
+        const exitCode = await generateCommand(options, configWithGit, specName);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -59,11 +54,7 @@ export function createGenerationCommands(program: Command): void {
     .option("--include-examples", "generate example files alongside documentation")
     .action(async (options, command) => {
       try {
-        const config = command.parent?.parent?.config;
-        if (!config) {
-          throw new Error("Configuration not loaded");
-        }
-
+        const config = requireCommandConfig(command);
         const exitCode = await docsCommand("schema", options, config);
         process.exit(exitCode);
       } catch (error) {
@@ -83,11 +74,7 @@ export function createGenerationCommands(program: Command): void {
     .option("--include-examples", "include request/response examples")
     .action(async (options, command) => {
       try {
-        const config = command.parent?.parent?.config;
-        if (!config) {
-          throw new Error("Configuration not loaded");
-        }
-
+        const config = requireCommandConfig(command);
         const exitCode = await docsCommand("api", options, config);
         process.exit(exitCode);
       } catch (error) {
@@ -109,11 +96,7 @@ export function createGenerationCommands(program: Command): void {
     .option("--force", "overwrite existing examples")
     .action(async (type: string, options, command) => {
       try {
-        const config = command.parent?.config;
-        if (!config) {
-          throw new Error("Configuration not loaded");
-        }
-
+        const config = requireCommandConfig(command);
         const exitCode = await examplesCommand(type, options, config);
         process.exit(exitCode);
       } catch (error) {

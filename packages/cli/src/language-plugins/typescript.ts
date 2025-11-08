@@ -51,7 +51,7 @@ interface ViteProjectTemplateContext extends Record<string, unknown> {
   packageJson: string;
   tsconfig: string;
   tsconfigBuild: string;
-  tsconfigNode: string;
+  tsconfigNode?: string;
   projectName: string;
   projectDescription: string;
   devServerPort: number;
@@ -538,9 +538,14 @@ export class TypeScriptPlugin implements LanguagePlugin {
     );
     files.push({ path: "src/index.css", content: indexCss });
 
+    const dependencyList = [
+      ...dependencies.map(([name, version]) => `${name}@${version}`),
+      ...devDependencies.map(([name, version]) => `${name}@${version}`),
+    ];
+
     return {
       files,
-      dependencies,
+      dependencies: dependencyList,
       scripts: this.createViteScripts(),
     };
   }

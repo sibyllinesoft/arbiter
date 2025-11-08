@@ -15,12 +15,10 @@ import { AuthService } from "./auth";
 import { loadConfig } from "./config";
 import { SpecWorkbenchDB } from "./db";
 import { EventService } from "./events";
-import { HandlerAPIController } from "./handlers/api.js";
 import { SpecEngine } from "./specEngine";
 import { tunnelManager } from "./tunnel-manager";
 import type { ServerConfig } from "./types.ts";
 import { createProblemDetails, getCurrentTimestamp, logger } from "./utils";
-import { WebhookService } from "./webhooks";
 
 import { createMcpApp } from "./mcp";
 // Import modular components
@@ -33,8 +31,6 @@ export class SpecWorkbenchServer {
   private auth: AuthService;
   private specEngine: SpecEngine;
   private events: EventService;
-  private webhooks: WebhookService;
-  private handlersApi: HandlerAPIController;
 
   // Modular components
   private apiRouter: ReturnType<typeof createApiRouter>;
@@ -53,8 +49,6 @@ export class SpecWorkbenchServer {
     this.auth = new AuthService(config);
     this.specEngine = new SpecEngine(config);
     this.events = new EventService(config, this.db);
-    this.webhooks = new WebhookService(config, this.events, this.db);
-    this.handlersApi = new HandlerAPIController(this.webhooks.getHandlerManager());
 
     // Listen to tunnel manager logs and broadcast to global subscribers
     tunnelManager.on("log", (message: string) => {
@@ -93,8 +87,6 @@ export class SpecWorkbenchServer {
       specEngine: this.specEngine,
       events: this.events,
       auth: this.auth,
-      webhooks: this.webhooks,
-      handlersApi: this.handlersApi,
       config: this.config,
     };
 
@@ -120,37 +112,6 @@ export class SpecWorkbenchServer {
     this.httpApp.route("/", this.apiRouter);
 
     this.httpApp.route("/", this.mcpApp);
-
-    this.httpApp.all("/webhooks/*", async (c) => {
-      const corsHeaders = this.getCorsHeaders();
-      const path = new URL(c.req.url).pathname;
-      const provider = path.split("/")[2] as "github" | "gitlab";
-
-      if (provider !== "github" && provider !== "gitlab") {
-        return new Response(JSON.stringify({ error: "Invalid webhook provider" }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const event = c.req.header("X-GitHub-Event") || c.req.header("X-GitLab-Event") || "unknown";
-      const signature = c.req.header("X-Hub-Signature-256") || c.req.header("X-GitLab-Token");
-      const payload = await c.req.json();
-      const headers = Object.fromEntries(c.req.raw.headers.entries());
-
-      const result = await this.webhooks.processWebhook(
-        provider,
-        event,
-        signature,
-        payload,
-        headers,
-      );
-
-      return new Response(JSON.stringify(result), {
-        status: result.success ? 200 : 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    });
 
     this.httpApp.notFound(async (c) => {
       const corsHeaders = this.getCorsHeaders();

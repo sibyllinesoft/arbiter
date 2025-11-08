@@ -67,8 +67,6 @@ export type EventType =
   | "validation_completed"
   | "validation_failed"
   | "version_frozen"
-  | "webhook_received"
-  | "handler_executed"
   | "git_push_processed"
   | "git_merge_processed"
   | "event_head_updated"
@@ -343,45 +341,6 @@ export interface ServerConfig {
     ping_interval_ms: number;
   };
   nats?: NatsConfig;
-  webhooks?: {
-    enabled: boolean;
-    secret?: string;
-    github_secret?: string;
-    gitlab_secret?: string;
-    allowed_repos?: string[];
-    sync_on_push: boolean;
-    validate_on_merge: boolean;
-  };
-  handlers?: {
-    directory?: string;
-    enabled: boolean;
-    enableAutoReload: boolean;
-    maxConcurrentExecutions: number;
-    defaultTimeout: number;
-    defaultRetries: number;
-    sandboxEnabled: boolean;
-    allowedModules: string[];
-    enableMetrics: boolean;
-    notifications?: {
-      email?: {
-        mode?: "disabled" | "log" | "smtp";
-        from?: string;
-        smtp?: {
-          host?: string;
-          port?: number;
-          secure?: boolean;
-          user?: string;
-          pass?: string;
-        };
-      };
-    };
-    cloudflare?: {
-      r2?: {
-        binding: string;
-        prefix?: string;
-      };
-    };
-  };
   oauth?: {
     enabled: boolean;
     mcpBaseUrl: string;

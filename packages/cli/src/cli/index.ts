@@ -8,10 +8,9 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { loadAuthSession } from "../auth-store.js";
-import { applyEnvironmentOverrides, loadConfig } from "../config.js";
 import { createAddCommands } from "./add.js";
 import { createAuthCommand } from "./auth.js";
+import { hydrateCliContext } from "./context.js";
 import { createEpicTaskCommands } from "./epic-task.js";
 import { createGenerationCommands } from "./generation.js";
 import { createIntegrationCommands } from "./integration.js";
@@ -19,7 +18,6 @@ import { createProjectCommands } from "./project.js";
 import { createRemoveCommands } from "./remove.js";
 import { createUtilitiesCommands } from "./utilities.js";
 import { createVersionCommands } from "./version.js";
-import { createWebhookCommands } from "./webhook.js";
 
 // Create the main program
 const program = new Command();
@@ -37,33 +35,7 @@ program
   .option("--local", "operate in offline mode using local CUE files only")
   .hook("preAction", async (thisCommand, actionCommand) => {
     try {
-      // Load basic configuration before running any command
-      const opts = thisCommand.opts();
-
-      const config = await loadConfig(opts.config);
-
-      // Override config with CLI options
-      const cliUrl = opts.arbiterUrl ?? opts.apiUrl;
-      if (cliUrl) config.apiUrl = cliUrl;
-      if (opts.timeout) config.timeout = Number.parseInt(opts.timeout, 10);
-      if (opts.color === false) config.color = false;
-      if (typeof opts.local === "boolean") config.localMode = opts.local;
-
-      const finalConfig = applyEnvironmentOverrides(config);
-      const authSession = await loadAuthSession();
-      if (authSession) {
-        finalConfig.authSession = authSession;
-      } else if (finalConfig.authSession) {
-        delete finalConfig.authSession;
-      }
-
-      const normalizedUrl = finalConfig.apiUrl.trim().replace(/\/+$/, "");
-      finalConfig.apiUrl = normalizedUrl || finalConfig.apiUrl.trim();
-      finalConfig.localMode = Boolean(finalConfig.localMode);
-
-      // Store config on command for subcommands to access
-      (thisCommand as any).config = finalConfig;
-      (actionCommand as any).config = finalConfig;
+      await hydrateCliContext(thisCommand, actionCommand);
     } catch (error) {
       console.error(
         chalk.red("Configuration error:"),
@@ -83,10 +55,6 @@ createGenerationCommands(program);
 createIntegrationCommands(program);
 createUtilitiesCommands(program);
 createAuthCommand(program);
-
-// Webhook commands already added by createIntegrationCommands
-// const webhookCmd = createWebhookCommands();
-// program.addCommand(webhookCmd);
 
 // Handle unknown commands
 program.on("command:*", () => {

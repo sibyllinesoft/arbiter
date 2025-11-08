@@ -42,12 +42,6 @@ export interface ServerConfig {
     audience?: string[];
     redirectUri?: string;
   };
-  webhooks?: {
-    enabled: boolean;
-    allowed_repos: string[];
-    sync_on_push: boolean;
-    validate_on_merge: boolean;
-  };
 }
 
 // Pagination parameters
@@ -164,7 +158,6 @@ export interface ConfigValidation {
 // Feature flags
 export interface FeatureFlags {
   oauth_enabled: boolean;
-  webhooks_enabled: boolean;
   real_time_collaboration: boolean;
   advanced_validation: boolean;
   export_formats: string[];

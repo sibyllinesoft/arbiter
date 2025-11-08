@@ -310,7 +310,7 @@ services: {
 		capabilities: [
 			"email_notifications",
 			"push_notifications", 
-			"webhook_delivery",
+			"callback_delivery",
 			"notification_preferences"
 		]
 		
@@ -319,7 +319,7 @@ services: {
 		message_queue: {
 			type: "RabbitMQ"
 			version: "3.12"
-			exchanges: ["notifications", "webhooks"]
+			exchanges: ["notifications", "callbacks"]
 			queues: {
 				email: {
 					durable: true
@@ -331,7 +331,7 @@ services: {
 					max_retry: 5
 					ttl: 3600   // 1 hour
 				}
-				webhook: {
+				callback: {
 					durable: true
 					max_retry: 10
 					ttl: 604800  // 1 week
@@ -349,7 +349,7 @@ services: {
 		
 		feature_flags: {
 			enable_push_notifications: false
-			enable_webhook_retries: true
+			enable_callback_retries: true
 			use_new_email_template: true
 		}
 	}

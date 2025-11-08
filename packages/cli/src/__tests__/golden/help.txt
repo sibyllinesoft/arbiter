@@ -68,8 +68,6 @@ Commands:
                                         project-specific naming
   spec                                  manage spec fragments and revisions
                                         with git-style operations
-  webhook                               manage repository webhooks for
-                                        GitHub/GitLab integration
   config                                manage CLI configuration
   health [options]                      comprehensive Arbiter server health
                                         check

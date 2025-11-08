@@ -6,16 +6,7 @@ import zukeeper from "zukeeper";
 import { create } from "zustand";
 
 type LeftTab = "source";
-type RightTab =
-  | "flow"
-  | "site"
-  | "view"
-  | "architecture"
-  | "services"
-  | "tasks"
-  | "webhooks"
-  | "events"
-  | "handlers";
+type RightTab = "flow" | "site" | "view" | "architecture" | "services" | "tasks" | "events";
 
 interface UiState {
   leftTab: LeftTab;

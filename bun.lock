@@ -151,17 +151,6 @@
         "typescript": "^5.3.3",
       },
     },
-    "packages/arbiter-core": {
-      "name": "@arbiter/core",
-      "version": "1.0.0",
-      "dependencies": {
-        "@octokit/rest": "^22.0.0",
-      },
-      "devDependencies": {
-        "@types/node": "^20.11.0",
-        "typescript": "^5.3.3",
-      },
-    },
     "packages/cli": {
       "name": "@arbiter/cli",
       "version": "1.0.0",
@@ -254,8 +243,6 @@
     "@arbiter/api-types": ["@arbiter/api-types@workspace:packages/api-types"],
 
     "@arbiter/cli": ["@arbiter/cli@workspace:packages/cli"],
-
-    "@arbiter/core": ["@arbiter/core@workspace:packages/arbiter-core"],
 
     "@arbiter/cue-runner": ["@arbiter/cue-runner@workspace:packages/cue-runner"],
 

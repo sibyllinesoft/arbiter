@@ -8,13 +8,11 @@ import { createEventsRouter } from "./events";
 import { createFragmentsRouter } from "./fragments";
 import { createGapsRouter } from "./gaps";
 import { createGithubRouter } from "./github";
-import { createHandlersRouter } from "./handlers";
 import { createImportRouter } from "./import";
 import { createIrRouter } from "./ir";
 import { createProjectsRouter } from "./projects";
 import { createSpecsRouter } from "./specs";
 import { tunnelRoutes } from "./tunnel";
-import { createWebhooksRouter } from "./webhooks";
 
 export type Dependencies = Record<string, unknown>;
 
@@ -28,8 +26,6 @@ export { createProjectsRouter } from "./projects";
 export { createSpecsRouter } from "./specs";
 export { createIrRouter } from "./ir";
 export { createGapsRouter } from "./gaps";
-export { createHandlersRouter } from "./handlers";
-export { createWebhooksRouter } from "./webhooks";
 export { createImportRouter } from "./import";
 export { createGithubRouter } from "./github";
 export { createEventsRouter } from "./events";
@@ -107,8 +103,6 @@ export function createApiRouter(deps: Dependencies) {
   app.route("/api", createSpecsRouter(deps));
   app.route("/api", createIrRouter(deps));
   app.route("/api", createGapsRouter(deps));
-  app.route("/api", createHandlersRouter(deps));
-  app.route("/api", createWebhooksRouter(deps));
   app.route("/api", createEventsRouter(deps));
   app.route("/api", createAuthRouter(deps as any));
   app.route("/api/import", createImportRouter(deps));

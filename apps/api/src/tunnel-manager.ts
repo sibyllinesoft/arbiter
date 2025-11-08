@@ -20,9 +20,6 @@ export interface TunnelConfig {
   zone: string; // e.g., "example.com"
   subdomain?: string; // e.g., "hooks" -> hooks.example.com
   localPort: number; // Local port to expose
-  githubToken?: string; // For webhook registration
-  repository?: string; // GitHub repo for webhook
-  webhookSecret?: string; // Webhook signing secret
 }
 
 export interface TunnelInfo {
@@ -31,7 +28,6 @@ export interface TunnelInfo {
   hostname: string;
   url: string;
   configPath: string;
-  hookId?: string;
   status: "running" | "stopped" | "error";
   error?: string;
 }
@@ -401,75 +397,6 @@ export class TunnelManager extends EventEmitter {
   }
 
   /**
-   * Register GitHub webhook
-   */
-  private async registerGitHubWebhook(
-    url: string,
-    repository: string,
-    token: string,
-    secret: string,
-  ): Promise<string> {
-    const [owner, repo] = repository.split("/");
-    const webhookUrl = `${url}/webhooks/github`;
-
-    try {
-      // Check if webhook already exists
-      const listResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-        },
-      });
-
-      if (listResponse.ok) {
-        const hooks = await listResponse.json();
-        const existing = hooks.find((h: any) => h.config?.url === webhookUrl);
-
-        if (existing) {
-          this.emit("log", `Webhook already exists: ${existing.id}`);
-          this.logs.push(`[${new Date().toISOString()}] Webhook already exists: ${existing.id}`);
-          return existing.id;
-        }
-      }
-
-      // Create new webhook
-      const createResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}/hooks`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github.v3+json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: "web",
-          active: true,
-          events: ["push", "pull_request"],
-          config: {
-            url: webhookUrl,
-            content_type: "json",
-            secret: secret,
-            insecure_ssl: "0",
-          },
-        }),
-      });
-
-      if (!createResponse.ok) {
-        throw new Error(`Failed to create webhook: ${await createResponse.text()}`);
-      }
-
-      const webhook = await createResponse.json();
-      this.emit("log", `GitHub webhook created: ${webhook.id}`);
-      this.logs.push(`[${new Date().toISOString()}] GitHub webhook created: ${webhook.id}`);
-      return webhook.id;
-    } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      this.emit("error", `Failed to register webhook: ${errMsg}`);
-      this.logs.push(`[${new Date().toISOString()}] ERROR: Failed to register webhook: ${errMsg}`);
-      throw new Error(`Failed to register webhook: ${errMsg}`);
-    }
-  }
-
-  /**
    * Setup tunnel with all components
    */
   async setup(config: TunnelConfig): Promise<TunnelInfo> {
@@ -538,27 +465,7 @@ export class TunnelManager extends EventEmitter {
         );
       }
 
-      // 9. Register GitHub webhook if configured
-      if (config.githubToken && config.repository) {
-        const secret = config.webhookSecret || crypto.randomBytes(32).toString("hex");
-        try {
-          const hookId = await this.registerGitHubWebhook(
-            url,
-            config.repository,
-            config.githubToken,
-            secret,
-          );
-          this.tunnelInfo.hookId = hookId;
-        } catch (e) {
-          const errMsg = e instanceof Error ? e.message : String(e);
-          this.emit("log", `Warning: Failed to register webhook: ${errMsg}`);
-          this.logs.push(
-            `[${new Date().toISOString()}] Warning: Failed to register webhook: ${errMsg}`,
-          );
-        }
-      }
-
-      // 10. Save state
+      // 9. Save state
       await this.saveState();
 
       this.emit("ready", this.tunnelInfo);
@@ -633,25 +540,6 @@ export class TunnelManager extends EventEmitter {
 
     if (this.tunnelInfo) {
       try {
-        // Remove GitHub webhook if exists
-        if (this.config?.githubToken && this.config.repository && this.tunnelInfo.hookId) {
-          const [owner, repo] = this.config.repository.split("/");
-          await fetch(
-            `https://api.github.com/repos/${owner}/${repo}/hooks/${this.tunnelInfo.hookId}`,
-            {
-              method: "DELETE",
-              headers: {
-                Authorization: `Bearer ${this.config.githubToken}`,
-                Accept: "application/vnd.github.v3+json",
-              },
-            },
-          );
-          this.emit("log", `Removed GitHub webhook: ${this.tunnelInfo.hookId}`);
-          this.logs.push(
-            `[${new Date().toISOString()}] Removed GitHub webhook: ${this.tunnelInfo.hookId}`,
-          );
-        }
-
         // Delete tunnel (this also removes DNS routes)
         execSync(`cloudflared tunnel delete ${this.appUid}`, { stdio: "pipe" });
         this.emit("log", `Deleted tunnel: ${this.appUid}`);

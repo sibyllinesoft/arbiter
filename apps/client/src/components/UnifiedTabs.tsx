@@ -4,14 +4,7 @@
 
 import React from "react";
 import type { Project } from "../types/api";
-import {
-  ArchitectureReport,
-  ClientsReport,
-  EventsReport,
-  ServicesReport,
-  TasksReport,
-  WebhooksReport,
-} from "./";
+import { ArchitectureReport, ClientsReport, EventsReport, ServicesReport, TasksReport } from "./";
 
 interface DiagramPlaceholderProps {
   type: string;
@@ -82,15 +75,6 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
         <EventsReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Event Log" />
-      ),
-    },
-    {
-      id: "webhooks",
-      label: "Webhooks",
-      content: project ? (
-        <WebhooksReport projectId={project.id} />
-      ) : (
-        <DiagramPlaceholder type="Webhook Configuration" />
       ),
     },
   ];

@@ -11,8 +11,6 @@
     "paths": {
       "@arbiter/shared": ["../../packages/shared/src/index.ts"],
       "@arbiter/shared/*": ["../../packages/shared/src/*"],
-      "@arbiter/core": ["../../packages/arbiter-core/src/index.ts"],
-      "@arbiter/core/*": ["../../packages/arbiter-core/src/*"],
       "@arbiter/api-types": ["../../packages/api-types/src/index.ts"],
       "@arbiter/api-types/*": ["../../packages/api-types/src/*"],
       "@arbiter/importer": ["../../packages/importer/src/index.ts"],
@@ -22,9 +20,6 @@
   "references": [
     {
       "path": "../../packages/shared"
-    },
-    {
-      "path": "../../packages/arbiter-core"
     },
     {
       "path": "../../packages/api-types"

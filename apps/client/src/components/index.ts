@@ -12,9 +12,7 @@ export { ArchitectureReport } from "./ArchitectureReport";
 export { ArtifactCard } from "./ArtifactCard";
 export { ServicesReport } from "./ServicesReport";
 export { ClientsReport } from "./ClientsReport";
-export { HandlersReport } from "./HandlersReport";
 export { EventsReport } from "./EventsReport";
-export { WebhooksReport } from "./WebhooksReport";
 export { TasksReport } from "./TasksReport";
 
 // Other Components

@@ -12,7 +12,6 @@ import { importSpecCommand } from "../commands/spec-import.js";
 import { statusCommand } from "../commands/status.js";
 import { surfaceCommand } from "../commands/surface.js";
 import { watchCommand } from "../commands/watch.js";
-import { loadConfig } from "../config.js";
 import type { SurfaceLanguage } from "../surface-extraction/types.js";
 import type {
   CheckOptions,
@@ -21,6 +20,7 @@ import type {
   SurfaceOptions,
   WatchOptions,
 } from "../types.js";
+import { requireCommandConfig } from "./context.js";
 
 export function createProjectCommands(program: Command): void {
   // Init command
@@ -41,11 +41,7 @@ export function createProjectCommands(program: Command): void {
           return;
         }
 
-        const config = command.parent?.config;
-        if (!config) {
-          throw new Error("Configuration not loaded");
-        }
-
+        requireCommandConfig(command);
         const exitCode = await initCommand(displayName, options);
         process.exit(exitCode);
       } catch (error) {
@@ -136,14 +132,7 @@ export function createProjectCommands(program: Command): void {
     .option("--message <message>", "revision message metadata")
     .action(async (cueFile: string | undefined, options, command) => {
       try {
-        const directConfig = (command as any)?.config;
-        const parentConfig = (command.parent as any)?.config;
-        const config = directConfig ?? parentConfig ?? (await loadConfig());
-        const parentOptions = command.parent?.opts?.();
-        const cliLocalFlag = process.argv.includes("--local");
-        if (parentOptions?.local || options?.local || cliLocalFlag) {
-          config.localMode = true;
-        }
+        const config = requireCommandConfig(command);
 
         const exitCode = await importSpecCommand(
           cueFile,
@@ -201,15 +190,7 @@ export function createProjectCommands(program: Command): void {
     .option("-v, --verbose", "verbose output with additional details")
     .action(async (type: string, options, command) => {
       try {
-        const directConfig = (command as any)?.config;
-        const parentConfig = (command.parent as any)?.config;
-        const config = directConfig ?? parentConfig ?? (await loadConfig());
-        const parentOptions = command.parent?.opts?.();
-        const ownOptions = command.opts?.();
-        const cliLocalFlag = process.argv.includes("--local");
-        if (parentOptions?.local || ownOptions?.local || cliLocalFlag) {
-          config.localMode = true;
-        }
+        const config = { ...requireCommandConfig(command) };
 
         if (typeof options.format === "string") {
           config.format = options.format;
@@ -234,15 +215,7 @@ export function createProjectCommands(program: Command): void {
     .option("-v, --verbose", "verbose output with additional details")
     .action(async (options, command) => {
       try {
-        const directConfig = (command as any)?.config;
-        const parentConfig = (command.parent as any)?.config;
-        const config = directConfig ?? parentConfig ?? (await loadConfig());
-        const parentOptions = command.parent?.opts?.();
-        const ownOptions = command.opts?.();
-        const cliLocalFlag = process.argv.includes("--local");
-        if (parentOptions?.local || ownOptions?.local || cliLocalFlag) {
-          config.localMode = true;
-        }
+        const config = { ...requireCommandConfig(command) };
 
         if (typeof options.format === "string") {
           config.format = options.format;

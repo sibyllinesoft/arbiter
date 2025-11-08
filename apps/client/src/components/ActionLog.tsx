@@ -15,7 +15,6 @@ import {
   RefreshCw,
   Server,
   Settings,
-  Zap,
 } from "lucide-react";
 import React, { useState, useEffect, useRef } from "react";
 import { Button, Card, StatusBadge, cn } from "../design-system";
@@ -23,7 +22,7 @@ import { Button, Card, StatusBadge, cn } from "../design-system";
 interface ActionLogEntry {
   id: string;
   timestamp: string;
-  type: "service" | "database" | "infrastructure" | "webhook" | "validation" | "deployment";
+  type: "service" | "database" | "infrastructure" | "validation" | "deployment";
   action: string;
   details: string;
   status: "success" | "warning" | "error" | "info";
@@ -56,36 +55,6 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
     let newEntry: ActionLogEntry | null = null;
 
     switch (type) {
-      case "webhook_received":
-        newEntry = {
-          id: `ws_${Date.now()}`,
-          timestamp,
-          type: "webhook",
-          action: "Webhook Received",
-          details: `${payload.provider} ${payload.event} event received`,
-          status: "info",
-          metadata: payload,
-        };
-        break;
-
-      case "handler_executed": {
-        const handlerName = payload?.handlerName || "Handler";
-        const success = Boolean(payload?.success);
-        const details =
-          payload?.message ||
-          `${handlerName} ${success ? "completed successfully" : "encountered an error"}`;
-        newEntry = {
-          id: `ws_${Date.now()}`,
-          timestamp,
-          type: "webhook",
-          action: "Handler Executed",
-          details,
-          status: success ? "success" : "error",
-          metadata: payload,
-        };
-        break;
-      }
-
       case "validation_completed":
         newEntry = {
           id: `ws_${Date.now()}`,
@@ -143,8 +112,6 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
         return <Database className="w-4 h-4" />;
       case "infrastructure":
         return <Layers className="w-4 h-4" />;
-      case "webhook":
-        return <Zap className="w-4 h-4" />;
       case "validation":
         return <CheckCircle className="w-4 h-4" />;
       case "deployment":
@@ -177,8 +144,6 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
         return "text-green-600 bg-green-50";
       case "infrastructure":
         return "text-purple-600 bg-purple-50";
-      case "webhook":
-        return "text-yellow-600 bg-yellow-50";
       case "validation":
         return "text-indigo-600 bg-indigo-50";
       case "deployment":
@@ -229,7 +194,6 @@ export function ActionLog({ projectId, lastWebSocketMessage, className }: Action
               <option value="service">Services</option>
               <option value="database">Databases</option>
               <option value="infrastructure">Infrastructure</option>
-              <option value="webhook">Webhooks</option>
               <option value="validation">Validation</option>
               <option value="deployment">Deployment</option>
             </select>

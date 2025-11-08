@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
-import { getDefaultConfigPath, loadConfig, saveConfig } from "../config.js";
+import { getDefaultConfigPath, saveConfig } from "../config.js";
 import type { CLIConfig, TemplateManagementOptions } from "../types.js";
 import { FileBasedTemplateManager } from "../utils/file-based-template-manager.js";
 import {
@@ -17,8 +17,7 @@ export async function githubTemplatesCommand(
   config: CLIConfig,
 ): Promise<number> {
   try {
-    // Load current configuration
-    const currentConfig = await loadConfig();
+    const currentConfig = config;
     const templateManager = new ConfigurableTemplateManager(currentConfig.github?.templates);
     const fileBasedTemplateManager = new FileBasedTemplateManager(
       currentConfig.github?.templates || {},

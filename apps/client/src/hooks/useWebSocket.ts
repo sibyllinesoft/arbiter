@@ -88,39 +88,12 @@ export function useWebSocket(projectId: string | null, options: WebSocketOptions
           setLastMessage(normalized);
 
           // Show notifications for specific event types
-          if (showToastNotifications) {
-            switch (normalized.type) {
-              case "webhook_received":
-                toast.info("Webhook received", {
-                  position: "bottom-right",
-                  autoClose: 3000,
-                });
-                break;
-              case "handler_executed":
-                {
-                  const success = normalized.payload?.success;
-                  const handlerMessage = normalized.payload?.message || "Handler executed";
-                  if (success) {
-                    toast.success(handlerMessage, {
-                      position: "bottom-right",
-                      autoClose: 3000,
-                    });
-                  } else {
-                    toast.error(handlerMessage, {
-                      position: "bottom-right",
-                      autoClose: 5000,
-                    });
-                  }
-                }
-                break;
-              case "validation_completed":
-                if (normalized.payload?.success) {
-                  toast.success("Validation completed", {
-                    position: "bottom-right",
-                    autoClose: 2000,
-                  });
-                }
-                break;
+          if (showToastNotifications && normalized.type === "validation_completed") {
+            if (normalized.payload?.success) {
+              toast.success("Validation completed", {
+                position: "bottom-right",
+                autoClose: 2000,
+              });
             }
           }
         } catch (error) {

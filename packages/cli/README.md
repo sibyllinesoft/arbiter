@@ -3,102 +3,157 @@
 The Arbiter CLI wraps daily workflows for working with Arbiter specifications.
 It provides commands for validating fragments, generating scaffolding,
 synchronising project plans to GitHub, and interacting with the Spec Workbench
-API without leaving a terminal session.
+API without leaving a terminal session. This package is the portion of Arbiter
+that will be released publicly, so everything is designed to be easy to reason
+about, well documented, and extensible.
 
-## Features
+Looking for the broader doc set? Start at
+[`docs/cli/index.md`](../../docs/cli/index.md) for an overview of every CLI
+guide.
 
-- Fast validation and IR (intermediate representation) retrieval against the
-  Spec Workbench API
-- Deterministic artifact generation driven by language plugins and templates
-- Offline CUE authoring mode (`--local`) that skips all Arbiter service calls
-- Epic and task orchestration with sharded CUE storage helpers
-- GitHub synchronisation utilities and template management
-- Extensible configuration supporting project-specific hooks and UI options
+---
 
-## Installation
+## Quick Start
 
 ```bash
-pnpm install
-pnpm build
+# Install workspace dependencies
+bun install
+
+# Build shared packages (recommended before running the CLI)
+bun run build
+
+# Execute commands directly from source
+bun run --filter @arbiter/cli cli -- --help
 ```
 
-The bundled `bin/arbiter.js` entry point can be invoked directly after building.
-When developing locally it is often convenient to run commands via
-`pnpm --filter @arbiter/cli exec --` so that the TypeScript sources are used
-without an additional build step.
+The bundled binary (`arbiter-cli`) is produced via `bun run build:standalone`
+and can be distributed independently.
 
-## Core Concepts
+---
 
-### Program Entry
+## Architecture Overview
 
-The executable defined in `src/cli/index.ts` wires together the Commander-based
-command registry. Programmatic consumers can import the `program` export from
-`src/index.ts` to mount the CLI inside existing Node.js processes.
-
-### API Client
-
-`src/api-client.ts` exposes the `ApiClient` class, a rate-limited helper that
-wraps calls to the Spec Workbench API. It enforces the product constraints
-around payload size, request cadence, and network timeouts so downstream
-commands do not need to repeat that logic.
-
-### Configuration
-
-Configuration is resolved via `src/config.ts`. The loader merges default values,
-project-local overrides, and UI option catalog data sourced from
-`@arbiter/shared`. Hooks and generator overrides can be configured through this
-module when extending the CLI.
-
-### Local Mode
-
-Pass the `--local` flag to the top-level CLI to work entirely from the local
-`.arbiter/assembly.cue` file. In this mode the CLI never contacts the Arbiter
-service—commands such as `arbiter add …`, `arbiter remove …`, `arbiter check`,
-`arbiter watch`, `arbiter list`, `arbiter status`, and `arbiter generate`
-operate purely on local CUE files, making it easy to script specification
-authoring in disconnected environments (the constrained check variant also
-switches to the local toolchain automatically).
-
-### Sharded Storage
-
-Long-lived epics and tasks are stored using helper utilities in
-`src/utils/sharded-storage.ts`. The module writes and reads shards so that large
-plans are split across manageable CUE files. Documentation in the source covers
-how manifests are initialised and updated.
-
-### GitHub Synchronisation
-
-The utilities in `src/utils/github-sync.ts` and
-`src/utils/unified-github-template-manager.ts` orchestrate syncing project work
-items to GitHub issues or pull requests. They leverage the shared template
-system and surface preview/diff experiences before executing remote mutations.
-
-## Repository Layout
+The CLI is layered to keep responsibilities clear:
 
 ```
 src/
-  api-client.ts           # REST client obeying platform constraints
-  cli/                    # Commander program composition
-  commands/               # Individual command implementations
-  config.ts               # CLI configuration resolution and schema validation
-  templates/              # Built-in code generation templates
-  utils/                  # Shared helpers (storage, GitHub integration, formatting)
+  cli/            Commander program setup & option wiring
+  commands/       Thin shims that parse flags and delegate to services
+  services/       Application services (generate, import, sync, etc.)
+  language-plugins/  Template + codegen runtime per language
+  templates/      Stock templates (render-only, no side effects)
+  utils/          Shared helpers (GitHub, sharded storage, formatting, etc.)
 ```
+
+### Commands vs. Services
+
+- **Commands (`src/commands/*`)**: accept CLI options, resolve configuration,
+  and hand off to services. They should stay under ~200 LOC.
+- **Services (`src/services/*`)**: encapsulate orchestration logic. For example,
+  `services/generate` now composes several focused modules:
+  - `generate/compose.ts` – Docker Compose + infra emitters
+  - `generate/template-runner.ts` – language plugin + template override wiring
+  - `generate/hook-executor.ts` – wraps `GenerationHookManager` so hooks stay deterministic
+  - `generate/shared.ts` – slug/path helpers shared across writers
+  Other services follow the same pattern: `services/integrate` produces CI/CD
+  workflows, `services/spec-import` persists fragments with injectable deps, and
+  `services/sync` keeps manifests aligned with Arbiter metadata. A longer-form
+  tour lives in [`docs/cli/architecture.md`](../../docs/cli/architecture.md).
+
+### Configuration & Context
+
+`src/config.ts` builds a `CLIConfig` by merging defaults, project overrides, and
+environment variables. Commands receive this config and pass it to services,
+ensuring deterministic behaviour (no globals). Auth tokens are stored in
+`auth-store.ts`.
+
+### Template System
+
+Language plugins register template resolvers and optional overrides:
+
+1. Discover templates (built-in or user-provided override directories).
+2. Render templates using a controlled context (project metadata, spec data).
+3. Run generation hooks (pre/post file operations).
+4. Emit files via the file writer (supports dry-run + diff mode).
+
+Template overrides are configured via `cli.config.json` (or `.arbiter/config.*`)
+under the `generator.templateOverrides` key. See
+[`docs/cli/templates.md`](../../docs/cli/templates.md) for the full cookbook and
+best practices (pure templates, deterministic hooks, versioning).
+
+### Service-Level Tests & Dry Runs
+
+To keep regression risk low, each major service has targeted Bun tests under
+`packages/cli/src/services/__tests__/`:
+
+- `compose.test.ts` ensures Docker Compose assets match expectations.
+- `hook-executor.test.ts` verifies hook ordering and dry-run behaviour.
+- `template-runner.test.ts` covers override wiring + registry configuration.
+- `spec-import.test.ts`, `sync.test.ts`, and `integrate.test.ts` execute the key
+  workflows against temporary workspaces (real fs writes).
+
+Run them via:
+
+```bash
+bun test packages/cli/src/services/__tests__/*.test.ts
+```
+
+All services honour `--dry-run`, so you can preview manifests, CI workflows, and
+code generation without touching disk.
+
+### Shared Utilities
+
+- **API Client** (`src/api-client.ts`): rate-limited wrapper around the
+  Spec Workbench API with automatic retries and error normalisation.
+- **Sharded Storage** (`src/utils/sharded-storage.ts`): deterministic layout for
+  epics/tasks stored in `.arbiter/`.
+- **GitHub Sync** (`src/utils/github-sync.ts` and
+  `src/utils/unified-github-template-manager.ts`): template-driven sync helpers
+  with preview/diff capabilities.
+
+---
+
+## Template & Override Best Practices
+
+1. **Keep templates pure** – no filesystem access or process state; just return
+   strings.
+2. **Version overrides** – include metadata so consumers know which version of
+   a template set they are using.
+3. **Use hooks for mutations** – modify `package.json`, `tsconfig`, etc. via
+   generation hooks so changes stay idempotent.
+4. **Validate overrides** – the CLI validates `arbiter.templates.json` using
+   Zod, surfacing actionable errors.
+5. **Dry-run first** – `arbiter generate --dry-run --diff` shows the file plan
+   before touching disk.
+
+Refer to `docs/cli/templates.md` for in-depth guidance, examples, and testing
+tips when building custom generators.
+
+---
 
 ## Development Workflow
 
-1. Install dependencies and build shared packages: `pnpm install`
-2. Execute CLI commands in watch mode:
+1. **Install deps**: `bun install`
+2. **Run commands from source**:
    ```bash
-   pnpm --filter @arbiter/cli exec -- node src/cli.ts <command>
+   bun run --filter @arbiter/cli cli -- init my-app
    ```
-3. Run the test suite: `pnpm test --filter @arbiter/cli`
-4. Before contributing, lint and format sources with `pnpm lint` and `pnpm fmt`
-   to match repository guidelines.
+3. **Watch mode** (optional): `bun run --filter @arbiter/cli dev`
+4. **Tests**:
+   - Unit/golden tests: `bun test packages/cli`
+   - Full CLI e2e: `bun test packages/cli/src/__tests__/cli-e2e.test.ts`
+5. **Lint/format**: `bun run lint` from repo root (Biome)
 
-## Documentation
+---
 
-The CLI sources now include TSDoc annotations for key modules, enabling
-generated API documentation and improving editor IntelliSense. Read through the
-headers of `src/types.ts`, `src/api-client.ts`, and the utilities in `src/utils`
-to understand extension points and architectural decisions.
+## Key Extension Points
+
+- `language-plugins/*`: add or customise code generation for new runtimes.
+- `templates/index.ts`: register new template sets or hook pipelines.
+- `utils/generation-hooks.ts`: implement pre/post file hooks.
+- `services/*`: add new workflows (e.g., `spec-import`, `sync`) or extend
+  existing ones without modifying command files.
+
+All core modules include TSDoc comments so IDEs surface usage hints. Start with
+`src/types.ts`, `src/api-client.ts`, and the files mentioned above to
+understand the existing contracts.
