@@ -11,7 +11,6 @@ export { default as FlowDiagram } from "./FlowDiagram";
 export { default as SourceDiagram } from "./SourceDiagram";
 export { MermaidRenderer } from "./MermaidRenderer";
 export { NetworkDiagram } from "./NetworkDiagram";
-export { default as ViewDiagram } from "./ViewDiagram";
 export { default as TasksDiagram } from "./TasksDiagram";
 
 // Split View Components

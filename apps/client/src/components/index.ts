@@ -7,7 +7,6 @@ export { SourceEditor } from "./SourceEditor";
 
 // Report Components
 export { FlowReport } from "./FlowReport";
-export { ViewReport } from "./ViewReport";
 export { ArchitectureReport } from "./ArchitectureReport";
 export { ArtifactCard } from "./ArtifactCard";
 export { ServicesReport } from "./ServicesReport";

@@ -63,7 +63,6 @@
       "name": "spec-workbench-frontend",
       "version": "1.0.0",
       "dependencies": {
-        "@excalidraw/excalidraw": "^0.17.0",
         "@formkit/auto-animate": "^0.8.3",
         "@hpcc-js/wasm": "^2.13.0",
         "@monaco-editor/react": "^4.6.0",
@@ -452,7 +451,6 @@
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.3.5", "", { "dependencies": { "@eslint/core": "^0.15.2", "levn": "^0.4.1" } }, "sha512-Z5kJ+wU3oA7MMIqVR9tyZRtjYPr4OC004Q4Rw7pgOKUOKkJfZ3O24nz3WYfGRpMDNmcOi3TwQOmgm7B7Tpii0w=="],
 
-    "@excalidraw/excalidraw": ["@excalidraw/excalidraw@0.17.6", "", { "peerDependencies": { "react": "^17.0.2 || ^18.2.0", "react-dom": "^17.0.2 || ^18.2.0" } }, "sha512-fyCl+zG/Z5yhHDh5Fq2ZGmphcrALmuOdtITm8gN4d8w4ntnaopTXcTfnAAaU3VleDC6LhTkoLOTG6P5kgREiIg=="],
 
     "@fastify/busboy": ["@fastify/busboy@2.1.1", "", {}, "sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA=="],
 
