@@ -979,7 +979,7 @@ target/
 /**
  * Generate initial CUE specification
  */
-async function generateInitialSpec(
+export async function generateInitialSpec(
   projectPath: string,
   analysis: ProjectAnalysis,
   dryRun: boolean,
@@ -1078,6 +1078,16 @@ async function generateInitialSpec(
         cueContent += `\t\t\t\t\ttargetPort: ${service.port}\n`;
         cueContent += "\t\t\t\t},\n";
         cueContent += "\t\t\t]\n";
+      }
+
+      const normalizedFramework =
+        typeof service.framework === "string" && service.framework.trim().length > 0
+          ? service.framework.trim()
+          : undefined;
+      if (normalizedFramework && normalizedFramework.toLowerCase() !== "unknown") {
+        cueContent += "\t\t\tmetadata: {\n";
+        cueContent += `\t\t\t\tframework: "${normalizedFramework}"\n`;
+        cueContent += "\t\t\t}\n";
       }
 
       cueContent += "\t\t}\n";

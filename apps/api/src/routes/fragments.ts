@@ -251,7 +251,94 @@ function withSpecSource(metadata?: Record<string, unknown> | null): Record<strin
   return base;
 }
 
-function extractArtifactsFromResolved(
+const RESERVED_WORKLOAD_HINTS = new Set([
+  "deployment",
+  "statefulset",
+  "daemonset",
+  "job",
+  "cronjob",
+  "serverless",
+]);
+
+function normalizeFrameworkCandidate(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const lowered = trimmed.toLowerCase();
+  if (lowered === "unknown" || RESERVED_WORKLOAD_HINTS.has(lowered)) return undefined;
+  return trimmed;
+}
+
+function collectAdapterNames(adapterLike: unknown): string[] {
+  if (!adapterLike) return [];
+  if (typeof adapterLike === "string") {
+    return [adapterLike];
+  }
+  if (typeof adapterLike === "object") {
+    const adapter = adapterLike as Record<string, unknown>;
+    const values: string[] = [];
+    if (typeof adapter.name === "string") values.push(adapter.name);
+    if (typeof adapter.type === "string") values.push(adapter.type);
+    if (typeof adapter.framework === "string") values.push(adapter.framework);
+    return values;
+  }
+  return [];
+}
+
+function extractCapabilityAdapters(rawCapabilities: unknown): string[] {
+  if (!rawCapabilities) return [];
+
+  const candidates: unknown[] = Array.isArray(rawCapabilities)
+    ? rawCapabilities
+    : typeof rawCapabilities === "object"
+      ? Object.values(rawCapabilities as Record<string, unknown>)
+      : [];
+
+  const adapterNames: string[] = [];
+  for (const capability of candidates) {
+    if (!capability || typeof capability !== "object") continue;
+    const adapter = (capability as Record<string, unknown>).adapter;
+    adapterNames.push(...collectAdapterNames(adapter));
+  }
+
+  return adapterNames;
+}
+
+function resolveFrameworkFromService(service: Record<string, any>): string | undefined {
+  const runtime =
+    service.runtime && typeof service.runtime === "object"
+      ? (service.runtime as Record<string, any>)
+      : undefined;
+  const metadataSection =
+    service.metadata && typeof service.metadata === "object"
+      ? (service.metadata as Record<string, any>)
+      : undefined;
+
+  const directCandidates: unknown[] = [
+    service.framework,
+    runtime?.framework,
+    metadataSection?.framework,
+    service.technology,
+    metadataSection?.technology,
+  ];
+
+  const adapterCandidates: string[] = [
+    ...collectAdapterNames(runtime?.adapter),
+    ...collectAdapterNames(metadataSection?.adapter),
+    ...extractCapabilityAdapters(service.capabilities),
+  ];
+
+  for (const candidate of [...directCandidates, ...adapterCandidates]) {
+    const normalized = normalizeFrameworkCandidate(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return undefined;
+}
+
+export function extractArtifactsFromResolved(
   resolved: Record<string, unknown> | undefined | null,
 ): ExtractedArtifacts {
   if (!resolved || typeof resolved !== "object") {
@@ -285,10 +372,7 @@ function extractArtifactsFromResolved(
         typeof service.language === "string" && service.language.trim().length > 0
           ? service.language.trim()
           : null;
-      const framework =
-        typeof workloadType === "string" && workloadType.trim().length > 0
-          ? workloadType.trim()
-          : null;
+      const framework = resolveFrameworkFromService(service as Record<string, any>) ?? null;
 
       const isDatabase =
         workloadType === "statefulset" ||
@@ -301,6 +385,9 @@ function extractArtifactsFromResolved(
         image,
       };
 
+      if (framework) {
+        metadata.framework = framework;
+      }
       if (Array.isArray(service.dependencies)) {
         metadata.dependencies = service.dependencies;
       }

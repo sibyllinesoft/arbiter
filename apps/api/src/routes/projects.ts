@@ -62,6 +62,15 @@ function guessLanguage(technology: string | undefined): string | undefined {
   return TECHNOLOGY_LANGUAGE_MAP[key] || TECHNOLOGY_LANGUAGE_MAP[key.replace(/\s+/g, "")];
 }
 
+const hasOwn = (obj: Record<string, unknown>, key: string): boolean =>
+  Object.prototype.hasOwnProperty.call(obj, key);
+
+function coerceOptionalTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
 function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string) {
   const framework =
     typeof values.framework === "string" && values.framework.trim().length > 0
@@ -197,18 +206,114 @@ function buildManualArtifactPayload(
       };
     }
     case "module": {
+      const moduleType = coerceOptionalTrimmedString(values.moduleType);
+      const owner = coerceOptionalTrimmedString(values.owner);
+      const kind = coerceOptionalTrimmedString(values.kind);
+      const deliverables = hasOwn(values, "deliverables")
+        ? coerceStringArray(values.deliverables)
+        : undefined;
+      const flowSteps = hasOwn(values, "flowSteps")
+        ? coerceStringArray(values.flowSteps)
+        : undefined;
+      const schemaEngine = coerceOptionalTrimmedString(values.schemaEngine);
+      const schemaVersion = coerceOptionalTrimmedString(values.schemaVersion);
+      const schemaOwner = coerceOptionalTrimmedString(values.schemaOwner);
+      const schemaTables = hasOwn(values, "schemaTables")
+        ? coerceStringArray(values.schemaTables)
+        : undefined;
+      const docFormat = coerceOptionalTrimmedString(values.docFormat);
+      const docVersion = coerceOptionalTrimmedString(values.docVersion);
+      const docSource = coerceOptionalTrimmedString(values.docSource);
+      const runbookName = coerceOptionalTrimmedString(values.runbookName);
+      const runbookPath = coerceOptionalTrimmedString(values.runbookPath);
+      const slaUptime = coerceOptionalTrimmedString(values.slaUptime);
+      const slaP95 = coerceOptionalTrimmedString(values.slaP95);
+      const slaP99 = coerceOptionalTrimmedString(values.slaP99);
+
+      const metadata: Record<string, unknown> = {
+        description,
+        classification: {
+          detectedType: "module",
+          reason: "manual-entry",
+          source: "user",
+        },
+      };
+
+      if (moduleType) {
+        metadata.moduleType = moduleType;
+      }
+      if (owner) {
+        metadata.owner = owner;
+      }
+      if (kind) {
+        metadata.kind = kind;
+      }
+      if (hasOwn(values, "deliverables")) {
+        metadata.deliverables = deliverables ?? [];
+      } else if (deliverables && deliverables.length > 0) {
+        metadata.deliverables = deliverables;
+      }
+      if (moduleType === "flow" && hasOwn(values, "flowSteps")) {
+        metadata.steps = flowSteps ?? [];
+      }
+      if (moduleType === "data-schema") {
+        const schemaProvided =
+          hasOwn(values, "schemaEngine") ||
+          hasOwn(values, "schemaVersion") ||
+          hasOwn(values, "schemaOwner") ||
+          hasOwn(values, "schemaTables");
+        if (schemaProvided || schemaEngine || schemaVersion || schemaOwner || schemaTables) {
+          const schema: Record<string, unknown> = {};
+          if (schemaEngine) schema.engine = schemaEngine;
+          if (schemaVersion) schema.version = schemaVersion;
+          if (schemaOwner) schema.owner = schemaOwner;
+          if (schemaTables && schemaTables.length > 0) {
+            schema.tables = schemaTables;
+          } else if (hasOwn(values, "schemaTables")) {
+            schema.tables = [];
+          }
+          if (Object.keys(schema).length > 0) {
+            metadata.schema = schema;
+          }
+        }
+      }
+      if (moduleType === "documentation" && (docFormat || docVersion || docSource)) {
+        const api: Record<string, unknown> = {};
+        if (docFormat) api.format = docFormat;
+        if (docVersion) api.version = docVersion;
+        if (docSource) api.source = docSource;
+        metadata.api = api;
+      }
+      if (moduleType === "runbook" && (runbookName || runbookPath)) {
+        const runbook: Record<string, unknown> = {};
+        if (runbookName) runbook.name = runbookName;
+        if (runbookPath) runbook.path = runbookPath;
+        metadata.runbook = runbook;
+      }
+      if (moduleType === "performance" && (slaUptime || slaP95 || slaP99)) {
+        metadata.config = {
+          ...(metadata.config as Record<string, unknown> | undefined),
+          sla: {
+            ...(slaUptime ? { uptime: slaUptime } : {}),
+            ...(slaP95
+              ? {
+                  p95ResponseMs: Number.isNaN(Number(slaP95)) ? slaP95 : Number(slaP95),
+                }
+              : {}),
+            ...(slaP99
+              ? {
+                  p99ResponseMs: Number.isNaN(Number(slaP99)) ? slaP99 : Number(slaP99),
+                }
+              : {}),
+          },
+        };
+      }
+
       return {
         name,
         description,
         artifactType: "module",
-        metadata: {
-          description,
-          classification: {
-            detectedType: "module",
-            reason: "manual-entry",
-            source: "user",
-          },
-        },
+        metadata,
       };
     }
     case "tool": {
@@ -249,7 +354,45 @@ function buildManualArtifactPayload(
       };
     }
     case "infrastructure": {
-      const scope = typeof values.scope === "string" ? values.scope.trim() : "infrastructure";
+      const scope =
+        typeof values.scope === "string" && values.scope.trim().length > 0
+          ? values.scope.trim()
+          : "infrastructure";
+      const category =
+        typeof values.category === "string" && values.category.trim().length > 0
+          ? values.category.trim()
+          : undefined;
+      const environmentDomain =
+        typeof values.environmentDomain === "string" ? values.environmentDomain.trim() : undefined;
+      const environmentReleaseGate =
+        typeof values.environmentReleaseGate === "string"
+          ? values.environmentReleaseGate.trim()
+          : undefined;
+      const environmentChangeManagement =
+        typeof values.environmentChangeManagement === "string"
+          ? values.environmentChangeManagement.trim()
+          : undefined;
+      const environmentSecrets = hasOwn(values, "environmentSecrets")
+        ? coerceStringArray(values.environmentSecrets)
+        : undefined;
+      const loggingLevel =
+        typeof values.observabilityLoggingLevel === "string"
+          ? values.observabilityLoggingLevel.trim()
+          : undefined;
+      const metricsProvider =
+        typeof values.observabilityMetricsProvider === "string"
+          ? values.observabilityMetricsProvider.trim()
+          : undefined;
+      const observabilityAlerts = hasOwn(values, "observabilityAlerts")
+        ? coerceStringArray(values.observabilityAlerts)
+        : undefined;
+      const migrationTool =
+        typeof values.migrationTool === "string" ? values.migrationTool.trim() : undefined;
+      const migrationStrategy =
+        typeof values.migrationStrategy === "string" ? values.migrationStrategy.trim() : undefined;
+      const migrationSchedule =
+        typeof values.migrationSchedule === "string" ? values.migrationSchedule.trim() : undefined;
+
       return {
         name,
         description,
@@ -257,6 +400,64 @@ function buildManualArtifactPayload(
         metadata: {
           description,
           scope,
+          ...(category ? { category } : {}),
+          ...(environmentDomain ||
+          environmentReleaseGate ||
+          environmentChangeManagement ||
+          environmentSecrets
+            ? {
+                environment: {
+                  ...(environmentDomain ? { domain: environmentDomain } : {}),
+                  ...(environmentReleaseGate ? { releaseGate: environmentReleaseGate } : {}),
+                  ...(environmentChangeManagement
+                    ? { changeManagement: environmentChangeManagement }
+                    : {}),
+                  ...(environmentSecrets
+                    ? { secrets: environmentSecrets }
+                    : environmentSecrets === undefined && hasOwn(values, "environmentSecrets")
+                      ? { secrets: [] }
+                      : {}),
+                },
+              }
+            : {}),
+          ...(loggingLevel ||
+          metricsProvider ||
+          observabilityAlerts ||
+          migrationTool ||
+          migrationStrategy ||
+          migrationSchedule
+            ? {
+                config: {
+                  ...(loggingLevel
+                    ? {
+                        logging: {
+                          level: loggingLevel,
+                        },
+                      }
+                    : {}),
+                  ...(metricsProvider || observabilityAlerts
+                    ? {
+                        monitoring: {
+                          ...(metricsProvider ? { metricsProvider } : {}),
+                          ...(observabilityAlerts
+                            ? { alerts: observabilityAlerts }
+                            : observabilityAlerts === undefined &&
+                                hasOwn(values, "observabilityAlerts")
+                              ? { alerts: [] }
+                              : {}),
+                        },
+                      }
+                    : {}),
+                  ...(migrationTool || migrationStrategy || migrationSchedule
+                    ? {
+                        tool: migrationTool,
+                        strategy: migrationStrategy,
+                        schedule: migrationSchedule,
+                      }
+                    : {}),
+                },
+              }
+            : {}),
           classification: {
             detectedType: "infrastructure",
             reason: "manual-entry",

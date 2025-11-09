@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { MarkdownField, type MarkdownFieldProps } from "@/components/form/MarkdownField";
 import Button from "@/design-system/components/Button";
 import Input from "@/design-system/components/Input";
@@ -38,8 +39,6 @@ export type FieldValue =
   | Array<Record<string, unknown>>;
 
 const FIELD_RECORD_KEYS = ["value", "id", "name", "label", "slug", "key"] as const;
-const sanitizeNameInput = (value: string): string =>
-  value.length > 255 ? value.slice(0, 255) : value;
 
 const INPUT_SURFACE_CLASSES =
   "bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-300 dark:border-graphite-700 hover:border-graphite-400 dark:hover:border-graphite-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
@@ -105,6 +104,27 @@ const coerceFieldValueToArrayInternal = (input: FieldValue | undefined): string[
 export const coerceFieldValueToArray = (input: FieldValue | undefined): string[] =>
   coerceFieldValueToArrayInternal(input);
 
+const extractListFromValue = (input: FieldValue | undefined): string[] => {
+  if (input === null || input === undefined) {
+    return [];
+  }
+
+  if (Array.isArray(input)) {
+    return input
+      .map((entry) =>
+        typeof entry === "string" ? entry : coerceFieldValueToString(entry as FieldValue),
+      )
+      .flatMap((entry) => entry.split(/\r?\n/))
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  return coerceFieldValueToString(input)
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+};
+
 export const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {
   epicTaskOptions: [],
   taskEpicOptions: [],
@@ -167,6 +187,25 @@ const FALLBACK_INFRASTRUCTURE_SCOPES = [
   "Kubernetes Cluster",
   "Terraform Stack",
   "Serverless Platform",
+];
+
+const MODULE_TYPE_OPTIONS = [
+  { value: "capability", label: "Capability" },
+  { value: "flow", label: "Flow" },
+  { value: "data-schema", label: "Data Schema" },
+  { value: "documentation", label: "Documentation" },
+  { value: "runbook", label: "Runbook" },
+  { value: "performance", label: "Performance" },
+  { value: "security", label: "Security" },
+  { value: "other", label: "Other" },
+];
+
+const INFRA_CATEGORY_OPTIONS = [
+  { value: "environment", label: "Environment" },
+  { value: "observability", label: "Observability" },
+  { value: "database-migration", label: "Database Migration" },
+  { value: "platform", label: "Platform" },
+  { value: "other", label: "Other" },
 ];
 
 const DEFAULT_DESCRIPTION_PLACEHOLDERS: Record<string, string> = {
@@ -290,6 +329,12 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
     return frameworkLookup.get(language.toLowerCase()) ?? [];
   };
 
+  const moduleTypeEquals = (values: Record<string, FieldValue>, type: string): boolean =>
+    coerceFieldValueToString(values["moduleType"]).trim().toLowerCase() === type;
+
+  const infraCategoryEquals = (values: Record<string, FieldValue>, category: string): boolean =>
+    coerceFieldValueToString(values["category"]).trim().toLowerCase() === category;
+
   const applyMarkdownSupport = (fields: FieldConfig[]): FieldConfig[] =>
     fields.map((field) =>
       field.name === "description"
@@ -362,6 +407,102 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
     ],
     module: [
       { name: "name", label: "Module Name", required: true, placeholder: "shared-library" },
+      {
+        name: "moduleType",
+        label: "Module Type",
+        type: "select",
+        options: MODULE_TYPE_OPTIONS,
+        placeholder: "Select module type",
+      },
+      { name: "owner", label: "Owner", placeholder: "owner@sibylline.dev" },
+      { name: "kind", label: "Kind / Domain", placeholder: "service, integration, ui" },
+      {
+        name: "deliverables",
+        label: "Key Deliverables",
+        type: "textarea",
+        placeholder: "List deliverables, one per line",
+        description: "Capture major outputs and handoffs for this module.",
+      },
+      {
+        name: "flowSteps",
+        label: "Flow Steps",
+        type: "textarea",
+        placeholder: "Describe each step on a new line",
+        isVisible: (values) => moduleTypeEquals(values, "flow"),
+      },
+      {
+        name: "schemaEngine",
+        label: "Schema Engine",
+        placeholder: "PostgreSQL",
+        isVisible: (values) => moduleTypeEquals(values, "data-schema"),
+      },
+      {
+        name: "schemaVersion",
+        label: "Schema Version",
+        placeholder: "1.0.0",
+        isVisible: (values) => moduleTypeEquals(values, "data-schema"),
+      },
+      {
+        name: "schemaOwner",
+        label: "Schema Owner",
+        placeholder: "catalog-api",
+        isVisible: (values) => moduleTypeEquals(values, "data-schema"),
+      },
+      {
+        name: "schemaTables",
+        label: "Schema Tables",
+        type: "textarea",
+        placeholder: "products\nplans\nprice_tiers",
+        isVisible: (values) => moduleTypeEquals(values, "data-schema"),
+      },
+      {
+        name: "docFormat",
+        label: "Documentation Format",
+        placeholder: "OpenAPI, Markdown",
+        isVisible: (values) => moduleTypeEquals(values, "documentation"),
+      },
+      {
+        name: "docVersion",
+        label: "Documentation Version",
+        placeholder: "1.0.0",
+        isVisible: (values) => moduleTypeEquals(values, "documentation"),
+      },
+      {
+        name: "docSource",
+        label: "Documentation Source Path",
+        placeholder: "./docs/openapi.yaml",
+        isVisible: (values) => moduleTypeEquals(values, "documentation"),
+      },
+      {
+        name: "runbookName",
+        label: "Runbook Name",
+        placeholder: "On-call playbook",
+        isVisible: (values) => moduleTypeEquals(values, "runbook"),
+      },
+      {
+        name: "runbookPath",
+        label: "Runbook Path",
+        placeholder: "./docs/runbooks/on-call.md",
+        isVisible: (values) => moduleTypeEquals(values, "runbook"),
+      },
+      {
+        name: "slaUptime",
+        label: "Target Uptime (e.g. 99.5%)",
+        placeholder: "99.5%",
+        isVisible: (values) => moduleTypeEquals(values, "performance"),
+      },
+      {
+        name: "slaP95",
+        label: "P95 Response (ms)",
+        placeholder: "400",
+        isVisible: (values) => moduleTypeEquals(values, "performance"),
+      },
+      {
+        name: "slaP99",
+        label: "P99 Response (ms)",
+        placeholder: "900",
+        isVisible: (values) => moduleTypeEquals(values, "performance"),
+      },
       {
         name: "description",
         label: "Description",
@@ -445,6 +586,13 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
         required: true,
         placeholder: "production-cluster",
       },
+      {
+        name: "category",
+        label: "Category",
+        type: "select",
+        options: INFRA_CATEGORY_OPTIONS,
+        placeholder: "Select category",
+      },
       infrastructureScopes.length > 0
         ? {
             name: "scope",
@@ -458,6 +606,68 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
             label: "Scope",
             placeholder: "Kubernetes Cluster, Terraform Stack",
           },
+      {
+        name: "environmentDomain",
+        label: "Environment Domain",
+        placeholder: "https://staging.example.com",
+        isVisible: (values) => infraCategoryEquals(values, "environment"),
+      },
+      {
+        name: "environmentReleaseGate",
+        label: "Release Gate",
+        placeholder: "qa-signoff",
+        isVisible: (values) => infraCategoryEquals(values, "environment"),
+      },
+      {
+        name: "environmentChangeManagement",
+        label: "Change Management",
+        placeholder: "prod-approval",
+        isVisible: (values) => infraCategoryEquals(values, "environment"),
+      },
+      {
+        name: "environmentSecrets",
+        label: "Managed Secrets",
+        type: "textarea",
+        placeholder: "STRIPE_TEST_KEY\nLAGO_API_KEY",
+        isVisible: (values) => infraCategoryEquals(values, "environment"),
+      },
+      {
+        name: "observabilityLoggingLevel",
+        label: "Logging Level",
+        placeholder: "info",
+        isVisible: (values) => infraCategoryEquals(values, "observability"),
+      },
+      {
+        name: "observabilityMetricsProvider",
+        label: "Metrics Provider",
+        placeholder: "prometheus",
+        isVisible: (values) => infraCategoryEquals(values, "observability"),
+      },
+      {
+        name: "observabilityAlerts",
+        label: "Alert Rules",
+        type: "textarea",
+        placeholder: "high-error-rate\nwebhook-failures",
+        isVisible: (values) => infraCategoryEquals(values, "observability"),
+      },
+      {
+        name: "migrationTool",
+        label: "Migration Tool",
+        placeholder: "Drizzle",
+        isVisible: (values) => infraCategoryEquals(values, "database-migration"),
+      },
+      {
+        name: "migrationStrategy",
+        label: "Migration Strategy",
+        placeholder: "versioned",
+        isVisible: (values) => infraCategoryEquals(values, "database-migration"),
+      },
+      {
+        name: "migrationSchedule",
+        label: "Migration Schedule",
+        placeholder: "continuous",
+        isVisible: (values) => infraCategoryEquals(values, "database-migration"),
+      },
       {
         name: "description",
         label: "Description",
@@ -698,6 +908,20 @@ export function AddEntityModal({
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
+    }
+
+    const normalizeLists = (keys: string[]) => {
+      keys.forEach((key) => {
+        if (key in payloadValues) {
+          payloadValues[key] = extractListFromValue(payloadValues[key]);
+        }
+      });
+    };
+
+    if (entityType === "module") {
+      normalizeLists(["deliverables", "flowSteps", "schemaTables"]);
+    } else if (entityType === "infrastructure") {
+      normalizeLists(["environmentSecrets", "observabilityAlerts"]);
     }
 
     onSubmit?.({ entityType, values: payloadValues });

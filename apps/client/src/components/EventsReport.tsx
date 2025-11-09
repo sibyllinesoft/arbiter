@@ -5,7 +5,7 @@ import type { Event } from "@/types/api";
 import {
   ChevronDown,
   ChevronRight,
-  History,
+  Database,
   Info,
   Pencil,
   PlusCircle,
@@ -745,6 +745,12 @@ const extractDetailRows = (event: Event): DetailRow[] => {
   const data = (event.data ?? {}) as Record<string, unknown>;
   const rows: DetailRow[] = [];
 
+  const coerceString = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : undefined;
+  };
+
   const addRow = (label: string, value: unknown) => {
     const formatted = formatValue(value);
     if (!label || !formatted || formatted === "n/a") return;
@@ -781,6 +787,15 @@ const extractDetailRows = (event: Event): DetailRow[] => {
     addFromValues(data.values);
   }
 
+  const entityName = coerceString(data.name);
+  const entityId =
+    coerceString(data.entity_id) ??
+    coerceString(data.artifact_id) ??
+    coerceString(data.id) ??
+    undefined;
+  const entityType =
+    coerceString(data.entity_type) ?? coerceString(data.artifact_type) ?? undefined;
+
   const importantKeys = [
     "name",
     "path",
@@ -800,13 +815,57 @@ const extractDetailRows = (event: Event): DetailRow[] => {
     "status",
   ];
 
+  const suppressedKeys = new Set([
+    "name",
+    "entity_id",
+    "artifact_id",
+    "entity_type",
+    "artifact_type",
+  ]);
+
   importantKeys.forEach((key) => {
+    if (suppressedKeys.has(key)) {
+      return;
+    }
     if (key in data) {
       addRow(key, data[key]);
     }
   });
 
   return rows;
+};
+
+const deriveEntityAttributes = (event: Event): Array<{ label: string; value: string }> => {
+  const data = (event.data ?? {}) as Record<string, unknown>;
+  const coerceString = (value: unknown): string | undefined => {
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : undefined;
+  };
+
+  const attributes: Array<{ label: string; value: string }> = [];
+  const name = coerceString(data.name);
+  const type =
+    coerceString(data.entity_type) ??
+    coerceString(data.artifact_type) ??
+    coerceString(event.data?.type);
+  const id =
+    coerceString(data.entity_id) ??
+    coerceString(data.artifact_id) ??
+    coerceString(data.id) ??
+    undefined;
+
+  if (name) {
+    attributes.push({ label: "Name", value: name });
+  }
+  if (type) {
+    attributes.push({ label: "Type", value: humanizeKey(type) });
+  }
+  if (id) {
+    attributes.push({ label: "ID", value: id });
+  }
+
+  return attributes;
 };
 
 type EventCardProps = {
@@ -838,6 +897,19 @@ function EventCard({
 }: EventCardProps) {
   const detailRows = useMemo(() => extractDetailRows(event), [event]);
   const summary = useMemo(() => formatEventSummary(event, lookupEvent), [event, lookupEvent]);
+  const entityAttributes = useMemo(() => deriveEntityAttributes(event), [event]);
+  const filteredDetailRows = useMemo(() => {
+    if (!detailRows.length) {
+      return detailRows;
+    }
+    const suppressed = new Set<string>(
+      ["Name", "Type", "ID", "Entity Id", "Artifact Id", "Entity Type", "Artifact Type"].map(
+        (label) => label.toUpperCase(),
+      ),
+    );
+    entityAttributes.forEach((attr) => suppressed.add(attr.label.toUpperCase()));
+    return detailRows.filter((row) => !suppressed.has(row.label.toUpperCase()));
+  }, [detailRows, entityAttributes]);
 
   const isHistorical = variant === "child";
   const normalizedType = event.event_type.toLowerCase();
@@ -964,7 +1036,7 @@ function EventCard({
     return candidate ?? null;
   }, [event, lookupEvent, showRevertedContainer]);
 
-  const hasDetailRows = detailRows.length > 0;
+  const hasDetailRows = filteredDetailRows.length > 0;
   const shouldShowSummary = !hasDetailRows && !nestedRevertedEvent && summary;
 
   const renderDetailRows = () => {
@@ -978,7 +1050,7 @@ function EventCard({
 
     return (
       <dl className="grid gap-x-8 gap-y-3 text-sm text-gray-700 dark:text-graphite-100 sm:grid-cols-2">
-        {detailRows.map((row, index) => (
+        {filteredDetailRows.map((row, index) => (
           <div key={`${row.label}-${row.value}-${index}`} className="flex items-start gap-3">
             <dt className="mt-0.5 w-28 shrink-0 whitespace-nowrap text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-graphite-400">
               {row.label}
@@ -1114,6 +1186,21 @@ function EventCard({
               <div className="text-xs text-gray-500 dark:text-graphite-300">
                 {new Date(event.created_at).toLocaleString()}
               </div>
+              {entityAttributes.length > 0 ? (
+                <div className="flex w-full flex-wrap items-center gap-4 text-sm text-gray-900 dark:text-graphite-50">
+                  {entityAttributes.map((attr) => (
+                    <span
+                      key={`${attr.label}-${attr.value}`}
+                      className="flex flex-1 basis-[160px] items-center gap-2"
+                    >
+                      <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-graphite-300">
+                        {attr.label}:
+                      </span>
+                      <span className="text-sm font-normal">{attr.value}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               {renderDetailRows()}
             </div>
           </div>
@@ -1418,8 +1505,8 @@ export function EventsReport({ projectId }: EventsReportProps) {
       <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shadow-sm dark:bg-amber-900/30 dark:text-amber-200">
-              <History className="h-5 w-5" />
+            <div className="flex h-11 w-11 items-center justify-center text-amber-600 dark:text-amber-200">
+              <Database className="h-5 w-5" />
             </div>
             <div className="space-y-1">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">

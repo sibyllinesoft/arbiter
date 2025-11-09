@@ -7,9 +7,9 @@ import {
   ChevronUp,
   Folder,
   Languages,
+  Navigation,
   Network,
   Plus,
-  Server,
   Workflow,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,6 +27,13 @@ import {
   type UiOptionCatalog,
 } from "./modals/AddEntityModal";
 import EndpointModal from "./modals/EndpointModal";
+import type { InternalServiceCandidate } from "./services/internal-service-classifier";
+import {
+  getPackageJson,
+  hasPackageBin,
+  isServiceDetected,
+  shouldTreatAsInternalService,
+} from "./services/internal-service-classifier";
 
 interface ServicesReportProps {
   projectId: string;
@@ -45,7 +52,7 @@ interface NormalizedEndpointCard {
   data: Record<string, unknown>;
 }
 
-interface NormalizedService {
+export interface NormalizedService {
   key: string;
   identifier: string;
   displayName: string;
@@ -56,6 +63,7 @@ interface NormalizedService {
   typeLabel?: string;
   raw: Record<string, unknown> | null;
   sourcePath?: string;
+  artifactId?: string | null;
 }
 
 interface ExternalArtifactCard {
@@ -66,97 +74,12 @@ interface ExternalArtifactCard {
 
 const noop = () => {};
 
-const TYPE_BADGE_STYLES: Record<string, string> = {
-  service: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  api: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-  worker: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-200",
-  job: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200",
-  queue: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200",
-};
-
-const getPackageJson = (raw: unknown): Record<string, unknown> | null => {
-  if (!raw || typeof raw !== "object") {
-    return null;
-  }
-  const rawRecord = raw as Record<string, unknown>;
-  const metadata = rawRecord.metadata;
-  if (metadata && typeof metadata === "object") {
-    const packageJson = (metadata as Record<string, unknown>).packageJson;
-    if (packageJson && typeof packageJson === "object") {
-      return packageJson as Record<string, unknown>;
-    }
-  }
-  const direct = rawRecord.packageJson;
-  if (direct && typeof direct === "object") {
-    return direct as Record<string, unknown>;
-  }
-  return null;
-};
-
-const hasPackageBin = (raw: unknown): boolean => {
-  const packageJson = getPackageJson(raw);
-  if (!packageJson) {
-    return false;
-  }
-
-  const rawRecord = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-  const metadata =
-    rawRecord.metadata && typeof rawRecord.metadata === "object"
-      ? (rawRecord.metadata as Record<string, unknown>)
-      : undefined;
-
-  const candidateSources = [
-    (packageJson as Record<string, unknown>).bin,
-    metadata?.bin,
-    rawRecord.bin,
-  ];
-  for (const candidate of candidateSources) {
-    if (!candidate) continue;
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return true;
-    }
-    if (typeof candidate === "object") {
-      const keys = Object.keys(candidate as Record<string, unknown>);
-      if (keys.length > 0) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-const isServiceDetected = (service: NormalizedService): boolean => {
-  const raw = service.raw;
-  if (raw && typeof raw === "object") {
-    const rawRecord = raw as Record<string, unknown>;
-    const metadata =
-      rawRecord.metadata && typeof rawRecord.metadata === "object"
-        ? (rawRecord.metadata as Record<string, unknown>)
-        : undefined;
-
-    const candidates: Array<unknown> = [
-      rawRecord.type,
-      rawRecord.category,
-      metadata?.detectedType,
-      metadata?.type,
-      metadata?.category,
-      service.typeLabel,
-    ];
-
-    return candidates.some((candidate) => {
-      if (typeof candidate !== "string") {
-        return false;
-      }
-      const value = candidate.toLowerCase();
-      return value.includes("service");
-    });
-  }
-
-  if (typeof service.typeLabel === "string") {
-    return service.typeLabel.toLowerCase().includes("service");
-  }
-
-  return false;
+const TYPE_ICON_STYLES: Record<string, string> = {
+  service: "text-indigo-600 dark:text-indigo-200",
+  api: "text-indigo-600 dark:text-indigo-200",
+  worker: "text-purple-700 dark:text-purple-200",
+  job: "text-amber-700 dark:text-amber-200",
+  queue: "text-emerald-700 dark:text-emerald-200",
 };
 
 const slugify = (value: string): string =>
@@ -303,6 +226,26 @@ const isLikelyCodePath = (value: string): boolean => {
   return false;
 };
 
+const isAbsolutePath = (value: string): boolean => {
+  if (!value) return false;
+  return value.startsWith("/") || /^[a-z]:[\\/]/i.test(value);
+};
+
+const isPotentialSourcePath = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (isLikelyCodePath(trimmed)) {
+    return true;
+  }
+  if (trimmed.startsWith("./") || trimmed.startsWith("../") || trimmed.startsWith(".\\")) {
+    return true;
+  }
+  if (!isAbsolutePath(trimmed) && /[\\/]/.test(trimmed)) {
+    return true;
+  }
+  return false;
+};
+
 const isInfrastructurePath = (value: string): boolean => {
   const normalized = value.toLowerCase().replace(/\\/g, "/");
   if (!normalized) {
@@ -340,6 +283,32 @@ const isInfrastructurePath = (value: string): boolean => {
   }
 
   return false;
+};
+
+const deriveArtifactIdFromRaw = (raw: any): string | null => {
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const metadata =
+    raw.metadata && typeof raw.metadata === "object"
+      ? (raw.metadata as Record<string, unknown>)
+      : {};
+  const candidates = [
+    raw.artifactId,
+    raw.artifact_id,
+    raw.entityId,
+    raw.entity_id,
+    metadata.artifactId,
+    metadata.artifact_id,
+    metadata.entityId,
+    metadata.entity_id,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
+    }
+  }
+  return null;
 };
 
 const collectPathCandidates = (raw: any): string[] => {
@@ -385,16 +354,16 @@ const resolveSourcePath = (raw: any): { path: string | undefined; hasSource: boo
     return { path: undefined, hasSource: false };
   }
 
-  const codeCandidate = candidates.find((candidate) => isLikelyCodePath(candidate));
-  if (codeCandidate) {
-    return { path: codeCandidate, hasSource: true };
+  const sourceCandidate = candidates.find((candidate) => isPotentialSourcePath(candidate));
+  if (sourceCandidate) {
+    return { path: sourceCandidate, hasSource: true };
   }
 
   const nonInfrastructureCandidate = candidates.find(
     (candidate) => !isInfrastructurePath(candidate),
   );
   if (nonInfrastructureCandidate) {
-    return { path: nonInfrastructureCandidate, hasSource: true };
+    return { path: nonInfrastructureCandidate, hasSource: false };
   }
 
   return { path: candidates[0], hasSource: false };
@@ -404,7 +373,8 @@ const ServiceCard: React.FC<{
   service: NormalizedService;
   onAddEndpoint: (service: NormalizedService) => void;
   onEditEndpoint: (service: NormalizedService, endpoint: NormalizedEndpointCard) => void;
-}> = ({ service, onAddEndpoint, onEditEndpoint }) => {
+  onEditService: (service: NormalizedService) => void;
+}> = ({ service, onAddEndpoint, onEditEndpoint, onEditService }) => {
   const [expanded, setExpanded] = useState(true);
   const hasDistinctName = Boolean(
     service.displayName && service.displayName.toLowerCase() !== service.identifier.toLowerCase(),
@@ -414,32 +384,49 @@ const ServiceCard: React.FC<{
   const handleAddEndpoint = () => {
     onAddEndpoint(service);
   };
+  const handleCardClick = () => {
+    onEditService(service);
+  };
   const [showSourcePath, setShowSourcePath] = useState(false);
   const sourcePath =
     service.sourcePath ?? service.metadataItems.find((item) => item.label === "Source")?.value;
   const metadataWithoutSource = service.metadataItems.filter((item) => item.label !== "Source");
 
   return (
-    <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
+    <div
+      className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium cursor-pointer")}
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleCardClick();
+        }
+      }}
+    >
       <div className="border-b border-graphite-200/60 bg-gray-100 px-3 py-2 dark:border-graphite-700/60 dark:bg-graphite-900/70">
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleToggle();
+            }}
             aria-expanded={expanded}
             className="flex flex-1 items-center gap-3 px-1 py-1.5 text-left font-semibold transition-colors hover:text-graphite-900 dark:hover:text-graphite-25"
           >
             <div className="flex items-center gap-3">
               <div
                 className={clsx(
-                  "flex h-10 w-10 items-center justify-center rounded-lg shadow-sm",
+                  "flex h-10 w-10 items-center justify-center",
                   service.typeLabel
-                    ? (TYPE_BADGE_STYLES[service.typeLabel.toLowerCase()] ??
-                        "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200")
-                    : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200",
+                    ? (TYPE_ICON_STYLES[service.typeLabel.toLowerCase()] ??
+                        "text-indigo-600 dark:text-indigo-200")
+                    : "text-indigo-600 dark:text-indigo-200",
                 )}
               >
-                <Server className="h-4 w-4" />
+                <Navigation className="h-4 w-4" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {service.displayName || service.identifier}
@@ -453,7 +440,10 @@ const ServiceCard: React.FC<{
           </button>
           <button
             type="button"
-            onClick={handleAddEndpoint}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleAddEndpoint();
+            }}
             className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-blue-600 transition-colors hover:text-blue-700 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-400/10"
             aria-label="Add endpoint"
           >
@@ -462,7 +452,10 @@ const ServiceCard: React.FC<{
           </button>
           <button
             type="button"
-            onClick={handleToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              handleToggle();
+            }}
             aria-expanded={expanded}
             aria-label={expanded ? "Collapse service details" : "Expand service details"}
             className="flex items-center justify-center rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-graphite-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1 dark:text-graphite-300 dark:hover:bg-graphite-800/70 dark:hover:text-graphite-50 dark:focus-visible:ring-offset-0"
@@ -508,7 +501,10 @@ const ServiceCard: React.FC<{
               <div className="rounded-md border border-graphite-200/50 bg-white/80 dark:border-graphite-700/60 dark:bg-graphite-900/40">
                 <button
                   type="button"
-                  onClick={() => setShowSourcePath((prev) => !prev)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setShowSourcePath((prev) => !prev);
+                  }}
                   className="flex w-full items-center justify-between px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:text-blue-600 dark:text-graphite-100 dark:hover:text-blue-300"
                 >
                   <span>Source</span>
@@ -765,6 +761,10 @@ const normalizeEndpoints = (raw: any, serviceKey: string): NormalizedEndpointCar
 };
 
 const normalizeService = (key: string, raw: any): NormalizedService => {
+  const metadata =
+    raw && typeof raw === "object" && raw.metadata && typeof raw.metadata === "object"
+      ? (raw.metadata as Record<string, unknown>)
+      : {};
   const identifier = key.trim() || raw?.id || raw?.slug || raw?.name || "service";
   const displayName =
     (typeof raw?.name === "string" && raw.name.trim()) ||
@@ -772,17 +772,17 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
     identifier;
   const description =
     (typeof raw?.description === "string" && raw.description.trim()) ||
-    (typeof raw?.metadata?.description === "string" && raw.metadata.description.trim()) ||
+    (typeof metadata.description === "string" && (metadata.description as string).trim()) ||
     undefined;
 
   const language =
     (typeof raw?.language === "string" && raw.language.trim()) ||
-    (typeof raw?.metadata?.language === "string" && raw.metadata.language.trim()) ||
+    (typeof metadata.language === "string" && (metadata.language as string).trim()) ||
     undefined;
   const framework =
     (typeof raw?.technology === "string" && raw.technology.trim()) ||
     (typeof raw?.framework === "string" && raw.framework.trim()) ||
-    (typeof raw?.metadata?.framework === "string" && raw.metadata.framework.trim()) ||
+    (typeof metadata.framework === "string" && (metadata.framework as string).trim()) ||
     undefined;
 
   const { path: sourcePathCandidate, hasSource } = resolveSourcePath(raw);
@@ -818,6 +818,7 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
 
   const endpoints = normalizeEndpoints(raw, identifier);
   const typeLabel = extractTypeLabel(raw);
+  const artifactId = deriveArtifactIdFromRaw(raw);
 
   return {
     key: identifier,
@@ -829,8 +830,85 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
     hasSource: Boolean(sourcePath),
     ...(typeLabel ? { typeLabel } : {}),
     raw: raw ?? null,
+    artifactId: artifactId ?? null,
     ...(sourcePath ? { sourcePath } : {}),
   };
+};
+
+const buildServiceInitialValues = (service: NormalizedService): Record<string, FieldValue> => {
+  const metadata =
+    service.raw &&
+    typeof service.raw === "object" &&
+    service.raw.metadata &&
+    typeof service.raw.metadata === "object"
+      ? (service.raw.metadata as Record<string, unknown>)
+      : {};
+
+  const values: Record<string, FieldValue> = {
+    name: service.displayName || service.identifier,
+  };
+
+  const descriptionCandidate =
+    service.description ||
+    (typeof metadata.description === "string" && (metadata.description as string).trim()) ||
+    undefined;
+  if (descriptionCandidate) {
+    values.description = descriptionCandidate;
+  }
+
+  const languageCandidate =
+    (typeof service.raw?.language === "string" && service.raw.language.trim()) ||
+    (typeof metadata.language === "string" && (metadata.language as string).trim()) ||
+    service.metadataItems.find((item) => item.label === "Language")?.value ||
+    undefined;
+  if (languageCandidate) {
+    values.language = languageCandidate;
+  }
+
+  const frameworkCandidate =
+    (typeof service.raw?.framework === "string" && service.raw.framework.trim()) ||
+    (typeof service.raw?.technology === "string" && service.raw.technology.trim()) ||
+    (typeof metadata.framework === "string" && (metadata.framework as string).trim()) ||
+    service.metadataItems.find((item) => item.label === "Technology")?.value ||
+    undefined;
+  if (frameworkCandidate) {
+    values.framework = frameworkCandidate;
+  }
+
+  return values;
+};
+
+const buildExternalServiceInitialValues = (
+  card: ExternalArtifactCard,
+): Record<string, FieldValue> => {
+  const metadata =
+    card.data?.metadata && typeof card.data.metadata === "object"
+      ? (card.data.metadata as Record<string, unknown>)
+      : {};
+  const values: Record<string, FieldValue> = {
+    name: card.name,
+  };
+  const descriptionCandidate =
+    (typeof card.data?.description === "string" && card.data.description.trim()) || undefined;
+  if (descriptionCandidate) {
+    values.description = descriptionCandidate;
+  }
+  const languageCandidate =
+    (typeof card.data?.language === "string" && card.data.language.trim()) ||
+    (typeof metadata.language === "string" && (metadata.language as string).trim()) ||
+    undefined;
+  if (languageCandidate) {
+    values.language = languageCandidate;
+  }
+  const frameworkCandidate =
+    (typeof card.data?.framework === "string" && card.data.framework.trim()) ||
+    (typeof metadata.framework === "string" && (metadata.framework as string).trim()) ||
+    undefined;
+  if (frameworkCandidate) {
+    values.framework = frameworkCandidate;
+  }
+
+  return values;
 };
 
 const createExternalArtifactCard = (key: string, raw: any): ExternalArtifactCard => {
@@ -938,6 +1016,13 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     service: NormalizedService | null;
     endpoint: NormalizedEndpointCard | null;
   }>({ open: false, service: null, endpoint: null });
+  const [serviceDetailState, setServiceDetailState] = useState<{
+    open: boolean;
+    service: NormalizedService | null;
+    initialValues?: Record<string, FieldValue>;
+    artifactId?: string | null;
+    mode: "create" | "edit";
+  }>({ open: false, service: null, mode: "edit", artifactId: null });
 
   const refreshResolved = useCallback(
     async (_options: { silent?: boolean } = {}) => {
@@ -976,6 +1061,21 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     setEditEndpointState({ open: false, service: null, endpoint: null });
   }, []);
 
+  const handleOpenServiceModal = useCallback((service: NormalizedService) => {
+    const initialValues = buildServiceInitialValues(service);
+    setServiceDetailState({
+      open: true,
+      service,
+      initialValues,
+      artifactId: service.artifactId ?? null,
+      mode: "edit",
+    });
+  }, []);
+
+  const handleCloseServiceModal = useCallback(() => {
+    setServiceDetailState({ open: false, service: null, artifactId: null, mode: "edit" });
+  }, []);
+
   const handleSubmitAddEndpoint = useCallback(
     async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
       if (!addEndpointState.service) {
@@ -1008,6 +1108,17 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     },
     [addEndpointState.service, persistEntity, handleCloseAddEndpointModal],
   );
+
+  const handleOpenExternalServiceModal = useCallback((card: ExternalArtifactCard) => {
+    const initialValues = buildExternalServiceInitialValues(card);
+    setServiceDetailState({
+      open: true,
+      service: null,
+      initialValues,
+      artifactId: null,
+      mode: "create",
+    });
+  }, []);
 
   const handleSubmitEditEndpoint = useCallback(
     async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
@@ -1069,6 +1180,32 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     ],
   );
 
+  const handleSubmitServiceModal = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!serviceDetailState.service && serviceDetailState.mode === "edit") {
+        return;
+      }
+      const draftIdentifier =
+        serviceDetailState.service?.identifier ||
+        (typeof payload.values?.name === "string" ? payload.values.name : undefined);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+        artifactId: serviceDetailState.artifactId ?? null,
+        draftIdentifier: draftIdentifier ?? null,
+      });
+      if (success) {
+        toast.success(
+          serviceDetailState.mode === "edit"
+            ? "Service updated successfully"
+            : "Service added successfully",
+        );
+        handleCloseServiceModal();
+      }
+    },
+    [serviceDetailState, persistEntity, handleCloseServiceModal],
+  );
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -1111,18 +1248,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     const external: ExternalArtifactCard[] = [];
 
     normalizedServices.forEach((service) => {
-      const packageJson = getPackageJson(service.raw);
-      const hasPackage = Boolean(packageJson);
-      const detectedAsService = isServiceDetected(service);
-      const hasBin = hasPackageBin(service.raw);
-      const hasEndpoints = Array.isArray(service.endpoints) && service.endpoints.length > 0;
-
-      const qualifiesByDetection = hasPackage && detectedAsService;
-      const qualifiesByBin = hasPackage && hasBin;
-      const qualifiesByEndpoints = hasPackage && hasEndpoints;
-      const isInternal = qualifiesByDetection || qualifiesByBin || qualifiesByEndpoints;
-
-      if (isInternal) {
+      if (shouldTreatAsInternalService(service)) {
         internal.push(service);
       } else {
         external.push(createExternalArtifactCard(service.identifier, service.raw));
@@ -1241,6 +1367,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
                       service={service}
                       onAddEndpoint={handleOpenAddEndpointModal}
                       onEditEndpoint={handleOpenEditEndpointModal}
+                      onEditService={handleOpenServiceModal}
                     />
                   ))
                 ) : (
@@ -1270,7 +1397,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
                             key={card.key}
                             name={card.name}
                             data={card.data}
-                            onClick={noop}
+                            onClick={() => handleOpenExternalServiceModal(card)}
                           />
                         ))}
                       </div>
@@ -1294,6 +1421,32 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
           await handleSubmitAddService(payload);
         }}
       />
+      {serviceDetailState.open && (
+        <AddEntityModal
+          open={serviceDetailState.open}
+          entityType="service"
+          groupLabel="Services"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseServiceModal}
+          mode={serviceDetailState.mode}
+          initialValues={serviceDetailState.initialValues}
+          titleOverride={
+            serviceDetailState.mode === "edit" && serviceDetailState.service
+              ? `Update ${serviceDetailState.service.displayName || serviceDetailState.service.identifier}`
+              : serviceDetailState.initialValues?.name
+                ? `Document ${serviceDetailState.initialValues.name}`
+                : "Document Service"
+          }
+          descriptionOverride={
+            serviceDetailState.mode === "edit"
+              ? "Review the service details, update metadata, and save your changes."
+              : "Capture metadata for this service to promote it into the catalog."
+          }
+          onSubmit={async (payload) => {
+            await handleSubmitServiceModal(payload);
+          }}
+        />
+      )}
       {addEndpointState.open && addEndpointState.service && (
         <EndpointModal
           open={addEndpointState.open}

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { ChevronUp, Layout, Monitor, Plus, Trash2 } from "lucide-react";
+import { ChevronUp, Layout, Plus, Trash2 } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -1010,8 +1010,8 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
               <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-50 text-teal-600 shadow-sm dark:bg-teal-900/30 dark:text-teal-200">
-                      <Monitor className="h-5 w-5" />
+                    <div className="flex h-11 w-11 items-center justify-center text-teal-600 dark:text-teal-200">
+                      <Layout className="h-5 w-5" />
                     </div>
                     <div className="space-y-1">
                       <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
@@ -1060,7 +1060,7 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
                       <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
-                            <Monitor className="h-4 w-4" />
+                            <Layout className="h-4 w-4" />
                             <span>External Clients</span>
                           </div>
                           <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
