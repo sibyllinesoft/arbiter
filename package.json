@@ -34,6 +34,7 @@
     "cli": "./arbiter-cli",
     "cli:install": "./install-cli.sh",
     "cli:test": "./arbiter-cli --self-test",
+    "cli:smoke": "bun run --cwd packages/cli smoke",
     "cli:demo": "./demo-cli-usage.sh",
     "cli:validate": "./test-cli-distribution.sh",
     "typecheck": "bunx tsc --build",

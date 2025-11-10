@@ -74,7 +74,7 @@ export async function generateDockerComposeArtifacts(
   await writeFileWithHooks(composePath, composeYml, options);
   files.push(joinRelativePath(...composeRelativeRoot, "docker-compose.yml"));
 
-  const envTemplate = generateComposeEnvTemplate(resolvedServices, config.name);
+  const envTemplate = generateComposeEnvTemplate(resolvedServices, config.name, deployment);
   const envPath = path.join(composeRoot, ".env.template");
   await writeFileWithHooks(envPath, envTemplate, options);
   files.push(joinRelativePath(...composeRelativeRoot, ".env.template"));
@@ -358,51 +358,82 @@ CMD ["./start.sh"]`;
   }
 }
 
-function generateComposeEnvTemplate(services: ComposeServiceConfig[], projectName: string): string {
-  const envVars = new Set<string>();
-
-  services.forEach((service) => {
-    if (service.env) {
-      Object.keys(service.env).forEach((key) => envVars.add(key));
+function generateComposeEnvTemplate(
+  services: ComposeServiceConfig[],
+  projectName: string,
+  deployment?: DeploymentConfig,
+): string {
+  const slug = slugify(projectName, projectName).toLowerCase();
+  const lines: string[] = [];
+  const addBlankLine = () => {
+    if (lines.length > 0 && lines[lines.length - 1] !== "") {
+      lines.push("");
     }
-  });
+  };
 
-  let envContent = `# Environment variables for ${projectName}
+  lines.push(`# Environment variables for ${projectName}`);
+  lines.push("# Copy this to .env and customize values");
+  addBlankLine();
 
-`;
+  lines.push("# Project Configuration");
+  lines.push(`COMPOSE_PROJECT_NAME=${slug}`);
+  lines.push("COMPOSE_FILE=docker-compose.yml");
+  addBlankLine();
 
   const hostPorts = collectHostPortVariables(services);
   if (hostPorts.length > 0) {
-    envContent += `# Host port mappings
-${hostPorts.map((entry) => `${entry.name}=${entry.value}`).join("\n")}
-
-`;
+    lines.push("# Port Overrides (host binding)");
+    hostPorts
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .forEach(({ name, value }) => lines.push(`${name}=${value}`));
+    addBlankLine();
   }
 
-  if (envVars.size > 0) {
-    envContent += `# Shared environment variables
-${Array.from(envVars)
-  .map((key) => `${key}=`)
-  .join("\n")}
-
-`;
+  const globalEnv = Object.entries(deployment?.compose?.environment ?? {});
+  if (globalEnv.length > 0) {
+    lines.push("# Global Compose environment");
+    globalEnv.forEach(([key, value]) => lines.push(`${key}=${formatEnvValue(value)}`));
+    addBlankLine();
   }
 
-  envContent += `# Service specific overrides
-`;
+  const serviceSections = services
+    .map((service) => {
+      if (!service.env || Object.keys(service.env).length === 0) {
+        return null;
+      }
+      const sectionLines = [`# ${service.name} Service`];
+      Object.entries(service.env).forEach(([key, value]) => {
+        sectionLines.push(`${key}=${formatEnvValue(value)}`);
+      });
+      return sectionLines;
+    })
+    .filter((section): section is string[] => Array.isArray(section));
 
-  services.forEach((service) => {
-    if (service.env && Object.keys(service.env).length > 0) {
-      envContent += `
-## ${service.name}
-${Object.entries(service.env)
-  .map(([k, v]) => `${k}=${v}`)
-  .join("\n")}
-`;
+  if (serviceSections.length > 0) {
+    lines.push("# Service Environment Defaults");
+    serviceSections.forEach((section, index) => {
+      lines.push(...section);
+      if (index !== serviceSections.length - 1) {
+        lines.push("");
+      }
+    });
+  }
+
+  return ensureTrailingNewline(lines.join("\n"));
+}
+
+function formatEnvValue(value: unknown): string {
+  if (value === undefined || value === null) {
+    return "";
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
     }
-  });
-
-  return envContent.trim() + "\n";
+  }
+  return String(value);
 }
 
 function collectHostPortVariables(
@@ -582,6 +613,17 @@ function resolveHealthConfiguration(
   interval: string;
   timeout: string;
 } {
+  const isClientComponent =
+    service.labels?.[CLIENT_COMPONENT_LABEL] === "client" ||
+    service.name.toLowerCase().includes("client");
+  if (isClientComponent) {
+    return {
+      path: "/",
+      interval: "30s",
+      timeout: "5s",
+    };
+  }
+
   const probe = service.readinessProbe || service.livenessProbe || service.startupProbe;
   if (probe?.httpGet?.path) {
     return {

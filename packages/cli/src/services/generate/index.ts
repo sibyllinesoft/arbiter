@@ -116,7 +116,7 @@ function createServiceContext(
   const routesDir = path.join(root, "src", "routes");
   const language = (serviceConfig?.language as string | undefined) || "typescript";
 
-  return { name: slug, root, routesDir, language };
+  return { name: slug, root, routesDir, language, originalName: serviceName };
 }
 
 async function ensureBaseStructure(
@@ -199,6 +199,199 @@ function discoverSpecs(): Array<{ name: string; path: string }> {
   }
 
   return specs;
+}
+
+function isTypeScriptServiceLanguage(language?: string): boolean {
+  if (!language) return true;
+  const normalized = language.toLowerCase();
+  return normalized === "typescript" || normalized === "javascript" || normalized === "node";
+}
+
+function deriveServiceAliases(serviceName: string, serviceSpec?: any): string[] {
+  const aliases = new Set<string>();
+  if (serviceName) {
+    aliases.add(serviceName.toLowerCase());
+    const withoutSuffix = serviceName.replace(/-(api|service|svc)$/i, "");
+    aliases.add(withoutSuffix.toLowerCase());
+    const tokens = serviceName.split(/[-_]/g);
+    tokens.forEach((token) => {
+      if (token) aliases.add(token.toLowerCase());
+    });
+  }
+
+  const capabilities = Array.isArray(serviceSpec?.capabilities) ? serviceSpec.capabilities : [];
+  for (const capability of capabilities) {
+    const contract = capability?.contractRef;
+    if (typeof contract === "string" && contract.length) {
+      const [ref] = contract.split("@");
+      if (ref) {
+        ref
+          .split(/[-_.:/]/)
+          .filter(Boolean)
+          .forEach((segment) => aliases.add(segment.toLowerCase()));
+      }
+    }
+  }
+
+  if (Array.isArray(serviceSpec?.domains)) {
+    for (const domain of serviceSpec.domains) {
+      if (typeof domain === "string") {
+        aliases.add(domain.toLowerCase());
+      }
+    }
+  }
+
+  return Array.from(aliases).filter(Boolean);
+}
+
+function pathBelongsToService(pathKey: string, serviceName: string, serviceSpec: any): boolean {
+  const aliases = deriveServiceAliases(serviceName, serviceSpec);
+  if (aliases.length === 0) {
+    return false;
+  }
+  const normalizedPath = pathKey.replace(/^\/+/, "").toLowerCase();
+  if (!normalizedPath) {
+    return false;
+  }
+  const firstSegment = normalizedPath.split("/")[0];
+
+  if (aliases.includes(firstSegment)) {
+    return true;
+  }
+
+  if (
+    aliases.some(
+      (alias) =>
+        alias && (normalizedPath.startsWith(`${alias}/`) || normalizedPath.includes(`${alias}-`)),
+    )
+  ) {
+    return true;
+  }
+
+  if (normalizedPath.includes("webhook") && aliases.some((alias) => alias.includes("webhook"))) {
+    return true;
+  }
+
+  return false;
+}
+
+function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
+  const ownership = new Map<string, string>();
+  const services = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
+    isTypeScriptServiceLanguage(svc?.language as string | undefined),
+  );
+
+  for (const pathKey of Object.keys(appSpec.paths ?? {})) {
+    for (const [serviceName, serviceSpec] of services) {
+      if (pathBelongsToService(pathKey, serviceName, serviceSpec)) {
+        ownership.set(pathKey, slugify(serviceName, serviceName));
+        break;
+      }
+    }
+  }
+
+  for (const flow of appSpec.flows ?? []) {
+    for (const step of flow.steps ?? []) {
+      const api = step.expect_api;
+      if (!api?.path || ownership.has(api.path)) {
+        continue;
+      }
+
+      for (const [serviceName, serviceSpec] of services) {
+        if (pathBelongsToService(api.path, serviceName, serviceSpec)) {
+          ownership.set(api.path, slugify(serviceName, serviceName));
+          break;
+        }
+      }
+    }
+  }
+
+  return ownership;
+}
+
+function buildDevProxyConfig(
+  appSpec: AppSpec,
+  pathOwnership: Map<string, string>,
+): Record<string, { target: string; changeOrigin: boolean }> {
+  const proxies: Record<string, { target: string; changeOrigin: boolean }> = {};
+
+  for (const [pathKey, ownerSlug] of pathOwnership.entries()) {
+    const normalized = pathKey.replace(/^\/+/, "");
+    if (!normalized) continue;
+    const firstSegment = normalized.split("/")[0];
+    if (!firstSegment) continue;
+    const prefix = `/${firstSegment}`;
+    if (proxies[prefix]) continue;
+
+    const serviceEntry = Object.entries(appSpec.services ?? {}).find(
+      ([serviceName]) => slugify(serviceName, serviceName) === ownerSlug,
+    );
+    if (!serviceEntry) continue;
+    const [, serviceSpec] = serviceEntry;
+    if (!isTypeScriptServiceLanguage(serviceSpec?.language as string | undefined)) continue;
+
+    const port = getPrimaryServicePort(serviceSpec, 3000);
+    proxies[prefix] = {
+      target: `http://127.0.0.1:${port}`,
+      changeOrigin: true,
+    };
+  }
+
+  return proxies;
+}
+
+async function enhanceClientDevServer(
+  appSpec: AppSpec,
+  clientContext: ClientGenerationContext,
+  options: GenerateOptions,
+): Promise<void> {
+  const viteConfigPath = path.join(clientContext.root, "vite.config.ts");
+  if (!fs.existsSync(viteConfigPath)) {
+    return;
+  }
+
+  const pathOwnership = determinePathOwnership(appSpec);
+  const proxies = buildDevProxyConfig(appSpec, pathOwnership);
+
+  const proxyEntries = Object.entries(proxies)
+    .map(
+      ([prefix, proxy]) => `      '${prefix}': {
+        target: '${proxy.target}',
+        changeOrigin: ${proxy.changeOrigin ? "true" : "false"},
+      },`,
+    )
+    .join("\n");
+
+  const proxyBlock = Object.keys(proxies).length
+    ? `    proxy: {
+${proxyEntries}
+    },
+`
+    : "";
+
+  const viteConfig = `import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
+${proxyBlock}  },
+  build: {
+    target: 'es2022',
+    sourcemap: true
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+  },
+});
+`;
+
+  await writeFileWithHooks(viteConfigPath, viteConfig, options);
 }
 
 /**
@@ -889,8 +1082,9 @@ async function generateAppArtifacts(
     );
   }
 
+  let testsWorkspaceRelative: string | undefined;
   if (appSpec.flows.length > 0) {
-    const testFiles = await generateFlowBasedTests(
+    const { files: testFiles, workspaceDir } = await generateFlowBasedTests(
       appSpec,
       outputDir,
       options,
@@ -898,6 +1092,7 @@ async function generateAppArtifacts(
       clientContext,
     );
     files.push(...testFiles);
+    testsWorkspaceRelative = workspaceDir ?? testsWorkspaceRelative;
   }
 
   const endpointAssertionFiles = await generateEndpointAssertionTests(
@@ -972,10 +1167,464 @@ async function generateAppArtifacts(
     options,
     structure,
     cliConfig,
+    testsWorkspaceRelative,
   );
   files.push(...testRunnerFiles);
 
+  const workspaceManifestFiles = await generateWorkspaceManifest(
+    appSpec,
+    outputDir,
+    options,
+    structure,
+    clientContext,
+    testsWorkspaceRelative,
+  );
+  files.push(...workspaceManifestFiles);
+
   return files;
+}
+
+type FlowRouteMetadata = {
+  rootTestId?: string;
+  actionTestIds: string[];
+  successTestId?: string;
+  apiInteractions: Array<{ method: string; path: string; status?: number }>;
+};
+
+function deriveFlowRouteMetadata(appSpec: AppSpec): Map<string, FlowRouteMetadata> {
+  const metadata = new Map<string, FlowRouteMetadata>();
+  const locatorMap = appSpec.locators || {};
+  const routes = Array.isArray(appSpec.ui?.routes) ? appSpec.ui.routes : [];
+
+  const resolveRouteId = (flowId: string): string => {
+    if (routes.some((route) => route.id === flowId)) {
+      return flowId;
+    }
+    const namespace = flowId.split(":")[0];
+    const matchedRoute = routes.find((route) => route.id.startsWith(namespace)) ??
+      routes[0] ?? { id: flowId };
+    return matchedRoute.id;
+  };
+
+  for (const flow of appSpec.flows || []) {
+    const routeId = resolveRouteId(flow.id);
+    if (!metadata.has(routeId)) {
+      metadata.set(routeId, {
+        actionTestIds: [],
+        apiInteractions: [],
+      });
+    }
+
+    const entry = metadata.get(routeId)!;
+    const actionSet = new Set(entry.actionTestIds);
+    let lastExpectId = entry.successTestId;
+
+    const recordAction = (raw: string | undefined) => {
+      const id = extractTestId(raw, locatorMap);
+      if (id) {
+        actionSet.add(id);
+      }
+    };
+
+    for (const step of flow.steps || []) {
+      if (typeof step.click === "string") {
+        recordAction(step.click);
+      }
+      if (typeof step.fill?.locator === "string") {
+        recordAction(step.fill.locator);
+      }
+      if (typeof step.expect?.locator === "string") {
+        const derivedId = extractTestId(step.expect.locator, locatorMap);
+        if (derivedId) {
+          lastExpectId = derivedId;
+          if (!entry.rootTestId && step.expect.locator.startsWith("page:")) {
+            entry.rootTestId = derivedId;
+          }
+        }
+      }
+      if (step.expect_api) {
+        const method = (step.expect_api.method || "GET").toUpperCase();
+        const path = step.expect_api.path;
+        const key = `${method} ${path}`;
+        const exists = entry.apiInteractions.some(
+          (api) => `${(api.method || "GET").toUpperCase()} ${api.path}` === key,
+        );
+        if (!exists) {
+          entry.apiInteractions.push({
+            method,
+            path,
+            status: step.expect_api.status,
+          });
+        }
+      }
+    }
+
+    if (!entry.rootTestId) {
+      const namespace = routeId.split(":")[0];
+      const pageKey =
+        Object.keys(locatorMap).find((key) => key.startsWith("page:") && key.includes(namespace)) ||
+        Object.keys(locatorMap).find((key) => key.startsWith("page:"));
+      if (pageKey) {
+        entry.rootTestId = extractTestId(pageKey, locatorMap) ?? entry.rootTestId;
+      }
+    }
+
+    entry.actionTestIds = Array.from(actionSet);
+    if (lastExpectId) {
+      entry.successTestId = lastExpectId;
+    }
+  }
+
+  return metadata;
+}
+
+function extractTestId(
+  target: string | undefined,
+  locatorMap: Record<string, string>,
+): string | null {
+  if (!target) return null;
+  const mapped = locatorMap[target];
+  if (mapped) {
+    const match = mapped.match(/data-testid="([^"]+)"/);
+    if (match) return match[1];
+  }
+  const directMatch = target.match(/data-testid="([^"]+)"/);
+  if (directMatch) {
+    return directMatch[1];
+  }
+  if (target.includes(":")) {
+    return sanitizeTestId(target.split(":").pop() || target);
+  }
+  if (/[\[\].#]/.test(target)) {
+    return sanitizeTestId(target.replace(/[^a-z0-9]+/gi, "-"));
+  }
+  return sanitizeTestId(target);
+}
+
+function sanitizeTestId(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/--+/g, "-") || "test-id"
+  );
+}
+
+function humanizeTestId(value: string): string {
+  return value
+    .split("-")
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+function buildRouteComponentContent(
+  route: any,
+  componentName: string,
+  definitionName: string,
+  safePath: string,
+  title: string,
+  description: string,
+  capabilityBlock: string,
+  locatorMap: Record<string, string>,
+  flowMetadata?: FlowRouteMetadata,
+): string {
+  const rootDataAttr =
+    flowMetadata?.rootTestId && flowMetadata.rootTestId.length > 0
+      ? ` data-testid="${flowMetadata.rootTestId}"`
+      : "";
+  const resolvedRootAttr = rootDataAttr || ` data-testid="${sanitizeTestId(route.id)}"`;
+
+  const hasInteractiveFlow = flowMetadata && (flowMetadata.actionTestIds?.length || 0) > 0;
+
+  if (!hasInteractiveFlow && !flowMetadata?.successTestId) {
+    return `import type { FC } from 'react';
+import type { RouteDefinition } from './types';
+
+const ${componentName}: FC = () => {
+  return (
+    <section data-route="${route.id}" role="main"${resolvedRootAttr}>
+      <header>
+        <h1>${title}</h1>
+        <p>${description}</p>
+      </header>
+${capabilityBlock}    </section>
+  );
+};
+
+export const ${definitionName}: RouteDefinition = {
+  id: '${route.id}',
+  path: '${safePath}',
+  Component: ${componentName},
+};
+`;
+  }
+
+  const actionButtons = (flowMetadata?.actionTestIds || [])
+    .map((testId) => {
+      const label = humanizeTestId(testId);
+      return `        <button
+          type="button"
+          data-testid="${testId}"
+          onClick={() => handleAction('${testId}')}
+          aria-pressed={activeAction === '${testId}'}
+          className={activeAction === '${testId}' ? 'selected' : undefined}
+        >
+          ${label}
+        </button>`;
+    })
+    .join("\n");
+
+  const actionSection = actionButtons
+    ? `      <section className="stub-actions">
+${actionButtons}
+      </section>`
+    : "";
+
+  const successBlock = flowMetadata?.successTestId
+    ? `        {status === 'success' && (
+          <div role="status" data-testid="${flowMetadata.successTestId}">
+            <h3>Success</h3>
+            <p>{activeAction ? \`Flow for \${activeAction} is ready.\` : 'Flow completed.'}</p>
+          </div>
+        )}`
+    : "";
+
+  const fetchCalls = flowMetadata?.apiInteractions?.length
+    ? flowMetadata.apiInteractions
+        .map(
+          (api) => `      await fetch('${api.path}', {
+        method: '${(api.method || "GET").toUpperCase()}',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: '${route.id}', action }),
+      });`,
+        )
+        .join("\n")
+    : "      await new Promise((resolve) => setTimeout(resolve, 300));";
+
+  return `import { useState } from 'react';
+import type { FC } from 'react';
+import type { RouteDefinition } from './types';
+
+const ${componentName}: FC = () => {
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleAction = async (action: string) => {
+    setActiveAction(action);
+    setStatus('submitting');
+    setErrorMessage(null);
+    try {
+${fetchCalls}
+      setStatus('success');
+    } catch (error) {
+      console.error('Stub action failed', error);
+      setStatus('error');
+      setErrorMessage('Something went wrong. Please try again.');
+    }
+  };
+
+  return (
+    <section data-route="${route.id}" role="main"${resolvedRootAttr}>
+      <header>
+        <h1>${title}</h1>
+        <p>${description}</p>
+      </header>
+${capabilityBlock}${actionSection}
+      <section aria-live="polite">
+${successBlock}
+        {status === 'error' && (
+          <div role="alert">
+            <p>{errorMessage}</p>
+          </div>
+        )}
+      </section>
+    </section>
+  );
+};
+
+export const ${definitionName}: RouteDefinition = {
+  id: '${route.id}',
+  path: '${safePath}',
+  Component: ${componentName},
+};
+`;
+}
+
+interface RouteBindingInput {
+  method: string;
+  url: string;
+  summary?: string;
+  reply?: unknown;
+  statusCode?: number;
+}
+
+function mergeRouteBindings(
+  base: RouteBindingInput[],
+  additional: RouteBindingInput[],
+): RouteBindingInput[] {
+  const routeMap = new Map<string, RouteBindingInput>();
+  for (const binding of base) {
+    const key = `${binding.method} ${binding.url}`.toUpperCase();
+    routeMap.set(key, binding);
+  }
+  for (const binding of additional) {
+    const key = `${binding.method} ${binding.url}`.toUpperCase();
+    if (!routeMap.has(key)) {
+      routeMap.set(key, binding);
+    }
+  }
+  return Array.from(routeMap.values());
+}
+
+function deriveServiceEndpointsFromPaths(
+  appSpec: AppSpec | undefined,
+  serviceContext: ServiceGenerationContext | undefined,
+  serviceSpec: any,
+  pathOwnership?: Map<string, string>,
+): RouteBindingInput[] {
+  if (!appSpec?.paths || !serviceContext) {
+    return [];
+  }
+
+  const results: RouteBindingInput[] = [];
+  const serviceSlug = serviceContext.name;
+  const serviceOriginal = serviceContext.originalName || serviceContext.name;
+
+  for (const [pathKey, pathSpec] of Object.entries(appSpec.paths)) {
+    const owner = pathOwnership?.get(pathKey);
+    const belongs =
+      (owner && owner === serviceSlug) ||
+      (!owner && pathBelongsToService(pathKey, serviceOriginal, serviceSpec));
+    if (!belongs) {
+      continue;
+    }
+
+    for (const method of SUPPORTED_HTTP_METHODS) {
+      const operation = (pathSpec as Record<string, any>)[method];
+      if (!operation) {
+        continue;
+      }
+
+      const summary = operation.summary || `${method.toUpperCase()} ${pathKey}`;
+      const { statusCode, example } = extractResponseMetadata(operation);
+      const replyPayload = example ?? {
+        service: serviceSlug,
+        status: "not_implemented",
+        summary,
+        method: method.toUpperCase(),
+        path: pathKey,
+      };
+
+      results.push({
+        method: method.toUpperCase(),
+        url: pathKey,
+        summary,
+        reply: replyPayload,
+        statusCode,
+      });
+    }
+  }
+
+  return results;
+}
+
+function deriveServiceEndpointsFromFlows(
+  appSpec: AppSpec | undefined,
+  serviceContext: ServiceGenerationContext | undefined,
+  serviceSpec: any,
+): RouteBindingInput[] {
+  if (!appSpec?.flows || !serviceContext) {
+    return [];
+  }
+
+  const results: RouteBindingInput[] = [];
+  const serviceOriginal = serviceContext.originalName || serviceContext.name;
+
+  for (const flow of appSpec.flows) {
+    for (const step of flow.steps ?? []) {
+      const api = step.expect_api;
+      if (!api?.path) continue;
+      if (!pathBelongsToService(api.path, serviceOriginal, serviceSpec)) continue;
+
+      const method = (api.method || "GET").toUpperCase();
+      const summary = `${flow.id} ${method} ${api.path}`;
+      const statusCode = Number.isFinite(api.status)
+        ? Number(api.status)
+        : method === "POST"
+          ? 201
+          : 200;
+
+      results.push({
+        method,
+        url: api.path,
+        summary,
+        reply: {
+          service: serviceContext.name,
+          flow: flow.id,
+          status: "not_implemented",
+          method,
+          path: api.path,
+        },
+        statusCode,
+      });
+    }
+  }
+
+  return results;
+}
+
+function extractResponseMetadata(operation: any): { statusCode: number; example?: unknown } {
+  const responses = operation?.responses;
+  if (!responses || typeof responses !== "object") {
+    return { statusCode: 200 };
+  }
+
+  const preferredStatuses = ["200", "201", "202", "204", "default"];
+  const responseEntries = Object.entries(responses);
+  const orderedStatuses = [...preferredStatuses, ...responseEntries.map(([status]) => status)];
+
+  for (const status of orderedStatuses) {
+    const response = (responses as Record<string, any>)[status];
+    if (!response) continue;
+
+    const example =
+      response.example ??
+      extractExampleFromContent(response.content) ??
+      response.examples?.default ??
+      response.examples?.[0];
+
+    if (example !== undefined) {
+      const numericStatus = Number.parseInt(status, 10);
+      return { statusCode: Number.isFinite(numericStatus) ? numericStatus : 200, example };
+    }
+
+    const numericStatus = Number.parseInt(status, 10);
+    if (Number.isFinite(numericStatus)) {
+      return { statusCode: numericStatus };
+    }
+  }
+
+  return { statusCode: 200 };
+}
+
+function extractExampleFromContent(content: any): unknown {
+  if (!content || typeof content !== "object") {
+    return undefined;
+  }
+  for (const media of Object.values(content)) {
+    if (!media || typeof media !== "object") continue;
+    if ((media as any).example !== undefined) {
+      return (media as any).example;
+    }
+    const schemaExample = (media as any).schema?.example;
+    if (schemaExample !== undefined) {
+      return schemaExample;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -1011,6 +1660,9 @@ async function generateUIComponents(
 
   const routeDefinitions: Array<{ importName: string }> = [];
 
+  const locatorMap = appSpec.locators || {};
+  const flowRoutes = deriveFlowRouteMetadata(appSpec);
+
   for (const route of appSpec.ui.routes) {
     const baseName = route.id
       .split(":")
@@ -1039,7 +1691,18 @@ async function generateUIComponents(
       ? `        <section className="route-capabilities">\n          <h2>Capabilities</h2>\n          <ul>\n${capabilityList}\n          </ul>\n        </section>\n`
       : "";
 
-    const componentContent = `import type { FC } from 'react';\nimport type { RouteDefinition } from './types';\n\nconst ${componentName}: FC = () => {\n  return (\n    <section data-route="${route.id}" role="main">\n      <header>\n        <h1>${title}</h1>\n        <p>${description}</p>\n      </header>\n${capabilityBlock}    </section>\n  );\n};\n\nexport const ${definitionName}: RouteDefinition = {\n  id: '${route.id}',\n  path: '${safePath}',\n  Component: ${componentName},\n};\n`;
+    const flowMetadata = flowRoutes.get(route.id);
+    const componentContent = buildRouteComponentContent(
+      route,
+      componentName,
+      definitionName,
+      safePath,
+      title,
+      description,
+      capabilityBlock,
+      locatorMap,
+      flowMetadata,
+    );
 
     await writeFileWithHooks(filePath, componentContent, options);
     files.push(relPath);
@@ -1087,7 +1750,7 @@ async function generateFlowBasedTests(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   clientContext?: ClientGenerationContext,
-): Promise<string[]> {
+): Promise<{ files: string[]; workspaceDir?: string }> {
   const files: string[] = [];
 
   console.log(chalk.blue("🧪 Generating tests from flows..."));
@@ -1102,59 +1765,198 @@ async function generateFlowBasedTests(
     );
   }
 
-  const testsDirSegments = [
+  const workspaceSegments = [
     ...toPathSegments(structure.testsDirectory),
     clientContext?.slug ?? "app",
-    "flows",
   ];
-  const testsDir = path.join(outputDir, ...testsDirSegments);
-  if (!fs.existsSync(testsDir) && !options.dryRun) {
-    fs.mkdirSync(testsDir, { recursive: true });
+  const workspaceRoot = path.join(outputDir, ...workspaceSegments);
+  const flowsDir = path.join(workspaceRoot, "flows");
+  if (!fs.existsSync(flowsDir) && !options.dryRun) {
+    fs.mkdirSync(flowsDir, { recursive: true });
   }
 
   for (const flow of appSpec.flows) {
-    // Use plugin-specific test generation if available, otherwise fallback to default
-    let testContent: string;
-
-    if (plugin?.capabilities?.testing) {
-      // Generate using language plugin
-      const testConfig = {
-        name: flow.id,
-        type: "e2e",
-        framework: "playwright",
-        flow: flow,
-        locators: appSpec.locators,
-      };
-
-      try {
-        // Note: This would need to be implemented in each language plugin
-        testContent = `// ${flow.id} flow test - Generated by Arbiter (${plugin.name})
-// TODO: Implement plugin-specific test generation
-import { test, expect } from '@playwright/test';`;
-      } catch (error) {
-        console.warn(
-          chalk.yellow(`⚠️  Plugin test generation failed, using default: ${error.message}`),
-        );
-        testContent = generateDefaultFlowTest(flow, appSpec.locators);
-      }
-    } else {
-      testContent = generateDefaultFlowTest(flow, appSpec.locators);
-    }
+    const testContent = generateDefaultFlowTest(flow, appSpec.locators);
 
     const testFileName = `${flow.id.replace(/:/g, "_")}.test.ts`;
-    const testPath = path.join(testsDir, testFileName);
+    const testPath = path.join(flowsDir, testFileName);
     await writeFileWithHooks(testPath, testContent, options);
-    files.push(
-      joinRelativePath(
-        structure.testsDirectory,
-        clientContext?.slug ?? "app",
-        "flows",
-        testFileName,
-      ),
-    );
+    files.push(joinRelativePath(...workspaceSegments, "flows", testFileName));
   }
 
+  const workspaceFiles = await scaffoldPlaywrightWorkspace(
+    appSpec,
+    workspaceRoot,
+    workspaceSegments,
+    options,
+    clientContext,
+    structure,
+  );
+  files.push(...workspaceFiles);
+
+  return { files, workspaceDir: joinRelativePath(...workspaceSegments) };
+}
+
+async function scaffoldPlaywrightWorkspace(
+  appSpec: AppSpec,
+  workspaceRoot: string,
+  workspaceSegments: string[],
+  options: GenerateOptions,
+  clientContext: ClientGenerationContext | undefined,
+  structure: ProjectStructureConfig,
+): Promise<string[]> {
+  if (!appSpec.flows || appSpec.flows.length === 0) {
+    return [];
+  }
+
+  await ensureDirectory(workspaceRoot, options);
+  const files: string[] = [];
+
+  const slug = clientContext?.slug ?? "app";
+  const rel = (file: string) => joinRelativePath(...workspaceSegments, file);
+
+  const packageJson = {
+    name: `@${slug}/e2e`,
+    private: true,
+    version: "0.0.0",
+    scripts: {
+      test: "playwright test",
+      "test:headed": "playwright test --headed",
+      "test:ui": "playwright test --ui",
+    },
+    devDependencies: {
+      "@playwright/test": "^1.48.2",
+      typescript: "^5.5.4",
+    },
+  };
+
+  await writeFileWithHooks(
+    path.join(workspaceRoot, "package.json"),
+    JSON.stringify(packageJson, null, 2),
+    options,
+  );
+  files.push(rel("package.json"));
+
+  const tsconfig = {
+    compilerOptions: {
+      target: "ESNext",
+      module: "CommonJS",
+      moduleResolution: "Node",
+      types: ["node", "@playwright/test"],
+      allowSyntheticDefaultImports: true,
+      esModuleInterop: true,
+      resolveJsonModule: true,
+      skipLibCheck: true,
+      strict: false,
+    },
+    include: ["**/*.ts"],
+  };
+
+  await writeFileWithHooks(
+    path.join(workspaceRoot, "tsconfig.json"),
+    JSON.stringify(tsconfig, null, 2),
+    options,
+  );
+  files.push(rel("tsconfig.json"));
+
+  const locatorsDir = path.join(workspaceRoot, "support");
+  await ensureDirectory(locatorsDir, options);
+  const locatorEntries = Object.entries(appSpec.locators || {}).length
+    ? Object.entries(appSpec.locators)
+    : [["page:root", '[data-testid="app-root"]']];
+  const locatorsContent = `export const locators = {
+${locatorEntries.map(([token, selector]) => `  '${token}': '${selector}',`).join("\n")}
+} as const;
+
+export type LocatorToken = keyof typeof locators;
+
+export function getLocator(token: LocatorToken): string {
+  return locators[token];
+}
+
+export function loc(token: LocatorToken | string): string {
+  const record = locators as Record<string, string>;
+  return record[token as LocatorToken] ?? String(token);
+}
+`;
+  await writeFileWithHooks(path.join(locatorsDir, "locators.ts"), locatorsContent, options);
+  files.push(rel(path.join("support", "locators.ts")));
+
+  const playwrightConfig = buildPlaywrightConfig(appSpec, clientContext, structure);
+  await writeFileWithHooks(
+    path.join(workspaceRoot, "playwright.config.ts"),
+    playwrightConfig,
+    options,
+  );
+  files.push(rel("playwright.config.ts"));
+
   return files;
+}
+
+function buildPlaywrightConfig(
+  appSpec: AppSpec,
+  clientContext: ClientGenerationContext | undefined,
+  structure: ProjectStructureConfig,
+): string {
+  const slug = clientContext?.slug ?? "app";
+  const clientDirRelative = path.posix.join("..", "..", structure.clientsDirectory, slug);
+  const tsServices = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
+    isTypeScriptServiceLanguage((svc as any)?.language as string | undefined),
+  );
+
+  const serviceWebServers = tsServices
+    .map(([serviceName, serviceSpec]) => {
+      const serviceSlug = slugify(serviceName, serviceName);
+      const port = getPrimaryServicePort(serviceSpec, 3000);
+      const serviceDir = path.posix.join("..", "..", structure.servicesDirectory, serviceSlug);
+      return `{
+      command: 'npm run dev',
+      cwd: path.resolve(__dirname, '${serviceDir}'),
+      url: 'http://127.0.0.1:${port}/healthz',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    }`;
+    })
+    .join(",\n    ");
+
+  const webServerEntries = `[
+    {
+      command: \`npm run dev -- --host 127.0.0.1 --port \${webPort}\`,
+      cwd: clientDir,
+      url: baseURL,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    }${serviceWebServers ? `,\n    ${serviceWebServers}` : ""}
+  ]`;
+
+  return `import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
+
+const clientDir = path.resolve(__dirname, '${clientDirRelative}');
+const webPort = Number(process.env.E2E_WEB_PORT ?? 5173);
+const baseURL = process.env.E2E_BASE_URL ?? \`http://127.0.0.1:\${webPort}\`;
+
+export default defineConfig({
+  testDir: './flows',
+  timeout: 120_000,
+  expect: {
+    timeout: 10_000,
+  },
+  use: {
+    baseURL,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+  webServer: ${webServerEntries},
+});
+`;
 }
 
 async function generateEndpointAssertionTests(
@@ -1682,6 +2484,7 @@ type TestTask = {
   name: string;
   command: string;
   cwd: string;
+  workspace?: string;
 };
 
 function getLanguageTestingConfig(
@@ -1714,6 +2517,7 @@ async function generateMasterTestRunner(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   cliConfig: CLIConfig,
+  testsWorkspace?: string,
 ): Promise<string[]> {
   const files: string[] = [];
   const testingConfig = cliConfig.generator?.testing;
@@ -1736,6 +2540,7 @@ async function generateMasterTestRunner(
       name: `test-service-${context.name}`,
       command: testCommand,
       cwd: serviceDir,
+      workspace: isWorkspaceFriendlyLanguage(language) ? serviceDir : undefined,
     });
   }
 
@@ -1773,17 +2578,25 @@ async function generateMasterTestRunner(
   const makefilePath = path.join(outputDir, masterConfig?.output ?? "Makefile");
   await ensureDirectory(path.dirname(makefilePath), options);
 
-  const targets = tasks.map((task) => task.name);
-  let makefile = "";
-  if (targets.length > 0) {
-    makefile += `.PHONY: test ${targets.join(" ")}\n\n`;
-    makefile += `test: ${targets.join(" ")}\n\n`;
-    for (const task of tasks) {
-      makefile += `${task.name}:\n\tcd ${task.cwd || "."} && ${task.command}\n\n`;
-    }
+  const aggregatorTargets = ["test", "lint", "build", "test-e2e"];
+  const shouldIncludeE2E = Boolean(testsWorkspace);
+  const taskTargets = tasks.map((task) => task.name);
+  let makefile = `.PHONY: ${[...aggregatorTargets, ...taskTargets].join(" ")}\n\n`;
+  makefile += "test:\n\tnpm run test\n\n";
+  makefile += "lint:\n\tnpm run lint\n\n";
+  makefile += "build:\n\tnpm run build\n\n";
+  if (testsWorkspace) {
+    makefile += "test-e2e:\n\tnpm run test:e2e\n\n";
   } else {
-    makefile += ".PHONY: test\n\n";
-    makefile += 'test:\n\t@echo "No automated tests are configured yet."\n\n';
+    makefile += 'test-e2e:\n\t@echo "No end-to-end tests configured yet."\n\n';
+  }
+  if (tasks.length > 0) {
+    for (const task of tasks) {
+      const command = task.workspace
+        ? `npm run test --workspace ${task.workspace}`
+        : `cd ${task.cwd || "."} && ${task.command}`;
+      makefile += `${task.name}:\n\t${command}\n\n`;
+    }
   }
 
   await writeFileWithHooks(makefilePath, makefile, options);
@@ -1794,6 +2607,79 @@ async function generateMasterTestRunner(
   files.push(relativeMake.length > 0 ? relativeMake : path.basename(makefilePath));
 
   return files;
+}
+
+async function generateWorkspaceManifest(
+  appSpec: AppSpec,
+  outputDir: string,
+  options: GenerateOptions,
+  structure: ProjectStructureConfig,
+  clientContext?: ClientGenerationContext,
+  testsWorkspace?: string,
+): Promise<string[]> {
+  const workspaceSet = new Set<string>();
+  const unitWorkspaceSet = new Set<string>();
+
+  const addUnitWorkspace = (workspace: string) => {
+    workspaceSet.add(workspace);
+    unitWorkspaceSet.add(workspace);
+  };
+
+  if (clientContext) {
+    addUnitWorkspace(joinRelativePath(structure.clientsDirectory, clientContext.slug));
+  }
+  if (appSpec.services) {
+    for (const [serviceName, serviceSpec] of Object.entries(appSpec.services)) {
+      if (!isWorkspaceFriendlyLanguage(serviceSpec?.language as string | undefined)) continue;
+      const slug = slugify(serviceName, serviceName);
+      addUnitWorkspace(joinRelativePath(structure.servicesDirectory, slug));
+    }
+  }
+  if (testsWorkspace) {
+    workspaceSet.add(testsWorkspace);
+  }
+
+  if (workspaceSet.size === 0) {
+    return [];
+  }
+
+  const workspaces = Array.from(workspaceSet).sort();
+  const unitWorkspaces = Array.from(unitWorkspaceSet).sort();
+  const unitTestCommand =
+    unitWorkspaces.length > 0
+      ? unitWorkspaces.map((workspace) => `npm run test --workspace ${workspace}`).join(" && ")
+      : 'echo "No unit test workspaces defined yet."';
+
+  const scripts: Record<string, string> = {
+    lint: "npm run lint --workspaces --if-present",
+    build: "npm run build --workspaces --if-present",
+    test: unitTestCommand,
+    format: "npm run format --workspaces --if-present",
+  };
+
+  if (testsWorkspace) {
+    scripts["test:e2e"] = `npm run test --workspace ${testsWorkspace}`;
+  }
+
+  const workspaceName = `${slugify(appSpec.product?.name, "app")}-workspace`;
+  const manifest = {
+    name: workspaceName,
+    private: true,
+    version: "0.0.0",
+    workspaces,
+    scripts,
+  };
+
+  const manifestPath = path.join(outputDir, "package.json");
+  await writeFileWithHooks(manifestPath, JSON.stringify(manifest, null, 2), options);
+
+  return ["package.json"];
+}
+
+function isWorkspaceFriendlyLanguage(language?: string): boolean {
+  if (!language) return true;
+  const normalized = language.toLowerCase();
+  return normalized === "typescript" || normalized === "javascript" || normalized === "node";
 }
 
 function resolveTestingCommand(
@@ -1827,6 +2713,7 @@ async function buildClientTestTask(
     name: "test-client",
     command,
     cwd: clientDir,
+    workspace: clientDir,
   };
 }
 
@@ -1919,74 +2806,199 @@ function createNodeRunnerScript(tasks: TestTask[]): string {
 /**
  * Generate default Playwright test content
  */
-function generateDefaultFlowTest(flow: any, locators: any): string {
-  const preconditionsCode = flow.preconditions
-    ? `
-  test.beforeEach(async ({ page }) => {
-    // Setup preconditions
-    ${flow.preconditions.role ? `// Role: ${flow.preconditions.role}` : ""}
-    ${flow.preconditions.env ? `// Environment: ${flow.preconditions.env}` : ""}
-    ${
-      flow.preconditions.seed
-        ? flow.preconditions.seed
-            .map((seed: any) => `// Seed: ${seed.factory} as ${seed.as}`)
-            .join("\n    ")
-        : ""
+function generateDefaultFlowTest(flow: any, locators: Record<string, string>): string {
+  const steps: any[] = Array.isArray(flow.steps) ? flow.steps : [];
+  const preconditionsBlock = buildPreconditionsBlock(flow.preconditions);
+  const bodyLines: string[] = [];
+  let apiWaitCounter = 1;
+
+  for (let i = 0; i < steps.length; i += 1) {
+    const step = steps[i];
+
+    if (isActionStep(step)) {
+      const pendingApis: any[] = [];
+      let lookahead = i + 1;
+      while (lookahead < steps.length && isExpectApiStep(steps[lookahead])) {
+        pendingApis.push(steps[lookahead]);
+        lookahead += 1;
+      }
+
+      const waitDescriptors = pendingApis.map((apiStep) => ({
+        name: `apiWait${apiWaitCounter++}`,
+        expectation: apiStep.expect_api,
+      }));
+
+      waitDescriptors.forEach(({ name, expectation }) =>
+        bodyLines.push(buildApiWaitDeclaration(name, expectation)),
+      );
+      bodyLines.push(buildActionLine(step, locators));
+      waitDescriptors.forEach(({ name, expectation }) =>
+        bodyLines.push(buildApiAwaitLine(name, expectation)),
+      );
+      i += pendingApis.length;
+      continue;
     }
+
+    if (isExpectApiStep(step)) {
+      const waitVar = `apiWait${apiWaitCounter++}`;
+      bodyLines.push(buildApiWaitDeclaration(waitVar, step.expect_api));
+      bodyLines.push(buildApiAwaitLine(waitVar, step.expect_api));
+      continue;
+    }
+
+    if (step.visit) {
+      bodyLines.push(
+        `    await page.goto('${escapeSingleQuotedLiteral(normalizeVisitPath(step.visit))}');`,
+      );
+      continue;
+    }
+
+    if (step.expect) {
+      bodyLines.push(buildExpectationLine(step.expect, locators));
+      continue;
+    }
+
+    bodyLines.push(`    // TODO: Unsupported step ${JSON.stringify(step)}`);
+  }
+
+  return `import { test, expect } from '@playwright/test';
+import { loc } from '../support/locators';
+
+test.describe('${flow.id}', () => {${preconditionsBlock}
+  test('${flow.id} flow', async ({ page }) => {
+${bodyLines.join("\n")}
   });
-  `
-    : "";
-
-  const stepsCode = flow.steps
-    .map((step: any, index: number) => {
-      if (step.visit) {
-        return `// Step ${index + 1}: Visit ${step.visit}
-    await page.goto('${typeof step.visit === "string" ? step.visit : `/${step.visit.replace(":", "/")}`}');`;
-      }
-      if (step.click) {
-        const locator = locators[step.click];
-        return `// Step ${index + 1}: Click ${step.click}
-    await page.click('${locator || step.click}');`;
-      }
-      if (step.fill) {
-        const locator = locators[step.fill.locator];
-        return `// Step ${index + 1}: Fill ${step.fill.locator} with "${step.fill.value}"
-    await page.fill('${locator || step.fill.locator}', '${step.fill.value}');`;
-      }
-      if (step.expect) {
-        const locator = locators[step.expect.locator];
-        return `// Step ${index + 1}: Expect ${step.expect.locator} to be ${step.expect.state || "visible"}
-    await expect(page.locator('${locator || step.expect.locator}')).${step.expect.state === "visible" ? "toBeVisible" : `toHaveAttribute('data-state', '${step.expect.state}')`}();`;
-      }
-      if (step.expect_api) {
-        return `// Step ${index + 1}: Expect API ${step.expect_api.method} ${step.expect_api.path} to return ${step.expect_api.status}
-    // TODO: Implement API expectation`;
-      }
-      return `// Step ${index + 1}: Unknown step type`;
-    })
-    .join("\n    ");
-
-  const variantsCode = flow.variants
-    ? flow.variants
-        .map(
-          (variant: any) => `
-  test('${flow.id} - ${variant.name} variant', async ({ page }) => {
-    // TODO: Implement variant testing with override: ${JSON.stringify(variant.override)}
-  });`,
-        )
-        .join("")
-    : "";
-
-  return `// ${flow.id} flow test - Generated by Arbiter
-import { test, expect } from '@playwright/test';
-
-test.describe('${flow.id} flow', () => {${preconditionsCode}
-  
-  test('${flow.id} - main flow', async ({ page }) => {
-    ${stepsCode}
-  });${variantsCode}
 });
 `;
+}
+
+function buildPreconditionsBlock(preconditions: any): string {
+  if (!preconditions) {
+    return "";
+  }
+
+  const lines: string[] = [
+    "",
+    "  test.beforeEach(async ({ page }) => {",
+    "    // Setup preconditions",
+  ];
+
+  if (preconditions.role) {
+    lines.push(`    // Role: ${preconditions.role}`);
+  }
+  if (preconditions.env) {
+    lines.push(`    // Environment: ${preconditions.env}`);
+  }
+  if (Array.isArray(preconditions.seed)) {
+    for (const seed of preconditions.seed) {
+      lines.push(`    // Seed: ${seed.factory} as ${seed.as}`);
+    }
+  }
+
+  lines.push("  });");
+  return lines.join("\n");
+}
+
+function isActionStep(step: any): boolean {
+  return Boolean(step?.click || step?.fill);
+}
+
+function isExpectApiStep(step: any): boolean {
+  return Boolean(step?.expect_api);
+}
+
+function buildActionLine(step: any, locators: Record<string, string>): string {
+  if (step.click) {
+    const locatorExpr = resolveLocatorExpression(step.click, locators);
+    return `    await page.locator(${locatorExpr}).click();`;
+  }
+
+  if (step.fill) {
+    const locatorExpr = resolveLocatorExpression(step.fill.locator, locators);
+    const value = escapeSingleQuotedLiteral(step.fill.value ?? "");
+    return `    await page.locator(${locatorExpr}).fill('${value}');`;
+  }
+
+  return "    // TODO: Unsupported action step";
+}
+
+function buildExpectationLine(expectation: any, locators: Record<string, string>): string {
+  const locatorExpr = resolveLocatorExpression(expectation.locator, locators);
+  if (expectation.text) {
+    return `    await expect(page.locator(${locatorExpr})).toHaveText('${escapeSingleQuotedLiteral(
+      expectation.text,
+    )}');`;
+  }
+
+  const matcher = mapExpectationMatcher(expectation.state);
+  return `    await expect(page.locator(${locatorExpr})).${matcher};`;
+}
+
+function buildApiWaitDeclaration(variable: string, expectation: any): string {
+  const method = (expectation?.method || "GET").toUpperCase();
+  const pathName = expectation?.path || "/";
+  return `    const ${variable} = page.waitForResponse((response) => {
+      try {
+        const url = new URL(response.url());
+        return response.request().method() === '${method}' && url.pathname === '${pathName}';
+      } catch {
+        return false;
+      }
+    });`;
+}
+
+function buildApiAwaitLine(variable: string, expectation: any): string {
+  const status = expectation?.status ?? 200;
+  return `    {
+      const response = await ${variable};
+      expect(response.status()).toBe(${status});
+    }`;
+}
+
+function mapExpectationMatcher(state: string | undefined): string {
+  switch ((state || "visible").toLowerCase()) {
+    case "hidden":
+      return "toBeHidden()";
+    case "attached":
+      return "toBeAttached()";
+    case "detached":
+      return "toBeDetached()";
+    case "enabled":
+      return "toBeEnabled()";
+    case "disabled":
+      return "toBeDisabled()";
+    default:
+      return "toBeVisible()";
+  }
+}
+
+function resolveLocatorExpression(target: string, locators: Record<string, string>): string {
+  if (target && locators[target]) {
+    return `loc('${escapeSingleQuotedLiteral(target)}')`;
+  }
+  const normalized = target ?? "";
+  if (!normalized) {
+    return "`" + "`";
+  }
+  return `\`${escapeTemplateLiteral(normalized)}\``;
+}
+
+function normalizeVisitPath(visit: any): string {
+  if (typeof visit === "string") {
+    return visit;
+  }
+  if (visit && typeof visit === "object" && typeof visit.path === "string") {
+    return visit.path;
+  }
+  return "/";
+}
+
+function escapeSingleQuotedLiteral(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function escapeTemplateLiteral(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`");
 }
 
 /**
@@ -2645,24 +3657,21 @@ ${appSpec.ui.routes.map((route) => `- **${route.path}** (${route.id}): ${route.c
 
 ${appSpec.flows.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).join("\n")}
 
-## Development
+## Development Workflow
 
 \`\`\`bash
 npm install
-npm run dev
-\`\`\`
-
-## Testing
-
-\`\`\`bash
-npm run test        # Playwright tests
-npm run test:unit   # Unit tests
-\`\`\`
-
-## Build
-
-\`\`\`bash
+npx playwright install --with-deps   # one-time Playwright browser install
+npm run lint
 npm run build
+npm run test
+npm run test:e2e
+\`\`\`
+
+### Make Targets
+\`\`\`bash
+make test       # equivalent to npm run test
+make test-e2e   # equivalent to npm run test:e2e
 \`\`\`
 `;
 
@@ -2683,6 +3692,8 @@ npm run build
     ),
   );
 
+  await enhanceClientDevServer(appSpec, clientContext, options);
+
   return files;
 }
 
@@ -2697,6 +3708,7 @@ async function generateServiceStructures(
   cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
+  const pathOwnership = determinePathOwnership(appSpec);
 
   if (!appSpec.services || Object.keys(appSpec.services).length === 0) {
     return files;
@@ -2735,6 +3747,8 @@ async function generateServiceStructures(
           options,
           structure,
           serviceContext,
+          appSpec,
+          pathOwnership,
         );
         break;
       case "python":
@@ -3592,19 +4606,22 @@ async function generateTypeScriptFiles(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   serviceContext?: ServiceGenerationContext,
+  appSpec?: AppSpec,
+  pathOwnership?: Map<string, string>,
 ): Promise<string[]> {
   const files: string[] = [];
   const serviceSpec = config.service ?? {};
+  const defaultPort = getPrimaryServicePort(serviceSpec, 3000);
 
   const packageJson = {
     name: config.name,
     version: config.version,
     type: "module",
     scripts: {
-      dev: "ts-node-dev --respawn src/index.ts",
+      dev: "tsx watch src/index.ts",
       start: "node dist/index.js",
       build: "tsc -p tsconfig.json",
-      test: "vitest",
+      test: "vitest run --passWithNoTests",
       lint: 'eslint "src/**/*.ts"',
     },
     dependencies: {
@@ -3614,8 +4631,10 @@ async function generateTypeScriptFiles(
     devDependencies: {
       "@types/node": "^20.0.0",
       typescript: "^5.0.0",
-      "ts-node-dev": "^2.0.0",
-      eslint: "^8.0.0",
+      tsx: "^4.15.6",
+      eslint: "^8.57.1",
+      "@typescript-eslint/parser": "^7.18.0",
+      "@typescript-eslint/eslint-plugin": "^7.18.0",
       vitest: "^1.2.0",
     },
   };
@@ -3644,6 +4663,46 @@ async function generateTypeScriptFiles(
   await writeFileWithHooks(tsconfigPath, JSON.stringify(tsconfigJson, null, 2), options);
   files.push("tsconfig.json");
 
+  const eslintConfig = `module.exports = {
+  root: true,
+  env: {
+    node: true,
+    es2022: true,
+  },
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+  },
+  plugins: ['@typescript-eslint'],
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+  ignorePatterns: ['dist', 'node_modules'],
+  rules: {
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
+    '@typescript-eslint/no-explicit-any': 'off',
+  },
+  overrides: [
+    {
+      files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+      env: {
+        node: true,
+      },
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
+    },
+  ],
+};
+`;
+  await writeFileWithHooks(path.join(outputDir, ".eslintrc.cjs"), eslintConfig, options);
+  files.push(".eslintrc.cjs");
+
   const srcDir = path.join(outputDir, "src");
   await ensureDirectory(srcDir, options);
 
@@ -3656,7 +4715,8 @@ async function bootstrap() {
   await app.register(cors, { origin: true });
   await registerRoutes(app);
 
-  const port = Number(process.env.PORT || 3000);
+  const defaultPort = ${defaultPort};
+  const port = Number(process.env.PORT || defaultPort);
   const host = process.env.HOST || '0.0.0.0';
 
   try {
@@ -3691,6 +4751,7 @@ export { bootstrap };
         url: urlParts.join(" ") || `/${config.name}`,
         summary: undefined,
         reply: `not_implemented_${index}`,
+        statusCode: 200,
       };
     }
 
@@ -3699,8 +4760,20 @@ export { bootstrap };
       url: endpoint.path || endpoint.url || `/${config.name}`,
       summary: endpoint.summary,
       reply: endpoint.replyExample || `not_implemented_${index}`,
+      statusCode: endpoint.statusCode || 200,
     };
   });
+  const derivedRoutes = deriveServiceEndpointsFromPaths(
+    appSpec,
+    serviceContext,
+    serviceSpec,
+    pathOwnership,
+  );
+  const flowDerivedRoutes = deriveServiceEndpointsFromFlows(appSpec, serviceContext, serviceSpec);
+  const combinedRoutes = mergeRouteBindings(
+    mergeRouteBindings(parsedRoutes, derivedRoutes),
+    flowDerivedRoutes,
+  );
 
   const routesIndexPath = path.join(routesDir, "index.ts");
   const routesIndexContent = `import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -3710,9 +4783,10 @@ interface RouteBinding {
   url: string;
   summary?: string;
   reply?: unknown;
+  statusCode?: number;
 }
 
-const routeDefinitions: RouteBinding[] = ${JSON.stringify(parsedRoutes, null, 2)};
+const routeDefinitions: RouteBinding[] = ${JSON.stringify(combinedRoutes, null, 2)};
 const SERVICE_NAME = "${config.name}";
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
@@ -3729,9 +4803,9 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       method: definition.method as any,
       url: definition.url,
       handler: async (_request: FastifyRequest, reply: FastifyReply) => {
-        reply.status(200).send({
+        reply.status(definition.statusCode ?? 200).send({
           route: definition.url,
-          status: 'not_implemented',
+          status: 'stubbed',
           summary: definition.summary,
           example: definition.reply,
         });

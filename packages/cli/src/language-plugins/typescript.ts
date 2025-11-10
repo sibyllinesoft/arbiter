@@ -81,9 +81,15 @@ const VITE_DEV_DEPENDENCY_VERSIONS: Record<string, string> = {
   "@vitejs/plugin-react": "^4.2.1",
   "@types/react": "^18.3.5",
   "@types/react-dom": "^18.3.0",
+  eslint: "^8.57.1",
+  "@typescript-eslint/parser": "^7.18.0",
+  "@typescript-eslint/eslint-plugin": "^7.18.0",
+  "eslint-plugin-react": "^7.35.0",
+  "eslint-plugin-react-hooks": "^4.6.2",
   vitest: "^1.2.2",
   "@testing-library/react": "^14.1.2",
   "@testing-library/jest-dom": "^6.4.2",
+  jsdom: "^24.1.0",
   jest: "^29.7.0",
   "@types/jest": "^29.5.5",
   "ts-jest": "^29.2.5",
@@ -493,6 +499,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
       tsconfigNode,
     );
     files.push({ path: "tsconfig.node.json", content: tsconfigNodeContent });
+    files.push({ path: ".eslintrc.cjs", content: this.createViteEslintConfig() });
 
     const appContent = await this.runtime.templateResolver.renderTemplate(
       "project/vite/App.tsx.tpl",
@@ -636,9 +643,15 @@ export class TypeScriptPlugin implements LanguagePlugin {
     addDep("react-router-dom");
     addDevDep("@types/react");
     addDevDep("@types/react-dom");
+    addDevDep("jsdom");
     addDevDep("typescript");
     addDevDep("vite");
     addDevDep("@vitejs/plugin-react");
+    addDevDep("eslint");
+    addDevDep("@typescript-eslint/parser");
+    addDevDep("@typescript-eslint/eslint-plugin");
+    addDevDep("eslint-plugin-react");
+    addDevDep("eslint-plugin-react-hooks");
 
     if (this.runtime.testRunner === "vitest") {
       addDevDep("vitest");
@@ -747,6 +760,60 @@ export class TypeScriptPlugin implements LanguagePlugin {
     return JSON.stringify(packageJson, null, 2);
   }
 
+  private createViteEslintConfig(): string {
+    return `module.exports = {
+  root: true,
+  env: {
+    browser: true,
+    es2022: true,
+  },
+  parser: '@typescript-eslint/parser',
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    ecmaFeatures: {
+      jsx: true,
+    },
+  },
+  plugins: ['@typescript-eslint', 'react', 'react-hooks'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
+  ],
+  settings: {
+    react: {
+      version: 'detect',
+    },
+  },
+  ignorePatterns: ['dist', 'node_modules'],
+  rules: {
+    'react/react-in-jsx-scope': 'off',
+    'no-unused-vars': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', ignoreRestSiblings: true }],
+  },
+  overrides: [
+    {
+      files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+      env: {
+        browser: false,
+        node: true,
+      },
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        vi: 'readonly',
+      },
+    },
+  ],
+};\n`;
+  }
+
   private createNextPackageJson(config: ProjectConfig): Record<string, unknown> {
     return pruneUndefined({
       name: config.name,
@@ -836,7 +903,7 @@ export class TypeScriptPlugin implements LanguagePlugin {
       dev: "vite",
       build: "tsc && vite build",
       preview: "vite preview",
-      test: this.runtime.testRunner === "vitest" ? "vitest" : "jest",
+      test: this.runtime.testRunner === "vitest" ? "vitest run --passWithNoTests" : "jest",
       "test:ui": this.runtime.testRunner === "vitest" ? "vitest --ui" : undefined,
       lint: "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
       "type-check": "tsc --noEmit",

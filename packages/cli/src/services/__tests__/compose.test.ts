@@ -80,7 +80,11 @@ describe("generateDockerComposeArtifacts", () => {
     expect(composeContents).toContain("cache:");
 
     const envTemplate = await fs.readFile(path.join(root, "infra/compose/.env.template"), "utf-8");
-    expect(envTemplate).toContain("API_PORT");
+    expect(envTemplate).toContain("COMPOSE_PROJECT_NAME=demo-app");
+    expect(envTemplate).toContain("# Port Overrides (host binding)");
+    expect(envTemplate).toContain("API_PORT=3000");
+    expect(envTemplate).toContain("# Global Compose environment\nNODE_ENV=development");
+    expect(envTemplate).toContain("# api Service\nNODE_ENV=development");
 
     const readme = await fs.readFile(path.join(root, "infra/compose/README.md"), "utf-8");
     expect(readme).toContain("docker compose up");

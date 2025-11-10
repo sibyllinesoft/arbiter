@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 const rootDir = join(__dirname, "..");
 chdir(rootDir);
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 7;
 let currentStep = 1;
 
 function printHeader(title: string): void {
@@ -66,6 +66,7 @@ async function main(): Promise<void> {
     await runStep("Check formatting & linting", "bun", ["run", "check:ci"]);
     await runStep("Type check (TS project references)", "bun", ["run", "typecheck"]);
     await runStep("Run unit and integration tests", "bun", ["run", "test"]);
+    await runStep("Generator smoke test", "bun", ["run", "cli:smoke"]);
     await runStep("Build workspaces", "bun", ["run", "build"]);
     await runStep("Audit dependencies", "bun", ["audit"]);
 
