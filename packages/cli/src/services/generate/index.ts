@@ -1820,9 +1820,9 @@ async function scaffoldPlaywrightWorkspace(
     private: true,
     version: "0.0.0",
     scripts: {
-      test: "playwright test",
-      "test:headed": "playwright test --headed",
-      "test:ui": "playwright test --ui",
+      test: "node ./support/run-e2e.mjs",
+      "test:headed": "node ./support/run-e2e.mjs --headed",
+      "test:ui": "node ./support/run-e2e.mjs --ui",
     },
     devDependencies: {
       "@playwright/test": "^1.48.2",
@@ -1882,6 +1882,92 @@ export function loc(token: LocatorToken | string): string {
   await writeFileWithHooks(path.join(locatorsDir, "locators.ts"), locatorsContent, options);
   files.push(rel(path.join("support", "locators.ts")));
 
+  const runE2eScript = `#!/usr/bin/env node
+import net from 'node:net';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawn } from 'node:child_process';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function portIsFree(port) {
+  return new Promise((resolve) => {
+    const tester = net.createServer();
+    tester.once('error', () => {
+      tester.close(() => resolve(false));
+    });
+    tester.listen(port, '0.0.0.0', () => {
+      tester.close(() => resolve(true));
+    });
+  });
+}
+
+async function findAvailablePort(preferred, envKey) {
+  if (process.env[envKey]) {
+    return Number(process.env[envKey]);
+  }
+  const start = Math.max(preferred, 1024);
+  let attempts = 0;
+  let candidate = start;
+  while (attempts < 500) {
+    if (await portIsFree(candidate)) {
+      return candidate;
+    }
+    candidate += 1;
+    attempts += 1;
+  }
+  throw new Error('Unable to locate a free port for ' + envKey);
+}
+
+async function allocatePorts() {
+  return {
+    E2E_WEB_PORT: await findAvailablePort(5173, 'E2E_WEB_PORT'),
+    E2E_STOREFRONT_PORT: await findAvailablePort(3000, 'E2E_STOREFRONT_PORT'),
+    E2E_CATALOG_PORT: await findAvailablePort(4000, 'E2E_CATALOG_PORT'),
+    E2E_STRIPE_PORT: await findAvailablePort(4010, 'E2E_STRIPE_PORT'),
+  };
+}
+
+async function main() {
+  const assignments = await allocatePorts();
+  const runner = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const projectRoot = path.resolve(__dirname, '..');
+
+  const child = spawn(runner, ['playwright', 'test', ...process.argv.slice(2)], {
+    cwd: projectRoot,
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      ...Object.fromEntries(
+        Object.entries(assignments).map(([key, value]) => [key, String(value)]),
+      ),
+    },
+  });
+
+  child.on('exit', (code, signal) => {
+    if (signal) {
+      process.kill(process.pid, signal);
+    } else {
+      process.exit(code ?? 1);
+    }
+  });
+
+  child.on('error', (error) => {
+    console.error('Failed to launch Playwright:', error);
+    process.exit(1);
+  });
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+`;
+
+  await writeFileWithHooks(path.join(locatorsDir, "run-e2e.mjs"), runE2eScript, options, 0o755);
+  files.push(rel(path.join("support", "run-e2e.mjs")));
+
   const playwrightConfig = buildPlaywrightConfig(appSpec, clientContext, structure);
   await writeFileWithHooks(
     path.join(workspaceRoot, "playwright.config.ts"),
@@ -1904,15 +1990,32 @@ function buildPlaywrightConfig(
     isTypeScriptServiceLanguage((svc as any)?.language as string | undefined),
   );
 
+  const webPortInit = "Number(process.env.E2E_WEB_PORT ?? 5173)";
+  const storefrontPortInit = "Number(process.env.E2E_STOREFRONT_PORT ?? 3000)";
+  const catalogPortInit = "Number(process.env.E2E_CATALOG_PORT ?? 4000)";
+  const stripePortInit = "Number(process.env.E2E_STRIPE_PORT ?? 4010)";
+  const webPortExpr = "webPort";
+  const storefrontPortExpr = "storefrontPort";
+  const catalogPortExpr = "catalogPort";
+  const stripePortExpr = "stripePort";
+
   const serviceWebServers = tsServices
     .map(([serviceName, serviceSpec]) => {
       const serviceSlug = slugify(serviceName, serviceName);
-      const port = getPrimaryServicePort(serviceSpec, 3000);
+      const portExpr = serviceSlug.includes("catalog")
+        ? catalogPortExpr
+        : serviceSlug.includes("stripe")
+          ? stripePortExpr
+          : storefrontPortExpr;
       const serviceDir = path.posix.join("..", "..", structure.servicesDirectory, serviceSlug);
       return `{
       command: 'npm run dev',
       cwd: path.resolve(__dirname, '${serviceDir}'),
-      url: 'http://127.0.0.1:${port}/healthz',
+      url: \`http://127.0.0.1:${"${"}${portExpr}${"}"}/healthz\`,
+      env: {
+        PORT: String(${portExpr}),
+        HOST: '127.0.0.1',
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     }`;
@@ -1926,6 +2029,9 @@ function buildPlaywrightConfig(
       url: baseURL,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      env: {
+        E2E_WEB_PORT: String(webPort),
+      },
     }${serviceWebServers ? `,\n    ${serviceWebServers}` : ""}
   ]`;
 
@@ -1933,7 +2039,10 @@ function buildPlaywrightConfig(
 import path from 'node:path';
 
 const clientDir = path.resolve(__dirname, '${clientDirRelative}');
-const webPort = Number(process.env.E2E_WEB_PORT ?? 5173);
+const webPort = ${webPortInit};
+const storefrontPort = ${storefrontPortInit};
+const catalogPort = ${catalogPortInit};
+const stripePort = ${stripePortInit};
 const baseURL = process.env.E2E_BASE_URL ?? \`http://127.0.0.1:\${webPort}\`;
 
 export default defineConfig({
