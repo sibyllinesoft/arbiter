@@ -4,7 +4,7 @@ _Last updated: 2025-11-08_
 
 This guide explains how Arbiter's CLI discovers templates, how to override and
 extend them, and the conventions that keep generated code deterministic. For a
-map of all CLI docs, see [`docs/cli/index.md`](./index.md).
+map of all CLI docs, see the [CLI documentation hub](./index.md).
 
 ## Lifecycle Overview
 

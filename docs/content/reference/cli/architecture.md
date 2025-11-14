@@ -65,7 +65,7 @@ making them reusable in scripts, tests, or future GUI integrations.
    README files, env templates, and other infra outputs on top of the same
    context.
 
-See `docs/cli/templates.md` for override details and hook best practices.
+See [`CLI Templates`](./templates.md) for override details and hook best practices.
 
 ## Testing Strategy
 
@@ -85,5 +85,5 @@ See `docs/cli/templates.md` for override details and hook best practices.
 2. Inject dependencies when the code touches IO so tests can provide fakes.
 3. Keep template overrides pure and hook effects idempotent.
 4. Extend the service/unit tests and CLI e2e harness when introducing new flows.
-5. Update `packages/cli/README.md` and relevant docs (`docs/cli/*.md`) when
-   adding new architecture concepts or extension points.
+5. Update `packages/cli/README.md` and the docs under `docs/content/reference/cli/`
+   when adding new architecture concepts or extension points.

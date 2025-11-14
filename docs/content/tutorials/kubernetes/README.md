@@ -748,9 +748,10 @@ remains well-structured and maintainable at any scale.
 
 1. **Explore the Demo Project**: Check out the `demo-project/` directory for a
    complete working example
-2. **Read the Core Concepts**: Review `docs/core-concepts.md` for deeper
-   architecture understanding
-3. **CLI Reference**: See `docs/cli-reference.md` for complete command
+2. **Read the Core Concepts**: Review `docs/overview/core-concepts.md` (or the
+   "Overview → Core Concepts" page in the site) for deeper architecture
+   understanding
+3. **CLI Reference**: See `docs/reference/cli-reference.md` for complete command
    documentation
 4. **Join the Community**: Connect with other Arbiter users for tips and best
    practices

@@ -1,0 +1,216 @@
+# Arbiter Documentation Generation Configuration
+# 
+# This file configures the unified documentation generation pipeline
+# for the Arbiter project.
+
+version: '1.0.0'
+enabled: true
+
+# Pipeline configuration for different documentation types
+pipeline:
+  cli:
+    enabled: true
+    command: 'bun'
+    args: ['run', 'docs:cli', '--formats=markdown,json,html']
+    workingDir: '.'
+    dependencies:
+      - './packages/cli/dist'
+      - './packages/cli/src/cli.ts'
+    outputs:
+      - './docs/cli-reference.*'
+    timeout: 60000
+    retries: 2
+    parallel: true
+    priority: 1
+
+  cue:
+    enabled: true
+    command: 'bun'
+    args: ['scripts/docs-generators/cue-schema-docs.ts']
+    workingDir: '.'
+    dependencies:
+      - './packages/shared/src'
+      - './packages/cue-runner/src'
+    outputs:
+      - './docs/cue-schemas.*'
+      - './docs/schema-index.json'
+      - './docs/schema-metrics.json'
+    timeout: 30000
+    retries: 1
+    parallel: true
+    priority: 2
+
+  api:
+    enabled: true
+    command: 'bun'
+    args: ['scripts/docs-generators/api-docs.ts']
+    workingDir: '.'
+    dependencies:
+      - './apps/api/src'
+      - './packages/api-types/src'
+    outputs:
+      - './docs/api-reference.*'
+      - './docs/api-index.json'
+      - './docs/api-metrics.json'
+    timeout: 45000
+    retries: 2
+    parallel: true
+    priority: 3
+
+  codegen:
+    enabled: true
+    command: 'bun'
+    args: ['scripts/docs-generators/codegen-docs.ts']
+    workingDir: '.'
+    dependencies:
+      - './packages/cli/src/commands/generate.ts'
+      - './packages/cli/src/templates'
+    outputs:
+      - './docs/code-generation.*'
+      - './docs/codegen-index.json'
+      - './docs/codegen-metrics.json'
+    timeout: 30000
+    retries: 1
+    parallel: true
+    priority: 4
+
+  project:
+    enabled: true
+    command: 'bun'
+    args: ['scripts/docs-generators/project-docs.ts']
+    workingDir: '.'
+    dependencies:
+      - './package.json'
+      - './README.md'
+      - './CLAUDE.md'
+    outputs:
+      - './docs/project-overview.*'
+      - './docs/project-index.json'
+      - './docs/project-metrics.json'
+    timeout: 15000
+    retries: 1
+    parallel: false
+    priority: 5
+
+# Output configuration
+outputs:
+  baseDir: './docs'
+  staging: './docs/staging'
+  production: './docs/dist'
+  formats:
+    - markdown
+    - html
+    - json
+
+# Validation configuration
+validation:
+  enabled: true
+  failOnError: false
+  coverage:
+    minimum: 80
+    target: 95
+  quality:
+    linkCheck: true
+    spellCheck: false
+    accessibility: true
+    searchIndexing: true
+
+# Deployment configuration
+deployment:
+  enabled: false
+  target: 'github-pages'
+  customCommand: 'gh-pages -d docs'
+  preDeployHooks:
+    - 'bun run build:all'
+    - 'bun run test'
+  postDeployHooks:
+    - 'echo "Documentation deployed successfully"'
+
+# Monitoring and maintenance
+monitoring:
+  enabled: true
+  freshness:
+    maxAgeHours: 24
+    alertThreshold: 72
+  metrics:
+    coverage: true
+    brokenLinks: true
+    generateTime: true
+  notifications:
+    slack:
+      enabled: false
+      webhook: ''
+    email:
+      enabled: false
+      recipients: []
+
+# Git integration
+git:
+  autoCommit: false
+  commitMessage: 'docs: update documentation [automated]'
+  branch: 'main'
+  createPR: false
+
+# Environment-specific overrides
+environments:
+  development:
+    validation:
+      failOnError: false
+    deployment:
+      enabled: false
+    monitoring:
+      enabled: true
+    git:
+      autoCommit: false
+
+  staging:
+    validation:
+      failOnError: true
+    deployment:
+      enabled: true
+      target: 'vercel'
+    monitoring:
+      enabled: true
+    git:
+      autoCommit: true
+      branch: 'staging'
+
+  production:
+    validation:
+      failOnError: true
+      coverage:
+        minimum: 90
+    deployment:
+      enabled: true
+      target: 'github-pages'
+    monitoring:
+      enabled: true
+      notifications:
+        slack:
+          enabled: true
+    git:
+      autoCommit: true
+      createPR: true
+
+# Template configuration
+templates:
+  markdown:
+    theme: 'default'
+    toc: true
+    search: true
+    syntax_highlighting: true
+    mermaid: true
+    
+  html:
+    theme: 'modern'
+    responsive: true
+    search: true
+    toc: true
+    syntax_highlighting: true
+    favicon: './docs/content/assets/img/favicon.svg'
+    logo: './docs/content/assets/img/logo.svg'
+    custom_css: './docs/content/assets/custom.css'
+    
+  json:
+    pretty: true
+    schema: 'https://arbiter.dev/schemas/docs/v1.json'

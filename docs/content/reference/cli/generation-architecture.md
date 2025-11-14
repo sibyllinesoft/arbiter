@@ -5,9 +5,9 @@ _Last updated: 2025-11-08_
 Arbiter's CLI ships with a set of pluggable modules that handle project
 scaffolding, GitHub issue template authoring, and language-specific code
 generation. This document explains how these pieces fit together and how to
-extend them for your own workflows. For the full CLI doc map, see
-[`docs/cli/index.md`](./index.md); for service layering and DI details, see
-[`docs/cli/architecture.md`](./architecture.md).
+extend them for your own workflows. For the full CLI doc map, see the
+[CLI documentation hub](./index.md); for service layering and DI details, see
+[CLI Architecture](./architecture.md).
 
 ## Template aliases & engines
 

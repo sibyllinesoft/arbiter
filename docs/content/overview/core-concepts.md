@@ -469,11 +469,11 @@ codegen: {
 
 ## Next Steps
 
-- **[CLI Reference](./cli-reference.md)** - Learn all Arbiter commands
-- **[Kubernetes Tutorial](./tutorial/kubernetes/README.md)** - Deploy to
+- **[CLI Reference](../reference/cli-reference.md)** - Learn all Arbiter commands
+- **[Kubernetes Tutorial](../tutorials/kubernetes/README.md)** - Deploy to
   Kubernetes
-- **[Examples](../examples/)** - Explore real-world specifications
-- **[API Documentation](./api.md)** - Understand the generated APIs
+- **[Examples](../tutorials/basics/Readme.md)** - Explore real-world specifications
+- **[API Documentation](../reference/api/generation-api-reference.md)** - Understand the generated APIs
 
 ---
 

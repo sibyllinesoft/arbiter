@@ -49,6 +49,19 @@ sources for IDE discovery.
    ./arbiter-cli --help
    ```
 
+## Documentation
+
+- Hand-authored markdown lives under `docs/content/` and feeds the MkDocs site
+  defined by `mkdocs.yml`.
+- Generate API reference docs straight from TSDoc via `bun run docs:tsdoc`.
+- Preview the full docs experience locally with `bun run docs:site:dev`
+  (MkDocs live-reload).
+- Production docs are deployed from `main` via `.github/workflows/docs-site.yml`
+  and published to GitHub Pages.
+
+See `docs/README.md` for the full layout, authoring tips, and automation
+details.
+
 ## OAuth Setup & Testing
 
 Many workflows require exercising the OAuth flow repeatedly when iterating on

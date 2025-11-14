@@ -1,0 +1,72 @@
+site_name: Arbiter Documentation
+site_description: CUE-driven specification workflows, CLI automation, and platform internals for Arbiter.
+site_url: https://sibyllinesoft.github.io/arbiter/
+repo_url: https://github.com/sibyllinesoft/arbiter
+repo_name: sibyllinesoft/arbiter
+docs_dir: docs/content
+site_dir: docs/public
+theme:
+  name: material
+  logo: assets/img/logo.svg
+  favicon: assets/img/favicon.svg
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - content.code.annotate
+    - content.code.copy
+    - toc.follow
+plugins:
+  - search
+  - git-revision-date-localized:
+      fallback_to_build_date: true
+      type: datetime
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - meta
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+nav:
+  - Home: intro.md
+  - Overview:
+      - Core Concepts: overview/core-concepts.md
+      - Code Generation Overview: overview/code-generation-overview.md
+  - Guides:
+      - Generation Architecture: guides/code-generation-architecture.md
+      - Generation Configuration: guides/code-generation-configuration.md
+      - Template Development: guides/template-development-guide.md
+      - Generation Best Practices: guides/generation-best-practices.md
+      - GitHub Sync: guides/github-sync.md
+      - Server Monitoring: guides/server-monitoring.md
+  - Reference:
+      - CLI Reference: reference/cli-reference.md
+      - Arbiter CUE Schema: reference/arbiter-cue-schema.md
+      - Generation API Reference: reference/api/generation-api-reference.md
+      - API TypeDoc: reference/api/tsdoc/index.md
+  - Tutorials:
+      - Getting Started Lab: tutorials/basics/Readme.md
+      - Kubernetes Playbooks: tutorials/kubernetes/README.md
+  - Notes:
+      - Cleanup Plan: notes/cleanup-plan.md
+  - Internal:
+      - Legacy Documentation Pipeline: internal/doc-pipeline.md
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sibyllinesoft/arbiter

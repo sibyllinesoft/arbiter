@@ -10,12 +10,12 @@ repo.
 
 | Topic | Read This | Why |
 | --- | --- | --- |
-| Day-to-day command usage | [`docs/cli-reference.md`](../cli-reference.md) | Exhaustive command help, flags, and examples. |
-| Repo & service internals | [`docs/cli/architecture.md`](./architecture.md) | Explains layering, dependency injection, and testing strategy. |
-| Template overrides & hooks | [`docs/cli/templates.md`](./templates.md) | Cookbook for override directories, hook authoring, and best practices. |
-| Template engines, GitHub templates, plugins | [`docs/cli/generation-architecture.md`](./generation-architecture.md) | Deep dive on template aliases, GitHub template managers, and language plugins. |
-| Release/readiness checklist | [`packages/cli/OPEN_SOURCE_READINESS.md`](../../packages/cli/OPEN_SOURCE_READINESS.md) | Tracks outstanding work before the CLI is published. |
-| Cleanup/refactor plan | [`docs/cleanup-plan.md`](../cleanup-plan.md) | Cross-repo cleanup phases (API, client, CLI). |
+| Day-to-day command usage | [`CLI Reference`](../cli-reference.md) | Exhaustive command help, flags, and examples. |
+| Repo & service internals | [`CLI Architecture`](./architecture.md) | Explains layering, dependency injection, and testing strategy. |
+| Template overrides & hooks | [`CLI Templates`](./templates.md) | Cookbook for override directories, hook authoring, and best practices. |
+| Template engines, GitHub templates, plugins | [`Generation Architecture`](./generation-architecture.md) | Deep dive on template aliases, GitHub template managers, and language plugins. |
+| Release/readiness checklist | [`packages/cli/OPEN_SOURCE_READINESS.md`](https://github.com/sibyllinesoft/arbiter/blob/main/packages/cli/OPEN_SOURCE_READINESS.md) | Tracks outstanding work before the CLI is published. |
+| Cleanup/refactor plan | [`notes/cleanup-plan.md`](../../notes/cleanup-plan.md) | Cross-repo cleanup phases (API, client, CLI). |
 
 ## Onboarding Sequence
 
@@ -32,7 +32,7 @@ repo.
 
 ## Document Conventions
 
-- All CLI docs live under `docs/cli/` for easy discovery.
+- All CLI docs now live under `docs/content/reference/cli/` and are surfaced inside the “Reference → CLI” sidebar section.
 - Cross-links use relative paths so the docs render correctly on GitHub and in
   local tooling.
 - Each guide starts with “Last updated” to make stale pages obvious. Please

@@ -27,6 +27,13 @@ arbiter-cli
 node_modules/
 .tunnel-url
 
+.venv*/
+.venv
+
+# Documentation site artifacts
+docs/content/reference/api/tsdoc/
+docs/public/
+
 .env
 *.tsbuildinfo
 deploy/cloudflare/wrangler.toml

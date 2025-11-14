@@ -7,9 +7,9 @@ commands, structured outputs, and comprehensive APIs that make it ideal for both
 human developers and AI automation.
 
 Need the internal architecture, template lifecycle, or DI notes?
-- High-level architecture: [`docs/cli/architecture.md`](./cli/architecture.md)
+- High-level architecture: [`CLI Architecture`](./cli/architecture.md)
 - Template engines, GitHub templates, language plugins:
-  [`docs/cli/generation-architecture.md`](./cli/generation-architecture.md)
+  [`Generation Architecture`](./cli/generation-architecture.md)
 
 ## Installation
 

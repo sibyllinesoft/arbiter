@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "types": ["bun-types"],
+    "paths": {
+      "@arbiter/shared": ["./packages/shared/src"],
+      "@arbiter/cue-runner": ["./packages/cue-runner/src"],
+      "@arbiter/cli": ["./packages/cli/src"],
+      "@arbiter/api-types": ["./packages/api-types/src"],
+      "@arbiter/shared-types": ["./packages/shared-types/src"],
+      "@arbiter/shared-types/*": ["./packages/shared-types/src/*"],
+      "@arbiter/importer": ["./packages/importer/src"],
+      "@arbiter/importer/*": ["./packages/importer/src/*"]
+    }
+  },
+  "include": [
+    "packages/cli/src/index.ts",
+    "packages/shared/src/index.ts",
+    "packages/api-types/src/index.ts"
+  ],
+  "exclude": [
+    "packages/cli/src/docs/**",
+    "**/__tests__/**",
+    "**/dist/**",
+    "node_modules"
+  ]
+}
