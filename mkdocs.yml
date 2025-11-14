@@ -58,7 +58,7 @@ nav:
       - CLI Reference: reference/cli-reference.md
       - Arbiter CUE Schema: reference/arbiter-cue-schema.md
       - Generation API Reference: reference/api/generation-api-reference.md
-      - API TypeDoc: reference/api/tsdoc/index.md
+      - API TypeDoc: reference/api/tsdoc/README.md
   - Tutorials:
       - Getting Started Lab: tutorials/basics/Readme.md
       - Kubernetes Playbooks: tutorials/kubernetes/README.md
