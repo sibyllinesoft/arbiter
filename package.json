@@ -137,5 +137,8 @@
     "handlebars": "^4.7.8",
     "wrangler": "^4.42.0",
     "yaml": "^2.8.1"
+  },
+  "overrides": {
+    "@types/yaml": "1.9.7"
   }
 }
