@@ -383,7 +383,7 @@ Generated documentation follows these standards:
 - [API Reference](../reference/api/generation-api-reference.md) - REST API documentation  
 - [CUE Schemas](../reference/arbiter-cue-schema.md) - CUE type definitions and constraints
 - [Code Generation](../overview/code-generation-overview.md) - Code generation system
-- [Project Overview](../intro.md) - Project architecture and overview
+- [Project Overview](../index.md) - Project architecture and overview
 
 ---
 
