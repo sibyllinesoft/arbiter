@@ -1,6 +1,6 @@
 site_name: Arbiter Documentation
 site_description: CUE-driven specification workflows, CLI automation, and platform internals for Arbiter.
-site_url: https://sibyllinesoft.github.io/arbiter/
+site_url: https://arbiter.sibylline.dev/
 repo_url: https://github.com/sibyllinesoft/arbiter
 repo_name: sibyllinesoft/arbiter
 docs_dir: docs/content
