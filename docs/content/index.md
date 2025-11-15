@@ -6,7 +6,7 @@ sidebar_position: 1
 description: Learn how Arbiter stitches CUE-driven specs, CLI automation, and generation pipelines together.
 ---
 
-Arbiter pairs a CUE-fluent specification workflow with an automation-focused CLI, shared libraries, and a monitoring-ready backend. These docs gather the foundational concepts, end-to-end guides, APIs, and tutorials you need to ship with Arbiter.
+Arbiter is your specification co-pilot: describe the architecture you want in CUE, press go, and let the platform provision opinions, scaffolding, governance, and monitoring in lockstep. Teams adopt it to collapse weeks of diagramming, doc writing, and boilerplate into a single reviewable spec—and to keep everything in sync as reality changes. This site is the playbook for designing that spec-first workflow, bending the CLI to your needs, and scaling the automation across products or business units.
 
 ## What you will find here
 
@@ -14,5 +14,3 @@ Arbiter pairs a CUE-fluent specification workflow with an automation-focused CLI
 - **Guides** – deep dives on template development, code-generation architecture, GitHub sync, monitoring, and other day-2 operations.
 - **Reference** – canonical CLI docs, the Arbiter CUE schema, API surfaces, and generated TypeDoc output pulled straight from the source.
 - **Tutorials** – step-by-step walkthroughs (from the `basics` hands-on labs to Kubernetes-focused playbooks).
-
-If you prefer to hack locally, run `bun run docs:site:dev` for a live MkDocs server. To propose navigation changes, update the `nav` section in `mkdocs.yml` and keep folders scoped to a single topic so navigation stays predictable.

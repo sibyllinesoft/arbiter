@@ -12,14 +12,15 @@ the core concepts that make this transformation possible.
 Arbiter organizes system specifications into four distinct layers, each building
 upon the previous one:
 
-```
-Domain Models     ← What your system IS (data, business logic)
-     ↓
-Contracts        ← How your system COMMUNICATES (APIs, events)
-     ↓
-Capabilities     ← What your system DOES (services, features)
-     ↓
-Execution        ← Where your system RUNS (infrastructure, deployment)
+```mermaid
+flowchart TD
+    A[Domain Models<br/>What the system IS] --> B[Contracts<br/>How the system COMMUNICATES]
+    B --> C[Capabilities<br/>What the system DOES]
+    C --> D[Execution<br/>Where the system RUNS]
+    style A fill:#eef3ff,stroke:#4c63d9,stroke-width:2px,color:#111
+    style B fill:#ecfdf3,stroke:#1c8b5f,stroke-width:2px,color:#111
+    style C fill:#fffbe6,stroke:#c48a06,stroke-width:2px,color:#111
+    style D fill:#ffecef,stroke:#d6456a,stroke-width:2px,color:#111
 ```
 
 This layered approach ensures that:
@@ -82,6 +83,14 @@ domain: {
 }
 ```
 
+### Workshop: Apply the Domain Layer
+
+1. **Interview subject-matter experts** and sketch the vocabulary they already use (entities, lifecycle states, critical events).
+2. **Translate the language into CUE** by encoding value objects first, then identities and events so constraints stay centralized.
+3. **Model signature workflows** (onboarding, refunds, SLAs) as state machines so you can prove coverage without shipping code.
+
+Export samples with `arbiter doc domain.cue` and circulate them like a living glossary—everyone downstream will reuse the same types.
+
 ### Why This Matters
 
 The Domain layer serves as the **single source of truth** for your business
@@ -138,6 +147,12 @@ contracts: {
 }
 }
 ```
+
+### Workshop: Apply the Contracts Layer
+
+1. **Map domain events to consumers**—who needs to read or mutate each entity?
+2. **Capture expectations inline** (assertions, latency requirements, authentication hints) so automated tests and monitors inherit them.
+3. **Promote contracts into generated artifacts** using `arbiter sync --contracts` to keep OpenAPI/AsyncAPI, SDKs, and docs synchronized.
 
 When you promote a contract into the application specification you can describe
 the concrete HTTP behaviour using the `paths` section, which now maps cleanly to
@@ -284,6 +299,14 @@ Arbiter supports various service capability patterns:
 - **CLI**: Command-line interfaces
 - **Batch Processor**: Data processing pipelines
 
+### Workshop: Apply the Capabilities Layer
+
+1. **Assign ownership** by linking each capability to the domain entities/contracts it stewards—now on-call charts draw themselves.
+2. **Prototype execution hooks** (schedulers, consumers, workers) directly in CUE so the CLI can scaffold runnable services with the same wiring.
+3. **Keep runtime hints close**: languages, frameworks, and datastore affinities live here so generation produces stack-specific code without manual tweaking.
+
+Try `arbiter generate service UserService` to emit a Fastify skeleton plus docs/tests that mirror the spec.
+
 ---
 
 ## Layer 4: Execution
@@ -352,6 +375,21 @@ infrastructure: {
   }
 }
 ```
+
+### Workshop: Apply the Execution Layer
+
+1. **Pick deployment targets** per capability (Kubernetes, serverless, ECS) and encode availability/SLO assumptions in the `environments` block.
+2. **Reference shared resources** (databases, caches, queues) by logical name so generated IaC and service configs stay aligned.
+3. **Promote the plan** using `arbiter generate infrastructure` to emit Terraform/Helm manifests that inherit the exact same constraints.
+
+## Guided Walkthrough: From Idea to Running Service
+
+1. **Capture intent** – extend the Domain layer with the new concept (for example, `UsageBasedBilling`) and its events in one PR.
+2. **Expose collaboration points** – add HTTP/event contracts that describe how other teams or automation consume the billing data.
+3. **Define execution ownership** – introduce a `BillingService` capability, wire it to contracts, and specify infra (database tier, queue topic, autoscaling).
+4. **Generate and review** – run `arbiter generate --dry-run` to see code, docs, and deployment manifests that all reflect the spec, then merge when stakeholders sign off.
+
+Following this loop turns the layered model into a tutorial you can repeat for each new product slice.
 
 ---
 
