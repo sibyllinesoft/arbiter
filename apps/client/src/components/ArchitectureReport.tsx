@@ -7,9 +7,10 @@ import { Shield } from "lucide-react";
 import React, { useCallback, useMemo, useState } from "react";
 import { ArchitectureDiagram } from "./diagrams";
 import type { ArchitectureEntityModalRequest } from "./diagrams/ArchitectureDiagram/types";
-import { AddEntityModal, type FieldValue } from "./modals/AddEntityModal";
+import AddEntityModal from "./modals/AddEntityModal";
 import { CapabilityModal } from "./modals/CapabilityModal";
 import EndpointModal from "./modals/EndpointModal";
+import type { FieldValue } from "./modals/entityTypes";
 
 interface ArchitectureReportProps {
   projectId: string;

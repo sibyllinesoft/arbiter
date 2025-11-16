@@ -8,7 +8,7 @@ import Modal from "@/design-system/components/Modal";
 import Select, { type SelectOption } from "@/design-system/components/Select";
 import { ChevronDown } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { FieldValue } from "./AddEntityModal";
+import type { FieldValue } from "./entityTypes";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 type ParameterLocation = "path" | "query" | "header" | "cookie";

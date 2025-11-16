@@ -1,4 +1,4 @@
-# Arbiter Schema v2 — Agent Guide & Change Log
+# Arbiter Application Schema — Agent Guide & Change Log
 
 **TL;DR:** Treat the CUE spec as a _single source of truth_ across four
 layers—**Domain → Contracts → Capabilities → Execution**—compiled into a
@@ -79,19 +79,12 @@ arbiterSpec: {
     compat?: #CompatPolicy
   }
 
-  // ----- Services (bind to domain/contracts, then run) -----
+  // ----- Services (bind to domain/contracts, or describe external resources) -----
   services: {[ServiceName=string]: #Service}
 
-  // ----- Managed infrastructure (cloud resources) -----
-  infrastructure?: {
-    databases?:      {[DB=string]: #ManagedDatabase}
-    caches?:         {[C=string]: #ManagedCache}
-    messageQueues?:  {[Q=string]: #MessageQueue}
-    storageBuckets?: {[B=string]: #StorageBucket}
-  }
-
-  // ----- Execution (deploy + ops) -----
-  deployment: #Deployment
+  // ----- Execution (environment-scoped deployments) -----
+  deployments?: {[Env=string]: #Deployment}
+  deployment?: #Deployment   // compatibility alias (e.g., deployments.production)
 
   volumes?:  {[VolumeName=string]: #Volume}
   networks?: {[NetworkName=string]: #Network}
@@ -291,14 +284,19 @@ arbiterSpec: {
 
 ```cue
 #Service: {
-  type: "bespoke" | "prebuilt" | "external"
+  type: "internal" | "external"
+  source?: {
+    package?: string
+    dockerfile?: string
+    url?: string
+  }
+  workload?: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob"
   runtime?: #Runtime
-  sourceDirectory?: string     // bespoke
-  image?: string               // prebuilt
+  image?: string               // optional prebuilt image reference
 
   // What this service *does* (binds to contracts & domain)
   implements?: {
-    apis?:      [...string]    // keys of contracts.http / contracts.rpc
+	  apis?:      [...string]    // keys of contracts.workflows.<Interface>
     models?:    [...string]    // domain entities/valueObjects primarily owned here
     publishes?: [...{ topic: string, event: string, retries?: int & >=0 | *0 }]
     subscribes?:[...{ topic: string, event?: string, consumerGroup?: string }]
@@ -313,16 +311,50 @@ arbiterSpec: {
   config?:      #ServiceConfig
   volumes?:     [...#VolumeMount]
   resources?:   #ResourceRequirements
-  dependencies?:[...string]   // other services or infra by name
+  dependencies?: {[Alias=string]: #ServiceDependency}
 
-  serviceType?: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob"
   labels?:      {[string]: string}
   annotations?: {[string]: string}
+  endpoints?:   {[Endpoint=string]: #ServiceEndpoint}
+  resource?: {
+    kind: string             // e.g., "database", "cache", "queue"
+    engine?: string          // e.g., "postgres", "redis"
+    version?: string
+    tier?: string            // vendor SKU / plan
+    size?: string            // db.m6i.large, 3-node-small, etc.
+    backup?: {
+      enabled?: bool | *true
+      retentionDays?: int | *7
+      window?: string
+      multiRegion?: bool | *false
+    }
+    maintenance?: {
+      window?: string
+    }
+    endpoints?: {[name=string]: string}
+    notes?: string
+  }
+}
+
+> **Why named endpoints?**  
+> Each service owns the canonical path/method pairing that satisfies a contract.
+> Gateways or meshes (Envoy, Traefik, API Gateway, etc.) are modelled as normal
+> services whose handlers reference those endpoint names. Because every hop is
+> explicit, you can chain multiple services (service → mesh → ingress) and layer
+> middleware without duplicating routes or losing referential integrity.
+
+#ServiceDependency: {
+  service: string               // canonical service name to satisfy the dependency
+  version?: string              // semver or constraint e.g., ">=15"
+  kind?: string                 // "postgres", "redis", "envoy"
+  optional?: bool | *false
+  contractRef?: string          // e.g., contracts.workflows.InvoiceAPI
+  description?: string
 }
 
 #Capability: {
   kind: "httpServer" | "rpcServer" | "queueConsumer" | "cronJob" | "worker" | "cli"
-  contractRef?: string     // e.g., "contracts.http.PublicAPI@v1"
+  contractRef?: string     // e.g., "contracts.workflows.InvoiceAPI"
   adapter?: {
     name:    string        // e.g., "fastify", "fastapi", "axum"
     version?: string
@@ -346,6 +378,37 @@ arbiterSpec: {
   gherkin?: string         // Behaviour scenarios expressed in Given/When/Then
   depends_on?: [...string]
   tags?: [...string]
+}
+
+#ServiceEndpoint: {
+  description?: string
+  path: string              // canonical path owned by the service
+  methods: [...string]
+  handler: #HandlerRef
+  implements: string        // e.g., "contracts.workflows.InvoiceAPI.operations.getInvoice"
+  middleware?: [...#MiddlewareRef]
+}
+
+#HandlerRef: #ModuleHandlerRef | #EndpointHandlerRef
+
+#ModuleHandlerRef: {
+  type: *"module"
+  module: string            // "./services/invoice/http/get-invoice.ts"
+  function?: string         // "handler"
+}
+
+#EndpointHandlerRef: {
+  type: "endpoint"
+  service: string           // service name that owns the endpoint
+  endpoint: string          // endpoint key within that service
+}
+
+#MiddlewareRef: {
+  name?: string
+  module: string            // "./services/billing/middleware/auth.ts"
+  function?: string         // "requireCustomerAuth"
+  phase?: "request" | "response" | "both" | *"request"
+  config?: {...}
 }
 
 #HealthCheck: {
@@ -400,6 +463,7 @@ arbiterSpec: {
 ```cue
 #Deployment: {
   target: "kubernetes" | "aws" | "gcp" | "azure"
+  services?: {[Service=string]: #ServiceDeploymentOverride}
 
   ingress?: {
     [Name=string]: #Ingress
@@ -445,21 +509,24 @@ arbiterSpec: {
   mesh?: { provider: "istio" | "linkerd" }
 }
 
+#ServiceDeploymentOverride: {
+  replicas?: int & >=0
+  image?: string
+  env?: {[string]: string}
+  config?: #ServiceConfig
+  resources?: #ResourceRequirements
+  volumes?: [...#VolumeMount]
+  annotations?: {[string]: string}
+  labels?: {[string]: string}
+  healthCheck?: #HealthCheck
+  dependsOn?: [...string]
+}
+
 #Ingress: {
   host: string
   tls?: { secretName: string, issuer?: string }
   paths: {[p=string]: { serviceName: string, servicePort: int }}
 }
-
-#ManagedDatabase: {
-  engine:  "postgres" | "mysql" | "mongodb"
-  version: string
-  size:    string | *"small"
-  retentionDays?: int | *7
-}
-#ManagedCache: { engine: "redis" | "memcached", version?: string, size?: string }
-#MessageQueue: { engine: "kafka" | "rabbitmq" | "sqs-sns" | "pubsub", version?: string }
-#StorageBucket: { provider: "s3" | "gcs" | "azure-blob", versioning?: bool | *true }
 
 #Volume: {
   type: "persistentVolumeClaim" | "configMap" | "secret" | "emptyDir"
@@ -503,8 +570,8 @@ arbiterSpec: {
 
 1. **Binding completeness:** Every `capability.contractRef` must resolve to an
    existing contract; every `implements.apis` must point to a
-   `contracts.http|rpc` key; every `publishes/subscribes` topic must exist in
-   `contracts.events`.
+   `contracts.workflows.<Interface>` key; every `publishes/subscribes` topic
+   must exist in `contracts.events`.
 2. **Domain referential integrity:** Schema refs used in contracts (`string`
    names) must resolve to `domain.entities|valueObjects` or `contracts.schemas`.
 3. **Ownership clarity:** Entities listed in `implements.models` may appear in
@@ -553,8 +620,8 @@ k8s/<env>/<svc>/*.yaml
 
 ## 6) Changes from Original Schema (Mapping)
 
-- **Added:** `domain`, `contracts`, `capabilities`, `infrastructure`, `runtime`,
-  `codegen`, `deployment.observability`, `deployment.security`,
+- **Added:** `domain`, `contracts`, `capabilities`, `runtime`, `codegen`,
+  `deployment.observability`, `deployment.security`,
   `deployment.strategies`.
 - **Replaced/clarified:**
   - _Old_ `language` → _New_ `runtime.language` with version, package manager,
@@ -564,8 +631,9 @@ k8s/<env>/<svc>/*.yaml
     `config.environment` now supports typed `#ConfigValue`.
   - _Old_ implicit HTTP services → _New_ explicit `capabilities` with
     `contractRef` binding.
-  - _Old_ database volumes in `services` → _New_ managed infra in
-    `infrastructure.databases` (services depend by name).
+  - _Old_ dedicated `infrastructure` block → _New_ services with
+    `implementation: "external"` + `resource` metadata that deployments bind
+    explicitly.
 
 - **New determinism controls:** `codegen.profile`, `generator`, `templateHash`,
   `artifactDigests`, and compat policy.
@@ -575,10 +643,11 @@ k8s/<env>/<svc>/*.yaml
 1. Move top-level `language` to `runtime.language` and add
    `version`/`packageManager`.
 2. For each HTTP-like service, add
-   `capabilities: [{kind: "httpServer", contractRef: "contracts.http.<YourAPI>@v1"}]`
-   and define `contracts.http` accordingly.
-3. Move DB containers to `infrastructure.databases` where possible; keep
-   `prebuilt` services only for things you truly manage as containers.
+  `capabilities: [{kind: "httpServer", contractRef: "contracts.workflows.<YourAPI>"}]`
+   and define `contracts.workflows` accordingly.
+3. Model databases/caches/queues as `services` with `serviceType: "external"`
+  and attach `resource` metadata; use `deployments.<env>.services` to express
+  environment-specific overrides instead of bespoke infrastructure blocks.
 4. Introduce `codegen` block with profile+generator+templateHash.
 
 ---
@@ -647,35 +716,132 @@ arbiterSpec: {
   }
 
   contracts: {
-    http: {
+    workflows: {
       PublicAPI: {
-        version: "v1"
-        endpoints: {
-          "/posts": {
-            get:  { responses: { "200": { body: {type:"object", properties:{ items:{type:"array", items:{type:"object"}} }, required:["items"] } } } }
-            post: { request: { body: "Post" }, responses: { "201": { body: "Post" } } }
+        version: "2024-12-26"
+        operations: {
+          listPosts: {
+            input: {}
+            output: { items: [...domain.entities.Post] }
+          }
+          createPost: {
+            input: { post: domain.entities.Post }
+            output: { post: domain.entities.Post }
           }
         }
       }
     }
-    compat: { kind: "semver", breakingRules: ["removeField","removeEndpoint"] }
+    compat: { kind: "semver", breakingRules: ["removeField","removeOperation"] }
   }
 
-  infrastructure: { databases: { primary: { engine: "postgres", version: "15" } } }
-
   services: {
-    api: {
+    InvoiceService: {
       type: "bespoke"
-      sourceDirectory: "./services/api"
-      implements: { apis: ["PublicAPI"], models:["User","Post"] }
-      capabilities: [{ kind:"httpServer", contractRef:"contracts.http.PublicAPI@v1", adapter:{name:"fastify"} }]
-      config: { environment: { DATABASE_URL: { required: true, type:"string" } } }
-      ports: [8080]
-      dependencies: ["primary"]
+      implementation: "internal"
+      sourceDirectory: "./services/invoice"
+      dependencies: {
+        postgres: {
+          service: "InvoiceDatabase"
+          version: ">=15"
+          kind: "postgres"
+        }
+        cache: {
+          service: "InvoiceCache"
+          kind: "redis"
+          optional: true
+        }
+      }
+      endpoints: {
+        getInvoice: {
+          path: "/internal/invoices/{invoiceId}"
+          methods: ["GET","HEAD"]
+          handler: {
+            type: "module"
+            module: "./services/invoice/http/get-invoice.ts"
+            function: "handler"
+          }
+          implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+          middleware: [{
+            module: "./services/invoice/middleware/audit.ts"
+            function: "recordAccess"
+          }]
+        }
+      }
+    }
+
+    BillingGateway: {
+      type: "bespoke"
+      implementation: "internal"
+      sourceDirectory: "./services/gateway"
+      endpoints: {
+        invoicePublic: {
+          path: "/api/invoices/{invoiceId}"
+          methods: ["GET"]
+          handler: {
+            type: "endpoint"
+            service: "InvoiceService"
+            endpoint: "getInvoice"
+          }
+          implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+          middleware: [{
+            module: "./services/gateway/middleware/auth.ts"
+            function: "requireCustomerAuth"
+            phase: "request"
+          }]
+        }
+      }
+    }
+
+    InvoiceDatabase: {
+      type: "external"
+      implementation: "external"
+      resource: {
+        kind: "database"
+        engine: "postgres"
+        version: "15"
+        size: "db.m6i.large"
+        backup: { retentionDays: 14, window: "02:00-03:00 UTC" }
+      }
+    }
+
+    InvoiceCache: {
+      type: "external"
+      implementation: "external"
+      resource: {
+        kind: "cache"
+        engine: "redis"
+        version: "7"
+        tier: "standard"
+      }
     }
   }
 
-  deployment: { target: "kubernetes" }
+  deployments: {
+    development: {
+      target: "compose"
+      compose: { version: "3.9" }
+      services: {
+        InvoiceService: {
+          env: { DATABASE_URL: "postgres://postgres:postgres@db:5432/invoices" }
+        }
+      }
+    }
+    production: {
+      target: "kubernetes"
+      cluster: { name: "prod", provider: "gke", namespace: "invoice-system" }
+      services: {
+        InvoiceService: {
+          replicas: 4
+          resources: {
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits: { cpu: "750m", memory: "1Gi" }
+          }
+        }
+      }
+    }
+  }
+
+  deployment: deployments.production
   codegen: { profile:"ts-fastify-postgres-k8s@1", generator:"arbiter/gen@1.6.2", templateHash:"sha256:..." }
 }
 ```
@@ -694,7 +860,7 @@ arbiterSpec: {
 
 ## 11) Summary
 
-This v2 schema elevates Arbiter from deployment config to an application model.
+This schema elevates Arbiter from deployment config to an application model.
 With bindings, adapters, and deterministic codegen controls, agents can
 regenerate consistent scaffolds and ops artifacts while guarding against
 accidental drift.

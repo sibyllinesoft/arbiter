@@ -18,15 +18,17 @@ import { toast } from "react-toastify";
 import { useResolvedSpec } from "@/hooks/api-hooks";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
 import { apiService } from "@/services/api";
+import { type EnvironmentMap, mergeEnvironmentSources } from "@/utils/environment";
+import type { KeyValueEntry } from "@amalto/key-value-editor";
 import { ArtifactCard } from "./ArtifactCard";
 import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "./ArtifactPanel";
+import AddEntityModal from "./modals/AddEntityModal";
+import EndpointModal from "./modals/EndpointModal";
 import {
-  AddEntityModal,
   DEFAULT_UI_OPTION_CATALOG,
   type FieldValue,
   type UiOptionCatalog,
-} from "./modals/AddEntityModal";
-import EndpointModal from "./modals/EndpointModal";
+} from "./modals/entityTypes";
 import type { InternalServiceCandidate } from "./services/internal-service-classifier";
 import {
   getPackageJson,
@@ -64,6 +66,7 @@ export interface NormalizedService {
   raw: Record<string, unknown> | null;
   sourcePath?: string;
   artifactId?: string | null;
+  environment?: EnvironmentMap;
 }
 
 interface ExternalArtifactCard {
@@ -609,6 +612,20 @@ const collectPorts = (raw: any): string => {
   return Array.from(new Set(ports)).join(", ");
 };
 
+const buildEnvironmentMap = (raw: any): EnvironmentMap => {
+  if (!raw || typeof raw !== "object") {
+    return {};
+  }
+
+  return mergeEnvironmentSources(
+    raw.environment,
+    raw.env,
+    raw.config?.environment,
+    raw.metadata?.environment,
+    raw.metadata?.config?.environment,
+  );
+};
+
 const extractTypeLabel = (raw: any): string | undefined => {
   const metadataType = raw?.metadata?.type;
   if (typeof metadataType === "string" && metadataType.trim()) {
@@ -789,15 +806,8 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
   const sourcePath = hasSource ? sourcePathCandidate : undefined;
 
   const ports = collectPorts(raw);
-  const envCount = (() => {
-    const envSources = [raw?.environment, raw?.metadata?.environment];
-    for (const source of envSources) {
-      if (source && typeof source === "object") {
-        return Object.keys(source).length;
-      }
-    }
-    return 0;
-  })();
+  const environmentMap = buildEnvironmentMap(raw);
+  const envCount = Object.keys(environmentMap).length;
 
   const metadataItems: ServiceMetadataItem[] = [];
   if (language) {
@@ -819,6 +829,7 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
   const endpoints = normalizeEndpoints(raw, identifier);
   const typeLabel = extractTypeLabel(raw);
   const artifactId = deriveArtifactIdFromRaw(raw);
+  const environment = envCount > 0 ? environmentMap : undefined;
 
   return {
     key: identifier,
@@ -832,6 +843,7 @@ const normalizeService = (key: string, raw: any): NormalizedService => {
     raw: raw ?? null,
     artifactId: artifactId ?? null,
     ...(sourcePath ? { sourcePath } : {}),
+    ...(environment ? { environment } : {}),
   };
 };
 
@@ -873,6 +885,18 @@ const buildServiceInitialValues = (service: NormalizedService): Record<string, F
     undefined;
   if (frameworkCandidate) {
     values.framework = frameworkCandidate;
+  }
+
+  const environmentMap =
+    service.environment && Object.keys(service.environment).length > 0
+      ? service.environment
+      : buildEnvironmentMap(service.raw);
+  const environmentPairs: KeyValueEntry[] = Object.entries(environmentMap).map(([key, value]) => ({
+    key,
+    value: value ?? "",
+  }));
+  if (environmentPairs.length > 0) {
+    values.environmentVariables = environmentPairs;
   }
 
   return values;

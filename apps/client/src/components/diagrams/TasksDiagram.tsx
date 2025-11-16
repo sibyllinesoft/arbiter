@@ -1,13 +1,13 @@
 import { ArtifactCard, type ArtifactCardMetaRow } from "@/components/ArtifactCard";
+import AddEntityModal from "@/components/modals/AddEntityModal";
+import { coerceFieldValueToString } from "@/components/modals/AddEntityModal";
 import {
-  AddEntityModal,
   DEFAULT_UI_OPTION_CATALOG,
   type EpicTaskOption,
   type FieldValue,
   type TaskEpicOption,
   type UiOptionCatalog,
-  coerceFieldValueToString,
-} from "@/components/modals/AddEntityModal";
+} from "@/components/modals/entityTypes";
 import { Button, Card, type TabItem, Tabs } from "@/design-system";
 import { apiService } from "@/services/api";
 import { clsx } from "clsx";
@@ -1030,6 +1030,7 @@ function TaskGroupPanel({ group, isActive, onTaskClick, onEpicEdit }: TaskGroupP
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <Card
+        variant="ghost"
         size="sm"
         className="flex min-h-0 flex-1 flex-col overflow-hidden bg-transparent shadow-none ring-0"
         bodyClassName="flex min-h-0 flex-1 flex-col p-0"
@@ -1638,7 +1639,7 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-hidden px-6 pb-6">
+      <div className="flex-1 min-h-0 overflow-hidden">
         {error && (
           <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-900/30 dark:text-red-200">
             <div className="flex items-start gap-2">
@@ -1657,9 +1658,9 @@ export const TasksDiagram: React.FC<TasksDiagramProps> = ({ projectId, className
           onChange={setActiveTab}
           variant="underline"
           size="md"
-          scrollable
-          showScrollButtons
+          fullWidth
           className="flex h-full min-h-0 flex-col"
+          tabListClassName="justify-around"
           contentClassName="flex-1 min-h-0 overflow-hidden"
         />
       </div>

@@ -38,9 +38,10 @@ package demoproject
 	}
 	services: {
 		plotService: {
-			serviceType:     "bespoke"
+			type:            "internal"
+			workload:        "deployment"
 			language:        "typescript"
-			type:            "deployment"
+			source: { package: "./src/plotService" }
 			sourceDirectory: "./src/plotService"
 		}
 	}

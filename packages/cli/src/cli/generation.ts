@@ -4,6 +4,7 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
+import { docsGenerateCommand } from "../commands/docs-generate.js";
 import { docsCommand } from "../commands/docs.js";
 import { examplesCommand } from "../commands/examples.js";
 import { executeCommand } from "../commands/execute.js";
@@ -86,6 +87,33 @@ export function createGenerationCommands(program: Command): void {
       }
     });
 
+  docsCmd
+    .command("cli")
+    .description("generate comprehensive CLI reference documentation")
+    .option("--output <dir>", "documentation output directory", "./docs")
+    .option("--formats <formats>", "output formats (markdown,html,json)", "markdown")
+    .option("--include-examples", "include usage examples")
+    .option("--include-internal", "include internal/hidden commands")
+    .option("--toc", "include table of contents", true)
+    .option("--search", "include search functionality (HTML only)", true)
+    .option("--validate", "validate documentation completeness")
+    .option("--watch", "watch mode for development")
+    .option("--dry-run", "preview what would be generated")
+    .option("--verbose", "verbose output")
+    .action(async (options, command) => {
+      try {
+        const config = requireCommandConfig(command);
+        const exitCode = await docsGenerateCommand(options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    });
+
   // Examples command
   program
     .command("examples <type>")
@@ -111,7 +139,7 @@ export function createGenerationCommands(program: Command): void {
   // Execute command
   program
     .command("execute <epic>")
-    .description("execute Epic v2 for deterministic, agent-first code generation")
+    .description("execute Arbiter epics for deterministic, agent-first code generation")
     .option("--stage <stage>", "execution stage (planning, implementation, testing, deployment)")
     .option("--parallel", "execute tasks in parallel where possible")
     .option("--dry-run", "preview execution plan without running tasks")

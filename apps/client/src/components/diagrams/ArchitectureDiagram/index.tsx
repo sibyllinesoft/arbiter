@@ -1,11 +1,11 @@
+import AddEntityModal from "@/components/modals/AddEntityModal";
 import {
-  AddEntityModal,
   DEFAULT_UI_OPTION_CATALOG,
   type EpicTaskOption,
   type FieldValue,
   type TaskEpicOption,
   type UiOptionCatalog,
-} from "@/components/modals/AddEntityModal";
+} from "@/components/modals/entityTypes";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
 import { apiService } from "@/services/api";
 import { useAutoAnimate } from "@formkit/auto-animate/react";

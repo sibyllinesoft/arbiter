@@ -22,24 +22,15 @@ export class CueArchitectureParser {
     const components: DiagramComponent[] = [];
     const connections: DiagramConnection[] = [];
 
-    // Detect schema version
-    const isV2 = cueData.ui || cueData.flows || cueData.capabilities;
-
-    if (isV2) {
-      // Parse v2 (app-centric) schema
-      CueArchitectureParser.parseV2Schema(cueData, components, connections);
-    } else {
-      // Parse v1 (infrastructure-focused) schema
-      CueArchitectureParser.parseV1Schema(cueData, components, connections);
-    }
+    CueArchitectureParser.parseAppSchema(cueData, components, connections);
 
     return { components, connections };
   }
 
   /**
-   * Parse v2 app-centric schema
+   * Parse app-centric schema
    */
-  private static parseV2Schema(
+  private static parseAppSchema(
     cueData: CueArchitectureData,
     components: DiagramComponent[],
     connections: DiagramConnection[],
@@ -162,53 +153,6 @@ export class CueArchitectureParser {
 
     // Parse route-capability relationships
     CueArchitectureParser.parseRouteCapabilityConnections(cueData, components, connections);
-  }
-
-  /**
-   * Parse v1 infrastructure-focused schema
-   */
-  private static parseV1Schema(
-    cueData: CueArchitectureData,
-    components: DiagramComponent[],
-    connections: DiagramConnection[],
-  ): void {
-    // Parse services from v1 schema
-    if (cueData.services) {
-      Object.entries(cueData.services).forEach(([serviceId, serviceData]) => {
-        components.push({
-          id: `service_${serviceId}`,
-          name: (serviceData as any).name || serviceId,
-          type: "service",
-          description: `Service: ${serviceId}`,
-          layer: "service",
-          position: { x: 0, y: 0 },
-          size: { width: 180, height: 100 },
-          serviceType: (serviceData as any).serviceType,
-          language: (serviceData as any).language,
-          deploymentType: (serviceData as any).type,
-          replicas: (serviceData as any).replicas,
-          ports: CueArchitectureParser.parseServicePorts(serviceData as any),
-          metadata: serviceData,
-        });
-      });
-    }
-
-    // Parse deployment configuration
-    if (cueData.deployment) {
-      components.push({
-        id: "deployment_target",
-        name: "Deployment Target",
-        type: "external_system",
-        description: `Deployment: ${(cueData.deployment as any).target || "Unknown"}`,
-        layer: "external",
-        position: { x: 0, y: 0 },
-        size: { width: 160, height: 80 },
-        metadata: cueData.deployment,
-      });
-    }
-
-    // Parse service dependencies from v1
-    CueArchitectureParser.parseV1ServiceConnections(cueData, components, connections);
   }
 
   /**
@@ -417,50 +361,6 @@ export class CueArchitectureParser {
             label: `Uses ${capName}`,
             metadata: { capability: capName },
           });
-        }
-      });
-    });
-  }
-
-  /**
-   * Parse v1 service connections
-   */
-  private static parseV1ServiceConnections(
-    cueData: CueArchitectureData,
-    components: DiagramComponent[],
-    connections: DiagramConnection[],
-  ): void {
-    if (!cueData.services) return;
-
-    // Look for dependencies in service configurations
-    Object.entries(cueData.services).forEach(([serviceId, serviceData]) => {
-      const fromComponent = components.find((c) => c.id === `service_${serviceId}`);
-      if (!fromComponent) return;
-
-      // Parse environment variables for service dependencies
-      const env = (serviceData as any).env || {};
-      Object.entries(env).forEach(([envKey, envValue]) => {
-        if (typeof envValue === "string" && envValue.includes("service")) {
-          // Simple heuristic: if env value references another service
-          const referencedService = Object.keys(cueData.services!).find(
-            (s) => envValue.includes(s) && s !== serviceId,
-          );
-
-          if (referencedService) {
-            const toComponent = components.find((c) => c.id === `service_${referencedService}`);
-            if (toComponent) {
-              connections.push({
-                id: `service_${serviceId}_depends_${referencedService}`,
-                from: { componentId: fromComponent.id },
-                to: { componentId: toComponent.id },
-                type: "dependency",
-                label: envKey || "",
-                metadata: {
-                  dependsOn: [referencedService],
-                },
-              });
-            }
-          }
         }
       });
     });

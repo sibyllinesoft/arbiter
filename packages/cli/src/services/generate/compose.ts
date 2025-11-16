@@ -1,7 +1,15 @@
 import path from "node:path";
-import type { DeploymentConfig, ServiceConfig as DeploymentServiceConfig } from "@arbiter/shared";
+import type {
+  DeploymentConfig,
+  ServiceConfig as DeploymentServiceConfig,
+  ServiceDeploymentOverride,
+} from "@arbiter/shared";
 import fs from "fs-extra";
 import type { ProjectStructureConfig } from "../../types.js";
+import {
+  resolveServiceArtifactType,
+  resolveServiceWorkload,
+} from "../../utils/service-metadata.js";
 import type { ClientGenerationContext } from "./contexts.js";
 import { ensureDirectory, writeFileWithHooks } from "./hook-executor.js";
 import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
@@ -39,9 +47,95 @@ type ComposeServiceConfig = DeploymentServiceConfig & {
     }>;
   };
   scaling?: Record<string, unknown>;
+  workload?: string;
 };
 
 const CLIENT_COMPONENT_LABEL = "arbiter.io/component";
+
+type ComposeDeploymentSelection = {
+  deployment: DeploymentConfig | null;
+  overrides: Record<string, ServiceDeploymentOverride>;
+};
+
+interface ComposeDeploymentContext {
+  envName?: string;
+  slug?: string;
+  deployment?: DeploymentConfig | null;
+  overrides?: Record<string, ServiceDeploymentOverride>;
+}
+
+function selectComposeDeployment(cueData: any): ComposeDeploymentSelection {
+  const deployments = cueData?.deployments;
+  if (deployments && typeof deployments === "object") {
+    const entries = Object.entries(deployments as Record<string, DeploymentConfig>);
+    const match = entries.find(([, cfg]) => cfg?.target === "compose") || entries[0];
+    if (match) {
+      const [environment, config] = match;
+      const overrides =
+        (config?.services && typeof config.services === "object"
+          ? (config.services as Record<string, ServiceDeploymentOverride>)
+          : {}) ?? {};
+      return {
+        deployment: { ...config, environment },
+        overrides,
+      };
+    }
+  }
+
+  const fallback = cueData?.deployment;
+  const overrides =
+    fallback?.services && typeof fallback.services === "object"
+      ? (fallback.services as Record<string, ServiceDeploymentOverride>)
+      : {};
+  return {
+    deployment: fallback ?? null,
+    overrides,
+  };
+}
+
+function applyComposeOverrides(
+  base: Record<string, unknown>,
+  override?: ServiceDeploymentOverride | null,
+): Record<string, unknown> {
+  if (!override) {
+    return base;
+  }
+
+  const merged = { ...base };
+
+  if (typeof override.replicas === "number") {
+    merged.replicas = override.replicas;
+  }
+
+  if (override.image) {
+    merged.image = override.image;
+  }
+
+  if (override.env) {
+    merged.env = { ...(base.env as Record<string, string> | undefined), ...override.env };
+  }
+
+  if (override.config) {
+    merged.config = { ...(base.config as Record<string, unknown> | undefined), ...override.config };
+  }
+
+  if (override.annotations) {
+    merged.annotations = {
+      ...(base.annotations as Record<string, string> | undefined),
+      ...override.annotations,
+    };
+  }
+
+  if (override.labels) {
+    merged.labels = { ...(base.labels as Record<string, string> | undefined), ...override.labels };
+  }
+
+  if (override.dependsOn) {
+    merged.dependsOn = override.dependsOn;
+  }
+
+  return merged;
+}
 
 export async function generateDockerComposeArtifacts(
   config: any,
@@ -50,6 +144,7 @@ export async function generateDockerComposeArtifacts(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   clientContext?: ClientGenerationContext,
+  deploymentContext?: ComposeDeploymentContext,
 ): Promise<string[]> {
   const files: string[] = [];
   const composeSegments = [...toPathSegments(structure.infraDirectory), "compose"];
@@ -58,7 +153,11 @@ export async function generateDockerComposeArtifacts(
 
   await ensureDirectory(composeRoot, options);
 
-  const { services, deployment } = parseDockerComposeServices(assemblyConfig);
+  const { services, deployment } = parseDockerComposeServices(assemblyConfig, deploymentContext);
+
+  if (!deployment) {
+    return files;
+  }
 
   const resolvedServices = prepareComposeServices(
     services,
@@ -69,15 +168,18 @@ export async function generateDockerComposeArtifacts(
     clientContext,
   );
 
+  const suffix = deploymentContext?.slug ? `.${deploymentContext.slug}` : "";
+  const composeFile = `docker-compose${suffix}.yml`;
   const composeYml = generateDockerComposeFile(resolvedServices, deployment, config.name);
-  const composePath = path.join(composeRoot, "docker-compose.yml");
+  const composePath = path.join(composeRoot, composeFile);
   await writeFileWithHooks(composePath, composeYml, options);
-  files.push(joinRelativePath(...composeRelativeRoot, "docker-compose.yml"));
+  files.push(joinRelativePath(...composeRelativeRoot, composeFile));
 
   const envTemplate = generateComposeEnvTemplate(resolvedServices, config.name, deployment);
-  const envPath = path.join(composeRoot, ".env.template");
+  const envFile = `.env${suffix}.template`;
+  const envPath = path.join(composeRoot, envFile);
   await writeFileWithHooks(envPath, envTemplate, options);
-  files.push(joinRelativePath(...composeRelativeRoot, ".env.template"));
+  files.push(joinRelativePath(...composeRelativeRoot, envFile));
 
   const buildFiles = await generateBuildContexts(
     resolvedServices,
@@ -88,60 +190,76 @@ export async function generateDockerComposeArtifacts(
   files.push(...buildFiles);
 
   const readme = generateComposeReadme(resolvedServices, deployment, config.name);
-  const readmePath = path.join(composeRoot, "README.md");
+  const readmeFile = `README${suffix || ""}.md`;
+  const readmePath = path.join(composeRoot, readmeFile);
   await writeFileWithHooks(readmePath, readme, options);
-  files.push(joinRelativePath(...composeRelativeRoot, "README.md"));
+  files.push(joinRelativePath(...composeRelativeRoot, readmeFile));
 
   return files;
 }
 
-export function parseDockerComposeServices(assemblyConfig: any): {
+export function parseDockerComposeServices(
+  assemblyConfig: any,
+  context?: ComposeDeploymentContext,
+): {
   services: ComposeServiceConfig[];
-  deployment: DeploymentConfig;
+  deployment: DeploymentConfig | null;
 } {
   const services: ComposeServiceConfig[] = [];
   const cueData = assemblyConfig._fullCueData || assemblyConfig;
 
-  const composeVersion = cueData?.deployment?.compose?.version;
-  const deployment: DeploymentConfig = {
-    target: cueData?.deployment?.target || "compose",
+  let deployment = context?.deployment ?? null;
+  let overrides = context?.overrides ?? undefined;
+
+  if (!deployment) {
+    const selection = selectComposeDeployment(cueData);
+    deployment = selection.deployment;
+    overrides = selection.overrides;
+  }
+
+  if (!deployment) {
+    return { services: [], deployment: null };
+  }
+
+  const composeVersion = deployment?.compose?.version;
+  const resolvedDeployment: DeploymentConfig = {
+    target: deployment?.target || "compose",
     compose: {
       version: typeof composeVersion === "string" ? composeVersion : undefined,
-      networks: cueData?.deployment?.compose?.networks || {},
-      volumes: cueData?.deployment?.compose?.volumes || {},
-      profiles: cueData?.deployment?.compose?.profiles || [],
-      environment: cueData?.deployment?.compose?.environment || {},
+      networks: deployment?.compose?.networks || {},
+      volumes: deployment?.compose?.volumes || {},
+      profiles: deployment?.compose?.profiles || [],
+      environment: deployment?.compose?.environment || {},
     },
+    environment: deployment?.environment,
   };
 
   if (cueData?.services) {
     for (const [serviceName, serviceConfig] of Object.entries(cueData.services)) {
-      const service = parseServiceForCompose(serviceName, serviceConfig as any);
+      const merged = applyComposeOverrides(
+        serviceConfig as Record<string, unknown>,
+        overrides?.[serviceName],
+      );
+      const service = parseServiceForCompose(serviceName, merged as any);
       if (service) {
         services.push(service);
       }
     }
   }
 
-  return { services, deployment };
+  return { services, deployment: resolvedDeployment };
 }
 
 function parseServiceForCompose(name: string, config: any): ComposeServiceConfig | null {
-  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
-
-  if (config.sourceDirectory) {
-    serviceType = "bespoke";
-  } else if (config.image) {
-    serviceType = "prebuilt";
-  } else if (config.language && !config.image) {
-    serviceType = "bespoke";
-  }
+  const serviceType = resolveServiceArtifactType(config) as "bespoke" | "prebuilt" | "external";
+  const workload = resolveServiceWorkload(config) || config.type || "deployment";
 
   const service: ComposeServiceConfig = {
     name: name,
-    serviceType: serviceType,
+    serviceType,
     language: config.language || "container",
-    type: config.type || "deployment",
+    type: workload,
+    workload,
     replicas: config.replicas || 1,
     image: config.image,
     sourceDirectory: config.sourceDirectory,
@@ -602,7 +720,8 @@ file to change health paths or ports.
 }
 
 function shouldPublishPorts(service: ComposeServiceConfig): boolean {
-  return !(service.type === "statefulset" && service.serviceType === "prebuilt");
+  const workload = service.workload || resolveServiceWorkload(service) || "deployment";
+  return !(workload === "statefulset" && service.serviceType === "prebuilt");
 }
 
 function resolveHealthConfiguration(

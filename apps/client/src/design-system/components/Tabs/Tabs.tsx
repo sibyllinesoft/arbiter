@@ -60,6 +60,9 @@ export interface TabsProps {
 
   /** Custom className for individual tabs */
   tabClassName?: string;
+
+  /** Custom className for the tab list (nav) */
+  tabListClassName?: string;
 }
 
 const variantClasses = {
@@ -128,6 +131,7 @@ export function Tabs({
   className,
   contentClassName,
   tabClassName,
+  tabListClassName,
 }: TabsProps) {
   const [internalActiveTab, setInternalActiveTab] = useState(activeTab || items[0]?.id);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -259,6 +263,7 @@ export function Tabs({
             scrollable && "overflow-x-auto scrollbar-hide",
             scrollable && showScrollButtons && canScrollLeft && "ml-8",
             scrollable && showScrollButtons && canScrollRight && "mr-8",
+            tabListClassName,
           )}
           role="tablist"
           style={scrollable ? { scrollbarWidth: "none", msOverflowStyle: "none" } : undefined}

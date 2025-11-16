@@ -71,6 +71,51 @@ function coerceOptionalTrimmedString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function coerceEnvironmentMap(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const map: Record<string, string> = {};
+
+  const assignEntry = (key: unknown, raw: unknown) => {
+    if (typeof key !== "string") return;
+    const normalizedKey = key.trim();
+    if (!normalizedKey) return;
+    let normalizedValue: string;
+    if (raw === null || raw === undefined) {
+      normalizedValue = "";
+    } else if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") {
+      normalizedValue = String(raw);
+    } else if (typeof raw === "object" && raw && "value" in raw) {
+      normalizedValue = String((raw as Record<string, unknown>).value ?? "");
+    } else {
+      normalizedValue = "";
+    }
+    map[normalizedKey] = normalizedValue;
+  };
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => {
+      if (!entry) return;
+      if (typeof entry === "string") {
+        const [key, ...rest] = entry.split(/[:=]/);
+        assignEntry(key, rest.join("=").trim());
+      } else if (typeof entry === "object") {
+        const record = entry as Record<string, unknown>;
+        const key = (record.key ?? record.name ?? record.id ?? record.label) as string | undefined;
+        assignEntry(key ?? "", record.value ?? record.val ?? record.default ?? "");
+      }
+    });
+  } else {
+    Object.entries(value as Record<string, unknown>).forEach(([key, raw]) => {
+      assignEntry(key, raw);
+    });
+  }
+
+  return Object.keys(map).length > 0 ? map : undefined;
+}
+
 function buildFrontendArtifactMetadata(values: Record<string, any>, slug: string) {
   const framework =
     typeof values.framework === "string" && values.framework.trim().length > 0
@@ -183,6 +228,9 @@ function buildManualArtifactPayload(
       const defaultPort = defaultPortContext.includes("python") ? 5000 : 3000;
       const portValue = Number.parseInt(values.port || "", 10);
       const port = Number.isFinite(portValue) ? portValue : defaultPort;
+      const environmentProvided = hasOwn(values, "environment");
+      const environmentMap = coerceEnvironmentMap(values.environment);
+      const shouldClearEnvironment = environmentProvided && !environmentMap;
 
       return {
         name,
@@ -196,6 +244,11 @@ function buildManualArtifactPayload(
           containerImage: `manual/${slug}:latest`,
           language,
           framework,
+          ...(environmentMap
+            ? { environment: environmentMap }
+            : shouldClearEnvironment
+              ? { environment: null }
+              : {}),
           classification: {
             detectedType: "service",
             reason: "manual-entry",
@@ -1789,6 +1842,23 @@ export function createProjectsRouter(deps: Dependencies) {
       delete mergedMetadata.entity_id;
     }
 
+    if (
+      mergedMetadata &&
+      nextMetadataInput &&
+      Object.prototype.hasOwnProperty.call(nextMetadataInput, "environment")
+    ) {
+      const envValue = nextMetadataInput.environment;
+      if (
+        !envValue ||
+        (typeof envValue === "object" &&
+          Object.keys(envValue as Record<string, unknown>).length === 0)
+      ) {
+        delete mergedMetadata.environment;
+      } else {
+        mergedMetadata.environment = envValue as Record<string, unknown>;
+      }
+    }
+
     const sanitizedMetadata = mergedMetadata ? normalizeMetadata(mergedMetadata) : undefined;
 
     try {
@@ -2214,6 +2284,13 @@ export function createProjectsRouter(deps: Dependencies) {
     try {
       const artifactId = randomUUID();
       const metadata = normalizeMetadata(payload.metadata);
+      if (
+        metadata &&
+        Object.prototype.hasOwnProperty.call(metadata, "environment") &&
+        metadata.environment === null
+      ) {
+        delete metadata.environment;
+      }
       const artifact = await db.createArtifact(
         artifactId,
         projectId,

@@ -40,6 +40,7 @@ export function createRemoveCommands(program: Command): Command {
     .command("endpoint <path>")
     .description("remove an API endpoint")
     .option("--method <method>", "HTTP method to remove (defaults to entire endpoint)")
+    .option("--service <service>", "service that owns the endpoint", "api")
     .option("--dry-run", "preview changes without applying them")
     .option("--force", "succeed even if the target does not exist")
     .option("--verbose", "show verbose logging")

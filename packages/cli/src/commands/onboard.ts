@@ -1056,17 +1056,18 @@ export async function generateInitialSpec(
     for (const service of analysis.services) {
       const needsQuotes = service.name.includes("-");
       const serviceName = needsQuotes ? `"${service.name}"` : service.name;
+      const isExternal = service.type === "database" || service.type === "cache";
 
       cueContent += `\t\t${serviceName}: {\n`;
-      cueContent += `\t\t\tserviceType:     "${service.type === "database" || service.type === "cache" ? "prebuilt" : "bespoke"}"\n`;
+      cueContent += `\t\t\ttype:            "${isExternal ? "external" : "internal"}"\n`;
+      cueContent += `\t\t\tworkload:        "${isExternal ? "statefulset" : "deployment"}"\n`;
       cueContent += `\t\t\tlanguage:        "${service.language}"\n`;
-      cueContent += `\t\t\ttype:            "${service.type === "database" ? "statefulset" : "deployment"}"\n`;
 
-      if (service.type !== "database" && service.type !== "cache") {
-        cueContent += `\t\t\tsourceDirectory: "./src/${service.name}"\n`;
+      if (!isExternal) {
+        cueContent += `\t\t\tsource: { package: "./src/${service.name}" }\n`;
       }
 
-      if (service.type === "database" || service.type === "cache") {
+      if (isExternal) {
         cueContent += `\t\t\timage:           "${service.framework}:latest"\n`;
       }
 

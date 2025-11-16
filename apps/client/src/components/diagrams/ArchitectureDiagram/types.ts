@@ -1,4 +1,4 @@
-import type { FieldValue, UiOptionCatalog } from "@/components/modals/AddEntityModal";
+import type { FieldValue, UiOptionCatalog } from "@/components/modals/entityTypes";
 
 export interface ArchitectureEntityModalRequest {
   type: string;

@@ -1,0 +1,7 @@
+{
+  "apiUrl": "http://localhost:5050",
+  "format": "table",
+  "color": true,
+  "timeout": 750,
+  "projectId": "sibylline-store"
+}

@@ -277,18 +277,18 @@ function pathBelongsToService(pathKey: string, serviceName: string, serviceSpec:
 
 function determinePathOwnership(appSpec: AppSpec): Map<string, string> {
   const ownership = new Map<string, string>();
-  const services = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
-    isTypeScriptServiceLanguage(svc?.language as string | undefined),
-  );
-
-  for (const pathKey of Object.keys(appSpec.paths ?? {})) {
-    for (const [serviceName, serviceSpec] of services) {
-      if (pathBelongsToService(pathKey, serviceName, serviceSpec)) {
-        ownership.set(pathKey, slugify(serviceName, serviceName));
-        break;
+  if (appSpec.paths) {
+    for (const [serviceName, pathSpec] of Object.entries(appSpec.paths)) {
+      if (!pathSpec || typeof pathSpec !== "object") continue;
+      const slug = slugify(serviceName, serviceName);
+      for (const pathKey of Object.keys(pathSpec as Record<string, unknown>)) {
+        ownership.set(pathKey, slug);
       }
     }
   }
+  const services = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
+    isTypeScriptServiceLanguage(svc?.language as string | undefined),
+  );
 
   for (const flow of appSpec.flows ?? []) {
     for (const step of flow.steps ?? []) {
@@ -802,7 +802,7 @@ export async function generateCommand(
       console.log(chalk.dim("Assembly configuration:"));
       console.log(
         chalk.dim(
-          `Schema version: ${configWithVersion.schema.version} (detected from: ${configWithVersion.schema.detected_from})`,
+          `Schema detected from ${configWithVersion.schema.detected_from} data (application model)`,
         ),
       );
       console.log(chalk.dim(JSON.stringify(configWithVersion, null, 2)));
@@ -810,7 +810,7 @@ export async function generateCommand(
 
     // Validate specification completeness
     console.log(chalk.blue("🔍 Validating specification completeness..."));
-    const validationResult = validateSpecification(configWithVersion.app || configWithVersion);
+    const validationResult = validateSpecification(configWithVersion.app);
 
     if (validationResult.hasErrors) {
       console.log(formatWarnings(validationResult));
@@ -873,25 +873,20 @@ export async function generateCommand(
     const results = [];
 
     try {
-      // Generate application artifacts
-      if (configWithVersion.app) {
-        console.log(chalk.blue("🎨 Generating application artifacts..."));
-        const projectStructure: ProjectStructureConfig = {
-          ...DEFAULT_PROJECT_STRUCTURE,
-          ...config.projectStructure,
-        };
+      console.log(chalk.blue("🎨 Generating application artifacts..."));
+      const projectStructure: ProjectStructureConfig = {
+        ...DEFAULT_PROJECT_STRUCTURE,
+        ...config.projectStructure,
+      };
 
-        const appResults = await generateAppArtifacts(
-          configWithVersion,
-          outputDir,
-          options,
-          projectStructure,
-          config,
-        );
-        results.push(...appResults);
-      } else {
-        throw new Error("Invalid configuration: missing app specification data");
-      }
+      const appResults = await generateAppArtifacts(
+        configWithVersion,
+        outputDir,
+        options,
+        projectStructure,
+        config,
+      );
+      results.push(...appResults);
 
       // Report results
       if (options.dryRun) {
@@ -1492,39 +1487,54 @@ function deriveServiceEndpointsFromPaths(
   const results: RouteBindingInput[] = [];
   const serviceSlug = serviceContext.name;
   const serviceOriginal = serviceContext.originalName || serviceContext.name;
+  const normalizedOriginal = slugify(serviceOriginal, serviceOriginal);
 
-  for (const [pathKey, pathSpec] of Object.entries(appSpec.paths)) {
-    const owner = pathOwnership?.get(pathKey);
-    const belongs =
-      (owner && owner === serviceSlug) ||
-      (!owner && pathBelongsToService(pathKey, serviceOriginal, serviceSpec));
-    if (!belongs) {
+  for (const [pathServiceName, pathSpec] of Object.entries(appSpec.paths)) {
+    if (!pathSpec || typeof pathSpec !== "object") {
       continue;
     }
 
-    for (const method of SUPPORTED_HTTP_METHODS) {
-      const operation = (pathSpec as Record<string, any>)[method];
-      if (!operation) {
+    const normalizedPathService = slugify(pathServiceName, pathServiceName);
+    const explicitMatch =
+      pathServiceName === serviceOriginal ||
+      pathServiceName === serviceSlug ||
+      normalizedPathService === serviceSlug ||
+      normalizedPathService === normalizedOriginal;
+
+    for (const [pathKey, pathDefinition] of Object.entries(pathSpec as Record<string, PathSpec>)) {
+      const owner = pathOwnership?.get(pathKey);
+      const belongs =
+        explicitMatch ||
+        owner === serviceSlug ||
+        (!owner && pathBelongsToService(pathKey, serviceOriginal, serviceSpec));
+      if (!belongs) {
         continue;
       }
 
-      const summary = operation.summary || `${method.toUpperCase()} ${pathKey}`;
-      const { statusCode, example } = extractResponseMetadata(operation);
-      const replyPayload = example ?? {
-        service: serviceSlug,
-        status: "not_implemented",
-        summary,
-        method: method.toUpperCase(),
-        path: pathKey,
-      };
+      for (const method of SUPPORTED_HTTP_METHODS) {
+        const operation = (pathDefinition as Record<string, any>)[method];
+        if (!operation) {
+          continue;
+        }
 
-      results.push({
-        method: method.toUpperCase(),
-        url: pathKey,
-        summary,
-        reply: replyPayload,
-        statusCode,
-      });
+        const summary = operation.summary || `${method.toUpperCase()} ${pathKey}`;
+        const { statusCode, example } = extractResponseMetadata(operation);
+        const replyPayload = example ?? {
+          service: serviceSlug,
+          status: "not_implemented",
+          summary,
+          method: method.toUpperCase(),
+          path: pathKey,
+        };
+
+        results.push({
+          method: method.toUpperCase(),
+          url: pathKey,
+          summary,
+          reply: replyPayload,
+          statusCode,
+        });
+      }
     }
   }
 
@@ -2293,79 +2303,81 @@ const SUPPORTED_HTTP_METHODS: Array<keyof PathSpec> = ["get", "post", "put", "pa
 
 function collectEndpointAssertionCases(appSpec: AppSpec): EndpointTestCaseDefinition[] {
   const cases: EndpointTestCaseDefinition[] = [];
-  const pathEntries = Object.entries(appSpec.paths ?? {});
+  const pathGroups = appSpec.paths ?? {};
 
-  for (const [pathKey, pathSpec] of pathEntries) {
+  for (const pathSpec of Object.values(pathGroups)) {
     if (!pathSpec || typeof pathSpec !== "object") {
       continue;
     }
 
-    for (const method of SUPPORTED_HTTP_METHODS) {
-      const operation = (pathSpec as Record<string, any>)[method];
-      if (!operation || typeof operation !== "object") {
-        continue;
-      }
-
-      const assertions = normalizeCueAssertionBlock(operation.assertions);
-      if (assertions.length === 0) {
-        continue;
-      }
-
-      const responses = operation.responses as Record<string, any> | undefined;
-      let primaryResponseStatus: number | undefined;
-      let primaryResponse: Record<string, unknown> | undefined;
-
-      if (responses && typeof responses === "object") {
-        const preferredOrder = ["200", "201", "202", "204"];
-        const entries = Object.entries(responses).filter(([status]) => status);
-        const preferredEntry = entries.find(([status]) => preferredOrder.includes(status));
-        const fallbackEntry = entries[0];
-        const chosen = preferredEntry ?? fallbackEntry;
-        if (chosen) {
-          primaryResponseStatus = Number.parseInt(chosen[0], 10);
-          primaryResponse = chosen[1] as Record<string, unknown>;
+    for (const [pathKey, operationSet] of Object.entries(pathSpec as Record<string, PathSpec>)) {
+      for (const method of SUPPORTED_HTTP_METHODS) {
+        const operation = (operationSet as Record<string, any>)[method];
+        if (!operation || typeof operation !== "object") {
+          continue;
         }
-      }
 
-      const requestBody = operation.requestBody as Record<string, unknown> | undefined;
-      const metadata: Record<string, unknown> = {};
-
-      if (requestBody && typeof requestBody === "object") {
-        const requestContent = requestBody.content as
-          | Record<string, Record<string, unknown>>
-          | undefined;
-        if (requestContent && typeof requestContent === "object") {
-          const [contentType, media] = Object.entries(requestContent)[0] ?? [];
-          metadata.requestBody = {
-            contentType,
-            schema: media?.schema,
-            example: media?.example,
-          };
+        const assertions = normalizeCueAssertionBlock(operation.assertions);
+        if (assertions.length === 0) {
+          continue;
         }
-      }
 
-      if (primaryResponse) {
-        const responseContent = primaryResponse.content as
-          | Record<string, Record<string, unknown>>
-          | undefined;
-        if (responseContent && typeof responseContent === "object") {
-          const [contentType, media] = Object.entries(responseContent)[0] ?? [];
-          metadata.response = {
-            status: primaryResponseStatus,
-            contentType,
-            schema: media?.schema,
-            example: media?.example,
-          };
+        const responses = operation.responses as Record<string, any> | undefined;
+        let primaryResponseStatus: number | undefined;
+        let primaryResponse: Record<string, unknown> | undefined;
+
+        if (responses && typeof responses === "object") {
+          const preferredOrder = ["200", "201", "202", "204"];
+          const entries = Object.entries(responses).filter(([status]) => status);
+          const preferredEntry = entries.find(([status]) => preferredOrder.includes(status));
+          const fallbackEntry = entries[0];
+          const chosen = preferredEntry ?? fallbackEntry;
+          if (chosen) {
+            primaryResponseStatus = Number.parseInt(chosen[0], 10);
+            primaryResponse = chosen[1] as Record<string, unknown>;
+          }
         }
-      }
 
-      cases.push({
-        path: pathKey,
-        method: method.toUpperCase(),
-        assertions,
-        status: primaryResponseStatus,
-        metadata,
-      });
+        const requestBody = operation.requestBody as Record<string, unknown> | undefined;
+        const metadata: Record<string, unknown> = {};
+
+        if (requestBody && typeof requestBody === "object") {
+          const requestContent = requestBody.content as
+            | Record<string, Record<string, unknown>>
+            | undefined;
+          if (requestContent && typeof requestContent === "object") {
+            const [contentType, media] = Object.entries(requestContent)[0] ?? [];
+            metadata.requestBody = {
+              contentType,
+              schema: media?.schema,
+              example: media?.example,
+            };
+          }
+        }
+
+        if (primaryResponse) {
+          const responseContent = primaryResponse.content as
+            | Record<string, Record<string, unknown>>
+            | undefined;
+          if (responseContent && typeof responseContent === "object") {
+            const [contentType, media] = Object.entries(responseContent)[0] ?? [];
+            metadata.response = {
+              status: primaryResponseStatus,
+              contentType,
+              schema: media?.schema,
+              example: media?.example,
+            };
+          }
+        }
+
+        cases.push({
+          path: pathKey,
+          method: method.toUpperCase(),
+          assertions,
+          status: primaryResponseStatus,
+          metadata,
+        });
+      }
     }
   }
 
@@ -3325,8 +3337,18 @@ async function generateAPISpecifications(
       return Object.fromEntries(convertedEntries);
     };
 
+    const flattenedPaths: Record<string, PathSpec> = {};
+    for (const pathMap of Object.values(appSpec.paths)) {
+      if (!pathMap || typeof pathMap !== "object") {
+        continue;
+      }
+      for (const [pathKey, pathSpec] of Object.entries(pathMap as Record<string, PathSpec>)) {
+        flattenedPaths[pathKey] = pathSpec;
+      }
+    }
+
     // Convert paths to OpenAPI format
-    for (const [pathKey, pathSpec] of Object.entries(appSpec.paths)) {
+    for (const [pathKey, pathSpec] of Object.entries(flattenedPaths)) {
       openApiSpec.paths[pathKey] = {};
 
       for (const [method, operation] of Object.entries(pathSpec)) {
@@ -5446,11 +5468,11 @@ function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceS
       continue;
     }
 
-    const language = parsed.language || configWithVersion.app?.config?.language || "typescript";
+    const language = parsed.language || configWithVersion.app.config?.language || "typescript";
     const buildTool =
       (rawConfig as any)?.buildTool ||
       (rawConfig as any)?.build?.tool ||
-      configWithVersion.app?.config?.buildTool;
+      configWithVersion.app.config?.buildTool;
 
     const workingDirectory =
       typeof parsed.sourceDirectory === "string"

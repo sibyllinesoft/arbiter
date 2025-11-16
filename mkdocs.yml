@@ -35,8 +35,17 @@ markdown_extensions:
   - def_list
   - footnotes
   - meta
-  - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: "__span"
+      pygments_style: material
+      guess_lang: false
+      default_lang: typescript
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.details
   - pymdownx.tabbed:
       alternate_style: true
@@ -70,3 +79,8 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/sibyllinesoft/arbiter
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/highlightjs-cue@1.0.0/dist/cue.min.js
+  - assets/js/cue-highlight.js
+  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
+  - assets/js/mermaid-init.js

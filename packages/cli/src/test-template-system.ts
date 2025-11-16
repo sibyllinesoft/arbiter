@@ -131,13 +131,15 @@ product: {
 
 services: {
   api: {
-    serviceType: "bespoke"
+    type: "internal",
+    workload: "deployment"
     language: "typescript"
     type: "deployment"
     ports: [{ name: "http", port: 3000, targetPort: 3000 }]
   }
   database: {
-    serviceType: "prebuilt"
+    type: "external",
+    workload: "statefulset"
     language: "container"
     image: "postgres:15"
     ports: [{ name: "db", port: 5432, targetPort: 5432 }]

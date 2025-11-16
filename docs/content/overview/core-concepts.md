@@ -39,44 +39,47 @@ system embodies.
 
 ### What Goes Here?
 
-- **Entities**: Core business objects with identity (User, Order, Product)
-- **Value Objects**: Immutable data structures (Address, Money, Email)
-- **Domain Events**: Things that happen in your business (OrderPlaced,
-  UserRegistered)
-- **State Machines**: Business process flows (OrderProcessing, UserOnboarding)
+- **Entities**: Core business objects with identity (Invoice, Customer, PaymentPlan)
+- **Value Objects**: Immutable data structures (Address, Money, TaxConfig)
+- **Domain Events**: Things that happen in your business (InvoiceCreated,
+  PaymentCaptured)
+- **State Machines**: Business process flows (InvoiceLifecycle, CollectionsEscalation)
 - **Business Rules**: Invariants and constraints that must always hold
 
 ### Example Domain Specification
 
 ```cue
+// InvoicePro domain extract (CUE)
 domain: {
   entities: {
-    User: {
-      id: string & =~"^usr_[a-z0-9]+$"
-      email: string & =~"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-      profile: UserProfile
-      createdAt: string // ISO datetime
-      status: "active" | "suspended" | "pending"
+    Invoice: {
+      id: string & =~"^inv_[a-z0-9]+$"
+      customerId: Customer.id
+      status: "draft" | "pending" | "sent" | "viewed" | "paid" | "overdue"
+      currency: "USD" | "EUR" | "GBP"
+      total: decimal & >=0
+      dueDate: string // ISO datetime
     }
 
-    Order: {
-      id: string & =~"^ord_[a-z0-9]+$"
-      userId: User.id
-      items: [...OrderItem]
-      total: decimal & >=0
-      status: "pending" | "confirmed" | "shipped" | "delivered"
+    Customer: {
+      id: string & =~"^cust_[a-z0-9]+$"
+      name: string
+      email: string & =~"^[^@]+@[^@]+$"
+      collectionStrategy: "standard" | "proactive"
     }
   }
 
   stateMachines: {
-    OrderLifecycle: {
-      initial: "pending"
+    InvoiceLifecycle: {
+      initial: "draft"
       states: {
-        pending: { on: { confirm: "confirmed", cancel: "cancelled" } }
-        confirmed: { on: { ship: "shipped", cancel: "cancelled" } }
-        shipped: { on: { deliver: "delivered" } }
-        delivered: {}
-        cancelled: {}
+        draft: { on: { approve: "pending" } }
+        pending: { on: { send: "sent", void: "voided" } }
+        sent: { on: { viewed: "viewed", pay: "paid", expire: "overdue" } }
+        viewed: { on: { pay: "paid", escalate: "overdue" } }
+        paid: {}
+        overdue: {}
+        voided: {}
       }
     }
   }
@@ -85,9 +88,9 @@ domain: {
 
 ### Workshop: Apply the Domain Layer
 
-1. **Interview subject-matter experts** and sketch the vocabulary they already use (entities, lifecycle states, critical events).
+1. **Interview subject-matter experts** and sketch the vocabulary they already use (for InvoicePro that meant “invoice,” “customer,” and “collections escalation”).
 2. **Translate the language into CUE** by encoding value objects first, then identities and events so constraints stay centralized.
-3. **Model signature workflows** (onboarding, refunds, SLAs) as state machines so you can prove coverage without shipping code.
+3. **Model signature workflows** (invoice lifecycle, collections escalation, payment retries) as state machines so you can prove coverage without shipping code.
 
 Export samples with `arbiter doc domain.cue` and circulate them like a living glossary—everyone downstream will reuse the same types.
 
@@ -107,85 +110,44 @@ with each other.
 
 ### Types of Contracts
 
-#### HTTP APIs
+#### Operation contracts (transport agnostic)
 
-RESTful or RPC-style HTTP interfaces:
+Contracts should describe pure behavior—what data goes in and what comes out—
+without assuming HTTP, gRPC, queues, etc. Transports are attached later when a
+service endpoint implements the contract.
 
 ```cue
 contracts: {
-  http: {
-    UserAPI: {
-      version: "v1"
-      baseUrl: "/api/v1/users"
-      endpoints: {
-        createUser: {
-          method: "POST"
-          path: "/"
-          request: domain.entities.User
-          response: {
-            user: domain.entities.User
-            token: string
-          }
-          assertions: {
-            tokenIssued: {
-              assert: response.token != ""
-              message: "Token should be returned for new users"
-            }
-          }
+  workflows: {
+    InvoiceAPI: {
+      version: "2024-12-26"
+      operations: {
+        createInvoice: {
+          input: { invoice: domain.entities.Invoice }
+          output: { invoice: domain.entities.Invoice, warnings?: [...string] }
+          assertions: [
+            { assert: input.invoice.total > 0, message: "Invoice total must be positive" }
+          ]
         }
-        getUser: {
-          method: "GET"
-          path: "/{userId}"
-          parameters: { userId: domain.entities.User.id }
-          response: domain.entities.User
-          assertions: {
-            userExists: response.id != ""
-          }
-        }
-      }
-    }
-}
-}
-```
-
-### Workshop: Apply the Contracts Layer
-
-1. **Map domain events to consumers**—who needs to read or mutate each entity?
-2. **Capture expectations inline** (assertions, latency requirements, authentication hints) so automated tests and monitors inherit them.
-3. **Promote contracts into generated artifacts** using `arbiter sync --contracts` to keep OpenAPI/AsyncAPI, SDKs, and docs synchronized.
-
-When you promote a contract into the application specification you can describe
-the concrete HTTP behaviour using the `paths` section, which now maps cleanly to
-OpenAPI:
-
-```cue
-paths: {
-  "/api/v1/users/{userId}": {
-    get: {
-      summary: "Fetch a user by ID"
-      operationId: "getUserById"
-      tags: ["users"]
-      parameters: [{
-        name:        "userId"
-        "in":        "path"
-        description: "Identifier of the user"
-        required:    true
-        schema:      { type: "string" }
-      }]
-      responses: {
-        "200": {
-          description: "User payload"
-          content: {
-            "application/json": {
-              schemaRef: "#/components/schemas/User"
-            }
-          }
+        getInvoice: {
+          input: { invoiceId: domain.entities.Invoice.id }
+          output: { invoice: domain.entities.Invoice }
+          errors?: [{ name: "InvoiceNotFound", when: "invoice missing" }]
         }
       }
     }
   }
 }
 ```
+
+### Workshop: Apply the Contracts Layer
+
+1. **Map operations to consumers**—for InvoicePro that means payments, collections, analytics, and support.
+2. **Capture expectations inline** (assertions, latency requirements, retries) so automated tests and monitors inherit them.
+3. **Promote contracts into generated artifacts** using `arbiter sync --contracts` to keep OpenAPI/AsyncAPI, SDKs, and docs synchronized once a transport is attached.
+
+Operations stay transport agnostic. Service endpoints then bind them to HTTP,
+gRPC, queues, etc., by referencing the operation when generating routes.
 
 #### Event Contracts
 
@@ -194,22 +156,22 @@ Asynchronous communication patterns:
 ```cue
 contracts: {
   events: {
-    OrderEvents: {
-      version: "v1"
+    PaymentEvents: {
+      version: "2024-12-26"
       events: {
-        OrderPlaced: {
+        InvoiceViewed: {
           schema: {
-            orderId: domain.entities.Order.id
-            userId: domain.entities.User.id
-            timestamp: string
-            total: decimal
+            invoiceId: domain.entities.Invoice.id
+            viewerId: domain.entities.Customer.id
+            viewedAt: string
           }
         }
-        OrderShipped: {
+        PaymentCaptured: {
           schema: {
-            orderId: domain.entities.Order.id
-            trackingNumber: string
-            carrier: string
+            invoiceId: domain.entities.Invoice.id
+            amount: domain.entities.Invoice.total
+            method: "CARD" | "ACH" | "WIRE"
+            capturedAt: string
           }
         }
       }
@@ -232,6 +194,81 @@ contracts: {
 }
 ```
 
+### Explicit gateway + mesh services (Envoy/Traefik/etc.)
+
+Contracts describe behavior, but the **service** layer owns the canonical
+endpoints. Any gateway/mesh you expose (Envoy, Traefik, API Gateway) is simply
+another service that forwards to those endpoints by setting
+`handler.type: "endpoint"`. Because handlers point to named service endpoints,
+you can build chains (service → mesh → edge) and layer middleware or transforms
+at every hop without duplicating paths.
+
+```cue
+services: {
+  InvoiceService: {
+    type: "internal"
+    source: { package: "./services/invoice" }
+    endpoints: {
+      getInvoice: {
+        path: "/internal/invoices/{invoiceId}"
+        methods: ["GET","HEAD"]
+        handler: {
+          type: "module"
+          module: "./services/invoice/http/get-invoice.ts"
+          function: "handler"
+        }
+        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+        middleware: [{
+          module: "./services/invoice/middleware/audit.ts"
+          function: "recordAccess"
+        }]
+      }
+    }
+  }
+
+  BillingGateway: {
+    type: "internal"
+    source: { package: "./services/gateway" }
+    endpoints: {
+      invoicePublic: {
+        path: "/api/invoices/{invoiceId}"
+        methods: ["GET"]
+        handler: {
+          type: "endpoint"
+          service: "InvoiceService"
+          endpoint: "getInvoice"
+        }
+        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+        middleware: [{
+          module: "./services/gateway/middleware/auth.ts"
+          function: "requireCustomerAuth"
+          phase: "request"
+        }, {
+          module: "./services/gateway/middleware/mask.ts"
+          function: "maskPII"
+          phase: "response"
+        }]
+      }
+    }
+  }
+}
+```
+
+- **InvoiceService** defines the canonical path/method pairing so Arbiter can
+  scaffold controllers, smoke tests, and deployment wiring exactly once.
+- **BillingGateway** is just another service. Because its handler references
+  `InvoiceService.getInvoice`, referential integrity stays explicit and you can
+  daisy-chain as many hops (mesh, ingress, partner edge) as you need.
+- **Middleware entries** point to real modules/functions, so you reuse the same
+  building blocks everywhere—auth, logging, transforms, masking, etc.
+- **Chains of handlers** are encouraged: a gateway can forward to another
+  gateway or service, layering middleware and even transformations before the
+  request ever reaches code generation, instead of copying routes in multiple
+  places.
+
+This pattern keeps URLs coupled to the services where real code lives while
+still allowing multiple exposure layers for public, partner, or internal users.
+
 ---
 
 ## Layer 3: Capabilities
@@ -243,49 +280,55 @@ fulfill the contracts.
 
 ```cue
 services: {
-  UserService: {
-    // What domain entities this service owns
-    owns: ["User", "UserProfile"]
-
-    // What contracts this service implements
-    implements: ["UserAPI"]
-
-    // What events this service publishes
-    publishes: ["UserCreated", "UserUpdated"]
-
-    // What events this service subscribes to
-    subscribes: ["OrderPlaced"] // Maybe to update user stats
-
-    // Service capabilities
-    capabilities: {
-      httpServer: {
-        port: 3000
-        routes: contracts.http.UserAPI
-      }
-
-      eventConsumer: {
-        topics: ["orders"]
-      }
-
-      scheduler: {
-        jobs: {
-          cleanupInactiveUsers: {
-            schedule: "0 2 * * *" // Daily at 2 AM
-            handler: "cleanupUsers"
-          }
+  InvoiceService: {
+    endpoints: {
+      getInvoice: {
+        path: "/internal/invoices/{invoiceId}"
+        methods: ["GET","HEAD"]
+        handler: {
+          type: "module"
+          module: "./services/invoice/http/get-invoice.ts"
+          function: "handler"
         }
+        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+        middleware: [{
+          module: "./services/invoice/middleware/audit.ts"
+          function: "recordAccess"
+        }]
       }
     }
+  }
 
-    // Runtime configuration
-    runtime: {
-      language: "typescript"
-      framework: "fastify"
-      database: "postgresql"
+  BillingGateway: {
+    endpoints: {
+      invoicePublic: {
+        path: "/api/invoices/{invoiceId}"
+        methods: ["GET"]
+        handler: {
+          type: "endpoint"
+          service: "InvoiceService"
+          endpoint: "getInvoice"
+        }
+        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+        middleware: [{
+          module: "./services/gateway/middleware/auth.ts"
+          function: "requireCustomerAuth"
+        }]
+      }
     }
   }
 }
 ```
+
+**Service source hints**
+
+- Set `type: "internal"` when Arbiter owns the code. Pair it with `source`
+  describing where the code lives—`{ package: "./services/invoice" }` for a repo
+  path or `{ dockerfile: "./services/invoice/Dockerfile" }` when you publish an
+  image from a specific build context.
+- Use `type: "external"` for SaaS/managed services and set `source`
+  to the canonical endpoint (for example `{ url: "https://payments.acme.com" }`)
+  so documentation/tests still know where to reach the dependency.
 
 ### Capability Types
 
@@ -301,11 +344,12 @@ Arbiter supports various service capability patterns:
 
 ### Workshop: Apply the Capabilities Layer
 
-1. **Assign ownership** by linking each capability to the domain entities/contracts it stewards—now on-call charts draw themselves.
-2. **Prototype execution hooks** (schedulers, consumers, workers) directly in CUE so the CLI can scaffold runnable services with the same wiring.
+1. **Assign ownership** by linking each capability to the entities/contracts it stewards (InvoiceService owns Invoice + InvoiceAPI).
+2. **Prototype execution hooks** (schedulers, consumers, workers) directly in CUE so the CLI scaffolds runnable services with identical wiring.
 3. **Keep runtime hints close**: languages, frameworks, and datastore affinities live here so generation produces stack-specific code without manual tweaking.
+4. **Chain behaviors explicitly**: gateways, meshes, and background workers can set `handler.type: "endpoint"` to call downstream endpoints, layering middleware at each hop (rewrite headers, mask PII, enforce auth).
 
-Try `arbiter generate service UserService` to emit a Fastify skeleton plus docs/tests that mirror the spec.
+Try `arbiter generate service InvoiceService` to emit a Fastify skeleton plus docs/tests that mirror the spec.
 
 ---
 
@@ -313,64 +357,60 @@ Try `arbiter generate service UserService` to emit a Fastify skeleton plus docs/
 
 The **Execution** layer specifies where and how your services run in production.
 
-### Deployment Configuration
+### Environment-Scoped Deployments
 
 ```cue
-deployment: {
-  target: "kubernetes" | "docker-compose" | "serverless" | "bare-metal"
-
-  environments: {
-    development: {
-      replicas: 1
-      resources: {
-        cpu: "100m"
-        memory: "256Mi"
+deployments: {
+  development: {
+    target: "compose"
+    compose: { version: "3.9" }
+    services: {
+      InvoiceService: {
+        env: { DATABASE_URL: "postgres://postgres:postgres@db:5432/invoices" }
       }
     }
+  }
 
-    production: {
-      replicas: 3
-      resources: {
-        cpu: "500m"
-        memory: "1Gi"
+  production: {
+    target: "kubernetes"
+    cluster: { name: "prod", provider: "gke", namespace: "invoice-system" }
+    services: {
+      InvoiceService: {
+        replicas: 4
+        resources: {
+          requests: { cpu: "250m", memory: "512Mi" }
+          limits: { cpu: "750m", memory: "1Gi" }
+        }
       }
-      autoscaling: {
-        minReplicas: 2
-        maxReplicas: 10
-        targetCPU: 70
+      InvoiceDatabase: {
+        annotations: { "backup.policy": "gold" }
       }
     }
   }
 }
+
+deployment: deployments.production // backward-compatible default
 ```
 
-### Infrastructure Resources
+### Model External Platforms as Services
 
 ```cue
-infrastructure: {
-  databases: {
-    mainDB: {
-      engine: "postgresql"
-      version: "15"
-      size: "small"
-      backup: { retention: "7d", schedule: "0 1 * * *" }
-    }
+services: {
+  InvoiceDatabase: {
+    type: "external"
+    resource: { kind: "database", engine: "postgres" }
+    source: { url: "postgres://invoice-db.internal.svc.cluster.local:5432/invoices" }
   }
 
-  caches: {
-    sessionCache: {
-      engine: "redis"
-      version: "7"
-      size: "micro"
-    }
-  }
-
-  messageQueues: {
-    eventBus: {
-      engine: "kafka"
-      topics: ["orders", "users", "notifications"]
-      partitions: 3
-      retention: "168h"
+  InvoiceService: {
+    type: "internal"
+    source: { package: "./services/invoice" }
+    dependencies: {
+      db: {
+        service: "InvoiceDatabase"
+        version: ">=15"
+        kind: "postgres"
+      }
     }
   }
 }
@@ -378,18 +418,19 @@ infrastructure: {
 
 ### Workshop: Apply the Execution Layer
 
-1. **Pick deployment targets** per capability (Kubernetes, serverless, ECS) and encode availability/SLO assumptions in the `environments` block.
-2. **Reference shared resources** (databases, caches, queues) by logical name so generated IaC and service configs stay aligned.
-3. **Promote the plan** using `arbiter generate infrastructure` to emit Terraform/Helm manifests that inherit the exact same constraints.
+1. **Pick deployment targets per environment** (`development` → Compose, `production` → Kubernetes) and describe cluster/compose options inline.
+2. **Describe shared resources as services** with `type: "external"` + `resource` metadata so dependencies remain explicit.
+3. **Attach overrides per environment** (replicas, env vars, annotations) in `deployments.<env>.services` instead of scattering them through manifests.
+4. **Promote the plan** using `arbiter generate infrastructure` to emit Terraform/Helm/Compose manifests that inherit those exact constraints.
 
 ## Guided Walkthrough: From Idea to Running Service
 
-1. **Capture intent** – extend the Domain layer with the new concept (for example, `UsageBasedBilling`) and its events in one PR.
-2. **Expose collaboration points** – add HTTP/event contracts that describe how other teams or automation consume the billing data.
-3. **Define execution ownership** – introduce a `BillingService` capability, wire it to contracts, and specify infra (database tier, queue topic, autoscaling).
+1. **Capture intent** – extend the Domain layer with the next InvoicePro concept (for example, `UsageBasedBilling`) and its events in one PR.
+2. **Expose collaboration points** – add HTTP/event contracts that describe how finance, collections, and analytics teams consume the billing data.
+3. **Define execution ownership** – introduce a `BillingService` capability, wire it to contracts, declare its dependencies (databases, caches) as services, and describe the env-specific overrides in `deployments`.
 4. **Generate and review** – run `arbiter generate --dry-run` to see code, docs, and deployment manifests that all reflect the spec, then merge when stakeholders sign off.
 
-Following this loop turns the layered model into a tutorial you can repeat for each new product slice.
+Following this loop turns the layered model into a tutorial every new InvoicePro product slice can follow.
 
 ---
 
@@ -397,7 +438,7 @@ Following this loop turns the layered model into a tutorial you can repeat for e
 
 ### 1. **Deterministic Generation**
 
-The same specification always produces identical code, infrastructure, and
+The same specification always produces identical code, deployment manifests, and
 configuration files.
 
 ### 2. **Change Impact Analysis**
@@ -428,7 +469,7 @@ modify.
 1. **Start with Domain**: Define your core business entities and rules
 2. **Add Contracts**: Specify how systems will communicate
 3. **Define Capabilities**: Declare what services will do
-4. **Configure Execution**: Specify deployment and infrastructure
+4. **Configure Execution**: Specify deployments, environment overrides, and service dependencies
 
 ### Iterative Development
 
@@ -473,35 +514,29 @@ codegen: {
 
 ## Best Practices
 
-### Domain Modeling
+### Model the Spec In Layers
 
-- **Start Simple**: Begin with core entities, add complexity gradually
-- **Business-First**: Model what your business does, not how software works
-- **Immutable Events**: Domain events should be immutable historical facts
-- **Clear Boundaries**: Each service should own a cohesive set of domain
-  concepts
+- **Domain First**: capture vocabulary, invariants, and workflows before worrying
+  about runtime. If it isn’t in the domain layer, downstream automation can’t
+  reuse it.
+- **Contracts Next**: describe how work flows across the system (operations,
+  events, assertions) while staying transport-agnostic. Version the contract and
+  document intent inline so future PRs have context.
+- **Capabilities & Services**: bind domain + contracts to implementation details
+  (languages, frameworks, endpoints). Keep the spec honest by referencing real
+  modules/paths rather than prose.
 
-### Contract Design
+### Keep Implementations Adaptable
 
-- **Version Everything**: Always include explicit versions in contracts
-- **Backwards Compatible**: Design for evolution without breaking existing
-  clients
-- **Explicit Schemas**: Don't rely on implicit or inferred data structures
-- **Document Intent**: Include business context in contract descriptions
-
-### Service Architecture
-
-- **Single Responsibility**: Each service should have a clear, focused purpose
-- **Domain Alignment**: Service boundaries should match domain boundaries
-- **Event-Driven**: Prefer async communication through events over direct calls
-- **Stateless Logic**: Keep business logic stateless and data separate
-
-### Deployment Strategy
-
-- **Environment Parity**: Keep development, staging, and production similar
-- **Gradual Rollout**: Design for blue-green or canary deployments
-- **Observable**: Include metrics, logging, and health checks from the start
-- **Recoverable**: Plan for failures and include rollback strategies
+- **Start Stateful in the Spec, Not the Runtime**: express dependencies,
+  configs, and service source locations declaratively so you can change the
+  actual architecture later without rewriting your spec.
+- **Model Environments Explicitly**: use `deployments.<env>` to describe how
+  each environment overrides replicas, env vars, or ingress. Keeping this in the
+  spec prevents drift between dev/stage/prod.
+- **Document External Touchpoints**: when referencing APIs, SaaS systems, or
+  managed databases, record the canonical URL or contract name in `source`/
+  `dependencies` so codegen and tests know who you depend on.
 
 ---
 

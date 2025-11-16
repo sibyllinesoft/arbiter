@@ -289,12 +289,7 @@ function buildCacheComponents(spec: any): any[] {
   return Object.entries(servicesRecord)
     .filter(([, service]) => isCacheService(service))
     .map(([name, service]) =>
-      createComponent(
-        name,
-        "cache",
-        "active",
-        service?.serviceType || service?.type || "cache service",
-      ),
+      createComponent(name, "cache", "active", deriveServiceDescription(service, "cache")),
     );
 }
 
@@ -303,12 +298,7 @@ function buildDatabaseComponents(spec: any): any[] {
   return Object.entries(databaseServices)
     .filter(([, service]) => isDatabaseService(service))
     .map(([name, service]) =>
-      createComponent(
-        name,
-        "database",
-        "active",
-        service?.serviceType || service?.image || "database service",
-      ),
+      createComponent(name, "database", "active", deriveServiceDescription(service, "database")),
     );
 }
 
@@ -323,23 +313,56 @@ function buildLoadBalancerComponents(spec: any): any[] {
       "loadbalancer",
       "load-balancer",
       loadBalancer?.status || "active",
-      loadBalancer?.serviceType || loadBalancer?.image || "load balancer service",
+      deriveServiceDescription(loadBalancer, "load balancer"),
     ),
   ];
 }
 
 function isCacheService(service: any): boolean {
   if (!service) return false;
-  const type = String(service.serviceType || service.type || "").toLowerCase();
-  return ["cache", "kv", "redis", "memcached"].some((keyword) => type.includes(keyword));
+  const descriptor = buildServiceDescriptor(service);
+  return ["cache", "kv", "redis", "memcached"].some((keyword) => descriptor.includes(keyword));
 }
 
 function isDatabaseService(service: any): boolean {
   if (!service) return false;
-  const type = String(service.serviceType || service.type || service.image || "").toLowerCase();
+  const type = buildServiceDescriptor(service);
   return ["postgres", "mysql", "database", "db", "sql", "mongo", "d1"].some((keyword) =>
     type.includes(keyword),
   );
+}
+
+function buildServiceDescriptor(service: any): string {
+  const parts: string[] = [];
+  const candidates = [
+    service.resource?.kind,
+    service.resource?.engine,
+    service.type,
+    service.workload,
+    service.serviceType,
+    service.image,
+    service.name,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string") {
+      parts.push(candidate.toLowerCase());
+    }
+  }
+  return parts.join(" ");
+}
+
+function deriveServiceDescription(service: any, fallback: string): string {
+  if (!service) return `${fallback} service`;
+  if (typeof service.description === "string" && service.description.trim().length > 0) {
+    return service.description;
+  }
+  if (service.resource?.engine) {
+    return `${service.resource.engine} ${fallback}`;
+  }
+  if (service.image) {
+    return `${service.image} ${fallback}`;
+  }
+  return `${fallback} service`;
 }
 
 function createComponent(

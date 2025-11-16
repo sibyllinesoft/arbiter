@@ -1,17 +1,26 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it } from "vitest";
 
 import type { InternalServiceCandidate } from "./services/internal-service-classifier";
 import { shouldTreatAsInternalService } from "./services/internal-service-classifier";
 
 const createService = (
   overrides: Partial<InternalServiceCandidate> = {},
-): InternalServiceCandidate => ({
-  raw: overrides.raw ?? {},
-  endpoints: overrides.endpoints ?? [],
-  hasSource: overrides.hasSource ?? false,
-  sourcePath: overrides.sourcePath,
-  typeLabel: overrides.typeLabel,
-});
+): InternalServiceCandidate => {
+  const service: InternalServiceCandidate = {
+    raw: overrides.raw ?? {},
+    endpoints: overrides.endpoints ?? [],
+    hasSource: overrides.hasSource ?? false,
+  };
+
+  if (overrides.sourcePath !== undefined) {
+    service.sourcePath = overrides.sourcePath;
+  }
+  if (overrides.typeLabel !== undefined) {
+    service.typeLabel = overrides.typeLabel;
+  }
+
+  return service;
+};
 
 describe("shouldTreatAsInternalService", () => {
   it("treats services with detected source as internal", () => {

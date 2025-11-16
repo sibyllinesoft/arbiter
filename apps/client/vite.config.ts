@@ -16,6 +16,7 @@ export default defineConfig({
       "@assets": path.resolve(__dirname, "./src/assets"),
       "@stores": path.resolve(__dirname, "./src/stores"),
       "@types": path.resolve(__dirname, "./src/types"),
+      "@amalto/key-value-editor": path.resolve(__dirname, "./src/shims/amalto-key-value-editor"),
       react: path.resolve(__dirname, "node_modules/react"),
       "react-dom": path.resolve(__dirname, "node_modules/react-dom"),
     },

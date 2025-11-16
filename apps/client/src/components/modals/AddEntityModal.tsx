@@ -4,39 +4,19 @@ import Button from "@/design-system/components/Button";
 import Input from "@/design-system/components/Input";
 import Modal from "@/design-system/components/Modal";
 import Select, { type SelectOption } from "@/design-system/components/Select";
+import { parseEnvironmentText } from "@/utils/environment";
+import KeyValueEditor, { type KeyValueEntry } from "@amalto/key-value-editor";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 
-export interface EpicTaskOption {
-  id: string;
-  name: string;
-  epicId?: string;
-  epicName?: string;
-  status?: string;
-  completed?: boolean;
-}
-
-export interface TaskEpicOption {
-  id: string;
-  name: string;
-}
-
-export interface UiOptionCatalog {
-  frontendFrameworks?: string[];
-  serviceLanguages?: string[];
-  serviceFrameworks?: Record<string, string[]>;
-  databaseEngines?: string[];
-  infrastructureScopes?: string[];
-  epicTaskOptions?: EpicTaskOption[];
-  taskEpicOptions?: TaskEpicOption[];
-}
-
-export type FieldValue =
-  | string
-  | string[]
-  | number
-  | boolean
-  | Record<string, unknown>
-  | Array<Record<string, unknown>>;
+import {
+  DEFAULT_UI_OPTION_CATALOG,
+  type EpicTaskOption,
+  type FieldConfig,
+  type FieldValue,
+  type TaskEpicOption,
+  type UiOptionCatalog,
+} from "./entityTypes";
+import { buildServiceFieldConfig } from "./serviceFields";
 
 const FIELD_RECORD_KEYS = ["value", "id", "name", "label", "slug", "key"] as const;
 
@@ -125,28 +105,65 @@ const extractListFromValue = (input: FieldValue | undefined): string[] => {
     .filter((entry) => entry.length > 0);
 };
 
-export const DEFAULT_UI_OPTION_CATALOG: UiOptionCatalog = {
-  epicTaskOptions: [],
-  taskEpicOptions: [],
+const cloneFieldValue = (value: FieldValue): FieldValue => {
+  if (Array.isArray(value)) {
+    return value.map((entry) =>
+      typeof entry === "object" && entry !== null
+        ? { ...(entry as Record<string, unknown>) }
+        : entry,
+    ) as FieldValue;
+  }
+  if (value && typeof value === "object") {
+    return { ...(value as Record<string, unknown>) };
+  }
+  return value;
 };
 
-interface FieldConfig {
-  name: string;
-  label: string;
-  type?: "text" | "textarea" | "select";
-  placeholder?: string;
-  required?: boolean;
-  description?: string;
-  multiple?: boolean;
-  options?: Array<string | SelectOption>;
-  resolveOptions?: (values: Record<string, FieldValue>) => Array<string | SelectOption>;
-  isVisible?: (
-    values: Record<string, FieldValue>,
-    resolvedOptions: Array<string | SelectOption>,
-  ) => boolean;
-  onChangeClear?: string[];
-  markdown?: boolean;
-}
+const getDefaultValue = (field?: FieldConfig): FieldValue => {
+  if (!field) {
+    return "";
+  }
+  if (field.defaultValue !== undefined) {
+    return cloneFieldValue(field.defaultValue);
+  }
+  return field.multiple ? [] : "";
+};
+
+const toKeyValuePairs = (input: FieldValue | undefined): KeyValueEntry[] => {
+  if (!input) return [];
+  if (Array.isArray(input)) {
+    return input.map((entry) => ({
+      key: typeof (entry as any)?.key === "string" ? (entry as any).key : "",
+      value: typeof (entry as any)?.value === "string" ? (entry as any).value : "",
+    }));
+  }
+  if (typeof input === "object") {
+    return Object.entries(input as Record<string, unknown>).map(([key, value]) => ({
+      key,
+      value:
+        typeof value === "string"
+          ? value
+          : value === undefined || value === null
+            ? ""
+            : String(value),
+    }));
+  }
+  if (typeof input === "string" && input.trim().length > 0) {
+    const parsed = parseEnvironmentText(input);
+    return Object.entries(parsed).map(([key, value]) => ({ key, value }));
+  }
+  return [];
+};
+
+const keyValuePairsToMap = (pairs: KeyValueEntry[]): Record<string, string> => {
+  const map: Record<string, string> = {};
+  pairs.forEach((pair) => {
+    const key = typeof pair?.key === "string" ? pair.key.trim() : "";
+    if (!key) return;
+    map[key] = typeof pair?.value === "string" ? pair.value : "";
+  });
+  return map;
+};
 
 interface AddEntityModalProps {
   open: boolean;
@@ -160,26 +177,6 @@ interface AddEntityModalProps {
   descriptionOverride?: string | undefined;
   mode?: "create" | "edit";
 }
-
-const FALLBACK_SERVICE_LANGUAGES = [
-  "TypeScript",
-  "JavaScript",
-  "Python",
-  "Go",
-  "Rust",
-  "Java",
-  "C#",
-];
-
-const FALLBACK_SERVICE_FRAMEWORKS: Record<string, string[]> = {
-  TypeScript: ["NestJS", "Fastify", "Express"],
-  JavaScript: ["Express", "Koa", "Hapi"],
-  Python: ["FastAPI", "Django", "Flask"],
-  Go: ["Gin", "Echo", "Fiber"],
-  Rust: ["Actix", "Axum", "Rocket"],
-  Java: ["Spring Boot", "Micronaut", "Quarkus"],
-  "C#": ["ASP.NET Core", "NancyFX"],
-};
 
 const FALLBACK_FRONTEND_FRAMEWORKS = ["React", "Next.js", "React Native", "Expo", "Flutter"];
 const FALLBACK_DATABASE_ENGINES = ["PostgreSQL", "MySQL", "MariaDB", "MongoDB", "Redis", "SQLite"];
@@ -243,58 +240,6 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
   const frontendFrameworks =
     frontendCandidate.length > 0 ? frontendCandidate : [...FALLBACK_FRONTEND_FRAMEWORKS];
 
-  const serviceFrameworkEntries = Object.entries(catalog.serviceFrameworks ?? {}).map(
-    ([language, frameworkList]) =>
-      [
-        typeof language === "string" ? language.trim() : "",
-        Array.isArray(frameworkList)
-          ? frameworkList
-              .map((item) => (typeof item === "string" ? item.trim() : ""))
-              .filter((entry) => entry.length > 0)
-          : [],
-      ] as const,
-  );
-
-  const sanitizedFrameworkEntries = serviceFrameworkEntries.filter(
-    ([language, frameworks]) => language.length > 0 && frameworks.length > 0,
-  );
-
-  const serviceFrameworks =
-    sanitizedFrameworkEntries.length > 0
-      ? Object.fromEntries(sanitizedFrameworkEntries)
-      : Object.fromEntries(
-          Object.entries(FALLBACK_SERVICE_FRAMEWORKS).map(([language, frameworks]) => [
-            language,
-            [...frameworks],
-          ]),
-        );
-
-  const combinedLanguages: string[] = [];
-  const addLanguage = (language: unknown) => {
-    if (typeof language !== "string") return;
-    const normalized = language.trim();
-    if (!normalized) return;
-    if (!combinedLanguages.includes(normalized)) {
-      combinedLanguages.push(normalized);
-    }
-  };
-
-  if (Array.isArray(catalog.serviceLanguages)) {
-    for (const language of catalog.serviceLanguages) {
-      addLanguage(language);
-    }
-  }
-
-  for (const language of Object.keys(serviceFrameworks)) {
-    addLanguage(language);
-  }
-
-  if (combinedLanguages.length === 0) {
-    FALLBACK_SERVICE_LANGUAGES.forEach(addLanguage);
-  }
-
-  const serviceLanguages = combinedLanguages;
-
   const databaseCandidate = Array.isArray(catalog.databaseEngines)
     ? catalog.databaseEngines.filter(
         (engine) => typeof engine === "string" && engine.trim().length > 0,
@@ -312,22 +257,6 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
     infrastructureCandidate.length > 0
       ? infrastructureCandidate
       : [...FALLBACK_INFRASTRUCTURE_SCOPES];
-
-  const frameworkLookup = new Map(
-    Object.entries(serviceFrameworks).map(([language, frameworks]) => [
-      language.toLowerCase(),
-      frameworks,
-    ]),
-  );
-
-  const frameworkOptionsFor = (languageValue: FieldValue | undefined): string[] => {
-    const language = coerceFieldValueToString(languageValue).trim();
-    if (!language) return [];
-    if (serviceFrameworks[language]?.length) {
-      return serviceFrameworks[language]!;
-    }
-    return frameworkLookup.get(language.toLowerCase()) ?? [];
-  };
 
   const moduleTypeEquals = (values: Record<string, FieldValue>, type: string): boolean =>
     coerceFieldValueToString(values["moduleType"]).trim().toLowerCase() === type;
@@ -370,41 +299,7 @@ function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConf
         placeholder: "Purpose of this frontend and target platform",
       },
     ],
-    service: [
-      { name: "name", label: "Service Name", required: true, placeholder: "payments-service" },
-      serviceLanguages.length > 0
-        ? {
-            name: "language",
-            label: "Language",
-            type: "select",
-            options: serviceLanguages,
-            placeholder: "Select language",
-            required: true,
-            onChangeClear: ["framework"],
-          }
-        : {
-            name: "language",
-            label: "Language",
-            required: true,
-            placeholder: "Node.js, Go, Python",
-            onChangeClear: ["framework"],
-          },
-      {
-        name: "framework",
-        label: "Framework (optional)",
-        type: "select",
-        placeholder: "Select framework",
-        resolveOptions: (values) => frameworkOptionsFor(values["language"]),
-        isVisible: (_, resolvedOptions) => resolvedOptions.length > 0,
-        description: "Optional: choose a framework that fits the selected language.",
-      },
-      {
-        name: "description",
-        label: "Description",
-        type: "textarea",
-        placeholder: "What responsibilities does this service own?",
-      },
-    ],
+    service: buildServiceFieldConfig(catalog),
     module: [
       { name: "name", label: "Module Name", required: true, placeholder: "shared-library" },
       {
@@ -763,7 +658,7 @@ export function AddEntityModal({
   const defaultValues = useMemo(() => {
     const values: Record<string, FieldValue> = {};
     for (const field of fields) {
-      values[field.name] = field.multiple ? [] : "";
+      values[field.name] = getDefaultValue(field);
     }
     return values;
   }, [fields]);
@@ -773,11 +668,20 @@ export function AddEntityModal({
 
   useEffect(() => {
     if (open) {
-      const nextValues: Record<string, FieldValue> = { ...defaultValues };
+      const nextValues: Record<string, FieldValue> = {};
+      fields.forEach((field) => {
+        const sourceValue = defaultValues[field.name] ?? getDefaultValue(field);
+        nextValues[field.name] = cloneFieldValue(sourceValue);
+      });
       if (initialValues) {
         Object.entries(initialValues).forEach(([key, rawValue]) => {
           const field = fieldByName.get(key);
           if (!field) return;
+
+          if (field.component === "key-value") {
+            nextValues[key] = toKeyValuePairs(rawValue);
+            return;
+          }
 
           if (field.multiple) {
             nextValues[key] = coerceFieldValueToArray(rawValue);
@@ -809,9 +713,27 @@ export function AddEntityModal({
   };
 
   const normalizeForComparison = (
-    _targetField: FieldConfig | undefined,
+    targetField: FieldConfig | undefined,
     value: FieldValue | undefined,
-  ): string => coerceFieldValueToString(value);
+  ): string => {
+    if (targetField?.component === "key-value") {
+      return JSON.stringify(toKeyValuePairs(value));
+    }
+    if (Array.isArray(value) && !targetField?.multiple) {
+      return JSON.stringify(value);
+    }
+    return coerceFieldValueToString(value);
+  };
+
+  const prepareValueForStorage = (
+    field: FieldConfig | undefined,
+    value: FieldValue,
+  ): FieldValue => {
+    if (field?.component === "key-value") {
+      return toKeyValuePairs(value);
+    }
+    return value;
+  };
 
   const handleChange = (name: string, nextValue: FieldValue) => {
     const field = fieldByName.get(name);
@@ -824,12 +746,14 @@ export function AddEntityModal({
 
       const prevValue = prev[name];
       const isMultiple = field?.multiple === true;
+      const normalizedNextValue = prepareValueForStorage(field, nextValue);
       const shouldUpdate = isMultiple
-        ? !arraysEqual(toArray(prevValue), toArray(nextValue))
-        : normalizeForComparison(field, prevValue) !== normalizeForComparison(field, nextValue);
+        ? !arraysEqual(toArray(prevValue), toArray(normalizedNextValue))
+        : normalizeForComparison(field, prevValue) !==
+          normalizeForComparison(field, normalizedNextValue);
 
       if (shouldUpdate) {
-        nextState = { ...prev, [name]: nextValue };
+        nextState = { ...prev, [name]: normalizedNextValue };
         mutated = true;
       }
 
@@ -840,7 +764,7 @@ export function AddEntityModal({
 
         for (const key of clearKeys) {
           const targetField = fieldByName.get(key);
-          const defaultValue: FieldValue = targetField?.multiple ? [] : "";
+          const defaultValue: FieldValue = getDefaultValue(targetField);
           const existingValue = nextState[key];
           const needsReset = targetField?.multiple
             ? !arraysEqual(toArray(existingValue), toArray(defaultValue))
@@ -848,7 +772,7 @@ export function AddEntityModal({
               normalizeForComparison(targetField, defaultValue);
 
           if (needsReset) {
-            nextState[key] = targetField?.multiple ? [] : "";
+            nextState[key] = cloneFieldValue(defaultValue);
             mutated = true;
           }
         }
@@ -877,6 +801,15 @@ export function AddEntityModal({
 
     for (const field of fields) {
       const rawValue = values[field.name];
+
+      if (field.component === "key-value") {
+        const pairs = toKeyValuePairs(rawValue);
+        if (field.required && pairs.length === 0) {
+          validationErrors[field.name] = `${field.label} is required`;
+        }
+        payloadValues[field.name] = pairs;
+        continue;
+      }
 
       if (field.multiple) {
         const normalizedValues = toArray(rawValue)
@@ -922,6 +855,16 @@ export function AddEntityModal({
       normalizeLists(["deliverables", "flowSteps", "schemaTables"]);
     } else if (entityType === "infrastructure") {
       normalizeLists(["environmentSecrets", "observabilityAlerts"]);
+    }
+
+    if (
+      entityType === "service" &&
+      Object.prototype.hasOwnProperty.call(payloadValues, "environmentVariables")
+    ) {
+      const envPairs = toKeyValuePairs(payloadValues.environmentVariables);
+      const envMap = keyValuePairsToMap(envPairs);
+      payloadValues.environment = Object.keys(envMap).length > 0 ? envMap : null;
+      delete payloadValues.environmentVariables;
     }
 
     onSubmit?.({ entityType, values: payloadValues });
@@ -970,6 +913,37 @@ export function AddEntityModal({
 
           if (field.isVisible && !field.isVisible(values, resolvedOptions)) {
             return null;
+          }
+
+          if (field.component === "key-value") {
+            const pairs = toKeyValuePairs(rawValue);
+            return (
+              <div key={field.name} className="space-y-1">
+                <label
+                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
+                  htmlFor={fieldId}
+                >
+                  {field.label}
+                </label>
+                <KeyValueEditor
+                  pairs={pairs}
+                  onChange={(nextPairs) => handleChange(field.name, nextPairs)}
+                  {...(field.keyPlaceholder !== undefined
+                    ? { keyPlaceholder: field.keyPlaceholder }
+                    : {})}
+                  {...(field.valuePlaceholder !== undefined
+                    ? { valuePlaceholder: field.valuePlaceholder }
+                    : {})}
+                  {...(field.addLabel !== undefined ? { addLabel: field.addLabel } : {})}
+                />
+                {field.description && (
+                  <p className="text-xs text-graphite-500 dark:text-graphite-300">
+                    {field.description}
+                  </p>
+                )}
+                {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+              </div>
+            );
           }
 
           if (shouldRenderMarkdown) {

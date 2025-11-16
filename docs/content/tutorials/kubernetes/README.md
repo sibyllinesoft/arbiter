@@ -10,7 +10,7 @@ to modeling and deploying cloud-native applications.
 Arbiter generates Kubernetes deployments as part of its comprehensive full-stack
 code generation. This tutorial covers:
 
-1. **Modeling Applications**: Define your application using Arbiter's v2 schema
+1. **Modeling Applications**: Define your application using Arbiter's application schema
 2. **Infrastructure Generation**: Generate Kubernetes manifests automatically
 3. **Deployment Validation**: Validate configurations before deployment
 4. **Production Deployment**: Deploy to various Kubernetes environments
@@ -40,7 +40,6 @@ Create your application specification in `arbiter.assembly.cue`:
 
 ```cue
 // arbiter.assembly.cue
-schema: "v2"
 
 application: {
     name: "my-microservices"

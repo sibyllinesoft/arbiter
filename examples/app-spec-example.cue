@@ -1,7 +1,7 @@
 package examples
 
-// Example: Invoice Management Application - v2 App Specification
-// This demonstrates the complete v2 app spec format with all major features
+// Example: Invoice Management Application - Arbiter app specification
+// This demonstrates the complete application schema format with all major features
 
 #InvoiceManagementApp: {
 	// 1. PRODUCT SPECIFICATION
@@ -156,7 +156,7 @@ package examples
 
 	// 4. API PATHS
 	paths: {
-		"/api/v1/invoices": {
+		"/api/invoices": {
 			get: {
 				response: {
 					$ref: "#/components/schemas/InvoiceList"
@@ -203,7 +203,7 @@ package examples
 			}
 		}
 		
-		"/api/v1/invoices/{id}": {
+		"/api/invoices/{id}": {
 			get: {
 				response: {
 					$ref: "#/components/schemas/Invoice"
@@ -222,7 +222,7 @@ package examples
 			}
 		}
 
-		"/api/v1/invoices/{id}/send": {
+		"/api/invoices/{id}/send": {
 			post: {
 				response: {
 					example: {
@@ -234,7 +234,7 @@ package examples
 			}
 		}
 
-		"/api/v1/invoices/{id}/payments": {
+		"/api/invoices/{id}/payments": {
 			post: {
 				request: {
 					$ref: "#/components/schemas/Payment"
@@ -416,12 +416,12 @@ package examples
 				{ click: "btn:save-send" },
 				{ expect_api: {
 					method: "POST"
-					path: "/api/v1/invoices"
+					path: "/api/invoices"
 					status: 201
 				} },
 				{ expect_api: {
 					method: "POST" 
-					path: "/api/v1/invoices/{id}/send"
+					path: "/api/invoices/{id}/send"
 					status: 200
 				} },
 				{ expect: { locator: "alert:success", state: "visible" } },
@@ -436,7 +436,7 @@ package examples
 							{ click: "btn:save-draft" },
 							{ expect_api: {
 								method: "POST"
-								path: "/api/v1/invoices"
+								path: "/api/invoices"
 								status: 201
 								bodyExample: {
 									status: "DRAFT"
@@ -485,7 +485,7 @@ package examples
 				{ click: "btn:confirm" },
 				{ expect_api: {
 					method: "POST"
-					path: "/api/v1/invoices/{id}/payments"
+					path: "/api/invoices/{id}/payments"
 					status: 201
 					bodyExample: {
 						amount: 1100.00
@@ -525,7 +525,7 @@ package examples
 				{ fill: { locator: "filter:status", value: "OVERDUE" } },
 				{ expect_api: {
 					method: "GET"
-					path: "/api/v1/invoices"
+					path: "/api/invoices"
 					status: 200
 				} },
 				{ expect: { locator: "table:invoices", state: "visible" } },
@@ -539,8 +539,8 @@ package examples
 		network: {
 			stub: true
 			passthrough: [
-				"/api/v1/health",
-				"/api/v1/version"
+				"/api/health",
+				"/api/version"
 			]
 		}
 		clock: {
@@ -624,7 +624,160 @@ package examples
 		}
 	}
 
-	// 10. STATE MODELS - Complex UI flow state machines
+	// 10. SERVICES - Application & gateway services with explicit endpoints
+	services: {
+		InvoiceService: {
+			type: "internal"
+			workload: "deployment"
+			source: { package: "./services/invoice" }
+			sourceDirectory: "./services/invoice"
+			language: "typescript"
+			dependencies: {
+				primaryDb: {
+					service: "InvoiceDatabase"
+					version: ">=15"
+					kind: "postgres"
+				}
+				cache: {
+					service: "InvoiceCache"
+					kind: "redis"
+					optional: true
+				}
+			}
+			endpoints: {
+				getInvoice: {
+					path: "/internal/invoices/{invoiceId}"
+					methods: ["GET", "HEAD"]
+					handler: {
+						type: "module"
+						module: "./services/invoice/http/get-invoice.ts"
+						function: "handler"
+					}
+					implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+					middleware: [{
+						module: "./services/invoice/middleware/audit.ts"
+						function: "recordAccess"
+					}]
+				}
+			}
+		}
+
+		BillingGateway: {
+			type: "internal"
+			workload: "deployment"
+			source: { package: "./services/gateway" }
+			sourceDirectory: "./services/gateway"
+			language: "typescript"
+			endpoints: {
+				invoicePublic: {
+					path: "/api/invoices/{invoiceId}"
+					methods: ["GET"]
+					handler: {
+						type: "endpoint"
+						service: "InvoiceService"
+						endpoint: "getInvoice"
+					}
+					implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
+					middleware: [{
+						module: "./services/gateway/middleware/auth.ts"
+						function: "requireCustomerAuth"
+						phase: "request"
+					}, {
+						module: "./services/gateway/middleware/mask.ts"
+						function: "maskPII"
+						phase: "response"
+					}]
+				}
+			}
+		}
+
+		InvoiceDatabase: {
+			type: "external"
+			workload: "statefulset"
+			language: "terraform"
+			resource: {
+				kind: "database"
+				engine: "postgres"
+				version: "15.4"
+				size: "db.m6i.large"
+				backup: {
+					retentionDays: 14
+					window: "02:00-03:00 UTC"
+					multiRegion: true
+				}
+			}
+			source: { url: "postgres://invoice-db.internal.svc.cluster.local:5432/invoices" }
+		}
+
+		InvoiceCache: {
+			type: "external"
+			workload: "statefulset"
+			language: "terraform"
+			resource: {
+				kind: "cache"
+				engine: "redis"
+				version: "7"
+				tier: "standard"
+			}
+			source: { url: "redis://invoice-cache.internal.svc.cluster.local:6379" }
+		}
+	}
+
+	// 11. DEPLOYMENTS - Environment-scoped overrides
+	deployments: {
+		development: {
+			target: "compose"
+			compose: { version: "3.9" }
+			services: {
+				InvoiceService: {
+					replicas: 1
+					env: {
+						DATABASE_URL: "postgres://postgres:postgres@invoice-db:5432/invoices"
+						REDIS_URL: "redis://invoice-cache:6379"
+					}
+				}
+				InvoiceDatabase: {
+					env: {
+						POSTGRES_DB: "invoices"
+						POSTGRES_USER: "postgres"
+						POSTGRES_PASSWORD: "postgres"
+					}
+				}
+			}
+		}
+
+		production: {
+			target: "kubernetes"
+			cluster: {
+				name: "prod-invoices"
+				provider: "gke"
+				namespace: "invoice-system"
+			}
+			services: {
+				InvoiceService: {
+					replicas: 4
+					resources: {
+						requests: { cpu: "250m", memory: "512Mi" }
+						limits: { cpu: "750m", memory: "1Gi" }
+					}
+				}
+				BillingGateway: {
+					replicas: 3
+					annotations: { "ingress.class": "public" }
+				}
+				InvoiceDatabase: {
+					annotations: {
+						"backup.policy": "gold"
+						"ha.enabled": "true"
+					}
+				}
+			}
+		}
+	}
+
+	deployment: deployments.production
+
+	// 12. STATE MODELS - Complex UI flow state machines
 	stateModels: {
 		invoice_editor: {
 			id: "invoice_editor"

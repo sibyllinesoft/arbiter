@@ -520,7 +520,7 @@ function generateMigrationScript(diff: SchemaDiff): string {
 }
 
 /**
- * Diff command - Compare two schema versions
+ * Diff command - Compare two schemas
  */
 export async function diffCommand(
   oldFile: string,

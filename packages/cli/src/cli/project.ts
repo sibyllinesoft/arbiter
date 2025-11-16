@@ -235,7 +235,7 @@ export function createProjectCommands(program: Command): void {
   // Diff command
   program
     .command("diff <old-file> <new-file>")
-    .description("compare two CUE schema versions and analyze changes")
+    .description("compare two CUE schemas and analyze changes")
     .option("-f, --format <format>", "output format (table, json)", "table")
     .option(
       "--context <lines>",

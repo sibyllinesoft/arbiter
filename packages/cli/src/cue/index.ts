@@ -79,7 +79,20 @@ export interface ServiceConfig {
  * Configuration for an API endpoint
  */
 export interface EndpointConfig {
+  service: string;
+  path: string;
   method: string;
+  summary?: string;
+  description?: string;
+  implements?: string;
+  endpointId?: string;
+  handler?: {
+    type: "module" | "endpoint";
+    module?: string;
+    function?: string;
+    service?: string;
+    endpoint?: string;
+  };
   request?: {
     $ref: string;
   };
@@ -181,26 +194,58 @@ export class CUEManipulator {
   /**
    * Add an endpoint to the CUE structure
    */
-  async addEndpoint(content: string, endpoint: string, config: EndpointConfig): Promise<string> {
+  async addEndpoint(content: string, config: EndpointConfig): Promise<string> {
     try {
       const ast = await this.parse(content);
+      const methodKey = config.method.toLowerCase();
 
-      // Ensure paths section exists
       if (!ast.paths) {
         ast.paths = {};
       }
+      if (!ast.paths[config.service]) {
+        ast.paths[config.service] = {};
+      }
+      if (!ast.paths[config.service][config.path]) {
+        ast.paths[config.service][config.path] = {};
+      }
 
-      // Add the endpoint
-      ast.paths[endpoint] = {
-        [config.method.toLowerCase()]: {
-          ...(config.request && { request: config.request }),
-          ...(config.response && { response: config.response }),
-        },
+      const operation: Record<string, unknown> = {
+        ...(config.summary && { summary: config.summary }),
+        ...(config.description && { description: config.description }),
+        ...(config.implements && { implements: config.implements }),
+        ...(config.request && { request: config.request }),
+        ...(config.response && { response: config.response }),
       };
+
+      ast.paths[config.service][config.path][methodKey] = operation;
+
+      if (ast.services && ast.services[config.service]) {
+        const targetService = ast.services[config.service];
+        if (!targetService.endpoints) {
+          targetService.endpoints = {};
+        }
+
+        const endpointId = config.endpointId ?? this.buildEndpointIdentifier(config);
+        const existing = targetService.endpoints[endpointId] || {};
+        const existingMethods = Array.isArray(existing.methods) ? existing.methods : [];
+        const methodSet = new Set<string>(existingMethods.map((m: string) => m.toUpperCase()));
+        methodSet.add(config.method.toUpperCase());
+
+        targetService.endpoints[endpointId] = {
+          ...existing,
+          path: config.path,
+          methods: Array.from(methodSet),
+          ...(config.implements && { implements: config.implements }),
+          handler:
+            config.handler ??
+            existing.handler ??
+            this.buildDefaultHandlerReference(config.service, config.method, config.path),
+        };
+      }
 
       return await this.serialize(ast, content);
     } catch (error) {
-      return this.directEndpointAdd(content, endpoint, config);
+      throw new Error(`Failed to add endpoint: ${error instanceof Error ? error.message : error}`);
     }
   }
 
@@ -344,28 +389,67 @@ export class CUEManipulator {
   /**
    * Remove an endpoint or method from the specification
    */
-  async removeEndpoint(content: string, endpoint: string, method?: string): Promise<string> {
+  async removeEndpoint(
+    content: string,
+    serviceName: string,
+    endpointPath: string,
+    method?: string,
+  ): Promise<string> {
     try {
       const ast = await this.parse(content);
-      if (!ast.paths || !ast.paths[endpoint]) {
+      if (!ast.paths || !ast.paths[serviceName] || !ast.paths[serviceName][endpointPath]) {
         return content;
       }
 
       if (method) {
         const methodKey = method.toLowerCase();
-        if (!ast.paths[endpoint][methodKey]) {
+        if (!ast.paths[serviceName][endpointPath][methodKey]) {
           return content;
         }
-        delete ast.paths[endpoint][methodKey];
-        if (Object.keys(ast.paths[endpoint]).length === 0) {
-          delete ast.paths[endpoint];
+        delete ast.paths[serviceName][endpointPath][methodKey];
+        if (Object.keys(ast.paths[serviceName][endpointPath]).length === 0) {
+          delete ast.paths[serviceName][endpointPath];
         }
       } else {
-        delete ast.paths[endpoint];
+        delete ast.paths[serviceName][endpointPath];
       }
 
+      if (ast.paths[serviceName] && Object.keys(ast.paths[serviceName]).length === 0) {
+        delete ast.paths[serviceName];
+      }
       if (ast.paths && Object.keys(ast.paths).length === 0) {
         delete ast.paths;
+      }
+
+      const serviceSpec = ast.services?.[serviceName];
+      if (serviceSpec?.endpoints) {
+        for (const [endpointId, endpointSpecValue] of Object.entries(serviceSpec.endpoints)) {
+          if (!endpointSpecValue || typeof endpointSpecValue !== "object") {
+            continue;
+          }
+
+          const endpointSpec = endpointSpecValue as Record<string, any>;
+
+          if (endpointSpec.path !== endpointPath) {
+            continue;
+          }
+
+          if (method) {
+            const updatedMethods = (endpointSpec.methods as string[] | undefined)?.filter(
+              (m) => m.toLowerCase() !== method.toLowerCase(),
+            );
+            if (updatedMethods && updatedMethods.length > 0) {
+              endpointSpec.methods = updatedMethods;
+              continue;
+            }
+          }
+
+          delete serviceSpec.endpoints[endpointId];
+        }
+
+        if (Object.keys(serviceSpec.endpoints).length === 0) {
+          delete serviceSpec.endpoints;
+        }
       }
 
       return await this.serialize(ast, content);
@@ -582,29 +666,6 @@ export class CUEManipulator {
   }
 
   /**
-   * Direct endpoint addition fallback
-   */
-  private directEndpointAdd(content: string, endpoint: string, config: EndpointConfig): string {
-    const pathBlock = this.formatCueObject({
-      [config.method.toLowerCase()]: {
-        ...(config.request && { request: config.request }),
-        ...(config.response && { response: config.response }),
-      },
-    });
-
-    const pathsRegex = /(paths:\s*{)([^}]*)(})/s;
-    const match = content.match(pathsRegex);
-
-    if (match) {
-      const existing = match[2];
-      const newEntry = `\n\t"${endpoint}": ${pathBlock}`;
-      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
-      return content.replace(pathsRegex, `$1${updated}\n$3`);
-    }
-    return `${content}\n\npaths: {\n\t"${endpoint}": ${pathBlock}\n}`;
-  }
-
-  /**
    * Direct database addition fallback
    */
   private directDatabaseAdd(content: string, dbName: string, config: DatabaseConfig): string {
@@ -744,6 +805,37 @@ export class CUEManipulator {
     }
 
     return String(obj);
+  }
+
+  private buildEndpointIdentifier(config: EndpointConfig): string {
+    const normalized = config.path.replace(/^\//, "").replace(/[{}]/g, "");
+    const segments = normalized
+      .split(/[\/_-]+/)
+      .filter(Boolean)
+      .map((segment) => segment.toLowerCase());
+    const base = segments.length > 0 ? segments.join("-") : "root";
+    return `${config.method.toLowerCase()}-${base}`.replace(/-+/g, "-");
+  }
+
+  private buildDefaultHandlerReference(service: string, method: string, path: string) {
+    return {
+      type: "module",
+      module: `${service}/handlers/routes`,
+      function: this.buildHandlerFunctionName(method, path),
+    };
+  }
+
+  private buildHandlerFunctionName(method: string, path: string): string {
+    const cleaned = path
+      .replace(/^\//, "")
+      .replace(/[{}]/g, "")
+      .split(/[\/_-]+/)
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+      .join("");
+    const suffix = cleaned || "Root";
+    const methodPrefix = method.toLowerCase();
+    return `${methodPrefix}${suffix}`;
   }
 
   /**

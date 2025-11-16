@@ -47,12 +47,48 @@ export function createAddCommands(program: Command): Command {
     });
 
   addCmd
+    .command("client <name>")
+    .description("add a client application to the specification")
+    .option("--template <alias>", "use template alias for client generation")
+    .option("--language <lang>", "primary language (typescript, python, etc.)", "typescript")
+    .option("--directory <dir>", "output directory for generated client files")
+    .option("--framework <framework>", "framework identifier (vue, react, svelte, etc.)")
+    .option("--port <port>", "local dev port", (value) => Number.parseInt(value, 10))
+    .option("--description <text>", "short description of the client")
+    .option("--tags <tags>", "comma-separated tags for the client")
+    .option("--dry-run", "preview changes without applying them")
+    .option("--force", "overwrite existing configuration")
+    .action(async (name: string, options, command) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("client", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    });
+
+  addCmd
     .command("endpoint <path>")
     .description("add an API endpoint to a service")
     .option("--method <method>", "HTTP method (GET, POST, PUT, DELETE, PATCH)", "GET")
     .option("--service <service>", "target service name")
+    .option("--summary <summary>", "short description shown in docs")
+    .option("--description <description>", "long-form description for docs")
     .option("--response-type <type>", "response content type (json, xml, text)", "json")
     .option("--auth <auth>", "authentication requirement (none, bearer, basic, api-key)", "none")
+    .option("--implements <contract>", "contract operation reference (e.g. contracts.apis.foo.get)")
+    .option("--handler-module <module>", "handler module path for service endpoint metadata")
+    .option("--handler-fn <name>", "handler function name for service endpoint metadata")
+    .option("--endpoint-id <id>", "explicit endpoint identifier for service metadata")
     .option("--dry-run", "preview changes without applying them")
     .option("--force", "overwrite existing configuration")
     .action(async (path: string, options, command) => {

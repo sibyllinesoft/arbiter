@@ -8,12 +8,12 @@ import { useResolvedSpec } from "@/hooks/api-hooks";
 import { apiService } from "@/services/api";
 import ArtifactCard from "./ArtifactCard";
 import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "./ArtifactPanel";
+import AddEntityModal from "./modals/AddEntityModal";
 import {
-  AddEntityModal,
   DEFAULT_UI_OPTION_CATALOG,
   type FieldValue,
   type UiOptionCatalog,
-} from "./modals/AddEntityModal";
+} from "./modals/entityTypes";
 
 interface ClientsReportProps {
   projectId: string;

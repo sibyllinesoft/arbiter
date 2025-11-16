@@ -386,6 +386,30 @@ function stripAnsi(text: string): string {
   return text.replace(/\u001b\[[0-9;]*m/g, "");
 }
 
+function extractDependencyNames(input: unknown): string[] {
+  if (!input) {
+    return [];
+  }
+
+  if (Array.isArray(input)) {
+    return input.map((entry) => String(entry));
+  }
+
+  if (typeof input === "object") {
+    return Object.entries(input as Record<string, { service?: string; version?: string }>).map(
+      ([alias, spec]) => {
+        if (spec && typeof spec === "object" && typeof spec.service === "string") {
+          const version = spec.version ? ` (${spec.version})` : "";
+          return `${alias}: ${spec.service}${version}`;
+        }
+        return alias;
+      },
+    );
+  }
+
+  return [];
+}
+
 function normalizeRemoteProjectStatus(payload: any, projectId?: string): ProjectStatus {
   if (!payload || typeof payload !== "object") {
     return buildFallbackStatus("Remote status payload was empty");
@@ -405,17 +429,20 @@ function normalizeRemoteProjectStatus(payload: any, projectId?: string): Project
 
   if (services && typeof services === "object") {
     for (const [serviceName, serviceSpec] of Object.entries<any>(services)) {
-      const dependencyList =
-        serviceSpec?.dependencies ??
-        serviceSpec?.metadata?.dependencies ??
-        serviceSpec?.metadata?.depends_on ??
-        [];
+      const dependencyList = [
+        serviceSpec?.dependencies,
+        serviceSpec?.metadata?.dependencies,
+        serviceSpec?.metadata?.depends_on,
+      ];
+      const dependencyNames = Array.from(
+        new Set(dependencyList.flatMap((entry) => extractDependencyNames(entry))),
+      );
       components.push({
         type: "service",
         name: serviceName,
         status: "active",
         lastModified: project?.lastActivity ?? new Date().toISOString(),
-        dependencies: Array.isArray(dependencyList) ? dependencyList.map((dep) => String(dep)) : [],
+        dependencies: dependencyNames,
       });
     }
   }

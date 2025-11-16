@@ -11,6 +11,7 @@ export interface RemoveOptions {
   dryRun?: boolean;
   force?: boolean;
   method?: string;
+  service?: string;
   id?: string;
 }
 
@@ -76,7 +77,8 @@ export async function removeCommand(
         break;
       case "endpoint": {
         const method = options.method as string | undefined;
-        updatedContent = await manipulator.removeEndpoint(assemblyContent, target, method);
+        const service = (options.service as string | undefined) ?? "api";
+        updatedContent = await manipulator.removeEndpoint(assemblyContent, service, target, method);
         break;
       }
       case "route": {

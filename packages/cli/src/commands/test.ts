@@ -5,7 +5,7 @@ import chalk from "chalk";
 import yaml from "js-yaml";
 
 /**
- * Unified test harness for Epic v2 test execution
+ * Unified test harness for deterministic epic test execution
  * Supports static analysis, property tests, golden file tests, and CLI tests
  */
 

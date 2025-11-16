@@ -59,7 +59,7 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
             kind: resolved.kind || "Application",
           },
 
-          // v2 schema elements from resolved spec
+          // application schema elements from resolved spec
           product: resolved.product,
           ui: resolved.ui || resolved.spec?.ui,
           flows: resolved.flows || resolved.spec?.flows,
@@ -70,7 +70,8 @@ export const CueDrivenArchitectureIntegration: React.FC<CueDrivenArchitectureInt
 
           // v1 schema elements (services from spec)
           services: resolved.services || resolved.spec?.services,
-          deployment: resolved.deployment,
+          deployment: resolved.deployment || resolved.deployments?.production,
+          deployments: resolved.deployments,
         };
 
         setCueData(architectureData);

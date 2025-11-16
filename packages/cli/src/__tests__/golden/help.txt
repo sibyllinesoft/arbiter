@@ -37,9 +37,9 @@ Commands:
                                         interactively
   import                                manage trusted import registry for CUE
                                         files
-  diff [options] <old-file> <new-file>  compare two CUE schema versions and
+  diff [options] <old-file> <new-file>  compare two CUE schemas and
                                         analyze changes
-  execute [options] <epic>              execute Epic v2 for deterministic,
+  execute [options] <epic>              execute Arbiter epics for deterministic,
                                         agent-first code generation
   tests                                 test management, scaffolding, and
                                         coverage analysis

@@ -705,8 +705,8 @@ Arbiter validates configuration against schemas:
 # Validate configuration
 arbiter config validate
 
-# Validate with specific schema
-arbiter config validate --schema v2
+# Validate with specific schema file
+arbiter config validate --schema ./schemas/app.cue
 ```
 
 ### Configuration Testing

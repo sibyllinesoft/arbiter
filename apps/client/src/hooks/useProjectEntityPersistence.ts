@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
-import type { FieldValue } from "@/components/modals/AddEntityModal";
+import type { FieldValue } from "@/components/modals/entityTypes";
 import { apiService } from "@/services/api";
 
 interface UseProjectEntityPersistenceOptions {

@@ -225,7 +225,7 @@ Validate CUE files with explicit schema and configuration.
 arbiter validate spec.cue
 
 # Validate against custom schema
-arbiter validate --schema ./schemas/v2.cue spec.cue
+arbiter validate --schema ./schemas/app.cue spec.cue
 
 # Validate multiple files
 arbiter validate user.cue order.cue product.cue
@@ -283,19 +283,19 @@ arbiter watch --auto-generate
 
 #### `arbiter diff <old-file> <new-file>`
 
-Compare two CUE schema versions and analyze changes.
+Compare two CUE schemas and analyze changes.
 
 **Usage:**
 
 ```bash
-# Compare schema versions
-arbiter diff schema-v1.cue schema-v2.cue
+# Compare schema definitions
+arbiter diff schema-old.cue schema-new.cue
 
 # Output in different formats
 arbiter diff --format json old.cue new.cue
 
 # Show only breaking changes
-arbiter diff --breaking-only v1.cue v2.cue
+arbiter diff --breaking-only old.cue new.cue
 ```
 
 #### `arbiter migrate [patterns...]`
@@ -419,7 +419,7 @@ arbiter task show auth-001
 
 #### `arbiter execute <epic>`
 
-Execute Epic v2 for deterministic, agent-first code generation.
+Execute Arbiter epics for deterministic, agent-first code generation.
 
 **Usage:**
 

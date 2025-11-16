@@ -160,20 +160,6 @@ dist/
 }
 ```
 
-#### Specification Versioning
-
-Maintain specification versions for backward compatibility:
-
-```
-.arbiter/
-├── v1/                    # Legacy specifications
-│   └── assembly.cue
-├── v2/                    # Current specifications  
-│   └── assembly.cue
-└── migrations/            # Migration scripts
-    └── v1-to-v2.js
-```
-
 ## Project Structure Guidelines
 
 ### Monorepo Structure

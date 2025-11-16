@@ -26,6 +26,30 @@ function normalizePath(fragmentPath: string): string {
   return normalized.length > 0 ? normalized : "assembly.cue";
 }
 
+function coerceServiceDependencies(input: unknown): string[] {
+  if (!input) {
+    return [];
+  }
+
+  if (Array.isArray(input)) {
+    return input.map((value) => String(value));
+  }
+
+  if (typeof input === "object") {
+    return Object.entries(input as Record<string, { service?: string; version?: string }>).map(
+      ([alias, spec]) => {
+        if (spec && typeof spec === "object" && typeof spec.service === "string") {
+          const version = spec.version ? ` (${spec.version})` : "";
+          return `${alias}: ${spec.service}${version}`;
+        }
+        return alias;
+      },
+    );
+  }
+
+  return [];
+}
+
 export function createFragmentsRouter(deps: Dependencies) {
   const router = new Hono();
 
@@ -388,8 +412,9 @@ export function extractArtifactsFromResolved(
       if (framework) {
         metadata.framework = framework;
       }
-      if (Array.isArray(service.dependencies)) {
-        metadata.dependencies = service.dependencies;
+      const dependencyList = coerceServiceDependencies(service.dependencies);
+      if (dependencyList.length > 0) {
+        metadata.dependencies = dependencyList;
       }
       if (service.ports) {
         metadata.ports = service.ports;

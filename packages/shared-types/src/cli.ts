@@ -99,15 +99,63 @@ export interface ValidationRequest {
 }
 
 // Enhanced deployment and service types
-export type ServiceType = "bespoke" | "prebuilt" | "external";
+export type ServiceArtifactType = "internal" | "external";
+export type ServiceWorkload = "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
 export type DeploymentTarget = "kubernetes" | "compose" | "both";
+
+export interface ServiceDependencySpec {
+  service: string;
+  version?: string;
+  kind?: string;
+  optional?: boolean;
+  contractRef?: string;
+  description?: string;
+}
+
+export interface ExternalResourceSpec {
+  kind: string; // e.g., "database", "cache", "queue"
+  engine?: string; // e.g., "postgres", "redis"
+  version?: string;
+  tier?: string; // e.g., "standard", "enterprise"
+  size?: string; // e.g., "db.m6i.large"
+  backup?: {
+    enabled?: boolean;
+    retentionDays?: number;
+    window?: string;
+    multiRegion?: boolean;
+  };
+  maintenance?: {
+    window?: string;
+  };
+  endpoints?: Record<string, string>;
+  notes?: string;
+}
+
+export interface ServiceDeploymentOverride {
+  replicas?: number;
+  image?: string;
+  env?: Record<string, string>;
+  config?: ServiceConfig["config"];
+  resources?: ServiceConfig["resources"];
+  volumes?: ServiceConfig["volumes"];
+  annotations?: Record<string, string>;
+  labels?: Record<string, string>;
+  healthCheck?: ServiceConfig["healthCheck"];
+  dependsOn?: string[];
+  extensions?: Record<string, unknown>;
+}
 
 export interface ServiceConfig {
   name: string;
-  serviceType: ServiceType;
+  type: ServiceArtifactType;
+  source?: ServiceSourceConfig;
+  workload?: ServiceWorkload;
+  artifactType?: ServiceArtifactType;
   language: string;
-  type: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
-
+  // Legacy compatibility: older specs stored workload or artifact details differently.
+  serviceType?: ServiceArtifactType;
+  legacyWorkload?: ServiceWorkload;
+  legacyType?: ServiceWorkload;
   // Image and build configuration
   image?: string;
   sourceDirectory?: string;
@@ -136,6 +184,15 @@ export interface ServiceConfig {
     requests?: { cpu?: string; memory?: string };
     limits?: { cpu?: string; memory?: string };
   };
+  healthCheck?: {
+    path?: string;
+    port?: number;
+    protocol?: string;
+    interval?: string;
+    timeout?: string;
+    initialDelay?: number;
+    periodSeconds?: number;
+  };
 
   // Enhanced configuration management
   config?: {
@@ -155,10 +212,53 @@ export interface ServiceConfig {
 
   labels?: Record<string, string>;
   annotations?: Record<string, string>;
+  endpoints?: Record<Slug, ServiceEndpointSpec>;
+  resource?: ExternalResourceSpec;
+  dependencies?: Record<string, ServiceDependencySpec> | string[];
+}
+
+export type ServiceSourceConfig =
+  | { kind: "monorepo"; directory: string; packageManager?: string }
+  | { kind: "container"; image: string; registry?: string }
+  | { kind: "repository"; url: string; branch?: string; commit?: string }
+  | { kind: "package"; name: string; version?: string; registry?: string }
+  | { kind: "managed"; provider: string; product?: string; plan?: string }
+  | { kind: "url"; url: string };
+
+export interface MiddlewareReference {
+  name?: Human;
+  module: string;
+  function?: string;
+  phase?: "request" | "response" | "both";
+  config?: Record<string, unknown>;
+}
+
+export interface ModuleHandlerReference {
+  type: "module";
+  module: string;
+  function?: string;
+}
+
+export interface EndpointHandlerReference {
+  type: "endpoint";
+  service: string;
+  endpoint: Slug;
+}
+
+export type HandlerReference = ModuleHandlerReference | EndpointHandlerReference;
+
+export interface ServiceEndpointSpec {
+  description?: string;
+  path: string;
+  methods: HTTPMethod[];
+  handler: HandlerReference;
+  implements: string;
+  middleware?: MiddlewareReference[];
 }
 
 export interface DeploymentConfig {
   target: DeploymentTarget;
+  environment?: string;
 
   // Kubernetes configuration
   cluster?: {
@@ -177,6 +277,8 @@ export interface DeploymentConfig {
     profiles?: string[];
     environment?: Record<string, string>;
   };
+
+  services?: Record<string, ServiceDeploymentOverride>;
 }
 
 export interface AssemblyConfig {
@@ -488,6 +590,9 @@ export interface ComponentSchema {
   example: any;
   examples?: any[];
   rules?: any;
+  schemaFormat?: "json" | "cue";
+  cue?: string;
+  cueFile?: string;
 }
 
 export interface ComponentsSpec {
@@ -627,11 +732,17 @@ export interface AppSpec {
   domain?: DomainSpec;
   capabilities?: Record<Slug, CapabilitySpec>;
   components?: ComponentsSpec;
-  paths?: Record<URLPath, PathSpec>;
+  /**
+   * HTTP/API path definitions grouped by owning service.
+   */
+  paths?: Record<string, Record<URLPath, PathSpec>>;
   ui: UISpec;
   locators: Record<LocatorToken, CssSelector>;
   flows: FlowSpec[];
   services?: Record<string, ServiceConfig>;
+  clients?: Record<string, ClientConfig>;
+  deployment?: DeploymentConfig;
+  deployments?: Record<string, DeploymentConfig>;
   testability?: TestabilitySpec;
   ops?: OpsSpec;
   stateModels?: Record<Slug, FSMSpec>;
@@ -648,12 +759,23 @@ export interface AppSpec {
 
 // Schema version detection and configuration
 export interface SchemaVersion {
-  version: "v1" | "app";
+  version: "app";
   detected_from: "structure" | "metadata" | "default" | "unified" | "fallback";
 }
 
 export interface ConfigWithVersion {
   schema: SchemaVersion;
-  v1?: AssemblyConfig;
-  app?: AppSpec;
+  app: AppSpec;
+}
+
+export interface ClientConfig {
+  language: string;
+  template?: string;
+  framework?: string;
+  sourceDirectory?: string;
+  description?: string;
+  tags?: string[];
+  port?: number;
+  env?: Record<string, string>;
+  hooks?: string[];
 }

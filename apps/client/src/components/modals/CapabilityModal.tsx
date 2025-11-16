@@ -4,7 +4,7 @@ import Button from "@/design-system/components/Button";
 import Input from "@/design-system/components/Input";
 import Modal from "@/design-system/components/Modal";
 import React, { useEffect, useMemo, useState } from "react";
-import type { FieldValue } from "./AddEntityModal";
+import type { FieldValue } from "./entityTypes";
 
 interface CapabilityModalProps {
   open: boolean;

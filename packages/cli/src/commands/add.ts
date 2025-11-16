@@ -9,6 +9,8 @@
  * using the CUE tool.
  */
 
+import { spawn } from "node:child_process";
+import os from "node:os";
 import * as path from "node:path";
 import chalk from "chalk";
 import { diffLines } from "diff";
@@ -132,6 +134,9 @@ export async function addCommand(
       case "service":
         updatedContent = await addService(manipulator, assemblyContent, name, options);
         break;
+      case "client":
+        updatedContent = await addClient(manipulator, assemblyContent, name, options);
+        break;
       case "endpoint":
         updatedContent = await addEndpoint(manipulator, assemblyContent, name, options);
         break;
@@ -169,7 +174,7 @@ export async function addCommand(
         console.error(chalk.red(`❌ Unknown subcommand: ${subcommand}`));
         console.log(
           chalk.dim(
-            "Available subcommands: service, endpoint, route, flow, load-balancer, database, cache, locator, schema, package, component, module",
+            "Available subcommands: service, client, endpoint, route, flow, load-balancer, database, cache, locator, schema, package, component, module",
           ),
         );
         return 1;
@@ -376,9 +381,9 @@ async function addService(
       ...(port && { ports: [{ name: "main", port, targetPort: port }] }),
     };
   } else {
-    // Traditional bespoke service
+    // Traditional internal service
     serviceConfig = {
-      serviceType: "bespoke",
+      serviceType: "internal",
       language,
       type: "deployment",
       sourceDirectory: directory || `./src/${serviceName}`,
@@ -411,6 +416,62 @@ async function addService(
   }
 
   return updatedContent;
+}
+
+interface ClientTemplateOptions {
+  language?: string;
+  template?: string;
+  directory?: string;
+  framework?: string;
+  port?: number;
+  description?: string;
+  tags?: string;
+  [key: string]: any;
+}
+
+async function addClient(
+  manipulator: any,
+  content: string,
+  clientName: string,
+  options: ClientTemplateOptions,
+): Promise<string> {
+  const slug =
+    clientName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "client";
+  const language = options.language ?? "typescript";
+  const targetDir = options.directory ?? path.join("clients", slug).replace(/\\/g, "/");
+
+  if (options.template) {
+    await validateTemplateExists(options.template);
+    await executeTemplate(clientName, options.template, content, targetDir, {
+      language,
+      clientName,
+      projectName: path.basename(process.cwd()),
+      description: options.description,
+      tags: parseTags(options.tags),
+      port: options.port,
+    });
+  } else if (targetDir) {
+    await fs.ensureDir(path.resolve(targetDir));
+  }
+
+  const clientConfig: Record<string, unknown> = {
+    language,
+    sourceDirectory: targetDir,
+  };
+  if (options.template) clientConfig.template = options.template;
+  if (options.framework) clientConfig.framework = options.framework;
+  if (typeof options.port === "number" && !Number.isNaN(options.port)) {
+    clientConfig.port = options.port;
+  }
+  if (options.description) clientConfig.description = options.description;
+  const parsedTags = parseTags(options.tags);
+  if (parsedTags?.length) clientConfig.tags = parsedTags;
+
+  return await manipulator.addToSection(content, "clients", slug, clientConfig);
 }
 
 /**
@@ -511,7 +572,7 @@ function createTemplateServiceConfig(
   options: ServiceTemplateOptions,
 ): ServiceConfig {
   return {
-    serviceType: "bespoke",
+    serviceType: "internal",
     language: options.language || "typescript",
     type: "deployment",
     sourceDirectory: directory,
@@ -571,10 +632,27 @@ async function addEndpoint(
     method?: string;
     returns?: string;
     accepts?: string;
+    summary?: string;
+    description?: string;
+    implements?: string;
+    handlerModule?: string;
+    handlerFn?: string;
+    endpointId?: string;
     [key: string]: any;
   },
 ): Promise<string> {
-  const { service = "api", method = "GET", returns, accepts } = options;
+  const {
+    service = "api",
+    method = "GET",
+    returns,
+    accepts,
+    summary,
+    description,
+    implements: contractRef,
+    handlerModule,
+    handlerFn,
+    endpointId,
+  } = options;
 
   // Ensure the service exists by parsing the content
   try {
@@ -595,13 +673,20 @@ async function addEndpoint(
 
   // Build endpoint configuration
   const endpointConfig: EndpointConfig = {
+    service,
+    path: endpoint,
     method,
+    summary,
+    description,
+    implements: contractRef,
+    endpointId: endpointId ?? generateEndpointIdentifier(method, endpoint),
+    handler: buildEndpointHandlerDescriptor(service, handlerModule, handlerFn, method, endpoint),
     ...(accepts && { request: { $ref: `#/components/schemas/${accepts}` } }),
     ...(returns && { response: { $ref: `#/components/schemas/${returns}` } }),
   };
 
   // Add endpoint using AST manipulation
-  let updatedContent = await manipulator.addEndpoint(content, endpoint, endpointConfig);
+  let updatedContent = await manipulator.addEndpoint(content, endpointConfig);
 
   // Add health check validation for health endpoints
   if (endpoint === "/health" || endpoint.endsWith("/health")) {
@@ -624,6 +709,47 @@ async function addEndpoint(
   }
 
   return updatedContent;
+}
+
+function generateEndpointIdentifier(method: string, endpoint: string): string {
+  const normalizedPath = endpoint.replace(/^\//, "").replace(/[{}]/g, "");
+  const segments = normalizedPath
+    .split(/[\/_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.toLowerCase());
+  const methodLower = method.toLowerCase();
+  const base = segments.length > 0 ? segments.join("-") : "root";
+  return `${methodLower}-${base}`.replace(/-+/g, "-");
+}
+
+function buildEndpointHandlerDescriptor(
+  service: string,
+  modulePath: string | undefined,
+  functionName: string | undefined,
+  method: string,
+  endpoint: string,
+) {
+  const resolvedModule =
+    modulePath ?? path.posix.join(service.replace(/\\/g, "/"), "handlers", "routes");
+  const resolvedFunction = functionName ?? generateHandlerFunctionName(method, endpoint, service);
+  return {
+    type: "module" as const,
+    module: resolvedModule,
+    function: resolvedFunction,
+  };
+}
+
+function generateHandlerFunctionName(method: string, endpoint: string, service: string): string {
+  const sanitized = endpoint
+    .replace(/^\//, "")
+    .replace(/[{}]/g, "")
+    .split(/[\/_-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join("");
+  const suffix = sanitized || "Root";
+  const prefix = service.replace(/[^a-zA-Z0-9]/g, "");
+  return `${method.toLowerCase()}${prefix ? prefix[0].toUpperCase() + prefix.slice(1) : ""}${suffix}`;
 }
 
 /**
@@ -1273,13 +1399,101 @@ async function addSchema(
 
   if (rules) {
     try {
-      schemaConfig.rules = JSON.parse(rules);
+      const parsedRules = JSON.parse(rules);
+      schemaConfig.rules = parsedRules;
+      schemaConfig.schemaFormat = "json";
+
+      if (!options.format || options.format === "json-schema") {
+        try {
+          const cueDetails = await convertJsonSchemaRulesToCue(schemaName, parsedRules);
+          schemaConfig.schemaFormat = "cue";
+          schemaConfig.cue = cueDetails.cue;
+          schemaConfig.cueFile = cueDetails.cueFile;
+        } catch (conversionError) {
+          console.warn(
+            chalk.yellow(
+              `⚠️  Failed to convert JSON Schema to CUE for ${schemaName}: ${
+                conversionError instanceof Error ? conversionError.message : conversionError
+              }`,
+            ),
+          );
+          console.warn(chalk.dim("Falling back to storing raw JSON rules."));
+        }
+      }
     } catch {
       throw new Error("Invalid rules format. Expected JSON.");
     }
   }
 
   return await manipulator.addToSection(content, "components.schemas", schemaName, schemaConfig);
+}
+
+interface CueSchemaDetails {
+  cue: string;
+  cueFile: string;
+}
+
+async function convertJsonSchemaRulesToCue(
+  schemaName: string,
+  rules: Record<string, unknown>,
+): Promise<CueSchemaDetails> {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-schema-"));
+  const sanitizedName = schemaName.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "schema";
+
+  try {
+    const inputPath = path.join(tempDir, `${sanitizedName}.json`);
+    await fs.writeFile(inputPath, JSON.stringify(rules, null, 2), "utf-8");
+
+    const cueSource = await runCueImport(inputPath);
+    const schemaDir = path.resolve(".arbiter", "schemas");
+    await fs.ensureDir(schemaDir);
+
+    const cueFileName = `${sanitizedName}.cue`;
+    const cuePath = path.join(schemaDir, cueFileName);
+    await fs.writeFile(cuePath, `${cueSource.trim()}\n`, "utf-8");
+
+    return {
+      cue: cueSource.trim(),
+      cueFile: path.join("./schemas", cueFileName),
+    };
+  } finally {
+    await fs.remove(tempDir);
+  }
+}
+
+async function runCueImport(inputPath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("cue", ["import", "--out", "cue", "--from", "jsonschema", inputPath], {
+      cwd: process.cwd(),
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout?.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    child.stderr?.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout.trim());
+      } else {
+        reject(
+          new Error(
+            stderr.trim() || `cue import exited with code ${code ?? "unknown"} while converting.`,
+          ),
+        );
+      }
+    });
+  });
 }
 
 /**
@@ -1459,12 +1673,22 @@ function showDiff(oldContent: string, newContent: string): string {
     .join("\n");
 }
 
+function parseTags(input?: string): string[] | undefined {
+  if (!input) return undefined;
+  const tags = input
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+  return tags.length > 0 ? tags : undefined;
+}
+
 /**
  * Determine shard type based on add subcommand for better organization
  */
 function getShardTypeForSubcommand(subcommand: string): string {
   const shardMapping: Record<string, string> = {
     service: "services",
+    client: "clients",
     endpoint: "endpoints",
     route: "routes",
     flow: "flows",

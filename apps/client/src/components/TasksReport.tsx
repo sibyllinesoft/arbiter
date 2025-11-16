@@ -31,7 +31,7 @@ export function TasksReport({ projectId, className }: TasksReportProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden px-6 py-6">
+      <div className="flex-1 overflow-hidden">
         <TasksDiagram projectId={projectId} />
       </div>
     </div>

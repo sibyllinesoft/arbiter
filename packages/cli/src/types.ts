@@ -521,7 +521,7 @@ export interface DiffOptions {
 }
 
 /**
- * Execute command options for Epic v2 deterministic execution
+ * Execute command options for deterministic epic execution
  */
 export interface ExecuteOptions {
   epic: string;

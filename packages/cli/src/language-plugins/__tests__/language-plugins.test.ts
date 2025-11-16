@@ -218,6 +218,32 @@ describe("Language Plugin System", () => {
       expect(result.dependencies).toContain("next");
     });
 
+    it("should scaffold Jest helpers for Next.js projects", async () => {
+      const configuredPlugin = new TypeScriptPlugin();
+      configuredPlugin.configure({ pluginConfig: { framework: "nextjs", testRunner: "jest" } });
+
+      const result = await configuredPlugin.initializeProject({
+        name: "next-jest",
+        description: "Next.js with Jest",
+        features: [],
+      });
+
+      const fileNames = result.files.map((file) => file.path);
+      expect(fileNames).toEqual(
+        expect.arrayContaining(["babel.config.js", "jest.config.js", "jest.setup.ts"]),
+      );
+
+      expect(result.dependencies).toEqual(
+        expect.arrayContaining([
+          "jest",
+          "@types/jest",
+          "babel-plugin-dynamic-import-node",
+          "jest-next-dynamic",
+          "@testing-library/jest-dom",
+        ]),
+      );
+    });
+
     it("should load component templates from override directory", async () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ts-plugin-"));
       const overrideDir = path.join(tmpDir, "typescript");

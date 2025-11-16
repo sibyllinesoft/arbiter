@@ -27,7 +27,7 @@ interface PlanBuilder {
 }
 
 /**
- * Epic v2 execution engine with deterministic file-plan generation
+ * Arbiter epic execution engine with deterministic file-plan generation
  * Implements the agent-first, idempotent codegen approach from TODO.md
  */
 

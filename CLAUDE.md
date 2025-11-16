@@ -22,8 +22,7 @@ agent-first automation and comprehensive application modeling capabilities.
 
 ### Core Mission
 
-- **Dual Schema Support**: Both v1 (infrastructure-focused) and v2 (app-centric)
-  specifications
+- **Unified Application Schema**: One opinionated, app-centric Arbiter spec
 - **Agent-First Design**: CLI optimized for AI/automation consumption
 - **Complete Lifecycle**: From specification to production deployment
 - **Modern Toolchain**: Built with Bun, TypeScript, and modern web technologies
@@ -418,15 +417,6 @@ await withProgress('Processing files...', async () => {
 - **Pattern**: CUE files → API validation → Generated artifacts
 - **Location**: Specifications typically in `arbiter.assembly.cue`
 - **Processing**: Server-side validation via API endpoints
-
-### Schema Versions
-
-- **v1**: Infrastructure-focused (legacy)
-  - Focus: Services, deployment, containers
-  - Files: `arbiter.assembly.cue`
-- **v2**: App-centric (recommended)
-  - Focus: Complete application modeling
-  - Features: UI routes, flows, locators, comprehensive testing
 
 ### Generation Pipeline
 

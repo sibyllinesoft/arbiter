@@ -27,19 +27,15 @@ Arbiter's code generation system follows a modular, extensible architecture desi
 
 ### System Components
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  CUE Specs      │───▶│ Generation Core  │───▶│ Generated Code  │
-│ (.arbiter/*.cue)│    │                  │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                       ┌──────────────────┐
-                       │ Template System  │
-                       │ Language Plugins │
-                       │ Context Providers│
-                       │ Hook Executors   │
-                       └──────────────────┘
+```mermaid
+flowchart LR
+    A[CUE Specs<br/>(.arbiter/*.cue)] --> B[Generation Core]
+    B --> C[Generated Code & Assets]
+    B --> D[[Template System<br/>Language Plugins<br/>Context Providers<br/>Hook Executors]]
+    style A fill:#eef3ff,stroke:#4c63d9,stroke-width:2px
+    style B fill:#ecfdf3,stroke:#1c8b5f,stroke-width:2px
+    style C fill:#fffbe6,stroke:#c48a06,stroke-width:2px
+    style D fill:#ffecef,stroke:#d6456a,stroke-width:2px
 ```
 
 ## Generation Pipeline
@@ -49,7 +45,7 @@ The generation pipeline consists of five main phases:
 ### 1. Specification Discovery and Loading
 
 - Discovers CUE specification files in `.arbiter/` directories
-- Loads and validates specifications against schema versions (v1/v2)
+- Loads and validates specifications against the unified Arbiter application schema
 - Resolves spec fragments and imports
 - Validates specification completeness
 

@@ -67,6 +67,268 @@ Before using Arbiter's code generation system, ensure you have:
 
 That's it! You now have a generated TypeScript service ready for development.
 
+## Layered Walkthrough: FastAPI + Postgres + Vue
+
+To connect the [four-layer model](./core-concepts.md) with day-to-day work, the following example walks through the exact CLI commands used to scaffold a small order-tracking slice with a **Postgres database**, a **Python FastAPI backend**, and a **Vue front end**. Each step corresponds to a layer so you can see how the specification evolves before any code is generated.
+
+### Layer 1 — Domain: Describe the schema
+
+We always begin with the domain vocabulary. Instead of editing CUE by hand, set everything via the CLI and _then_ inspect the generated file. Use the `--rules` flag to define the authoritative type shape (examples stay optional).
+
+```bash
+cat <<'JSON' > .arbiter/schemas/order.rules.json
+{
+  "required": ["id", "customerId", "status", "total"],
+  "fields": {
+    "id": { "type": "string", "pattern": "^ord_[a-z0-9]+$" },
+    "customerId": { "type": "string", "pattern": "^cust_[a-z0-9]+$" },
+    "status": { "enum": ["draft", "submitted", "fulfilled"] },
+    "total": { "type": "number", "minimum": 0 },
+    "lines": {
+      "type": "list",
+      "items": {
+        "type": "struct",
+        "fields": {
+          "sku": { "type": "string" },
+          "quantity": { "type": "int", "minimum": 1 }
+        }
+      }
+    }
+  }
+}
+JSON
+
+arbiter add schema Order \
+  --type model \
+  --format json-schema \
+  --rules "$(cat .arbiter/schemas/order.rules.json)"
+```
+
+Result inside `.arbiter/assembly.cue` shows the structured rules block:
+
+```cue
+components: schemas: {
+  Order: {
+    rules: {
+      required: ["id", "customerId", "status", "total"]
+      fields: {
+        id: { type: "string", pattern: "^ord_[a-z0-9]+$" }
+        customerId: { type: "string", pattern: "^cust_[a-z0-9]+$" }
+        status: { enum: ["draft", "submitted", "fulfilled"] }
+        total: { type: "number", minimum: 0 }
+        lines: {
+          type: "list"
+          items: {
+            type: "struct"
+            fields: {
+              sku: { type: "string" }
+              quantity: { type: "int", minimum: 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Arbiter automatically runs `cue import --from=jsonschema` on that payload and stores the converted definition in `.arbiter/schemas/order.cue`, so native CUE tooling can validate or extend it later without leaving the CLI workflow.
+
+Running `arbiter check --section domain` now validates that every downstream layer can rely on this schema.
+
+### Layer 2 — Contracts: Bind the operations
+
+With the shape of an order defined, attach operations via the CLI. Each `arbiter add endpoint` call wires the HTTP intent into the spec and lines up with the schema above.
+
+```bash
+arbiter add endpoint /orders \
+  --method POST \
+  --service orders-api \
+  --description "Create an order" \
+  --auth bearer
+
+arbiter add endpoint /orders/{id} \
+  --method GET \
+  --service orders-api
+```
+
+Define the contract for those operations once so services can reference it rather than re-implementing behavior:
+
+```cue
+contracts: workflows: {
+  OrderAPI: {
+    version: "2025-01-01"
+    operations: {
+      createOrder: {
+        input: { order: components.schemas.Order }
+        output: { order: components.schemas.Order }
+      }
+      getOrder: {
+        input: { id: string }
+        output: { order: components.schemas.Order }
+      }
+    }
+  }
+}
+```
+
+Resulting section in `.arbiter/assembly.cue`:
+
+```cue
+paths: {
+  orders-api: {
+    "/orders": {
+      post: {
+        summary: "Create an order"
+        security: [{ bearerAuth: [] }]
+        implements: "contracts.workflows.OrderAPI.operations.createOrder"
+        responses: {
+          "201": {
+            description: "Created"
+            content: {
+              "application/json": { schema: components.schemas.Order }
+            }
+          }
+        }
+      }
+    }
+    "/orders/{id}": {
+      get: {
+        summary: "Fetch an order"
+        implements: "contracts.workflows.OrderAPI.operations.getOrder"
+        responses: {
+          "200": {
+            description: "OK"
+            content: {
+              "application/json": { schema: components.schemas.Order }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This is the “Contracts” layer from the overview—a transport-aware but domain-driven description of how clients will talk to the system.
+
+### Layer 3 — Capabilities: Compose services
+
+Next we introduce the concrete capabilities that satisfy the contracts. This is where the versatility of `arbiter add` shines:
+
+```bash
+# Database (stateful pre-built image)
+arbiter add database orders-db --type postgres --port 5432
+
+# Python FastAPI backend via the default cookiecutter alias
+arbiter add service orders-api \
+  --language python \
+  --template python-fastapi \
+  --port 8000
+
+# Vue front end reusing that alias
+arbiter add service customer-ui \
+  --template vue-vite \
+  --language typescript \
+  --port 4173
+
+# Wire the UI route and component so specs stay synchronized
+arbiter add component OrdersBoard --framework vue --directory apps/customer-ui/src/components
+arbiter add route /orders --component OrdersBoard
+```
+
+Register the Vue alias once (globally in `~/.arbiter/templates.json` or inside `.arbiter/templates.json`) so the CLI knows how to resolve `vue-vite`:
+
+```json
+{
+  "aliases": {
+    "vue-vite": {
+      "engine": "cookiecutter",
+      "source": "gh:arbiter-templates/vue-vite",
+      "description": "Vue 3 + Vite starter with Pinia + Vitest"
+    }
+  }
+}
+```
+
+After these commands, the `services` block captures both bespoke (FastAPI, Vue) and prebuilt (Postgres) workloads, plus their dependencies:
+
+```cue
+services: {
+  orders-db: {
+    serviceType: "prebuilt"
+    language: "container"
+    image: "postgres:15"
+    ports: [{ name: "db", port: 5432 }]
+    volumes: [{
+      name: "orders-db-data"
+      type: "persistentVolumeClaim"
+      size: "50Gi"
+    }]
+  }
+  orders-api: {
+    serviceType: "bespoke"
+    language: "python"
+    template: "python-fastapi"
+    implements: {
+      apis: ["contracts.workflows.OrderAPI"]
+    }
+    ports: [{ name: "http", port: 8000 }]
+    dependencies: {
+      database: {
+        service: "orders-db"
+        description: "Primary write store"
+      }
+    }
+    endpoints: {
+      createOrder: {
+        path: "/orders"
+        methods: ["POST"]
+        implements: "contracts.workflows.OrderAPI.operations.createOrder"
+        handler: {
+          type: "module"
+          module: "orders-api/handlers/orders"
+          function: "createOrder"
+        }
+      }
+      getOrder: {
+        path: "/orders/{id}"
+        methods: ["GET"]
+        implements: "contracts.workflows.OrderAPI.operations.getOrder"
+        handler: {
+          type: "module"
+          module: "orders-api/handlers/orders"
+          function: "getOrder"
+        }
+      }
+    }
+  }
+  customer-ui: {
+    serviceType: "bespoke"
+    language: "typescript"
+    template: "vue-vite"
+    ports: [{ name: "web", port: 4173 }]
+  }
+}
+```
+
+### Layer 4 — Execution: Generate and run
+
+The final layer turns the specification into runnable assets. Because the earlier layers stayed clean, one command now orchestrates every artifact:
+
+```bash
+# Validate before generating
+arbiter check
+
+# Emit Docker Compose, FastAPI scaffolding, Vue app, and docs in a single pass
+arbiter generate --target compose --output generated/full-stack
+
+# Optional: run typedoc + MkDocs so the walkthrough appears on your docs site
+bun run docs:tsdoc && bun run docs:site:build
+```
+
+You can immediately boot the stack with `docker compose up` from `generated/full-stack/infra/compose` and see the FastAPI + Vue pairing running against Postgres—proof that the layered specification behaved exactly as described in the overview.
+
 ## Core Concepts
 
 ### Specification-Driven Development
@@ -367,13 +629,6 @@ If you need help with code generation:
 2. **Search existing issues** - Look for similar problems on GitHub
 3. **Join the community** - Ask questions on Discord
 4. **Create an issue** - Report bugs or request features on GitHub
-
-## Version Compatibility
-
-This documentation covers Arbiter CLI v1.x. For version-specific information:
-
-- **v1.x** - Current stable version with full feature support
-- **v0.x** - Legacy version with limited generation capabilities
 
 ## License
 

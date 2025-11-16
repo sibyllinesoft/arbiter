@@ -165,8 +165,9 @@ export interface CueArchitectureData {
   // v1 schema elements
   services?: Record<string, any>;
   deployment?: any;
+  deployments?: Record<string, any>;
 
-  // v2 schema elements
+  // application schema elements
   product?: any;
   ui?: { routes: any[] };
   flows?: any[];

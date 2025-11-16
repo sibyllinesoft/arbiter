@@ -8,12 +8,17 @@
  */
 
 import chalk from "chalk";
+import { resolveServiceArtifactType, resolveServiceWorkload } from "../utils/service-metadata.js";
+
+const HTTP_METHODS = ["get", "post", "put", "patch", "delete", "head", "options"];
 
 // Normalized spec interface for validation
 interface NormalizedSpec {
   product?: { name?: string; goals?: string[] };
   metadata?: { name?: string; version?: string; description?: string };
   services?: Record<string, any>;
+  paths?: Record<string, any>;
+  contracts?: Record<string, any>;
   ui?: { routes?: any[] };
   tests?: any[];
   epics?: any[];
@@ -61,6 +66,7 @@ export function validateSpecification(spec: any): ValidationResult {
   warnings.push(...validateDataManagement(normalizedSpec));
   warnings.push(...validateObservability(normalizedSpec));
   warnings.push(...validateEnvironmentConfig(normalizedSpec));
+  warnings.push(...validateContractImplementations(spec, normalizedSpec));
 
   const errors = warnings.filter((w) => w.severity === "error");
   const warningList = warnings.filter((w) => w.severity === "warning");
@@ -83,6 +89,8 @@ function normalizeSpec(spec: any): NormalizedSpec {
     product: spec.product,
     metadata: spec.metadata,
     services: spec.services,
+    paths: spec.paths,
+    contracts: spec.contracts,
     ui: spec.ui,
     tests: spec.tests,
     epics: spec.epics,
@@ -175,10 +183,13 @@ function validateEpicsAndTasks(spec: NormalizedSpec): ValidationWarning[] {
   const hasTasks = spec.epics?.some((epic) => epic.tasks && epic.tasks.length > 0);
 
   // Find source services (not pre-existing containers)
-  const sourceServices = Object.entries(spec.services || {}).filter(
-    ([_, service]) =>
-      service.type === "deployment" && service.serviceType === "bespoke" && !service.image, // No pre-built image = source code
-  );
+  const sourceServices = Object.entries(spec.services || {}).filter(([, service]) => {
+    return (
+      resolveServiceWorkload(service) === "deployment" &&
+      resolveServiceArtifactType(service) === "bespoke" &&
+      !service.image
+    );
+  });
 
   if (sourceServices.length > 0) {
     if (!hasEpics) {
@@ -255,7 +266,7 @@ function validateServiceCompleteness(spec: NormalizedSpec): ValidationWarning[] 
     }
 
     // Check for missing health checks on source services
-    if (service.serviceType === "bespoke" && !service.healthCheck) {
+    if (resolveServiceArtifactType(service) === "bespoke" && !service.healthCheck) {
       warnings.push({
         category: "Service Definition",
         severity: "warning",
@@ -278,7 +289,7 @@ function validateServiceCompleteness(spec: NormalizedSpec): ValidationWarning[] 
 
     // Check for missing environment configuration
     if (
-      service.serviceType === "bespoke" &&
+      resolveServiceArtifactType(service) === "bespoke" &&
       (!service.env || Object.keys(service.env).length === 0)
     ) {
       warnings.push({
@@ -393,7 +404,7 @@ function validatePerformanceSpecs(spec: NormalizedSpec): ValidationWarning[] {
 
   // Check services for missing performance configuration
   Object.entries(spec.services || {}).forEach(([serviceName, service]) => {
-    if (service.serviceType === "bespoke" && !service.resources?.limits) {
+    if (resolveServiceArtifactType(service) === "bespoke" && !service.resources?.limits) {
       warnings.push({
         category: "Performance",
         severity: "warning",
@@ -568,6 +579,114 @@ function validateEnvironmentConfig(spec: NormalizedSpec): ValidationWarning[] {
   }
 
   return warnings;
+}
+
+function validateContractImplementations(rawSpec: any, spec: NormalizedSpec): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const root = rawSpec ?? {};
+  const services = spec.services || {};
+
+  const reportMissing = (reference: string, path: string) => {
+    warnings.push({
+      category: "Contracts",
+      severity: "error",
+      message: `Contract reference '${reference}' was not found.`,
+      suggestion: "Define the contract under the contracts section or update the implements path.",
+      path,
+    });
+  };
+
+  for (const [serviceName, service] of Object.entries(services)) {
+    if (!service || typeof service !== "object") continue;
+    const serviceBasePath = `services.${serviceName}`;
+
+    const serviceApis = service.implements?.apis;
+    if (Array.isArray(serviceApis)) {
+      serviceApis.forEach((reference: unknown, index) => {
+        if (typeof reference === "string" && !resolveContractReference(root, reference)) {
+          reportMissing(reference, `${serviceBasePath}.implements.apis[${index}]`);
+        }
+      });
+    }
+
+    const endpoints = service.endpoints;
+    if (endpoints && typeof endpoints === "object") {
+      for (const [endpointId, endpointSpec] of Object.entries(endpoints)) {
+        if (!endpointSpec || typeof endpointSpec !== "object") {
+          continue;
+        }
+        const reference = (endpointSpec as Record<string, unknown>).implements;
+        if (typeof reference === "string" && !resolveContractReference(root, reference)) {
+          reportMissing(reference, `${serviceBasePath}.endpoints.${endpointId}.implements`);
+        }
+      }
+    }
+  }
+
+  forEachPathOperation(spec.paths, (operation, contextPath) => {
+    const reference = operation?.implements;
+    if (typeof reference === "string" && !resolveContractReference(root, reference)) {
+      reportMissing(reference, `${contextPath}.implements`);
+    }
+  });
+
+  return warnings;
+}
+
+function resolveContractReference(root: any, reference: string): boolean {
+  if (!reference) return true;
+  let current: any = root;
+  const segments = reference.split(".").filter(Boolean);
+
+  for (const segment of segments) {
+    if (!current || typeof current !== "object" || !(segment in current)) {
+      return false;
+    }
+    current = current[segment];
+  }
+
+  return true;
+}
+
+function isPathSpecCandidate(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  return HTTP_METHODS.some((method) => Object.prototype.hasOwnProperty.call(value, method));
+}
+
+function forEachPathOperation(
+  paths: Record<string, any> | undefined,
+  iterate: (operation: Record<string, any>, contextPath: string) => void,
+): void {
+  if (!paths || typeof paths !== "object") {
+    return;
+  }
+
+  const visitPathSpec = (pathSpec: Record<string, any>, contextBase: string) => {
+    for (const method of HTTP_METHODS) {
+      const operation = pathSpec[method];
+      if (operation && typeof operation === "object") {
+        iterate(operation as Record<string, any>, `${contextBase}.${method}`);
+      }
+    }
+  };
+
+  for (const [groupKey, value] of Object.entries(paths)) {
+    if (isPathSpecCandidate(value)) {
+      visitPathSpec(value as Record<string, any>, `paths.${groupKey}`);
+      continue;
+    }
+
+    if (value && typeof value === "object") {
+      for (const [pathKey, pathSpec] of Object.entries(value as Record<string, any>)) {
+        if (!isPathSpecCandidate(pathSpec)) {
+          continue;
+        }
+        visitPathSpec(pathSpec as Record<string, any>, `paths.${groupKey}.${pathKey}`);
+      }
+    }
+  }
 }
 
 /**

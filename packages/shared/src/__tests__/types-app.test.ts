@@ -1,11 +1,11 @@
 /**
- * Comprehensive test suite for v2 TypeScript type definitions
+ * Comprehensive test suite for Arbiter application TypeScript type definitions
  * Tests type safety, validation, and schema compliance
  */
 
 import { describe, expect, test } from "bun:test";
 import type {
-  // Core v2 types
+  // Core application types
   AppSpec,
   Cap,
   ComponentsSpec,
@@ -30,6 +30,7 @@ import type {
   // Schema version detection
   SchemaVersion,
   Seed,
+  ServiceConfig,
   // Primitive types
   Slug,
   StateKind,
@@ -40,7 +41,7 @@ import type {
   URLPath,
 } from "../types.js";
 
-describe("V2 Type System Validation", () => {
+describe("Application Type System Validation", () => {
   describe("Primitive Type Constraints", () => {
     test("should enforce Slug pattern constraints", () => {
       // Valid slugs
@@ -497,63 +498,27 @@ describe("V2 Type System Validation", () => {
     });
   });
 
-  describe("Schema Version Detection Types", () => {
-    test("should validate SchemaVersion structure", () => {
-      const v1Schema: SchemaVersion = {
-        version: "v1",
-        detected_from: "structure",
-      };
-
-      const v2Schema: SchemaVersion = {
-        version: "v2",
+  describe("Schema Version Detection", () => {
+    test("should always report the unified application schema", () => {
+      const schema: SchemaVersion = {
+        version: "app",
         detected_from: "metadata",
       };
 
-      expect(v1Schema.version).toBe("v1");
-      expect(v1Schema.detected_from).toBe("structure");
-      expect(v2Schema.version).toBe("v2");
-      expect(v2Schema.detected_from).toBe("metadata");
+      expect(schema.version).toBe("app");
+      expect(schema.detected_from).toBe("metadata");
     });
 
-    test("should validate ConfigWithVersion for dual format support", () => {
-      const v1Config: ConfigWithVersion = {
+    test("should validate ConfigWithVersion for the application schema", () => {
+      const config: ConfigWithVersion = {
         schema: {
-          version: "v1",
+          version: "app",
           detected_from: "structure",
         },
-        v1: {
-          config: {
-            language: "typescript",
-            kind: "service",
-          },
-          metadata: {
-            name: "test-service",
-            version: "1.0.0",
-          },
-          deployment: {
-            target: "kubernetes",
-          },
-          services: {
-            api: {
-              name: "api",
-              serviceType: "bespoke",
-              language: "typescript",
-              type: "deployment",
-              ports: [{ name: "http", port: 3000 }],
-            },
-          },
-        },
-      };
-
-      const v2Config: ConfigWithVersion = {
-        schema: {
-          version: "v2",
-          detected_from: "structure",
-        },
-        v2: {
+        app: {
           product: {
             name: "Test App",
-            goals: ["Test v2 format"],
+            goals: ["End-to-end coverage"],
           },
           ui: {
             routes: [
@@ -576,15 +541,9 @@ describe("V2 Type System Validation", () => {
         },
       };
 
-      expect(v1Config.schema.version).toBe("v1");
-      expect(v1Config.v1?.config.language).toBe("typescript");
-      expect(v1Config.v1?.services.api).toBeDefined();
-      expect(v1Config.v2).toBeUndefined();
-
-      expect(v2Config.schema.version).toBe("v2");
-      expect(v2Config.v2?.product.name).toBe("Test App");
-      expect(v2Config.v2?.ui.routes).toHaveLength(1);
-      expect(v2Config.v1).toBeUndefined();
+      expect(config.schema.version).toBe("app");
+      expect(config.app.product.name).toBe("Test App");
+      expect(config.app.ui.routes).toHaveLength(1);
     });
   });
 
@@ -647,6 +606,103 @@ describe("V2 Type System Validation", () => {
       expect(seed.as).toBe("testUser");
       expect(seed.with?.role).toBe("admin");
       expect(seed.with?.permissions).toHaveLength(2);
+    });
+  });
+
+  describe("Service endpoints and gateways", () => {
+    test("should allow endpoint definitions with middleware", () => {
+      const service: ServiceConfig = {
+        name: "invoice-service",
+        type: "internal",
+        workload: "deployment",
+        language: "typescript",
+        endpoints: {
+          getInvoice: {
+            path: "/internal/invoices/{invoiceId}",
+            methods: ["GET", "HEAD"],
+            handler: {
+              type: "module",
+              module: "./services/invoice/http/get-invoice.ts",
+              function: "handler",
+            },
+            implements: "contracts.workflows.InvoiceAPI.operations.getInvoice",
+            middleware: [
+              {
+                module: "./services/invoice/middleware/audit.ts",
+                function: "recordAccess",
+              },
+            ],
+          },
+        },
+      };
+
+      expect(service.endpoints?.getInvoice.path).toBe("/internal/invoices/{invoiceId}");
+      expect(service.endpoints?.getInvoice.middleware?.[0]?.module).toContain("audit");
+    });
+
+    test("should support chaining endpoints across services", () => {
+      const mesh: ServiceConfig = {
+        name: "billing-gateway",
+        type: "internal",
+        workload: "deployment",
+        language: "typescript",
+        endpoints: {
+          invoicePublic: {
+            path: "/api/invoices/{invoiceId}",
+            methods: ["GET"],
+            handler: {
+              type: "endpoint",
+              service: "invoice-service",
+              endpoint: "getInvoice",
+            },
+            implements: "contracts.workflows.InvoiceAPI.operations.getInvoice",
+            middleware: [
+              {
+                module: "./services/gateway/middleware/auth.ts",
+                function: "requireCustomerAuth",
+                phase: "request",
+              },
+            ],
+          },
+        },
+      };
+
+      expect(mesh.endpoints?.invoicePublic.handler?.type).toBe("endpoint");
+      expect(mesh.endpoints?.invoicePublic.handler?.service).toBe("invoice-service");
+    });
+
+    test("should capture resource metadata and dependency constraints", () => {
+      const externalDb: ServiceConfig = {
+        name: "invoice-database",
+        type: "external",
+        workload: "statefulset",
+        language: "terraform",
+        resource: {
+          kind: "database",
+          engine: "postgres",
+          version: "15",
+          size: "db.m6i.large",
+        },
+      };
+
+      expect(externalDb.resource?.engine).toBe("postgres");
+      expect(externalDb.type).toBe("external");
+
+      const apiService: ServiceConfig = {
+        name: "invoice-service",
+        type: "internal",
+        workload: "deployment",
+        language: "typescript",
+        dependencies: {
+          database: {
+            service: "invoice-database",
+            version: ">=15",
+            kind: "postgres",
+          },
+        },
+      };
+
+      expect(apiService.dependencies?.database?.service).toBe("invoice-database");
     });
   });
 });

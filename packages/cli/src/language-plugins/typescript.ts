@@ -620,6 +620,53 @@ export class TypeScriptPlugin implements LanguagePlugin {
     );
     files.push({ path: "app/globals.css", content: globalsCss });
 
+    if (this.runtime.testRunner === "jest") {
+      const babelConfig = await this.runtime.templateResolver.renderTemplate(
+        "project/nextjs/babel.config.js.tpl",
+        context,
+        `module.exports = {
+  presets: ['next/babel'],
+  env: {
+    test: {
+      plugins: ['babel-plugin-dynamic-import-node'],
+    },
+  },
+};
+`,
+      );
+      files.push({ path: "babel.config.js", content: babelConfig });
+
+      const jestConfig = await this.runtime.templateResolver.renderTemplate(
+        "project/nextjs/jest.config.js.tpl",
+        context,
+        `const nextJest = require('next/jest');
+
+const createJestConfig = nextJest({ dir: './' });
+
+const customJestConfig = {
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  testEnvironment: 'jsdom',
+};
+
+module.exports = createJestConfig(customJestConfig);
+`,
+      );
+      files.push({ path: "jest.config.js", content: jestConfig });
+
+      const jestSetup = await this.runtime.templateResolver.renderTemplate(
+        "project/nextjs/jest.setup.ts.tpl",
+        context,
+        `import '@testing-library/jest-dom/extend-expect';
+import preloadAll from 'jest-next-dynamic';
+
+beforeAll(async () => {
+  await preloadAll();
+});
+`,
+      );
+      files.push({ path: "jest.setup.ts", content: jestSetup });
+    }
+
     return {
       files,
       dependencies,
@@ -707,7 +754,10 @@ export class TypeScriptPlugin implements LanguagePlugin {
     if (this.runtime.testRunner === "jest") {
       deps.add("jest");
       deps.add("@types/jest");
-      deps.add("ts-jest");
+      deps.add("@testing-library/react");
+      deps.add("@testing-library/jest-dom");
+      deps.add("babel-plugin-dynamic-import-node");
+      deps.add("jest-next-dynamic");
     } else {
       deps.add("vitest");
       deps.add("@testing-library/react");

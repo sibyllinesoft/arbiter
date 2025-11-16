@@ -22,7 +22,8 @@
       "@assets/*": ["./src/assets/*"],
       "@stores/*": ["./src/stores/*"],
       "@types/*": ["./src/types/*"],
-      "react-toastify/dist/ReactToastify.css": ["./src/react-toastify-css.d.ts"]
+      "react-toastify/dist/ReactToastify.css": ["./src/react-toastify-css.d.ts"],
+      "@amalto/key-value-editor": ["./src/shims/amalto-key-value-editor"]
     },
 
     /* Bundler mode */

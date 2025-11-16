@@ -1,0 +1,487 @@
+name: Documentation Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'packages/**'
+      - 'apps/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CLAUDE.md'
+      - '.github/workflows/docs-pipeline.yml'
+      - 'docs-config.yaml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'packages/**'
+      - 'apps/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'CLAUDE.md'
+      - '.github/workflows/docs-pipeline.yml'
+      - 'docs-config.yaml'
+  schedule:
+    # Run daily at 2 AM UTC to check documentation freshness
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_validation:
+        description: 'Skip validation checks'
+        required: false
+        default: false
+        type: boolean
+      force_regenerate:
+        description: 'Force regeneration even if docs are fresh'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+  DOCS_ENVIRONMENT: ${{ inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'staging') }}
+
+jobs:
+  detect-changes:
+    name: Detect Documentation Changes
+    runs-on: ubuntu-latest
+    outputs:
+      docs-changed: ${{ steps.changes.outputs.docs }}
+      code-changed: ${{ steps.changes.outputs.code }}
+      config-changed: ${{ steps.changes.outputs.config }}
+      should-generate: ${{ steps.should-generate.outputs.result }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            docs:
+              - 'docs/**'
+            code:
+              - 'packages/**'
+              - 'apps/**'
+            config:
+              - 'docs-config.yaml'
+              - '.github/workflows/docs-pipeline.yml'
+
+      - name: Should generate documentation
+        id: should-generate
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ inputs.force_regenerate }}" == "true" ]] || \
+             [[ "${{ steps.changes.outputs.code }}" == "true" ]] || \
+             [[ "${{ steps.changes.outputs.config }}" == "true" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+
+  setup:
+    name: Setup Environment
+    runs-on: ubuntu-latest
+    if: needs.detect-changes.outputs.should-generate == 'true'
+    needs: [detect-changes]
+    outputs:
+      bun-version: ${{ steps.setup-bun.outputs.version }}
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        id: setup-bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          echo "key=docs-${{ runner.os }}-bun-${{ steps.setup-bun.outputs.version }}-${{ hashFiles('**/bun.lockb', '**/package.json') }}" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            docs-${{ runner.os }}-bun-${{ steps.setup-bun.outputs.version }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+  build:
+    name: Build Project
+    runs-on: ubuntu-latest
+    needs: [setup]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build project
+        run: bun run build:all
+
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/*/dist
+            apps/*/dist
+            arbiter-cli
+          key: build-${{ github.sha }}-${{ github.run_number }}
+
+  generate-docs:
+    name: Generate Documentation
+    runs-on: ubuntu-latest
+    needs: [setup, build]
+    strategy:
+      matrix:
+        doc-type: [cli, cue, api, codegen, project]
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore dependency cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/*/dist
+            apps/*/dist
+            arbiter-cli
+          key: build-${{ github.sha }}-${{ github.run_number }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate ${{ matrix.doc-type }} documentation
+        run: bun run docs:${{ matrix.doc-type }}
+        env:
+          CI: true
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: docs-${{ matrix.doc-type }}
+          path: |
+            docs/*${{ matrix.doc-type }}*
+            docs/*-index.json
+            docs/*-metrics.json
+          retention-days: 7
+
+  orchestrate-docs:
+    name: Orchestrate Full Documentation Pipeline
+    runs-on: ubuntu-latest
+    needs: [setup, build, generate-docs]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore dependency cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+            apps/*/node_modules
+            packages/*/node_modules
+          key: ${{ needs.setup.outputs.cache-key }}
+
+      - name: Restore build cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            packages/*/dist
+            apps/*/dist
+            arbiter-cli
+          key: build-${{ github.sha }}-${{ github.run_number }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download all documentation artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: docs-temp
+
+      - name: Merge documentation artifacts
+        run: |
+          mkdir -p docs
+          find docs-temp -type f -name "*.md" -o -name "*.html" -o -name "*.json" | xargs -I {} cp {} docs/
+          ls -la docs/
+
+      - name: Run full documentation orchestration
+        run: |
+          bun run docs:generate \
+            --environment=${{ env.DOCS_ENVIRONMENT }} \
+            --parallel \
+            ${{ inputs.skip_validation == 'true' && '--skip-validation' || '' }} \
+            ${{ inputs.force_regenerate == 'true' && '--force-regenerate' || '' }}
+        env:
+          CI: true
+
+      - name: Upload final documentation
+        uses: actions/upload-artifact@v3
+        with:
+          name: documentation-complete
+          path: docs/
+          retention-days: 30
+
+  validate-docs:
+    name: Validate Documentation Quality
+    runs-on: ubuntu-latest
+    needs: [orchestrate-docs]
+    if: inputs.skip_validation != 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Download documentation
+        uses: actions/download-artifact@v3
+        with:
+          name: documentation-complete
+          path: docs/
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Validate documentation
+        run: bun run docs:validate
+        env:
+          CI: true
+
+      - name: Generate health report
+        run: bun scripts/docs-monitor.ts health --generate-report
+        id: health-check
+
+      - name: Comment PR with health report
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = JSON.parse(fs.readFileSync('docs/health-report.json', 'utf8'));
+              const status = report.overall.status;
+              const score = report.overall.score;
+              
+              const statusEmoji = status === 'healthy' ? '✅' : 
+                                  status === 'warning' ? '⚠️' : '❌';
+              
+              const body = `## 📊 Documentation Health Report ${statusEmoji}
+              
+              **Overall Status**: ${status.toUpperCase()}
+              **Health Score**: ${score}/100
+              **Issues Found**: ${report.overall.issues}
+              
+              ### Summary
+              - **Freshness**: ${report.freshness.status} (${report.freshness.staleFiles.length} stale files)
+              - **Quality**: ${report.quality.status} (${report.quality.coverage.toFixed(1)}% coverage)
+              - **Links**: ${report.links.status} (${report.links.broken.length} broken links)
+              
+              ${report.recommendations.length > 0 ? `
+              ### Top Recommendations
+              ${report.recommendations.slice(0, 3).map(r => `- **${r.priority.toUpperCase()}**: ${r.message}`).join('\n')}
+              ` : ''}
+              
+              *Generated by Documentation Pipeline*`;
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            } catch (error) {
+              console.log('Could not read health report:', error);
+            }
+
+  monitor-docs:
+    name: Monitor Documentation Health
+    runs-on: ubuntu-latest
+    needs: [orchestrate-docs]
+    if: github.event_name == 'schedule' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Download documentation
+        uses: actions/download-artifact@v3
+        with:
+          name: documentation-complete
+          path: docs/
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run documentation monitoring
+        run: |
+          bun scripts/docs-monitor.ts \
+            --check-freshness \
+            --check-links \
+            --check-quality \
+            --generate-report
+        env:
+          CI: true
+
+      - name: Send alerts if needed
+        run: bun scripts/docs-monitor.ts alert
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          CI: true
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [validate-docs]
+    if: |
+      always() && 
+      (needs.validate-docs.result == 'success' || needs.validate-docs.result == 'skipped') &&
+      (github.ref == 'refs/heads/develop' || env.DOCS_ENVIRONMENT == 'staging')
+    environment:
+      name: staging
+      url: https://docs-staging.arbiter.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download documentation
+        uses: actions/download-artifact@v3
+        with:
+          name: documentation-complete
+          path: docs/
+
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
+          # Add your staging deployment logic here
+          # For example, deploy to Vercel, Netlify, or GitHub Pages
+        env:
+          DEPLOY_KEY: ${{ secrets.STAGING_DEPLOY_KEY }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [validate-docs]
+    if: |
+      always() && 
+      (needs.validate-docs.result == 'success' || needs.validate-docs.result == 'skipped') &&
+      (github.ref == 'refs/heads/main' || env.DOCS_ENVIRONMENT == 'production')
+    environment:
+      name: production
+      url: https://docs.arbiter.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download documentation
+        uses: actions/download-artifact@v3
+        with:
+          name: documentation-complete
+          path: docs/
+
+      - name: Deploy to production
+        run: |
+          echo "Deploying to production environment..."
+          # Add your production deployment logic here
+          # For example, deploy to GitHub Pages
+        env:
+          DEPLOY_KEY: ${{ secrets.PRODUCTION_DEPLOY_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update deployment status
+        if: success()
+        run: |
+          echo "Documentation successfully deployed to production"
+          # Optionally send success notifications
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Clean up temporary artifacts
+        run: |
+          echo "Cleaning up temporary build artifacts..."
+          # This step runs regardless of success/failure to clean up resources
+
+  notify-completion:
+    name: Notify Completion
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always() && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+    steps:
+      - name: Send completion notification
+        run: |
+          echo "Documentation pipeline completed successfully"
+          # Add notification logic here (Slack, email, etc.)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

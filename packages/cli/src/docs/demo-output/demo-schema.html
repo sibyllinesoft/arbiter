@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arbiter Schema Documentation (Demo)</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; margin: 0; background: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        .header { background: white; padding: 2rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .type-card { background: white; border-radius: 8px; padding: 1.5rem; margin: 1rem 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .type-title { color: #2563eb; font-family: monospace; font-size: 1.25rem; margin: 0 0 0.5rem 0; }
+        .type-meta { font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem; }
+        .badge { background: #e5e7eb; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+        .badge-constraint { background: #fef3c7; color: #92400e; }
+        .badge-enum { background: #dcfce7; color: #166534; }
+        .badge-primitive { background: #f3f4f6; color: #374151; }
+        .badge-struct { background: #dbeafe; color: #1e40af; }
+        .badge-union { background: #ede9fe; color: #6b21a8; }
+        .constraints { background: #f8f9fa; border-left: 4px solid #3b82f6; padding: 1rem; margin: 1rem 0; }
+        .examples { background: #f0fdf4; border-left: 4px solid #10b981; padding: 1rem; margin: 1rem 0; }
+        code { background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace; }
+        .definition { font-family: monospace; background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 4px; overflow-x: auto; margin: 1rem 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Arbiter CUE Schema Documentation</h1>
+            <p><strong>Package:</strong> <code>schema</code></p>
+            <p><strong>Types:</strong> 38</p>
+            <p><strong>Generated:</strong> 11/12/2025, 2:57:04 PM</p>
+            <p><em>This is a demo documentation generated from actual Arbiter CUE schema files</em></p>
+        </div>
+
+
+        <div class="type-card">
+            <h2 class="type-title">#Slug</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:5</code></span>
+            </div>
+            
+            <p>---------- Canonical identifiers & primitives ----------</p>
+            
+            <div class="definition">=~"^[a-z0-9]+(?:[._-][a-z0-9]+)*$"</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^[a-z0-9]+(?:[._-][a-z0-9]+)*$</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Human</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:6</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">string & !=""                              // short human label</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Non-empty string</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Email</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:7</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">=~"^[^@\s]+@[^@\s]+\.[^@\s]+$"</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#ISODateTime</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:8</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">=~"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$"</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Percent01</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:9</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">number & >=0.0 & <=1.0</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Minimum: 0.0</li><li>Maximum: 1.0</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#URLPath</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:10</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">=~"^/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*$"</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*$</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HTTPMethod</h2>
+            <div class="type-meta">
+                <span class="badge badge-enum">enum</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:11</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">"GET" | "POST" | "PUT" | "PATCH" | "DELETE"</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HTTPStatus</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:12</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">int & >=100 & <=599</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Minimum: 100</li><li>Maximum: 599</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#RouteID</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:15</code></span>
+            </div>
+            
+            <p>---------- Domain tokens ----------</p>
+            
+            <div class="definition">=~"^[a-z0-9]+(?::[a-z0-9_-]+)+$"           // e.g., invoices:detail</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^[a-z0-9]+(?::[a-z0-9_-]+)+$</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Cap</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:16</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">#Slug                                      // capability, e.g., approve</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Role</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:17</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">#Slug                                      // role, e.g., manager</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#LocatorToken</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:20</code></span>
+            </div>
+            
+            <p>---------- Locator contract ----------</p>
+            
+            <div class="definition">=~"^[a-z]+:[a-z0-9_-]+$"                   // e.g., btn:approve</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^[a-z]+:[a-z0-9_-]+$</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#CssSelector</h2>
+            <div class="type-meta">
+                <span class="badge badge-constraint">constraint</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:21</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">string & =~"^[^\n\r]+$" & !=""             // non-empty single-line</div>
+            
+            
+            <div class="constraints">
+                <h4>Constraints:</h4>
+                <ul>
+                    <li>Pattern: ^[^\n\r]+$</li><li>Non-empty string</li>
+                </ul>
+            </div>
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#FlowID</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:24</code></span>
+            </div>
+            
+            <p>---------- Flow steps ----------</p>
+            
+            <div class="definition">#Slug</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#StateKind</h2>
+            <div class="type-meta">
+                <span class="badge badge-enum">enum</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:25</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">"visible" | "hidden" | "enabled" | "disabled" | "attached" | "detached"</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#TextMatch</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:26</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{ eq?: string, contains?: string, regex?: string } // one of these</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#ExpectUI</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:28</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#ExpectAPI</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:34</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#AssertionSeverity</h2>
+            <div class="type-meta">
+                <span class="badge badge-enum">enum</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:43</code></span>
+            </div>
+            
+            <p>---------- Assertion helpers ----------</p>
+            
+            <div class="definition">"error" | "warn" | "info"</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#CueAssertion</h2>
+            <div class="type-meta">
+                <span class="badge badge-union">union</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:45</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">bool | {</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#CueAssertionBlock</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:52</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{[#Slug]: #CueAssertion}</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#FactoryName</h2>
+            <div class="type-meta">
+                <span class="badge badge-primitive">primitive</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:55</code></span>
+            </div>
+            
+            <p>---------- Seeds & factories ----------</p>
+            
+            <div class="definition">#Slug</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Seed</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:56</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#KV</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>core_types.cue:63</code></span>
+            </div>
+            
+            <p>---------- Misc ----------</p>
+            
+            <div class="definition">{ [string]: _ } // loose map where needed</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#AppSpec</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:7</code></span>
+            </div>
+            
+            <p>Top-level “AppSpec” schema. All fragments unify into this shape under /spec/app.</p>
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Flow</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:87</code></span>
+            </div>
+            
+            <p>---------- Flow grammar ----------</p>
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#Step</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:101</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#FSM</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:110</code></span>
+            </div>
+            
+            <p>---------- FSM shape (minimal) ----------</p>
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HttpMediaType</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:116</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HttpContent</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:122</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{ [string]: #HttpMediaType }</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HttpRequestBody</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:124</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HttpResponse</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:130</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HttpParameter</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:136</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#HttpOperation</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:147</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#CapabilitySpec</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>app_spec.cue:159</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#FeatureSpec</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>feature_spec.cue:4</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#CompletionProfile</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>feature_spec.cue:29</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">{</div>
+            
+            
+            
+            
+        </div>
+
+        <div class="type-card">
+            <h2 class="type-title">#DefaultCompletion</h2>
+            <div class="type-meta">
+                <span class="badge badge-struct">struct</span>
+                <span style="margin-left: 1rem;">Source: <code>completion_rules.cue:4</code></span>
+            </div>
+            
+            
+            
+            <div class="definition">#CompletionProfile & {</div>
+            
+            
+            
+            
+        </div>
+
+
+        <div class="header">
+            <h2>Summary</h2>
+            <p>This demo documentation was generated from <strong>38</strong> type definitions found in the Arbiter CUE schema files.</p>
+            
+            <h3>Type Distribution</h3>
+            <p><span class="badge badge-constraint">constraint</span>: 7 types</p><p><span class="badge badge-primitive">primitive</span>: 7 types</p><p><span class="badge badge-enum">enum</span>: 3 types</p><p><span class="badge badge-struct">struct</span>: 20 types</p><p><span class="badge badge-union">union</span>: 1 types</p>
+            
+            <p><em><strong>Note:</strong> This is a simplified demo. The full documentation system supports advanced features like relationship mapping, cross-references, JSON schema generation, and more sophisticated CUE parsing.</em></p>
+        </div>
+    </div>
+</body>
+</html>
