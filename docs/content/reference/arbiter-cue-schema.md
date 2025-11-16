@@ -645,7 +645,7 @@ k8s/<env>/<svc>/*.yaml
 2. For each HTTP-like service, add
   `capabilities: [{kind: "httpServer", contractRef: "contracts.workflows.<YourAPI>"}]`
    and define `contracts.workflows` accordingly.
-3. Model databases/caches/queues as `services` with `serviceType: "external"`
+3. Model databases/caches/queues as `services` with `type: "external"`
   and attach `resource` metadata; use `deployments.<env>.services` to express
   environment-specific overrides instead of bespoke infrastructure blocks.
 4. Introduce `codegen` block with profile+generator+templateHash.
@@ -736,8 +736,8 @@ arbiterSpec: {
 
   services: {
     InvoiceService: {
-      type: "bespoke"
-      implementation: "internal"
+      type: "internal"
+      workload: "deployment"
       sourceDirectory: "./services/invoice"
       dependencies: {
         postgres: {
@@ -770,8 +770,8 @@ arbiterSpec: {
     }
 
     BillingGateway: {
-      type: "bespoke"
-      implementation: "internal"
+      type: "internal"
+      workload: "deployment"
       sourceDirectory: "./services/gateway"
       endpoints: {
         invoicePublic: {
@@ -794,7 +794,7 @@ arbiterSpec: {
 
     InvoiceDatabase: {
       type: "external"
-      implementation: "external"
+      workload: "statefulset"
       resource: {
         kind: "database"
         engine: "postgres"
@@ -806,7 +806,7 @@ arbiterSpec: {
 
     InvoiceCache: {
       type: "external"
-      implementation: "external"
+      workload: "statefulset"
       resource: {
         kind: "cache"
         engine: "redis"

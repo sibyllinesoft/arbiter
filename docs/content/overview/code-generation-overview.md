@@ -226,8 +226,8 @@ arbiter add service orders-api \
   --template python-fastapi \
   --port 8000
 
-# Vue front end reusing that alias
-arbiter add service customer-ui \
+# Vue front end registered as a client
+arbiter add client customer-ui \
   --template vue-vite \
   --language typescript \
   --port 4173
@@ -251,12 +251,13 @@ Register the Vue alias once (globally in `~/.arbiter/templates.json` or inside `
 }
 ```
 
-After these commands, the `services` block captures both bespoke (FastAPI, Vue) and prebuilt (Postgres) workloads, plus their dependencies:
+After these commands, the `services` block captures the FastAPI API plus the external Postgres dependency, and the `clients` section records the Vue front end. No manual editing was required; the CLI wrote every field on your behalf.
 
 ```cue
 services: {
   orders-db: {
-    serviceType: "prebuilt"
+    type: "external"
+    workload: "statefulset"
     language: "container"
     image: "postgres:15"
     ports: [{ name: "db", port: 5432 }]
@@ -267,7 +268,8 @@ services: {
     }]
   }
   orders-api: {
-    serviceType: "bespoke"
+    type: "internal"
+    workload: "deployment"
     language: "python"
     template: "python-fastapi"
     implements: {
@@ -303,11 +305,13 @@ services: {
       }
     }
   }
+}
+clients: {
   customer-ui: {
-    serviceType: "bespoke"
     language: "typescript"
     template: "vue-vite"
-    ports: [{ name: "web", port: 4173 }]
+    sourceDirectory: "clients/customer-ui"
+    port: 4173
   }
 }
 ```
