@@ -46,9 +46,10 @@ export type PlatformServiceType =
  * Configuration for a service in the CUE specification
  */
 export interface ServiceConfig {
-  serviceType: PlatformServiceType;
+  serviceType?: PlatformServiceType;
+  type: "internal" | "external";
   language: string;
-  type: "deployment" | "statefulset" | "serverless" | "managed";
+  workload?: "deployment" | "statefulset" | "serverless" | "managed";
   sourceDirectory?: string;
   image?: string;
   // Platform-specific configurations

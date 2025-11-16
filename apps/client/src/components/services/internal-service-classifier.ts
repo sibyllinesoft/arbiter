@@ -107,8 +107,8 @@ export const isServiceDetected = (service: InternalServiceCandidate): boolean =>
 };
 
 const INFRA_TYPE_HINTS = new Set([
-  "prebuilt",
   "external",
+  "prebuilt",
   "database",
   "datastore",
   "cache",
@@ -129,8 +129,13 @@ export const shouldTreatAsInternalService = (service: InternalServiceCandidate):
   const rawRecord = toRecord(service.raw);
   const metadata = toRecord(rawRecord?.metadata);
 
-  const serviceTypeHint =
-    normalizeString(rawRecord?.serviceType) ?? normalizeString(metadata?.serviceType);
+  const artifactHint =
+    normalizeString(rawRecord?.type) ??
+    normalizeString(metadata?.type) ??
+    normalizeString(rawRecord?.artifactType) ??
+    normalizeString(metadata?.artifactType) ??
+    normalizeString(rawRecord?.serviceType) ??
+    normalizeString(metadata?.serviceType);
   const categoryHint =
     normalizeString(rawRecord?.category) ??
     normalizeString(metadata?.category) ??
@@ -139,12 +144,12 @@ export const shouldTreatAsInternalService = (service: InternalServiceCandidate):
   const languageHint = normalizeString(rawRecord?.language) ?? normalizeString(metadata?.language);
 
   const declaredInfra =
-    (serviceTypeHint && INFRA_TYPE_HINTS.has(serviceTypeHint)) ||
+    (artifactHint && INFRA_TYPE_HINTS.has(artifactHint)) ||
     (categoryHint && INFRA_TYPE_HINTS.has(categoryHint)) ||
     (typeLabelHint && INFRA_TYPE_HINTS.has(typeLabelHint)) ||
     (languageHint && INFRA_LANGUAGE_HINTS.has(languageHint));
 
-  if (serviceTypeHint === "bespoke") {
+  if (artifactHint === "internal" || artifactHint === "bespoke") {
     return true;
   }
 

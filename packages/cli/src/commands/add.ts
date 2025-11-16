@@ -361,8 +361,9 @@ async function addService(
     const platformDefaults = getPlatformServiceDefaults(options.serviceType);
     serviceConfig = {
       serviceType: options.serviceType,
+      type: platformDefaults.artifactType || "external",
       language: platformDefaults.language || language,
-      type: platformDefaults.type || "serverless",
+      workload: platformDefaults.workload || "serverless",
       ...(platformDefaults.platform && { platform: platformDefaults.platform }),
       ...(platformDefaults.runtime && { runtime: platformDefaults.runtime }),
       ...(directory && { sourceDirectory: directory }),
@@ -371,9 +372,9 @@ async function addService(
   } else if (isPrebuilt) {
     // Container-based service
     serviceConfig = {
-      serviceType: "prebuilt",
+      type: "external",
       language: "container",
-      type:
+      workload:
         image && (image.includes("postgres") || image.includes("mysql"))
           ? "statefulset"
           : "deployment",
@@ -383,9 +384,9 @@ async function addService(
   } else {
     // Traditional internal service
     serviceConfig = {
-      serviceType: "internal",
+      type: "internal",
       language,
-      type: "deployment",
+      workload: "deployment",
       sourceDirectory: directory || `./src/${serviceName}`,
       ...(port && { ports: [{ name: "http", port, targetPort: port }] }),
     };
@@ -572,9 +573,9 @@ function createTemplateServiceConfig(
   options: ServiceTemplateOptions,
 ): ServiceConfig {
   return {
-    serviceType: "internal",
+    type: "internal",
     language: options.language || "typescript",
-    type: "deployment",
+    workload: "deployment",
     sourceDirectory: directory,
     template: options.template!,
     ...(options.port && {
@@ -891,9 +892,9 @@ function validateTargetServiceExists(
  */
 function createLoadBalancerConfig(): ServiceConfig {
   return {
-    serviceType: "prebuilt",
+    type: "external",
     language: "container",
-    type: "deployment",
+    workload: "deployment",
     image: "nginx:alpine",
     ports: [{ name: "http", port: 80, targetPort: 80 }],
     template: "nginx-loadbalancer",
@@ -1166,8 +1167,9 @@ function createDatabaseConfiguration(
     const platformDefaults = getPlatformServiceDefaults(options.serviceType);
     return {
       serviceType: options.serviceType,
+      type: platformDefaults.artifactType || "external",
       language: platformDefaults.language || "sql",
-      type: platformDefaults.type || "managed",
+      workload: platformDefaults.workload || "managed",
       ...(platformDefaults.platform && { platform: platformDefaults.platform }),
       ...(platformDefaults.runtime && { runtime: platformDefaults.runtime }),
       ...(options.attachTo && { attachTo: options.attachTo }),
@@ -1177,9 +1179,9 @@ function createDatabaseConfiguration(
 
   // Traditional container-based database
   return {
-    serviceType: "prebuilt",
+    type: "external",
     language: "container",
-    type: "statefulset",
+    workload: "statefulset",
     image: options.image,
     ports: [{ name: "db", port: options.port, targetPort: options.port }],
     volumes: [createDatabaseVolume(options.image)],
@@ -1302,8 +1304,9 @@ function createCacheServiceConfig(config: CacheConfig): ServiceConfig {
     const platformDefaults = getPlatformServiceDefaults(config.serviceType);
     return {
       serviceType: config.serviceType,
+      type: platformDefaults.artifactType || "external",
       language: platformDefaults.language || "key-value",
-      type: platformDefaults.type || "managed",
+      workload: platformDefaults.workload || "managed",
       ...(platformDefaults.platform && { platform: platformDefaults.platform }),
       ...(platformDefaults.runtime && { runtime: platformDefaults.runtime }),
       ...(config.attachTo && { attachTo: config.attachTo }),
@@ -1313,9 +1316,9 @@ function createCacheServiceConfig(config: CacheConfig): ServiceConfig {
 
   // Traditional container-based cache
   return {
-    serviceType: "prebuilt",
+    type: "external",
     language: "container",
-    type: "deployment",
+    workload: "deployment",
     image: config.image!,
     ports: [{ name: "cache", port: config.port!, targetPort: config.port! }],
     volumes: [{ name: "data", path: "/data", size: CACHE_DEFAULTS.volumeSize }],

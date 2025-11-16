@@ -66,10 +66,10 @@ describe("Validation Warning System", () => {
       ...minimalValidSpec,
       services: {
         "web-app": {
-          serviceType: "container",
+          type: "external",
+          workload: "deployment",
           image: "nginx:latest",
           language: "javascript", // Add missing language
-          type: "deployment",
           ports: [{ name: "http", port: 80, targetPort: 80 }],
           healthCheck: { path: "/health", port: 80 },
           resources: {
@@ -147,9 +147,9 @@ describe("Validation Warning System", () => {
       },
       services: {
         "incomplete-api": {
-          serviceType: "bespoke", // Source service
+          type: "internal", // Source service
+          workload: "deployment",
           language: "typescript",
-          type: "deployment",
           ports: [{ name: "http", port: 3000, targetPort: 3000 }],
           // Missing: healthCheck, resources, env
         },
@@ -306,9 +306,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "source-service": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
           },
         },
         epics: [],
@@ -324,9 +324,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "source-service": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
           },
         },
         epics: [
@@ -350,9 +350,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "orphan-service": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
           },
         },
         epics: [
@@ -376,9 +376,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           nginx: {
-            serviceType: "container",
+            type: "external",
+            workload: "deployment",
             image: "nginx:latest",
-            type: "deployment",
           },
         },
       };
@@ -395,8 +395,8 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "no-lang": {
-            serviceType: "bespoke",
-            type: "deployment",
+            type: "internal",
+            workload: "deployment",
             // Missing language
           },
         },
@@ -414,9 +414,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "no-ports": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
             // Missing ports
           },
         },
@@ -434,9 +434,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "no-health": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
             ports: [{ name: "http", port: 3000 }],
             // Missing healthCheck
           },
@@ -453,9 +453,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "no-resources": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
             ports: [{ name: "http", port: 3000 }],
             // Missing resources
           },
@@ -474,7 +474,8 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           "no-env": {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
             type: "deployment",
             ports: [{ name: "http", port: 3000 }],
@@ -517,9 +518,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           api: {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
             ports: [{ name: "http", port: 3000 }],
           },
         },
@@ -586,9 +587,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           api: {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
             ports: [{ name: "http", port: 3000 }],
             resources: {
               requests: { cpu: "100m", memory: "128Mi" },
@@ -680,9 +681,10 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           postgres: {
-            serviceType: "database",
+            type: "external",
+            workload: "statefulset",
             image: "postgres:13",
-            type: "deployment",
+            resource: { kind: "database" },
             ports: [{ name: "postgres", port: 5432 }],
           },
         },
@@ -699,9 +701,10 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           mysql: {
-            serviceType: "database",
+            type: "external",
+            workload: "statefulset",
             image: "mysql:8",
-            type: "deployment",
+            resource: { kind: "database" },
             ports: [{ name: "mysql", port: 3306 }],
           },
         },
@@ -725,9 +728,9 @@ describe("Validation Warning System", () => {
         ...minimalValidSpec,
         services: {
           api: {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
-            type: "deployment",
           },
         },
       };
@@ -744,7 +747,7 @@ describe("Validation Warning System", () => {
       const spec = {
         ...minimalValidSpec,
         services: {
-          api: { serviceType: "bespoke", language: "typescript", type: "deployment" },
+          api: { type: "internal", workload: "deployment", language: "typescript" },
         },
         observability: {
           monitoring: { metrics: ["response_time"] },
@@ -763,7 +766,7 @@ describe("Validation Warning System", () => {
       const spec = {
         ...minimalValidSpec,
         services: {
-          api: { serviceType: "bespoke", language: "typescript", type: "deployment" },
+          api: { type: "internal", workload: "deployment", language: "typescript" },
         },
         observability: {
           logging: { level: "info", format: "json" },
@@ -948,7 +951,8 @@ describe("Validation Warning System", () => {
         },
         services: {
           api: {
-            serviceType: "bespoke",
+            type: "internal",
+            workload: "deployment",
             language: "typescript",
           },
         },
@@ -972,7 +976,7 @@ describe("Validation Warning System", () => {
         metadata: { name: "test", version: null },
         services: {
           test: {
-            serviceType: null,
+            type: null,
             language: undefined,
             ports: null,
           },
@@ -1052,9 +1056,9 @@ describe("Validation Warning System", () => {
       // Generate 50 bespoke services (with epics) and 50 prebuilt services (no epics needed)
       for (let i = 0; i < 50; i++) {
         largeSpec.services[`service-${i}`] = {
-          serviceType: "bespoke",
+          type: "internal",
+          workload: "deployment",
           language: "typescript",
-          type: "deployment",
           ports: [{ name: "http", port: 3000 + i }],
           healthCheck: { path: "/health", port: 3000 + i },
           resources: { limits: { cpu: "1000m", memory: "512Mi" } },
@@ -1065,10 +1069,10 @@ describe("Validation Warning System", () => {
       // Generate 50 prebuilt services (don't need epics but need language)
       for (let i = 50; i < 100; i++) {
         largeSpec.services[`service-${i}`] = {
-          serviceType: "prebuilt",
+          type: "external",
+          workload: "deployment",
           language: "javascript", // Add required language field
           image: "nginx:alpine",
-          type: "deployment",
           ports: [{ name: "http", port: 3000 + i }],
           healthCheck: { path: "/health", port: 3000 + i },
           resources: { limits: { cpu: "1000m", memory: "512Mi" } },

@@ -251,14 +251,14 @@ export function parseDockerComposeServices(
 }
 
 function parseServiceForCompose(name: string, config: any): ComposeServiceConfig | null {
-  const serviceType = resolveServiceArtifactType(config) as "bespoke" | "prebuilt" | "external";
-  const workload = resolveServiceWorkload(config) || config.type || "deployment";
+  const artifactType = resolveServiceArtifactType(config);
+  const workload = resolveServiceWorkload(config) || config.workload || "deployment";
 
   const service: ComposeServiceConfig = {
     name: name,
-    serviceType,
+    type: artifactType,
+    artifactType,
     language: config.language || "container",
-    type: workload,
     workload,
     replicas: config.replicas || 1,
     image: config.image,
@@ -348,7 +348,7 @@ function prepareComposeServices(
       service.resolvedSourceDirectory = fallback;
     }
 
-    if (!service.image && service.serviceType === "prebuilt") {
+    if (!service.image && resolveServiceArtifactType(service) === "external") {
       service.image = `${service.name}:latest`;
     }
 
@@ -358,7 +358,7 @@ function prepareComposeServices(
 
 function shouldIncludeComposeBuild(service: ComposeServiceConfig): boolean {
   return (
-    service.serviceType === "bespoke" ||
+    resolveServiceArtifactType(service) === "internal" ||
     Boolean(service.sourceDirectory) ||
     (service.language && !service.image)
   );
@@ -373,7 +373,7 @@ async function generateBuildContexts(
   const files: string[] = [];
 
   for (const service of services) {
-    if (service.serviceType === "bespoke" && service.resolvedSourceDirectory) {
+    if (resolveServiceArtifactType(service) === "internal" && service.resolvedSourceDirectory) {
       const buildDir = path.join(composeRoot, "build", service.name);
       await ensureDirectory(buildDir, options);
 
@@ -598,28 +598,28 @@ This directory contains Docker Compose configurations for running ${projectName}
 ## Services
 
 ${services
-  .map(
-    (service) => `### ${service.name} (${service.serviceType})
-- **Language**: ${service.language}
-- **Type**: ${service.type}
-${
-  service.serviceType === "bespoke"
-    ? `- **Source**: ${
-        service.resolvedSourceDirectory || service.sourceDirectory || "Built from local source"
-      }`
-    : `- **Image**: ${service.image}`
-}${
-  service.ports
-    ? `
+  .map((service) => {
+    const artifactType = resolveServiceArtifactType(service);
+    const workload = service.workload || resolveServiceWorkload(service) || "deployment";
+    const sourceInfo =
+      artifactType === "internal"
+        ? `- **Source**: ${
+            service.resolvedSourceDirectory || service.sourceDirectory || "Built from local source"
+          }`
+        : `- **Image**: ${service.image || "managed externally"}`;
+    const portsInfo = service.ports
+      ? `
 - **Ports**: ${service.ports.map((p) => `${p.port}:${p.targetPort || p.port}`).join(", ")}`
-    : ""
-}${
-  service.volumes
-    ? `
+      : "";
+    const volumeInfo = service.volumes
+      ? `
 - **Volumes**: ${service.volumes.map((v) => `${v.name} → ${v.path}`).join(", ")}`
-    : ""
-}`,
-  )
+      : "";
+    return `### ${service.name} (${artifactType})
+- **Language**: ${service.language}
+- **Workload**: ${workload}
+${sourceInfo}${portsInfo}${volumeInfo}`;
+  })
   .join("\n\n")}
 
 ## Quick Start
@@ -650,7 +650,7 @@ docker compose down
 ### Build specific service
 \`\`\`bash
 ${services
-  .filter((s) => s.serviceType === "bespoke")
+  .filter((s) => resolveServiceArtifactType(s) === "internal")
   .map((s) => `docker compose build ${s.name}`)
   .join("\n")}
 \`\`\`
@@ -671,7 +671,7 @@ ${services.map((s) => `docker compose up -d --scale ${s.name}=${s.replicas || 1}
 
 ## Development Workflow
 
-### For bespoke services
+### For internal services
 1. Make code changes in source directories
 2. Rebuild specific services: \`docker compose build <service>\`
 3. Restart: \`docker compose up -d <service>\`
@@ -721,7 +721,7 @@ file to change health paths or ports.
 
 function shouldPublishPorts(service: ComposeServiceConfig): boolean {
   const workload = service.workload || resolveServiceWorkload(service) || "deployment";
-  return !(workload === "statefulset" && service.serviceType === "prebuilt");
+  return !(workload === "statefulset" && resolveServiceArtifactType(service) === "external");
 }
 
 function resolveHealthConfiguration(
@@ -763,7 +763,7 @@ function generateComposeService(service: ComposeServiceConfig, projectName: stri
   const serviceName = service.name;
   let serviceConfig = `  ${serviceName}:`;
 
-  if (service.serviceType === "bespoke") {
+  if (resolveServiceArtifactType(service) === "internal") {
     if (service.resolvedBuildContext) {
       serviceConfig += `
     build:
@@ -848,7 +848,7 @@ ${service.dependencies.map((dependency) => `      - ${dependency}`).join("\n")}`
   const labels = {
     project: projectName,
     service: serviceName,
-    "service-type": service.serviceType,
+    "service-type": resolveServiceArtifactType(service),
     ...service.labels,
   };
 

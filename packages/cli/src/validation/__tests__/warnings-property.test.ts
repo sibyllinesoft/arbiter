@@ -291,7 +291,8 @@ function generateNullSpecs(count: number): any[] {
           ? null
           : {
               test: {
-                serviceType: Math.random() > 0.5 ? null : "bespoke",
+                type: Math.random() > 0.5 ? null : "internal",
+                workload: "deployment",
                 language: Math.random() > 0.5 ? undefined : "typescript",
                 ports: Math.random() > 0.5 ? null : [],
               },
@@ -480,9 +481,9 @@ function generateIncompleteSpecs(count: number): any[] {
       },
       services: {
         [`service-${i}`]: {
-          serviceType: "bespoke",
+          type: "internal",
+          workload: "deployment",
           language: "typescript",
-          type: "deployment",
           // Missing ports, healthCheck, resources, env
         },
       },
@@ -510,9 +511,9 @@ function generateLargeSpec(serviceCount: number): any {
   // Generate many services
   for (let i = 0; i < serviceCount; i++) {
     services[`service-${i}`] = {
-      serviceType: "bespoke",
+      type: "internal",
+      workload: "deployment",
       language: "typescript",
-      type: "deployment",
       ports: [{ name: "http", port: 3000 + i }],
       healthCheck: { path: "/health", port: 3000 + i },
       resources: {
@@ -592,9 +593,9 @@ function generateRandomServices(): Record<string, any> {
   for (let i = 0; i < serviceCount; i++) {
     const serviceName = `service-${i}`;
     services[serviceName] = {
-      serviceType: Math.random() > 0.5 ? "bespoke" : "container",
+      type: Math.random() > 0.5 ? "internal" : "external",
+      workload: "deployment",
       language: Math.random() > 0.5 ? randomLanguage() : undefined,
-      type: "deployment",
       image: Math.random() > 0.7 ? `${randomString()}:latest` : undefined,
       ports: Math.random() > 0.3 ? [{ name: "http", port: 3000 + i }] : undefined,
     };

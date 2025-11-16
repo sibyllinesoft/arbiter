@@ -384,8 +384,15 @@ export function extractArtifactsFromResolved(
   if (servicesSection && typeof servicesSection === "object") {
     for (const [serviceName, rawValue] of Object.entries(servicesSection as Record<string, any>)) {
       const service = rawValue || {};
-      const serviceType = typeof service.serviceType === "string" ? service.serviceType : undefined;
-      const workloadType = typeof service.type === "string" ? service.type : undefined;
+      const artifactType =
+        service.type === "internal" || service.type === "external" ? service.type : undefined;
+      const workloadType =
+        typeof service.workload === "string"
+          ? service.workload
+          : typeof service.type === "string" &&
+              ["deployment", "statefulset", "daemonset", "job", "cronjob"].includes(service.type)
+            ? (service.type as "deployment" | "statefulset" | "daemonset" | "job" | "cronjob")
+            : undefined;
       const image =
         typeof service.image === "string" && service.image.length > 0 ? service.image : undefined;
       const description =
@@ -401,10 +408,10 @@ export function extractArtifactsFromResolved(
       const isDatabase =
         workloadType === "statefulset" ||
         (typeof serviceName === "string" && serviceName.toLowerCase().includes("db")) ||
-        (serviceType ?? "").toLowerCase().includes("database");
+        (service.resource as any)?.kind === "database";
 
       const metadata: Record<string, unknown> = {
-        serviceType,
+        artifactType,
         workloadType,
         image,
       };

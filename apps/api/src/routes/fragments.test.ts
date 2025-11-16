@@ -4,8 +4,8 @@ import { extractArtifactsFromResolved } from "./fragments";
 
 describe("extractArtifactsFromResolved frameworks", () => {
   const baseService = {
-    serviceType: "bespoke",
-    type: "deployment",
+    type: "internal",
+    workload: "deployment",
     language: "typescript",
   };
 
@@ -69,7 +69,7 @@ describe("extractArtifactsFromResolved frameworks", () => {
       services: {
         stats: {
           ...baseService,
-          type: "deployment",
+          workload: "deployment",
         },
       },
     };

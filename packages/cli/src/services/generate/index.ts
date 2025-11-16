@@ -18,6 +18,8 @@ import type {
   EnhancedGenerateOptions,
   PathSpec,
   SchemaVersion,
+  ServiceArtifactType,
+  ServiceWorkload,
   TestCase,
   TestCompositionResult,
   TestSuite,
@@ -50,6 +52,10 @@ import {
   validateRepositoryConfig,
 } from "../../utils/git-detection.js";
 import { GitHubSyncClient } from "../../utils/github-sync.js";
+import {
+  resolveServiceArtifactType,
+  resolveServiceWorkload,
+} from "../../utils/service-metadata.js";
 import { ShardedCUEStorage } from "../../utils/sharded-storage.js";
 import { formatWarnings, validateSpecification } from "../../validation/warnings.js";
 import { generateDockerComposeArtifacts, parseDockerComposeServices } from "./compose.js";
@@ -4095,6 +4101,10 @@ async function generateServiceInfrastructureArtifacts(
 ): Promise<string[]> {
   const outputs: string[] = [];
   const envBlock = collectServiceEnvironmentVariables(serviceSpec);
+  const artifactType =
+    serviceSpec?.type ??
+    serviceSpec?.artifactType ??
+    (serviceSpec ? resolveServiceArtifactType(serviceSpec) : undefined);
 
   const readmeLines = [
     `# ${serviceContext.name}`,
@@ -4104,7 +4114,7 @@ async function generateServiceInfrastructureArtifacts(
     "## Runtime Image",
     "",
     `- **Image:** ${serviceSpec?.image ?? `ghcr.io/your-org/${serviceContext.name}:latest`}`,
-    serviceSpec?.serviceType ? `- **Service Type:** ${serviceSpec.serviceType}` : "",
+    artifactType ? `- **Artifact Type:** ${artifactType}` : "",
     "",
     "## Ports",
     "",
@@ -5394,7 +5404,7 @@ async function generateCIWorkflows(
   }
 
   for (const service of managedServices) {
-    if (service.serviceType !== "bespoke") {
+    if (service.artifactType !== "internal") {
       const jobId = `${ARBITER_SERVICE_JOB_PREFIX}${service.slug}`;
       delete jobs[jobId];
       continue;
@@ -5453,7 +5463,7 @@ interface ServiceSummary {
   language: string;
   buildTool?: string;
   workingDirectory?: string;
-  serviceType: "bespoke" | "prebuilt" | "external";
+  artifactType: ServiceArtifactType;
 }
 
 function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceSummary[] {
@@ -5481,6 +5491,8 @@ function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceS
           ? (rawConfig as any).sourceDirectory
           : undefined;
 
+    const artifactType = resolveServiceArtifactType(parsed);
+
     summaries.push({
       name: serviceName,
       displayName: friendlyServiceName(serviceName),
@@ -5488,7 +5500,7 @@ function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceS
       language,
       buildTool,
       workingDirectory,
-      serviceType: parsed.serviceType,
+      artifactType,
     });
   }
 
@@ -5654,7 +5666,7 @@ function inferPrimaryLanguage(appSpec: AppSpec | undefined, services: ServiceSum
     return appSpec.config.language;
   }
 
-  const bespokeService = services.find((service) => service.serviceType === "bespoke");
+  const bespokeService = services.find((service) => service.artifactType === "internal");
   if (bespokeService) {
     return bespokeService.language;
   }
@@ -5880,8 +5892,9 @@ function parseDeploymentServices(assemblyConfig: any): {
 interface DeploymentService {
   name: string;
   language: string;
-  serviceType: "bespoke" | "prebuilt" | "external";
-  type: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
+  artifactType: ServiceArtifactType;
+  type: ServiceWorkload;
+  workload: ServiceWorkload;
   image?: string;
   sourceDirectory?: string;
   buildContext?: {
@@ -5925,25 +5938,23 @@ interface ClusterConfig {
 }
 
 function parseDeploymentServiceConfig(name: string, config: any): DeploymentService | null {
-  // Determine service type based on configuration
-  let serviceType: "bespoke" | "prebuilt" | "external" = "prebuilt";
-
-  if (
-    config.sourceDirectory ||
-    (config.language && config.language !== "container" && !config.image)
-  ) {
-    serviceType = "bespoke";
-  } else if (config.image && (config.language === "container" || !config.language)) {
-    serviceType = "prebuilt";
-  } else if (config.external) {
-    serviceType = "external";
-  }
+  const artifactType = resolveServiceArtifactType(config);
+  const legacyWorkload =
+    typeof config.type === "string" &&
+    ["deployment", "statefulset", "daemonset", "job", "cronjob"].includes(config.type)
+      ? (config.type as ServiceWorkload)
+      : undefined;
+  const workload =
+    (resolveServiceWorkload(config) as ServiceWorkload | undefined) ??
+    legacyWorkload ??
+    "deployment";
 
   const service: DeploymentService = {
     name: name,
     language: config.language || "container",
-    serviceType: serviceType,
-    type: config.type || "deployment",
+    artifactType,
+    type: workload,
+    workload,
     replicas: config.replicas || 1,
   };
 
@@ -6831,7 +6842,7 @@ function generateServiceTests(services: DeploymentServiceConfig[], specName: str
     }
 
     // Generate service-type specific tests
-    if (service.serviceType === "prebuilt") {
+    if (service.artifactType === "external") {
       // Test for pre-built services (like ClickHouse, Redis)
       testCases.push({
         name: `${service.name}_image_version`,

@@ -12,7 +12,7 @@ afterAll(async () => {
 });
 
 describe("generateDockerComposeArtifacts", () => {
-  it("emits docker-compose assets for bespoke + prebuilt services", async () => {
+  it("emits docker-compose assets for internal + external services", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-compose-"));
     tmpDirs.push(root);
 

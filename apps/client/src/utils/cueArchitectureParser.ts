@@ -11,6 +11,53 @@ import {
   type FlowStep,
 } from "../types/architecture";
 
+type KnownWorkload = "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
+
+const WORKLOAD_VALUES = new Set<KnownWorkload>([
+  "deployment",
+  "statefulset",
+  "daemonset",
+  "job",
+  "cronjob",
+]);
+
+const isWorkload = (value: unknown): value is KnownWorkload =>
+  typeof value === "string" && WORKLOAD_VALUES.has(value as KnownWorkload);
+
+const deriveWorkload = (serviceData: Record<string, any>): KnownWorkload | undefined => {
+  if (isWorkload(serviceData.workload)) {
+    return serviceData.workload;
+  }
+  if (isWorkload(serviceData.mode)) {
+    return serviceData.mode;
+  }
+  if (isWorkload(serviceData.type)) {
+    return serviceData.type;
+  }
+  return undefined;
+};
+
+const deriveArtifactType = (serviceData: Record<string, any>): "internal" | "external" => {
+  const raw =
+    serviceData.type ?? serviceData.artifactType ?? serviceData.serviceType ?? serviceData.category;
+  if (raw === "internal" || raw === "external") {
+    return raw;
+  }
+  if (raw === "bespoke") {
+    return "internal";
+  }
+  if (raw === "prebuilt") {
+    return "external";
+  }
+  if (serviceData.sourceDirectory || serviceData.source?.kind === "monorepo") {
+    return "internal";
+  }
+  if (serviceData.image || serviceData.source?.kind) {
+    return "external";
+  }
+  return "internal";
+};
+
 export class CueArchitectureParser {
   /**
    * Parse CUE data into architecture components and connections
@@ -86,9 +133,9 @@ export class CueArchitectureParser {
           layer: "service",
           position: { x: 0, y: 0 },
           size: { width: 180, height: 100 },
-          serviceType: (serviceData as any).serviceType,
+          artifactType: deriveArtifactType(serviceData as Record<string, any>),
           language: (serviceData as any).language,
-          deploymentType: (serviceData as any).type,
+          workload: deriveWorkload(serviceData as Record<string, any>),
           ports: CueArchitectureParser.parseServicePorts(serviceData as any),
           metadata: serviceData,
         });

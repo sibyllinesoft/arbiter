@@ -38,8 +38,8 @@ export interface DiagramComponent extends ArchitecturalElement {
   ports?: DiagramPort[];
 
   // From CUE services
-  serviceType?: "bespoke" | "prebuilt" | "external";
-  deploymentType?: "deployment" | "statefulset" | "daemonset";
+  artifactType?: "internal" | "external" | undefined;
+  workload?: "deployment" | "statefulset" | "daemonset" | "job" | "cronjob" | undefined;
   replicas?: number;
 
   // From UI routes

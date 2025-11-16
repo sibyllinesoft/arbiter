@@ -221,87 +221,93 @@ function generatePlatformSuggestions(
  * Get platform-appropriate service configuration defaults
  */
 export function getPlatformServiceDefaults(serviceType: PlatformServiceType) {
-  const defaults: Partial<any> = {};
+  const defaults: Partial<{
+    platform?: "cloudflare" | "vercel" | "supabase" | "kubernetes";
+    workload?: "deployment" | "statefulset" | "serverless" | "managed";
+    runtime?: string;
+    language?: string;
+    artifactType?: "internal" | "external";
+  }> = { artifactType: "external" };
 
   switch (serviceType) {
     // Cloudflare services
     case "cloudflare_worker":
       defaults.platform = "cloudflare";
-      defaults.type = "serverless";
+      defaults.workload = "serverless";
       defaults.runtime = "worker";
       break;
 
     case "cloudflare_durable_object":
       defaults.platform = "cloudflare";
-      defaults.type = "serverless";
+      defaults.workload = "serverless";
       defaults.runtime = "durable_object";
       break;
 
     case "cloudflare_d1":
       defaults.platform = "cloudflare";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "sql";
       break;
 
     case "cloudflare_kv":
       defaults.platform = "cloudflare";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "key-value";
       break;
 
     case "cloudflare_r2":
       defaults.platform = "cloudflare";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "object-storage";
       break;
 
     // Vercel services
     case "vercel_function":
       defaults.platform = "vercel";
-      defaults.type = "serverless";
+      defaults.workload = "serverless";
       defaults.runtime = "nodejs18.x";
       break;
 
     case "vercel_edge_function":
       defaults.platform = "vercel";
-      defaults.type = "serverless";
+      defaults.workload = "serverless";
       defaults.runtime = "edge-runtime";
       break;
 
     case "vercel_kv":
       defaults.platform = "vercel";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "key-value";
       break;
 
     case "vercel_postgres":
       defaults.platform = "vercel";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "sql";
       break;
 
     // Supabase services
     case "supabase_database":
       defaults.platform = "supabase";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "postgresql";
       break;
 
     case "supabase_auth":
       defaults.platform = "supabase";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "auth";
       break;
 
     case "supabase_storage":
       defaults.platform = "supabase";
-      defaults.type = "managed";
+      defaults.workload = "managed";
       defaults.language = "object-storage";
       break;
 
     case "supabase_functions":
       defaults.platform = "supabase";
-      defaults.type = "serverless";
+      defaults.workload = "serverless";
       defaults.runtime = "deno";
       break;
   }

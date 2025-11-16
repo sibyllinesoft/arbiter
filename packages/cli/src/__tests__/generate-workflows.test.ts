@@ -45,7 +45,8 @@ ${serviceBlocks}
 
 function cueService(name: string, language: string, directory: string): string {
   return `		${name}: {
-			serviceType:     "bespoke"
+			type:            "internal"
+			workload:        "deployment"
 			language:        "${language}"
 			sourceDirectory: "${directory}"
 		}`;

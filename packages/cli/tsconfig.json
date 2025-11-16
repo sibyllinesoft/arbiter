@@ -3,9 +3,9 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "moduleResolution": "bundler",
+    "moduleResolution": "nodenext",
     "target": "ES2022",
-    "module": "ESNext",
+    "module": "NodeNext",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -33,6 +33,9 @@
       ],
       "@arbiter/shared/*": [
         "../shared/src/*"
+      ],
+      "@arbiter/shared-types/cli": [
+        "../shared-types/src/cli.ts"
       ],
       "@arbiter/shared-types": [
         "../shared-types/src/index.ts"
@@ -63,6 +66,9 @@
   "references": [
     {
       "path": "../shared"
+    },
+    {
+      "path": "../shared-types"
     }
   ],
   "include": [

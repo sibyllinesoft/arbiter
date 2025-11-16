@@ -186,7 +186,7 @@ function validateEpicsAndTasks(spec: NormalizedSpec): ValidationWarning[] {
   const sourceServices = Object.entries(spec.services || {}).filter(([, service]) => {
     return (
       resolveServiceWorkload(service) === "deployment" &&
-      resolveServiceArtifactType(service) === "bespoke" &&
+      resolveServiceArtifactType(service) === "internal" &&
       !service.image
     );
   });
@@ -266,7 +266,7 @@ function validateServiceCompleteness(spec: NormalizedSpec): ValidationWarning[] 
     }
 
     // Check for missing health checks on source services
-    if (resolveServiceArtifactType(service) === "bespoke" && !service.healthCheck) {
+    if (resolveServiceArtifactType(service) === "internal" && !service.healthCheck) {
       warnings.push({
         category: "Service Definition",
         severity: "warning",
@@ -289,7 +289,7 @@ function validateServiceCompleteness(spec: NormalizedSpec): ValidationWarning[] 
 
     // Check for missing environment configuration
     if (
-      resolveServiceArtifactType(service) === "bespoke" &&
+      resolveServiceArtifactType(service) === "internal" &&
       (!service.env || Object.keys(service.env).length === 0)
     ) {
       warnings.push({
@@ -404,7 +404,7 @@ function validatePerformanceSpecs(spec: NormalizedSpec): ValidationWarning[] {
 
   // Check services for missing performance configuration
   Object.entries(spec.services || {}).forEach(([serviceName, service]) => {
-    if (resolveServiceArtifactType(service) === "bespoke" && !service.resources?.limits) {
+    if (resolveServiceArtifactType(service) === "internal" && !service.resources?.limits) {
       warnings.push({
         category: "Performance",
         severity: "warning",
@@ -471,13 +471,22 @@ function validateDataManagement(spec: NormalizedSpec): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
 
   // Check for database usage without proper configuration
-  const hasDatabaseServices = Object.values(spec.services || {}).some(
-    (s) =>
-      s.image?.includes("postgres") ||
-      s.image?.includes("mysql") ||
-      s.image?.includes("mongo") ||
-      s.serviceType === "database",
-  );
+  const hasDatabaseServices = Object.values(spec.services || {}).some((s) => {
+    if (!s || typeof s !== "object") {
+      return false;
+    }
+    const image = typeof (s as any).image === "string" ? (s as any).image.toLowerCase() : "";
+    const resourceKind =
+      typeof (s as any).resource?.kind === "string"
+        ? ((s as any).resource.kind as string).toLowerCase()
+        : "";
+    return (
+      image.includes("postgres") ||
+      image.includes("mysql") ||
+      image.includes("mongo") ||
+      resourceKind === "database"
+    );
+  });
 
   if (hasDatabaseServices) {
     if (!spec.data) {

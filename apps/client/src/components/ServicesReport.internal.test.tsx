@@ -48,17 +48,17 @@ describe("shouldTreatAsInternalService", () => {
     expect(shouldTreatAsInternalService(service)).toBe(false);
   });
 
-  it("keeps prebuilt container services external", () => {
+  it("keeps external container services external", () => {
     const service = createService({
-      raw: { serviceType: "prebuilt", language: "container" },
+      raw: { type: "external", language: "container" },
     });
 
     expect(shouldTreatAsInternalService(service)).toBe(false);
   });
 
-  it("treats prebuilt services with actual source paths as internal", () => {
+  it("treats external services with actual source paths as internal", () => {
     const service = createService({
-      raw: { serviceType: "prebuilt", language: "container" },
+      raw: { type: "external", language: "container" },
       hasSource: true,
       sourcePath: "./services/custom-redis",
     });
@@ -66,8 +66,8 @@ describe("shouldTreatAsInternalService", () => {
     expect(shouldTreatAsInternalService(service)).toBe(true);
   });
 
-  it("treats bespoke services as internal even without detected source", () => {
-    const service = createService({ raw: { serviceType: "bespoke" } });
+  it("treats internal services as internal even without detected source", () => {
+    const service = createService({ raw: { type: "internal" } });
 
     expect(shouldTreatAsInternalService(service)).toBe(true);
   });

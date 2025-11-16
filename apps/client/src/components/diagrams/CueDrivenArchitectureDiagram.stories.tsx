@@ -160,15 +160,15 @@ const sampleV2CueData: CueArchitectureData = {
   },
   services: {
     "invoice-api": {
-      serviceType: "bespoke",
+      type: "internal",
+      workload: "deployment",
       language: "typescript",
-      type: "deployment",
       ports: [{ name: "http", port: 3000, targetPort: 3000 }],
     },
     "notification-service": {
-      serviceType: "external",
+      type: "external",
+      workload: "deployment",
       language: "python",
-      type: "deployment",
       ports: [{ name: "http", port: 8080, targetPort: 8080 }],
     },
   },
@@ -205,9 +205,9 @@ const sampleV1CueData: CueArchitectureData = {
   },
   services: {
     "user-service": {
-      serviceType: "bespoke",
+      type: "internal",
+      workload: "deployment",
       language: "golang",
-      type: "deployment",
       replicas: 3,
       ports: [
         { name: "http", port: 8080, targetPort: 8080 },
@@ -219,9 +219,9 @@ const sampleV1CueData: CueArchitectureData = {
       },
     },
     "order-service": {
-      serviceType: "bespoke",
+      type: "internal",
+      workload: "deployment",
       language: "nodejs",
-      type: "deployment",
       replicas: 2,
       ports: [{ name: "http", port: 3000, targetPort: 3000 }],
       env: {
@@ -230,9 +230,9 @@ const sampleV1CueData: CueArchitectureData = {
       },
     },
     "api-gateway": {
-      serviceType: "prebuilt",
+      type: "external",
+      workload: "deployment",
       language: "nginx",
-      type: "deployment",
       replicas: 2,
       ports: [
         { name: "http", port: 80, targetPort: 80 },
@@ -244,16 +244,16 @@ const sampleV1CueData: CueArchitectureData = {
       },
     },
     "db-service": {
-      serviceType: "external",
+      type: "external",
+      workload: "statefulset",
       language: "postgresql",
-      type: "statefulset",
       replicas: 1,
       ports: [{ name: "postgres", port: 5432, targetPort: 5432 }],
     },
     "redis-service": {
-      serviceType: "external",
+      type: "external",
+      workload: "deployment",
       language: "redis",
-      type: "deployment",
       replicas: 1,
       ports: [{ name: "redis", port: 6379, targetPort: 6379 }],
     },

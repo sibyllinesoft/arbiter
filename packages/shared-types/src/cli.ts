@@ -131,20 +131,6 @@ export interface ExternalResourceSpec {
   notes?: string;
 }
 
-export interface ServiceDeploymentOverride {
-  replicas?: number;
-  image?: string;
-  env?: Record<string, string>;
-  config?: ServiceConfig["config"];
-  resources?: ServiceConfig["resources"];
-  volumes?: ServiceConfig["volumes"];
-  annotations?: Record<string, string>;
-  labels?: Record<string, string>;
-  healthCheck?: ServiceConfig["healthCheck"];
-  dependsOn?: string[];
-  extensions?: Record<string, unknown>;
-}
-
 export interface ServiceConfig {
   name: string;
   type: ServiceArtifactType;
@@ -152,8 +138,8 @@ export interface ServiceConfig {
   workload?: ServiceWorkload;
   artifactType?: ServiceArtifactType;
   language: string;
-  // Legacy compatibility: older specs stored workload or artifact details differently.
-  serviceType?: ServiceArtifactType;
+  // Legacy/platform compatibility: older specs stored workload or platform in `serviceType`.
+  serviceType?: string;
   legacyWorkload?: ServiceWorkload;
   legacyType?: ServiceWorkload;
   // Image and build configuration
@@ -215,6 +201,20 @@ export interface ServiceConfig {
   endpoints?: Record<Slug, ServiceEndpointSpec>;
   resource?: ExternalResourceSpec;
   dependencies?: Record<string, ServiceDependencySpec> | string[];
+}
+
+export interface ServiceDeploymentOverride {
+  replicas?: number;
+  image?: string;
+  env?: Record<string, string>;
+  config?: ServiceConfig["config"];
+  resources?: ServiceConfig["resources"];
+  volumes?: ServiceConfig["volumes"];
+  annotations?: Record<string, string>;
+  labels?: Record<string, string>;
+  healthCheck?: ServiceConfig["healthCheck"];
+  dependsOn?: string[];
+  extensions?: Record<string, unknown>;
 }
 
 export type ServiceSourceConfig =

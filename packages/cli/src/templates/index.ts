@@ -91,6 +91,8 @@ export interface TemplateEngineConfig {
 export interface VariableContext {
   projectName: string;
   serviceName?: string;
+  artifactType?: string;
+  workload?: string;
   serviceType?: string;
   language?: string;
   ports?: number[];
@@ -102,6 +104,8 @@ export interface VariableContext {
   };
   [key: string]: any;
 }
+
+const WORKLOAD_VALUES = new Set(["deployment", "statefulset", "daemonset", "job", "cronjob"]);
 
 /**
  * Template manager for handling aliases and execution
@@ -488,9 +492,33 @@ function extractServiceLanguage(serviceContent: string, variables: VariableConte
  * Extract service type from service content
  */
 function extractServiceType(serviceContent: string, variables: VariableContext): void {
-  const typeMatch = serviceContent.match(/serviceType:\s*"([^"]+)"/);
+  const workloadMatch = serviceContent.match(/workload:\s*"([^"]+)"/);
+  if (workloadMatch) {
+    variables.workload = workloadMatch[1];
+  }
+
+  const typeMatch = serviceContent.match(/type:\s*"([^"]+)"/);
   if (typeMatch) {
-    variables.serviceType = typeMatch[1];
+    const rawType = typeMatch[1];
+    if (rawType === "internal" || rawType === "external") {
+      variables.artifactType = rawType;
+    } else if (!variables.workload && WORKLOAD_VALUES.has(rawType)) {
+      variables.workload = rawType;
+    }
+  }
+
+  if (!variables.artifactType) {
+    const legacyTypeMatch = serviceContent.match(/serviceType:\s*"([^"]+)"/);
+    if (legacyTypeMatch) {
+      const legacy = legacyTypeMatch[1];
+      if (legacy === "bespoke") {
+        variables.artifactType = "internal";
+      } else if (legacy === "prebuilt") {
+        variables.artifactType = "external";
+      } else {
+        variables.artifactType = legacy;
+      }
+    }
   }
 }
 
