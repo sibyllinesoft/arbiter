@@ -29,9 +29,9 @@ Arbiter's code generation system follows a modular, extensible architecture desi
 
 ```mermaid
 flowchart LR
-    A[CUE Specs<br/>(.arbiter/*.cue)] --> B[Generation Core]
-    B --> C[Generated Code & Assets]
-    B --> D[[Template System<br/>Language Plugins<br/>Context Providers<br/>Hook Executors]]
+    A["CUE Specs<br/>(.arbiter/*.cue)"] --> B["Generation Core"]
+    B --> C["Generated Code & Assets"]
+    B --> D["Template System<br/>Language Plugins<br/>Context Providers<br/>Hook Executors"]
     style A fill:#eef3ff,stroke:#4c63d9,stroke-width:2px
     style B fill:#ecfdf3,stroke:#1c8b5f,stroke-width:2px
     style C fill:#fffbe6,stroke:#c48a06,stroke-width:2px
