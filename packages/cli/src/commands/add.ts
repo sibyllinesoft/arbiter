@@ -27,11 +27,7 @@ import {
   formatCUE,
   validateCUE,
 } from "../cue/index.js";
-import {
-  type VariableContext,
-  extractVariablesFromCue,
-  templateManager,
-} from "../templates/index.js";
+import { type TemplateContext, buildTemplateContext, templateManager } from "../templates/index.js";
 import type { CLIConfig } from "../types.js";
 import { detectPlatform, getPlatformServiceDefaults } from "../utils/platform-detection.js";
 import { ensureProjectExists } from "../utils/project.js";
@@ -471,6 +467,7 @@ async function addClient(
       description: options.description,
       tags: parseTags(options.tags),
       port: options.port,
+      artifactKind: "client",
     });
   } else if (targetDir) {
     await fs.ensureDir(path.resolve(targetDir));
@@ -562,21 +559,37 @@ async function validateTemplateExists(template: string): Promise<void> {
  * Execute template generation
  */
 async function executeTemplate(
-  serviceName: string,
+  artifactName: string,
   template: string,
   content: string,
   directory: string,
-  options: ServiceTemplateOptions,
+  options: ServiceTemplateOptions & { artifactKind?: string },
 ): Promise<void> {
-  console.log(chalk.blue(`🔧 Generating service '${serviceName}' using template '${template}'`));
+  console.log(chalk.blue(`🔧 Generating '${artifactName}' using template '${template}'`));
 
-  const variables = extractVariablesFromCue(content, serviceName);
-  variables.serviceName = serviceName;
-  if (options.language) variables.language = options.language;
-  if (options.port) variables.port = options.port;
+  const fallback: Record<string, unknown> = {
+    name: artifactName,
+    kind: options.artifactKind ?? "service",
+  };
+  if (options.language) {
+    fallback.language = options.language;
+  }
+  if (options.port) {
+    fallback.ports = [{ name: "http", port: options.port, targetPort: options.port }];
+  }
+
+  const context = await buildTemplateContext(content, {
+    artifactName,
+    artifactFallback: fallback,
+    impl: {
+      artifactName,
+      template,
+      options,
+    },
+  });
 
   await fs.ensureDir(path.resolve(directory));
-  await templateManager.executeTemplate(template, path.resolve(directory), variables);
+  await templateManager.executeTemplate(template, path.resolve(directory), context);
 
   console.log(chalk.green(`✅ Template '${template}' applied successfully to '${directory}'`));
 }
@@ -1105,10 +1118,10 @@ async function handleTemplateBasedDatabaseCreation(
       chalk.blue(`🔧 Generating database '${dbName}' using template '${options.template}'`),
     );
 
-    const variables = prepareTemplateVariables(content, dbName, options);
+    const context = await buildDatabaseTemplateContext(content, dbName, options);
     const targetDir = `./database/${dbName}`;
 
-    await templateManager.executeTemplate(options.template!, path.resolve(targetDir), variables);
+    await templateManager.executeTemplate(options.template!, path.resolve(targetDir), context);
 
     console.log(
       chalk.green(`✅ Database template '${options.template}' applied to '${targetDir}'`),
@@ -1136,40 +1149,29 @@ function validateTemplateExistsSync(template: string): void {
 /**
  * Prepare template variables for database generation
  */
-function prepareTemplateVariables(
+async function buildDatabaseTemplateContext(
   content: string,
   dbName: string,
   options: NormalizedDatabaseOptions,
-): VariableContext {
-  const variables = extractVariablesFromCue(content, dbName);
-
-  variables.databaseName = dbName;
-  variables.attachTo = options.attachTo;
-  variables.image = options.image;
-  variables.port = options.port;
-  variables.database = {
-    type: options.serviceType || "postgres",
+): Promise<TemplateContext> {
+  const fallback: Record<string, unknown> = {
     name: dbName,
-    port: options.port,
+    kind: "database",
+    ports: [{ name: "db", port: options.port, targetPort: options.port }],
   };
 
-  if (options.serviceType) {
-    variables.serviceType = options.serviceType;
-  }
-
-  if (options.platform) {
-    variables.platform = options.platform;
-  }
-
-  if (!variables.projectName) {
-    variables.projectName = dbName;
-  }
-
-  if (!variables.serviceName) {
-    variables.serviceName = dbName;
-  }
-
-  return variables;
+  return await buildTemplateContext(content, {
+    artifactName: dbName,
+    artifactFallback: fallback,
+    impl: {
+      databaseName: dbName,
+      attachTo: options.attachTo,
+      image: options.image,
+      port: options.port,
+      serviceType: options.serviceType,
+      platform: options.platform,
+    },
+  });
 }
 
 /**

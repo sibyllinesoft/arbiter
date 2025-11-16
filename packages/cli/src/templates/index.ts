@@ -8,9 +8,9 @@
 import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import chalk from "chalk";
 import fs from "fs-extra";
+import { CUEManipulator } from "../cue/index.js";
 
 /**
  * Helper function to replace execa with spawn
@@ -49,7 +49,7 @@ export interface TemplateEngine {
   command: string;
   defaultArgs: string[];
   validate?(source: string): Promise<boolean>;
-  execute(source: string, destination: string, variables: Record<string, any>): Promise<void>;
+  execute(source: string, destination: string, context: TemplateContext): Promise<void>;
 }
 
 /**
@@ -85,27 +85,19 @@ export interface TemplateEngineConfig {
   timeout?: number;
 }
 
-/**
- * Variable extraction context from CUE specs
- */
-export interface VariableContext {
-  projectName: string;
-  serviceName?: string;
-  artifactType?: string;
-  workload?: string;
-  serviceType?: string;
-  language?: string;
-  ports?: number[];
-  environment?: Record<string, string>;
-  database?: {
-    type: string;
-    name: string;
-    port?: number;
-  };
-  [key: string]: any;
+export interface TemplateContext {
+  project: Record<string, unknown>;
+  parent?: Record<string, unknown>;
+  artifact: Record<string, unknown>;
+  impl?: Record<string, unknown>;
 }
 
-const WORKLOAD_VALUES = new Set(["deployment", "statefulset", "daemonset", "job", "cronjob"]);
+export interface TemplateContextSeed {
+  artifactName?: string;
+  artifactFallback?: Record<string, unknown>;
+  parent?: Record<string, unknown>;
+  impl?: Record<string, unknown>;
+}
 
 /**
  * Template manager for handling aliases and execution
@@ -283,7 +275,7 @@ export class TemplateManager {
   async executeTemplate(
     aliasName: string,
     destination: string,
-    variables: VariableContext,
+    context: TemplateContext,
   ): Promise<void> {
     const alias = this.getAlias(aliasName);
     if (!alias) {
@@ -295,10 +287,15 @@ export class TemplateManager {
       throw new Error(`Engine '${alias.engine}' not found`);
     }
 
-    // Merge variables with alias defaults
-    const finalVariables = {
-      ...alias.variables,
-      ...variables,
+    const mergedImpl = {
+      ...(context.impl ?? {}),
+      ...(alias.variables ?? {}),
+    };
+    const finalContext: TemplateContext = {
+      project: context.project,
+      parent: context.parent,
+      artifact: context.artifact,
+      impl: Object.keys(mergedImpl).length > 0 ? mergedImpl : undefined,
     };
 
     // Validate prerequisites if any
@@ -307,7 +304,7 @@ export class TemplateManager {
     }
 
     // Execute template
-    await engine.execute(alias.source, destination, finalVariables);
+    await engine.execute(alias.source, destination, finalContext);
   }
 
   /**
@@ -356,20 +353,14 @@ export class CookiecutterEngine implements TemplateEngine {
     }
   }
 
-  async execute(
-    source: string,
-    destination: string,
-    variables: Record<string, any>,
-  ): Promise<void> {
+  async execute(source: string, destination: string, context: TemplateContext): Promise<void> {
     try {
       // Build cookiecutter command
       const args = [...this.defaultArgs];
 
-      // Add variables as command line arguments
-      for (const [key, value] of Object.entries(variables)) {
-        args.push("--extra-context");
-        args.push(`${key}=${value}`);
-      }
+      // Add template context as a single JSON payload
+      args.push("--extra-context");
+      args.push(JSON.stringify(context));
 
       // Add output directory
       args.push("--output-dir", destination);
@@ -396,19 +387,13 @@ export class ScriptEngine implements TemplateEngine {
     return fs.pathExists(source);
   }
 
-  async execute(
-    source: string,
-    destination: string,
-    variables: Record<string, any>,
-  ): Promise<void> {
+  async execute(source: string, destination: string, context: TemplateContext): Promise<void> {
     try {
       // Set variables as environment variables
       const env = {
         ...process.env,
         TEMPLATE_DESTINATION: destination,
-        ...Object.fromEntries(
-          Object.entries(variables).map(([k, v]) => [`TEMPLATE_${k.toUpperCase()}`, String(v)]),
-        ),
+        TEMPLATE_CONTEXT: JSON.stringify(context),
       };
 
       await execCommand("sh", [source], { env });
@@ -419,119 +404,74 @@ export class ScriptEngine implements TemplateEngine {
 }
 
 /**
- * Extract variables from CUE specification content
+ * Build a template context from raw CUE content
  */
-export function extractVariablesFromCue(content: string, serviceName?: string): VariableContext {
-  const variables = initializeBaseVariables(serviceName);
-
-  extractProjectName(content, variables);
-
-  if (serviceName) {
-    extractServiceInformation(content, serviceName, variables);
+export async function buildTemplateContext(
+  content: string,
+  seed?: TemplateContextSeed,
+): Promise<TemplateContext> {
+  const manipulator = new CUEManipulator();
+  let project: Record<string, unknown> = {};
+  try {
+    project = (await manipulator.parse(content)) ?? {};
+  } catch (error) {
+    project = {
+      _error: error instanceof Error ? error.message : String(error),
+      raw: content,
+    };
   }
 
-  return variables;
-}
+  const { artifact, parent } = resolveArtifact(project, seed);
+  const impl = seed?.impl ? { ...seed.impl } : undefined;
 
-/**
- * Initialize base variable context
- */
-function initializeBaseVariables(serviceName?: string): VariableContext {
   return {
-    projectName: path.basename(process.cwd()).replace(/[^a-zA-Z0-9]/g, ""),
-    serviceName: serviceName || "api",
+    project,
+    parent,
+    artifact,
+    impl,
   };
 }
 
-/**
- * Extract project name from package declaration
- */
-function extractProjectName(content: string, variables: VariableContext): void {
-  const packageMatch = content.match(/package\s+(\w+)/);
-  if (packageMatch) {
-    variables.projectName = packageMatch[1];
-  }
-}
-
-/**
- * Extract service-specific information from CUE content
- */
-function extractServiceInformation(
-  content: string,
-  serviceName: string,
-  variables: VariableContext,
-): void {
-  const serviceContent = extractServiceContent(content, serviceName);
-  if (!serviceContent) return;
-
-  extractServiceLanguage(serviceContent, variables);
-  extractServiceType(serviceContent, variables);
-  extractServicePorts(serviceContent, variables);
-}
-
-/**
- * Extract service content block from CUE
- */
-function extractServiceContent(content: string, serviceName: string): string | null {
-  const serviceRegex = new RegExp(`${serviceName}:\\s*{([^}]+)}`, "s");
-  const serviceMatch = content.match(serviceRegex);
-  return serviceMatch ? serviceMatch[1] : null;
-}
-
-/**
- * Extract language from service content
- */
-function extractServiceLanguage(serviceContent: string, variables: VariableContext): void {
-  const langMatch = serviceContent.match(/language:\s*"([^"]+)"/);
-  if (langMatch) {
-    variables.language = langMatch[1];
-  }
-}
-
-/**
- * Extract service type from service content
- */
-function extractServiceType(serviceContent: string, variables: VariableContext): void {
-  const workloadMatch = serviceContent.match(/workload:\s*"([^"]+)"/);
-  if (workloadMatch) {
-    variables.workload = workloadMatch[1];
+function resolveArtifact(
+  project: Record<string, unknown>,
+  seed?: TemplateContextSeed,
+): { artifact: Record<string, unknown>; parent?: Record<string, unknown> } {
+  if (!seed) {
+    return { artifact: project };
   }
 
-  const typeMatch = serviceContent.match(/type:\s*"([^"]+)"/);
-  if (typeMatch) {
-    const rawType = typeMatch[1];
-    if (rawType === "internal" || rawType === "external") {
-      variables.artifactType = rawType;
-    } else if (!variables.workload && WORKLOAD_VALUES.has(rawType)) {
-      variables.workload = rawType;
+  if (seed.artifactName) {
+    const match = findArtifactByName(project, seed.artifactName);
+    if (match) {
+      return match;
     }
   }
 
-  if (!variables.artifactType) {
-    const legacyTypeMatch = serviceContent.match(/serviceType:\s*"([^"]+)"/);
-    if (legacyTypeMatch) {
-      const legacy = legacyTypeMatch[1];
-      if (legacy === "bespoke") {
-        variables.artifactType = "internal";
-      } else if (legacy === "prebuilt") {
-        variables.artifactType = "external";
-      } else {
-        variables.artifactType = legacy;
-      }
-    }
+  if (seed.artifactFallback) {
+    return { artifact: { ...seed.artifactFallback } };
   }
+
+  return { artifact: project };
 }
 
-/**
- * Extract ports from service content
- */
-function extractServicePorts(serviceContent: string, variables: VariableContext): void {
-  const portsMatch = serviceContent.match(/ports:\s*\[([^\]]+)\]/s);
-  if (portsMatch) {
-    const portsContent = portsMatch[1];
-    const portMatches = portsContent.matchAll(/port:\s*(\d+)/g);
-    variables.ports = Array.from(portMatches).map((m) => Number.parseInt(m[1], 10));
+function findArtifactByName(
+  project: Record<string, unknown>,
+  name: string,
+): { artifact: Record<string, unknown>; parent?: Record<string, unknown> } | undefined {
+  const sections = ["services", "clients", "databases", "components"];
+  for (const section of sections) {
+    const bucket = project[section];
+    if (bucket && typeof bucket === "object" && name in (bucket as Record<string, unknown>)) {
+      const parent = bucket as Record<string, unknown>;
+      const node = parent[name] as Record<string, unknown>;
+      return {
+        artifact: { name, ...node },
+        parent,
+      };
+    }
   }
+
+  return undefined;
 }
 
 /**

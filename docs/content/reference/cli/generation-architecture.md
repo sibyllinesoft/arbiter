@@ -55,10 +55,10 @@ Key features:
   run `arbiter add service api --template bun-hono`, the CLI loads this alias,
   verifies any prerequisites, merges in per-alias variables, and executes the
   template engine.
-- **Variables** are extracted for you. `extractVariablesFromCue` parses the
-  assembly CUE file for project, service, language, and port metadata so that
-  your templates can reference values like `{{serviceName}}`, `{{language}}`,
-  or `{{ports}}`.
+- **Context** is built for you. `buildTemplateContext` parses the assembly CUE
+  file and hands every engine a single object shaped like
+  `{ project, parent, artifact, impl }`, so templates can read the whole spec
+  as well as any derived metadata.
 
 ### Writing a custom engine
 
@@ -66,18 +66,18 @@ Implement the `TemplateEngine` interface and register it with the shared
 manager:
 
 ```typescript
-import { templateManager, type TemplateEngine } from '@arbiter/cli/templates';
+import { templateManager, type TemplateContext, type TemplateEngine } from '@arbiter/cli/templates';
 
 class NxEngine implements TemplateEngine {
   name = 'nx';
   command = 'npx';
   defaultArgs = ['create-nx-workspace@latest'];
 
-  async execute(source: string, destination: string, variables: Record<string, any>) {
+  async execute(source: string, destination: string, context: TemplateContext) {
     await execCommand(this.command, [...this.defaultArgs, source, '--preset', 'apps', '--dir', destination], {
       env: {
         ...process.env,
-        TEMPLATE_PROJECT: variables.projectName,
+        TEMPLATE_CONTEXT: JSON.stringify(context),
       },
     });
   }

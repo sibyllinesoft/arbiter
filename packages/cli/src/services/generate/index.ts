@@ -37,7 +37,6 @@ import type {
   ProjectConfig as LanguageProjectConfig,
   ServiceConfig as LanguageServiceConfig,
 } from "../../language-plugins/index.js";
-import { extractVariablesFromCue, templateManager } from "../../templates/index.js";
 import type {
   CLIConfig,
   CapabilitySpec,

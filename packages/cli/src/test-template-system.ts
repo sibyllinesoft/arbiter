@@ -11,7 +11,7 @@
  */
 
 import chalk from "chalk";
-import { extractVariablesFromCue, templateManager } from "./templates/index.js";
+import { buildTemplateContext, templateManager } from "./templates/index.js";
 
 async function testTemplateSystem() {
   console.log(chalk.cyan("🧪 Testing Template System"));
@@ -111,9 +111,9 @@ async function runVariableExtractionTest(): Promise<void> {
   console.log(chalk.blue("5. Testing variable extraction:"));
 
   const sampleCue = createSampleCueContent();
-  const variables = extractVariablesFromCue(sampleCue, "api");
+  const context = await buildTemplateContext(sampleCue, { artifactName: "api" });
 
-  console.log("  Extracted variables:", JSON.stringify(variables, null, 2));
+  console.log("  Extracted context:", JSON.stringify(context, null, 2));
   console.log();
 }
 

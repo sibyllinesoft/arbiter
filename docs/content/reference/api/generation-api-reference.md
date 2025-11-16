@@ -378,7 +378,7 @@ const result = await resolver.renderTemplate(
 /**
  * Extract variables from CUE specifications for template context
  */
-export function extractVariablesFromCue(cueData: any): TemplateContext
+export function buildTemplateContext(cueData: any): TemplateContext
 
 interface TemplateContext {
   project: Record<string, unknown>;
