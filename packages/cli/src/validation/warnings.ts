@@ -66,6 +66,8 @@ export function validateSpecification(spec: any): ValidationResult {
   warnings.push(...validateDataManagement(normalizedSpec));
   warnings.push(...validateObservability(normalizedSpec));
   warnings.push(...validateEnvironmentConfig(normalizedSpec));
+  warnings.push(...validatePathGrouping(normalizedSpec));
+  warnings.push(...validateEndpointReferences(normalizedSpec));
   warnings.push(...validateContractImplementations(spec, normalizedSpec));
 
   const errors = warnings.filter((w) => w.severity === "error");
@@ -514,6 +516,38 @@ function validateDataManagement(spec: NormalizedSpec): ValidationWarning[] {
   return warnings;
 }
 
+function validatePathGrouping(spec: NormalizedSpec): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const services = spec.services || {};
+  const paths = spec.paths || {};
+
+  for (const [groupKey, definition] of Object.entries(paths)) {
+    if (isPathSpecCandidate(definition)) {
+      warnings.push({
+        category: "API Design",
+        severity: "warning",
+        message: "Paths should be grouped under the owning service to avoid collisions.",
+        suggestion: `Nest operations under 'paths.${groupKey}.${String(groupKey).split(".").pop()}/<path>' grouped by service name.`,
+        path: `paths.${groupKey}`,
+      });
+      continue;
+    }
+
+    if (!services[groupKey]) {
+      warnings.push({
+        category: "API Design",
+        severity: "error",
+        message: `Path group '${groupKey}' does not match any defined service.`,
+        suggestion:
+          "Create the service or move these operations under an existing service's path group.",
+        path: `paths.${groupKey}`,
+      });
+    }
+  }
+
+  return warnings;
+}
+
 /**
  * Check observability configuration
  */
@@ -637,6 +671,71 @@ function validateContractImplementations(rawSpec: any, spec: NormalizedSpec): Va
     if (typeof reference === "string" && !resolveContractReference(root, reference)) {
       reportMissing(reference, `${contextPath}.implements`);
     }
+  });
+
+  return warnings;
+}
+
+function validateEndpointReferences(spec: NormalizedSpec): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const services = spec.services || {};
+
+  const validateHandlerReference = (handler: any, contextPath: string) => {
+    if (!handler || typeof handler !== "object") {
+      return;
+    }
+    if (handler.type !== "endpoint") {
+      return;
+    }
+
+    const targetService = handler.service;
+    const targetEndpoint = handler.endpoint;
+
+    if (typeof targetService !== "string" || !services[targetService]) {
+      warnings.push({
+        category: "API Design",
+        severity: "error",
+        message: `Handler references unknown service '${targetService ?? "undefined"}'.`,
+        suggestion: "Update the handler to reference an existing service.",
+        path: `${contextPath}.handler.service`,
+      });
+      return;
+    }
+
+    const endpointMap = services[targetService]?.endpoints;
+    if (!endpointMap || typeof endpointMap !== "object" || !(targetEndpoint in endpointMap)) {
+      warnings.push({
+        category: "API Design",
+        severity: "error",
+        message: `Handler references unknown endpoint '${targetEndpoint ?? "undefined"}' on service '${targetService}'.`,
+        suggestion: "Ensure the endpoint exists under services.<name>.endpoints.",
+        path: `${contextPath}.handler.endpoint`,
+      });
+    }
+  };
+
+  for (const [serviceName, service] of Object.entries(services)) {
+    const endpoints = service?.endpoints;
+    if (endpoints && typeof endpoints === "object") {
+      for (const [endpointId, endpointSpec] of Object.entries(endpoints)) {
+        const endpointHandler =
+          endpointSpec && typeof endpointSpec === "object"
+            ? (endpointSpec as Record<string, any>).handler
+            : undefined;
+        validateHandlerReference(
+          endpointHandler,
+          `services.${serviceName}.endpoints.${endpointId}`,
+        );
+      }
+    }
+  }
+
+  forEachPathOperation(spec.paths, (operation, contextPath) => {
+    const handlerSpec =
+      operation && typeof operation === "object"
+        ? (operation as Record<string, any>).handler
+        : undefined;
+    validateHandlerReference(handlerSpec, contextPath);
   });
 
   return warnings;

@@ -1125,4 +1125,52 @@ describe("Validation Warning System", () => {
       expect(result.hasErrors).toBe(false);
     });
   });
+
+  describe("API path validation", () => {
+    it("warns when paths are not grouped by service", () => {
+      const spec = {
+        ...minimalValidSpec,
+        services: {},
+        paths: {
+          "/health": {
+            get: { summary: "Health check" },
+          },
+        },
+      };
+      const result = validateSpecification(spec);
+      const warning = result.warnings.find((w) =>
+        w.message.includes("Paths should be grouped under the owning service"),
+      );
+      expect(warning).toBeDefined();
+    });
+
+    it("errors when handler references an unknown service", () => {
+      const spec = {
+        ...minimalValidSpec,
+        services: {
+          api: {
+            type: "internal",
+            workload: "deployment",
+            language: "typescript",
+            endpoints: {
+              list: {
+                path: "/api",
+                methods: ["GET"],
+                handler: {
+                  type: "endpoint",
+                  service: "missing-service",
+                  endpoint: "fetch",
+                },
+              },
+            },
+          },
+        },
+      };
+      const result = validateSpecification(spec);
+      const error = result.errors.find((w) =>
+        w.message.includes("Handler references unknown service"),
+      );
+      expect(error?.path).toBe("services.api.endpoints.list.handler.service");
+    });
+  });
 });

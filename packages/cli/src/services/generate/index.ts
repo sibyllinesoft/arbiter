@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import type {
   AppSpec,
   AssemblyConfig,
+  ClientConfig,
   ConfigWithVersion,
   CueAssertion,
   CueAssertionBlock,
@@ -100,15 +101,38 @@ function normalizeCapabilities(input: any): Record<string, CapabilitySpec> | nul
 }
 
 function createClientContext(
-  appSpec: AppSpec,
+  identifier: string,
+  clientConfig: ClientConfig | undefined,
   structure: ProjectStructureConfig,
   outputDir: string,
 ): ClientGenerationContext {
-  const slug = slugify(appSpec.product?.name, "app");
-  const root = path.join(outputDir, structure.clientsDirectory, slug);
-  const routesDir = path.join(root, "src", "routes");
+  const slug = slugify(identifier, identifier);
+  const configuredDir =
+    typeof clientConfig?.sourceDirectory === "string" && clientConfig.sourceDirectory.length > 0
+      ? clientConfig.sourceDirectory
+      : undefined;
+  const targetDir = configuredDir ?? path.join(structure.clientsDirectory, slug);
+  const absoluteRoot = path.isAbsolute(targetDir) ? targetDir : path.join(outputDir, targetDir);
+  const relativeFromRoot = path.relative(outputDir, absoluteRoot) || targetDir;
+  const relativeRoot = joinRelativePath(relativeFromRoot);
+  const routesDir = path.join(absoluteRoot, "src", "routes");
 
-  return { slug, root, routesDir };
+  return { slug, root: absoluteRoot, routesDir, relativeRoot, config: clientConfig };
+}
+
+function collectClientContexts(
+  appSpec: AppSpec,
+  structure: ProjectStructureConfig,
+  outputDir: string,
+): ClientGenerationContext[] {
+  const entries = Object.entries(appSpec.clients ?? {});
+  if (entries.length === 0) {
+    const fallback = appSpec.product?.name || "app";
+    return [createClientContext(fallback, undefined, structure, outputDir)];
+  }
+  return entries.map(([key, config]) =>
+    createClientContext(key, config as ClientConfig, structure, outputDir),
+  );
 }
 
 function createServiceContext(
@@ -1064,37 +1088,45 @@ async function generateAppArtifacts(
 
   await ensureBaseStructure(structure, outputDir, options);
 
-  const clientContext = createClientContext(appSpec, structure, outputDir);
-  await ensureDirectory(clientContext.root, options);
-
-  const routeFiles = await generateUIComponents(appSpec, clientContext, options);
-  files.push(
-    ...routeFiles.map((file) =>
-      joinRelativePath(structure.clientsDirectory, clientContext.slug, file),
-    ),
-  );
-
-  if (Object.keys(appSpec.locators).length > 0) {
-    const locatorFiles = await generateLocatorDefinitions(appSpec, clientContext, options);
-    files.push(
-      ...locatorFiles.map((file) =>
-        joinRelativePath(structure.clientsDirectory, clientContext.slug, file),
-      ),
-    );
-  }
-
+  const clientContexts = collectClientContexts(appSpec, structure, outputDir);
   let testsWorkspaceRelative: string | undefined;
-  if (appSpec.flows.length > 0) {
-    const { files: testFiles, workspaceDir } = await generateFlowBasedTests(
+
+  for (const context of clientContexts) {
+    await ensureDirectory(context.root, options);
+
+    const routeFiles = await generateUIComponents(appSpec, context, options);
+    files.push(...routeFiles);
+
+    const locatorCount = appSpec.locators ? Object.keys(appSpec.locators).length : 0;
+    if (locatorCount > 0) {
+      const locatorFiles = await generateLocatorDefinitions(appSpec, context, options);
+      files.push(...locatorFiles);
+    }
+
+    if (appSpec.flows.length > 0) {
+      const { files: testFiles, workspaceDir } = await generateFlowBasedTests(
+        appSpec,
+        outputDir,
+        options,
+        structure,
+        context,
+      );
+      files.push(...testFiles);
+      testsWorkspaceRelative = testsWorkspaceRelative ?? workspaceDir;
+    }
+
+    const projectFiles = await generateProjectStructure(
       appSpec,
       outputDir,
       options,
       structure,
-      clientContext,
+      context,
+      cliConfig,
     );
-    files.push(...testFiles);
-    testsWorkspaceRelative = workspaceDir ?? testsWorkspaceRelative;
+    files.push(...projectFiles);
   }
+
+  const primaryClientContext = clientContexts[0];
 
   const endpointAssertionFiles = await generateEndpointAssertionTests(
     appSpec,
@@ -1138,23 +1170,13 @@ async function generateAppArtifacts(
   const docFiles = await generateDocumentationArtifacts(appSpec, outputDir, options, structure);
   files.push(...docFiles);
 
-  const clientProjectFiles = await generateProjectStructure(
-    appSpec,
-    outputDir,
-    options,
-    structure,
-    clientContext,
-    cliConfig,
-  );
-  files.push(...clientProjectFiles);
-
   const infraFiles = await generateInfrastructureArtifacts(
     configWithVersion,
     outputDir,
     options,
     structure,
     appSpec,
-    clientContext,
+    primaryClientContext,
     cliConfig,
   );
   files.push(...infraFiles);
@@ -1169,6 +1191,7 @@ async function generateAppArtifacts(
     structure,
     cliConfig,
     testsWorkspaceRelative,
+    clientContexts,
   );
   files.push(...testRunnerFiles);
 
@@ -1177,7 +1200,7 @@ async function generateAppArtifacts(
     outputDir,
     options,
     structure,
-    clientContext,
+    clientContexts,
     testsWorkspaceRelative,
   );
   files.push(...workspaceManifestFiles);
@@ -1652,7 +1675,7 @@ async function generateUIComponents(
   options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
-  const language = appSpec.config?.language || "typescript";
+  const language = clientContext.config?.language || appSpec.config?.language || "typescript";
 
   if (language !== "typescript") {
     console.log(
@@ -1666,7 +1689,12 @@ async function generateUIComponents(
   await ensureDirectory(clientContext.routesDir, options);
 
   const typeFilePath = path.join(clientContext.routesDir, "types.ts");
-  const typeFileRelative = joinRelativePath("src", "routes", "types.ts");
+  const typeFileRelative = joinRelativePath(
+    clientContext.relativeRoot,
+    "src",
+    "routes",
+    "types.ts",
+  );
   await writeFileWithHooks(
     typeFilePath,
     `import type { ComponentType } from 'react';\n\nexport interface RouteDefinition {\n  id: string;\n  path: string;\n  Component: ComponentType;\n  description?: string;\n  children?: RouteDefinition[];\n}\n\nexport type RouteDefinitions = RouteDefinition[];\n`,
@@ -1687,7 +1715,7 @@ async function generateUIComponents(
     const componentName = `${baseName}View`;
     const definitionName = `${baseName}Route`;
     const fileName = `${definitionName}.tsx`;
-    const relPath = joinRelativePath("src", "routes", fileName);
+    const relPath = joinRelativePath(clientContext.relativeRoot, "src", "routes", fileName);
     const filePath = path.join(clientContext.routesDir, fileName);
     const rawPath = route.path || `/${route.id.replace(/:/g, "/")}`;
     const safePath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
@@ -1726,7 +1754,12 @@ async function generateUIComponents(
   }
 
   const aggregatorPath = path.join(clientContext.routesDir, "index.tsx");
-  const aggregatorRelative = joinRelativePath("src", "routes", "index.tsx");
+  const aggregatorRelative = joinRelativePath(
+    clientContext.relativeRoot,
+    "src",
+    "routes",
+    "index.tsx",
+  );
   const imports = routeDefinitions
     .map((definition) => `import { ${definition.importName} } from './${definition.importName}';`)
     .join("\n");
@@ -1738,7 +1771,12 @@ async function generateUIComponents(
   files.push(aggregatorRelative);
 
   const appRoutesPath = path.join(clientContext.routesDir, "AppRoutes.tsx");
-  const appRoutesRelative = joinRelativePath("src", "routes", "AppRoutes.tsx");
+  const appRoutesRelative = joinRelativePath(
+    clientContext.relativeRoot,
+    "src",
+    "routes",
+    "AppRoutes.tsx",
+  );
   const appRoutesContent = `import { useRoutes } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
@@ -1772,7 +1810,7 @@ async function generateFlowBasedTests(
   console.log(chalk.blue("🧪 Generating tests from flows..."));
 
   // Determine language for test generation
-  const language = appSpec.config?.language || "typescript";
+  const language = clientContext?.config?.language || appSpec.config?.language || "typescript";
   const plugin = getLanguagePlugin(language);
 
   if (!plugin) {
@@ -2001,7 +2039,9 @@ function buildPlaywrightConfig(
   structure: ProjectStructureConfig,
 ): string {
   const slug = clientContext?.slug ?? "app";
-  const clientDirRelative = path.posix.join("..", "..", structure.clientsDirectory, slug);
+  const clientBase =
+    clientContext?.relativeRoot ?? joinRelativePath(structure.clientsDirectory, slug);
+  const clientDirRelative = path.posix.join("..", "..", clientBase);
   const tsServices = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
     isTypeScriptServiceLanguage((svc as any)?.language as string | undefined),
   );
@@ -2645,6 +2685,7 @@ async function generateMasterTestRunner(
   structure: ProjectStructureConfig,
   cliConfig: CLIConfig,
   testsWorkspace?: string,
+  clientContexts: ClientGenerationContext[] = [],
 ): Promise<string[]> {
   const files: string[] = [];
   const testingConfig = cliConfig.generator?.testing;
@@ -2671,10 +2712,8 @@ async function generateMasterTestRunner(
     });
   }
 
-  const clientTask = await buildClientTestTask(appSpec, outputDir, structure, testingConfig);
-  if (clientTask) {
-    tasks.push(clientTask);
-  }
+  const clientTasks = await buildClientTestTasks(clientContexts, testingConfig);
+  tasks.push(...clientTasks);
 
   const assertionTask = await buildEndpointAssertionTask(
     appSpec,
@@ -2741,7 +2780,7 @@ async function generateWorkspaceManifest(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContext?: ClientGenerationContext,
+  clientContexts: ClientGenerationContext[],
   testsWorkspace?: string,
 ): Promise<string[]> {
   const workspaceSet = new Set<string>();
@@ -2752,8 +2791,8 @@ async function generateWorkspaceManifest(
     unitWorkspaceSet.add(workspace);
   };
 
-  if (clientContext) {
-    addUnitWorkspace(joinRelativePath(structure.clientsDirectory, clientContext.slug));
+  for (const context of clientContexts) {
+    addUnitWorkspace(context.relativeRoot);
   }
   if (appSpec.services) {
     for (const [serviceName, serviceSpec] of Object.entries(appSpec.services)) {
@@ -2819,29 +2858,29 @@ function resolveTestingCommand(
   return DEFAULT_TEST_COMMANDS[language];
 }
 
-async function buildClientTestTask(
-  appSpec: AppSpec,
-  outputDir: string,
-  structure: ProjectStructureConfig,
+async function buildClientTestTasks(
+  clientContexts: ClientGenerationContext[],
   testingConfig: GeneratorTestingConfig | undefined,
-): Promise<TestTask | null> {
-  const clientLanguage = appSpec.config?.language?.toLowerCase();
-  if (clientLanguage !== "typescript" && clientLanguage !== "javascript") {
-    return null;
+): Promise<TestTask[]> {
+  const tasks: TestTask[] = [];
+  for (const context of clientContexts) {
+    const clientLanguage = (context.config?.language || "typescript").toLowerCase();
+    if (clientLanguage !== "typescript" && clientLanguage !== "javascript") {
+      continue;
+    }
+
+    const languageConfig = getLanguageTestingConfig(testingConfig, clientLanguage);
+    const command = resolveTestingCommand(clientLanguage, languageConfig);
+    if (!command) continue;
+
+    tasks.push({
+      name: `test-client-${context.slug}`,
+      command,
+      cwd: context.relativeRoot,
+      workspace: context.relativeRoot,
+    });
   }
-
-  const languageConfig = getLanguageTestingConfig(testingConfig, clientLanguage);
-  const command = resolveTestingCommand(clientLanguage, languageConfig);
-  if (!command) return null;
-
-  const context = createClientContext(appSpec, structure, outputDir);
-  const clientDir = joinRelativePath(structure.clientsDirectory, context.slug);
-  return {
-    name: "test-client",
-    command,
-    cwd: clientDir,
-    workspace: clientDir,
-  };
+  return tasks;
 }
 
 async function buildEndpointAssertionTask(
@@ -3676,7 +3715,7 @@ export function loc(token: LocatorToken): string {
   await ensureDirectory(locatorsDir, options);
 
   await writeFileWithHooks(locatorsPath, locatorsContent, options);
-  files.push(joinRelativePath("src", "routes", "locators.ts"));
+  files.push(joinRelativePath(clientContext.relativeRoot, "src", "routes", "locators.ts"));
 
   return files;
 }
@@ -3728,7 +3767,7 @@ async function generateProjectStructure(
           file.executable ? 0o755 : undefined,
         );
 
-        files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, file.path));
+        files.push(joinRelativePath(clientContext.relativeRoot, file.path));
       }
 
       // Log additional setup instructions from the language plugin
@@ -3764,7 +3803,7 @@ async function generateProjectStructure(
     const packagePath = path.join(clientContext.root, "package.json");
     await ensureDirectory(path.dirname(packagePath), options);
     await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
-    files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, "package.json"));
+    files.push(joinRelativePath(clientContext.relativeRoot, "package.json"));
   }
 
   // Generate README
@@ -3814,7 +3853,7 @@ make test-e2e   # equivalent to npm run test:e2e
 
   const readmePath = path.join(clientContext.root, "README.md");
   await writeFileWithHooks(readmePath, readmeContent, options);
-  files.push(joinRelativePath(structure.clientsDirectory, clientContext.slug, "README.md"));
+  files.push(joinRelativePath(clientContext.relativeRoot, "README.md"));
 
   const dockerArtifacts = await generateClientDockerArtifacts(
     clientContext,
@@ -3824,9 +3863,7 @@ make test-e2e   # equivalent to npm run test:e2e
   );
 
   files.push(
-    ...dockerArtifacts.map((artifact) =>
-      joinRelativePath(structure.clientsDirectory, clientContext.slug, artifact),
-    ),
+    ...dockerArtifacts.map((artifact) => joinRelativePath(clientContext.relativeRoot, artifact)),
   );
 
   await enhanceClientDevServer(appSpec, clientContext, options);
@@ -5491,7 +5528,7 @@ function extractServiceSummaries(configWithVersion: ConfigWithVersion): ServiceS
           ? (rawConfig as any).sourceDirectory
           : undefined;
 
-    const artifactType = resolveServiceArtifactType(parsed);
+    const artifactType = parsed.artifactType;
 
     summaries.push({
       name: serviceName,

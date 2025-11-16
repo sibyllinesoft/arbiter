@@ -1,9 +1,11 @@
-import type { ServiceEndpointSpec } from "@arbiter/shared-types/cli";
+import type { ClientConfig, ServiceEndpointSpec } from "@arbiter/shared-types/cli";
 
 export interface ClientGenerationContext {
   slug: string;
   root: string;
   routesDir: string;
+  relativeRoot: string;
+  config?: ClientConfig;
 }
 
 export interface ServiceGenerationContext {
