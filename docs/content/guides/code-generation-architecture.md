@@ -84,9 +84,9 @@ function createServiceContext(
 ### 3. Template Resolution and Processing
 
 - Resolves templates from override directories and defaults
-- Processes templates with extracted context variables
-- Supports multiple template engines (planned: Handlebars, Liquid, etc.)
-- Applies template inheritance and composition
+- Streams the full context payload into the declared engine command (any executable)
+- Built-in helpers call the same interface directly for performance but remain opt-in
+- Applies template inheritance/composition before execution
 
 ### 4. Code Generation
 
