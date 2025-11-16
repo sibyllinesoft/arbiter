@@ -154,25 +154,23 @@ arbiter add endpoint /orders/{id} \
 
 Define the contract for those operations once so services can reference it rather than re-implementing behavior:
 
-```cue
-contracts: workflows: {
-  OrderAPI: {
-    version: "2025-01-01"
-    operations: {
-      createOrder: {
-        input: { order: components.schemas.Order }
-        output: { order: components.schemas.Order }
-      }
-      getOrder: {
-        input: { id: string }
-        output: { order: components.schemas.Order }
-      }
-    }
-  }
-}
+```bash
+arbiter add contract OrderAPI \
+  --version 2025-01-01 \
+  --summary "Customer order API"
+
+arbiter add contract-operation OrderAPI createOrder \
+  --input-key order \
+  --input-schema Order \
+  --output-key order \
+  --output-schema Order
+
+arbiter add contract-operation OrderAPI getOrder \
+  --output-key order \
+  --output-schema Order
 ```
 
-Resulting section in `.arbiter/assembly.cue`:
+Resulting section in `.arbiter/assembly.cue` shows the CLI-managed contract block:
 
 ```cue
 paths: {
@@ -202,6 +200,34 @@ paths: {
             content: {
               "application/json": { schema: components.schemas.Order }
             }
+          }
+        }
+      }
+    }
+  }
+}
+
+contracts: workflows: {
+  OrderAPI: {
+    version: "2025-01-01"
+    summary: "Customer order API"
+    operations: {
+      createOrder: {
+        input: {
+          order: {
+            $ref: "#/components/schemas/Order"
+          }
+        }
+        output: {
+          order: {
+            $ref: "#/components/schemas/Order"
+          }
+        }
+      }
+      getOrder: {
+        output: {
+          order: {
+            $ref: "#/components/schemas/Order"
           }
         }
       }

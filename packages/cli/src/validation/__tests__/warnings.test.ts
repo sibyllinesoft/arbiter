@@ -942,33 +942,6 @@ describe("Validation Warning System", () => {
     });
   });
 
-  describe("Legacy AssemblyConfig Support", () => {
-    it("should convert AssemblyConfig to AppSpec format", () => {
-      const legacyConfig = {
-        metadata: {
-          name: "legacy-project",
-          version: "1.0.0",
-        },
-        services: {
-          api: {
-            type: "internal",
-            workload: "deployment",
-            language: "typescript",
-          },
-        },
-        deployment: {
-          target: "kubernetes",
-        },
-      };
-
-      const result = validateSpecification(legacyConfig as any);
-
-      // Should process without crashing and generate warnings for missing fields
-      expect(result).toBeDefined();
-      expect(result.warnings.length).toBeGreaterThan(0);
-    });
-  });
-
   describe("Edge Cases and Error Handling", () => {
     it("should handle deeply nested null values", () => {
       const malformedSpec = {

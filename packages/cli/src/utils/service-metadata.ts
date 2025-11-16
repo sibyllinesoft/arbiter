@@ -10,11 +10,7 @@ export function resolveServiceWorkload(
   service: Partial<ServiceConfig> | undefined,
 ): string | undefined {
   if (!service) return undefined;
-  const candidates = [
-    service.workload,
-    (service as any).legacyWorkload,
-    (service as any).legacyType,
-  ];
+  const candidates = [service.workload];
   for (const candidate of candidates) {
     if (isWorkload(candidate)) return candidate;
   }
@@ -30,10 +26,9 @@ export function resolveServiceArtifactType(
   service: Partial<ServiceConfig> | undefined,
 ): "internal" | "external" {
   if (!service) return "internal";
-  const explicit = (service.type ||
-    service.artifactType ||
-    (service as any).serviceType ||
-    (service as any).legacyServiceType) as string | undefined;
+  const explicit = (service.type || service.artifactType || (service as any).serviceType) as
+    | string
+    | undefined;
 
   if (explicit === "internal" || explicit === "external") {
     return explicit;

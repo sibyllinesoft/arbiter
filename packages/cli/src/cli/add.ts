@@ -77,6 +77,70 @@ export function createAddCommands(program: Command): Command {
     });
 
   addCmd
+    .command("contract <name>")
+    .description("add or update a contract workflow/event definition")
+    .option("--kind <kind>", "contract kind (workflows or events)", "workflows")
+    .option("--version <version>", "contract version tag")
+    .option("--summary <text>", "short summary to describe the contract")
+    .option("--description <text>", "long-form description")
+    .option("--dry-run", "preview changes without applying them")
+    .option("--force", "overwrite existing configuration")
+    .action(async (name: string, options, command) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand("contract", name, options, config);
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    });
+
+  addCmd
+    .command("contract-operation <contract> <operation>")
+    .description("add or update an operation on a contract workflow/event")
+    .option("--kind <kind>", "contract kind (workflows or events)", "workflows")
+    .option("--summary <text>", "summary for the operation")
+    .option("--description <text>", "detailed operation description")
+    .option("--input-schema <schema>", "schema reference for the request payload")
+    .option("--input-key <key>", "field name for request payload", "payload")
+    .option("--input-example <json>", "JSON example for the request payload")
+    .option("--output-schema <schema>", "schema reference for the response payload")
+    .option("--output-key <key>", "field name for response payload", "result")
+    .option("--output-example <json>", "JSON example for the response payload")
+    .option("--dry-run", "preview changes without applying them")
+    .option("--force", "overwrite existing configuration")
+    .action(async (contract: string, operation: string, options, command) => {
+      try {
+        const config = command.parent?.parent?.config;
+        if (!config) {
+          throw new Error("Configuration not loaded");
+        }
+
+        const exitCode = await addCommand(
+          "contract-operation",
+          operation,
+          { ...options, contract },
+          config,
+        );
+        process.exit(exitCode);
+      } catch (error) {
+        console.error(
+          chalk.red("Command failed:"),
+          error instanceof Error ? error.message : String(error),
+        );
+        process.exit(2);
+      }
+    });
+
+  addCmd
     .command("endpoint <path>")
     .description("add an API endpoint to a service")
     .option("--method <method>", "HTTP method (GET, POST, PUT, DELETE, PATCH)", "GET")

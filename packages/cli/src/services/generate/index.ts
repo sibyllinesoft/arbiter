@@ -5976,14 +5976,9 @@ interface ClusterConfig {
 
 function parseDeploymentServiceConfig(name: string, config: any): DeploymentService | null {
   const artifactType = resolveServiceArtifactType(config);
-  const legacyWorkload =
-    typeof config.type === "string" &&
-    ["deployment", "statefulset", "daemonset", "job", "cronjob"].includes(config.type)
-      ? (config.type as ServiceWorkload)
-      : undefined;
   const workload =
     (resolveServiceWorkload(config) as ServiceWorkload | undefined) ??
-    legacyWorkload ??
+    (typeof config.workload === "string" ? (config.workload as ServiceWorkload) : undefined) ??
     "deployment";
 
   const service: DeploymentService = {

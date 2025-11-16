@@ -138,10 +138,8 @@ export interface ServiceConfig {
   workload?: ServiceWorkload;
   artifactType?: ServiceArtifactType;
   language: string;
-  // Legacy/platform compatibility: older specs stored workload or platform in `serviceType`.
+  // Platform compatibility: optional platform-specific identifiers (e.g., cloudflare_worker)
   serviceType?: string;
-  legacyWorkload?: ServiceWorkload;
-  legacyType?: ServiceWorkload;
   // Image and build configuration
   image?: string;
   sourceDirectory?: string;
