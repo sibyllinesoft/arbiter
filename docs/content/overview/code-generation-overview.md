@@ -352,7 +352,7 @@ arbiter check
 arbiter generate --target compose --output generated/full-stack
 
 # Optional: run typedoc + MkDocs so the walkthrough appears on your docs site
-bun run docs:tsdoc && bun run docs:site:build
+bun run docs:tsdoc && ./.venv-docs/bin/python -m mkdocs build --config-file mkdocs.yml
 ```
 
 You can immediately boot the stack with `docker compose up` from `generated/full-stack/infra/compose` and see the FastAPI + Vue pairing running against Postgres—proof that the layered specification behaved exactly as described in the overview.
