@@ -255,8 +255,7 @@ arbiter add service orders-api \
 # Vue front end registered as a client
 arbiter add client customer-ui \
   --template vue-vite \
-  --language typescript \
-  --port 4173
+  --language typescript
 
 # Wire the UI route and component so specs stay synchronized
 arbiter add component OrdersBoard --framework vue --directory apps/customer-ui/src/components
@@ -337,7 +336,6 @@ clients: {
     language: "typescript"
     template: "vue-vite"
     sourceDirectory: "clients/customer-ui"
-    port: 4173
   }
 }
 ```
