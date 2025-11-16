@@ -378,21 +378,13 @@ const result = await resolver.renderTemplate(
 /**
  * Extract variables from CUE specifications for template context
  */
-export function extractVariablesFromCue(
-  cueData: any
-): VariableContext
+export function extractVariablesFromCue(cueData: any): TemplateContext
 
-interface VariableContext {
-  projectName: string;
-  serviceName?: string;
-  serviceType?: string;
-  language?: string;
-  ports?: number[];
-  environment?: Record<string, string>;
-  database?: {
-    type: string;
-    name: string;
-  };
+interface TemplateContext {
+  project: Record<string, unknown>;
+  parent?: Record<string, unknown>;
+  artifact: Record<string, unknown>;
+  impl?: Record<string, unknown>;
 }
 ```
 

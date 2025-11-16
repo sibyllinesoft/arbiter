@@ -217,17 +217,31 @@ Templates support two types of variable interpolation:
 
 **Variable Context Structure:**
 ```typescript
-export interface VariableContext {
-  projectName: string;
-  serviceName?: string;
-  serviceType?: string;
-  language?: string;
-  ports?: number[];
-  environment?: Record<string, string>;
-  database?: {
-    type: string;
-    name: string;
-  };
+export interface TemplateContext {
+  /**
+   * Entire application spec (already normalized/augmented).
+   * Template engines can reach any part of the project without re-querying.
+   */
+  project: Record<string, unknown>;
+
+  /**
+   * Parent artifact, if this template renders something nested
+   * (e.g., an endpoint template gets the owning service as the parent).
+   */
+  parent?: Record<string, unknown>;
+
+  /**
+   * The concrete artifact being rendered (service, client, endpoint, route, etc).
+   * This is always present and mirrors the structure from the CUE spec.
+   */
+  artifact: Record<string, unknown>;
+
+  /**
+   * Implementation metadata computed by the generator (paths, language hints,
+   * derived names). Nothing in here comes from user specs, so template authors
+   * can safely treat it as helper data.
+   */
+  impl?: Record<string, unknown>;
 }
 ```
 
