@@ -156,6 +156,10 @@ Bridges the generation system with language-specific plugins.
 
 ## Template System
 
+Template engines in Arbiter are intentionally transport-agnostic. When you declare an engine in `.arbiter/templates.json`, Arbiter simply shells out to the command you specify and streams the full template context (as JSON) to that process. The command can be anything—`bunx handlebars`, `python render.py`, `cookiecutter`, or a bespoke binary. Whatever the command emits to stdout becomes the generated file. This makes it trivial to bring your preferred templating stack without waiting for native support.
+
+The built-in helpers (such as the cookiecutter shortcut that powers `arbiter add service --template ...`) implement the same interface. Instead of invoking an external executable they call the underlying library directly for performance, but they still receive the same `{command, args, context}` structure as any custom engine. In other words, every template—first-party or custom—uses the exact same contract, so swapping engines is just a matter of editing your template config.
+
 ### Template Engine Interface
 
 The template system provides a pluggable architecture for different template processors:

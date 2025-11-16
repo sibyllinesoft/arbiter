@@ -23,6 +23,32 @@ Arbiter's template system is designed to transform CUE specifications into produ
 - **Template Inheritance** - Shared partials and layouts
 - **Dynamic Resolution** - Runtime template selection
 
+The “engine” abstraction is simply a command invocation. When Arbiter needs to render a template it serializes the context to JSON and pipes it into the engine command you registered. The command can be anything you want—`bunx handlebars`, `python render.py`, `cookiecutter`, or a compiled binary. Whatever the command writes to stdout becomes the generated artifact, so you can bring virtually any templating technology without writing TypeScript.
+
+Built-in helpers (like the cookiecutter integrations used by some stock templates) consume the same interface internally. They call the underlying library directly for speed, but they still accept the `{command, args, context}` shape that external engines see. That means the alias you register for a first-party template is structurally identical to the alias you would register for your own engine.
+
+Example `.arbiter/templates.json` entry that shells out to a local script:
+
+```json
+{
+  "engines": {
+    "my-templates": {
+      "command": "python",
+      "defaultArgs": ["templates/render.py"],
+      "timeout": 120000
+    }
+  },
+  "aliases": {
+    "orders-fastapi": {
+      "engine": "my-templates",
+      "source": "./templates/orders"
+    }
+  }
+}
+```
+
+Every call to `orders-fastapi` now receives the Arbiter context on stdin, and your script can emit any content it likes.
+
 ### Template Architecture
 
 ```
