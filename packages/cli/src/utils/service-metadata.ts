@@ -30,27 +30,31 @@ export function resolveServiceArtifactType(
   service: Partial<ServiceConfig> | undefined,
 ): "internal" | "external" {
   if (!service) return "internal";
-  const explicit = (service.artifactType ||
+  const explicit = (service.type ||
+    service.artifactType ||
     (service as any).serviceType ||
-    (service as any).legacyServiceType ||
-    (service as any).type) as string | undefined;
+    (service as any).legacyServiceType) as string | undefined;
 
   if (explicit === "internal" || explicit === "external") {
     return explicit;
   }
 
-  if (explicit === "bespoke") {
+  const source = service.source as Record<string, unknown> | undefined;
+  if (source && typeof source === "object") {
+    const kind = String(source.kind || "").toLowerCase();
+    if (kind === "monorepo") {
+      return "internal";
+    }
+    if (kind) {
+      return "external";
+    }
+  }
+
+  if (service.sourceDirectory) {
     return "internal";
   }
-  if (explicit === "prebuilt" || explicit === "external") {
-    return "external";
-  }
 
-  if (service.source?.url) {
-    return "external";
-  }
-
-  if (service.image && !service.source?.package && !service.source?.dockerfile) {
+  if (service.image && !source) {
     return "external";
   }
 
