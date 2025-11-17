@@ -1,5 +1,5 @@
 export interface GenerateOptions {
-  outputDir?: string;
+  projectDir?: string;
   force?: boolean;
   dryRun?: boolean;
   verbose?: boolean;

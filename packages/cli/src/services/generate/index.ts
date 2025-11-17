@@ -889,12 +889,15 @@ export async function generateCommand(
       console.log(chalk.green("✅ Specification validation passed"));
     }
 
-    // Determine output directory
-    const outputDir = options.outputDir || ".";
+    // Determine project directory (generation happens in-place)
+    const outputDir = path.resolve(options.projectDir ?? config.projectDir ?? process.cwd());
 
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
+
+    // Keep config.projectDir in sync so downstream helpers remain accurate
+    config.projectDir = outputDir;
 
     const hookManager = config.generator?.hooks
       ? new GenerationHookManager({

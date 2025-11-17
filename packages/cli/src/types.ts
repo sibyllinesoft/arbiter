@@ -951,10 +951,8 @@ export interface ExplainOptions {
  * Generate command options for code generation
  */
 export interface GenerateOptions {
-  /** Output directory */
-  output?: string;
-  /** Output directory (alternative) */
-  outputDir?: string;
+  /** Project directory to sync generated artifacts into */
+  projectDir?: string;
   /** Include CI/CD files */
   includeCi?: boolean;
   /** Force overwrite existing files */

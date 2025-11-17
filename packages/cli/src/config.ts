@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -808,12 +809,25 @@ async function searchForConfigFile(baseConfig: CLIConfig): Promise<CLIConfig> {
   let currentDir = process.cwd();
   const root = path.parse(currentDir).root;
 
-  while (currentDir !== root) {
+  while (true) {
     const foundConfig = await findConfigInDirectory(currentDir);
     if (foundConfig) {
       return mergeConfigs(baseConfig, foundConfig);
     }
+
+    if (currentDir === root) {
+      break;
+    }
+
     currentDir = path.dirname(currentDir);
+  }
+
+  const homeDir = typeof os.homedir === "function" ? os.homedir() : null;
+  if (homeDir) {
+    const foundConfig = await findConfigInDirectory(homeDir);
+    if (foundConfig) {
+      return mergeConfigs(baseConfig, foundConfig);
+    }
   }
 
   return baseConfig;

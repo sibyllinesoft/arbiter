@@ -2,6 +2,12 @@ import type { IRResponse, ValidationRequest, ValidationResponse } from "@arbiter
 import { COMMON_PORTS } from "./config.js";
 import type { AuthSession, CLIConfig, CommandResult } from "./types.js";
 
+type ProjectStructureApiResponse = {
+  success: boolean;
+  projectStructure?: Record<string, unknown>;
+  error?: string;
+};
+
 /**
  * @packageDocumentation
  * Provides a thin, rate-limited HTTP client used by the Arbiter CLI to
@@ -251,6 +257,42 @@ export class ApiClient {
   async request(path: string, init: RequestInit = {}): Promise<Response> {
     await this.enforceRateLimit();
     return this.fetch(path, init);
+  }
+
+  /**
+   * Fetches shared project structure configuration from the Arbiter server.
+   */
+  async fetchProjectStructureConfig(): Promise<ProjectStructureApiResponse> {
+    try {
+      await this.enforceRateLimit();
+
+      const response = await this.fetch("/api/config/project-structure");
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          success: false,
+          error: `API error: ${response.status} ${errorText}`,
+        };
+      }
+
+      const data = (await response.json()) as ProjectStructureApiResponse;
+      if (!data.projectStructure) {
+        return {
+          success: false,
+          error: "Server response did not include projectStructure data",
+        };
+      }
+
+      return {
+        success: Boolean(data.success),
+        projectStructure: data.projectStructure,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Network error: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 
   /**

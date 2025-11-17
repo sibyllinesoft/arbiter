@@ -199,6 +199,42 @@ describe("ApiClient", () => {
     });
   });
 
+  describe("fetchProjectStructureConfig", () => {
+    it("returns structure data when server responds successfully", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          projectStructure: {
+            servicesDirectory: "services",
+            clientsDirectory: "apps",
+          },
+        }),
+      } as Response);
+
+      const result = await apiClient.fetchProjectStructureConfig();
+      expect(result.success).toBe(true);
+      expect(result.projectStructure).toEqual(
+        expect.objectContaining({ servicesDirectory: "services" }),
+      );
+    });
+
+    it("surface errors when server omits projectStructure payload", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+        }),
+      } as Response);
+
+      const result = await apiClient.fetchProjectStructureConfig();
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("projectStructure");
+    });
+  });
+
   describe("listFragments", () => {
     it("should list fragments successfully", async () => {
       const mockResponse = {

@@ -175,7 +175,7 @@ test(
 
     await scaffoldDemoProject(projectDir);
 
-    runCli(["--local", "generate", "--output-dir", ".", "--force"], projectDir);
+    runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
 
     runCli(["--local", "check"], projectDir);
 
@@ -270,7 +270,7 @@ test(
     await mkdir(projectDir, { recursive: true });
 
     await scaffoldDemoProject(projectDir);
-    runCli(["--local", "generate", "--output-dir", ".", "--force"], projectDir);
+    runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
 
     const pkgPath = path.join(projectDir, "package.json");
     await writeFile(pkgPath, JSON.stringify({ name: "remote-flow", version: "0.0.1" }, null, 2));

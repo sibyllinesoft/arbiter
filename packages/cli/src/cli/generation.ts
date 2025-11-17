@@ -20,7 +20,10 @@ export function createGenerationCommands(program: Command): void {
   program
     .command("generate [spec-name]")
     .description("generate project files from stored specifications")
-    .option("--output-dir <dir>", "output directory for generated files", ".")
+    .option(
+      "--project-dir <dir>",
+      "project directory to sync generated artifacts into (defaults to current working directory or config.projectDir)",
+    )
     .option("--spec <name>", "use a specific stored specification")
     .option("--force", "overwrite existing files despite validation warnings")
     .option("--dry-run", "preview what would be generated without creating files")

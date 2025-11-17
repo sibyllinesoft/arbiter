@@ -353,8 +353,7 @@ export interface IRResponse {
 
 // Generation options for enhanced functionality
 export interface EnhancedGenerateOptions {
-  output?: string;
-  outputDir?: string;
+  projectDir?: string;
   includeCi?: boolean;
   force?: boolean;
   dryRun?: boolean;
