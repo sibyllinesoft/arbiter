@@ -36,6 +36,8 @@ CLI Config (.arbiter.json)
 └── outputDir                    # Default output directory
 ```
 
+The tree above simply mirrors the top-level keys inside `.arbiter.json`. Everything lives under a single JSON document; there are no nested files or magic folders. In practice you edit `.arbiter.json`, and the `generator` object is where all codegen-specific settings hang together (template overrides, language plugins, testing config, optional profiles). The other keys (`projectDir`, `outputDir`) are plain strings Arbiter uses as defaults when CLI flags aren’t passed.
+
 ## Basic Configuration
 
 ### Project Initialization
