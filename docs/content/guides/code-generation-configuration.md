@@ -28,7 +28,6 @@ Arbiter's code generation system uses a layered configuration approach:
 ```json
 {
   "projectDir": ".",                // Project root directory
-  "outputDir": "./generated",       // Default output directory
   "generator": {
     "templateOverrides": {},        // Template override directories (per language)
     "plugins": {},                  // Language plugin configurations
@@ -38,7 +37,16 @@ Arbiter's code generation system uses a layered configuration approach:
 }
 ```
 
-Everything lives in a single `.arbiter.json` file—no extra folders or hidden configs. The `generator` object is where all codegen-specific knobs reside, while `projectDir`/`outputDir` are simple defaults used when you don’t pass CLI flags.
+Everything lives in a single `.arbiter.json` file—no extra folders or hidden configs. The `generator` object is where all codegen-specific knobs reside, while `projectDir` defines the working directory Arbiter writes into when you don’t pass CLI flags.
+
+> **Discovery Order**
+>
+> When you run any CLI command, Arbiter looks for configuration in three places (in order):
+> 1. Walk upward from the current working directory until it finds `.arbiter/config.*` or `.arbiter.json`
+> 2. Fallback to the user’s home directory (`~/.arbiter/...`)
+> 3. If no local file exists, fetch shared settings (project structure, UI options, etc.) from the Arbiter server
+>
+> The merged result becomes the active configuration, so you can keep per-repo overrides while still inheriting organization-wide defaults from the server.
 
 ## Basic Configuration
 
@@ -54,7 +62,6 @@ arbiter init my-app
 cat > .arbiter.json << EOF
 {
   "projectDir": ".",
-  "outputDir": "./generated",
   "generator": {
     "templateOverrides": {
       "typescript": ["./templates/typescript"],
@@ -81,7 +88,7 @@ Configure generation behavior through the `GenerateOptions` interface:
 
 ```typescript
 export interface GenerateOptions {
-  outputDir?: string;        // Override default output directory
+  projectDir?: string;       // Override the detected project directory
   force?: boolean;           // Overwrite existing files without prompting
   dryRun?: boolean;         // Preview generation without writing files
   verbose?: boolean;         // Enable detailed logging
@@ -99,7 +106,7 @@ arbiter generate
 
 # Generate with options
 arbiter generate \
-  --output-dir ./dist \
+  --project-dir ./apps/api \
   --force \
   --verbose \
   --spec my-spec
@@ -361,7 +368,6 @@ Generation profiles allow environment-specific configuration:
   "generator": {
     "profiles": {
       "development": {
-        "outputDir": "./src",
         "templateOverrides": {
           "typescript": ["./dev-templates"]
         },
@@ -378,7 +384,6 @@ Generation profiles allow environment-specific configuration:
         }
       },
       "production": {
-        "outputDir": "./dist", 
         "plugins": {
           "typescript": {
             "minify": true,
@@ -392,7 +397,6 @@ Generation profiles allow environment-specific configuration:
         }
       },
       "testing": {
-        "outputDir": "./test-output",
         "plugins": {
           "typescript": {
             "testDoubles": true,
@@ -722,7 +726,7 @@ Test configuration changes:
 arbiter generate --dry-run --config-test
 
 # Generate to temporary directory for testing
-arbiter generate --output-dir /tmp/arbiter-test
+arbiter generate --project-dir /tmp/arbiter-test --force
 ```
 
 This configuration system provides comprehensive control over all aspects of code generation while maintaining flexibility for customization and extension.

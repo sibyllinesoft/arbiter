@@ -73,14 +73,14 @@ arbiter check .arbiter/my-app/assembly.cue
 # 2. Generate with dry-run first
 arbiter generate --dry-run --verbose
 
-# 3. Generate to temporary directory
-arbiter generate --output-dir /tmp/test-generation
+# 3. Generate to a disposable workspace
+arbiter generate --project-dir /tmp/test-generation --force
 
 # 4. Validate generated code
 cd /tmp/test-generation
 npm install && npm run test
 
-# 5. Generate to target directory
+# 5. Generate in-place once satisfied
 arbiter generate --force
 ```
 
@@ -112,12 +112,12 @@ jobs:
       - name: Test generation
         run: |
           arbiter generate --dry-run
-          arbiter generate --output-dir ./test-output
+          arbiter generate --project-dir ./test-output --force
           cd test-output && npm test
           
       - name: Check for generation drift
         run: |
-          arbiter generate --output-dir ./current-gen
+          arbiter generate --project-dir ./current-gen --force
           diff -r ./current-gen ./src || {
             echo "Generated code differs from committed code"
             exit 1
@@ -534,7 +534,7 @@ describe('Complete Generation', () => {
     try {
       // Generate project
       await generateCommand({
-        outputDir: tempDir,
+        projectDir: tempDir,
         spec: 'test-spec'
       }, defaultConfig);
       

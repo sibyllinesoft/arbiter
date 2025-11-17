@@ -29,13 +29,13 @@ Arbiter's code generation system follows a modular, extensible architecture desi
 
 ```mermaid
 flowchart LR
-    A["CUE Specs<br/>(.arbiter/*.cue)"] --> B["Generation Core"]
-    B --> C["Generated Code & Assets"]
-    B --> D["Template System<br/>Language Plugins<br/>Context Providers<br/>Hook Executors"]
-    style A fill:#eef3ff,stroke:#4c63d9,stroke-width:2px
-    style B fill:#ecfdf3,stroke:#1c8b5f,stroke-width:2px
-    style C fill:#fffbe6,stroke:#c48a06,stroke-width:2px
-    style D fill:#ffecef,stroke:#d6456a,stroke-width:2px
+    specs["CUE Specs (.arbiter/*.cue)"] --> core["Generation Core"]
+    core --> assets["Generated Code & Assets"]
+    core --> helpers["Template System + Language Plugins + Context Providers + Hooks"]
+    style specs fill:#eef3ff,stroke:#4c63d9,stroke-width:2px
+    style core fill:#ecfdf3,stroke:#1c8b5f,stroke-width:2px
+    style assets fill:#fffbe6,stroke:#c48a06,stroke-width:2px
+    style helpers fill:#ffecef,stroke:#d6456a,stroke-width:2px
 ```
 
 ## Generation Pipeline
@@ -62,7 +62,7 @@ export async function generateCommand(
 
 - Creates generation contexts for services and clients
 - Extracts variables and metadata from CUE specifications
-- Resolves project structure and output directories
+- Resolves project structure and the active project directory
 - Prepares language-specific contexts
 
 ```typescript
@@ -70,14 +70,14 @@ export async function generateCommand(
 function createClientContext(
   appSpec: AppSpec,
   structure: ProjectStructureConfig,
-  outputDir: string,
+  projectDir: string,
 ): ClientGenerationContext
 
 function createServiceContext(
   serviceName: string,
   serviceConfig: any,
   structure: ProjectStructureConfig,
-  outputDir: string,
+  projectDir: string,
 ): ServiceGenerationContext
 ```
 
@@ -168,26 +168,28 @@ This section focuses on how the generation pipeline invokes templates. For step�
 
 ### Template Runner Responsibilities
 
-The template runner (inside `services/generate/template-runner.ts`) orchestrates _when_ templates are invoked:
+The runner (inside `services/generate/template-runner.ts`) decides _when_ templates execute:
 
-- Resolves language plugins and template overrides based on CLI config
+- Resolves language plugins and template overrides from CLI config (including remote configs)
 - Builds the canonical `TemplateContext { project, parent, artifact, impl }`
-- Hands that context to either internal renderers (Handlebars) or external engines (cookiecutter, scripts, etc.)
+- Hands that context to either internal renderers or external engines
 
-Plugins can still emit code programmatically, but they use the same context object to ensure determinism.
+> `arbiter add service --template ts-fastify` only records template metadata inside the spec. **`arbiter generate`** is the command that resolves aliases, loads engines, streams the JSON context, and writes files.
 
-### Internal Template Engine (Handlebars by default)
+Plugins can still emit code programmatically, but they ingest the same context object to keep behavior deterministic.
 
-Arbiter’s built-in service/client templates use Handlebars (`*.hbs`) when `arbiter generate` runs. Commands like `arbiter add service --template ts-fastify` only store template metadata inside the spec. The actual rendering happens during `arbiter generate`, where the engine loads the Handlebars bundle, binds the `TemplateContext`, and writes the files. The same Handlebars stack powers the repository bootstrap templates documented in the Template Development Guide.
+### Internal Template Engine (Handlebars default)
 
-- **Pros:** Fast, ships with the CLI, supports partials/inheritance, no external runtime needed.
-- **Cons:** Limited to what Handlebars can do; advanced logic often moves into helpers.
+Arbiter ships with embedded [Handlebars](https://handlebarsjs.com/) templates for the built-in service/client scaffolds. When `arbiter generate` runs, the engine loads the Handlebars bundle, binds the template context, and writes files in-place. The repository bootstrap templates documented in the Template Development Guide reuse the exact same interface.
+
+- **Pros:** Fast, bundled with the CLI, supports partials/inheritance/helpers, zero external runtime.
+- **Cons:** Logic must remain declarative; advanced branching often moves into helpers.
 
 ### External Template Engines
 
-If you prefer another engine, declare it in `.arbiter/templates.json`. When you reference that alias, Arbiter shells out to the command you specified and streams the full JSON context via stdin/environment. The command can be anything—`bunx handlebars`, `python render.py`, `cookiecutter`, or a bespoke binary. Whatever it prints to stdout becomes the generated artifact, so you can adopt any templating stack without modifying the CLI.
+Prefer Liquid, Mustache, your own Python renderer, or a bespoke binary? Declare an alias in `.arbiter/templates.json`. When referenced, Arbiter shells out to the command you specified and streams the entire context via `stdin`/environment variables. Whatever the process writes to `stdout` becomes the generated artifact, so you can adopt any templating stack without forking the CLI.
 
-The built-in helpers (such as the cookiecutter shortcut that powers `arbiter add service --template ...`) follow this same contract. Instead of spawning a process they call the library directly for performance, but they still receive `{command, args, context}` just like user-defined engines. Swapping engines is therefore just a matter of editing your template config.
+Built-in helpers (like the cookiecutter shortcut behind `arbiter add service --template ...`) follow the same contract. They call the library directly for performance but still receive `{ command, args, context }`, so swapping engines is as simple as editing your template config.
 
 ### Template Engine Interface
 
@@ -282,7 +284,7 @@ The `GenerateOptions` interface defines all configurable aspects of generation:
 
 ```typescript
 export interface GenerateOptions {
-  outputDir?: string;        // Output directory for generated code
+  projectDir?: string;       // Target project directory (defaults to cwd or config.projectDir)
   force?: boolean;           // Overwrite existing files
   dryRun?: boolean;         // Preview mode without file writes
   verbose?: boolean;         // Detailed logging
@@ -366,9 +368,8 @@ Generation contexts provide structured data to templates and generators:
 #### Client Generation Context
 ```typescript
 export interface ClientGenerationContext {
-  slug: string;      // URL-safe project identifier
-  root: string;      // Root directory path
-  routesDir: string; // Routes directory path
+  root: string;      // Absolute root directory for the client artifacts
+  routesDir: string; // Where UI routes live
   testsDir: string;  // Client-level tests directory path
 }
 ```
@@ -376,12 +377,9 @@ export interface ClientGenerationContext {
 #### Service Generation Context
 ```typescript
 export interface ServiceGenerationContext {
-  name: string;        // Service name (slugified)
   root: string;        // Service root directory
   routesDir: string;   // Routes directory
   testsDir: string;    // Service-level tests directory
-  language: string;    // Programming language
-  originalName?: string; // Original service name
 }
 ```
 
@@ -394,7 +392,7 @@ Contexts are created from CUE specifications during the resolution phase:
 const clientContext = createClientContext(
   appSpec,
   projectStructure,
-  outputDir
+  projectDir
 );
 
 // Service context from service configuration
@@ -402,9 +400,13 @@ const serviceContext = createServiceContext(
   serviceName,
   serviceConfig,
   projectStructure,
-  outputDir
+  projectDir
 );
 ```
+
+> **Context vs. Target**
+>
+> Context objects intentionally contain only filesystem locations. Spec-derived metadata (slug, language, relationships) now lives in `ClientGenerationTarget` and `ServiceGenerationTarget`, ensuring templates always read canonical data from the spec rather than ad‑hoc context bags.
 
 ## Hooks and Customization
 

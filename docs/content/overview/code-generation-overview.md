@@ -345,17 +345,17 @@ clients: {
 The final layer turns the specification into runnable assets. Because the earlier layers stayed clean, one command now orchestrates every artifact:
 
 ```bash
-# Validate before generating
+# Validate before generating (fail-fast if the spec drifted)
 arbiter check
 
-# Emit Docker Compose, FastAPI scaffolding, Vue app, and docs in a single pass
-arbiter generate --target compose --output generated/full-stack
+# Generate services, clients, Compose assets, tests, and docs in-place
+arbiter generate --force
 
-# (Optional for maintainers) Regenerate docs if you publish them with Arbiter's site tooling
-# bun run docs:tsdoc && bun run docs:site:build
+# Boot the stack (Compose files land under infra/compose inside your project)
+docker compose up
 ```
 
-You can immediately boot the stack with `docker compose up` from `generated/full-stack/infra/compose` and see the FastAPI + Vue pairing running against Postgres—proof that the layered specification behaved exactly as described in the overview.
+`arbiter generate` now writes directly into your project directory (or a custom path via `--project-dir`). There is no intermediate `generated/` folder to reconcile—images, services, tests, and docs stay co-located with your source tree, ready for git commits or container builds.
 
 ## Core Concepts
 
@@ -559,7 +559,7 @@ Use the generation API programmatically:
 import { generateCommand, GenerateOptions, CLIConfig } from '@arbiter/cli';
 
 const options: GenerateOptions = {
-  outputDir: './generated',
+  projectDir: './apps/orders-api',
   force: true,
   verbose: true
 };

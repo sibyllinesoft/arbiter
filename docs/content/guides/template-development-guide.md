@@ -808,7 +808,7 @@ describe('Template Integration', () => {
     // Run generation
     const result = await generateCommand(
       {
-        outputDir: testDir,
+        projectDir: testDir,
         dryRun: false
       },
       {
