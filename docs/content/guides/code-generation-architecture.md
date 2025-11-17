@@ -154,6 +154,14 @@ Bridges the generation system with language-specific plugins.
 - Testing configuration management
 - Workspace root configuration
 
+> **Template Runner vs. Template Engines**
+>
+> The template runner never renders source files itself. Its job is to locate the correct language plugin, configure overrides, and hand the plugin a `TemplateContext`. Plugins can then:
+> 1. Call the pluggable **Template Engine** interface to execute external templates (cookiecutter, scripts, etc.), or
+> 2. Render programmatically (e.g., write TypeScript ASTs) while still using the same `TemplateContext`.
+>
+> This separation keeps the CLI deterministic: the runner orchestrates *what* should be generated, the engines decide *how* the bytes are produced.
+
 ## Template System
 
 Template engines in Arbiter are intentionally transport-agnostic. When you declare an engine in `.arbiter/templates.json`, Arbiter simply shells out to the command you specify and streams the full template context (as JSON) to that process. The command can be anything—`bunx handlebars`, `python render.py`, `cookiecutter`, or a bespoke binary. Whatever the command emits to stdout becomes the generated file. This makes it trivial to bring your preferred templating stack without waiting for native support.
