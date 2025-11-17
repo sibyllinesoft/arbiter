@@ -369,6 +369,7 @@ export interface ClientGenerationContext {
   slug: string;      // URL-safe project identifier
   root: string;      // Root directory path
   routesDir: string; // Routes directory path
+  testsDir: string;  // Client-level tests directory path
 }
 ```
 
@@ -378,6 +379,7 @@ export interface ServiceGenerationContext {
   name: string;        // Service name (slugified)
   root: string;        // Service root directory
   routesDir: string;   // Routes directory
+  testsDir: string;    // Service-level tests directory
   language: string;    // Programming language
   originalName?: string; // Original service name
 }

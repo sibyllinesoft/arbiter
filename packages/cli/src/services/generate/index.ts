@@ -115,8 +115,10 @@ function createClientContext(
   const relativeFromRoot = path.relative(outputDir, absoluteRoot) || targetDir;
   const relativeRoot = joinRelativePath(relativeFromRoot);
   const routesDir = path.join(absoluteRoot, "src", "routes");
+  const testsDirSegments = [...toPathSegments(structure.testsDirectory || "tests"), slug];
+  const testsDir = path.join(outputDir, ...testsDirSegments);
 
-  return { slug, root: absoluteRoot, routesDir, relativeRoot, config: clientConfig };
+  return { slug, root: absoluteRoot, routesDir, testsDir, relativeRoot, config: clientConfig };
 }
 
 function collectClientContexts(
@@ -144,8 +146,10 @@ function createServiceContext(
   const root = path.join(outputDir, structure.servicesDirectory, slug);
   const routesDir = path.join(root, "src", "routes");
   const language = (serviceConfig?.language as string | undefined) || "typescript";
+  const testsDirSegments = [...toPathSegments(structure.testsDirectory || "tests"), slug];
+  const testsDir = path.join(outputDir, ...testsDirSegments);
 
-  return { name: slug, root, routesDir, language, originalName: serviceName };
+  return { name: slug, root, routesDir, testsDir, language, originalName: serviceName };
 }
 
 async function ensureBaseStructure(
@@ -1818,11 +1822,17 @@ async function generateFlowBasedTests(
     );
   }
 
-  const workspaceSegments = [
-    ...toPathSegments(structure.testsDirectory),
+  const defaultWorkspaceSegments = [
+    ...toPathSegments(structure.testsDirectory || "tests"),
     clientContext?.slug ?? "app",
   ];
-  const workspaceRoot = path.join(outputDir, ...workspaceSegments);
+  const workspaceRoot =
+    clientContext?.testsDir ?? path.join(outputDir, ...defaultWorkspaceSegments);
+  const relativeWorkspace = path.relative(outputDir, workspaceRoot);
+  const workspaceSegments =
+    relativeWorkspace.trim().length > 0
+      ? toPathSegments(relativeWorkspace)
+      : defaultWorkspaceSegments;
   const flowsDir = path.join(workspaceRoot, "flows");
   if (!fs.existsSync(flowsDir) && !options.dryRun) {
     fs.mkdirSync(flowsDir, { recursive: true });
@@ -1847,7 +1857,8 @@ async function generateFlowBasedTests(
   );
   files.push(...workspaceFiles);
 
-  return { files, workspaceDir: joinRelativePath(...workspaceSegments) };
+  const workspaceDir = joinRelativePath(...workspaceSegments) || ".";
+  return { files, workspaceDir };
 }
 
 async function scaffoldPlaywrightWorkspace(
