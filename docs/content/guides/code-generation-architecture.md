@@ -164,9 +164,30 @@ Bridges the generation system with language-specific plugins.
 
 ## Template System
 
-Template engines in Arbiter are intentionally transport-agnostic. When you declare an engine in `.arbiter/templates.json`, Arbiter simply shells out to the command you specify and streams the full template context (as JSON) to that process. The command can be anything—`bunx handlebars`, `python render.py`, `cookiecutter`, or a bespoke binary. Whatever the command emits to stdout becomes the generated file. This makes it trivial to bring your preferred templating stack without waiting for native support.
+This section focuses on how the generation pipeline invokes templates. For step‑by‑step authoring guidance, see the [Template Development Guide](./template-development-guide.md).
 
-The built-in helpers (such as the cookiecutter shortcut that powers `arbiter add service --template ...`) implement the same interface. Instead of invoking an external executable they call the underlying library directly for performance, but they still receive the same `{command, args, context}` structure as any custom engine. In other words, every template—first-party or custom—uses the exact same contract, so swapping engines is just a matter of editing your template config.
+### Template Runner Responsibilities
+
+The template runner (inside `services/generate/template-runner.ts`) orchestrates _when_ templates are invoked:
+
+- Resolves language plugins and template overrides based on CLI config
+- Builds the canonical `TemplateContext { project, parent, artifact, impl }`
+- Hands that context to either internal renderers (Handlebars) or external engines (cookiecutter, scripts, etc.)
+
+Plugins can still emit code programmatically, but they use the same context object to ensure determinism.
+
+### Internal Template Engine (Handlebars by default)
+
+Arbiter’s built-in templates use Handlebars (`*.hbs`) under the hood. When you run commands like `arbiter add service --template ts-fastify`, the CLI loads the Handlebars template bundle, binds the `TemplateContext`, and renders the files without leaving the process. The same system drives the repository bootstrap templates documented in the Template Development Guide.
+
+- **Pros:** Fast, ships with the CLI, supports partials/inheritance, no external runtime needed.
+- **Cons:** Limited to what Handlebars can do; advanced logic often moves into helpers.
+
+### External Template Engines
+
+If you prefer another engine, declare it in `.arbiter/templates.json`. When you reference that alias, Arbiter shells out to the command you specified and streams the full JSON context via stdin/environment. The command can be anything—`bunx handlebars`, `python render.py`, `cookiecutter`, or a bespoke binary. Whatever it prints to stdout becomes the generated artifact, so you can adopt any templating stack without modifying the CLI.
+
+The built-in helpers (such as the cookiecutter shortcut that powers `arbiter add service --template ...`) follow this same contract. Instead of spawning a process they call the library directly for performance, but they still receive `{command, args, context}` just like user-defined engines. Swapping engines is therefore just a matter of editing your template config.
 
 ### Template Engine Interface
 
@@ -178,7 +199,7 @@ export interface TemplateEngine {
   command: string;
   defaultArgs: string[];
   validate?(source: string): Promise<boolean>;
-  execute(source: string, destination: string, variables: Record<string, any>): Promise<void>;
+  execute(source: string, destination: string, context: TemplateContext): Promise<void>;
 }
 ```
 
