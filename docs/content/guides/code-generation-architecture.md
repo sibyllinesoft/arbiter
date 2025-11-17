@@ -178,7 +178,7 @@ Plugins can still emit code programmatically, but they use the same context obje
 
 ### Internal Template Engine (Handlebars by default)
 
-Arbiter’s built-in templates use Handlebars (`*.hbs`) under the hood. When you run commands like `arbiter add service --template ts-fastify`, the CLI loads the Handlebars template bundle, binds the `TemplateContext`, and renders the files without leaving the process. The same system drives the repository bootstrap templates documented in the Template Development Guide.
+Arbiter’s built-in service/client templates use Handlebars (`*.hbs`) when `arbiter generate` runs. Commands like `arbiter add service --template ts-fastify` only store template metadata inside the spec. The actual rendering happens during `arbiter generate`, where the engine loads the Handlebars bundle, binds the `TemplateContext`, and writes the files. The same Handlebars stack powers the repository bootstrap templates documented in the Template Development Guide.
 
 - **Pros:** Fast, ships with the CLI, supports partials/inheritance, no external runtime needed.
 - **Cons:** Limited to what Handlebars can do; advanced logic often moves into helpers.
