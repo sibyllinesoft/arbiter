@@ -63,6 +63,7 @@ import type {
   ClientGenerationContext,
   ClientGenerationTarget,
   ServiceGenerationContext,
+  ServiceGenerationTarget,
 } from "./contexts.js";
 import { ensureDirectory, setActiveHookManager, writeFileWithHooks } from "./hook-executor.js";
 import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
@@ -158,6 +159,27 @@ function createServiceContext(
   const testsDir = path.join(outputDir, ...testsDirSegments);
 
   return { root, routesDir, testsDir };
+}
+
+function createServiceTarget(
+  serviceName: string,
+  serviceConfig: any,
+  structure: ProjectStructureConfig,
+  outputDir: string,
+): ServiceGenerationTarget {
+  const slug = slugify(serviceName, serviceName);
+  const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
+  const relativeRoot = joinRelativePath(structure.servicesDirectory, slug);
+  const language = (serviceConfig?.language as string | undefined)?.toLowerCase() ?? "typescript";
+
+  return {
+    key: serviceName,
+    slug,
+    relativeRoot,
+    language,
+    config: (serviceConfig ?? {}) as Record<string, unknown>,
+    context,
+  };
 }
 
 async function ensureBaseStructure(
@@ -383,10 +405,10 @@ function buildDevProxyConfig(
 
 async function enhanceClientDevServer(
   appSpec: AppSpec,
-  clientContext: ClientGenerationContext,
+  clientTarget: ClientGenerationTarget,
   options: GenerateOptions,
 ): Promise<void> {
-  const viteConfigPath = path.join(clientContext.root, "vite.config.ts");
+  const viteConfigPath = path.join(clientTarget.context.root, "vite.config.ts");
   if (!fs.existsSync(viteConfigPath)) {
     return;
   }
@@ -1102,18 +1124,19 @@ async function generateAppArtifacts(
 
   await ensureBaseStructure(structure, outputDir, options);
 
-  const clientContexts = collectClientContexts(appSpec, structure, outputDir);
+  const clientTargets = collectClientTargets(appSpec, structure, outputDir);
   let testsWorkspaceRelative: string | undefined;
 
-  for (const context of clientContexts) {
+  for (const target of clientTargets) {
+    const context = target.context;
     await ensureDirectory(context.root, options);
 
-    const routeFiles = await generateUIComponents(appSpec, context, options);
+    const routeFiles = await generateUIComponents(appSpec, target, options);
     files.push(...routeFiles);
 
     const locatorCount = appSpec.locators ? Object.keys(appSpec.locators).length : 0;
     if (locatorCount > 0) {
-      const locatorFiles = await generateLocatorDefinitions(appSpec, context, options);
+      const locatorFiles = await generateLocatorDefinitions(appSpec, target, options);
       files.push(...locatorFiles);
     }
 
@@ -1123,7 +1146,7 @@ async function generateAppArtifacts(
         outputDir,
         options,
         structure,
-        context,
+        target,
       );
       files.push(...testFiles);
       testsWorkspaceRelative = testsWorkspaceRelative ?? workspaceDir;
@@ -1134,13 +1157,13 @@ async function generateAppArtifacts(
       outputDir,
       options,
       structure,
-      context,
+      target,
       cliConfig,
     );
     files.push(...projectFiles);
   }
 
-  const primaryClientContext = clientContexts[0];
+  const primaryClientTarget = clientTargets[0];
 
   const endpointAssertionFiles = await generateEndpointAssertionTests(
     appSpec,
@@ -1190,7 +1213,7 @@ async function generateAppArtifacts(
     options,
     structure,
     appSpec,
-    primaryClientContext,
+    primaryClientTarget,
     cliConfig,
   );
   files.push(...infraFiles);
@@ -1205,7 +1228,7 @@ async function generateAppArtifacts(
     structure,
     cliConfig,
     testsWorkspaceRelative,
-    clientContexts,
+    clientTargets,
   );
   files.push(...testRunnerFiles);
 
@@ -1214,7 +1237,7 @@ async function generateAppArtifacts(
     outputDir,
     options,
     structure,
-    clientContexts,
+    clientTargets,
     testsWorkspaceRelative,
   );
   files.push(...workspaceManifestFiles);
@@ -1519,17 +1542,17 @@ function mergeRouteBindings(
 
 function deriveServiceEndpointsFromPaths(
   appSpec: AppSpec | undefined,
-  serviceContext: ServiceGenerationContext | undefined,
+  serviceName: string,
+  serviceSlug: string,
   serviceSpec: any,
   pathOwnership?: Map<string, string>,
 ): RouteBindingInput[] {
-  if (!appSpec?.paths || !serviceContext) {
+  if (!appSpec?.paths) {
     return [];
   }
 
   const results: RouteBindingInput[] = [];
-  const serviceSlug = serviceContext.name;
-  const serviceOriginal = serviceContext.originalName || serviceContext.name;
+  const serviceOriginal = serviceName;
   const normalizedOriginal = slugify(serviceOriginal, serviceOriginal);
 
   for (const [pathServiceName, pathSpec] of Object.entries(appSpec.paths)) {
@@ -1586,15 +1609,16 @@ function deriveServiceEndpointsFromPaths(
 
 function deriveServiceEndpointsFromFlows(
   appSpec: AppSpec | undefined,
-  serviceContext: ServiceGenerationContext | undefined,
+  serviceName: string,
+  serviceSlug: string,
   serviceSpec: any,
 ): RouteBindingInput[] {
-  if (!appSpec?.flows || !serviceContext) {
+  if (!appSpec?.flows) {
     return [];
   }
 
   const results: RouteBindingInput[] = [];
-  const serviceOriginal = serviceContext.originalName || serviceContext.name;
+  const serviceOriginal = serviceName;
 
   for (const flow of appSpec.flows) {
     for (const step of flow.steps ?? []) {
@@ -1615,7 +1639,7 @@ function deriveServiceEndpointsFromFlows(
         url: api.path,
         summary,
         reply: {
-          service: serviceContext.name,
+          service: serviceSlug,
           flow: flow.id,
           status: "not_implemented",
           method,
@@ -1685,11 +1709,13 @@ function extractExampleFromContent(content: any): unknown {
  */
 async function generateUIComponents(
   appSpec: AppSpec,
-  clientContext: ClientGenerationContext,
+  clientTarget: ClientGenerationTarget,
   options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
-  const language = clientContext.config?.language || appSpec.config?.language || "typescript";
+  const context = clientTarget.context;
+  const relativeRoot = clientTarget.relativeRoot;
+  const language = clientTarget.config?.language || appSpec.config?.language || "typescript";
 
   if (language !== "typescript") {
     console.log(
@@ -1700,15 +1726,10 @@ async function generateUIComponents(
     return files;
   }
 
-  await ensureDirectory(clientContext.routesDir, options);
+  await ensureDirectory(context.routesDir, options);
 
-  const typeFilePath = path.join(clientContext.routesDir, "types.ts");
-  const typeFileRelative = joinRelativePath(
-    clientContext.relativeRoot,
-    "src",
-    "routes",
-    "types.ts",
-  );
+  const typeFilePath = path.join(context.routesDir, "types.ts");
+  const typeFileRelative = joinRelativePath(relativeRoot, "src", "routes", "types.ts");
   await writeFileWithHooks(
     typeFilePath,
     `import type { ComponentType } from 'react';\n\nexport interface RouteDefinition {\n  id: string;\n  path: string;\n  Component: ComponentType;\n  description?: string;\n  children?: RouteDefinition[];\n}\n\nexport type RouteDefinitions = RouteDefinition[];\n`,
@@ -1729,8 +1750,8 @@ async function generateUIComponents(
     const componentName = `${baseName}View`;
     const definitionName = `${baseName}Route`;
     const fileName = `${definitionName}.tsx`;
-    const relPath = joinRelativePath(clientContext.relativeRoot, "src", "routes", fileName);
-    const filePath = path.join(clientContext.routesDir, fileName);
+    const relPath = joinRelativePath(relativeRoot, "src", "routes", fileName);
+    const filePath = path.join(context.routesDir, fileName);
     const rawPath = route.path || `/${route.id.replace(/:/g, "/")}`;
     const safePath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
     const title = route.name || baseName;
@@ -1767,13 +1788,8 @@ async function generateUIComponents(
     routeDefinitions.push({ importName: definitionName });
   }
 
-  const aggregatorPath = path.join(clientContext.routesDir, "index.tsx");
-  const aggregatorRelative = joinRelativePath(
-    clientContext.relativeRoot,
-    "src",
-    "routes",
-    "index.tsx",
-  );
+  const aggregatorPath = path.join(context.routesDir, "index.tsx");
+  const aggregatorRelative = joinRelativePath(relativeRoot, "src", "routes", "index.tsx");
   const imports = routeDefinitions
     .map((definition) => `import { ${definition.importName} } from './${definition.importName}';`)
     .join("\n");
@@ -1784,13 +1800,8 @@ async function generateUIComponents(
   await writeFileWithHooks(aggregatorPath, aggregatorContent, options);
   files.push(aggregatorRelative);
 
-  const appRoutesPath = path.join(clientContext.routesDir, "AppRoutes.tsx");
-  const appRoutesRelative = joinRelativePath(
-    clientContext.relativeRoot,
-    "src",
-    "routes",
-    "AppRoutes.tsx",
-  );
+  const appRoutesPath = path.join(context.routesDir, "AppRoutes.tsx");
+  const appRoutesRelative = joinRelativePath(relativeRoot, "src", "routes", "AppRoutes.tsx");
   const appRoutesContent = `import { useRoutes } from 'react-router-dom';
 import type { RouteObject } from 'react-router-dom';
 
@@ -1817,14 +1828,14 @@ async function generateFlowBasedTests(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContext?: ClientGenerationContext,
+  clientTarget?: ClientGenerationTarget,
 ): Promise<{ files: string[]; workspaceDir?: string }> {
   const files: string[] = [];
 
   console.log(chalk.blue("🧪 Generating tests from flows..."));
 
   // Determine language for test generation
-  const language = clientContext?.config?.language || appSpec.config?.language || "typescript";
+  const language = clientTarget?.config?.language || appSpec.config?.language || "typescript";
   const plugin = getLanguagePlugin(language);
 
   if (!plugin) {
@@ -1835,10 +1846,10 @@ async function generateFlowBasedTests(
 
   const defaultWorkspaceSegments = [
     ...toPathSegments(structure.testsDirectory || "tests"),
-    clientContext?.slug ?? "app",
+    clientTarget?.slug ?? "app",
   ];
   const workspaceRoot =
-    clientContext?.testsDir ?? path.join(outputDir, ...defaultWorkspaceSegments);
+    clientTarget?.context?.testsDir ?? path.join(outputDir, ...defaultWorkspaceSegments);
   const relativeWorkspace = path.relative(outputDir, workspaceRoot);
   const workspaceSegments =
     relativeWorkspace.trim().length > 0
@@ -1863,7 +1874,7 @@ async function generateFlowBasedTests(
     workspaceRoot,
     workspaceSegments,
     options,
-    clientContext,
+    clientTarget,
     structure,
   );
   files.push(...workspaceFiles);
@@ -1877,7 +1888,7 @@ async function scaffoldPlaywrightWorkspace(
   workspaceRoot: string,
   workspaceSegments: string[],
   options: GenerateOptions,
-  clientContext: ClientGenerationContext | undefined,
+  clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): Promise<string[]> {
   if (!appSpec.flows || appSpec.flows.length === 0) {
@@ -1887,7 +1898,7 @@ async function scaffoldPlaywrightWorkspace(
   await ensureDirectory(workspaceRoot, options);
   const files: string[] = [];
 
-  const slug = clientContext?.slug ?? "app";
+  const slug = clientTarget?.slug ?? "app";
   const rel = (file: string) => joinRelativePath(...workspaceSegments, file);
 
   const packageJson = {
@@ -2043,7 +2054,7 @@ main().catch((error) => {
   await writeFileWithHooks(path.join(locatorsDir, "run-e2e.mjs"), runE2eScript, options, 0o755);
   files.push(rel(path.join("support", "run-e2e.mjs")));
 
-  const playwrightConfig = buildPlaywrightConfig(appSpec, clientContext, structure);
+  const playwrightConfig = buildPlaywrightConfig(appSpec, clientTarget, structure);
   await writeFileWithHooks(
     path.join(workspaceRoot, "playwright.config.ts"),
     playwrightConfig,
@@ -2056,12 +2067,12 @@ main().catch((error) => {
 
 function buildPlaywrightConfig(
   appSpec: AppSpec,
-  clientContext: ClientGenerationContext | undefined,
+  clientTarget: ClientGenerationTarget | undefined,
   structure: ProjectStructureConfig,
 ): string {
-  const slug = clientContext?.slug ?? "app";
+  const slug = clientTarget?.slug ?? "app";
   const clientBase =
-    clientContext?.relativeRoot ?? joinRelativePath(structure.clientsDirectory, slug);
+    clientTarget?.relativeRoot ?? joinRelativePath(structure.clientsDirectory, slug);
   const clientDirRelative = path.posix.join("..", "..", clientBase);
   const tsServices = Object.entries(appSpec.services ?? {}).filter(([, svc]) =>
     isTypeScriptServiceLanguage((svc as any)?.language as string | undefined),
@@ -2706,7 +2717,7 @@ async function generateMasterTestRunner(
   structure: ProjectStructureConfig,
   cliConfig: CLIConfig,
   testsWorkspace?: string,
-  clientContexts: ClientGenerationContext[] = [],
+  clientTargets: ClientGenerationTarget[] = [],
 ): Promise<string[]> {
   const files: string[] = [];
   const testingConfig = cliConfig.generator?.testing;
@@ -2718,22 +2729,23 @@ async function generateMasterTestRunner(
   const serviceEntries = Object.entries(appSpec.services ?? {});
   for (const [serviceName, serviceConfig] of serviceEntries) {
     if (!serviceConfig || typeof serviceConfig !== "object") continue;
+    const slug = slugify(serviceName, serviceName);
     const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
     const language = (serviceConfig.language as string | undefined)?.toLowerCase() ?? "typescript";
     const languageConfig = getLanguageTestingConfig(testingConfig, language);
     const testCommand = resolveTestingCommand(language, languageConfig);
     if (!testCommand) continue;
 
-    const serviceDir = joinRelativePath(structure.servicesDirectory, context.name);
+    const serviceDir = joinRelativePath(structure.servicesDirectory, slug);
     tasks.push({
-      name: `test-service-${context.name}`,
+      name: `test-service-${slug}`,
       command: testCommand,
       cwd: serviceDir,
       workspace: isWorkspaceFriendlyLanguage(language) ? serviceDir : undefined,
     });
   }
 
-  const clientTasks = await buildClientTestTasks(clientContexts, testingConfig);
+  const clientTasks = await buildClientTestTasks(clientTargets, testingConfig);
   tasks.push(...clientTasks);
 
   const assertionTask = await buildEndpointAssertionTask(
@@ -2801,7 +2813,7 @@ async function generateWorkspaceManifest(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContexts: ClientGenerationContext[],
+  clientTargets: ClientGenerationTarget[],
   testsWorkspace?: string,
 ): Promise<string[]> {
   const workspaceSet = new Set<string>();
@@ -2812,8 +2824,8 @@ async function generateWorkspaceManifest(
     unitWorkspaceSet.add(workspace);
   };
 
-  for (const context of clientContexts) {
-    addUnitWorkspace(context.relativeRoot);
+  for (const target of clientTargets) {
+    addUnitWorkspace(target.relativeRoot);
   }
   if (appSpec.services) {
     for (const [serviceName, serviceSpec] of Object.entries(appSpec.services)) {
@@ -2880,12 +2892,12 @@ function resolveTestingCommand(
 }
 
 async function buildClientTestTasks(
-  clientContexts: ClientGenerationContext[],
+  clientTargets: ClientGenerationTarget[],
   testingConfig: GeneratorTestingConfig | undefined,
 ): Promise<TestTask[]> {
   const tasks: TestTask[] = [];
-  for (const context of clientContexts) {
-    const clientLanguage = (context.config?.language || "typescript").toLowerCase();
+  for (const target of clientTargets) {
+    const clientLanguage = (target.config?.language || "typescript").toLowerCase();
     if (clientLanguage !== "typescript" && clientLanguage !== "javascript") {
       continue;
     }
@@ -2895,10 +2907,10 @@ async function buildClientTestTasks(
     if (!command) continue;
 
     tasks.push({
-      name: `test-client-${context.slug}`,
+      name: `test-client-${target.slug}`,
       command,
-      cwd: context.relativeRoot,
-      workspace: context.relativeRoot,
+      cwd: target.relativeRoot,
+      workspace: target.relativeRoot,
     });
   }
   return tasks;
@@ -2927,8 +2939,8 @@ async function buildEndpointAssertionTask(
   }
 
   const [serviceName, serviceConfig] = tsServices[0];
-  const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
-  const serviceDir = joinRelativePath(structure.servicesDirectory, context.name);
+  const serviceSlug = slugify(serviceName, serviceName);
+  const serviceDir = joinRelativePath(structure.servicesDirectory, serviceSlug);
   const relativeAssertions = path.relative(path.join(outputDir, serviceDir), assertionsPath) || ".";
   const command = tsConfig?.command
     ? tsConfig.command
@@ -3658,7 +3670,7 @@ async function generateInfrastructureArtifacts(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   appSpec: AppSpec,
-  clientContext?: ClientGenerationContext,
+  clientTarget?: ClientGenerationTarget,
   _cliConfig?: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
@@ -3689,7 +3701,7 @@ async function generateInfrastructureArtifacts(
     configWithVersion,
     options,
     structure,
-    clientContext,
+    clientTarget?.context,
   );
   files.push(...composeFiles);
 
@@ -3701,7 +3713,7 @@ async function generateInfrastructureArtifacts(
  */
 async function generateLocatorDefinitions(
   appSpec: AppSpec,
-  clientContext: ClientGenerationContext,
+  clientTarget: ClientGenerationTarget,
   options: GenerateOptions,
 ): Promise<string[]> {
   const files: string[] = [];
@@ -3730,13 +3742,13 @@ export function loc(token: LocatorToken): string {
 }
 `;
 
-  const locatorsDir = path.join(clientContext.root, "src", "routes");
+  const locatorsDir = path.join(clientTarget.context.root, "src", "routes");
   const locatorsPath = path.join(locatorsDir, "locators.ts");
 
   await ensureDirectory(locatorsDir, options);
 
   await writeFileWithHooks(locatorsPath, locatorsContent, options);
-  files.push(joinRelativePath(clientContext.relativeRoot, "src", "routes", "locators.ts"));
+  files.push(joinRelativePath(clientTarget.relativeRoot, "src", "routes", "locators.ts"));
 
   return files;
 }
@@ -3749,10 +3761,12 @@ async function generateProjectStructure(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  clientContext: ClientGenerationContext,
+  clientTarget: ClientGenerationTarget,
   cliConfig: CLIConfig,
 ): Promise<string[]> {
   const files: string[] = [];
+  const context = clientTarget.context;
+  const relativeRoot = clientTarget.relativeRoot;
 
   // Determine language from app spec config
   const language = appSpec.config?.language || "typescript";
@@ -3776,7 +3790,7 @@ async function generateProjectStructure(
 
       // Write all generated files from the language plugin
       for (const file of result.files) {
-        const fullPath = path.join(clientContext.root, file.path);
+        const fullPath = path.join(context.root, file.path);
         const dir = path.dirname(fullPath);
 
         await ensureDirectory(dir, options);
@@ -3788,7 +3802,7 @@ async function generateProjectStructure(
           file.executable ? 0o755 : undefined,
         );
 
-        files.push(joinRelativePath(clientContext.relativeRoot, file.path));
+        files.push(joinRelativePath(relativeRoot, file.path));
       }
 
       // Log additional setup instructions from the language plugin
@@ -3821,10 +3835,10 @@ async function generateProjectStructure(
       },
     };
 
-    const packagePath = path.join(clientContext.root, "package.json");
+    const packagePath = path.join(context.root, "package.json");
     await ensureDirectory(path.dirname(packagePath), options);
     await writeFileWithHooks(packagePath, JSON.stringify(packageJson, null, 2), options);
-    files.push(joinRelativePath(clientContext.relativeRoot, "package.json"));
+    files.push(joinRelativePath(relativeRoot, "package.json"));
   }
 
   // Generate README
@@ -3872,22 +3886,20 @@ make test-e2e   # equivalent to npm run test:e2e
 \`\`\`
 `;
 
-  const readmePath = path.join(clientContext.root, "README.md");
+  const readmePath = path.join(context.root, "README.md");
   await writeFileWithHooks(readmePath, readmeContent, options);
-  files.push(joinRelativePath(clientContext.relativeRoot, "README.md"));
+  files.push(joinRelativePath(relativeRoot, "README.md"));
 
   const dockerArtifacts = await generateClientDockerArtifacts(
-    clientContext,
+    clientTarget,
     appSpec,
     options,
     cliConfig,
   );
 
-  files.push(
-    ...dockerArtifacts.map((artifact) => joinRelativePath(clientContext.relativeRoot, artifact)),
-  );
+  files.push(...dockerArtifacts.map((artifact) => joinRelativePath(relativeRoot, artifact)));
 
-  await enhanceClientDevServer(appSpec, clientContext, options);
+  await enhanceClientDevServer(appSpec, clientTarget, options);
 
   return files;
 }
@@ -3914,18 +3926,20 @@ async function generateServiceStructures(
   for (const [serviceName, serviceConfig] of Object.entries(appSpec.services)) {
     if (!serviceConfig || typeof serviceConfig !== "object") continue;
 
-    const serviceContext = createServiceContext(serviceName, serviceConfig, structure, outputDir);
+    const serviceTarget = createServiceTarget(serviceName, serviceConfig, structure, outputDir);
+    const { context: serviceContext } = serviceTarget;
     await ensureDirectory(serviceContext.root, options);
 
-    const language = serviceContext.language.toLowerCase();
-    const relativePrefix = [structure.servicesDirectory, serviceContext.name];
+    const language = serviceTarget.language;
+    const relativePrefix = [structure.servicesDirectory, serviceTarget.slug];
 
     console.log(
       chalk.dim(`  • ${serviceName} (${language}) -> ${joinRelativePath(...relativePrefix)}`),
     );
 
     const generationPayload = {
-      name: serviceContext.name,
+      name: serviceTarget.slug,
+      originalName: serviceTarget.key,
       version: "1.0.0",
       service: serviceConfig,
       routesDir: serviceContext.routesDir,
@@ -3941,7 +3955,7 @@ async function generateServiceStructures(
           serviceContext.root,
           options,
           structure,
-          serviceContext,
+          serviceTarget,
           appSpec,
           pathOwnership,
         );
@@ -3952,7 +3966,7 @@ async function generateServiceStructures(
           serviceContext.root,
           options,
           structure,
-          serviceContext,
+          serviceTarget,
         );
         break;
       case "go":
@@ -3961,7 +3975,7 @@ async function generateServiceStructures(
           serviceContext.root,
           options,
           structure,
-          serviceContext,
+          serviceTarget,
         );
         break;
       case "rust":
@@ -3970,7 +3984,7 @@ async function generateServiceStructures(
           serviceContext.root,
           options,
           structure,
-          serviceContext,
+          serviceTarget,
         );
         break;
       case "container":
@@ -3999,7 +4013,7 @@ async function generateServiceStructures(
 
     if (supportsCodeScaffold) {
       const dockerArtifacts = await generateServiceDockerArtifacts(
-        serviceContext,
+        serviceTarget,
         serviceConfig,
         options,
         cliConfig,
@@ -4012,7 +4026,7 @@ async function generateServiceStructures(
     }
 
     const infraArtifacts = await generateServiceInfrastructureArtifacts(
-      serviceContext,
+      serviceTarget,
       serviceConfig,
       options,
     );
@@ -4032,16 +4046,17 @@ interface DockerTemplateSelection {
 }
 
 async function generateServiceDockerArtifacts(
-  serviceContext: ServiceGenerationContext,
+  serviceTarget: ServiceGenerationTarget,
   serviceSpec: any,
   options: GenerateOptions,
   cliConfig: CLIConfig,
   _structure: ProjectStructureConfig,
 ): Promise<string[]> {
-  const language = serviceContext.language?.toLowerCase() || "typescript";
+  const language = serviceTarget.language;
+  const context = serviceTarget.context;
   const override = resolveDockerTemplateSelection(cliConfig, "service", language);
 
-  const defaults = buildDefaultServiceDockerArtifacts(language, serviceContext, serviceSpec);
+  const defaults = buildDefaultServiceDockerArtifacts(language, serviceTarget, serviceSpec);
 
   if (!override && !defaults) {
     return [];
@@ -4058,13 +4073,13 @@ async function generateServiceDockerArtifacts(
   const written: string[] = [];
 
   if (dockerfileContent) {
-    const dockerfilePath = path.join(serviceContext.root, "Dockerfile");
+    const dockerfilePath = path.join(context.root, "Dockerfile");
     await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
     written.push("Dockerfile");
   }
 
   if (dockerignoreContent) {
-    const dockerignorePath = path.join(serviceContext.root, ".dockerignore");
+    const dockerignorePath = path.join(context.root, ".dockerignore");
     await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
     written.push(".dockerignore");
   }
@@ -4073,14 +4088,14 @@ async function generateServiceDockerArtifacts(
 }
 
 async function generateClientDockerArtifacts(
-  clientContext: ClientGenerationContext,
+  clientTarget: ClientGenerationTarget,
   appSpec: AppSpec,
   options: GenerateOptions,
   cliConfig: CLIConfig,
 ): Promise<string[]> {
   const language = appSpec.config?.language?.toLowerCase() || "typescript";
   const override = resolveDockerTemplateSelection(cliConfig, "client", language);
-  const defaults = buildDefaultClientDockerArtifacts(language, clientContext, appSpec);
+  const defaults = buildDefaultClientDockerArtifacts(language, clientTarget, appSpec);
 
   if (!override && !defaults) {
     return [];
@@ -4097,13 +4112,13 @@ async function generateClientDockerArtifacts(
   const written: string[] = [];
 
   if (dockerfileContent) {
-    const dockerfilePath = path.join(clientContext.root, "Dockerfile");
+    const dockerfilePath = path.join(clientTarget.context.root, "Dockerfile");
     await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
     written.push("Dockerfile");
   }
 
   if (dockerignoreContent) {
-    const dockerignorePath = path.join(clientContext.root, ".dockerignore");
+    const dockerignorePath = path.join(clientTarget.context.root, ".dockerignore");
     await writeFileWithHooks(dockerignorePath, ensureTrailingNewline(dockerignoreContent), options);
     written.push(".dockerignore");
   }
@@ -4153,11 +4168,14 @@ function resolveDockerTemplateSelection(
 }
 
 async function generateServiceInfrastructureArtifacts(
-  serviceContext: ServiceGenerationContext,
+  serviceTarget: ServiceGenerationTarget,
   serviceSpec: any,
   options: GenerateOptions,
 ): Promise<string[]> {
   const outputs: string[] = [];
+  const context = serviceTarget.context;
+  const serviceSlug = serviceTarget.slug;
+  const displayName = serviceTarget.key;
   const envBlock = collectServiceEnvironmentVariables(serviceSpec);
   const artifactType =
     serviceSpec?.type ??
@@ -4165,13 +4183,13 @@ async function generateServiceInfrastructureArtifacts(
     (serviceSpec ? resolveServiceArtifactType(serviceSpec) : undefined);
 
   const readmeLines = [
-    `# ${serviceContext.name}`,
+    `# ${displayName}`,
     "",
     "This directory contains application code and infrastructure references generated by Arbiter.",
     "",
     "## Runtime Image",
     "",
-    `- **Image:** ${serviceSpec?.image ?? `ghcr.io/your-org/${serviceContext.name}:latest`}`,
+    `- **Image:** ${serviceSpec?.image ?? `ghcr.io/your-org/${serviceSlug}:latest`}`,
     artifactType ? `- **Artifact Type:** ${artifactType}` : "",
     "",
     "## Ports",
@@ -4205,14 +4223,14 @@ async function generateServiceInfrastructureArtifacts(
     }
   }
 
-  const readmePath = path.join(serviceContext.root, "README.md");
+  const readmePath = path.join(context.root, "README.md");
   await writeFileWithHooks(readmePath, ensureTrailingNewline(readmeLines.join("\n")), options);
   outputs.push("README.md");
 
-  const manifestDir = path.join(serviceContext.root, "manifests");
+  const manifestDir = path.join(context.root, "manifests");
   await ensureDirectory(manifestDir, options);
   const primaryPort = getPrimaryServicePort(serviceSpec, 8080);
-  const manifestImage = serviceSpec?.image ?? `ghcr.io/your-org/${serviceContext.name}:latest`;
+  const manifestImage = serviceSpec?.image ?? `ghcr.io/your-org/${serviceSlug}:latest`;
   const healthConfig = resolveHealthConfiguration(serviceSpec, primaryPort);
   const probeBlock = buildKubernetesProbeBlock(healthConfig);
   const envYaml =
@@ -4248,16 +4266,16 @@ async function generateServiceInfrastructureArtifacts(
   const deploymentYaml = [
     "apiVersion: apps/v1",
     "kind: Deployment",
-    `metadata:\n  name: ${serviceContext.name}`,
+    `metadata:\n  name: ${serviceSlug}`,
     "spec:",
     "  replicas: 1",
     "  selector:",
     "    matchLabels:",
-    `      app: ${serviceContext.name}`,
+    `      app: ${serviceSlug}`,
     "  template:",
     "    metadata:",
     "      labels:",
-    `        app: ${serviceContext.name}`,
+    `        app: ${serviceSlug}`,
     "    spec:",
     "      containers:",
     "        - name: app",
@@ -4281,7 +4299,7 @@ async function generateServiceInfrastructureArtifacts(
     const envExample = Object.entries(envBlock)
       .map(([key, value]) => `${key}=${value}`)
       .join("\n");
-    const envPath = path.join(serviceContext.root, ".env.example");
+    const envPath = path.join(context.root, ".env.example");
     await writeFileWithHooks(envPath, ensureTrailingNewline(envExample), options);
     outputs.push(".env.example");
   }
@@ -4477,7 +4495,7 @@ function ensureTrailingNewline(content: string): string {
 
 function buildDefaultServiceDockerArtifacts(
   language: string,
-  context: ServiceGenerationContext,
+  target: ServiceGenerationTarget,
   serviceSpec: any,
 ): DockerTemplateSelection | null {
   switch (language) {
@@ -4489,7 +4507,7 @@ function buildDefaultServiceDockerArtifacts(
     case "go":
       return buildGoServiceDockerArtifacts(serviceSpec);
     case "rust":
-      return buildRustServiceDockerArtifacts(serviceSpec, context);
+      return buildRustServiceDockerArtifacts(serviceSpec, target);
     default:
       console.log(
         chalk.dim(
@@ -4502,7 +4520,7 @@ function buildDefaultServiceDockerArtifacts(
 
 function buildDefaultClientDockerArtifacts(
   language: string,
-  _context: ClientGenerationContext,
+  _target: ClientGenerationTarget,
   _appSpec: AppSpec,
 ): DockerTemplateSelection | null {
   switch (language) {
@@ -4644,10 +4662,11 @@ Dockerfile
 
 function buildRustServiceDockerArtifacts(
   serviceSpec: any,
-  context: ServiceGenerationContext,
+  target: ServiceGenerationTarget,
 ): DockerTemplateSelection {
   const port = getPrimaryServicePort(serviceSpec, 3000);
-  const binaryName = context.name;
+  const binaryName = target.slug;
+  const context = target.context;
 
   const dockerfile = `# syntax=docker/dockerfile:1
 FROM rust:1.74 AS build
@@ -4804,7 +4823,7 @@ async function generateTypeScriptFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext,
+  serviceTarget?: ServiceGenerationTarget,
   appSpec?: AppSpec,
   pathOwnership?: Map<string, string>,
 ): Promise<string[]> {
@@ -4938,7 +4957,7 @@ export { bootstrap };
   await writeFileWithHooks(indexPath, indexContent, options);
   files.push("src/index.ts");
 
-  const routesDir = serviceContext?.routesDir || path.join(srcDir, "routes");
+  const routesDir = serviceTarget?.context.routesDir || path.join(srcDir, "routes");
   await ensureDirectory(routesDir, options);
 
   const endpoints = Array.isArray(serviceSpec.endpoints) ? serviceSpec.endpoints : [];
@@ -4964,11 +4983,17 @@ export { bootstrap };
   });
   const derivedRoutes = deriveServiceEndpointsFromPaths(
     appSpec,
-    serviceContext,
+    config.originalName ?? config.name,
+    config.name,
     serviceSpec,
     pathOwnership,
   );
-  const flowDerivedRoutes = deriveServiceEndpointsFromFlows(appSpec, serviceContext, serviceSpec);
+  const flowDerivedRoutes = deriveServiceEndpointsFromFlows(
+    appSpec,
+    config.originalName ?? config.name,
+    config.name,
+    serviceSpec,
+  );
   const combinedRoutes = mergeRouteBindings(
     mergeRouteBindings(parsedRoutes, derivedRoutes),
     flowDerivedRoutes,
@@ -5051,7 +5076,7 @@ async function generatePythonFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext,
+  _serviceTarget?: ServiceGenerationTarget,
 ): Promise<string[]> {
   const files: string[] = [];
   const serviceSpec = config.service ?? {};
@@ -5165,7 +5190,7 @@ async function generateRustFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext,
+  _serviceTarget?: ServiceGenerationTarget,
 ): Promise<string[]> {
   const files: string[] = [];
   const testsDirSegments = toPathSegments(structure.testsDirectory);
@@ -5269,7 +5294,7 @@ async function generateGoFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  serviceContext?: ServiceGenerationContext,
+  _serviceTarget?: ServiceGenerationTarget,
 ): Promise<string[]> {
   const files: string[] = [];
   const testsDirSegments = toPathSegments(structure.testsDirectory);

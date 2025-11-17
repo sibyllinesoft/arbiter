@@ -1,4 +1,4 @@
-import type { ClientConfig } from "@arbiter/shared-types/cli";
+import type { ClientConfig, ServiceConfig } from "@arbiter/shared-types/cli";
 
 export interface ClientGenerationContext {
   root: string;
@@ -18,4 +18,13 @@ export interface ClientGenerationTarget {
   relativeRoot: string;
   config?: ClientConfig;
   context: ClientGenerationContext;
+}
+
+export interface ServiceGenerationTarget {
+  key: string;
+  slug: string;
+  relativeRoot: string;
+  language: string;
+  config: ServiceConfig | Record<string, unknown>;
+  context: ServiceGenerationContext;
 }
