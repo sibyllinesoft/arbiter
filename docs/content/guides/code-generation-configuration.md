@@ -359,7 +359,7 @@ Configure Go code generation:
 
 ## Generation Profiles
 
-Generation profiles allow environment-specific configuration:
+Profiles let you tweak generator behavior (template overrides, testing commands, hook scripts) without implying different deployment environments. `arbiter generate` always emits everything; downstream GitOps flows decide what to promote.
 
 ### Profile Definition
 
@@ -367,41 +367,24 @@ Generation profiles allow environment-specific configuration:
 {
   "generator": {
     "profiles": {
-      "development": {
+      "default": {
         "templateOverrides": {
-          "typescript": ["./dev-templates"]
-        },
-        "plugins": {
-          "typescript": {
-            "minify": false,
-            "sourceMaps": true,
-            "hotReload": true
-          }
+          "typescript": ["./templates"]
         },
         "testing": {
-          "coverage": false,
-          "watch": true
+          "coverage": true
         }
       },
-      "production": {
-        "plugins": {
-          "typescript": {
-            "minify": true,
-            "sourceMaps": false,
-            "optimization": "size"
-          }
+      "ci": {
+        "templateOverrides": {
+          "typescript": ["./ci-templates"]
         },
         "testing": {
           "coverage": true,
-          "e2e": true
-        }
-      },
-      "testing": {
-        "plugins": {
-          "typescript": {
-            "testDoubles": true,
-            "mocking": "vitest"
-          }
+          "watch": false
+        },
+        "hooks": {
+          "after:generate": "node scripts/assert-clean.js"
         }
       }
     }
@@ -412,14 +395,8 @@ Generation profiles allow environment-specific configuration:
 ### Using Profiles
 
 ```bash
-# Generate with development profile
-NODE_ENV=development arbiter generate
-
-# Generate with production profile  
-NODE_ENV=production arbiter generate
-
-# Explicitly specify profile
-arbiter generate --profile testing
+# Generate with the CI profile (no NODE_ENV juggling required)
+arbiter generate --profile ci
 ```
 
 ## Override Mechanisms
