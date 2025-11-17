@@ -25,18 +25,20 @@ Arbiter's code generation system uses a layered configuration approach:
 
 ### Configuration Hierarchy
 
-```
-CLI Config (.arbiter.json)
-├── generator                    # Generation settings
-│   ├── templateOverrides        # Template override directories
-│   ├── plugins                  # Language plugin configurations
-│   ├── testing                  # Testing configurations
-│   └── profiles                 # Generation profiles
-├── projectDir                   # Project root directory
-└── outputDir                    # Default output directory
+```json
+{
+  "projectDir": ".",                // Project root directory
+  "outputDir": "./generated",       // Default output directory
+  "generator": {
+    "templateOverrides": {},        // Template override directories (per language)
+    "plugins": {},                  // Language plugin configurations
+    "testing": {},                  // Testing configurations
+    "profiles": {}                  // Generation profiles (optional)
+  }
+}
 ```
 
-The tree above simply mirrors the top-level keys inside `.arbiter.json`. Everything lives under a single JSON document; there are no nested files or magic folders. In practice you edit `.arbiter.json`, and the `generator` object is where all codegen-specific settings hang together (template overrides, language plugins, testing config, optional profiles). The other keys (`projectDir`, `outputDir`) are plain strings Arbiter uses as defaults when CLI flags aren’t passed.
+Everything lives in a single `.arbiter.json` file—no extra folders or hidden configs. The `generator` object is where all codegen-specific knobs reside, while `projectDir`/`outputDir` are simple defaults used when you don’t pass CLI flags.
 
 ## Basic Configuration
 
