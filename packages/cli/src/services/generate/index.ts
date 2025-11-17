@@ -59,7 +59,11 @@ import {
 import { ShardedCUEStorage } from "../../utils/sharded-storage.js";
 import { formatWarnings, validateSpecification } from "../../validation/warnings.js";
 import { generateDockerComposeArtifacts, parseDockerComposeServices } from "./compose.js";
-import type { ClientGenerationContext, ServiceGenerationContext } from "./contexts.js";
+import type {
+  ClientGenerationContext,
+  ClientGenerationTarget,
+  ServiceGenerationContext,
+} from "./contexts.js";
 import { ensureDirectory, setActiveHookManager, writeFileWithHooks } from "./hook-executor.js";
 import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
 import {
@@ -99,12 +103,27 @@ function normalizeCapabilities(input: any): Record<string, CapabilitySpec> | nul
   return null;
 }
 
-function createClientContext(
+function collectClientTargets(
+  appSpec: AppSpec,
+  structure: ProjectStructureConfig,
+  outputDir: string,
+): ClientGenerationTarget[] {
+  const entries = Object.entries(appSpec.clients ?? {});
+  if (entries.length === 0) {
+    const fallback = appSpec.product?.name || "app";
+    return [createClientTarget(fallback, undefined, structure, outputDir)];
+  }
+  return entries.map(([key, config]) =>
+    createClientTarget(key, config as ClientConfig, structure, outputDir),
+  );
+}
+
+function createClientTarget(
   identifier: string,
   clientConfig: ClientConfig | undefined,
   structure: ProjectStructureConfig,
   outputDir: string,
-): ClientGenerationContext {
+): ClientGenerationTarget {
   const slug = slugify(identifier, identifier);
   const configuredDir =
     typeof clientConfig?.sourceDirectory === "string" && clientConfig.sourceDirectory.length > 0
@@ -117,23 +136,13 @@ function createClientContext(
   const routesDir = path.join(absoluteRoot, "src", "routes");
   const testsDirSegments = [...toPathSegments(structure.testsDirectory || "tests"), slug];
   const testsDir = path.join(outputDir, ...testsDirSegments);
+  const context: ClientGenerationContext = {
+    root: absoluteRoot,
+    routesDir,
+    testsDir,
+  };
 
-  return { slug, root: absoluteRoot, routesDir, testsDir, relativeRoot, config: clientConfig };
-}
-
-function collectClientContexts(
-  appSpec: AppSpec,
-  structure: ProjectStructureConfig,
-  outputDir: string,
-): ClientGenerationContext[] {
-  const entries = Object.entries(appSpec.clients ?? {});
-  if (entries.length === 0) {
-    const fallback = appSpec.product?.name || "app";
-    return [createClientContext(fallback, undefined, structure, outputDir)];
-  }
-  return entries.map(([key, config]) =>
-    createClientContext(key, config as ClientConfig, structure, outputDir),
-  );
+  return { key: identifier, slug, relativeRoot, config: clientConfig, context };
 }
 
 function createServiceContext(
@@ -145,11 +154,10 @@ function createServiceContext(
   const slug = slugify(serviceName, serviceName);
   const root = path.join(outputDir, structure.servicesDirectory, slug);
   const routesDir = path.join(root, "src", "routes");
-  const language = (serviceConfig?.language as string | undefined) || "typescript";
   const testsDirSegments = [...toPathSegments(structure.testsDirectory || "tests"), slug];
   const testsDir = path.join(outputDir, ...testsDirSegments);
 
-  return { name: slug, root, routesDir, testsDir, language, originalName: serviceName };
+  return { root, routesDir, testsDir };
 }
 
 async function ensureBaseStructure(
