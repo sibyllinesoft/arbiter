@@ -18,10 +18,6 @@ import {
   updateTaskData,
 } from "../services/epic/data.js";
 import type { EpicOptions, TaskOptions } from "../services/epic/index.js";
-import {
-  epicCommand as runEpicCommand,
-  taskCommand as runTaskCommand,
-} from "../services/epic/index.js";
 import type { CLIConfig } from "../types.js";
 import { formatJson, formatTable } from "../utils/formatting.js";
 import { type Epic as EpicModel, ShardedCUEStorage } from "../utils/sharded-storage.js";
@@ -49,8 +45,9 @@ export async function epicCommand(
     return await handleEpicStats(options);
   }
 
-  // Fall back to legacy implementation for create/update/delete/etc.
-  return await runEpicCommand(action, epicId, options, config);
+  console.error(chalk.red(`Unknown action: ${action}`));
+  console.log(chalk.dim("Available actions: list, show, create, update, delete, stats"));
+  return 1;
 }
 
 export async function taskCommand(
@@ -71,8 +68,13 @@ export async function taskCommand(
     return await handleTaskList(options);
   }
 
-  // Delegate the rest to the existing service implementation
-  return await runTaskCommand(action, taskId, options, config);
+  console.error(chalk.red(`Unknown action: ${action}`));
+  console.log(
+    chalk.dim(
+      "Available actions: list, show, create, batch, update, complete, deps, ready, blocked",
+    ),
+  );
+  return 1;
 }
 
 async function handleEpicList(options: EpicOptions): Promise<number> {
