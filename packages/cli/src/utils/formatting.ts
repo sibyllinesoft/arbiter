@@ -4,6 +4,33 @@ import yaml from "yaml";
 import type { ValidationResult } from "../types.js";
 
 /**
+ * Format a small table without external dependencies
+ */
+export function formatTable(
+  headers: string[],
+  rows: string[][],
+  headerColor: (value: string) => string = chalk.cyan,
+): string {
+  const table = [headers, ...rows];
+  const colWidths = headers.map((_, colIndex) =>
+    Math.max(...table.map((row) => (row[colIndex] || "").length)),
+  );
+
+  const formatRow = (row: string[], isHeader = false) => {
+    const formattedCells = row.map((cell, idx) => (cell || "").padEnd(colWidths[idx])).join(" | ");
+    return isHeader ? headerColor(formattedCells) : formattedCells;
+  };
+
+  const lines = [
+    formatRow(headers, true),
+    colWidths.map((w) => "-".repeat(w)).join("-|-"),
+    ...rows.map((row) => formatRow(row)),
+  ];
+
+  return lines.join("\n");
+}
+
+/**
  * Format validation results as a pretty table
  */
 export function formatValidationTable(results: ValidationResult[]): string {

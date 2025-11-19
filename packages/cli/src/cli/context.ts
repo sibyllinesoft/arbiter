@@ -2,7 +2,7 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import { ApiClient } from "../api-client.js";
 import { loadAuthSession } from "../auth-store.js";
-import { applyEnvironmentOverrides, loadConfig } from "../config.js";
+import { applyCliOverrides, applyEnvironmentOverrides, loadConfig } from "../config.js";
 import type { CLIConfig, ProjectStructureConfig } from "../types.js";
 
 export interface CliContext {
@@ -14,25 +14,23 @@ export interface CliContext {
  * based on the root command's global options.
  */
 export async function resolveCliContext(options: Record<string, any>): Promise<CliContext> {
-  const config = await loadConfig(options.config);
+  const baseConfig = await loadConfig(options.config);
+  const overridden = applyCliOverrides(baseConfig, {
+    apiUrl: options.apiUrl,
+    arbiterUrl: options.arbiterUrl,
+    timeout: options.timeout,
+    color: options.color,
+    local: options.local,
+    verbose: options.verbose,
+  });
 
-  const cliUrl = options.arbiterUrl ?? options.apiUrl;
-  if (cliUrl) config.apiUrl = cliUrl;
-  if (options.timeout) config.timeout = Number.parseInt(options.timeout, 10);
-  if (options.color === false) config.color = false;
-  if (typeof options.local === "boolean") config.localMode = options.local;
-
-  const finalConfig = applyEnvironmentOverrides(config);
+  const finalConfig = applyEnvironmentOverrides(overridden);
   const authSession = await loadAuthSession();
   if (authSession) {
     finalConfig.authSession = authSession;
   } else if (finalConfig.authSession) {
     delete finalConfig.authSession;
   }
-
-  const normalizedUrl = finalConfig.apiUrl.trim().replace(/\/+$/, "");
-  finalConfig.apiUrl = normalizedUrl || finalConfig.apiUrl.trim();
-  finalConfig.localMode = Boolean(finalConfig.localMode);
 
   await hydrateRemoteProjectStructure(finalConfig);
 
@@ -72,6 +70,27 @@ function coerceDirectoryValue(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function coercePackageRelative(
+  value: unknown,
+): ProjectStructureConfig["packageRelative"] | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const allowedKeys = ["docsDirectory", "testsDirectory", "infraDirectory"] as const;
+  const result: Record<string, boolean> = {};
+  for (const key of allowedKeys) {
+    const raw = (value as Record<string, unknown>)[key];
+    if (typeof raw === "boolean") {
+      result[key] = raw;
+    }
+  }
+
+  return Object.keys(result).length > 0
+    ? (result as ProjectStructureConfig["packageRelative"])
+    : undefined;
+}
+
 function normalizeRemoteStructure(
   remote: Record<string, unknown>,
 ): Partial<ProjectStructureConfig> {
@@ -88,10 +107,10 @@ function normalizeRemoteStructure(
     normalized.servicesDirectory = services;
   }
 
-  const modules =
-    coerceDirectoryValue(remote.modulesDirectory) ?? coerceDirectoryValue(remote.packagesDirectory);
-  if (modules) {
-    normalized.modulesDirectory = modules;
+  const packagesDir =
+    coerceDirectoryValue(remote.packagesDirectory) ?? coerceDirectoryValue(remote.modulesDirectory);
+  if (packagesDir) {
+    normalized.packagesDirectory = packagesDir;
   }
 
   const tools = coerceDirectoryValue(remote.toolsDirectory);
@@ -114,9 +133,12 @@ function normalizeRemoteStructure(
     normalized.infraDirectory = infra;
   }
 
-  const endpoint = coerceDirectoryValue(remote.endpointDirectory);
-  if (endpoint) {
-    normalized.endpointDirectory = endpoint;
+  const packageRelative = coercePackageRelative(remote.packageRelative);
+  if (packageRelative) {
+    normalized.packageRelative = {
+      ...(normalized.packageRelative ?? {}),
+      ...packageRelative,
+    };
   }
 
   return normalized;

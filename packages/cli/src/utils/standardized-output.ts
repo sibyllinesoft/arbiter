@@ -3,312 +3,18 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import chalk from "chalk";
-
-/**
- * Standardized output system for Arbiter CLI
- * Implements section 11 requirements: standardized files and NDJSON streaming
- */
-
-export const API_VERSION = "arbiter.dev/v2" as const;
-
-/**
- * Standard output file formats with apiVersion stamping
- */
-export interface StandardizedOutput {
-  apiVersion: typeof API_VERSION;
-  timestamp: number;
-  command: string;
-  version?: string;
-  metadata?: Record<string, unknown>;
-}
-
-/**
- * Plan output format for deterministic planning
- */
-export interface PlanOutput extends StandardizedOutput {
-  kind: "Plan";
-  plan: Array<{
-    id: string;
-    type: "file" | "directory" | "command" | "validation";
-    action: "create" | "update" | "delete" | "execute" | "validate";
-    target: string;
-    content?: string;
-    dependencies?: string[];
-    estimatedTime?: number;
-  }>;
-  guards: Array<{
-    id: string;
-    type: "constraint" | "validation" | "security" | "performance";
-    description: string;
-    required: boolean;
-  }>;
-  diff: {
-    added: number;
-    modified: number;
-    deleted: number;
-    summary: string;
-  };
-}
-
-/**
- * Execution report format
- */
-export interface ExecutionReport extends StandardizedOutput {
-  kind: "ExecutionReport";
-  applied: Array<{
-    id: string;
-    action: string;
-    target: string;
-    status: "success" | "failed" | "skipped";
-    error?: string;
-    duration?: number;
-  }>;
-  junit?: JUnitTestSuite;
-  report: {
-    totalActions: number;
-    successful: number;
-    failed: number;
-    skipped: number;
-    duration: number;
-  };
-}
-
-/**
- * JUnit XML format for test reporting
- */
-export interface JUnitTestSuite {
-  name: string;
-  tests: number;
-  failures: number;
-  errors: number;
-  time: number;
-  testcases: Array<{
-    classname: string;
-    name: string;
-    time: number;
-    failure?: {
-      message: string;
-      type: string;
-      content: string;
-    };
-    error?: {
-      message: string;
-      type: string;
-      content: string;
-    };
-  }>;
-}
-
-/**
- * Surface extraction output format
- */
-export interface SurfaceOutput extends StandardizedOutput {
-  kind: "Surface";
-  language: string;
-  surface: {
-    symbols: Array<{
-      name: string;
-      type: string;
-      visibility: string;
-      signature?: string;
-      location: {
-        file: string;
-        line: number;
-        column: number;
-      };
-    }>;
-    statistics: {
-      totalSymbols: number;
-      publicSymbols: number;
-      privateSymbols: number;
-      byType: Record<string, number>;
-    };
-  };
-  delta?: {
-    added: number;
-    modified: number;
-    removed: number;
-    breaking: boolean;
-    requiredBump: "MAJOR" | "MINOR" | "PATCH";
-  };
-}
-
-/**
- * Trace output for requirements → spec → tests → code traceability
- */
-export interface TraceOutput extends StandardizedOutput {
-  kind: "Trace";
-  links: {
-    requirements: Array<{
-      id: string;
-      title: string;
-      linkedSpecs: string[];
-      linkedTests: string[];
-      linkedCode: string[];
-      coverage: "complete" | "partial" | "missing";
-    }>;
-    specs: Array<{
-      id: string;
-      name: string;
-      linkedRequirements: string[];
-      linkedTests: string[];
-      linkedCode: string[];
-    }>;
-    tests: Array<{
-      id: string;
-      name: string;
-      file: string;
-      linkedRequirements: string[];
-      linkedSpecs: string[];
-      linkedCode: string[];
-    }>;
-    code: Array<{
-      id: string;
-      path: string;
-      anchor: string;
-      linkedRequirements: string[];
-      linkedSpecs: string[];
-      linkedTests: string[];
-    }>;
-  };
-  coverage: {
-    requirements: {
-      total: number;
-      covered: number;
-      percentage: number;
-    };
-    specs: {
-      total: number;
-      implemented: number;
-      percentage: number;
-    };
-    contracts: {
-      total: number;
-      tested: number;
-      percentage: number;
-    };
-  };
-}
-
-/**
- * NDJSON event format for --agent-mode streaming
- */
-export interface NDJSONEvent {
-  phase: string;
-  timestamp: number;
-  status: "start" | "progress" | "complete" | "error";
-  data?: Record<string, unknown>;
-  error?: string;
-}
-
-/**
- * Phase-based events for different commands
- */
-export type PhaseEvent =
-  | {
-      phase: "validate";
-      status: "start" | "complete";
-      data?: { files?: string[]; valid?: boolean; errors?: number };
-    }
-  | {
-      phase: "validate";
-      status: "error";
-      error: string;
-      data?: { files?: string[]; valid?: boolean; errors?: number };
-    }
-  | {
-      phase: "surface";
-      status: "start" | "complete";
-      data?: {
-        language?: string;
-        symbols?: number;
-        delta?: unknown;
-        outputFile?: string;
-        projectName?: string;
-      };
-    }
-  | {
-      phase: "surface";
-      status: "error";
-      error: string;
-      data?: {
-        language?: string;
-        symbols?: number;
-        delta?: unknown;
-        outputFile?: string;
-        projectName?: string;
-      };
-    }
-  | {
-      phase: "plan";
-      status: "start" | "complete";
-      data?: { actions?: number; guards?: number };
-    }
-  | {
-      phase: "plan";
-      status: "error";
-      error: string;
-      data?: { actions?: number; guards?: number };
-    }
-  | {
-      phase: "execute";
-      status: "start" | "progress" | "complete";
-      data?: { action?: string; progress?: number; total?: number };
-    }
-  | {
-      phase: "execute";
-      status: "error";
-      error: string;
-      data?: { action?: string; progress?: number; total?: number };
-    }
-  | {
-      phase: "test";
-      status: "start" | "complete";
-      data?: { tests?: number; passed?: number; failed?: number };
-    }
-  | {
-      phase: "test";
-      status: "error";
-      error: string;
-      data?: { tests?: number; passed?: number; failed?: number };
-    }
-  | {
-      phase: "watch";
-      status: "start" | "progress" | "complete";
-      data?: {
-        changed?: string[];
-        validate?: unknown;
-        surface?: unknown;
-        gates?: unknown;
-        eventCount?: number;
-        debounceWindow?: number;
-        processedFiles?: { cue?: number; code?: number; other?: number };
-        reason?: string;
-        path?: string;
-        debounce?: number;
-        message?: string;
-        patterns?: string[];
-      };
-    }
-  | {
-      phase: "watch";
-      status: "error";
-      error: string;
-      data?: {
-        changed?: string[];
-        validate?: unknown;
-        surface?: unknown;
-        gates?: unknown;
-        eventCount?: number;
-        debounceWindow?: number;
-        processedFiles?: { cue?: number; code?: number; other?: number };
-        reason?: string;
-        path?: string;
-        debounce?: number;
-        message?: string;
-        patterns?: string[];
-      };
-    };
+import { safeFileOperation } from "../constraints/index.js";
+import {
+  API_VERSION,
+  type ExecutionReport,
+  type JUnitTestSuite,
+  type NDJSONEvent,
+  type PhaseEvent,
+  type PlanOutput,
+  type StandardizedOutput,
+  type SurfaceOutput,
+  type TraceOutput,
+} from "../types/output.js";
 
 /**
  * Output utility class for managing standardized outputs
@@ -388,7 +94,7 @@ export class StandardizedOutputManager {
       metadata,
     };
 
-    await writeFile(outputPath, JSON.stringify(output, null, 2));
+    await this.writeFileSafely(outputPath, JSON.stringify(output, null, 2));
 
     if (!this.agentMode) {
       console.log(chalk.green(`✅ Plan written to ${outputPath}`));
@@ -401,7 +107,7 @@ export class StandardizedOutputManager {
   async writeDiffFile(diff: string, outputPath = "diff.txt"): Promise<void> {
     const header = `# Diff Report\n# Generated by Arbiter CLI v${API_VERSION}\n# Timestamp: ${new Date().toISOString()}\n# Command: ${this.command}\n\n`;
 
-    await writeFile(outputPath, header + diff);
+    await this.writeFileSafely(outputPath, header + diff);
 
     if (!this.agentMode) {
       console.log(chalk.green(`✅ Diff written to ${outputPath}`));
@@ -413,7 +119,7 @@ export class StandardizedOutputManager {
    */
   async writeJUnitFile(testSuite: JUnitTestSuite, outputPath = "junit.xml"): Promise<void> {
     const xml = this.generateJUnitXML(testSuite);
-    await writeFile(outputPath, xml);
+    await this.writeFileSafely(outputPath, xml);
 
     if (!this.agentMode) {
       console.log(chalk.green(`✅ JUnit report written to ${outputPath}`));
@@ -424,7 +130,7 @@ export class StandardizedOutputManager {
    * Write report.json file
    */
   async writeReportFile(report: ExecutionReport, outputPath = "report.json"): Promise<void> {
-    await writeFile(outputPath, JSON.stringify(report, null, 2));
+    await this.writeFileSafely(outputPath, JSON.stringify(report, null, 2));
 
     if (!this.agentMode) {
       console.log(chalk.green(`✅ Execution report written to ${outputPath}`));
@@ -435,7 +141,7 @@ export class StandardizedOutputManager {
    * Write TRACE.json file
    */
   async writeTraceFile(trace: TraceOutput, outputPath = "TRACE.json"): Promise<void> {
-    await writeFile(outputPath, JSON.stringify(trace, null, 2));
+    await this.writeFileSafely(outputPath, JSON.stringify(trace, null, 2));
 
     if (!this.agentMode) {
       console.log(chalk.green(`✅ Trace report written to ${outputPath}`));
@@ -446,7 +152,7 @@ export class StandardizedOutputManager {
    * Write surface.json file
    */
   async writeSurfaceFile(surface: SurfaceOutput, outputPath = "surface.json"): Promise<void> {
-    await writeFile(outputPath, JSON.stringify(surface, null, 2));
+    await this.writeFileSafely(outputPath, JSON.stringify(surface, null, 2));
 
     if (!this.agentMode) {
       console.log(chalk.green(`✅ Surface analysis written to ${outputPath}`));
@@ -481,6 +187,12 @@ export class StandardizedOutputManager {
     if (this.ndjsonStream) {
       this.ndjsonStream.end();
     }
+  }
+
+  private async writeFileSafely(outputPath: string, content: string): Promise<void> {
+    await safeFileOperation("write", outputPath, async (validatedPath) => {
+      await writeFile(validatedPath, content);
+    });
   }
 
   /**
@@ -549,3 +261,15 @@ export function addAgentModeOption(command: any): void {
 export function shouldUseAgentMode(options: any): boolean {
   return !!options.agentMode || !!options.ndjsonOutput;
 }
+
+export { API_VERSION } from "../types/output.js";
+export type {
+  ExecutionReport,
+  JUnitTestSuite,
+  NDJSONEvent,
+  PhaseEvent,
+  PlanOutput,
+  StandardizedOutput,
+  SurfaceOutput,
+  TraceOutput,
+} from "../types/output.js";

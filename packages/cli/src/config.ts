@@ -57,12 +57,16 @@ function generateProjectId(): string {
 export const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
   clientsDirectory: "clients",
   servicesDirectory: "services",
-  modulesDirectory: "modules",
+  packagesDirectory: "packages",
   toolsDirectory: "tools",
   docsDirectory: "docs",
   testsDirectory: "tests",
   infraDirectory: "infra",
-  endpointDirectory: "services/endpoints",
+  packageRelative: {
+    docsDirectory: false,
+    testsDirectory: false,
+    infraDirectory: false,
+  },
 };
 
 /**
@@ -86,6 +90,45 @@ export const DEFAULT_CONFIG: CLIConfig = {
  * Listed in order of preference
  */
 export const COMMON_PORTS = [5050, 3000, 4000, 8080] as const;
+
+/**
+ * Apply CLI flag overrides (used by cli/context.ts).
+ * Keeps all override rules in one place.
+ */
+export function applyCliOverrides(
+  config: CLIConfig,
+  options: {
+    apiUrl?: string;
+    arbiterUrl?: string;
+    timeout?: number | string;
+    color?: boolean;
+    local?: boolean;
+    verbose?: boolean;
+  },
+): CLIConfig {
+  const next = { ...config };
+
+  const cliUrl = options.arbiterUrl ?? options.apiUrl;
+  if (cliUrl) next.apiUrl = String(cliUrl);
+
+  if (options.timeout !== undefined) {
+    const parsed =
+      typeof options.timeout === "string" ? parseInt(options.timeout, 10) : options.timeout;
+    if (!Number.isNaN(parsed)) {
+      next.timeout = parsed;
+    }
+  }
+
+  if (options.color === false) next.color = false;
+  if (typeof options.local === "boolean") next.localMode = options.local;
+  if (options.verbose) next.verbose = true;
+
+  // Normalize URL and booleans
+  next.apiUrl = next.apiUrl.trim().replace(/\/+$/, "") || next.apiUrl.trim();
+  next.localMode = Boolean(next.localMode);
+
+  return next;
+}
 
 /**
  * Configuration file schema for validation
@@ -222,12 +265,18 @@ const projectStructureSchema = z
   .object({
     clientsDirectory: z.string().optional(),
     servicesDirectory: z.string().optional(),
-    modulesDirectory: z.string().optional(),
+    packagesDirectory: z.string().optional(),
     toolsDirectory: z.string().optional(),
     docsDirectory: z.string().optional(),
     testsDirectory: z.string().optional(),
     infraDirectory: z.string().optional(),
-    endpointDirectory: z.string().optional(),
+    packageRelative: z
+      .object({
+        docsDirectory: z.boolean().optional(),
+        testsDirectory: z.boolean().optional(),
+        infraDirectory: z.boolean().optional(),
+      })
+      .optional(),
   })
   .optional();
 
@@ -324,20 +373,10 @@ const configSchema = z.object({
 });
 
 /**
- * Possible configuration file names
+ * Supported configuration file locations
+ * The CLI now standardizes on `.arbiter/config.json` only.
  */
-const CONFIG_FILES = [
-  ".arbiter/config.json",
-  ".arbiter/config.yaml",
-  ".arbiter/config.yml",
-  // Legacy paths for backward compatibility
-  ".arbiter.json",
-  ".arbiter.yaml",
-  ".arbiter.yml",
-  "arbiter.json",
-  "arbiter.yaml",
-  "arbiter.yml",
-];
+const CONFIG_FILES = [".arbiter/config.json"];
 
 function normalizeConfigShape(input: unknown): Record<string, unknown> {
   if (!input || typeof input !== "object") {
@@ -559,7 +598,12 @@ function mergeTestingConfig(
 function cloneConfig(config: CLIConfig): CLIConfig {
   return {
     ...config,
-    projectStructure: { ...config.projectStructure },
+    projectStructure: {
+      ...config.projectStructure,
+      packageRelative: config.projectStructure.packageRelative
+        ? { ...config.projectStructure.packageRelative }
+        : undefined,
+    },
     uiOptions: cloneUIOptionCatalog(config.uiOptions),
     uiOptionGenerators: config.uiOptionGenerators ? { ...config.uiOptionGenerators } : undefined,
     configFilePath: config.configFilePath,
@@ -589,6 +633,11 @@ export function applyEnvironmentOverrides(config: CLIConfig): CLIConfig {
 
   if (envUrl) {
     merged.apiUrl = envUrl;
+  }
+
+  const verboseEnv = process.env.ARBITER_VERBOSE || process.env.ARBITER_FETCH_DEBUG;
+  if (isTruthyEnvFlag(verboseEnv)) {
+    merged.verbose = true;
   }
 
   return merged;
@@ -635,6 +684,11 @@ function mergeOptionGenerators(
     }
   }
   return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function isTruthyEnvFlag(value: string | undefined): boolean {
+  if (!value) return false;
+  return /^(1|true|yes|verbose)$/i.test(value.trim());
 }
 
 function mergeGeneratorConfig(
@@ -717,6 +771,11 @@ function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig
       ...DEFAULT_PROJECT_STRUCTURE,
       ...base.projectStructure,
       ...(overrides.projectStructure ?? {}),
+      packageRelative: {
+        ...DEFAULT_PROJECT_STRUCTURE.packageRelative,
+        ...(base.projectStructure.packageRelative ?? {}),
+        ...(overrides.projectStructure?.packageRelative ?? {}),
+      },
     },
     uiOptions: mergeOptionCatalog(base.uiOptions, overrides.uiOptions),
     uiOptionGenerators: mergeOptionGenerators(
@@ -908,7 +967,9 @@ export async function saveConfig(config: Partial<CLIConfig>, filePath: string): 
 
   // Ensure the directory exists
   await fs.ensureDir(path.dirname(filePath));
-  await fs.writeFile(filePath, content, "utf-8");
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, "utf-8");
+  });
 }
 
 /**
