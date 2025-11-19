@@ -1,6 +1,6 @@
 import type { CLIConfig } from "../../types.js";
 import { type Epic, ShardedCUEStorage, type Task } from "../../utils/sharded-storage.js";
-import type { EpicCreateOptions, EpicOptions, TaskCreateOptions, TaskOptions } from "./index.js";
+import type { EpicCreateOptions, EpicOptions, TaskCreateOptions, TaskOptions } from "./types.js";
 
 export interface EpicListFilters {
   status?: string;

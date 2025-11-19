@@ -17,12 +17,12 @@ import {
   updateEpicData,
   updateTaskData,
 } from "../services/epic/data.js";
-import type { EpicOptions, TaskOptions } from "../services/epic/index.js";
+import type { EpicOptions, TaskOptions } from "../services/epic/types.js";
 import type { CLIConfig } from "../types.js";
 import { formatJson, formatTable } from "../utils/formatting.js";
 import { type Epic as EpicModel, ShardedCUEStorage } from "../utils/sharded-storage.js";
 
-export type { EpicOptions, TaskOptions } from "../services/epic/index.js";
+export type { EpicOptions, TaskOptions } from "../services/epic/types.js";
 
 export async function epicCommand(
   action: string,
