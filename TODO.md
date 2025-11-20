@@ -7,7 +7,4 @@
 - Client/constraints: payload cap raised to 5 MB, timeout to 10 s, and client-side rate limiting disabled (server handles 429s).
 
 ## Remaining
-- CUE/docs parity: replace legacy `schema-parser.ts` with cue-runner/AST-backed parsing and add regression tests for parser failures; legacy parser is no longer used in docs commands but still needs removal or rewrite.
-- GitHub sync robustness: persist arbiter-id to issue mapping locally (e.g., `.arbiter/sync-state.json`) to avoid duplicates when titles/bodies change; add sync tests.
-- Language plugin ergonomics: split frontend vs service generator interfaces to remove runtime `throw` stubs in backend-only languages. ✅ type guards/interfaces added.
-- Template hygiene: move remaining Python dev requirements/auth/test snippets into templates for full consistency. ✅ requirements-dev templated.
+- None for this cycle (core refactor items completed). Consider future enhancements: additional CUE parser coverage and plugin DX polish.
