@@ -72,7 +72,7 @@ export class PythonPlugin implements LanguagePlugin {
       case "handler":
         files.push({
           path: `app/handlers/${config.name}_handler.py`,
-          content: this.generateHandler(config),
+          content: await this.generateHandler(config),
         });
         break;
     }
@@ -153,11 +153,11 @@ export class PythonPlugin implements LanguagePlugin {
     if (config.auth) {
       files.push({
         path: "app/core/security.py",
-        content: this.generateSecurity(config),
+        content: await this.generateSecurity(config),
       });
       files.push({
         path: "app/core/auth.py",
-        content: this.generateAuth(config),
+        content: await this.generateAuth(config),
       });
       dependencies.push("python-jose[cryptography]", "passlib[bcrypt]");
     }
@@ -170,11 +170,11 @@ export class PythonPlugin implements LanguagePlugin {
       });
       files.push({
         path: "tests/conftest.py",
-        content: this.generateTestConfig(config),
+        content: await this.generateTestConfig(config),
       });
       files.push({
         path: "tests/test_main.py",
-        content: this.generateMainTest(config),
+        content: await this.generateMainTest(config),
       });
     }
 
@@ -182,18 +182,18 @@ export class PythonPlugin implements LanguagePlugin {
     if (config.docker) {
       files.push({
         path: "Dockerfile",
-        content: this.generateDockerfile(config),
+        content: await this.generateDockerfile(config),
       });
       files.push({
         path: "docker-compose.yml",
-        content: this.generateDockerCompose(config),
+        content: await this.generateDockerCompose(config),
       });
     }
 
     // Project metadata
     files.push({
       path: "pyproject.toml",
-      content: this.generatePyprojectToml(config),
+      content: await this.generatePyprojectToml(config),
     });
 
     return {
@@ -218,14 +218,14 @@ export class PythonPlugin implements LanguagePlugin {
     if (config.target === "production") {
       files.push({
         path: "Dockerfile.prod",
-        content: this.generateProductionDockerfile(config),
+        content: await this.generateProductionDockerfile(config),
       });
     }
 
     // CI/CD configuration
     files.push({
       path: ".github/workflows/python-app.yml",
-      content: this.generateGitHubActions(config),
+      content: await this.generateGitHubActions(config),
     });
 
     return { files };
@@ -373,16 +373,23 @@ class ${config.name}(Base):
     );
   }
 
-  private generateHandler(config: ServiceConfig): string {
-    return `"""
+  private async generateHandler(config: ServiceConfig): Promise<string> {
+    const dbImport = config.database ? "from app.core.database import get_db_session" : "";
+    const schemaImport = config.validation
+      ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update`
+      : "";
+    const dbDependency = config.database ? ", db: AsyncSession = Depends(get_db_session)" : "";
+    const dbArgument = config.database ? "db=db" : "";
+
+    const fallback = `"""
 ${config.name} Handler
 HTTP request handlers for ${config.name}
 """
 from fastapi import HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
-${config.database ? "from app.core.database import get_db_session" : ""}
-${config.validation ? `from app.schemas.${config.name}_schema import ${config.name}Schema, ${config.name}Create, ${config.name}Update` : ""}
+from typing import List, Any
+${dbImport}
+${schemaImport}
 from app.services.${config.name}_service import ${config.name.toLowerCase()}_service
 import logging
 
@@ -392,18 +399,18 @@ logger = logging.getLogger(__name__)
 class ${config.name}Handler:
     """Handler class for ${config.name} HTTP operations"""
 
-    async def handle_get_all(self${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> List[Any]:
+    async def handle_get_all(self${dbDependency}) -> List[Any]:
         """Handle GET request for all ${config.name} items"""
         try:
-            return await ${config.name.toLowerCase()}_service.get_all(${config.database ? "db=db" : ""})
+            return await ${config.name.toLowerCase()}_service.get_all(${dbArgument})
         except Exception as e:
             logger.error(f"Error fetching all ${config.name}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_get_by_id(self, item_id: int${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> Any:
+    async def handle_get_by_id(self, item_id: int${dbDependency}) -> Any:
         """Handle GET request for ${config.name} by ID"""
         try:
-            item = await ${config.name.toLowerCase()}_service.get_by_id(item_id${config.database ? ", db=db" : ""})
+            item = await ${config.name.toLowerCase()}_service.get_by_id(item_id${dbArgument ? `, ${dbArgument}` : ""})
             if not item:
                 raise HTTPException(status_code=404, detail="${config.name} not found")
             return item
@@ -413,18 +420,18 @@ class ${config.name}Handler:
             logger.error(f"Error fetching ${config.name} {item_id}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_create(self, item_data: Any${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> Any:
+    async def handle_create(self, item_data: Any${dbDependency}) -> Any:
         """Handle POST request to create ${config.name}"""
         try:
-            return await ${config.name.toLowerCase()}_service.create(item_data${config.database ? ", db=db" : ""})
+            return await ${config.name.toLowerCase()}_service.create(item_data${dbArgument ? `, ${dbArgument}` : ""})
         except Exception as e:
             logger.error(f"Error creating ${config.name}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_update(self, item_id: int, item_data: Any${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> Any:
+    async def handle_update(self, item_id: int, item_data: Any${dbDependency}) -> Any:
         """Handle PUT request to update ${config.name}"""
         try:
-            item = await ${config.name.toLowerCase()}_service.update(item_id, item_data${config.database ? ", db=db" : ""})
+            item = await ${config.name.toLowerCase()}_service.update(item_id, item_data${dbArgument ? `, ${dbArgument}` : ""})
             if not item:
                 raise HTTPException(status_code=404, detail="${config.name} not found")
             return item
@@ -434,10 +441,10 @@ class ${config.name}Handler:
             logger.error(f"Error updating ${config.name} {item_id}: {e}")
             raise HTTPException(status_code=500, detail="Internal server error")
 
-    async def handle_delete(self, item_id: int${config.database ? ", db: AsyncSession = Depends(get_db_session)" : ""}) -> dict:
+    async def handle_delete(self, item_id: int${dbDependency}) -> dict:
         """Handle DELETE request for ${config.name}"""
         try:
-            success = await ${config.name.toLowerCase()}_service.delete(item_id${config.database ? ", db=db" : ""})
+            success = await ${config.name.toLowerCase()}_service.delete(item_id${dbArgument ? `, ${dbArgument}` : ""})
             if not success:
                 raise HTTPException(status_code=404, detail="${config.name} not found")
             return {"message": "${config.name} deleted successfully"}
@@ -451,6 +458,22 @@ class ${config.name}Handler:
 # Handler instance
 ${config.name.toLowerCase()}_handler = ${config.name}Handler()
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "app/handlers/handler.py.tpl",
+      {
+        resource_name: config.name,
+        service_module: config.name,
+        service_instance: `${config.name.toLowerCase()}_service`,
+        handler_class: `${config.name}Handler`,
+        handler_instance: `${config.name.toLowerCase()}_handler`,
+        db_import: dbImport,
+        schema_import: schemaImport,
+        db_dependency: dbDependency,
+        db_argument: dbArgument,
+      },
+      fallback,
+    );
   }
 
   private async generatePydanticSchema(config: ServiceConfig): Promise<string> {
@@ -502,13 +525,12 @@ class ${config.name}InDB(${config.name}Schema):
     );
   }
 
-  private async generateMainApp(config: ProjectConfig): string {
+  private async generateMainApp(config: ProjectConfig): Promise<string> {
     const corsImport = config.features.includes("cors")
       ? "from fastapi.middleware.cors import CORSMiddleware"
       : "";
     const corsSetup = config.features.includes("cors")
-      ? `
-app.add_middleware(
+      ? `app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure appropriately for production
     allow_credentials=True,
@@ -516,8 +538,10 @@ app.add_middleware(
     allow_headers=["*"],
 )`
       : "";
+    const databaseImport = config.database ? "from app.core.database import init_db" : "";
+    const databaseStartup = config.database ? "await init_db()" : "";
 
-    return `"""
+    const fallback = `"""
 ${config.name} FastAPI Application
 Main application entry point with modern async patterns
 """
@@ -530,7 +554,7 @@ import logging
 import time
 
 from app.core.config import settings
-${config.database ? "from app.core.database import init_db" : ""}
+${databaseImport}
 
 # Configure logging
 logging.basicConfig(
@@ -545,7 +569,7 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     logger.info("Starting up ${config.name}")
-    ${config.database ? "await init_db()" : ""}
+    ${databaseStartup}
     
     yield
     
@@ -622,6 +646,19 @@ if __name__ == "__main__":
         log_level="info"
     )
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "app/main.py.tpl",
+      {
+        project_name: config.name,
+        description: config.description || "A modern FastAPI application",
+        cors_import: corsImport,
+        cors_setup: corsSetup,
+        database_import: databaseImport,
+        database_startup: databaseStartup,
+      },
+      fallback,
+    );
   }
 
   private async generateConfig(config: ProjectConfig): Promise<string> {
@@ -647,10 +684,10 @@ if __name__ == "__main__":
     return pythonTemplateResolver.renderTemplate("app/core/database.py.tpl", {}, fallback);
   }
 
-  private generateSecurity(config: ProjectConfig): string {
+  private async generateSecurity(config: ProjectConfig): Promise<string> {
     if (config.auth !== "jwt") return "";
 
-    return `"""
+    const fallback = `"""
 Security Utilities
 JWT token handling and password hashing
 """
@@ -705,12 +742,14 @@ def get_password_hash(password: str) -> str:
     """Get password hash"""
     return pwd_context.hash(password)
 `;
+
+    return pythonTemplateResolver.renderTemplate("app/core/security.py.tpl", {}, fallback);
   }
 
-  private generateAuth(config: ProjectConfig): string {
+  private async generateAuth(config: ProjectConfig): Promise<string> {
     if (config.auth !== "jwt") return "";
 
-    return `"""
+    const fallback = `"""
 Authentication Dependencies
 FastAPI dependencies for authentication
 """
@@ -774,6 +813,8 @@ async def get_current_active_user(
     
     return current_user
 `;
+
+    return pythonTemplateResolver.renderTemplate("app/core/auth.py.tpl", {}, fallback);
   }
 
   private async generateRequirements(config: ProjectConfig, baseDeps: string[]): Promise<string> {
@@ -813,33 +854,12 @@ async def get_current_active_user(
     return devDeps.sort().join("\n");
   }
 
-  private generateTestConfig(config: ProjectConfig): string {
-    return `"""
-Pytest Configuration
-Test fixtures and configuration
-"""
-import pytest
-import asyncio
-from typing import Generator, AsyncGenerator
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-
-from app.main import app
-${config.database ? "from app.core.database import get_db_session, Base" : ""}
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-${
-  config.database
-    ? `@pytest.fixture(scope="session")
+  private async generateTestConfig(config: ProjectConfig): Promise<string> {
+    const databaseImport = config.database
+      ? "from app.core.database import get_db_session, Base"
+      : "";
+    const databaseFixtures = config.database
+      ? `@pytest.fixture(scope="session")
 async def test_db():
     """Create test database"""
     # Use in-memory SQLite for tests
@@ -870,10 +890,34 @@ def override_get_db(db_session):
     
     app.dependency_overrides[get_db_session] = _override_get_db
     yield
-    app.dependency_overrides.clear()`
-    : ""
-}
+    app.dependency_overrides.clear()
+`
+      : "";
 
+    const fallback = `"""
+Pytest Configuration
+Test fixtures and configuration
+"""
+import pytest
+import asyncio
+from typing import Generator, AsyncGenerator
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+
+from app.main import app
+${databaseImport}
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
+${databaseFixtures}
 
 @pytest.fixture
 def client() -> Generator[TestClient, None, None]:
@@ -888,10 +932,16 @@ async def async_client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "tests/conftest.py.tpl",
+      { database_import: databaseImport, database_fixtures: databaseFixtures },
+      fallback,
+    );
   }
 
-  private generateMainTest(config: ProjectConfig): string {
-    return `"""
+  private async generateMainTest(config: ProjectConfig): Promise<string> {
+    const fallback = `"""
 Main Application Tests
 Basic API endpoint tests
 """
@@ -935,10 +985,16 @@ async def test_health_check_async(async_client: AsyncClient):
     data = response.json()
     assert data["status"] == "healthy"
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "tests/test_main.py.tpl",
+      { project_name: config.name },
+      fallback,
+    );
   }
 
-  private generateDockerfile(config: ProjectConfig): string {
-    return `# Python ${config.name} Dockerfile
+  private async generateDockerfile(config: ProjectConfig): Promise<string> {
+    const fallback = `# Python ${config.name} Dockerfile
 FROM python:3.11-slim
 
 # Set working directory
@@ -979,13 +1035,18 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 # Run application
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "Dockerfile.tpl",
+      { project_name: config.name },
+      fallback,
+    );
   }
 
-  private generateDockerCompose(config: ProjectConfig): string {
+  private async generateDockerCompose(config: ProjectConfig): Promise<string> {
     const dbService =
       config.database === "postgres"
-        ? `
-  database:
+        ? `  database:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: ${config.name.toLowerCase()}
@@ -1002,7 +1063,19 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
       retries: 5`
         : "";
 
-    return `version: '3.8'
+    const databaseEnv = config.database
+      ? `- DATABASE_URL=postgresql+asyncpg://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}`
+      : "";
+
+    const dependsOnBlock = config.database
+      ? `depends_on:
+      database:
+        condition: service_healthy`
+      : "";
+
+    const volumesBlock = config.database === "postgres" ? "volumes:\n  postgres_data:" : "";
+
+    const fallback = `version: '3.8'
 
 services:
   app:
@@ -1011,35 +1084,36 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=true
-      ${config.database ? `- DATABASE_URL=postgresql+asyncpg://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ""}
-    ${
-      config.database
-        ? `depends_on:
-      database:
-        condition: service_healthy`
-        : ""
-    }
+      ${databaseEnv}
+    ${dependsOnBlock}
     volumes:
       - .:/app
     restart: unless-stopped
 ${dbService}
 
-${
-  config.database === "postgres"
-    ? `volumes:
-  postgres_data:`
-    : ""
-}
+${volumesBlock}
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "docker-compose.yml.tpl",
+      {
+        database_env: databaseEnv,
+        depends_on_block: dependsOnBlock,
+        database_block: dbService,
+        volumes_block: volumesBlock,
+      },
+      fallback,
+    );
   }
 
-  private generatePyprojectToml(config: ProjectConfig): string {
-    return `[build-system]
+  private async generatePyprojectToml(config: ProjectConfig): Promise<string> {
+    const projectSlug = config.name.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+    const fallback = `[build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "${config.name.toLowerCase().replace(/[^a-z0-9-]/g, "-")}"
+name = "${projectSlug}"
 version = "1.0.0"
 description = "${config.description || `Modern FastAPI application: ${config.name}`}"
 authors = [
@@ -1089,10 +1163,18 @@ python_functions = "test_*"
 addopts = "-v --tb=short"
 asyncio_mode = "auto"
 `;
-  }
 
-  private generateProductionDockerfile(config: BuildConfig): string {
-    return `# Production Python Dockerfile
+    return pythonTemplateResolver.renderTemplate(
+      "pyproject.toml.tpl",
+      {
+        project_slug: projectSlug,
+        description: config.description || `Modern FastAPI application: ${config.name}`,
+      },
+      fallback,
+    );
+  }
+  private async generateProductionDockerfile(config: BuildConfig): Promise<string> {
+    const fallback = `# Production Python Dockerfile
 FROM python:3.11-slim as builder
 
 WORKDIR /app
@@ -1142,10 +1224,30 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
 `;
+
+    return pythonTemplateResolver.renderTemplate("Dockerfile.prod.tpl", {}, fallback);
   }
 
-  private generateGitHubActions(config: BuildConfig): string {
-    return `name: Python Application CI/CD
+  private async generateGitHubActions(config: BuildConfig): Promise<string> {
+    const deployBlock =
+      config.target === "production"
+        ? `deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build and push Docker image
+      env:
+        DOCKER_REGISTRY: your-registry.com
+      run: |
+        docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:\${{ github.sha }} .
+        docker push $DOCKER_REGISTRY/your-app:\${{ github.sha }}`
+        : "";
+
+    const fallback = `name: Python Application CI/CD
 
 on:
   push:
@@ -1220,27 +1322,18 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-  ${
-    config.target === "production"
-      ? `deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Build and push Docker image
-      env:
-        DOCKER_REGISTRY: your-registry.com
-      run: |
-        docker build -f Dockerfile.prod -t $DOCKER_REGISTRY/your-app:$` +
-        "{{ github.sha }}" +
-        ` .
-        docker push $DOCKER_REGISTRY/your-app:$` +
-        "{{ github.sha }}"
-      : ""
-  }
+${deployBlock}
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      ".github/workflows/python-app.yml.tpl",
+      {
+        deploy_block: deployBlock,
+        runner_os_expr: "${{ runner.os }}",
+        hashfiles_expr: "${{ hashFiles('**/requirements*.txt') }}",
+        github_sha_expr: "${{ github.sha }}",
+      },
+      fallback,
+    );
   }
 }
