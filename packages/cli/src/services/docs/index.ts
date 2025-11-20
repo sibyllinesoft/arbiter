@@ -3,8 +3,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
-import { safeFileOperation } from "../constraints/index.js";
-import type { CLIConfig } from "../types.js";
+import { safeFileOperation } from "../../constraints/index.js";
+import type { CLIConfig } from "../../types.js";
 
 /**
  * Options for docs command

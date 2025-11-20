@@ -5,12 +5,12 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { docsGenerateCommand } from "../commands/docs-generate.js";
-import { docsCommand } from "../commands/docs.js";
 import { examplesCommand } from "../commands/examples.js";
 import { executeCommand } from "../commands/execute.js";
 import { explainCommand } from "../commands/explain.js";
 import { renameCommand, showNamingHelp } from "../commands/rename.js";
 import { loadConfigWithGitDetection } from "../config.js";
+import { docsCommand } from "../services/docs/index.js";
 import { generateCommand as runGenerateCommand } from "../services/generate/index.js";
 import type { GenerateOptions } from "../types.js";
 import { requireCommandConfig } from "./context.js";
