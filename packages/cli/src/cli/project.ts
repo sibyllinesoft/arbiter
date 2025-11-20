@@ -7,12 +7,12 @@ import { Command } from "commander";
 import { diffCommand } from "../commands/diff.js";
 import { listTemplates } from "../commands/init.js";
 import { surfaceCommand } from "../commands/surface.js";
-import { watchCommand } from "../commands/watch.js";
 import { runCheckCommand } from "../services/check/index.js";
 import { initProject } from "../services/init/index.js";
 import { listCommand } from "../services/list/index.js";
 import { importSpec } from "../services/spec-import/index.js";
 import { statusCommand } from "../services/status/index.js";
+import { watchCommand } from "../services/watch/index.js";
 import type { SurfaceLanguage } from "../surface-extraction/types.js";
 import type {
   CheckOptions,
