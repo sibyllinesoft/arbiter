@@ -11,6 +11,15 @@ import type {
   ProjectConfig,
   ServiceConfig,
 } from "./index.js";
+import { TemplateResolver } from "./template-resolver.js";
+
+const pythonTemplateResolver = new TemplateResolver({
+  language: "python",
+  defaultDirectories: [
+    new URL("./templates/python", import.meta.url).pathname,
+    new URL("../templates/python", import.meta.url).pathname,
+  ],
+});
 
 export class PythonPlugin implements LanguagePlugin {
   readonly name = "Python Plugin";
@@ -95,7 +104,7 @@ export class PythonPlugin implements LanguagePlugin {
     // Requirements file
     files.push({
       path: "requirements.txt",
-      content: this.generateRequirements(config, dependencies),
+      content: await this.generateRequirements(config, dependencies),
     });
 
     // Development requirements
@@ -107,13 +116,13 @@ export class PythonPlugin implements LanguagePlugin {
     // Main application file
     files.push({
       path: "app/main.py",
-      content: this.generateMainApp(config),
+      content: await this.generateMainApp(config),
     });
 
     // Application configuration
     files.push({
       path: "app/core/config.py",
-      content: this.generateConfig(config),
+      content: await this.generateConfig(config),
     });
 
     // Core package init
@@ -131,7 +140,7 @@ export class PythonPlugin implements LanguagePlugin {
     if (config.database) {
       files.push({
         path: "app/core/database.py",
-        content: this.generateDatabase(config),
+        content: await this.generateDatabase(config),
       });
       files.push({
         path: "app/models/__init__.py",
@@ -469,7 +478,7 @@ class ${config.name}InDB(${config.name}Schema):
 `;
   }
 
-  private generateMainApp(config: ProjectConfig): string {
+  private async generateMainApp(config: ProjectConfig): string {
     const corsImport = config.features.includes("cors")
       ? "from fastapi.middleware.cors import CORSMiddleware"
       : "";
@@ -591,7 +600,7 @@ if __name__ == "__main__":
 `;
   }
 
-  private generateConfig(config: ProjectConfig): string {
+  private async generateConfig(config: ProjectConfig): string {
     return `"""
 Application Configuration
 Environment-based configuration using Pydantic Settings
@@ -644,7 +653,7 @@ settings = Settings()
 `;
   }
 
-  private generateDatabase(config: ProjectConfig): string {
+  private async generateDatabase(config: ProjectConfig): string {
     const dbType = config.database || "postgres";
 
     return `"""
@@ -844,7 +853,7 @@ async def get_current_active_user(
 `;
   }
 
-  private generateRequirements(config: ProjectConfig, baseDeps: string[]): string {
+  private async generateRequirements(config: ProjectConfig, baseDeps: string[]): Promise<string> {
     const deps = [...baseDeps];
 
     if (config.database) {
@@ -853,11 +862,14 @@ async def get_current_active_user(
     if (config.auth === "jwt") {
       deps.push("python-jose[cryptography]>=3.3.0", "passlib[bcrypt]>=1.7.4");
     }
-    if (config.features.includes("cors")) {
-      // CORS support is built into FastAPI
-    }
 
-    return deps.sort().join("\n");
+    const databaseDeps = config.database ? "sqlalchemy>=2.0.0\nasyncpg>=0.28.0\n" : "";
+    const fallback = deps.sort().join("\n");
+    return pythonTemplateResolver.renderTemplate(
+      "requirements.txt.tpl",
+      { databaseDeps },
+      fallback,
+    );
   }
 
   private generateDevRequirements(config: ProjectConfig): string {
