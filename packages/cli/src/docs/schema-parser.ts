@@ -1,12 +1,14 @@
 /**
- * CUE Schema Parser for Arbiter
+ * CUE Schema Parser backed by the official cue-runner
  *
- * Parses CUE schema files to extract type definitions, constraints, comments,
- * and metadata for documentation generation.
+ * Avoids regex/string parsing and instead relies on the CUE toolchain to
+ * export schemas to JSON, then derives a lightweight documentation model
+ * (ParsedSchema/ParsedType/ParsedField) used by the docs generator.
  */
 
-import { readFileSync } from "fs";
-import path from "path";
+import path from "node:path";
+import { CueRunner } from "@arbiter/cue-runner";
+import fs from "fs-extra";
 
 export interface ParsedField {
   name: string;
@@ -49,238 +51,84 @@ export interface ParsedSchema {
   };
 }
 
-export class CUESchemaParser {
-  private currentFile: string = "";
+export interface SchemaParserOptions {
+  includePrivate?: boolean;
+  runner?: Pick<CueRunner, "exportJson">;
+}
 
-  /**
-   * Parse a CUE schema file and extract type definitions
-   */
-  parseFile(filePath: string): ParsedSchema {
-    this.currentFile = filePath;
-    const content = readFileSync(filePath, "utf-8");
-    return this.parseContent(content, filePath);
+export class CUESchemaParser {
+  private readonly includePrivate: boolean;
+  private readonly runner: Pick<CueRunner, "exportJson">;
+
+  constructor(options: SchemaParserOptions = {}) {
+    this.includePrivate = options.includePrivate ?? false;
+    this.runner = options.runner ?? new CueRunner();
   }
 
-  /**
-   * Parse multiple schema files and merge them
-   */
-  parseFiles(filePaths: string[]): ParsedSchema {
-    const schemas = filePaths.map((path) => this.parseFile(path));
+  async parseDirectory(dir: string): Promise<ParsedSchema> {
+    const files = this.findCueFiles(dir);
+    if (files.length === 0) {
+      throw new Error(`No .cue files found in ${dir}`);
+    }
+    return await this.parseFiles(files);
+  }
+
+  async parseFiles(filePaths: string[]): Promise<ParsedSchema> {
+    const schemas: ParsedSchema[] = [];
+
+    for (const file of filePaths) {
+      schemas.push(await this.parseFile(file));
+    }
+
     return this.mergeSchemas(schemas);
   }
 
-  private parseContent(content: string, filePath: string): ParsedSchema {
-    const lines = content.split("\n");
-    const schema: ParsedSchema = {
-      package: "",
+  async parseFile(filePath: string): Promise<ParsedSchema> {
+    const content = await fs.readFile(filePath, "utf8");
+    const pkg = this.extractPackageName(content) || path.basename(path.dirname(filePath));
+    const description = this.extractFileDescription(content);
+
+    const exportResult = await this.runner.exportJson([filePath]);
+    if (!exportResult.success || !exportResult.value) {
+      const reason =
+        exportResult.diagnostics?.[0]?.message || exportResult.error || "Unknown CUE export error";
+      throw new Error(`Failed to parse ${filePath}: ${reason}`);
+    }
+
+    const types = new Map<string, ParsedType>();
+    this.walkValue(exportResult.value, pkg, filePath, types, []);
+
+    return {
+      package: pkg,
       imports: [],
-      types: new Map(),
+      types,
       comments: new Map(),
       metadata: {
         file: path.basename(filePath),
-        description: this.extractFileDescription(content),
+        description,
       },
     };
-
-    let currentComment = "";
-    let lineNumber = 0;
-
-    for (const line of lines) {
-      lineNumber++;
-      const trimmed = line.trim();
-
-      // Extract package declaration
-      if (trimmed.startsWith("package ")) {
-        schema.package = trimmed.replace("package ", "");
-        continue;
-      }
-
-      // Extract imports
-      if (trimmed.startsWith("import ")) {
-        const importMatch = trimmed.match(/import\s+"([^"]+)"/);
-        if (importMatch) {
-          schema.imports.push(importMatch[1]);
-        }
-        continue;
-      }
-
-      // Collect comments
-      if (trimmed.startsWith("//")) {
-        currentComment += trimmed.substring(2).trim() + " ";
-        continue;
-      }
-
-      // Parse type definitions
-      if (trimmed.includes("#") && (trimmed.includes(":") || trimmed.includes("="))) {
-        const typeInfo = this.parseTypeDefinition(line, lineNumber, currentComment);
-        if (typeInfo) {
-          typeInfo.location = {
-            file: filePath,
-            line: lineNumber,
-          };
-          schema.types.set(typeInfo.name, typeInfo);
-          if (currentComment) {
-            schema.comments.set(typeInfo.name, currentComment.trim());
-          }
-        }
-        currentComment = "";
-        continue;
-      }
-
-      // Reset comment if we hit a non-comment, non-type line
-      if (trimmed && !trimmed.startsWith("//")) {
-        currentComment = "";
-      }
-    }
-
-    // Extract relationships and dependencies
-    this.extractRelationships(schema);
-
-    return schema;
   }
 
-  private parseTypeDefinition(
-    line: string,
-    lineNumber: number,
-    comment: string,
-  ): ParsedType | null {
-    const trimmed = line.trim();
+  // --- helpers ---
 
-    // Match type definition patterns
-    const typeDefMatch = trimmed.match(/^(#\w+):\s*(.+)$/);
-    if (!typeDefMatch) return null;
-
-    const [, typeName, definition] = typeDefMatch;
-    const name = typeName.substring(1); // Remove the # prefix
-
-    const typeInfo: ParsedType = {
-      name,
-      description: comment.trim() || undefined,
-      kind: this.determineTypeKind(definition),
-      location: { file: this.currentFile, line: lineNumber },
-      constraints: [],
-      examples: [],
-      usedBy: [],
-      dependsOn: [],
-    };
-
-    // Parse different type definitions
-    if (definition.includes("=~")) {
-      // Regex constraint
-      typeInfo.kind = "constraint";
-      typeInfo.baseType = "string";
-      const regexMatch = definition.match(/=~"([^"]+)"/);
-      if (regexMatch) {
-        typeInfo.constraints = [`Pattern: ${regexMatch[1]}`];
-      }
-    } else if (definition.includes("|")) {
-      // Union type or enum
-      typeInfo.kind = "union";
-      typeInfo.values = this.parseUnionValues(definition);
-    } else if (definition.includes("&")) {
-      // Type with constraints
-      typeInfo.kind = "constraint";
-      typeInfo.constraints = this.parseConstraints(definition);
-      typeInfo.baseType = this.extractBaseType(definition);
-    } else if (definition.includes("{")) {
-      // Struct type
-      typeInfo.kind = "struct";
-      typeInfo.fields = []; // Will be parsed in a subsequent pass for nested structures
-    } else {
-      // Simple type reference or primitive
-      typeInfo.kind = "primitive";
-      typeInfo.baseType = definition.trim();
-    }
-
-    // Extract examples from comments
-    const exampleMatch = comment.match(/e\.g\.,?\s*([^,\n]+)/i);
-    if (exampleMatch) {
-      typeInfo.examples = [exampleMatch[1].trim()];
-    }
-
-    return typeInfo;
-  }
-
-  private determineTypeKind(
-    definition: string,
-  ): "struct" | "enum" | "constraint" | "union" | "primitive" {
-    if (definition.includes("{")) return "struct";
-    if (definition.includes("|") && definition.includes('"')) return "enum";
-    if (definition.includes("|")) return "union";
-    if (definition.includes("=~") || definition.includes("&")) return "constraint";
-    return "primitive";
-  }
-
-  private parseUnionValues(definition: string): string[] {
-    const values: string[] = [];
-    const parts = definition.split("|");
-
-    for (const part of parts) {
-      const trimmed = part.trim();
-      const stringMatch = trimmed.match(/"([^"]+)"/);
-      if (stringMatch) {
-        values.push(stringMatch[1]);
-      } else if (trimmed && !trimmed.includes("#")) {
-        values.push(trimmed);
+  private findCueFiles(dir: string): string[] {
+    const files: string[] = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        files.push(...this.findCueFiles(full));
+      } else if (entry.isFile() && entry.name.endsWith(".cue")) {
+        files.push(full);
       }
     }
-
-    return values;
+    return files;
   }
 
-  private parseConstraints(definition: string): string[] {
-    const constraints: string[] = [];
-
-    // Parse numeric constraints
-    if (definition.includes(">=")) {
-      const match = definition.match(/>=(\d+(?:\.\d+)?)/);
-      if (match) constraints.push(`Minimum: ${match[1]}`);
-    }
-    if (definition.includes("<=")) {
-      const match = definition.match(/<=(\d+(?:\.\d+)?)/);
-      if (match) constraints.push(`Maximum: ${match[1]}`);
-    }
-    if (definition.includes(">") && !definition.includes(">=")) {
-      const match = definition.match(/>(\d+(?:\.\d+)?)/);
-      if (match) constraints.push(`Greater than: ${match[1]}`);
-    }
-    if (definition.includes("<") && !definition.includes("<=")) {
-      const match = definition.match(/<(\d+(?:\.\d+)?)/);
-      if (match) constraints.push(`Less than: ${match[1]}`);
-    }
-
-    // Parse string constraints
-    if (definition.includes('!=""')) {
-      constraints.push("Non-empty string");
-    }
-
-    // Parse array constraints
-    const minItemsMatch = definition.match(/minItems\((\d+)\)/);
-    if (minItemsMatch) {
-      constraints.push(`Minimum items: ${minItemsMatch[1]}`);
-    }
-
-    const minFieldsMatch = definition.match(/minFields\((\d+)\)/);
-    if (minFieldsMatch) {
-      constraints.push(`Minimum fields: ${minFieldsMatch[1]}`);
-    }
-
-    return constraints;
-  }
-
-  private extractBaseType(definition: string): string {
-    // Extract the base type from a constraint definition
-    const parts = definition.split("&");
-    if (parts.length > 0) {
-      const first = parts[0].trim();
-      if (first.includes("#")) {
-        return first;
-      }
-      if (["string", "int", "number", "bool"].includes(first)) {
-        return first;
-      }
-    }
-    return "unknown";
+  private extractPackageName(content: string): string | undefined {
+    const match = content.match(/^package\s+([\w-]+)/m);
+    return match?.[1];
   }
 
   private extractFileDescription(content: string): string | undefined {
@@ -292,53 +140,87 @@ export class CUESchemaParser {
       if (trimmed.startsWith("//")) {
         comments.push(trimmed.substring(2).trim());
       } else if (trimmed === "" && comments.length > 0) {
-        continue; // Skip empty lines in comment blocks
+        continue;
       } else {
-        break; // Stop at first non-comment line
+        break;
       }
     }
 
     return comments.length > 0 ? comments.join(" ").trim() : undefined;
   }
 
-  private extractRelationships(schema: ParsedSchema): void {
-    // Build dependency graph
-    for (const [typeName, typeInfo] of schema.types) {
-      // Find dependencies (types referenced in this type's definition)
-      const dependencies = this.findTypeDependencies(typeInfo);
-      typeInfo.dependsOn = dependencies;
+  private walkValue(
+    value: unknown,
+    pkg: string,
+    filePath: string,
+    types: Map<string, ParsedType>,
+    pathStack: string[],
+  ): string | undefined {
+    if (Array.isArray(value)) {
+      // arrays: derive element type and note as union/primitive
+      const elementType =
+        value.length > 0 ? this.walkValue(value[0], pkg, filePath, types, pathStack) : "Any";
+      return `${elementType || "Any"}[]`;
+    }
 
-      // Update reverse relationships
-      for (const dep of dependencies) {
-        const depType = schema.types.get(dep);
-        if (depType) {
-          depType.usedBy = depType.usedBy || [];
-          if (!depType.usedBy.includes(typeName)) {
-            depType.usedBy.push(typeName);
-          }
+    if (value !== null && typeof value === "object") {
+      const typeName = this.buildTypeName(pathStack);
+      if (!typeName) return "object";
+
+      if (types.has(typeName)) {
+        return typeName;
+      }
+
+      const fields: ParsedField[] = [];
+      const dependsOn: string[] = [];
+
+      for (const [key, val] of Object.entries(value)) {
+        if (!this.includePrivate && key.startsWith("_")) continue;
+        const childPath = [...pathStack, key];
+        const fieldType = this.walkValue(val, pkg, filePath, types, childPath) || "any";
+        fields.push({ name: key, type: fieldType });
+        if (types.has(fieldType)) {
+          dependsOn.push(fieldType);
         }
       }
+
+      types.set(typeName, {
+        name: typeName,
+        kind: "struct",
+        fields,
+        dependsOn,
+        usedBy: [],
+        location: { file: filePath, line: 0 },
+      });
+
+      return typeName;
     }
+
+    // primitive
+    const primitiveType = this.inferPrimitive(value);
+    return primitiveType;
   }
 
-  private findTypeDependencies(typeInfo: ParsedType): string[] {
-    const dependencies: string[] = [];
+  private buildTypeName(pathStack: string[]): string {
+    if (pathStack.length === 0) return "Root";
+    return pathStack.map((p) => this.capitalize(p.replace(/[^a-zA-Z0-9]/g, "_"))).join("");
+  }
 
-    // Check base type
-    if (typeInfo.baseType?.startsWith("#")) {
-      dependencies.push(typeInfo.baseType.substring(1));
+  private capitalize(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  private inferPrimitive(value: unknown): string {
+    switch (typeof value) {
+      case "string":
+        return "string";
+      case "number":
+        return Number.isInteger(value as number) ? "int" : "float";
+      case "boolean":
+        return "bool";
+      default:
+        return "any";
     }
-
-    // Check field types (for structs)
-    if (typeInfo.fields) {
-      for (const field of typeInfo.fields) {
-        if (field.type.startsWith("#")) {
-          dependencies.push(field.type.substring(1));
-        }
-      }
-    }
-
-    return [...new Set(dependencies)]; // Remove duplicates
   }
 
   private mergeSchemas(schemas: ParsedSchema[]): ParsedSchema {
@@ -357,23 +239,26 @@ export class CUESchemaParser {
       },
     };
 
-    // Merge all schemas
     for (const schema of schemas) {
-      // Merge imports
       for (const imp of schema.imports) {
-        if (!merged.imports.includes(imp)) {
-          merged.imports.push(imp);
-        }
+        if (!merged.imports.includes(imp)) merged.imports.push(imp);
       }
-
-      // Merge types
       for (const [name, type] of schema.types) {
         merged.types.set(name, type);
       }
-
-      // Merge comments
       for (const [name, comment] of schema.comments) {
         merged.comments.set(name, comment);
+      }
+    }
+
+    // Build reverse relationships
+    for (const [name, type] of merged.types) {
+      if (!type.dependsOn) continue;
+      for (const dep of type.dependsOn) {
+        const depType = merged.types.get(dep);
+        if (!depType) continue;
+        depType.usedBy = depType.usedBy ?? [];
+        if (!depType.usedBy.includes(name)) depType.usedBy.push(name);
       }
     }
 
