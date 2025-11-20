@@ -56,7 +56,7 @@ export class RustPlugin implements LanguagePlugin {
         });
         files.push({
           path: `src/routes/${config.name.toLowerCase()}.rs`,
-          content: this.generateRoutes(config),
+          content: await this.generateRoutes(config),
         });
         dependencies.push("axum", "tokio", "serde");
         break;
@@ -395,10 +395,10 @@ pub async fn delete_${moduleName}(
     );
   }
 
-  private generateRoutes(config: ServiceConfig): string {
+  private async generateRoutes(config: ServiceConfig): Promise<string> {
     const moduleName = config.name.toLowerCase();
 
-    return `use axum::{
+    const fallback = `use axum::{
     routing::{get, post, put, delete},
     Router,
 };
@@ -421,6 +421,12 @@ pub fn create_${moduleName}_routes() -> Router<AppState> {
         .route("/:id", get(get_${moduleName}_by_id).put(update_${moduleName}).delete(delete_${moduleName}))
 }
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "src/routes/routes.rs.tpl",
+      { module_name: moduleName, resource_name: config.name },
+      fallback,
+    );
   }
 
   private generateBusinessService(config: ServiceConfig): string {
