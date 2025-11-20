@@ -16,6 +16,9 @@ export class ConnectionValidator {
     port?: number;
     error?: string;
     suggestions?: string[];
+    dnsResolved?: boolean;
+    tlsHandshake?: boolean;
+    latencyMs?: number;
   }> {
     const baseUrl = new URL(this.config.apiUrl);
     const hostname = baseUrl.hostname;

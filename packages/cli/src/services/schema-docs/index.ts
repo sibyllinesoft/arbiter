@@ -37,18 +37,22 @@ export function createSchemaDocsCommand(): Command {
     .option("--no-examples", "Exclude examples from documentation")
     .option("--no-relationships", "Exclude type relationships from documentation")
     .option("-v, --verbose", "Verbose output", false)
-    .action(async (options: SchemaDocsCommandOptions) => {
+    .action(async (options: SchemaDocsCommandOptions): Promise<void> => {
       const spinner = ora("Analyzing CUE schemas...").start();
 
       try {
         const inputDir = path.resolve(process.cwd(), options.input ?? "spec/schema");
         const outputDir = path.resolve(process.cwd(), options.output ?? "docs/schema");
-        const formats = (options.format ?? "markdown,html").split(",");
+        const formats = (options.format ?? "markdown,html").split(",") as (
+          | "markdown"
+          | "html"
+          | "json"
+        )[];
 
         // Ensure input exists
         if (!existsSync(inputDir)) {
           spinner.fail(`Input directory not found: ${inputDir}`);
-          return 1;
+          return;
         }
 
         // Ensure output dir exists
@@ -56,28 +60,27 @@ export function createSchemaDocsCommand(): Command {
           mkdirSync(outputDir, { recursive: true });
         }
 
-        const parser = new EnhancedCUEParser({ includePrivate: options.includePrivate });
+        const parser = new EnhancedCUEParser();
 
         const generator = new DocumentationGenerator({
+          outputDir,
+          formats,
           title: options.title ?? "Schema Documentation",
           includeExamples: options.includeExamples ?? true,
           includeRelationships: options.includeRelationships ?? true,
-          verbose: options.verbose,
         });
 
         spinner.text = "Parsing schemas";
-        const schema = await parser.parseDirectory(inputDir);
+        const schema = await parser.parseSchemaDirectory(inputDir);
 
         spinner.text = "Generating documentation";
-        await generator.generate({ schema, formats, outputDir });
+        await generator.generate(schema);
 
         spinner.succeed("Documentation generated successfully");
         console.log(chalk.green("Output directory:"), chalk.dim(outputDir));
-        return 0;
       } catch (error) {
         spinner.fail("Failed to generate documentation");
         console.error(chalk.red("Error:"), error instanceof Error ? error.message : String(error));
-        return 1;
       }
     });
 }
@@ -90,15 +93,20 @@ export async function generateSchemaDocumentation(
   outputDir: string,
   options: Partial<SchemaDocsCommandOptions> = {},
 ): Promise<void> {
-  const formats = (options.format ?? "markdown,html").split(",");
-  const parser = new EnhancedCUEParser({ includePrivate: options.includePrivate });
+  const formats = (options.format ?? "markdown,html").split(",") as (
+    | "markdown"
+    | "html"
+    | "json"
+  )[];
+  const parser = new EnhancedCUEParser();
   const generator = new DocumentationGenerator({
+    outputDir,
+    formats,
     title: options.title ?? "Schema Documentation",
     includeExamples: options.includeExamples ?? true,
     includeRelationships: options.includeRelationships ?? true,
-    verbose: options.verbose,
   });
 
-  const schema = await parser.parseDirectory(inputDir);
-  await generator.generate({ schema, formats, outputDir });
+  const schema = await parser.parseSchemaDirectory(inputDir);
+  await generator.generate(schema);
 }

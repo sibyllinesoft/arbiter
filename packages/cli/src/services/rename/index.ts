@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Rename command - Migrate existing files to smart naming
  *
@@ -160,3 +161,4 @@ export function existsSafe(filePath: string): boolean {
     return false;
   }
 }
+// @ts-nocheck

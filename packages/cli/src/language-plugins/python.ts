@@ -110,7 +110,7 @@ export class PythonPlugin implements LanguagePlugin {
     // Development requirements
     files.push({
       path: "requirements-dev.txt",
-      content: this.generateDevRequirements(config),
+      content: await this.generateDevRequirements(config),
     });
 
     // Main application file
@@ -836,7 +836,7 @@ async def get_current_active_user(
     );
   }
 
-  private generateDevRequirements(config: ProjectConfig): string {
+  private async generateDevRequirements(config: ProjectConfig): Promise<string> {
     const testingDeps = config.testing ? "pytest-cov>=4.0.0\nfactory-boy>=3.2.0\n" : "";
     const baseDeps = [
       "pytest>=7.0.0",

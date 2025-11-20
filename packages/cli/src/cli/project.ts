@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { runCheckCommand } from "../services/check/index.js";
 import { diffCommand } from "../services/diff/index.js";
-import { initProject } from "../services/init/index.js";
+import { initCommand } from "../services/init/index.js";
 import { listTemplates } from "../services/init/index.js";
 import { listCommand } from "../services/list/index.js";
 import { importSpec } from "../services/spec-import/index.js";
@@ -43,7 +43,7 @@ export function createProjectCommands(program: Command): void {
         }
 
         const config = requireCommandConfig(command);
-        const exitCode = await initProject(displayName, options, config);
+        const exitCode = await initCommand(displayName, options);
         process.exit(exitCode);
       } catch (error) {
         console.error(

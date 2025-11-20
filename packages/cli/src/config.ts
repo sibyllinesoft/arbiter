@@ -13,6 +13,7 @@ import chalk from "chalk";
 import fs from "fs-extra";
 import yaml from "yaml";
 import { z } from "zod";
+import { safeFileOperation } from "./constraints/index.js";
 import type {
   CLIConfig,
   DockerGeneratorConfig,

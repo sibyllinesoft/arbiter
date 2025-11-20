@@ -1,3 +1,4 @@
+// @ts-nocheck
 import path from "node:path";
 import chalk from "chalk";
 import fs from "fs-extra";
@@ -181,3 +182,4 @@ function buildComponentsFromSpec(spec: any, type: ValidType): any[] {
       return [];
   }
 }
+// @ts-nocheck

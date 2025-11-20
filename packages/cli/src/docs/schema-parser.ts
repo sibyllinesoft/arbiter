@@ -62,10 +62,10 @@ export class CUESchemaParser {
 
   constructor(options: SchemaParserOptions = {}) {
     this.includePrivate = options.includePrivate ?? false;
-    this.runner = options.runner ?? new CueRunner();
+    this.runner = options.runner ?? new CueRunner({ cwd: process.cwd() });
   }
 
-  async parseDirectory(dir: string): Promise<ParsedSchema> {
+  async parseSchemaDirectory(dir: string): Promise<ParsedSchema> {
     const files = this.findCueFiles(dir);
     if (files.length === 0) {
       throw new Error(`No .cue files found in ${dir}`);

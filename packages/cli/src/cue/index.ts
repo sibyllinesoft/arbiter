@@ -24,6 +24,7 @@ export type PlatformServiceType =
   // Generic types
   | "bespoke"
   | "prebuilt"
+  | "upstash_redis"
   // Cloudflare platform
   | "cloudflare_worker"
   | "cloudflare_d1"

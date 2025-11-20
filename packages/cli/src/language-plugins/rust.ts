@@ -140,7 +140,7 @@ export class RustPlugin implements LanguagePlugin {
     // Error handling
     files.push({
       path: "src/errors.rs",
-      content: this.generateErrors(),
+      content: await this.generateErrors(),
     });
 
     // Models module

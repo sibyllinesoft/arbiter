@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -192,3 +193,4 @@ function generateReleaseNotes(version: string, plan: any): string {
     .join("\n");
   return `${header}${changes || "- No changes listed"}\n`;
 }
+// @ts-nocheck

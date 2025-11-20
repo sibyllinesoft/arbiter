@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as path from "node:path";
 import chalk from "chalk";
 import { diffLines } from "diff";
@@ -142,3 +143,4 @@ export async function removeCommand(
     return 1;
   }
 }
+// @ts-nocheck

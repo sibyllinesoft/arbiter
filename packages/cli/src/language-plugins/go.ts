@@ -153,24 +153,24 @@ export class GoPlugin implements LanguagePlugin {
     // Middleware
     files.push({
       path: "internal/middleware/cors.go",
-      content: this.generateCORSMiddleware(),
+      content: await this.generateCORSMiddleware(),
     });
 
     files.push({
       path: "internal/middleware/logger.go",
-      content: this.generateLoggerMiddleware(),
+      content: await this.generateLoggerMiddleware(),
     });
 
     // Health check
     files.push({
       path: "internal/handlers/health_handler.go",
-      content: this.generateHealthHandler(),
+      content: await this.generateHealthHandler(),
     });
 
     // Environment file
     files.push({
       path: ".env.example",
-      content: this.generateEnvExample(config),
+      content: await this.generateEnvExample(config),
     });
 
     // Testing setup
@@ -883,46 +883,6 @@ func Migrate(db *gorm.DB) error {
     );
   }
 
-  private generateLogger(): string {
-    return `package logger
-
-import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-)
-
-// NewLogger creates a new zap logger
-func NewLogger() (*zap.Logger, error) {
-	config := zap.NewProductionConfig()
-	config.Level = zap.NewAtomicLevelAt(zap.InfoLevel)
-	config.Encoding = "json"
-	config.EncoderConfig.TimeKey = "timestamp"
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	config.EncoderConfig.StacktraceKey = "" // Disable stacktrace in logs
-
-	logger, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return logger, nil
-}
-
-// NewDevelopmentLogger creates a development logger with console output
-func NewDevelopmentLogger() (*zap.Logger, error) {
-	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-
-	logger, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return logger, nil
-}
-`;
-  }
-
   private async generateServer(config: ProjectConfig): Promise<string> {
     const module = config.name.toLowerCase();
     const fallback = `package server
@@ -992,8 +952,8 @@ func New(cfg *config.Config, ${config.database ? "db *gorm.DB, " : ""}logger *za
     );
   }
 
-  private generateCORSMiddleware(): string {
-    return this.templateResolver.renderTemplate(
+  private async generateCORSMiddleware(): Promise<string> {
+    return await this.templateResolver.renderTemplate(
       "internal/middleware/cors.go.tpl",
       {},
       `package middleware
@@ -1068,8 +1028,8 @@ func NewDevelopmentLogger() (*zap.Logger, error) {
     );
   }
 
-  private generateLoggerMiddleware(): string {
-    return this.templateResolver.renderTemplate(
+  private async generateLoggerMiddleware(): Promise<string> {
+    return await this.templateResolver.renderTemplate(
       "internal/middleware/logger.go.tpl",
       {},
       `package middleware
@@ -1100,8 +1060,8 @@ func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
     );
   }
 
-  private generateHealthHandler(): string {
-    return this.templateResolver.renderTemplate(
+  private async generateHealthHandler(): Promise<string> {
+    return await this.templateResolver.renderTemplate(
       "internal/handlers/health_handler.go.tpl",
       { serviceName: "api" },
       `package handlers
