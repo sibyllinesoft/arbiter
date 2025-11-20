@@ -168,7 +168,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const componentContent = await this.runtime.templateResolver.renderTemplate(
       "component.tsx.tpl",
       context,
-      this.getDefaultComponentTemplate(context),
     );
 
     files.push({
@@ -179,7 +178,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
     const typesContent = await this.runtime.templateResolver.renderTemplate(
       "component.types.ts.tpl",
       context,
-      this.getDefaultComponentTypesTemplate(context),
     );
 
     files.push({
@@ -191,7 +189,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
       const stylesContent = await this.runtime.templateResolver.renderTemplate(
         "component.module.css.tpl",
         context,
-        this.getDefaultComponentStylesTemplate(context),
       );
       files.push({
         path: `src/components/${config.name}/${config.name}.module.css`,
@@ -203,7 +200,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
       const testContent = await this.runtime.templateResolver.renderTemplate(
         "component.test.tsx.tpl",
         context,
-        this.getDefaultComponentTestTemplate(context),
       );
       files.push({
         path: `src/components/${config.name}/${config.name}.test.tsx`,
@@ -403,23 +399,19 @@ export class TypeScriptPlugin implements LanguagePlugin {
   }
 
   private getDefaultComponentTemplate(context: ComponentTemplateContext): string {
-    const imports = [context.propsImport, context.cssImport].filter(Boolean).join("\n");
-    const importBlock = imports ? `${imports}\n\n` : "";
-    const signature = context.hasProps ? `(${context.propsParam})` : "()";
-
-    return `${importBlock}/**\n * ${context.componentName} Component\n * ${context.componentDescription}\n */\nexport function ${context.componentName}${signature} {\n  return (\n    <div${context.containerClass}>\n      <h1>${context.componentName}</h1>\n      {/* Component content */}\n    </div>\n  );\n}\n\n${context.componentName}.displayName = '${context.componentName}';\n`;
+    return ""; // external template handles rendering
   }
 
   private getDefaultComponentTypesTemplate(context: ComponentTemplateContext): string {
-    return `export interface ${context.componentName}Props {\n${context.propsInterface}\n}\n`;
+    return "";
   }
 
   private getDefaultComponentStylesTemplate(context: ComponentTemplateContext): string {
-    return `.container {\n  /* ${context.componentName} component styles */\n  display: flex;\n  flex-direction: column;\n  gap: 1rem;\n}\n`;
+    return "";
   }
 
   private getDefaultComponentTestTemplate(context: ComponentTemplateContext): string {
-    return `import { render, screen } from '@testing-library/react';\nimport { ${context.componentName} } from './${context.componentName}';\n\ndescribe('${context.componentName}', () => {\n  it('renders successfully', () => {\n    render(<${context.componentName} ${context.testProps}/>);\n    expect(screen.getByText('${context.componentName}')).toBeInTheDocument();\n  });\n});\n`;
+    return "";
   }
 
   private buildServiceContext(config: ServiceConfig): ServiceTemplateContext {

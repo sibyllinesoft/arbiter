@@ -36,12 +36,12 @@ export class TemplateResolver {
   async renderTemplate(
     templatePath: string,
     context: Record<string, unknown>,
-    fallback: string,
+    fallback?: string,
   ): Promise<string> {
     const templateContent = await this.readTemplate(templatePath);
 
     if (!templateContent) {
-      return fallback;
+      return fallback ?? "";
     }
 
     return this.applyTemplate(templateContent, context);
