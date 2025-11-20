@@ -20,15 +20,6 @@ const pythonTemplateResolver = new TemplateResolver({
     new URL("../templates/python", import.meta.url).pathname,
   ],
 });
-import { TemplateResolver } from "./template-resolver.js";
-
-const pythonTemplateResolver = new TemplateResolver({
-  language: "python",
-  defaultDirectories: [
-    new URL("./templates/python", import.meta.url).pathname,
-    new URL("../templates/python", import.meta.url).pathname,
-  ],
-});
 
 export class PythonPlugin implements LanguagePlugin {
   readonly name = "Python Plugin";
@@ -61,20 +52,20 @@ export class PythonPlugin implements LanguagePlugin {
       case "api":
         files.push({
           path: `app/routers/${config.name}.py`,
-          content: this.generateAPIRouter(config),
+          content: await this.generateAPIRouter(config),
         });
         dependencies.push("fastapi", "uvicorn");
         break;
       case "service":
         files.push({
           path: `app/services/${config.name}_service.py`,
-          content: this.generateBusinessService(config),
+          content: await this.generateBusinessService(config),
         });
         break;
       case "model":
         files.push({
           path: `app/models/${config.name}.py`,
-          content: this.generateModel(config),
+          content: await this.generateModel(config),
         });
         dependencies.push("sqlalchemy");
         break;
@@ -90,7 +81,7 @@ export class PythonPlugin implements LanguagePlugin {
       dependencies.push("pydantic");
       files.push({
         path: `app/schemas/${config.name}_schema.py`,
-        content: this.generatePydanticSchema(config),
+        content: await this.generatePydanticSchema(config),
       });
     }
 
@@ -240,7 +231,7 @@ export class PythonPlugin implements LanguagePlugin {
     return { files };
   }
 
-  private generateAPIRouter(config: ServiceConfig): string {
+  private async generateAPIRouter(config: ServiceConfig): Promise<string> {
     const endpoints = config.endpoints || [
       "GET /",
       "POST /",
@@ -263,7 +254,7 @@ async def ${methodName}_${config.name}(${path.includes("{id}") ? "id: int" : ""}
       })
       .join("\n");
 
-    return `"""
+    const fallback = `"""
 ${config.name} Router
 FastAPI router for ${config.name} endpoints
 """
@@ -280,10 +271,16 @@ router = APIRouter(
 
 ${routerMethods}
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "app/routers/api.py.tpl",
+      { resource_name: config.name.toLowerCase() },
+      fallback,
+    );
   }
 
-  private generateBusinessService(config: ServiceConfig): string {
-    return `"""
+  private async generateBusinessService(config: ServiceConfig): Promise<string> {
+    const fallback = `"""
 ${config.name} Service
 Business logic for ${config.name} operations
 """
@@ -333,10 +330,16 @@ class ${config.name}Service:
 # Service instance
 ${config.name.toLowerCase()}_service = ${config.name}Service()
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "app/services/service.py.tpl",
+      { service_class: `${config.name}Service`, service_name: config.name.toLowerCase() },
+      fallback,
+    );
   }
 
-  private generateModel(config: ServiceConfig): string {
-    return `"""
+  private async generateModel(config: ServiceConfig): Promise<string> {
+    const fallback = `"""
 ${config.name} Model
 SQLAlchemy 2.0+ async model definition
 """
@@ -362,6 +365,12 @@ class ${config.name}(Base):
     def __repr__(self) -> str:
         return f"<${config.name}(id={self.id}, name='{self.name}')>"
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "app/models/model.py.tpl",
+      { model_class: config.name, table_name: `${config.name.toLowerCase()}s` },
+      fallback,
+    );
   }
 
   private generateHandler(config: ServiceConfig): string {
@@ -444,8 +453,8 @@ ${config.name.toLowerCase()}_handler = ${config.name}Handler()
 `;
   }
 
-  private generatePydanticSchema(config: ServiceConfig): string {
-    return `"""
+  private async generatePydanticSchema(config: ServiceConfig): Promise<string> {
+    const fallback = `"""
 ${config.name} Pydantic Schemas
 Data validation and serialization schemas using Pydantic v2
 """
@@ -485,6 +494,12 @@ class ${config.name}InDB(${config.name}Schema):
     """Schema for ${config.name} as stored in database"""
     pass
 `;
+
+    return pythonTemplateResolver.renderTemplate(
+      "app/schemas/schema.py.tpl",
+      { schema_class: `${config.name}Schema` },
+      fallback,
+    );
   }
 
   private async generateMainApp(config: ProjectConfig): string {
@@ -609,128 +624,27 @@ if __name__ == "__main__":
 `;
   }
 
-  private async generateConfig(config: ProjectConfig): string {
-    return `"""
-Application Configuration
-Environment-based configuration using Pydantic Settings
-"""
-from pydantic import Field
-from pydantic_settings import BaseSettings
-from typing import Optional
+  private async generateConfig(config: ProjectConfig): Promise<string> {
+    const databaseSetting = config.database
+      ? `    DATABASE_URL: str = \"postgresql+asyncpg://user:password@localhost:5432/${config.name.toLowerCase()}\"\n`
+      : "";
+    const fallback = `from functools import lru_cache\nfrom pydantic import BaseSettings\n\n\nclass Settings(BaseSettings):\n    PROJECT_NAME: str = \"${config.name}\"\n    VERSION: str = \"0.1.0\"\n    DESCRIPTION: str = \"${config.description || "FastAPI service"}\"\n    ENV: str = \"development\"\n${databaseSetting}    class Config:\n        env_file = \".env\"\n\n\n@lru_cache()\ndef get_settings() -> Settings:\n    return Settings()\n\n\nsettings = get_settings()\n`;
 
-
-class Settings(BaseSettings):
-    """Application settings"""
-    
-    # Basic settings
-    APP_NAME: str = Field(default="${config.name}", description="Application name")
-    DEBUG: bool = Field(default=True, description="Debug mode")
-    HOST: str = Field(default="0.0.0.0", description="Host to bind to")
-    PORT: int = Field(default=8000, description="Port to bind to")
-    
-    # Database settings
-    ${
-      config.database
-        ? `DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://user:password@localhost:5432/${config.name.toLowerCase()}",
-        description="Database connection URL"
-    )`
-        : '# DATABASE_URL: str = Field(default="sqlite:///./app.db")'
-    }
-    
-    # Security settings
-    ${
-      config.auth === "jwt"
-        ? `SECRET_KEY: str = Field(default="your-secret-key-change-in-production", description="JWT secret key")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, description="Access token expiration time")`
-        : '# SECRET_KEY: str = Field(default="your-secret-key")'
-    }
-    
-    # CORS settings
-    CORS_ORIGINS: list[str] = Field(default=["http://localhost:3000"], description="CORS allowed origins")
-    
-    # Logging
-    LOG_LEVEL: str = Field(default="INFO", description="Logging level")
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-
-
-# Global settings instance
-settings = Settings()
-`;
+    return pythonTemplateResolver.renderTemplate(
+      "app/core/config.py.tpl",
+      {
+        project_name: config.name,
+        description: config.description || "FastAPI service",
+        databaseSetting,
+      },
+      fallback,
+    );
   }
 
-  private async generateDatabase(config: ProjectConfig): string {
-    const dbType = config.database || "postgres";
+  private async generateDatabase(_config: ProjectConfig): Promise<string> {
+    const fallback = `from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine\nfrom sqlalchemy.orm import sessionmaker\n\nfrom app.core.config import settings\n\n\nengine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)\nAsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)\n\n\nasync def get_session() -> AsyncSession:\n    async with AsyncSessionLocal() as session:\n        yield session\n`;
 
-    return `"""
-Database Configuration
-SQLAlchemy 2.0+ async database setup
-"""
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.pool import NullPool
-import logging
-
-from app.core.config import settings
-
-logger = logging.getLogger(__name__)
-
-# Database engine
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=settings.DEBUG,
-    poolclass=NullPool if settings.DEBUG else None,
-    pool_pre_ping=True,
-)
-
-# Session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
-# Base class for models
-Base = declarative_base()
-
-
-async def get_db_session() -> AsyncSession:
-    """Dependency to get database session"""
-    async with AsyncSessionLocal() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
-        finally:
-            await session.close()
-
-
-async def init_db() -> None:
-    """Initialize database tables"""
-    try:
-        # Import all models here to ensure they are registered
-        # from app.models import user, item  # Example imports
-        
-        async with engine.begin() as conn:
-            # Create all tables
-            await conn.run_sync(Base.metadata.create_all)
-        
-        logger.info("Database initialized successfully")
-    except Exception as e:
-        logger.error(f"Error initializing database: {e}")
-        raise
-
-
-async def close_db() -> None:
-    """Close database connections"""
-    await engine.dispose()
-    logger.info("Database connections closed")
-`;
+    return pythonTemplateResolver.renderTemplate("app/core/database.py.tpl", {}, fallback);
   }
 
   private generateSecurity(config: ProjectConfig): string {
