@@ -143,6 +143,16 @@ export interface LanguagePlugin {
   generateEndpointTests?(config: EndpointTestGenerationConfig): Promise<GenerationResult>;
 }
 
+export interface ComponentLanguagePlugin extends LanguagePlugin {
+  capabilities: LanguagePluginCapabilities & { components: true };
+  generateComponent(config: ComponentConfig): Promise<GenerationResult>;
+}
+
+export interface ServiceLanguagePlugin extends LanguagePlugin {
+  capabilities: LanguagePluginCapabilities & { services: true };
+  generateService(config: ServiceConfig): Promise<GenerationResult>;
+}
+
 // Plugin registry
 export class LanguageRegistry {
   private plugins = new Map<string, LanguagePlugin>();
@@ -194,7 +204,7 @@ export async function generateComponent(
     throw new Error(`No plugin found for language: ${language}`);
   }
 
-  if (!plugin.capabilities?.components || !plugin.generateComponent) {
+  if (!isComponentPlugin(plugin)) {
     throw new Error(`Component generation not supported for language: ${language}`);
   }
 
@@ -211,6 +221,10 @@ export async function generateService(
   }
 
   return plugin.generateService(config);
+}
+
+function isComponentPlugin(plugin: LanguagePlugin): plugin is ComponentLanguagePlugin {
+  return Boolean(plugin.capabilities?.components && typeof plugin.generateComponent === "function");
 }
 
 export async function initializeProject(
