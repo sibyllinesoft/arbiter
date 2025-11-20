@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * @vitest-environment jsdom
  */
@@ -241,7 +240,7 @@ describe("EditorPane", () => {
 
     it("shows helpful hint when no fragments exist", () => {
       mockUseActiveFragment.mockReturnValue(null);
-      setEditorState({ fragments: [], activeFragmentId: null });
+      setEditorState({ fragments: [], activeFragmentId: "" });
 
       render(<EditorPane />);
 

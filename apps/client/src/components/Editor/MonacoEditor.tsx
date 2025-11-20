@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Monaco editor component with CUE syntax highlighting
  */

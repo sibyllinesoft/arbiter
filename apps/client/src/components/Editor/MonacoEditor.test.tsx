@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * @vitest-environment jsdom
  */
@@ -65,6 +64,8 @@ describe("MonacoEditor", () => {
     vi.clearAllMocks();
     mockEditor.getModel.mockImplementation(() => ({
       onDidChangeContent: vi.fn(),
+      getValue: vi.fn(() => ""),
+      setValue: vi.fn(),
     }));
   });
 

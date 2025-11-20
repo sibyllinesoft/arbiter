@@ -2,14 +2,14 @@
 export const CUE_LANGUAGE_CONFIG = {
   comments: {
     lineComment: "//",
-    blockComment: ["/*", "*/"],
+    blockComment: ["/*", "*/"] as [string, string],
   },
   brackets: [
     ["{", "}"],
     ["[", "]"],
     ["(", ")"],
     ["<", ">"],
-  ],
+  ] as [string, string][],
   autoClosingPairs: [
     { open: "{", close: "}" },
     { open: "[", close: "]" },
