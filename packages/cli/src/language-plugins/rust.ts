@@ -132,7 +132,7 @@ export class RustPlugin implements LanguagePlugin {
     if (config.database) {
       files.push({
         path: "src/database.rs",
-        content: this.generateDatabase(config),
+        content: await this.generateDatabase(config),
       });
       dependencies.push("sqlx");
     }
@@ -1150,12 +1150,12 @@ pub async fn create_app(${config.database ? "db_pool: PgPool" : ""}) -> Result<R
     );
   }
 
-  private generateDatabase(config: ProjectConfig): string {
+  private async generateDatabase(config: ProjectConfig): Promise<string> {
     if (config.database !== "postgres") {
       return "// Database configuration not implemented for this database type";
     }
 
-    return `use sqlx::{PgPool, postgres::PgPoolOptions};
+    const fallback = `use sqlx::{PgPool, postgres::PgPoolOptions};
 use tracing::{info, error};
 
 use crate::errors::AppError;
@@ -1186,6 +1186,8 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, AppError> {
     Ok(pool)
 }
 `;
+
+    return rustTemplateResolver.renderTemplate("src/database.rs.tpl", {}, fallback);
   }
 
   private generateErrors(): string {
