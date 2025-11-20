@@ -262,11 +262,13 @@ export class RustPlugin implements LanguagePlugin {
     return { files };
   }
 
-  private generateAPIHandler(config: ServiceConfig): string {
+  private async generateAPIHandler(config: ServiceConfig): Promise<string> {
     const structName = this.toPascalCase(config.name);
     const moduleName = config.name.toLowerCase();
+    const dbPoolRef = config.database ? "&app_state.db_pool" : "";
+    const validateLine = config.validation ? "payload.validate()?;" : "";
 
-    return `use axum::{
+    const fallback = `use axum::{
     extract::{Path, Query, State},
     response::Json,
     http::StatusCode,
@@ -379,6 +381,18 @@ pub async fn delete_${moduleName}(
     Ok(StatusCode::NO_CONTENT)
 }
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "src/handlers/handler.rs.tpl",
+      {
+        struct_name: structName,
+        module_name: moduleName,
+        resource_name: config.name,
+        db_pool_ref: dbPoolRef,
+        validate_line: validateLine,
+      },
+      fallback,
+    );
   }
 
   private generateRoutes(config: ServiceConfig): string {
