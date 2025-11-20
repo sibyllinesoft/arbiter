@@ -9,9 +9,9 @@ import { docsCommand } from "../commands/docs.js";
 import { examplesCommand } from "../commands/examples.js";
 import { executeCommand } from "../commands/execute.js";
 import { explainCommand } from "../commands/explain.js";
-import { generateCommand } from "../commands/generate.js";
 import { renameCommand, showNamingHelp } from "../commands/rename.js";
 import { loadConfigWithGitDetection } from "../config.js";
+import { generateCommand as runGenerateCommand } from "../services/generate/index.js";
 import type { GenerateOptions } from "../types.js";
 import { requireCommandConfig } from "./context.js";
 
@@ -34,7 +34,7 @@ export function createGenerationCommands(program: Command): void {
       try {
         const parentConfig = requireCommandConfig(command);
         const configWithGit = await loadConfigWithGitDetection(parentConfig);
-        const exitCode = await generateCommand(options, configWithGit, specName);
+        const exitCode = await runGenerateCommand(options, configWithGit, specName);
         process.exit(exitCode);
       } catch (error) {
         console.error(

@@ -4,7 +4,6 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { checkCommand } from "../commands/check.js";
 import { diffCommand } from "../commands/diff.js";
 import { initCommand, listTemplates } from "../commands/init.js";
 import { listCommand } from "../commands/list.js";
@@ -12,6 +11,7 @@ import { importSpecCommand } from "../commands/spec-import.js";
 import { statusCommand } from "../commands/status.js";
 import { surfaceCommand } from "../commands/surface.js";
 import { watchCommand } from "../commands/watch.js";
+import { runCheckCommand } from "../services/check/index.js";
 import type { SurfaceLanguage } from "../surface-extraction/types.js";
 import type {
   CheckOptions,
@@ -171,7 +171,7 @@ export function createProjectCommands(program: Command): void {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await checkCommand(patterns, options, config);
+        const exitCode = await runCheckCommand(patterns, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(

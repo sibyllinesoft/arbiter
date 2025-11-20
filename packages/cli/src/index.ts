@@ -10,7 +10,7 @@ export * from "./api-client.js";
 // Main CLI program for programmatic use
 export { default as program } from "./cli/index.js";
 // Commands
-export { checkCommand } from "./commands/check.js";
+export { runCheckCommand as checkCommand } from "./services/check/index.js";
 export { initCommand, listTemplates } from "./commands/init.js";
 export { importSpecCommand } from "./commands/spec-import.js";
 export * from "./config.js";
