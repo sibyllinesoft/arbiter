@@ -174,143 +174,155 @@ afterAll(async () => {
   );
 });
 
-test(
-  "arbiter CLI local workflow end-to-end",
-  async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "arbiter-cli-e2e-"));
-    tempRoots.push(tempRoot);
+if (!shouldRunE2E) {
+  test.skip("CLI E2E tests require the CUE binary and ARBITER_RUN_E2E=1; skipping in this environment", () => {});
+} else {
+  test(
+    "arbiter CLI local workflow end-to-end",
+    async () => {
+      const tempRoot = await mkdtemp(path.join(tmpdir(), "arbiter-cli-e2e-"));
+      tempRoots.push(tempRoot);
 
-    const projectDir = path.join(tempRoot, "workspace");
-    await mkdir(projectDir, { recursive: true });
+      const projectDir = path.join(tempRoot, "workspace");
+      await mkdir(projectDir, { recursive: true });
 
-    await scaffoldDemoProject(projectDir);
+      await scaffoldDemoProject(projectDir);
 
-    runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
+      runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
 
-    runCli(["--local", "check"], projectDir);
+      runCli(["--local", "check"], projectDir);
 
-    const serviceList = runCli(["--local", "list", "service", "--format", "json"], projectDir);
-    const services = parseJsonFromCli(serviceList.stdout);
-    const serviceNames = services.map((s: any) => s.name);
-    expect(serviceNames).toEqual(expect.arrayContaining(["web", "worker"]));
+      const serviceList = runCli(["--local", "list", "service", "--format", "json"], projectDir);
+      const services = parseJsonFromCli(serviceList.stdout);
+      const serviceNames = services.map((s: any) => s.name);
+      expect(serviceNames).toEqual(expect.arrayContaining(["web", "worker"]));
 
-    const endpointList = runCli(["--local", "list", "endpoint", "--format", "json"], projectDir);
-    const endpoints = parseJsonFromCli(endpointList.stdout);
-    expect(endpoints.some((e: any) => (e.name || "").includes("/api/health"))).toBe(true);
+      const endpointList = runCli(["--local", "list", "endpoint", "--format", "json"], projectDir);
+      const endpoints = parseJsonFromCli(endpointList.stdout);
+      expect(endpoints.some((e: any) => (e.name || "").includes("/api/health"))).toBe(true);
 
-    const statusResult = runCli(["--local", "status", "--format", "json"], projectDir);
-    const projectStatus = parseJsonFromCli(statusResult.stdout);
-    expect(projectStatus.health).toBe("healthy");
+      const statusResult = runCli(["--local", "status", "--format", "json"], projectDir);
+      const projectStatus = parseJsonFromCli(statusResult.stdout);
+      expect(projectStatus.health).toBe("healthy");
 
-    const assemblyPath = path.join(projectDir, ".arbiter", "assembly.cue");
-    const assembly = await readFile(assemblyPath, "utf-8");
-    expect(assembly).toContain("services:");
-    expect(assembly).toContain("locators:");
-    expect(assembly).toContain("flows:");
+      const assemblyPath = path.join(projectDir, ".arbiter", "assembly.cue");
+      const assembly = await readFile(assemblyPath, "utf-8");
+      expect(assembly).toContain("services:");
+      expect(assembly).toContain("locators:");
+      expect(assembly).toContain("flows:");
 
-    const expectedDirs = ["services", "tests"];
-    await Promise.all(
-      expectedDirs.map(async (dir) => {
-        const target = path.join(projectDir, dir);
-        try {
-          await stat(target);
-        } catch (error) {
-          throw new Error(`Expected directory missing: ${target}`);
-        }
-      }),
-    );
-  },
-  { timeout: 60000 },
-);
-
-test(
-  "arbiter spec-import persists fragments via remote API",
-  async () => {
-    const projectDir = await mkdtemp(path.join(tmpdir(), "arbiter-spec-import-"));
-    tempRoots.push(projectDir);
-
-    const arbiterDir = path.join(projectDir, ".arbiter");
-    await mkdir(arbiterDir, { recursive: true });
-    const specPath = path.join(arbiterDir, "assembly.cue");
-    await writeFile(specPath, 'project: "demo"\n', "utf-8");
-
-    const api = await createApiStub();
-
-    try {
-      runCli(
-        ["spec-import", "--skip-validate", "--project", "e2e-spec", specPath, "--api-url", api.url],
-        projectDir,
+      const expectedDirs = ["services", "tests"];
+      await Promise.all(
+        expectedDirs.map(async (dir) => {
+          const target = path.join(projectDir, dir);
+          try {
+            await stat(target);
+          } catch (error) {
+            throw new Error(`Expected directory missing: ${target}`);
+          }
+        }),
       );
+    },
+    { timeout: 60000 },
+  );
 
-      expect(api.fragments).toHaveLength(1);
-      expect(api.fragments[0].projectId).toBe("e2e-spec");
-      expect(api.fragments[0].path).toContain("assembly.cue");
-    } finally {
-      await api.close();
-    }
-  },
-  { timeout: 60000 },
-);
+  test(
+    "arbiter spec-import persists fragments via remote API",
+    async () => {
+      const projectDir = await mkdtemp(path.join(tmpdir(), "arbiter-spec-import-"));
+      tempRoots.push(projectDir);
 
-test(
-  "arbiter sync updates TypeScript manifests",
-  async () => {
-    const projectDir = await mkdtemp(path.join(tmpdir(), "arbiter-sync-e2e-"));
-    tempRoots.push(projectDir);
+      const arbiterDir = path.join(projectDir, ".arbiter");
+      await mkdir(arbiterDir, { recursive: true });
+      const specPath = path.join(arbiterDir, "assembly.cue");
+      await writeFile(specPath, 'project: "demo"\n', "utf-8");
 
-    const pkgPath = path.join(projectDir, "package.json");
-    await writeFile(pkgPath, JSON.stringify({ name: "sync-demo", version: "0.1.0" }, null, 2));
+      const api = await createApiStub();
 
-    runCli(["sync", "--force"], projectDir);
+      try {
+        runCli(
+          [
+            "spec-import",
+            "--skip-validate",
+            "--project",
+            "e2e-spec",
+            specPath,
+            "--api-url",
+            api.url,
+          ],
+          projectDir,
+        );
 
-    const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-    expect(pkg.scripts["arbiter:check"]).toBe("arbiter check");
-    expect(pkg.devDependencies["@arbiter/cli"]).toMatch(/^\^/);
-    expect(pkg.arbiter?.surface?.language).toBe("typescript");
-  },
-  { timeout: 60000 },
-);
+        expect(api.fragments).toHaveLength(1);
+        expect(api.fragments[0].projectId).toBe("e2e-spec");
+        expect(api.fragments[0].path).toContain("assembly.cue");
+      } finally {
+        await api.close();
+      }
+    },
+    { timeout: 60000 },
+  );
 
-test(
-  "generate, sync, and spec-import flow against stubbed API",
-  async () => {
-    const tempRoot = await mkdtemp(path.join(tmpdir(), "arbiter-cli-remote-"));
-    tempRoots.push(tempRoot);
-    const projectDir = path.join(tempRoot, "workspace");
-    await mkdir(projectDir, { recursive: true });
+  test(
+    "arbiter sync updates TypeScript manifests",
+    async () => {
+      const projectDir = await mkdtemp(path.join(tmpdir(), "arbiter-sync-e2e-"));
+      tempRoots.push(projectDir);
 
-    await scaffoldDemoProject(projectDir);
-    runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
+      const pkgPath = path.join(projectDir, "package.json");
+      await writeFile(pkgPath, JSON.stringify({ name: "sync-demo", version: "0.1.0" }, null, 2));
 
-    const pkgPath = path.join(projectDir, "package.json");
-    await writeFile(pkgPath, JSON.stringify({ name: "remote-flow", version: "0.0.1" }, null, 2));
-    runCli(["sync", "--force"], projectDir);
+      runCli(["sync", "--force"], projectDir);
 
-    const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-    expect(pkg.scripts["arbiter:check"]).toBeDefined();
+      const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+      expect(pkg.scripts["arbiter:check"]).toBe("arbiter check");
+      expect(pkg.devDependencies["@arbiter/cli"]).toMatch(/^\^/);
+      expect(pkg.arbiter?.surface?.language).toBe("typescript");
+    },
+    { timeout: 60000 },
+  );
 
-    const api = await createApiStub();
-    try {
-      const specPath = path.join(projectDir, ".arbiter", "assembly.cue");
-      runCli(
-        [
-          "spec-import",
-          "--skip-validate",
-          "--project",
-          "flow-spec",
-          specPath,
-          "--api-url",
-          api.url,
-        ],
-        projectDir,
-      );
+  test(
+    "generate, sync, and spec-import flow against stubbed API",
+    async () => {
+      const tempRoot = await mkdtemp(path.join(tmpdir(), "arbiter-cli-remote-"));
+      tempRoots.push(tempRoot);
+      const projectDir = path.join(tempRoot, "workspace");
+      await mkdir(projectDir, { recursive: true });
 
-      expect(api.projectCreates).toHaveLength(1);
-      expect(api.fragments).toHaveLength(1);
-      expect(api.fragments[0].projectId).toBe("flow-spec");
-    } finally {
-      await api.close();
-    }
-  },
-  { timeout: 60000 },
-);
+      await scaffoldDemoProject(projectDir);
+      runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
+
+      const pkgPath = path.join(projectDir, "package.json");
+      await writeFile(pkgPath, JSON.stringify({ name: "remote-flow", version: "0.0.1" }, null, 2));
+      runCli(["sync", "--force"], projectDir);
+
+      const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+      expect(pkg.scripts["arbiter:check"]).toBeDefined();
+
+      const api = await createApiStub();
+      try {
+        const specPath = path.join(projectDir, ".arbiter", "assembly.cue");
+        runCli(
+          [
+            "spec-import",
+            "--skip-validate",
+            "--project",
+            "flow-spec",
+            specPath,
+            "--api-url",
+            api.url,
+          ],
+          projectDir,
+        );
+
+        expect(api.projectCreates).toHaveLength(1);
+        expect(api.fragments).toHaveLength(1);
+        expect(api.fragments[0].projectId).toBe("flow-spec");
+      } finally {
+        await api.close();
+      }
+    },
+    { timeout: 60000 },
+  );
+}

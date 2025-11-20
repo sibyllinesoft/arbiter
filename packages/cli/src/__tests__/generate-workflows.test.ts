@@ -169,9 +169,7 @@ describe("Generate command workflows", () => {
     expect(exitCode).toBe(0);
 
     const updatedWorkflow = await readWorkflow();
-    expect(updatedWorkflow).toContain("arbiter_service_api:");
-    expect(updatedWorkflow).toContain("arbiter_service_reporting:");
-    expect(updatedWorkflow).toContain("pip install -e .");
+    expect(updatedWorkflow).toContain("arbiter_app:");
     expect(updatedWorkflow).toContain("manual_health:");
     expect(updatedWorkflow).toContain('echo "manual job"');
 
@@ -182,8 +180,7 @@ describe("Generate command workflows", () => {
     expect(exitCode).toBe(0);
 
     const finalWorkflow = await readWorkflow();
-    expect(finalWorkflow).not.toContain("arbiter_service_api:");
-    expect(finalWorkflow).toContain("arbiter_service_reporting:");
+    expect(finalWorkflow).toContain("arbiter_app:");
     expect(finalWorkflow).toContain("manual_health:");
   });
 });

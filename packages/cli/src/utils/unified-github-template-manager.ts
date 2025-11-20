@@ -10,9 +10,12 @@
  * - Validation rules
  */
 
+import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 import Handlebars from "handlebars";
+import { GitHubTemplateAssetStrategy } from "../templates/github-assets.js";
+import { TemplateOrchestrator, templateOrchestrator } from "../templates/index.js";
 import type {
   GitHubFieldValidation,
   GitHubFileTemplateRef,
@@ -244,13 +247,18 @@ export class UnifiedGitHubTemplateManager {
   private templateCache: Map<string, TemplateLoadResult> = new Map();
   private compiledTemplateCache: Map<string, HandlebarsTemplateDelegate> = new Map();
   private baseDir: string;
+  private templateLoader: TemplateOrchestrator;
+  private readonly templateAssets: GitHubTemplateAssetStrategy;
 
   constructor(
     config: GitHubTemplatesConfig = DEFAULT_TEMPLATES_CONFIG,
     baseDir: string = process.cwd(),
+    templateLoader: TemplateOrchestrator = templateOrchestrator,
   ) {
     this.config = { ...DEFAULT_TEMPLATES_CONFIG, ...config };
     this.baseDir = baseDir;
+    this.templateLoader = templateLoader;
+    this.templateAssets = new GitHubTemplateAssetStrategy(this.templateLoader);
     this.registerHelpers();
   }
 
@@ -468,13 +476,12 @@ export class UnifiedGitHubTemplateManager {
       return this.templateCache.get(cacheKey)!;
     }
 
-    const templatePath = this.resolveTemplatePath(templateRef.file);
-
-    if (!(await fs.pathExists(templatePath))) {
-      throw new Error(`Template file not found: ${templatePath}`);
+    const asset = await this.loadTemplateAsset(templateRef.file);
+    if (!asset) {
+      throw new Error(`Template file not found: ${templateRef.file}`);
     }
 
-    let content = await fs.readFile(templatePath, "utf-8");
+    let content = asset.content;
     let metadata = templateRef.metadata || {};
 
     // Handle inheritance
@@ -493,10 +500,9 @@ export class UnifiedGitHubTemplateManager {
    * Load base template for inheritance
    */
   private async loadBaseTemplate(baseTemplateName: string): Promise<string> {
-    const baseTemplatePath = this.resolveTemplatePath(`${baseTemplateName}.hbs`);
-
-    if (await fs.pathExists(baseTemplatePath)) {
-      return await fs.readFile(baseTemplatePath, "utf-8");
+    const asset = await this.loadTemplateAsset(`${baseTemplateName}.hbs`);
+    if (asset) {
+      return asset.content;
     }
 
     // Fall back to base template from config
@@ -517,34 +523,60 @@ export class UnifiedGitHubTemplateManager {
     return `${baseContent}\n\n${childContent}`;
   }
 
-  /**
-   * Resolve template file path
-   */
-  private resolveTemplatePath(templateFile: string): string {
-    if (path.isAbsolute(templateFile)) {
-      return templateFile;
+  private async loadTemplateAsset(
+    templateFile: string,
+  ): Promise<{ content: string; resolvedPath: string } | undefined> {
+    const candidates = this.expandTemplateCandidates(templateFile);
+    const overrideDirectories = this.getDiscoveryDirectories();
+    const defaultDirectories = [this.baseDir];
+
+    for (const candidate of candidates) {
+      const asset = await this.templateAssets.resolve(candidate, {
+        overrideDirectories,
+        defaultDirectories,
+      });
+      if (asset) {
+        return asset;
+      }
     }
 
-    // Check discovery paths from config
+    for (const candidate of candidates) {
+      const fallback = path.resolve(this.baseDir, candidate);
+      if (await fs.pathExists(fallback)) {
+        const content = await fs.readFile(fallback, "utf-8");
+        return { content, resolvedPath: fallback };
+      }
+    }
+
+    return undefined;
+  }
+
+  private expandTemplateCandidates(templateFile: string): string[] {
+    if (path.extname(templateFile)) {
+      return [templateFile];
+    }
+    if (this.config.defaultExtension) {
+      return [templateFile, `${templateFile}.${this.config.defaultExtension}`];
+    }
+    return [templateFile];
+  }
+
+  private getDiscoveryDirectories(): string[] {
     const discoveryPaths = this.config.discoveryPaths || [
       ".arbiter/templates/github",
       "~/.arbiter/templates/github",
     ];
+    return discoveryPaths.map((discoveryPath) => this.resolveDiscoveryPath(discoveryPath));
+  }
 
-    for (const discoveryPath of discoveryPaths) {
-      const resolvedPath = path.resolve(
-        this.baseDir,
-        discoveryPath.replace("~", require("os").homedir()),
-      );
-      const fullPath = path.join(resolvedPath, templateFile);
-
-      if (fs.existsSync(fullPath)) {
-        return fullPath;
-      }
+  private resolveDiscoveryPath(discoveryPath: string): string {
+    if (discoveryPath.startsWith("~")) {
+      return path.join(os.homedir(), discoveryPath.slice(1));
     }
 
-    // Fall back to relative path from base directory
-    return path.resolve(this.baseDir, templateFile);
+    return path.isAbsolute(discoveryPath)
+      ? discoveryPath
+      : path.resolve(this.baseDir, discoveryPath);
   }
 
   /**
@@ -636,7 +668,12 @@ export class UnifiedGitHubTemplateManager {
     }
 
     const baseConfigName = templateConfig.inherits;
-    const baseConfig = this.config[baseConfigName as keyof GitHubTemplatesConfig];
+    let baseConfig = this.config[baseConfigName as keyof GitHubTemplatesConfig];
+
+    // Fallback: common default base name maps to config.base or the built-in defaults
+    if (!baseConfig && baseConfigName === "arbiter-default") {
+      baseConfig = this.config.base || DEFAULT_TEMPLATES_CONFIG.base;
+    }
 
     if (!baseConfig) {
       throw new Error(`Base template not found: ${baseConfigName}`);
@@ -871,11 +908,11 @@ export class UnifiedGitHubTemplateManager {
       if (templateRef) {
         try {
           if (this.isFileReference(templateRef)) {
-            const templatePath = this.resolveTemplatePath(templateRef.file);
-            if (!(await fs.pathExists(templatePath))) {
+            const asset = await this.loadTemplateAsset(templateRef.file);
+            if (!asset) {
               errors.push({
                 field: `${templateType}.file`,
-                message: `Template file not found: ${templatePath}`,
+                message: `Template file not found: ${templateRef.file}`,
               });
             }
           } else if (this.isTemplateConfigCandidate(templateRef)) {
