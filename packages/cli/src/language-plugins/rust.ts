@@ -114,18 +114,18 @@ export class RustPlugin implements LanguagePlugin {
     // Main application
     files.push({
       path: "src/main.rs",
-      content: this.generateMainApp(config),
+      content: await this.generateMainApp(config),
     });
 
     // Application state and configuration
     files.push({
       path: "src/config.rs",
-      content: this.generateConfig(config),
+      content: await this.generateConfig(config),
     });
 
     files.push({
       path: "src/app.rs",
-      content: this.generateAppState(config),
+      content: await this.generateAppState(config),
     });
 
     // Database setup (if needed)
@@ -885,14 +885,16 @@ strip = true
     );
   }
 
-  private generateMainApp(config: ProjectConfig): string {
-    return `use std::net::SocketAddr;
+  private async generateMainApp(config: ProjectConfig): Promise<string> {
+    const moduleName = config.name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+
+    const fallback = `use std::net::SocketAddr;
 
 use axum::Server;
 use tracing::{info, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use ${config.name.toLowerCase().replace(/[^a-z0-9_]/g, "_")}::{
+use ${moduleName}::{
     app::create_app,
     config::Config,
     ${config.database ? "database::create_pool," : ""}
@@ -951,10 +953,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "src/main.rs.tpl",
+      {
+        module_name: moduleName,
+        service_name: config.name,
+        database_block: config.database
+          ? `// Create database connection pool
+    let db_pool = create_pool(&config.database_url).await?;
+    info!("Database connection pool created");
+
+    // Run migrations
+    sqlx::migrate!("./migrations")
+        .run(&db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to run migrations: {}", e);
+            e
+        })?;
+    info!("Database migrations completed");`
+          : "",
+        database_arg: config.database ? "db_pool" : "",
+        tracing_env: `${config.name.toLowerCase()}=debug,tower_http=debug`,
+      },
+      fallback,
+    );
   }
 
-  private generateConfig(config: ProjectConfig): string {
-    return `use std::env;
+  private async generateConfig(config: ProjectConfig): Promise<string> {
+    const fallback = `use std::env;
 
 /// Application configuration
 #[derive(Debug, Clone)]
@@ -1014,10 +1042,36 @@ impl Config {
     }
 }
 `;
+
+    const databaseField = config.database ? "pub database_url: String," : "";
+    const authField = config.auth ? "pub jwt_secret: String," : "";
+    const databaseParse = config.database
+      ? `        let database_url = env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://user:password@localhost:5432/${config.name.toLowerCase()}".to_string());`
+      : "";
+    const authParse = config.auth
+      ? `        let jwt_secret = env::var("JWT_SECRET")
+            .unwrap_or_else(|_| "your-secret-key".to_string());`
+      : "";
+    const databaseReturn = config.database ? "            database_url," : "";
+    const authReturn = config.auth ? "            jwt_secret," : "";
+
+    return rustTemplateResolver.renderTemplate(
+      "src/config.rs.tpl",
+      {
+        database_field: databaseField,
+        auth_field: authField,
+        database_parse: databaseParse,
+        auth_parse: authParse,
+        database_return: databaseReturn,
+        auth_return: authReturn,
+      },
+      fallback,
+    );
   }
 
-  private generateAppState(config: ProjectConfig): string {
-    return `use axum::{
+  private async generateAppState(config: ProjectConfig): Promise<string> {
+    const fallback = `use axum::{
     http::{
         header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
         HeaderValue, Method,
@@ -1076,6 +1130,24 @@ pub async fn create_app(${config.database ? "db_pool: PgPool" : ""}) -> Result<R
     Ok(app)
 }
 `;
+
+    const dbUse = config.database ? "use sqlx::PgPool;" : "";
+    const dbField = config.database ? "    pub db_pool: PgPool," : "";
+    const dbCtorParam = config.database ? "db_pool: PgPool" : "";
+    const dbCtorAssign = config.database ? "            db_pool," : "";
+    const dbCtorArg = config.database ? "db_pool" : "";
+
+    return rustTemplateResolver.renderTemplate(
+      "src/app.rs.tpl",
+      {
+        db_use: dbUse,
+        db_field: dbField,
+        db_ctor_param: dbCtorParam,
+        db_ctor_assign: dbCtorAssign,
+        db_ctor_arg: dbCtorArg,
+      },
+      fallback,
+    );
   }
 
   private generateDatabase(config: ProjectConfig): string {
