@@ -93,6 +93,8 @@ bun.lockb
 
 # Generated documentation
 docs/api/
+.venv/
+.venv-docs/
 
 # Biome files (avoid conflicts)
 biome.json

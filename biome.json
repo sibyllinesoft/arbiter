@@ -79,6 +79,8 @@
     "ignore": [
       "**/dist/**",
       "**/node_modules/**",
+      "**/.venv/**",
+      "**/.venv-docs/**",
       "apps/web/frontend/dist/**",
       "packages/cli/dist/**",
       "arbiter-cli",
