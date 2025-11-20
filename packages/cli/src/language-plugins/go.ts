@@ -993,7 +993,10 @@ func New(cfg *config.Config, ${config.database ? "db *gorm.DB, " : ""}logger *za
   }
 
   private generateCORSMiddleware(): string {
-    return `package middleware
+    return this.templateResolver.renderTemplate(
+      "internal/middleware/cors.go.tpl",
+      {},
+      `package middleware
 
 import (
 	"github.com/gin-gonic/gin"
@@ -1015,7 +1018,8 @@ func CORSMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
-`;
+`,
+    );
   }
 
   private async generateLogger(): Promise<string> {
@@ -1065,7 +1069,10 @@ func NewDevelopmentLogger() (*zap.Logger, error) {
   }
 
   private generateLoggerMiddleware(): string {
-    return `package middleware
+    return this.templateResolver.renderTemplate(
+      "internal/middleware/logger.go.tpl",
+      {},
+      `package middleware
 
 import (
 	"time"
@@ -1089,11 +1096,15 @@ func LoggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
 		return ""
 	})
 }
-`;
+`,
+    );
   }
 
   private generateHealthHandler(): string {
-    return `package handlers
+    return this.templateResolver.renderTemplate(
+      "internal/handlers/health_handler.go.tpl",
+      { serviceName: "api" },
+      `package handlers
 
 import (
 	"net/http"
@@ -1111,7 +1122,8 @@ func HealthCheck(c *gin.Context) {
 		"version":   "1.0.0",
 	})
 }
-`;
+`,
+    );
   }
 
   private async generateEnvExample(config: ProjectConfig): Promise<string> {
