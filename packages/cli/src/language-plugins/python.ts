@@ -20,6 +20,15 @@ const pythonTemplateResolver = new TemplateResolver({
     new URL("../templates/python", import.meta.url).pathname,
   ],
 });
+import { TemplateResolver } from "./template-resolver.js";
+
+const pythonTemplateResolver = new TemplateResolver({
+  language: "python",
+  defaultDirectories: [
+    new URL("./templates/python", import.meta.url).pathname,
+    new URL("../templates/python", import.meta.url).pathname,
+  ],
+});
 
 export class PythonPlugin implements LanguagePlugin {
   readonly name = "Python Plugin";
