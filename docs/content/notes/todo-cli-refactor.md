@@ -1,8 +1,8 @@
 # Arbiter CLI Cleanup TODO (post-commit)
 
 ## High-priority
-1. Remove remaining `src/commands/*` shims; call services directly from `src/cli/*` (check-constrained, docs, import, init, status, list, surface, watch, etc.). Update tests and docs accordingly.
-2. Externalize language plugin templates (Go/Python/Rust; TS partly done — remainder of TS templates still inline: types, styles, tests). Use `packages/cli/src/templates/<language>/...` and TemplateResolver.
+1. Remove remaining `src/commands/*` shims; call services directly from `src/cli/*` (check-constrained, docs schema/api, surface, diff, compat, etc.). Update tests and docs accordingly. (init/list/status/watch already moved.)
+2. Externalize language plugin templates (Go/Python/Rust; TS partially done — still inline: build/vite/next configs, handler/schema fallbacks, etc.). Use `packages/cli/src/templates/<language>/...` and TemplateResolver.
 3. Unify CUE docs parsing: drop `docs/schema-parser.ts` regex parser and route docs generation through the CUE manipulator / `EnhancedCUEParser` (AST-driven). Adjust docs generators and tests.
 
 ## Medium
