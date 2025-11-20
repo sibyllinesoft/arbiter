@@ -2,7 +2,7 @@
 
 ## High-priority
 1. (DONE) Removed all remaining `src/commands/*` shims; CLI now calls services directly. Build script points to `src/services/**`.
-2. Externalize language plugin templates (Go/Python/Rust; TS leftovers: build/vite/next configs, handler/schema fallbacks, etc.). Use `packages/cli/src/templates/<language>/...` and TemplateResolver.
+2. Externalize language plugin templates (Go/Python/Rust; TS leftovers: build/vite/next configs, handler/schema fallbacks, etc.). Use `packages/cli/src/templates/<language>/...` and TemplateResolver. **Progress:** Go module + Dockerfiles now templated via resolver; handler/service/model/middleware templates still inline.
 3. Unify CUE docs parsing: drop `docs/schema-parser.ts` regex parser and route docs generation through the CUE manipulator / `EnhancedCUEParser` (AST-driven). Adjust docs generators and tests.
 
 ## Medium
