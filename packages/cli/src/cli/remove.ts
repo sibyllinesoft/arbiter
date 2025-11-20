@@ -4,8 +4,8 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { removeCommand } from "../commands/remove.js";
-import type { RemoveOptions } from "../commands/remove.js";
+import { removeCommand } from "../services/remove/index.js";
+import type { RemoveOptions } from "../services/remove/index.js";
 
 export function createRemoveCommands(program: Command): Command {
   const removeCmd = program

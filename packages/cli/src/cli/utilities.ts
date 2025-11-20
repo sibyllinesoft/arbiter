@@ -4,9 +4,9 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { importCommand } from "../commands/import.js";
-import { testCommand } from "../commands/test.js";
-import { coverCommand, scaffoldCommand } from "../commands/tests.js";
+import { importCommand } from "../services/import/index.js";
+import { testCommand } from "../services/test/index.js";
+import { coverCommand, scaffoldCommand } from "../services/tests/index.js";
 
 export function createUtilitiesCommands(program: Command): void {
   // Import command

@@ -12,7 +12,7 @@ import {
   type SchemaDocsCommandOptions,
   createSchemaDocsCommand,
   generateSchemaDocumentation,
-} from "../commands/schema-docs.js";
+} from "../services/schema-docs/index.js";
 import { runDemo } from "./demo-documentation.js";
 import { DocumentationGenerator } from "./documentation-generator.js";
 import { EnhancedCUEParser } from "./enhanced-cue-parser.js";

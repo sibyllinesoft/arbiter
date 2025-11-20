@@ -4,7 +4,7 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { versionPlanCommand, versionReleaseCommand } from "../commands/version.js";
+import { versionPlanCommand, versionReleaseCommand } from "../services/version/index.js";
 import type { VersionPlanOptions, VersionReleaseOptions } from "../types.js";
 
 export function createVersionCommands(program: Command): void {

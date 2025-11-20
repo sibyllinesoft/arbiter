@@ -178,7 +178,7 @@ const checkCommand = withConstraintEnforcement(async (patterns, options, config)
 Enhanced commands automatically enforce all constraints:
 
 ```typescript
-import { checkCommandConstrained } from './commands/check-constrained.js';
+import { checkCommandConstrained } from './services/check-constrained/index.js';
 
 // Replaces original check command with constraint enforcement
 program

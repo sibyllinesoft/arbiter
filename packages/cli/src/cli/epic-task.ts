@@ -4,8 +4,8 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { epicCommand, taskCommand } from "../commands/epic.js";
-import type { EpicOptions, TaskOptions } from "../commands/epic.js";
+import { epicCommand, taskCommand } from "../services/epic/commands.js";
+import type { EpicOptions, TaskOptions } from "../services/epic/commands.js";
 
 export function createEpicTaskCommands(addCmd: Command): void {
   // Epic commands as subcommands of add

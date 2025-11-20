@@ -3,7 +3,7 @@ import os from "os";
 import path from "path";
 import fs from "fs-extra";
 
-import { generateInitialSpec } from "./onboard";
+import { generateInitialSpec } from "./index.js";
 
 describe("generateInitialSpec", () => {
   const tempDirs: string[] = [];
@@ -38,18 +38,16 @@ describe("generateInitialSpec", () => {
         },
       ],
       databases: [],
-      infrastructure: [],
-      buildSystem: [],
-      testFrameworks: [],
-      configFiles: [],
-      environmentFiles: [],
-      packageManagers: [],
-    } as any;
+      messageQueues: [],
+      cloudProviders: [],
+    };
 
-    await generateInitialSpec(projectPath, analysis, false);
+    const spec = generateInitialSpec(analysis as any);
+    const outputPath = path.join(projectPath, ".arbiter", "assembly.cue");
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, spec, "utf-8");
 
-    const specPath = path.join(projectPath, "arbiter.assembly.cue");
-    const contents = await fs.readFile(specPath, "utf8");
-    expect(contents).toContain('framework: "fastify"');
+    const content = await fs.readFile(outputPath, "utf-8");
+    expect(content).toContain(`framework: "fastify"`);
   });
 });
