@@ -52,7 +52,7 @@ export class RustPlugin implements LanguagePlugin {
       case "api":
         files.push({
           path: `src/handlers/${config.name.toLowerCase()}.rs`,
-          content: this.generateAPIHandler(config),
+          content: await this.generateAPIHandler(config),
         });
         files.push({
           path: `src/routes/${config.name.toLowerCase()}.rs`,
@@ -63,13 +63,13 @@ export class RustPlugin implements LanguagePlugin {
       case "service":
         files.push({
           path: `src/services/${config.name.toLowerCase()}.rs`,
-          content: this.generateBusinessService(config),
+          content: await this.generateBusinessService(config),
         });
         break;
       case "model":
         files.push({
           path: `src/models/${config.name.toLowerCase()}.rs`,
-          content: this.generateModel(config),
+          content: await this.generateModel(config),
         });
         dependencies.push("sqlx", "serde", "uuid");
         break;
@@ -195,11 +195,11 @@ export class RustPlugin implements LanguagePlugin {
     if (config.testing) {
       files.push({
         path: "src/tests/mod.rs",
-        content: this.generateTestModule(),
+        content: await this.generateTestModule(),
       });
       files.push({
         path: "src/tests/integration.rs",
-        content: this.generateIntegrationTests(config),
+        content: await this.generateIntegrationTests(config),
       });
     }
 
@@ -207,11 +207,11 @@ export class RustPlugin implements LanguagePlugin {
     if (config.docker) {
       files.push({
         path: "Dockerfile",
-        content: this.generateDockerfile(config),
+        content: await this.generateDockerfile(config),
       });
       files.push({
         path: "docker-compose.yml",
-        content: this.generateDockerCompose(config),
+        content: await this.generateDockerCompose(config),
       });
     }
 
@@ -243,14 +243,14 @@ export class RustPlugin implements LanguagePlugin {
     if (config.target === "production") {
       files.push({
         path: "Dockerfile.prod",
-        content: this.generateProductionDockerfile(config),
+        content: await this.generateProductionDockerfile(config),
       });
     }
 
     // CI/CD configuration
     files.push({
       path: ".github/workflows/rust.yml",
-      content: this.generateGitHubActions(config),
+      content: await this.generateGitHubActions(config),
     });
 
     // Cargo configuration
@@ -429,13 +429,161 @@ pub fn create_${moduleName}_routes() -> Router<AppState> {
     );
   }
 
-  private generateBusinessService(config: ServiceConfig): string {
+  private async generateBusinessService(config: ServiceConfig): Promise<string> {
     const structName = this.toPascalCase(config.name);
     const moduleName = config.name.toLowerCase();
+    const dbImport = config.database ? "use sqlx::{PgPool, Row};" : "";
+    const lifet = config.database ? "<'a>" : "";
+    const serviceStruct = config.database
+      ? `{
+    db_pool: &'a PgPool,
+}`
+      : "{}";
+    const ctorParams = config.database ? "db_pool: &'a PgPool" : "";
+    const ctorFields = config.database ? "            db_pool,\n" : "";
 
-    return `use uuid::Uuid;
+    const getAllBody = config.database
+      ? `        let offset = (page - 1) * limit;
+
+        // Get total count
+        let count_row = sqlx::query!(
+            "SELECT COUNT(*) as count FROM ${moduleName}s WHERE deleted_at IS NULL"
+        )
+        .fetch_one(self.db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to count ${config.name} items: {}", e);
+            AppError::DatabaseError(e.toString())
+        })?;
+
+        let total = count_row.count.unwrap_or(0) as u64;
+
+        // Get paginated items
+        let items = sqlx::query_as!(
+            ${structName},
+            "SELECT id, name, description, is_active, created_at, updated_at\n             FROM ${moduleName}s\n             WHERE deleted_at IS NULL\n             ORDER BY created_at DESC\n             LIMIT $1 OFFSET $2",
+            limit as i32,
+            offset as i32
+        )
+        .fetch_all(self.db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch ${config.name} items: {}", e);
+            AppError::DatabaseError(e.toString())
+        })?;
+
+        Ok((items, total))`
+      : `        // Placeholder implementation without database
+        let items: Vec<${structName}> = vec![];
+        let total = 0;
+        Ok((items, total))`;
+
+    const getByIdBody = config.database
+      ? `        let item = sqlx::query_as!(
+            ${structName},
+            "SELECT id, name, description, is_active, created_at, updated_at\n             FROM ${moduleName}s\n             WHERE id = $1 AND deleted_at IS NULL",
+            id
+        )
+        .fetch_optional(self.db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to fetch ${config.name} {}: {}", id, e);
+            AppError::DatabaseError(e.toString())
+        })?
+        .ok_or_else(() => {
+            error!("${config.name} not found: {}", id);
+            AppError::NotFound(format!("${config.name} with ID {} not found", id))
+        })?;
+
+        Ok(item)`
+      : `        // Placeholder implementation without database
+        Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))`;
+
+    const createBody = config.database
+      ? `        let id = Uuid::new_v4();
+        let now = chrono::Utc::now();
+
+        let item = sqlx::query_as!(
+            ${structName},
+            "INSERT INTO ${moduleName}s (id, name, description, is_active, created_at, updated_at)\n             VALUES ($1, $2, $3, true, $4, $4)\n             RETURNING id, name, description, is_active, created_at, updated_at",
+            id,
+            request.name,
+            request.description,
+            now,
+        )
+        .fetch_one(self.db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to create ${config.name}: {}", e);
+            AppError::DatabaseError(e.toString())
+        })?;
+
+        Ok(item)`
+      : `        // Placeholder implementation without database
+        let item = ${structName} {
+            id: Uuid::new_v4(),
+            name: request.name,
+            description: request.description,
+            is_active: true,
+            created_at: chrono::Utc::now(),
+            updated_at: chrono::Utc::now(),
+        };
+        Ok(item)`;
+
+    const updateBody = config.database
+      ? `        let now = chrono::Utc::now();
+
+        let item = sqlx::query_as!(
+            ${structName},
+            "UPDATE ${moduleName}s\n             SET name = COALESCE($2, name),\n                 description = COALESCE($3, description),\n                 is_active = COALESCE($4, is_active),\n                 updated_at = $5\n             WHERE id = $1 AND deleted_at IS NULL\n             RETURNING id, name, description, is_active, created_at, updated_at",
+            id,
+            request.name,
+            request.description,
+            request.is_active,
+            now,
+        )
+        .fetch_optional(self.db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to update ${config.name} {}: {}", id, e);
+            AppError::DatabaseError(e.toString())
+        })?
+        .ok_or_else(() => {
+            error!("${config.name} not found for update: {}", id);
+            AppError::NotFound(format!("${config.name} with ID {} not found", id))
+        })?;
+
+        Ok(item)`
+      : `        // Placeholder implementation without database
+        Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))`;
+
+    const deleteBody = config.database
+      ? `        let now = chrono::Utc::now();
+
+        let result = sqlx::query!(
+            "UPDATE ${moduleName}s SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL",
+            now,
+            id
+        )
+        .execute(self.db_pool)
+        .await
+        .map_err(|e| {
+            error!("Failed to delete ${config.name} {}: {}", id, e);
+            AppError::DatabaseError(e.toString())
+        })?;
+
+        if result.rows_affected() == 0 {
+            error!("${config.name} not found for deletion: {}", id);
+            return Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)));
+        }
+
+        Ok(())`
+      : `        // Placeholder implementation without database
+        Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))`;
+
+    const fallback = `use uuid::Uuid;
 use tracing::{info, error};
-${config.database ? "use sqlx::{PgPool, Row};" : ""}
+${dbImport}
 
 use crate::{
     errors::AppError,
@@ -443,11 +591,11 @@ use crate::{
 };
 
 /// Service for ${config.name} business logic
-pub struct ${structName}Service${config.database ? "<'a>" : ""} {
+pub struct ${structName}Service${lifet} {
     ${config.database ? "db_pool: &'a PgPool," : ""}
 }
 
-impl${config.database ? "<'a>" : ""} ${structName}Service${config.database ? "<'a>" : ""} {
+impl${lifet} ${structName}Service${lifet} {
     /// Create a new service instance
     pub fn new(${config.database ? "db_pool: &'a PgPool" : ""}) -> Self {
         Self {
@@ -459,224 +607,83 @@ impl${config.database ? "<'a>" : ""} ${structName}Service${config.database ? "<'
     pub async fn get_all(&self, page: u32, limit: u32) -> Result<(Vec<${structName}>, u64), AppError> {
         info!("Fetching all ${config.name} items (page: {}, limit: {})", page, limit);
         
-        ${
-          config.database
-            ? `
-        let offset = (page - 1) * limit;
-        
-        // Get total count
-        let count_row = sqlx::query!(
-            "SELECT COUNT(*) as count FROM ${moduleName}s WHERE deleted_at IS NULL"
-        )
-        .fetch_one(self.db_pool)
-        .await
-        .map_err(|e| {
-            error!("Failed to count ${config.name} items: {}", e);
-            AppError::DatabaseError(e.to_string())
-        })?;
-
-        let total = count_row.count.unwrap_or(0) as u64;
-
-        // Get paginated items
-        let items = sqlx::query_as!(
-            ${structName},
-            "SELECT id, name, description, is_active, created_at, updated_at 
-             FROM ${moduleName}s 
-             WHERE deleted_at IS NULL 
-             ORDER BY created_at DESC 
-             LIMIT $1 OFFSET $2",
-            limit as i32,
-            offset as i32
-        )
-        .fetch_all(self.db_pool)
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch ${config.name} items: {}", e);
-            AppError::DatabaseError(e.to_string())
-        })?;
-
-        Ok((items, total))
-        `
-            : `
-        // Placeholder implementation without database
-        let items = vec![];
-        let total = 0;
-        Ok((items, total))
-        `
-        }
+        ${getAllBody}
     }
 
     /// Get ${config.name} by ID
     pub async fn get_by_id(&self, id: Uuid) -> Result<${structName}, AppError> {
         info!("Fetching ${config.name} with ID: {}", id);
         
-        ${
-          config.database
-            ? `
-        let item = sqlx::query_as!(
-            ${structName},
-            "SELECT id, name, description, is_active, created_at, updated_at 
-             FROM ${moduleName}s 
-             WHERE id = $1 AND deleted_at IS NULL",
-            id
-        )
-        .fetch_optional(self.db_pool)
-        .await
-        .map_err(|e| {
-            error!("Failed to fetch ${config.name} {}: {}", id, e);
-            AppError::DatabaseError(e.to_string())
-        })?
-        .ok_or_else(|| {
-            error!("${config.name} not found: {}", id);
-            AppError::NotFound(format!("${config.name} with ID {} not found", id))
-        })?;
-
-        Ok(item)
-        `
-            : `
-        // Placeholder implementation without database
-        Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))
-        `
-        }
+        ${getByIdBody}
     }
 
     /// Create new ${config.name}
     pub async fn create(&self, request: Create${structName}Request) -> Result<${structName}, AppError> {
         info!("Creating new ${config.name}");
         
-        ${
-          config.database
-            ? `
-        let id = Uuid::new_v4();
-        let now = chrono::Utc::now();
-
-        let item = sqlx::query_as!(
-            ${structName},
-            "INSERT INTO ${moduleName}s (id, name, description, is_active, created_at, updated_at)
-             VALUES ($1, $2, $3, true, $4, $4)
-             RETURNING id, name, description, is_active, created_at, updated_at",
-            id,
-            request.name,
-            request.description,
-            now,
-        )
-        .fetch_one(self.db_pool)
-        .await
-        .map_err(|e| {
-            error!("Failed to create ${config.name}: {}", e);
-            AppError::DatabaseError(e.to_string())
-        })?;
-
-        Ok(item)
-        `
-            : `
-        // Placeholder implementation without database
-        let item = ${structName} {
-            id: Uuid::new_v4(),
-            name: request.name,
-            description: request.description,
-            is_active: true,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        };
-        Ok(item)
-        `
-        }
+        ${createBody}
     }
 
     /// Update ${config.name}
     pub async fn update(&self, id: Uuid, request: Update${structName}Request) -> Result<${structName}, AppError> {
         info!("Updating ${config.name} with ID: {}", id);
         
-        ${
-          config.database
-            ? `
-        let now = chrono::Utc::now();
-
-        let item = sqlx::query_as!(
-            ${structName},
-            "UPDATE ${moduleName}s 
-             SET name = COALESCE($2, name),
-                 description = COALESCE($3, description),
-                 is_active = COALESCE($4, is_active),
-                 updated_at = $5
-             WHERE id = $1 AND deleted_at IS NULL
-             RETURNING id, name, description, is_active, created_at, updated_at",
-            id,
-            request.name,
-            request.description,
-            request.is_active,
-            now,
-        )
-        .fetch_optional(self.db_pool)
-        .await
-        .map_err(|e| {
-            error!("Failed to update ${config.name} {}: {}", id, e);
-            AppError::DatabaseError(e.to_string())
-        })?
-        .ok_or_else(|| {
-            error!("${config.name} not found for update: {}", id);
-            AppError::NotFound(format!("${config.name} with ID {} not found", id))
-        })?;
-
-        Ok(item)
-        `
-            : `
-        // Placeholder implementation without database
-        Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))
-        `
-        }
+        ${updateBody}
     }
 
     /// Delete ${config.name} (soft delete)
     pub async fn delete(&self, id: Uuid) -> Result<(), AppError> {
         info!("Deleting ${config.name} with ID: {}", id);
         
-        ${
-          config.database
-            ? `
-        let now = chrono::Utc::now();
-
-        let result = sqlx::query!(
-            "UPDATE ${moduleName}s SET deleted_at = $1 WHERE id = $2 AND deleted_at IS NULL",
-            now,
-            id
-        )
-        .execute(self.db_pool)
-        .await
-        .map_err(|e| {
-            error!("Failed to delete ${config.name} {}: {}", id, e);
-            AppError::DatabaseError(e.to_string())
-        })?;
-
-        if result.rows_affected() == 0 {
-            error!("${config.name} not found for deletion: {}", id);
-            return Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)));
-        }
-
-        Ok(())
-        `
-            : `
-        // Placeholder implementation without database
-        Err(AppError::NotFound(format!("${config.name} with ID {} not found", id)))
-        `
-        }
+        ${deleteBody}
     }
 }
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "src/services/service.rs.tpl",
+      {
+        struct_name: structName,
+        module_name: moduleName,
+        resource_name: config.name,
+        db_import: dbImport,
+        lifet,
+        service_struct: serviceStruct,
+        ctor_params: ctorParams,
+        ctor_fields: ctorFields,
+        get_all_body: getAllBody,
+        get_by_id_body: getByIdBody,
+        create_body: createBody,
+        update_body: updateBody,
+        delete_body: deleteBody,
+      },
+      fallback,
+    );
   }
 
-  private generateModel(config: ServiceConfig): string {
+  private async generateModel(config: ServiceConfig): Promise<string> {
     const structName = this.toPascalCase(config.name);
+    const validationImport = config.validation ? "use validator::Validate;" : "";
+    const fromRowDerive = config.database ? ", FromRow" : "";
+    const extraImports = [validationImport].filter(Boolean).join("\n");
+    const validateDerive = config.validation ? ", Validate" : "";
+    const nameValidate = config.validation ? "    #[validate(length(min = 1, max = 100))]\n" : "";
+    const descValidate = config.validation ? "    #[validate(length(max = 500))]\n" : "";
+    const createValidateBody = config.validation
+      ? '        if self.name.trim().is_empty() {\n            return Err("Name cannot be empty".to_string());\n        }\n'
+      : "";
+    const updateValidateBody = config.validation
+      ? '        if let Some(name) = &self.name {\n            if name.trim().is_empty() {\n                return Err("Name cannot be empty".to_string());\n            }\n        }\n'
+      : "";
 
-    return `use serde::{Deserialize, Serialize};
+    const fallback = `use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 ${config.validation ? "use validator::Validate;" : ""}
+${config.database ? "use sqlx::FromRow;" : ""}
 
 /// ${structName} model
-#[derive(Debug, Clone, Serialize, Deserialize)]
-${config.database ? "#[derive(sqlx::FromRow)]" : ""}
+#[derive(Debug, Clone, Serialize, Deserialize${config.database ? ", FromRow" : ""}${config.validation ? ", Validate" : ""})]
 pub struct ${structName} {
     pub id: Uuid,
     pub name: String,
@@ -738,45 +745,22 @@ impl ${structName} {
         self.updated_at = Utc::now();
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_${config.name.toLowerCase()}_creation() {
-        let name = "Test ${structName}".to_string();
-        let description = Some("Test description".to_string());
-        let ${config.name.toLowerCase()} = ${structName}::new(name.clone(), description.clone());
-
-        assert_eq!(${config.name.toLowerCase()}.name, name);
-        assert_eq!(${config.name.toLowerCase()}.description, description);
-        assert!(${config.name.toLowerCase()}.is_active);
-        assert!(${config.name.toLowerCase()}.created_at <= Utc::now());
-        assert!(${config.name.toLowerCase()}.updated_at <= Utc::now());
-    }
-
-    #[test]
-    fn test_${config.name.toLowerCase()}_update() {
-        let mut ${config.name.toLowerCase()} = ${structName}::new(
-            "Original Name".to_string(),
-            Some("Original Description".to_string())
-        );
-
-        let update_request = Update${structName}Request {
-            name: Some("Updated Name".to_string()),
-            description: Some("Updated Description".to_string()),
-            is_active: Some(false),
-        };
-
-        ${config.name.toLowerCase()}.update(update_request);
-
-        assert_eq!(${config.name.toLowerCase()}.name, "Updated Name");
-        assert_eq!(${config.name.toLowerCase()}.description, Some("Updated Description".to_string()));
-        assert!(!${config.name.toLowerCase()}.is_active);
-    }
-}
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "src/models/model.rs.tpl",
+      {
+        struct_name: structName,
+        extra_imports: extraImports,
+        from_row_derive: fromRowDerive,
+        validate_derive: validateDerive,
+        name_validate: nameValidate,
+        desc_validate: descValidate,
+        create_validate_body: createValidateBody,
+        update_validate_body: updateValidateBody,
+      },
+      fallback,
+    );
   }
 
   private generateMiddleware(config: ServiceConfig): string {
@@ -1482,8 +1466,8 @@ JWT_SECRET=your-super-secret-jwt-key-change-in-production`
 `;
   }
 
-  private generateTestModule(): string {
-    return `//! Integration tests
+  private async generateTestModule(): Promise<string> {
+    const fallback = `//! Integration tests
 
 #[cfg(test)]
 mod integration;
@@ -1513,10 +1497,15 @@ pub mod common {
     }
 }
 `;
+
+    return rustTemplateResolver.renderTemplate("src/tests/mod.rs.tpl", {}, fallback);
   }
 
-  private generateIntegrationTests(config: ProjectConfig): string {
-    return `use axum::http::StatusCode;
+  private async generateIntegrationTests(config: ProjectConfig): Promise<string> {
+    const moduleName = config.name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const dbArg = config.database ? "db_pool" : "";
+
+    const fallback = `use axum::http::StatusCode;
 use axum_test::TestServer;
 ${config.database ? "use sqlx::PgPool;" : ""}
 
@@ -1556,6 +1545,15 @@ async fn test_not_found() {
     assert_eq!(response.status_code(), StatusCode::NOT_FOUND);
 }
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "src/tests/integration.rs.tpl",
+      {
+        module_name: moduleName,
+        db_arg: dbArg,
+      },
+      fallback,
+    );
   }
 
   private generateJustfile(config: ProjectConfig): string {
@@ -1650,8 +1648,8 @@ pre-commit: fix test
 `;
   }
 
-  private generateDockerfile(config: ProjectConfig): string {
-    return `# Multi-stage build for Rust application
+  private async generateDockerfile(config: ProjectConfig): Promise<string> {
+    const fallback = `# Multi-stage build for Rust application
 FROM rust:1.70 as builder
 
 # Create app directory
@@ -1698,9 +1696,15 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 # Run the application
 CMD ["app"]
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "Dockerfile.tpl",
+      { binary_name: config.name.toLowerCase() },
+      fallback,
+    );
   }
 
-  private generateDockerCompose(config: ProjectConfig): string {
+  private async generateDockerCompose(config: ProjectConfig): Promise<string> {
     const dbService =
       config.database === "postgres"
         ? `
@@ -1721,7 +1725,7 @@ CMD ["app"]
       retries: 5`
         : "";
 
-    return `version: '3.8'
+    const fallback = `version: '3.8'
 
 services:
   app:
@@ -1730,7 +1734,11 @@ services:
       - "3000:3000"
     environment:
       - ENVIRONMENT=development
-      ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}` : ""}
+      ${
+        config.database
+          ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}`
+          : ""
+      }
     ${
       config.database
         ? `depends_on:
@@ -1748,10 +1756,38 @@ ${
     : ""
 }
 `;
+
+    const databaseEnv = config.database
+      ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}`
+      : "";
+
+    const dependsOnBlock = config.database
+      ? `depends_on:
+      database:
+        condition: service_healthy`
+      : "";
+
+    const databaseBlock = config.database === "postgres" ? dbService.trimStart() : "";
+    const volumesBlock =
+      config.database === "postgres"
+        ? `volumes:
+  postgres_data:`
+        : "";
+
+    return rustTemplateResolver.renderTemplate(
+      "docker-compose.yml.tpl",
+      {
+        database_env: databaseEnv,
+        depends_on_block: dependsOnBlock,
+        database_block: databaseBlock,
+        volumes_block: volumesBlock,
+      },
+      fallback,
+    );
   }
 
-  private generateProductionDockerfile(config: BuildConfig): string {
-    return `# Production multi-stage build with distroless
+  private async generateProductionDockerfile(config: BuildConfig): Promise<string> {
+    const fallback = `# Production multi-stage build with distroless
 FROM rust:1.70 as builder
 
 WORKDIR /app
@@ -1788,10 +1824,12 @@ USER nonroot:nonroot
 
 ENTRYPOINT ["/app"]
 `;
+
+    return rustTemplateResolver.renderTemplate("Dockerfile.prod.tpl", {}, fallback);
   }
 
-  private generateGitHubActions(config: BuildConfig): string {
-    return `name: Rust Application CI/CD
+  private async generateGitHubActions(config: BuildConfig): Promise<string> {
+    const fallback = `name: Rust Application CI/CD
 
 on:
   push:
@@ -1898,6 +1936,38 @@ jobs:
     - name: Run security audit
       run: cargo audit
 `;
+
+    const deployBlock =
+      config.target === "production"
+        ? `  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build binary
+        run: cargo build --release
+      - name: Build Docker image
+        run: |
+          docker build -f Dockerfile.prod -t your-registry/app:${"{{ github.sha }}"} .
+          docker tag your-registry/app:${"{{ github.sha }}"} your-registry/app:latest
+      - name: Push Docker image
+        run: |
+          echo "${"{{ secrets.DOCKER_PASSWORD }}"}" | docker login -u "${"{{ secrets.DOCKER_USERNAME }}"}" --password-stdin
+          docker push your-registry/app:${"{{ github.sha }}"}
+          docker push your-registry/app:latest`
+        : "";
+
+    return rustTemplateResolver.renderTemplate(
+      ".github/workflows/rust.yml.tpl",
+      {
+        runner_os_expr: "${{ runner.os }}",
+        lockfile_hash: "${{ hashFiles('**/Cargo.lock') }}",
+        deploy_block: deployBlock,
+      },
+      fallback,
+    );
   }
 
   private generateCargoConfig(config: BuildConfig): string {
