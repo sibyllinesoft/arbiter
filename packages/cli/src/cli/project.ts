@@ -4,10 +4,10 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { diffCommand } from "../commands/diff.js";
 import { listTemplates } from "../commands/init.js";
 import { surfaceCommand } from "../commands/surface.js";
 import { runCheckCommand } from "../services/check/index.js";
+import { diffCommand } from "../services/diff/index.js";
 import { initProject } from "../services/init/index.js";
 import { listCommand } from "../services/list/index.js";
 import { importSpec } from "../services/spec-import/index.js";

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
-import { safeFileOperation } from "../constraints/index.js";
+import { safeFileOperation } from "../../constraints/index.js";
 
 export interface DiffOptions {
   migration?: boolean;
