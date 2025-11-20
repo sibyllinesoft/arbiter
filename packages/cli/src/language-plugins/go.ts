@@ -120,20 +120,20 @@ export class GoPlugin implements LanguagePlugin {
     // Main application
     files.push({
       path: "cmd/main.go",
-      content: this.generateMainApp(config),
+      content: await this.generateMainApp(config),
     });
 
     // Configuration
     files.push({
       path: "internal/config/config.go",
-      content: this.generateConfig(config),
+      content: await this.generateConfig(config),
     });
 
     // Database setup (if needed)
     if (config.database) {
       files.push({
         path: "internal/database/database.go",
-        content: this.generateDatabase(config),
+        content: await this.generateDatabase(config),
       });
       dependencies.push("gorm.io/gorm", "gorm.io/driver/postgres");
     }
@@ -141,13 +141,13 @@ export class GoPlugin implements LanguagePlugin {
     // Logging setup
     files.push({
       path: "internal/logger/logger.go",
-      content: this.generateLogger(),
+      content: await this.generateLogger(),
     });
 
     // Server setup
     files.push({
       path: "internal/server/server.go",
-      content: this.generateServer(config),
+      content: await this.generateServer(config),
     });
 
     // Middleware
@@ -189,14 +189,14 @@ export class GoPlugin implements LanguagePlugin {
       });
       files.push({
         path: "docker-compose.yml",
-        content: this.generateDockerCompose(config),
+        content: await this.generateDockerCompose(config),
       });
     }
 
     // Makefile for common tasks
     files.push({
       path: "Makefile",
-      content: this.generateMakefile(config),
+      content: await this.generateMakefile(config),
     });
 
     return {
@@ -229,13 +229,13 @@ export class GoPlugin implements LanguagePlugin {
     // CI/CD configuration
     files.push({
       path: ".github/workflows/go.yml",
-      content: this.generateGitHubActions(config),
+      content: await this.generateGitHubActions(config),
     });
 
     // Build configuration
     files.push({
       path: ".goreleaser.yml",
-      content: this.generateGoReleaser(config),
+      content: await this.generateGoReleaser(config),
     });
 
     return { files };
