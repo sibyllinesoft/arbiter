@@ -3,9 +3,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as YAML from "yaml";
-import { generateCommand } from "../commands/generate.js";
 import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
 import { safeFileOperation } from "../constraints/index.js";
+import { generateCommand } from "../services/generate/index.js";
 import type { CLIConfig } from "../types.js";
 
 function buildConfig(projectDir: string): CLIConfig {

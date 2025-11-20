@@ -4,8 +4,8 @@
 
 import chalk from "chalk";
 import { Command } from "commander";
-import { addCommand } from "../commands/add.js";
-import type { AddOptions } from "../commands/add.js";
+import type { AddOptions } from "../services/add/index.js";
+import { runAddCommand } from "../services/add/index.js";
 
 export function createAddCommands(program: Command): Command {
   const addCmd = program
@@ -35,7 +35,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("service", name, options, config);
+        const exitCode = await runAddCommand("service", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -65,7 +65,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("client", name, options, config);
+        const exitCode = await runAddCommand("client", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -92,7 +92,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("contract", name, options, config);
+        const exitCode = await runAddCommand("contract", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -124,7 +124,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand(
+        const exitCode = await runAddCommand(
           "contract-operation",
           operation,
           { ...options, contract },
@@ -162,7 +162,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("endpoint", path, options, config);
+        const exitCode = await runAddCommand("endpoint", path, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -189,7 +189,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("route", path, options, config);
+        const exitCode = await runAddCommand("route", path, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -215,7 +215,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("flow", id, options, config);
+        const exitCode = await runAddCommand("flow", id, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -244,7 +244,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("load-balancer", "", options, config);
+        const exitCode = await runAddCommand("load-balancer", "", options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -272,7 +272,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("database", name, options, config);
+        const exitCode = await runAddCommand("database", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -297,7 +297,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("cache", name, options, config);
+        const exitCode = await runAddCommand("cache", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -322,7 +322,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("locator", key, options, config);
+        const exitCode = await runAddCommand("locator", key, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -347,7 +347,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("schema", name, options, config);
+        const exitCode = await runAddCommand("schema", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -378,7 +378,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("package", name, options, config);
+        const exitCode = await runAddCommand("package", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -405,7 +405,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("component", name, options, config);
+        const exitCode = await runAddCommand("component", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -436,7 +436,7 @@ export function createAddCommands(program: Command): Command {
           throw new Error("Configuration not loaded");
         }
 
-        const exitCode = await addCommand("module", name, options, config);
+        const exitCode = await runAddCommand("module", name, options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
