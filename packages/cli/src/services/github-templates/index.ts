@@ -1,13 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
-import { getDefaultConfigPath, saveConfig } from "../config.js";
-import { safeFileOperation } from "../constraints/index.js";
-import type { CLIConfig, GitHubTemplatesConfig, TemplateManagementOptions } from "../types.js";
+import { getDefaultConfigPath, saveConfig } from "../../config.js";
+import { safeFileOperation } from "../../constraints/index.js";
+import type { CLIConfig, GitHubTemplatesConfig, TemplateManagementOptions } from "../../types.js";
 import {
   DEFAULT_TEMPLATES_CONFIG,
   UnifiedGitHubTemplateManager,
-} from "../utils/unified-github-template-manager.js";
+} from "../../utils/unified-github-template-manager.js";
 
 /**
  * GitHub Template management command - list, add, remove, and validate GitHub templates
