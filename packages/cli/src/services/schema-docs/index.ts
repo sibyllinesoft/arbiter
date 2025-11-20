@@ -12,7 +12,6 @@ import ora from "ora";
 
 import { DocumentationGenerator } from "../../docs/documentation-generator.js";
 import { EnhancedCUEParser } from "../../docs/enhanced-cue-parser.js";
-import { CUESchemaParser } from "../../docs/schema-parser.js";
 
 export interface SchemaDocsCommandOptions {
   input?: string;
@@ -33,7 +32,7 @@ export function createSchemaDocsCommand(): Command {
     .option("-o, --output <path>", "Output directory for generated documentation", "docs/schema")
     .option("-f, --format <formats>", "Output formats (markdown,html,json)", "markdown,html")
     .option("-t, --title <title>", "Documentation title", "Schema Documentation")
-    .option("--enhanced", "Use enhanced parser for complex CUE constructs", false)
+    .option("--enhanced", "Use enhanced parser for complex CUE constructs", true)
     .option("--include-private", "Include private types (starting with _)", false)
     .option("--no-examples", "Exclude examples from documentation")
     .option("--no-relationships", "Exclude type relationships from documentation")
@@ -57,9 +56,7 @@ export function createSchemaDocsCommand(): Command {
           mkdirSync(outputDir, { recursive: true });
         }
 
-        const parser = options.enhanced
-          ? new EnhancedCUEParser({ includePrivate: options.includePrivate })
-          : new CUESchemaParser({ includePrivate: options.includePrivate });
+        const parser = new EnhancedCUEParser({ includePrivate: options.includePrivate });
 
         const generator = new DocumentationGenerator({
           title: options.title ?? "Schema Documentation",
@@ -94,9 +91,7 @@ export async function generateSchemaDocumentation(
   options: Partial<SchemaDocsCommandOptions> = {},
 ): Promise<void> {
   const formats = (options.format ?? "markdown,html").split(",");
-  const parser = options.enhanced
-    ? new EnhancedCUEParser({ includePrivate: options.includePrivate })
-    : new CUESchemaParser({ includePrivate: options.includePrivate });
+  const parser = new EnhancedCUEParser({ includePrivate: options.includePrivate });
   const generator = new DocumentationGenerator({
     title: options.title ?? "Schema Documentation",
     includeExamples: options.includeExamples ?? true,

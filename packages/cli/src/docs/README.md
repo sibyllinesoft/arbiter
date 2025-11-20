@@ -34,11 +34,11 @@ bun cli schema-docs \
 ### Programmatic Usage
 
 ```typescript
-import { CUESchemaParser, DocumentationGenerator } from './docs/index.js';
+import { EnhancedCUEParser, DocumentationGenerator } from './docs/index.js';
 
 // Parse schema files
-const parser = new CUESchemaParser();
-const schema = parser.parseFiles(['spec/schema/app_spec.cue']);
+const parser = new EnhancedCUEParser();
+const schema = await parser.parseSchemaDirectory('spec/schema');
 
 // Generate documentation
 const generator = new DocumentationGenerator({
@@ -54,17 +54,12 @@ await generator.generate(schema);
 
 ### Core Components
 
-1. **CUE Schema Parser** (`schema-parser.ts`)
-   - Basic CUE parsing functionality
-   - Extracts types, constraints, and comments
-   - Handles simple type definitions and relationships
-
-2. **Enhanced CUE Parser** (`enhanced-cue-parser.ts`)
+1. **Enhanced CUE Parser** (`enhanced-cue-parser.ts`)
    - Advanced parsing for complex CUE constructs
    - Multi-file parsing with cross-reference resolution
    - Nested structure handling and import resolution
 
-3. **Documentation Generator** (`documentation-generator.ts`)
+2. **Documentation Generator** (`documentation-generator.ts`)
    - Multi-format output generation
    - Template-based rendering system
    - Relationship visualization with Mermaid diagrams

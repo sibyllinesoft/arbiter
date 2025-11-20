@@ -17,7 +17,6 @@ import { runDemo } from "./demo-documentation.js";
 import { DocumentationGenerator } from "./documentation-generator.js";
 import { EnhancedCUEParser } from "./enhanced-cue-parser.js";
 import { generateExampleDocumentation } from "./generate-example.js";
-import { CUESchemaParser } from "./schema-parser.js";
 import { technicalTemplate } from "./templates/technical-template.js";
 
 export type { ParsedField, ParsedType, ParsedSchema } from "./schema-parser.js";
@@ -25,7 +24,6 @@ export type { CUEStructField, CUEContext } from "./enhanced-cue-parser.js";
 export type { GeneratorOptions, Templates } from "./documentation-generator.js";
 export type { SchemaDocsCommandOptions };
 export {
-  CUESchemaParser,
   EnhancedCUEParser,
   DocumentationGenerator,
   createSchemaDocsCommand,
@@ -44,18 +42,10 @@ export async function generateSchemaDocumentationQuick(
   options?: Partial<{
     formats: ("markdown" | "html" | "json")[];
     title: string;
-    enhanced: boolean;
   }>,
 ): Promise<void> {
-  const parser = options?.enhanced ? new EnhancedCUEParser() : new CUESchemaParser();
-
-  let schema;
-  if (parser instanceof EnhancedCUEParser) {
-    schema = await parser.parseSchemaDirectory(inputDir);
-  } else {
-    const schemaFiles = findCueFiles(inputDir);
-    schema = parser.parseFiles(schemaFiles);
-  }
+  const parser = new EnhancedCUEParser();
+  const schema = await parser.parseSchemaDirectory(inputDir);
 
   const generator = new DocumentationGenerator({
     outputDir,
@@ -93,7 +83,6 @@ function findCueFiles(dir: string): string[] {
  * Default export for convenience
  */
 export default {
-  CUESchemaParser,
   EnhancedCUEParser,
   DocumentationGenerator,
   createSchemaDocsCommand,
