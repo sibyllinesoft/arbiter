@@ -1190,8 +1190,8 @@ pub async fn create_pool(database_url: &str) -> Result<PgPool, AppError> {
     return rustTemplateResolver.renderTemplate("src/database.rs.tpl", {}, fallback);
   }
 
-  private generateErrors(): string {
-    return `use axum::{
+  private async generateErrors(): Promise<string> {
+    const fallback = `use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
     Json,
@@ -1287,6 +1287,8 @@ impl From<serde_json::Error> for AppError {
     }
 }
 `;
+
+    return rustTemplateResolver.renderTemplate("src/errors.rs.tpl", {}, fallback);
   }
 
   private generateModelsModule(): string {
