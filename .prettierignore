@@ -95,6 +95,7 @@ bun.lockb
 docs/api/
 .venv/
 .venv-docs/
+docs/public/
 
 # Biome files (avoid conflicts)
 biome.json

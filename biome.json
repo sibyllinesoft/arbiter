@@ -81,6 +81,7 @@
       "**/node_modules/**",
       "**/.venv/**",
       "**/.venv-docs/**",
+      "docs/public/**",
       "apps/web/frontend/dist/**",
       "packages/cli/dist/**",
       "arbiter-cli",
