@@ -48,7 +48,7 @@ describe("IntegrateService", () => {
 
     expect(exitCode).toBe(0);
     const workflowPath = path.join(projectDir, ".github/workflows/pr.yml");
-    const templatePath = path.join(projectDir, ".github/ISSUE_TEMPLATE/epic.md");
+    const templatePath = path.join(projectDir, ".github/ISSUE_TEMPLATE/epic.yml");
     expect(await fs.pathExists(workflowPath)).toBeTrue();
     expect(await fs.pathExists(templatePath)).toBeTrue();
   });
