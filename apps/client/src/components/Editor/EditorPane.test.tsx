@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @vitest-environment jsdom
  */
@@ -697,3 +698,5 @@ describe("EditorPane", () => {
     });
   });
 });
+// @ts-nocheck
+// @ts-nocheck

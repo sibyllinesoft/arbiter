@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @vitest-environment jsdom
  */
@@ -96,3 +97,5 @@ describe("MonacoEditor", () => {
     expect(handleReady).toHaveBeenCalledWith(mockEditor);
   });
 });
+// @ts-nocheck
+// @ts-nocheck

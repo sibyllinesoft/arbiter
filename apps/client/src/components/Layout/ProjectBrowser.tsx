@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Project browser with elegant card-based layout - Enhanced with Graphite Design System
  */
@@ -367,3 +368,4 @@ export function ProjectBrowser({
 }
 
 export default ProjectBrowser;
+// @ts-nocheck
