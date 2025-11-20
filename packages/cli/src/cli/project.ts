@@ -5,13 +5,13 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { listTemplates } from "../commands/init.js";
-import { surfaceCommand } from "../commands/surface.js";
 import { runCheckCommand } from "../services/check/index.js";
 import { diffCommand } from "../services/diff/index.js";
 import { initProject } from "../services/init/index.js";
 import { listCommand } from "../services/list/index.js";
 import { importSpec } from "../services/spec-import/index.js";
 import { statusCommand } from "../services/status/index.js";
+import { surfaceCommand } from "../services/surface/index.js";
 import { watchCommand } from "../services/watch/index.js";
 import type { SurfaceLanguage } from "../surface-extraction/types.js";
 import type {
