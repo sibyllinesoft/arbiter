@@ -3,10 +3,10 @@ import path from "node:path";
 import chalk from "chalk";
 import { diffLines } from "diff";
 import yaml from "js-yaml";
-import { safeFileOperation } from "../constraints/index.js";
-import type { ExecutionReport, PlanOutput } from "../types/output.js";
-import { withStepProgress } from "../utils/progress.js";
-import { createOutputManager, shouldUseAgentMode } from "../utils/standardized-output.js";
+import { safeFileOperation } from "../../constraints/index.js";
+import type { ExecutionReport, PlanOutput } from "../../types/output.js";
+import { withStepProgress } from "../../utils/progress.js";
+import { createOutputManager, shouldUseAgentMode } from "../../utils/standardized-output.js";
 
 // Strategy interfaces for execution patterns
 interface ExecutionStrategy {
