@@ -234,7 +234,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
         const apiContent = await this.runtime.templateResolver.renderTemplate(
           "service.api.ts.tpl",
           context,
-          this.getDefaultApiServiceTemplate(context),
         );
         files.push({ path: `src/api/${config.name}.ts`, content: apiContent });
         break;
@@ -243,7 +242,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
         const serviceContent = await this.runtime.templateResolver.renderTemplate(
           "service.class.ts.tpl",
           context,
-          this.getDefaultBusinessServiceTemplate(context),
         );
         files.push({ path: `src/services/${config.name}.service.ts`, content: serviceContent });
         break;
@@ -252,7 +250,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
         const handlerContent = await this.runtime.templateResolver.renderTemplate(
           "service.handler.ts.tpl",
           context,
-          this.getDefaultHandlerTemplate(context),
         );
         files.push({ path: `src/handlers/${config.name}.handler.ts`, content: handlerContent });
         break;
@@ -265,7 +262,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
       const schemaContent = await this.runtime.templateResolver.renderTemplate(
         "service.schema.ts.tpl",
         context,
-        this.getDefaultSchemaTemplate(context),
       );
       files.push({ path: `src/schemas/${config.name}.schema.ts`, content: schemaContent });
       dependencies.push("zod");
@@ -424,22 +420,6 @@ export class TypeScriptPlugin implements LanguagePlugin {
       serviceInstanceName: `${camel}Service`,
       handlerInstanceName: `${camel}Handler`,
     };
-  }
-
-  private getDefaultApiServiceTemplate(context: ServiceTemplateContext): string {
-    return `import express from 'express';\nimport type { Request, Response, NextFunction } from 'express';\n\nconst router = express.Router();\n\n/**\n * ${context.serviceName} API Routes\n * Handles all ${context.serviceName} related endpoints\n */\n\nrouter.get('/', async (_req: Request, res: Response, next: NextFunction) => {\n  try {\n    res.json({ message: '${context.serviceName} API working' });\n  } catch (error) {\n    next(error);\n  }\n});\n\nrouter.post('/', async (_req: Request, res: Response, next: NextFunction) => {\n  try {\n    res.status(201).json({ message: '${context.serviceName} created' });\n  } catch (error) {\n    next(error);\n  }\n});\n\nexport { router as ${context.routerName} };\n`;
-  }
-
-  private getDefaultBusinessServiceTemplate(context: ServiceTemplateContext): string {
-    return `/**\n * ${context.serviceName} Service\n * Business logic for ${context.serviceName} operations\n */\n\nexport class ${context.serviceName}Service {\n  async findAll(): Promise<any[]> {\n    throw new Error('Not implemented');\n  }\n\n  async findById(id: string): Promise<any> {\n    throw new Error('Not implemented');\n  }\n\n  async create(data: any): Promise<any> {\n    throw new Error('Not implemented');\n  }\n\n  async update(id: string, data: any): Promise<any> {\n    throw new Error('Not implemented');\n  }\n\n  async delete(id: string): Promise<void> {\n    throw new Error('Not implemented');\n  }\n}\n\nexport const ${context.serviceInstanceName} = new ${context.serviceName}Service();\n`;
-  }
-
-  private getDefaultHandlerTemplate(context: ServiceTemplateContext): string {
-    return `import type { Request, Response, NextFunction } from 'express';\n\n/**\n * ${context.serviceName} Handler\n * HTTP request handlers for ${context.serviceName}\n */\n\nexport class ${context.serviceName}Handler {\n  async handleGet(_req: Request, res: Response, next: NextFunction) {\n    try {\n      res.json({ message: 'GET ${context.serviceName}' });\n    } catch (error) {\n      next(error);\n    }\n  }\n\n  async handlePost(_req: Request, res: Response, next: NextFunction) {\n    try {\n      res.status(201).json({ message: 'POST ${context.serviceName}' });\n    } catch (error) {\n      next(error);\n    }\n  }\n\n  async handlePut(_req: Request, res: Response, next: NextFunction) {\n    try {\n      res.json({ message: 'PUT ${context.serviceName}' });\n    } catch (error) {\n      next(error);\n    }\n  }\n\n  async handleDelete(_req: Request, res: Response, next: NextFunction) {\n    try {\n      res.status(204).send();\n    } catch (error) {\n      next(error);\n    }\n  }\n}\n\nexport const ${context.handlerInstanceName} = new ${context.serviceName}Handler();\n`;
-  }
-
-  private getDefaultSchemaTemplate(context: ServiceTemplateContext): string {
-    return `import { z } from 'zod';\n\n/**\n * ${context.serviceName} Validation Schemas\n */\n\nexport const ${context.serviceName}Schema = z.object({\n  id: z.string().uuid().optional(),\n});\n\nexport const Create${context.serviceName}Schema = ${context.serviceName}Schema.omit({ id: true });\nexport const Update${context.serviceName}Schema = ${context.serviceName}Schema.partial();\n\nexport type ${context.serviceName} = z.infer<typeof ${context.serviceName}Schema>;\nexport type Create${context.serviceName} = z.infer<typeof Create${context.serviceName}Schema>;\nexport type Update${context.serviceName} = z.infer<typeof Update${context.serviceName}Schema>;\n`;
   }
 
   private async initializeViteProject(config: ProjectConfig): Promise<GenerationResult> {
