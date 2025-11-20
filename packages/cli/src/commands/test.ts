@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import chalk from "chalk";
 import yaml from "js-yaml";
+import { safeFileOperation } from "../constraints/index.js";
 
 /**
  * Unified test harness for deterministic epic test execution
@@ -57,6 +58,12 @@ export interface TestExecutionContext {
   timeout: number;
   verbose: boolean;
   updateGolden?: boolean;
+}
+
+async function writeFileSafely(filePath: string, content: string): Promise<void> {
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content);
+  });
 }
 
 /**
@@ -376,7 +383,7 @@ class GoldenTestRunner extends BaseTestRunner {
       if (context.updateGolden) {
         // Update golden file
         await fs.mkdir(path.dirname(test.want), { recursive: true });
-        await fs.writeFile(test.want, actualOutput);
+        await writeFileSafely(test.want, actualOutput);
 
         return {
           name: `Golden: ${path.basename(test.input)} (updated)`,
@@ -977,6 +984,6 @@ async function writeJUnitReport(suites: TestSuite[], junitPath: string): Promise
     verbose: false,
   });
   const junitXml = executor.generateJUnitReport(suites);
-  await fs.writeFile(junitPath, junitXml);
+  await writeFileSafely(junitPath, junitXml);
   console.log(chalk.dim(`\nJUnit report written to: ${junitPath}`));
 }

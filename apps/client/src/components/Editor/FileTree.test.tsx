@@ -4,8 +4,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useApp } from "../../contexts/AppContext";
-import type { AppContextState } from "../../contexts/AppContext";
+import { useEditorActions, useEditorState, useStatus } from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
 import type { Fragment } from "../../types/api";
 import FileTree from "./FileTree";
@@ -25,7 +24,9 @@ vi.mock("../../services/api", () => ({
 }));
 
 vi.mock("../../contexts/AppContext", () => ({
-  useApp: vi.fn(),
+  useEditorState: vi.fn(),
+  useEditorActions: vi.fn(),
+  useStatus: vi.fn(),
 }));
 
 vi.mock("../../contexts/ProjectContext", () => ({
@@ -51,86 +52,46 @@ const mockFragments: Fragment[] = [
   },
 ];
 
-const mockUseApp = vi.mocked(useApp);
+const mockUseEditorState = vi.mocked(useEditorState);
+const mockUseEditorActions = vi.mocked(useEditorActions);
+const mockUseStatus = vi.mocked(useStatus);
 const mockUseCurrentProject = vi.mocked(useCurrentProject);
-
-const defaultAppSettings = {
-  showNotifications: false,
-  appsDirectory: "apps",
-  packagesDirectory: "packages",
-  servicesDirectory: "services",
-  testsDirectory: "tests",
-  infraDirectory: "infra",
-  endpointDirectory: "apps/api/src/endpoints",
-};
-
-function buildAppState(): AppContextState {
-  const state: AppContextState = {
-    projects: [],
-    fragments: mockFragments,
-    activeFragmentId: mockFragments[0]?.id ?? null,
-    isConnected: true,
-    reconnectAttempts: 0,
-    lastSync: null,
-    isValidating: false,
-    errors: [],
-    warnings: [],
-    specHash: null,
-    lastValidation: null,
-    selectedCueFile: null,
-    availableCueFiles: [],
-    unsavedChanges: new Set<string>(),
-    editorContent: {},
-    loading: false,
-    error: null,
-    settings: { ...defaultAppSettings },
-    activeTab: "source",
-    currentView: "dashboard",
-    gitUrl: "",
-    modalTab: "git",
-    gitHubRepos: [],
-    gitHubOrgs: [],
-    selectedRepos: new Set<number>(),
-    reposByOwner: {},
-    isLoadingGitHub: false,
-  };
-  return state;
-}
 
 describe("FileTree", () => {
   const user = userEvent.setup();
 
   const setActiveFragment = vi.fn();
-  const dispatch = vi.fn();
+  const setFragments = vi.fn();
+  const deleteFragment = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    const state = buildAppState();
+    mockUseEditorState.mockReturnValue({
+      fragments: mockFragments,
+      activeFragmentId: mockFragments[0]?.id ?? null,
+      selectedCueFile: null,
+      availableCueFiles: [],
+      unsavedChanges: new Set<string>(),
+      editorContent: {},
+    });
 
-    mockUseApp.mockReturnValue({
-      state,
-      dispatch,
-      setLoading: vi.fn(),
+    mockUseEditorActions.mockReturnValue({
       setActiveFragment,
-      setError: vi.fn(),
+      setFragments,
+      deleteFragment,
       setSelectedCueFile: vi.fn(),
-      updateSettings: vi.fn(),
-      setActiveTab: vi.fn(),
-      setCurrentView: vi.fn(),
-      setGitUrl: vi.fn(),
-      setModalTab: vi.fn(),
-      setGitHubRepos: vi.fn(),
-      setGitHubOrgs: vi.fn(),
-      setSelectedRepos: vi.fn(),
-      toggleRepoSelection: vi.fn(),
-      setReposByOwner: vi.fn(),
-      setLoadingGitHub: vi.fn(),
+      setAvailableCueFiles: vi.fn(),
       updateEditorContent: vi.fn(),
       markUnsaved: vi.fn(),
       markSaved: vi.fn(),
-      isDark: false,
-      toggleTheme: vi.fn(),
+    } as any);
+
+    mockUseStatus.mockReturnValue({
+      loading: false,
+      error: null,
+      setLoading: vi.fn(),
+      setError: vi.fn(),
     });
 
     mockUseCurrentProject.mockReturnValue({

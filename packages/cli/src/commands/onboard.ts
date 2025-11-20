@@ -9,6 +9,7 @@ import path from "node:path";
 import chalk from "chalk";
 import fs from "fs-extra";
 import inquirer from "inquirer";
+import { safeFileOperation } from "../constraints/index.js";
 import type { CLIConfig } from "../types.js";
 import { withProgress } from "../utils/progress.js";
 import { syncCommand } from "./sync.js";
@@ -949,7 +950,13 @@ target/
 `.trim();
 
   if (!dryRun) {
-    await fs.writeFile(path.join(arbiterPath, ".arbiterignore"), arbiterIgnore);
+    await safeFileOperation(
+      "write",
+      path.join(arbiterPath, ".arbiterignore"),
+      async (validatedPath) => {
+        await fs.writeFile(validatedPath, arbiterIgnore);
+      },
+    );
   }
 
   // Create config.json
@@ -970,7 +977,13 @@ target/
   };
 
   if (!dryRun) {
-    await fs.writeJson(path.join(arbiterPath, "config.json"), config, { spaces: 2 });
+    await safeFileOperation(
+      "write",
+      path.join(arbiterPath, "config.json"),
+      async (validatedPath) => {
+        await fs.writeJson(validatedPath, config, { spaces: 2 });
+      },
+    );
   }
 
   console.log(chalk.green("✅ Created .arbiter directory structure"));
@@ -1100,7 +1113,9 @@ export async function generateInitialSpec(
   cueContent += "}\n";
 
   if (!dryRun) {
-    await fs.writeFile(specPath, cueContent);
+    await safeFileOperation("write", specPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, cueContent);
+    });
   }
 
   console.log(chalk.green("✅ Generated initial CUE specification: arbiter.assembly.cue"));

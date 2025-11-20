@@ -74,7 +74,7 @@ async function main(): Promise<void> {
     try {
       const cliConfig: CLIConfig = {
         apiUrl: "http://localhost:5050",
-        timeout: 750,
+        timeout: 10_000,
         format: "table",
         color: true,
         localMode: true,

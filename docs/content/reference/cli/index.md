@@ -13,9 +13,8 @@ repo.
 | Day-to-day command usage | [`CLI Reference`](../cli-reference.md) | Exhaustive command help, flags, and examples. |
 | Repo & service internals | [`CLI Architecture`](./architecture.md) | Explains layering, dependency injection, and testing strategy. |
 | Template overrides & hooks | [`CLI Templates`](./templates.md) | Cookbook for override directories, hook authoring, and best practices. |
-| Template engines, GitHub templates, plugins | [`Generation Architecture`](./generation-architecture.md) | Deep dive on template aliases, GitHub template managers, and language plugins. |
+| Template engines, GitHub templates, plugins | [`Generation Architecture`](../guides/code-generation-architecture.md) | Single-source overview of template orchestrator, GitHub template manager, and language plugins. |
 | Release/readiness checklist | [`packages/cli/OPEN_SOURCE_READINESS.md`](https://github.com/sibyllinesoft/arbiter/blob/main/packages/cli/OPEN_SOURCE_READINESS.md) | Tracks outstanding work before the CLI is published. |
-| Cleanup/refactor plan | [`notes/cleanup-plan.md`](../../notes/cleanup-plan.md) | Cross-repo cleanup phases (API, client, CLI). |
 
 ## Onboarding Sequence
 

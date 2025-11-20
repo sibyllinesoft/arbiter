@@ -1,6 +1,9 @@
-# Arbiter Application Schema — Agent Guide & Change Log
+# Arbiter Application Schema — Reference
 
-**TL;DR:** Treat the CUE spec as a _single source of truth_ across four
+Looking for how to write specs? Jump to the [CUE Authoring Guide](../guides/arbiter-cue-authoring.md).
+This page is the raw schema reference; it mirrors the types defined in `spec/schema` and is the single source of truth for field names and shapes.
+
+**TL;DR (context):** Treat the CUE spec as a _single source of truth_ across four
 layers—**Domain → Contracts → Capabilities → Execution**—compiled into a
 deterministic IR. Keep frameworks as _adapters_, lock generation with
 `codegen.profile`+`templateHash`, and enforce compatibility gates. The result:
@@ -84,7 +87,7 @@ arbiterSpec: {
 
   // ----- Execution (environment-scoped deployments) -----
   deployments?: {[Env=string]: #Deployment}
-  deployment?: #Deployment   // compatibility alias (e.g., deployments.production)
+  deployment?: #Deployment   // deprecated alias (still accepted), prefer deployments.<env>
 
   volumes?:  {[VolumeName=string]: #Volume}
   networks?: {[NetworkName=string]: #Network}
@@ -393,7 +396,7 @@ arbiterSpec: {
 
 #ModuleHandlerRef: {
   type: *"module"
-  module: string            // "./services/invoice/http/get-invoice.ts"
+  module?: string           // optional: "./services/invoice/http/get-invoice.ts"
   function?: string         // "handler"
 }
 
@@ -405,11 +408,16 @@ arbiterSpec: {
 
 #MiddlewareRef: {
   name?: string
-  module: string            // "./services/billing/middleware/auth.ts"
+  module?: string           // optional: "./services/billing/middleware/auth.ts"
   function?: string         // "requireCustomerAuth"
   phase?: "request" | "response" | "both" | *"request"
   config?: {...}
 }
+
+> Module paths exist primarily for brownfield imports or for reconciling
+> generation output with hand-managed repositories. When omitted, Arbiter uses
+> the configured project structure to derive handler locations, so greenfield
+> specs should typically skip `module` entirely.
 
 #HealthCheck: {
   path:      string

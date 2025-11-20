@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import path from "node:path";
+import fs from "fs-extra";
 import { ConstraintViolationError, globalConstraintEnforcer } from "./core.js";
 
 /**
@@ -43,11 +45,82 @@ interface IdempotencyOptions {
  */
 export class IdempotencyValidator {
   private readonly cache = new Map<string, IdempotencyRecord>();
+  private readonly cacheDir: string;
+  private readonly cacheFile: string;
   private readonly defaultOptions: Required<IdempotencyOptions> = {
     maxCacheAge: 5 * 60 * 1000, // 5 minutes
     ignoreTimestamps: true,
     customComparator: this.defaultComparator.bind(this),
   };
+  private cacheDirty = false;
+
+  constructor(projectRoot = process.cwd()) {
+    this.cacheDir = path.resolve(projectRoot, ".arbiter", "cache");
+    this.cacheFile = path.join(this.cacheDir, "idempotency.json");
+    this.loadCacheFromDisk();
+  }
+
+  /**
+   * Load cached idempotency records from disk so validation persists across CLI invocations.
+   */
+  private loadCacheFromDisk(): void {
+    try {
+      if (!fs.existsSync(this.cacheFile)) {
+        return;
+      }
+
+      const raw = fs.readFileSync(this.cacheFile, "utf8");
+      const parsed = JSON.parse(raw) as { records?: IdempotencyRecord[] };
+      const records = Array.isArray(parsed.records) ? parsed.records : [];
+
+      this.cache.clear();
+      for (const record of records) {
+        this.cache.set(this.buildCacheKeyFromRecord(record), record);
+      }
+    } catch (error) {
+      // Soft-fail: corrupted cache should not break the CLI
+      console.warn("⚠️  Unable to read idempotency cache, starting fresh.", error);
+    }
+  }
+
+  /**
+   * Persist cache state to disk when it changes.
+   */
+  private persistCache(): void {
+    try {
+      if (!this.cacheDirty) return;
+
+      fs.ensureDirSync(this.cacheDir);
+      const payload = {
+        version: 1,
+        records: Array.from(this.cache.values()),
+        updatedAt: new Date().toISOString(),
+      };
+      fs.writeJsonSync(this.cacheFile, payload, { spaces: 2 });
+      this.cacheDirty = false;
+    } catch (error) {
+      console.warn("⚠️  Unable to persist idempotency cache to disk.", error);
+    }
+  }
+
+  /**
+   * Drop expired cache entries before using them to avoid stale validations.
+   */
+  private pruneCache(maxAge: number): void {
+    let removed = 0;
+
+    for (const [key, record] of this.cache.entries()) {
+      if (!this.isCacheValid(record, maxAge)) {
+        this.cache.delete(key);
+        removed++;
+      }
+    }
+
+    if (removed > 0) {
+      this.cacheDirty = true;
+      this.persistCache();
+    }
+  }
 
   /**
    * Validate that an operation produces idempotent results
@@ -60,6 +133,8 @@ export class IdempotencyValidator {
     operationId?: string,
   ): Promise<TOutput> {
     const opts = { ...this.defaultOptions, ...options };
+    this.pruneCache(opts.maxCacheAge);
+
     const cacheKey = this.generateCacheKey(operation, inputs);
     const cached = this.cache.get(cacheKey);
 
@@ -128,8 +203,10 @@ export class IdempotencyValidator {
     const record = this.createCacheRecord(operation, inputs, result, operationId);
 
     this.cache.set(cacheKey!, record);
+    this.cacheDirty = true;
     this.handleExpiredCacheValidation(cached, record, operation, operationId, cacheKey);
     this.emitCacheEvent(operationId, operation, cacheKey, record);
+    this.persistCache();
 
     return result;
   }
@@ -565,6 +642,11 @@ export class IdempotencyValidator {
       }
     }
 
+    if (cleared > 0) {
+      this.cacheDirty = true;
+      this.persistCache();
+    }
+
     globalConstraintEnforcer.emit("idempotency:cache_cleared", {
       entriesCleared: cleared,
       remainingEntries: this.cache.size,
@@ -596,6 +678,10 @@ export class IdempotencyValidator {
   private generateCacheKey<T>(operation: string, inputs: T): string {
     const inputHash = this.hashValue(inputs);
     return `${operation}:${inputHash}`;
+  }
+
+  private buildCacheKeyFromRecord(record: IdempotencyRecord): string {
+    return `${record.operation}:${record.inputHash}`;
   }
 
   /**

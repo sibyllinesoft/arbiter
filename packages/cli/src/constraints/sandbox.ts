@@ -33,49 +33,49 @@ export const REQUIRED_ENDPOINTS: Record<SandboxedOperation, ServerEndpoint> = {
     path: "/api/v1/validate",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 500, // Must be within 750ms total constraint
+    maxResponseTime: 9_000, // Should fit within 10s client budget
   },
   analyze: {
     path: "/api/v1/analyze",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 600,
+    maxResponseTime: 9_000,
   },
   export: {
     path: "/api/v1/export",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 700,
+    maxResponseTime: 9_000,
   },
   transform: {
     path: "/api/v1/transform",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 600,
+    maxResponseTime: 9_000,
   },
   check: {
     path: "/api/v1/check",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 500,
+    maxResponseTime: 9_000,
   },
   import: {
     path: "/api/v1/import",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 400,
+    maxResponseTime: 9_000,
   },
   diff: {
     path: "/api/v1/diff",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 300,
+    maxResponseTime: 9_000,
   },
   migrate: {
     path: "/api/v1/migrate",
     method: "POST",
     requiresPayload: true,
-    maxResponseTime: 700,
+    maxResponseTime: 9_000,
   },
 };
 

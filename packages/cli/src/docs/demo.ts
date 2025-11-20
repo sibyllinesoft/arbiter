@@ -10,9 +10,16 @@
 import * as path from "path";
 import chalk from "chalk";
 import * as fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 import { CLIDocumentationGenerator } from "./cli-doc-generator.js";
-import { TemplateEngine } from "./template-engine.js";
+import { DocsTemplateImplementor } from "./template-implementor.js";
 import type { TemplateData } from "./types.js";
+
+async function writeDemoFile(filePath: string, content: string): Promise<void> {
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, "utf8");
+  });
+}
 
 async function main() {
   console.log(chalk.blue("🚀 CLI Documentation Generation Demo"));
@@ -26,7 +33,7 @@ async function main() {
 
     // Initialize generator
     const generator = new CLIDocumentationGenerator(program);
-    const templateEngine = new TemplateEngine();
+    const templateEngine = new DocsTemplateImplementor();
 
     // Parse all commands
     const commands = generator.parseCommands();
@@ -88,7 +95,7 @@ async function main() {
 
     // Write markdown example
     const markdownFile = path.join(demoDir, "cli-reference.md");
-    await fs.writeFile(markdownFile, markdownContent, "utf8");
+    await writeDemoFile(markdownFile, markdownContent);
     console.log(chalk.green(`✅ Generated markdown: ${markdownFile}`));
 
     // Generate JSON example
@@ -99,7 +106,7 @@ async function main() {
     };
 
     const jsonFile = path.join(demoDir, "cli-reference.json");
-    await fs.writeFile(jsonFile, JSON.stringify(jsonData, null, 2), "utf8");
+    await writeDemoFile(jsonFile, JSON.stringify(jsonData, null, 2));
     console.log(chalk.green(`✅ Generated JSON: ${jsonFile}`));
 
     // Generate HTML example
@@ -115,7 +122,7 @@ async function main() {
 
     const htmlContent = templateEngine.render(htmlTemplate, templateData);
     const htmlFile = path.join(demoDir, "cli-reference.html");
-    await fs.writeFile(htmlFile, htmlContent, "utf8");
+    await writeDemoFile(htmlFile, htmlContent);
     console.log(chalk.green(`✅ Generated HTML: ${htmlFile}`));
 
     // Show summary

@@ -58,8 +58,9 @@ export class ConnectionValidator {
       error: `No Arbiter server found at ${hostname}`,
       suggestions: [
         `Tried ports: ${COMMON_PORTS.join(", ")}`,
-        "Make sure the server is running with: bun run dev",
-        "Or with Docker: docker-compose up",
+        'Start the API stack via "bun run dev:full" (see the repo README) or use your deployed server URL.',
+        'If you rely on Docker, run "docker compose up api" from the repo root or follow docs/deploy instructions.',
+        "Make sure ARBITER_URL/--api-url matches the environment that is actually running.",
         ...suggestions,
       ],
     };

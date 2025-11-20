@@ -4,7 +4,8 @@ import fs from "fs-extra";
 import jsyaml from "js-yaml"; // Add if not installed: bun add js-yaml
 import { ApiClient } from "../api-client.js";
 import type { Config } from "../config.js";
-import { createCUEManipulator, validateCUE } from "../cue/index.js";
+import { getCueManipulator } from "../constraints/cli-integration.js";
+import { validateCUE } from "../cue/index.js";
 import { formatJson, formatStatusTable, formatYaml } from "../utils/formatting.js";
 import { withProgress } from "../utils/progress.js";
 
@@ -57,7 +58,7 @@ async function getLocalProjectStatus(config: Config): Promise<ProjectStatus> {
 
   let parsedSpec: any = null;
   let parseError: string | undefined;
-  const manipulator = createCUEManipulator();
+  const manipulator = getCueManipulator();
   try {
     parsedSpec = await manipulator.parse(content);
   } catch (error) {
@@ -107,6 +108,7 @@ async function getLocalProjectStatus(config: Config): Promise<ProjectStatus> {
 
 export async function statusCommand(options: StatusOptions, config: Config): Promise<number> {
   try {
+    const structuredJson = config.format === "json";
     if (config.localMode) {
       const status = await getLocalProjectStatus(config);
 
@@ -132,15 +134,25 @@ export async function statusCommand(options: StatusOptions, config: Config): Pro
     const client = new ApiClient(config);
 
     // Get project status with progress indicator
-    const result = await withProgress({ text: "Getting project status..." }, () =>
-      client.getProjectStatus(config.projectId),
-    );
+    const result = structuredJson
+      ? await client.getProjectStatus(config.projectId)
+      : await withProgress({ text: "Getting project status..." }, () =>
+          client.getProjectStatus(config.projectId),
+        );
 
     if (!result.success) {
-      console.error(chalk.red("Status check failed:"), result.error);
-      console.log(chalk.yellow("Falling back to local specification status...\n"));
+      if (!structuredJson) {
+        console.error(chalk.red("Status check failed:"), result.error);
+        console.log(chalk.yellow("Falling back to local specification status...\n"));
+      }
       const fallbackStatus = await getLocalProjectStatus(config);
-      displayStatusTable(fallbackStatus, options.detailed ?? false);
+      if (structuredJson) {
+        console.log(JSON.stringify(fallbackStatus, null, 2));
+      } else if (config.format === "yaml") {
+        console.log(jsyaml.dump(fallbackStatus, { indent: 2 }));
+      } else {
+        displayStatusTable(fallbackStatus, options.detailed ?? false);
+      }
       return fallbackStatus.health === "error" ? 1 : 0;
     }
 

@@ -3,13 +3,10 @@ import path from "node:path";
 import chalk from "chalk";
 import { diffLines } from "diff";
 import yaml from "js-yaml";
+import { safeFileOperation } from "../constraints/index.js";
+import type { ExecutionReport, PlanOutput } from "../types/output.js";
 import { withStepProgress } from "../utils/progress.js";
-import {
-  type ExecutionReport,
-  type PlanOutput,
-  createOutputManager,
-  shouldUseAgentMode,
-} from "../utils/standardized-output.js";
+import { createOutputManager, shouldUseAgentMode } from "../utils/standardized-output.js";
 
 // Strategy interfaces for execution patterns
 interface ExecutionStrategy {
@@ -332,7 +329,9 @@ class RealExecutionStrategy implements ExecutionStrategy {
       finalContent = this.applyPatch(operation.originalContent, operation.content);
     }
 
-    await fs.writeFile(operation.path, finalContent, "utf-8");
+    await safeFileOperation("write", operation.path, async (validatedPath) => {
+      await fs.writeFile(validatedPath, finalContent, "utf-8");
+    });
   }
 
   private applyPatch(originalContent: string, patchContent: string): string {

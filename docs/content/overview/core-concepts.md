@@ -7,6 +7,21 @@ Arbiter transforms complex system requirements into production-ready
 applications through a layered specification architecture. This guide explains
 the core concepts that make this transformation possible.
 
+> Looking for hands-on examples? Pair this explainer with the
+> [Code Generation Overview](./code-generation-overview.md), which applies the
+> same layers step-by-step using the CLI.
+
+## Core Concept Cheat Sheet
+
+| Layer | Primary Question | CLI Kickoff | Deep Dive |
+| --- | --- | --- | --- |
+| Domain | What does the business care about? | `arbiter add schema`, `arbiter add state-machine` | [Code Generation Overview §1](./code-generation-overview.md#layer-1-%E2%80%94-domain-describe-the-schema) |
+| Contracts | How do systems communicate? | `arbiter add contract`, `arbiter add event` | [Section §2](./code-generation-overview.md#layer-2-%E2%80%94-contracts-bind-the-operations) |
+| Capabilities | Which services fulfill those contracts? | `arbiter add service`, `arbiter add endpoint` | [Section §3](./code-generation-overview.md#layer-3-%E2%80%94-capabilities-define-the-service) |
+| Execution | Where does everything run? | `arbiter add deployment`, `arbiter configure env` | [Section §4](./code-generation-overview.md#layer-4-%E2%80%94-execution-pin-the-runtime) |
+
+> Already read the CLI walk-through? Treat that overview as the play-by-play. This page keeps the definitions, guardrails, and mental models in one place so you can quickly remind yourself *why* each layer exists.
+
 ## The Four-Layer Architecture
 
 Arbiter organizes system specifications into four distinct layers, each building
@@ -46,60 +61,23 @@ system embodies.
 - **State Machines**: Business process flows (InvoiceLifecycle, CollectionsEscalation)
 - **Business Rules**: Invariants and constraints that must always hold
 
-### Example Domain Specification
+### Capturing the Domain
 
-```cue
-// InvoicePro domain extract (CUE)
-domain: {
-  entities: {
-    Invoice: {
-      id: string & =~"^inv_[a-z0-9]+$"
-      customerId: Customer.id
-      status: "draft" | "pending" | "sent" | "viewed" | "paid" | "overdue"
-      currency: "USD" | "EUR" | "GBP"
-      total: decimal & >=0
-      dueDate: string // ISO datetime
-    }
+- **Capture vocabulary collaboratively**: run short interviews/whiteboard
+  sessions, then encode the nouns and verbs exactly once in the spec.
+- **Let the CLI do the formatting**: `arbiter add schema`,
+  `arbiter add state-machine`, and related commands emit valid CUE and keep the
+  structure normalized.
+- **Share the output**: `arbiter doc domain` produces a human-friendly glossary
+  that product, design, and engineering can reference together.
 
-    Customer: {
-      id: string & =~"^cust_[a-z0-9]+$"
-      name: string
-      email: string & =~"^[^@]+@[^@]+$"
-      collectionStrategy: "standard" | "proactive"
-    }
-  }
+> Want to see this layer in action? The
+> [Code Generation Overview](./code-generation-overview.md#layer-1-%E2%80%94-domain-describe-the-schema)
+> walks through the exact CLI flow for the Invoice/Order example.
 
-  stateMachines: {
-    InvoiceLifecycle: {
-      initial: "draft"
-      states: {
-        draft: { on: { approve: "pending" } }
-        pending: { on: { send: "sent", void: "voided" } }
-        sent: { on: { viewed: "viewed", pay: "paid", expire: "overdue" } }
-        viewed: { on: { pay: "paid", escalate: "overdue" } }
-        paid: {}
-        overdue: {}
-        voided: {}
-      }
-    }
-  }
-}
-```
-
-### Workshop: Apply the Domain Layer
-
-1. **Interview subject-matter experts** and sketch the vocabulary they already use (for InvoicePro that meant “invoice,” “customer,” and “collections escalation”).
-2. **Translate the language into CUE** by encoding value objects first, then identities and events so constraints stay centralized.
-3. **Model signature workflows** (invoice lifecycle, collections escalation, payment retries) as state machines so you can prove coverage without shipping code.
-
-Export samples with `arbiter doc domain.cue` and circulate them like a living glossary—everyone downstream will reuse the same types.
-
-### Why This Matters
-
-The Domain layer serves as the **single source of truth** for your business
-logic. Unlike traditional approaches where business rules are scattered across
-database schemas, API models, and UI components, Arbiter ensures that your
-domain model drives everything else.
+The result is a **single, enforceable source of truth**—every downstream layer
+references these definitions instead of re-implementing validation logic in
+code, databases, or docs.
 
 ---
 
@@ -110,79 +88,32 @@ with each other.
 
 ### Types of Contracts
 
-#### Operation contracts (transport agnostic)
+Contracts capture the conversation between systems without leaking transport
+concerns. Model two complementary shapes:
 
-Contracts should describe pure behavior—what data goes in and what comes out—
-without assuming HTTP, gRPC, queues, etc. Transports are attached later when a
-service endpoint implements the contract.
+- **Operation contracts** describe request/response workflows. Services later
+  bind them to HTTP, gRPC, queues, etc., by referencing the operation id.
+- **Event contracts** capture asynchronous messages—who emits them, who
+  subscribes, and what schema guarantees travel with each event.
 
-```cue
-contracts: {
-  workflows: {
-    InvoiceAPI: {
-      version: "2024-12-26"
-      operations: {
-        createInvoice: {
-          input: { invoice: domain.entities.Invoice }
-          output: { invoice: domain.entities.Invoice, warnings?: [...string] }
-          assertions: [
-            { assert: input.invoice.total > 0, message: "Invoice total must be positive" }
-          ]
-        }
-        getInvoice: {
-          input: { invoiceId: domain.entities.Invoice.id }
-          output: { invoice: domain.entities.Invoice }
-          errors?: [{ name: "InvoiceNotFound", when: "invoice missing" }]
-        }
-      }
-    }
-  }
-}
-```
+Author them with the CLI (`arbiter add contract`, `arbiter add contract-operation`,
+`arbiter add event`) so identifiers and compatibility metadata stay consistent.
 
-### Workshop: Apply the Contracts Layer
+> For the full CLI walkthrough, see the
+> [Layer 2 section of the Code Generation Overview](./code-generation-overview.md#layer-2-%E2%80%94-contracts-bind-the-operations).
 
-1. **Map operations to consumers**—for InvoicePro that means payments, collections, analytics, and support.
-2. **Capture expectations inline** (assertions, latency requirements, retries) so automated tests and monitors inherit them.
-3. **Promote contracts into generated artifacts** using `arbiter sync --contracts` to keep OpenAPI/AsyncAPI, SDKs, and docs synchronized once a transport is attached.
+### Designing Contracts Workflow
 
-Operations stay transport agnostic. Service endpoints then bind them to HTTP,
-gRPC, queues, etc., by referencing the operation when generating routes.
-
-#### Event Contracts
-
-Asynchronous communication patterns:
-
-```cue
-contracts: {
-  events: {
-    PaymentEvents: {
-      version: "2024-12-26"
-      events: {
-        InvoiceViewed: {
-          schema: {
-            invoiceId: domain.entities.Invoice.id
-            viewerId: domain.entities.Customer.id
-            viewedAt: string
-          }
-        }
-        PaymentCaptured: {
-          schema: {
-            invoiceId: domain.entities.Invoice.id
-            amount: domain.entities.Invoice.total
-            method: "CARD" | "ACH" | "WIRE"
-            capturedAt: string
-          }
-        }
-      }
-    }
-  }
-}
-```
+1. **Map consumers first**: list every client, service, or partner that touches
+   the workflow so you know which guarantees matter.
+2. **Capture invariants inline**: assertions, retry budgets, or latency targets
+   live next to the contract so generated tests and monitors inherit them.
+3. **Promote to transports when ready**: use `arbiter sync --contracts` to emit
+   OpenAPI/AsyncAPI or client SDKs after the contract is reviewed.
 
 ### Contract Versioning & Compatibility
 
-Arbiter enforces contract compatibility to prevent breaking changes:
+Arbiter enforces compatibility gates so breaking changes surface early:
 
 ```cue
 contracts: {
@@ -194,82 +125,18 @@ contracts: {
 }
 ```
 
-### Explicit gateway + mesh services (Envoy/Traefik/etc.)
+- **Strict** demands explicit migrations or version bumps.
+- **Loose** tolerates additive changes but still flags removals.
+- **None** is reserved for prototypes and should be temporary.
 
-Contracts describe behavior, but the **service** layer owns the canonical
-endpoints. Any gateway/mesh you expose (Envoy, Traefik, API Gateway) is simply
-another service that forwards to those endpoints by setting
-`handler.type: "endpoint"`. Because handlers point to named service endpoints,
-you can build chains (service → mesh → edge) and layer middleware or transforms
-at every hop without duplicating paths.
+### Gateways, meshes, and chaining
 
-```cue
-services: {
-  InvoiceService: {
-    type: "internal"
-    source: { package: "./services/invoice" }
-    endpoints: {
-      getInvoice: {
-        path: "/internal/invoices/{invoiceId}"
-        methods: ["GET","HEAD"]
-        handler: {
-          type: "module"
-          module: "./services/invoice/http/get-invoice.ts"
-          function: "handler"
-        }
-        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
-        middleware: [{
-          module: "./services/invoice/middleware/audit.ts"
-          function: "recordAccess"
-        }]
-      }
-    }
-  }
-
-  BillingGateway: {
-    type: "internal"
-    source: { package: "./services/gateway" }
-    endpoints: {
-      invoicePublic: {
-        path: "/api/invoices/{invoiceId}"
-        methods: ["GET"]
-        handler: {
-          type: "endpoint"
-          service: "InvoiceService"
-          endpoint: "getInvoice"
-        }
-        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
-        middleware: [{
-          module: "./services/gateway/middleware/auth.ts"
-          function: "requireCustomerAuth"
-          phase: "request"
-        }, {
-          module: "./services/gateway/middleware/mask.ts"
-          function: "maskPII"
-          phase: "response"
-        }]
-      }
-    }
-  }
-}
-```
-
-- **InvoiceService** defines the canonical path/method pairing so Arbiter can
-  scaffold controllers, smoke tests, and deployment wiring exactly once.
-- **BillingGateway** is just another service. Because its handler references
-  `InvoiceService.getInvoice`, referential integrity stays explicit and you can
-  daisy-chain as many hops (mesh, ingress, partner edge) as you need.
-- **Middleware entries** point to real modules/functions, so you reuse the same
-  building blocks everywhere—auth, logging, transforms, masking, etc.
-- **Chains of handlers** are encouraged: a gateway can forward to another
-  gateway or service, layering middleware and even transformations before the
-  request ever reaches code generation, instead of copying routes in multiple
-  places.
-
-This pattern keeps URLs coupled to the services where real code lives while
-still allowing multiple exposure layers for public, partner, or internal users.
-
----
+Gateways or service meshes become regular services that forward to canonical
+endpoints by setting `handler.type: "endpoint"`. Because handlers point to named
+service endpoints, you can compose request flows (edge → mesh → core service)
+without duplicating routes. Middleware entries optionally reference existing
+modules when you're syncing a brownfield repo; greenfield projects can omit the
+paths and let Arbiter place the code automatically.
 
 ## Layer 3: Capabilities
 
@@ -278,58 +145,37 @@ fulfill the contracts.
 
 ### Service Definition
 
-```cue
-services: {
-  InvoiceService: {
-    endpoints: {
-      getInvoice: {
-        path: "/internal/invoices/{invoiceId}"
-        methods: ["GET","HEAD"]
-        handler: {
-          type: "module"
-          module: "./services/invoice/http/get-invoice.ts"
-          function: "handler"
-        }
-        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
-        middleware: [{
-          module: "./services/invoice/middleware/audit.ts"
-          function: "recordAccess"
-        }]
-      }
-    }
-  }
+Services translate contracts into runnable behavior. Keep them declarative:
 
-  BillingGateway: {
-    endpoints: {
-      invoicePublic: {
-        path: "/api/invoices/{invoiceId}"
-        methods: ["GET"]
-        handler: {
-          type: "endpoint"
-          service: "InvoiceService"
-          endpoint: "getInvoice"
-        }
-        implements: "contracts.workflows.InvoiceAPI.operations.getInvoice"
-        middleware: [{
-          module: "./services/gateway/middleware/auth.ts"
-          function: "requireCustomerAuth"
-        }]
-      }
-    }
-  }
-}
-```
+- **Describe ownership** with `arbiter add service <name>`—language, template,
+  and source directory live alongside metadata (`type`, `workload`, dependencies).
+- **Declare endpoints** via `arbiter add endpoint ... --service <name>` so each
+  route points back to a contract operation and optional middleware chain.
+- **Reference existing code sparingly**: handler/middleware `module` paths are
+  optional overrides for brownfield repos. Greenfield specs let Arbiter place
+  files automatically.
+
+> Need a detailed example? Jump to
+> [Layer 3 in the Code Generation Overview](./code-generation-overview.md#layer-3-%E2%80%94-capabilities-define-the-service).
 
 **Service source hints**
 
-- Set `type: "internal"` when Arbiter owns the code. Pair it with `source`
-  describing where the code lives—`{ package: "./services/invoice" }` for a repo
-  path or `{ dockerfile: "./services/invoice/Dockerfile" }` when you publish an
-  image from a specific build context.
-- Use `type: "external"` for SaaS/managed services and set `source`
-  to the canonical endpoint (for example `{ url: "https://payments.acme.com" }`)
-  so documentation/tests still know where to reach the dependency.
+- `type: "internal"` pairs with `source.package`/`source.directory` so Arbiter
+  owns the implementation.
+- `type: "external"` documents SaaS/managed services via `source.url` or custom
+  metadata so generated docs/tests know about dependencies.
+- Use `dependencies` and `resource` blocks to describe upstream databases,
+  caches, or third-party APIs.
 
+_Only include handler or middleware `module` paths when anchoring the spec to
+existing code (brownfield imports or post-generation sync)._ Otherwise leave
+them undefined so Arbiter infers the correct location from the project
+structure.
+
+> **Brownfield override only**  
+> The `handler.module` and `middleware[].module` fields keep the spec in sync with repositories that already have hand-written code. New services should leave those paths blank and let the generator derive the location from `ProjectStructureConfig`. That keeps the spec portable while still letting you pin exact files when you need to.
+
+### Capability Types
 ### Capability Types
 
 Arbiter supports various service capability patterns:
@@ -359,69 +205,31 @@ The **Execution** layer specifies where and how your services run in production.
 
 ### Environment-Scoped Deployments
 
-```cue
-deployments: {
-  development: {
-    target: "compose"
-    compose: { version: "3.9" }
-    services: {
-      InvoiceService: {
-        env: { DATABASE_URL: "postgres://postgres:postgres@db:5432/invoices" }
-      }
-    }
-  }
+- **Describe environments declaratively**: `deployments.development`,
+  `deployments.production`, etc., capture targets (Compose, Kubernetes,
+  serverless) and per-service overrides (replicas, env vars, resources).
+- **Model shared infrastructure as services** by setting `type: "external"` and
+  attaching `resource` metadata (database/cache/queue). Dependencies then point
+  to the service name instead of hard-coded URLs.
+- **Keep overrides co-located**: scaling hints, feature flags, and ingress traits
+  belong beside the service entry so generated Terraform/Helm/Docker assets stay
+  in sync.
+- **Use the CLI**: `arbiter add deployment`, `arbiter add dependency`, and
+  `arbiter sync infrastructure` manage the structure without manual YAML edits.
 
-  production: {
-    target: "kubernetes"
-    cluster: { name: "prod", provider: "gke", namespace: "invoice-system" }
-    services: {
-      InvoiceService: {
-        replicas: 4
-        resources: {
-          requests: { cpu: "250m", memory: "512Mi" }
-          limits: { cpu: "750m", memory: "1Gi" }
-        }
-      }
-      InvoiceDatabase: {
-        annotations: { "backup.policy": "gold" }
-      }
-    }
-  }
-}
-
-deployment: deployments.production // backward-compatible default
-```
-
-### Model External Platforms as Services
-
-```cue
-services: {
-  InvoiceDatabase: {
-    type: "external"
-    resource: { kind: "database", engine: "postgres" }
-    source: { url: "postgres://invoice-db.internal.svc.cluster.local:5432/invoices" }
-  }
-
-  InvoiceService: {
-    type: "internal"
-    source: { package: "./services/invoice" }
-    dependencies: {
-      db: {
-        service: "InvoiceDatabase"
-        version: ">=15"
-        kind: "postgres"
-      }
-    }
-  }
-}
-```
+> For a full manifest example, see
+> [Layer 4 in the Code Generation Overview](./code-generation-overview.md#layer-4-%E2%80%94-execution-generate-and-run).
 
 ### Workshop: Apply the Execution Layer
 
-1. **Pick deployment targets per environment** (`development` → Compose, `production` → Kubernetes) and describe cluster/compose options inline.
-2. **Describe shared resources as services** with `type: "external"` + `resource` metadata so dependencies remain explicit.
-3. **Attach overrides per environment** (replicas, env vars, annotations) in `deployments.<env>.services` instead of scattering them through manifests.
-4. **Promote the plan** using `arbiter generate infrastructure` to emit Terraform/Helm/Compose manifests that inherit those exact constraints.
+1. **Pick deployment targets per environment** (`development` → Compose,
+   `production` → Kubernetes) and describe cluster/compose options inline.
+2. **Describe shared resources as services** with `type: "external" + resource`
+   metadata so dependencies remain explicit.
+3. **Attach overrides per environment** (replicas, env vars, annotations) in
+   `deployments.<env>.services` instead of scattering them through manifests.
+4. **Promote the plan** using `arbiter generate infrastructure` to emit
+   Terraform/Helm/Compose manifests that inherit those exact constraints.
 
 ## Guided Walkthrough: From Idea to Running Service
 
@@ -473,9 +281,15 @@ modify.
 
 ### Iterative Development
 
+Let the CLI mutate the spec so identifiers, metadata, and docs stay in sync. Drop to a text editor only when reconciling brownfield repos or performing bulk refactors that the CLI does not yet support.
+
 ```bash
-# Edit your specification
-vim arbiter.assembly.cue
+# Apply spec changes via the CLI (preferred)
+arbiter add service InvoiceService --template fastify
+arbiter add endpoint InvoiceService --service InvoiceService --path /api/invoices/{invoiceId}
+
+# Only edit the CUE directly when reconciling brownfield changes
+# vim .arbiter/assembly.cue
 
 # Validate changes
 arbiter check
@@ -489,6 +303,8 @@ arbiter generate
 # Test the generated system
 arbiter integrate --test
 ```
+
+> **CLI first.** Use the `arbiter add|remove|rename` workflows to evolve the spec. Manual edits should be rare and limited to advanced migrations or brownfield imports.
 
 ### Version Management
 

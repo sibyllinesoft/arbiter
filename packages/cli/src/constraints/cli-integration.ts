@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import type { Command } from "commander";
+import { type CUEManipulator, createCUEManipulator } from "../cue/index.js";
 import type { CLIConfig } from "../types.js";
 import {
   ConstraintViolationError,
@@ -139,6 +140,17 @@ export function addConstraintCommands(program: Command): void {
       globalConstraintMonitor.cleanup();
       console.log(chalk.green("Monitoring data reset"));
     });
+}
+
+type CueManipulatorFactory = () => CUEManipulator;
+let currentCueManipulatorFactory: CueManipulatorFactory = () => createCUEManipulator();
+
+export function setCueManipulatorFactory(factory: CueManipulatorFactory): void {
+  currentCueManipulatorFactory = factory;
+}
+
+export function getCueManipulator(): CUEManipulator {
+  return currentCueManipulatorFactory();
 }
 
 /**

@@ -1,4 +1,5 @@
 import fs from "fs-extra";
+import { safeFileOperation } from "../../constraints/index.js";
 import { GenerationHookManager } from "../../utils/generation-hooks.js";
 import type { GenerateOptions } from "./types.js";
 
@@ -20,11 +21,13 @@ export async function writeFileWithHooks(
   }
 
   if (!options.dryRun) {
-    if (mode !== undefined) {
-      await fs.writeFile(filePath, finalContent, { mode });
-    } else {
-      await fs.writeFile(filePath, finalContent);
-    }
+    await safeFileOperation("write", filePath, async (validatedPath) => {
+      if (mode !== undefined) {
+        await fs.writeFile(validatedPath, finalContent, { mode });
+      } else {
+        await fs.writeFile(validatedPath, finalContent);
+      }
+    });
   }
 
   if (activeHookManager) {

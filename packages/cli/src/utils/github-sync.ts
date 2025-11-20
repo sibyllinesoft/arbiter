@@ -1,8 +1,8 @@
+import path from "node:path";
 import { Octokit } from "@octokit/rest";
 import chalk from "chalk";
+import fs from "fs-extra";
 import type { GitHubSyncConfig, IssueSpec } from "../types.js";
-import { FileBasedTemplateManager } from "./file-based-template-manager.js";
-import { ConfigurableTemplateManager } from "./github-template-config.js";
 import type { Epic, Task } from "./sharded-storage.js";
 import { UnifiedGitHubTemplateManager } from "./unified-github-template-manager.js";
 
@@ -62,20 +62,35 @@ export interface SyncPreview {
   };
 }
 
+interface SyncState {
+  repository: { owner?: string; repo?: string };
+  issues: Record<string, number>;
+  milestones: Record<string, number>;
+}
+
 export class GitHubSyncClient {
   private octokit: Octokit;
   private config: GitHubSyncConfig;
   private templateManager: UnifiedGitHubTemplateManager;
-  private configurableTemplateManager: ConfigurableTemplateManager;
-  private fileBasedTemplateManager: FileBasedTemplateManager;
   private issueCache: Map<string, GitHubIssue> = new Map();
   private milestoneCache: Map<string, GitHubMilestone> = new Map();
+  private syncStatePath: string;
+  private syncState: SyncState;
+  private stateDirty = false;
 
   constructor(config: GitHubSyncConfig) {
     this.config = config;
-    this.templateManager = new UnifiedGitHubTemplateManager();
-    this.configurableTemplateManager = new ConfigurableTemplateManager(config.templates);
-    this.fileBasedTemplateManager = new FileBasedTemplateManager(config.templates || {});
+    this.templateManager = new UnifiedGitHubTemplateManager(config.templates || {}, process.cwd());
+    this.syncStatePath = path.resolve(process.cwd(), ".arbiter", "sync-state.json");
+    this.syncState = {
+      repository: {
+        owner: this.config.repository?.owner,
+        repo: this.config.repository?.repo,
+      },
+      issues: {},
+      milestones: {},
+    };
+    this.loadSyncState();
 
     // Get GitHub token from configured environment variable
     const tokenEnvName = config.repository.tokenEnv || "GITHUB_TOKEN";
@@ -97,6 +112,63 @@ export class GitHubSyncClient {
       auth: token,
       baseUrl: config.repository.baseUrl || "https://api.github.com",
     });
+  }
+
+  /**
+   * Load Arbiter ↔ GitHub mapping from disk to avoid duplicate issue creation when titles change.
+   */
+  private loadSyncState(): void {
+    try {
+      if (!fs.existsSync(this.syncStatePath)) {
+        return;
+      }
+
+      const data = fs.readJsonSync(this.syncStatePath) as Partial<SyncState>;
+      if (
+        data.repository?.owner === this.config.repository?.owner &&
+        data.repository?.repo === this.config.repository?.repo
+      ) {
+        this.syncState = {
+          repository: data.repository,
+          issues: data.issues ?? {},
+          milestones: data.milestones ?? {},
+        };
+      }
+    } catch (error) {
+      console.warn("⚠️  Unable to read .arbiter/sync-state.json, starting with empty state.", error);
+      this.syncState = {
+        repository: { owner: this.config.repository?.owner, repo: this.config.repository?.repo },
+        issues: {},
+        milestones: {},
+      };
+    }
+  }
+
+  /**
+   * Persist sync state when mappings change.
+   */
+  private async saveSyncState(): Promise<void> {
+    if (!this.stateDirty) return;
+    this.stateDirty = false;
+
+    try {
+      await fs.ensureDir(path.dirname(this.syncStatePath));
+      await fs.writeJson(this.syncStatePath, this.syncState, { spaces: 2 });
+    } catch (error) {
+      console.warn("⚠️  Unable to persist GitHub sync state.", error);
+    }
+  }
+
+  private rememberIssueMapping(arbiterId: string, issueNumber: number): void {
+    if (this.syncState.issues[arbiterId] === issueNumber) return;
+    this.syncState.issues[arbiterId] = issueNumber;
+    this.stateDirty = true;
+  }
+
+  private rememberMilestoneMapping(arbiterId: string, milestoneNumber: number): void {
+    if (this.syncState.milestones[arbiterId] === milestoneNumber) return;
+    this.syncState.milestones[arbiterId] = milestoneNumber;
+    this.stateDirty = true;
   }
 
   /**
@@ -129,7 +201,7 @@ export class GitHubSyncClient {
       }
 
       // Process milestone for epic
-      if (this.config.behavior?.createMilestones) {
+      if (this.config.automation?.createMilestones) {
         const milestoneTitle = this.generateMilestoneTitle(epic);
         const existingMilestone = this.findExistingMilestone(milestoneTitle, epic.id);
 
@@ -165,6 +237,7 @@ export class GitHubSyncClient {
       }
     }
 
+    await this.saveSyncState();
     return preview;
   }
 
@@ -193,6 +266,7 @@ export class GitHubSyncClient {
       }
     }
 
+    await this.saveSyncState();
     return results;
   }
 
@@ -236,17 +310,20 @@ export class GitHubSyncClient {
           };
 
           this.issueCache.set(issue.title, githubIssue);
+          this.issueCache.set(`id:${issue.number}`, githubIssue);
 
           // Also cache by arbiter ID if present in body
           const arbiterIdMatch = issue.body?.match(/<!-- arbiter-id: ([^\\s]+) -->/);
           if (arbiterIdMatch) {
-            this.issueCache.set(`arbiter:${arbiterIdMatch[1]}`, githubIssue);
+            const arbiterId = arbiterIdMatch[1];
+            this.issueCache.set(`arbiter:${arbiterId}`, githubIssue);
+            this.rememberIssueMapping(arbiterId, githubIssue.number);
           }
         }
       }
 
       // Load milestones if needed
-      if (this.config.behavior?.createMilestones) {
+      if (this.config.automation?.createMilestones) {
         const milestones = await this.octokit.paginate(this.octokit.rest.issues.listMilestones, {
           owner,
           repo,
@@ -263,14 +340,19 @@ export class GitHubSyncClient {
           };
 
           this.milestoneCache.set(milestone.title, githubMilestone);
+          this.milestoneCache.set(`id:${milestone.number}`, githubMilestone);
 
           // Also cache by arbiter ID if present in description
           const arbiterIdMatch = milestone.description?.match(/<!-- arbiter-id: ([^\\s]+) -->/);
           if (arbiterIdMatch) {
-            this.milestoneCache.set(`arbiter:${arbiterIdMatch[1]}`, githubMilestone);
+            const arbiterId = arbiterIdMatch[1];
+            this.milestoneCache.set(`arbiter:${arbiterId}`, githubMilestone);
+            this.rememberMilestoneMapping(arbiterId, githubMilestone.number);
           }
         }
       }
+
+      await this.saveSyncState();
     } catch (error) {
       throw new Error(
         `Failed to load existing GitHub data: ${error instanceof Error ? error.message : String(error)}`,
@@ -290,26 +372,13 @@ export class GitHubSyncClient {
       const existingIssue = this.findExistingIssue(epicTitle, epic.id);
 
       if (!existingIssue) {
-        // Create new epic issue using file-based template system (fallback to configurable)
-        let template;
-        try {
-          template = await this.fileBasedTemplateManager.generateEpicTemplate(epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        } catch (error) {
-          // Fallback to configurable template manager
-          template = this.configurableTemplateManager.generateEpicTemplate(epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        }
+        const template = await this.templateManager.generateEpicTemplate(epic, {
+          includeMetadata: true,
+          includeArbiterIds: true,
+          includeAcceptanceCriteria: true,
+          includeDependencies: true,
+          includeEstimations: true,
+        });
 
         // Map semantic labels to GitHub labels
         const mappedLabels = this.mapSemanticLabels(template.labels, "epic", epic);
@@ -321,7 +390,7 @@ export class GitHubSyncClient {
           body: template.body,
           labels: mappedLabels,
           assignees:
-            this.config.behavior?.syncAssignees && template.assignees
+            this.config.automation?.syncAssignees && template.assignees
               ? template.assignees
               : undefined,
         });
@@ -333,6 +402,7 @@ export class GitHubSyncClient {
           state: newIssue.data.state as "open" | "closed",
           labels: newIssue.data.labels.map((l) => (typeof l === "string" ? l : l.name || "")),
         });
+        this.rememberIssueMapping(epic.id, newIssue.data.number);
 
         results.push({
           action: "created",
@@ -342,26 +412,13 @@ export class GitHubSyncClient {
           details: `Created GitHub issue #${newIssue.data.number}`,
         });
       } else if (await this.shouldUpdateEpic(epic, existingIssue)) {
-        // Update existing epic issue using file-based template system (fallback to configurable)
-        let template;
-        try {
-          template = await this.fileBasedTemplateManager.generateEpicTemplate(epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        } catch (error) {
-          // Fallback to configurable template manager
-          template = this.configurableTemplateManager.generateEpicTemplate(epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        }
+        const template = await this.templateManager.generateEpicTemplate(epic, {
+          includeMetadata: true,
+          includeArbiterIds: true,
+          includeAcceptanceCriteria: true,
+          includeDependencies: true,
+          includeEstimations: true,
+        });
 
         // Map semantic labels to GitHub labels
         const mappedLabels = this.mapSemanticLabels(template.labels, "epic", epic);
@@ -374,10 +431,11 @@ export class GitHubSyncClient {
           body: template.body,
           labels: mappedLabels,
           assignees:
-            this.config.behavior?.syncAssignees && template.assignees
+            this.config.automation?.syncAssignees && template.assignees
               ? template.assignees
               : undefined,
         });
+        this.rememberIssueMapping(epic.id, existingIssue.number);
 
         results.push({
           action: "updated",
@@ -387,6 +445,7 @@ export class GitHubSyncClient {
           details: `Updated GitHub issue #${existingIssue.number}`,
         });
       } else {
+        this.rememberIssueMapping(epic.id, existingIssue.number);
         results.push({
           action: "skipped",
           type: "epic",
@@ -401,7 +460,7 @@ export class GitHubSyncClient {
         (epic.status === "completed" || epic.status === "cancelled") &&
         existingIssue &&
         existingIssue.state === "open" &&
-        this.config.behavior?.autoClose
+        this.config.automation?.autoClose
       ) {
         await this.octokit.rest.issues.update({
           owner,
@@ -420,7 +479,7 @@ export class GitHubSyncClient {
       }
 
       // Handle milestone creation/update
-      if (this.config.behavior?.createMilestones) {
+      if (this.config.automation?.createMilestones) {
         const milestoneResults = await this.syncEpicMilestone(epic);
         results.push(...milestoneResults);
       }
@@ -448,26 +507,13 @@ export class GitHubSyncClient {
       const existingIssue = this.findExistingIssue(taskTitle, task.id);
 
       if (!existingIssue) {
-        // Create new task issue using file-based template system (fallback to configurable)
-        let template;
-        try {
-          template = await this.fileBasedTemplateManager.generateTaskTemplate(task, epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        } catch (error) {
-          // Fallback to configurable template manager
-          template = this.configurableTemplateManager.generateTaskTemplate(task, epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        }
+        const template = await this.templateManager.generateTaskTemplate(task, epic, {
+          includeMetadata: true,
+          includeArbiterIds: true,
+          includeAcceptanceCriteria: true,
+          includeDependencies: true,
+          includeEstimations: true,
+        });
         const milestone = this.findMilestoneForEpic(epic);
 
         // Map semantic labels to GitHub labels
@@ -480,7 +526,7 @@ export class GitHubSyncClient {
           body: template.body,
           labels: mappedLabels,
           assignees:
-            this.config.behavior?.syncAssignees && template.assignees
+            this.config.automation?.syncAssignees && template.assignees
               ? template.assignees
               : undefined,
           milestone: milestone?.number,
@@ -493,27 +539,15 @@ export class GitHubSyncClient {
           githubNumber: newIssue.data.number,
           details: `Created GitHub issue #${newIssue.data.number}`,
         });
+        this.rememberIssueMapping(task.id, newIssue.data.number);
       } else if (await this.shouldUpdateTask(task, existingIssue, epic)) {
-        // Update existing task issue using file-based template system (fallback to configurable)
-        let template;
-        try {
-          template = await this.fileBasedTemplateManager.generateTaskTemplate(task, epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        } catch (error) {
-          // Fallback to configurable template manager
-          template = this.configurableTemplateManager.generateTaskTemplate(task, epic, {
-            includeMetadata: true,
-            includeArbiterIds: true,
-            includeAcceptanceCriteria: true,
-            includeDependencies: true,
-            includeEstimations: true,
-          });
-        }
+        const template = await this.templateManager.generateTaskTemplate(task, epic, {
+          includeMetadata: true,
+          includeArbiterIds: true,
+          includeAcceptanceCriteria: true,
+          includeDependencies: true,
+          includeEstimations: true,
+        });
         const milestone = this.findMilestoneForEpic(epic);
 
         // Map semantic labels to GitHub labels
@@ -527,11 +561,12 @@ export class GitHubSyncClient {
           body: template.body,
           labels: mappedLabels,
           assignees:
-            this.config.behavior?.syncAssignees && template.assignees
+            this.config.automation?.syncAssignees && template.assignees
               ? template.assignees
               : undefined,
           milestone: milestone?.number,
         });
+        this.rememberIssueMapping(task.id, existingIssue.number);
 
         results.push({
           action: "updated",
@@ -541,6 +576,7 @@ export class GitHubSyncClient {
           details: `Updated GitHub issue #${existingIssue.number}`,
         });
       } else {
+        this.rememberIssueMapping(task.id, existingIssue.number);
         results.push({
           action: "skipped",
           type: "task",
@@ -555,7 +591,7 @@ export class GitHubSyncClient {
         (task.status === "completed" || task.status === "cancelled") &&
         existingIssue &&
         existingIssue.state === "open" &&
-        this.config.behavior?.autoClose
+        this.config.automation?.autoClose
       ) {
         await this.octokit.rest.issues.update({
           owner,
@@ -614,6 +650,7 @@ export class GitHubSyncClient {
           state: newMilestone.data.state as "open" | "closed",
           description: newMilestone.data.description || undefined,
         });
+        this.rememberMilestoneMapping(epic.id, newMilestone.data.number);
 
         results.push({
           action: "created",
@@ -635,6 +672,7 @@ export class GitHubSyncClient {
           description,
           due_on: dueDate,
         });
+        this.rememberMilestoneMapping(epic.id, existingMilestone.number);
 
         results.push({
           action: "updated",
@@ -666,6 +704,10 @@ export class GitHubSyncClient {
           details: `Closed GitHub milestone #${existingMilestone.number}`,
         });
       }
+
+      if (existingMilestone) {
+        this.rememberMilestoneMapping(epic.id, existingMilestone.number);
+      }
     } catch (error) {
       results.push({
         action: "skipped",
@@ -681,27 +723,13 @@ export class GitHubSyncClient {
   // Helper methods for generating GitHub content (kept for milestone support)
 
   private async generateEpicTitle(epic: Epic): Promise<string> {
-    // Use file-based template manager for consistency (fallback to configurable)
-    try {
-      const template = await this.fileBasedTemplateManager.generateEpicTemplate(epic);
-      return template.title;
-    } catch {
-      // Fallback to configurable template manager
-      const template = this.configurableTemplateManager.generateEpicTemplate(epic);
-      return template.title;
-    }
+    const template = await this.templateManager.generateEpicTemplate(epic);
+    return template.title;
   }
 
   private async generateTaskTitle(task: Task, epic: Epic): Promise<string> {
-    // Use file-based template manager for consistency (fallback to configurable)
-    try {
-      const template = await this.fileBasedTemplateManager.generateTaskTemplate(task, epic);
-      return template.title;
-    } catch {
-      // Fallback to configurable template manager
-      const template = this.configurableTemplateManager.generateTaskTemplate(task, epic);
-      return template.title;
-    }
+    const template = await this.templateManager.generateTaskTemplate(task, epic);
+    return template.title;
   }
 
   private generateMilestoneTitle(epic: Epic): string {
@@ -729,25 +757,53 @@ export class GitHubSyncClient {
   // Helper methods for finding existing items
 
   private findExistingIssue(title: string, arbiterId: string): GitHubIssue | undefined {
-    // First try to find by arbiter ID
+    const mappedNumber = this.syncState.issues[arbiterId];
+    if (mappedNumber !== undefined) {
+      const byNumber = this.issueCache.get(`id:${mappedNumber}`);
+      if (byNumber) {
+        return byNumber;
+      }
+    }
+
+    // First try to find by arbiter ID embedded in GitHub body
     const byId = this.issueCache.get(`arbiter:${arbiterId}`);
-    if (byId) return byId;
+    if (byId) {
+      this.rememberIssueMapping(arbiterId, byId.number);
+      return byId;
+    }
 
     // Then try by title
-    return this.issueCache.get(title);
+    const byTitle = this.issueCache.get(title);
+    if (byTitle) {
+      this.rememberIssueMapping(arbiterId, byTitle.number);
+    }
+    return byTitle;
   }
 
   private findExistingMilestone(title: string, arbiterId: string): GitHubMilestone | undefined {
-    // First try to find by arbiter ID
-    const byId = this.milestoneCache.get(`arbiter:${arbiterId}`);
-    if (byId) return byId;
+    const mappedNumber = this.syncState.milestones[arbiterId];
+    if (mappedNumber !== undefined) {
+      const byNumber = this.milestoneCache.get(`id:${mappedNumber}`);
+      if (byNumber) {
+        return byNumber;
+      }
+    }
 
-    // Then try by title
-    return this.milestoneCache.get(title);
+    const byId = this.milestoneCache.get(`arbiter:${arbiterId}`);
+    if (byId) {
+      this.rememberMilestoneMapping(arbiterId, byId.number);
+      return byId;
+    }
+
+    const byTitle = this.milestoneCache.get(title);
+    if (byTitle) {
+      this.rememberMilestoneMapping(arbiterId, byTitle.number);
+    }
+    return byTitle;
   }
 
   private findMilestoneForEpic(epic: Epic): GitHubMilestone | undefined {
-    if (!this.config.behavior?.createMilestones) return undefined;
+    if (!this.config.automation?.createMilestones) return undefined;
 
     const milestoneTitle = this.generateMilestoneTitle(epic);
     return this.findExistingMilestone(milestoneTitle, epic.id);
@@ -758,7 +814,7 @@ export class GitHubSyncClient {
   private async shouldUpdateEpic(epic: Epic, existingIssue: GitHubIssue): Promise<boolean> {
     let template;
     try {
-      template = await this.fileBasedTemplateManager.generateEpicTemplate(epic, {
+      template = await this.templateManager.generateEpicTemplate(epic, {
         includeMetadata: true,
         includeArbiterIds: true,
         includeAcceptanceCriteria: true,
@@ -767,7 +823,7 @@ export class GitHubSyncClient {
       });
     } catch (error) {
       // Fallback to configurable template manager
-      template = this.configurableTemplateManager.generateEpicTemplate(epic, {
+      template = await this.templateManager.generateEpicTemplate(epic, {
         includeMetadata: true,
         includeArbiterIds: true,
         includeAcceptanceCriteria: true,
@@ -786,7 +842,7 @@ export class GitHubSyncClient {
   ): Promise<boolean> {
     let template;
     try {
-      template = await this.fileBasedTemplateManager.generateTaskTemplate(task, epic, {
+      template = await this.templateManager.generateTaskTemplate(task, epic, {
         includeMetadata: true,
         includeArbiterIds: true,
         includeAcceptanceCriteria: true,
@@ -795,7 +851,7 @@ export class GitHubSyncClient {
       });
     } catch (error) {
       // Fallback to configurable template manager
-      template = this.configurableTemplateManager.generateTaskTemplate(task, epic, {
+      template = await this.templateManager.generateTaskTemplate(task, epic, {
         includeMetadata: true,
         includeArbiterIds: true,
         includeAcceptanceCriteria: true,
@@ -828,8 +884,8 @@ export class GitHubSyncClient {
     const mappedLabels: string[] = [];
 
     // Add default labels from configuration
-    if (this.config.mapping.defaultLabels) {
-      mappedLabels.push(...this.config.mapping.defaultLabels);
+    if (this.config.labels?.default) {
+      mappedLabels.push(...this.config.labels.default);
     }
 
     // Map semantic labels using configuration
@@ -837,8 +893,8 @@ export class GitHubSyncClient {
       // Check type-specific mappings first
       const typeSpecificLabels =
         itemType === "epic"
-          ? this.config.mapping.epicLabels?.[label]
-          : this.config.mapping.taskLabels?.[label];
+          ? this.config.labels?.epics?.[label]
+          : this.config.labels?.tasks?.[label];
 
       if (typeSpecificLabels) {
         mappedLabels.push(...typeSpecificLabels);
@@ -862,8 +918,7 @@ export class GitHubSyncClient {
     }
 
     // Add prefix labels if configured
-    const prefix =
-      itemType === "epic" ? this.config.mapping.epicPrefix : this.config.mapping.taskPrefix;
+    const prefix = itemType === "epic" ? this.config.prefixes?.epic : this.config.prefixes?.task;
     if (prefix) {
       mappedLabels.unshift(prefix);
     }

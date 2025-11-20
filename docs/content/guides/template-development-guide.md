@@ -17,21 +17,21 @@ This guide covers how to create, customize, and maintain templates for Arbiter's
 
 Arbiter's template system is designed to transform CUE specifications into production-ready code across multiple languages and frameworks. The system supports:
 
-- **Multiple Template Engines** - Handlebars, Liquid, and custom engines
+- **Multiple Template Implementors** - Handlebars, Liquid, and custom implementors
 - **Override Hierarchies** - Custom templates override defaults
 - **Rich Context Data** - Comprehensive data from CUE specifications
 - **Template Inheritance** - Shared partials and layouts
 - **Dynamic Resolution** - Runtime template selection
 
-The “engine” abstraction is simply a command invocation. When Arbiter needs to render a template it serializes the context to JSON and pipes it into the engine command you registered. The command can be anything you want—`bunx handlebars`, `python render.py`, `cookiecutter`, or a compiled binary. Whatever the command writes to stdout becomes the generated artifact, so you can bring virtually any templating technology without writing TypeScript.
+The “implementor” abstraction is simply a command invocation. When Arbiter needs to render a template it serializes the context to JSON and pipes it into the implementor command you registered. The command can be anything you want—`bunx handlebars`, `python render.py`, `cookiecutter`, or a compiled binary. Whatever the command writes to stdout becomes the generated artifact, so you can bring virtually any templating technology without writing TypeScript.
 
-Built-in helpers (like the cookiecutter integrations used by some stock templates) consume the same interface internally. They call the underlying library directly for speed, but they still accept the `{command, args, context}` shape that external engines see. That means the alias you register for a first-party template is structurally identical to the alias you would register for your own engine.
+Built-in helpers (like the cookiecutter integrations used by some stock templates) consume the same interface internally. They call the underlying library directly for speed, but they still accept the `{command, args, context}` shape that external implementors see. That means the alias you register for a first-party template is structurally identical to the alias you would register for your own implementor.
 
 Example `.arbiter/templates.json` entry that shells out to a local script:
 
 ```json
 {
-  "engines": {
+  "implementors": {
     "my-templates": {
       "command": "python",
       "defaultArgs": ["templates/render.py"],
@@ -40,7 +40,7 @@ Example `.arbiter/templates.json` entry that shells out to a local script:
   },
   "aliases": {
     "orders-fastapi": {
-      "engine": "my-templates",
+      "implementor": "my-templates",
       "source": "./templates/orders"
     }
   }
@@ -448,60 +448,49 @@ app.use(cors());
 
 ## Context Data Reference
 
-Templates receive rich context data extracted from CUE specifications:
+Templates receive the exact JSON produced by `buildTemplateContext` in `packages/cli/src/templates/index.ts`. Here is a real sample (generated from the demo assembly and pointing at the `orders` service):
 
-### Core Context Structure
-
-```typescript
-interface GenerationContext {
-  // Project metadata
-  projectName: string;           // "my-awesome-app"
-  description?: string;          // "Full-stack web application"
-  version?: string;              // "1.0.0"
-  
-  // Service information (for service templates)
-  serviceName?: string;          // "user-service"
-  serviceType?: string;          // "api", "worker", "frontend"
-  language?: string;             // "typescript", "python", "rust"
-  
-  // Infrastructure
-  ports?: number[];              // [3000, 3001]
-  environment?: Record<string, string>;
-  
-  // Database configuration
-  database?: {
-    type: string;                // "postgres", "mysql", "mongodb"
-    name: string;                // "app_db"
-    host?: string;               // "localhost"
-    port?: number;               // 5432
-    config?: Record<string, any>;
-  };
-  
-  // API endpoints
-  endpoints?: EndpointContext[];
-  
-  // Authentication
-  auth?: {
-    type: string;                // "oauth2", "jwt", "session"
-    provider?: string;           // "auth0", "firebase"
-    config?: Record<string, any>;
-  };
-  
-  // Testing configuration
-  testing?: {
-    framework: string;           // "vitest", "jest", "pytest"
-    coverage: boolean;
-    types: string[];             // ["unit", "integration", "e2e"]
-  };
-  
-  // Build metadata
-  generatedAt: string;           // ISO timestamp
-  generator: {
-    name: string;                // "arbiter"
-    version: string;             // "1.0.0"
-  };
+```json
+{
+  "project": {
+    "product": { "name": "storefront", "version": "0.1.0" },
+    "services": {
+      "orders": {
+        "language": "typescript",
+        "serviceType": "api",
+        "routes": [{ "method": "get", "path": "/orders" }],
+        "database": { "type": "postgres" }
+      }
+    }
+  },
+  "parent": {
+    "orders": {
+      "language": "typescript",
+      "serviceType": "api",
+      "routes": [{ "method": "get", "path": "/orders" }],
+      "database": { "type": "postgres" }
+    }
+  },
+  "artifact": {
+    "name": "orders",
+    "language": "typescript",
+    "serviceType": "api",
+    "routes": [{ "method": "get", "path": "/orders" }],
+    "database": { "type": "postgres" }
+  },
+  "impl": {
+    "alias": "ts-fastify",
+    "source": "./templates/typescript/service"
+  }
 }
 ```
+
+- `project` is the full parsed CUE document.
+- `parent` is the container map that held the artifact (e.g., `services.orders`).
+- `artifact` is the specific node selected via `artifactName` (plus a `name` field injected for convenience).
+- `impl` echoes whatever you passed to the template orchestrator (usually the alias metadata).
+
+Use this JSON as the canonical variable map inside Handlebars or any other implementor; there is no hidden mutation layer.
 
 ### Endpoint Context
 

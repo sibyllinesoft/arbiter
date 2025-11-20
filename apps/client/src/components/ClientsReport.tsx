@@ -1,10 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { ChevronUp, Layout, Plus, Trash2 } from "lucide-react";
+import { ChevronUp, Layout, Trash2 } from "lucide-react";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-import { useResolvedSpec } from "@/hooks/api-hooks";
+import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
+import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
 import { apiService } from "@/services/api";
 import ArtifactCard from "./ArtifactCard";
 import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "./ArtifactPanel";
@@ -14,6 +15,7 @@ import {
   type FieldValue,
   type UiOptionCatalog,
 } from "./modals/entityTypes";
+import { EntityCatalog } from "./templates/EntityCatalog";
 
 interface ClientsReportProps {
   projectId: string;
@@ -612,8 +614,11 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
   const queryClient = useQueryClient();
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
   const [isCreatingClient, setIsCreatingClient] = useState(false);
-  const [uiOptionCatalog, setUiOptionCatalog] =
-    useState<UiOptionCatalog>(DEFAULT_UI_OPTION_CATALOG);
+  const { data: uiOptionCatalogData } = useUiOptionCatalog();
+  const uiOptionCatalog = useMemo<UiOptionCatalog>(
+    () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
+    [uiOptionCatalogData],
+  );
   const [addViewState, setAddViewState] = useState<{
     open: boolean;
     client: NormalizedClient | null;
@@ -634,23 +639,6 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
     },
     [projectId, queryClient],
   );
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const catalog = await apiService.getUiOptionCatalog();
-        if (!mounted) return;
-        setUiOptionCatalog((prev) => ({ ...DEFAULT_UI_OPTION_CATALOG, ...prev, ...catalog }));
-      } catch (catalogError) {
-        console.warn("[ClientsReport] Failed to load UI option catalog", catalogError);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   const handleOpenAddClient = useCallback(() => {
     setIsAddClientOpen(true);
@@ -993,10 +981,39 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
     return { internalClients: internal, externalClients: external };
   }, [data?.resolved]);
 
+  const tabBadgeUpdater = useTabBadgeUpdater();
+  const resolvedProject = (data?.resolved as { project?: { entities?: Record<string, unknown> } })
+    ?.project;
+  const resolvedEntities = resolvedProject?.entities as Record<string, unknown> | undefined;
+  const resolvedClientCount =
+    typeof resolvedEntities?.["frontends"] === "number"
+      ? (resolvedEntities["frontends"] as number)
+      : null;
+  const clientCount = isLoading || isError ? null : (resolvedClientCount ?? internalClients.length);
+
+  useEffect(() => {
+    if (!projectId) {
+      tabBadgeUpdater("clients", null);
+      return () => {
+        tabBadgeUpdater("clients", null);
+      };
+    }
+    if (clientCount == null) {
+      tabBadgeUpdater("clients", null);
+      return () => {
+        tabBadgeUpdater("clients", null);
+      };
+    }
+    tabBadgeUpdater("clients", clientCount);
+    return () => {
+      tabBadgeUpdater("clients", null);
+    };
+  }, [clientCount, projectId, tabBadgeUpdater]);
+
   return (
     <>
-      <div className={clsx("h-full", className)}>
-        <div className="flex h-full flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
+      <div className={clsx("flex h-full min-h-0 flex-col overflow-hidden", className)}>
+        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
           {isLoading ? (
             <div className="flex flex-1 items-center justify-center text-gray-600 dark:text-graphite-300">
               Loading clients...
@@ -1006,84 +1023,57 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
               {error instanceof Error ? error.message : "Unable to load clients for this project."}
             </div>
           ) : (
-            <div className="flex-1 overflow-hidden">
-              <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center text-teal-600 dark:text-teal-200">
-                      <Layout className="h-5 w-5" />
-                    </div>
-                    <div className="space-y-1">
-                      <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
-                        Client Experiences
-                      </h2>
-                      <p className="text-sm text-gray-600 dark:text-graphite-300">
-                        Explore detected frontends and add new experiences to your project catalog.
-                      </p>
+            <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+              <EntityCatalog
+                title="Client Experiences"
+                description="Explore detected frontends and add new experiences to your project catalog."
+                icon={Layout}
+                items={internalClients}
+                isLoading={isLoading}
+                emptyMessage="No code-backed clients found yet. Add one manually or ingest more sources."
+                addAction={{
+                  label: "Add Client",
+                  onAdd: handleOpenAddClient,
+                  disabled: !projectId || isCreatingClient,
+                  loading: isCreatingClient,
+                }}
+                renderCard={(client) => (
+                  <ClientCard
+                    key={client.key}
+                    client={client}
+                    onAddView={handleOpenAddView}
+                    disableAddView={isCreatingView || addViewState.open}
+                  />
+                )}
+              />
+
+              {externalClients.length > 0 && (
+                <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
+                  <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
+                        <Layout className="h-4 w-4" />
+                        <span>External Clients</span>
+                      </div>
+                      <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
+                        {externalClients.length}
+                      </span>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenAddClient}
-                    disabled={!projectId || isCreatingClient}
-                    className={clsx(
-                      "inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors",
-                      "hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-                      "disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-blue-100",
-                    )}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Client
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-6 py-6">
-                <div className="space-y-6">
-                  {internalClients.length > 0 ? (
-                    internalClients.map((client) => (
-                      <ClientCard
-                        key={client.key}
-                        client={client}
-                        onAddView={handleOpenAddView}
-                        disableAddView={isCreatingView || addViewState.open}
-                      />
-                    ))
-                  ) : (
-                    <p className="text-sm text-gray-500 dark:text-graphite-300">
-                      No code-backed clients found yet. Add one manually or ingest more sources.
-                    </p>
-                  )}
-
-                  {externalClients.length > 0 && (
-                    <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-                      <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
-                            <Layout className="h-4 w-4" />
-                            <span>External Clients</span>
-                          </div>
-                          <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
-                            {externalClients.length}
-                          </span>
-                        </div>
-                      </div>
-                      <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                          {externalClients.map((card) => (
-                            <ArtifactCard
-                              key={card.key}
-                              name={card.name}
-                              data={card.data}
-                              onClick={noop}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                  <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                      {externalClients.map((card) => (
+                        <ArtifactCard
+                          key={card.key}
+                          name={card.name}
+                          data={card.data}
+                          onClick={noop}
+                        />
+                      ))}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>

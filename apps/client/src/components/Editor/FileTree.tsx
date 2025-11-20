@@ -3,6 +3,8 @@
  * Professional hierarchy styling with smooth animations and accessibility
  */
 
+import type { Fragment } from "@/types/api";
+import { buildFileTree } from "@/utils/file-tree";
 import { clsx } from "clsx";
 import {
   Archive,
@@ -23,11 +25,10 @@ import {
 } from "lucide-react";
 import React, { useState, useCallback } from "react";
 import { toast } from "react-toastify";
-import { useApp } from "../../contexts/AppContext";
+import { useEditorActions, useEditorState, useStatus } from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
 import { Button, Input, cn } from "../../design-system";
 import { apiService } from "../../services/api";
-import type { Fragment } from "../../types/api";
 import type { FileTreeItem } from "../../types/ui";
 
 // File type detection for better icons
@@ -76,7 +77,9 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
   { className, multiSelect = false, onSelectionChange },
   ref,
 ) {
-  const { state, dispatch, setActiveFragment, setError } = useApp();
+  const editorState = useEditorState();
+  const { setActiveFragment, deleteFragment, setFragments } = useEditorActions();
+  const { setError } = useStatus();
   const currentProject = useCurrentProject();
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -84,66 +87,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
   const [newFragmentPath, setNewFragmentPath] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
-  // Build tree structure from flat fragment list
-  const buildFileTree = useCallback(
-    (fragments: Fragment[]): FileTreeItem[] => {
-      const tree: FileTreeItem[] = [];
-      const pathMap = new Map<string, FileTreeItem>();
-
-      // Sort fragments by path
-      const sortedFragments = [...fragments].sort((a, b) => a.path.localeCompare(b.path));
-
-      for (const fragment of sortedFragments) {
-        const parts = fragment.path
-          .split("/")
-          .filter((segment): segment is string => Boolean(segment));
-        let currentPath: string = "";
-        let currentLevel = tree;
-
-        for (let i = 0; i < parts.length; i++) {
-          const part = parts[i]!;
-          currentPath = currentPath !== "" ? `${currentPath}/${part}` : part;
-          const isFile = i === parts.length - 1;
-
-          // Check if item already exists at this level
-          let existingItem = currentLevel.find((item) => item.path === currentPath);
-
-          if (!existingItem) {
-            const newItem: FileTreeItem = {
-              id: isFile ? fragment.id : currentPath,
-              path: currentPath,
-              type: isFile ? "file" : "directory",
-            };
-
-            if (!isFile) {
-              newItem.children = [];
-            } else {
-              newItem.hasUnsavedChanges = state.unsavedChanges.has(fragment.id);
-            }
-
-            currentLevel.push(newItem);
-            pathMap.set(currentPath, newItem);
-            existingItem = newItem;
-          }
-
-          // Update unsaved changes status for files
-          if (isFile && existingItem.hasUnsavedChanges !== state.unsavedChanges.has(fragment.id)) {
-            existingItem.hasUnsavedChanges = state.unsavedChanges.has(fragment.id);
-          }
-
-          // Move to next level for directories
-          if (!isFile && existingItem.children) {
-            currentLevel = existingItem.children;
-          }
-        }
-      }
-
-      return tree;
-    },
-    [state.unsavedChanges],
-  );
-
-  const fileTree = buildFileTree(state.fragments);
+  const fileTree = buildFileTree(editorState.fragments, editorState.unsavedChanges);
 
   // Handle folder toggle
   const toggleFolder = useCallback((path: string) => {
@@ -179,7 +123,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
           });
         } else if (event.shiftKey && selectedFiles.size > 0) {
           // Range selection for shift+click
-          const fragments = state.fragments;
+          const fragments = editorState.fragments;
           const currentIndex = fragments.findIndex((f) => f.id === fragmentId);
           const lastSelectedId = Array.from(selectedFiles).pop();
           const lastIndex = fragments.findIndex((f) => f.id === lastSelectedId);
@@ -215,7 +159,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       // Always set active fragment for editing
       setActiveFragment(fragmentId);
     },
-    [setActiveFragment, multiSelect, selectedFiles, state.fragments, onSelectionChange],
+    [setActiveFragment, multiSelect, selectedFiles, editorState.fragments, onSelectionChange],
   );
 
   // Expose methods via ref
@@ -280,7 +224,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
         updated_at: response.created_at,
       };
 
-      dispatch({ type: "UPDATE_FRAGMENT", payload: newFragment });
+      setFragments(editorState.fragments.concat(newFragment));
       setActiveFragment(response.id);
       setShowCreateForm(false);
       setNewFragmentPath("");
@@ -291,7 +235,14 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
       setError(message);
       toast.error(message);
     }
-  }, [currentProject, newFragmentPath, dispatch, setActiveFragment, setError]);
+  }, [
+    currentProject,
+    newFragmentPath,
+    setFragments,
+    editorState.fragments,
+    setActiveFragment,
+    setError,
+  ]);
 
   // Handle delete fragment
   const handleDeleteFragment = useCallback(
@@ -304,7 +255,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
 
       try {
         await apiService.deleteFragment(currentProject.id, fragmentId);
-        dispatch({ type: "DELETE_FRAGMENT", payload: fragmentId });
+        deleteFragment(fragmentId);
 
         toast.success(`Deleted fragment: ${fragmentPath}`);
       } catch (error) {
@@ -313,7 +264,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
         toast.error(message);
       }
     },
-    [currentProject, dispatch, setError],
+    [currentProject, deleteFragment, setError],
   );
 
   return (
@@ -325,7 +276,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
             <Folder className="h-4 w-4 text-graphite-500" />
             <h3 className="font-semibold text-sm text-graphite-800">Explorer</h3>
             <span className="px-2 py-0.5 bg-graphite-200 text-graphite-600 text-xs rounded-full font-medium">
-              {state.fragments.length}
+              {editorState.fragments.length}
             </span>
           </div>
           <Button
@@ -421,7 +372,7 @@ export const FileTree = React.forwardRef<FileTreeRef, FileTreeProps>(function Fi
                 item={item}
                 level={0}
                 expandedFolders={expandedFolders}
-                activeFragmentId={state.activeFragmentId}
+                activeFragmentId={editorState.activeFragmentId}
                 selectedFiles={selectedFiles}
                 multiSelect={multiSelect}
                 onToggleFolder={toggleFolder}

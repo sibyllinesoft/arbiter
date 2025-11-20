@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import http from "node:http";
 import { stdin as input, stdout as output } from "node:process";
 import readline from "node:readline/promises";
 import chalk from "chalk";
@@ -37,6 +38,87 @@ function generatePkcePair(): { verifier: string; challenge: string } {
   const verifier = base64UrlEncode(crypto.randomBytes(64));
   const challenge = base64UrlEncode(crypto.createHash("sha256").update(verifier).digest());
   return { verifier, challenge };
+}
+
+function supportsLoopbackRedirect(redirectUri: string): boolean {
+  try {
+    const url = new URL(redirectUri);
+    return (
+      url.protocol === "http:" &&
+      (url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "::1")
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function listenForOAuthCode(
+  redirectUri: string,
+  expectedState: string,
+  timeoutMs = 120_000,
+): Promise<string> {
+  return await new Promise((resolve, reject) => {
+    const redirectUrl = new URL(redirectUri);
+    const server = http.createServer((req, res) => {
+      if (!req.url) {
+        res.statusCode = 400;
+        res.end("Missing request URL");
+        return;
+      }
+
+      const incoming = new URL(req.url, redirectUri);
+      const code = incoming.searchParams.get("code");
+      const state = incoming.searchParams.get("state");
+
+      if (state && state !== expectedState) {
+        res.statusCode = 400;
+        res.end("State mismatch. Please retry from the CLI.");
+        server.close();
+        reject(new Error("OAuth state mismatch"));
+        return;
+      }
+
+      if (code) {
+        res.statusCode = 200;
+        res.setHeader("Content-Type", "text/html");
+        res.end(
+          "<html><body><p>Authentication complete. You may close this window.</p></body></html>",
+        );
+        server.close();
+        resolve(code);
+        return;
+      }
+
+      res.statusCode = 400;
+      res.end("Missing authorization code");
+    });
+
+    server.on("error", (error) => {
+      reject(error);
+    });
+
+    server.listen(Number.parseInt(redirectUrl.port || "80", 10), redirectUrl.hostname, () => {
+      // Server ready
+    });
+
+    setTimeout(() => {
+      server.close();
+      reject(new Error("Timed out waiting for OAuth redirect"));
+    }, timeoutMs).unref();
+  });
+}
+
+async function promptAuthorizationCode(): Promise<string> {
+  const rl = readline.createInterface({ input, output });
+  try {
+    const code = (await rl.question("Authorization code: ")).trim();
+    if (!code) {
+      throw new Error("No authorization code provided.");
+    }
+    return code;
+  } finally {
+    rl.close();
+  }
 }
 
 async function fetchOAuthMetadata(apiUrl: string): Promise<OAuthMetadataResponse> {
@@ -146,58 +228,73 @@ export async function runAuthCommand(
     return;
   }
 
-  console.log();
-  console.log(chalk.cyan("To authenticate the Arbiter CLI:"));
-  console.log(`  1. Open the following URL in your browser:\n     ${chalk.blue(authorizationUrl)}`);
-  console.log("  2. Complete the sign-in flow.");
-  console.log("  3. You will receive a verification code. Paste it below.");
-  console.log();
+  const canUseLoopback = supportsLoopbackRedirect(redirectUri);
+  let code: string | undefined;
 
-  const rl = readline.createInterface({ input, output });
-  try {
-    const code = (await rl.question("Authorization code: ")).trim();
-    if (!code) {
-      throw new Error("No authorization code provided.");
+  if (canUseLoopback) {
+    try {
+      console.log();
+      console.log(chalk.cyan("Starting local callback listener for OAuth..."));
+      console.log(chalk.dim(`Listening on ${redirectUri}`));
+      console.log(chalk.cyan("Opening browser flow:"));
+      console.log(`  ${chalk.blue(authorizationUrl)}`);
+      console.log(chalk.dim("Waiting for redirect... (Ctrl+C to cancel, fallback to manual)"));
+
+      code = await listenForOAuthCode(redirectUri, state);
+    } catch (error) {
+      console.log(chalk.yellow("Loopback capture failed, falling back to manual code entry."));
+      console.log(chalk.dim(String(error)));
     }
-
-    const tokenResponse = await exchangeAuthorizationCode(metadata.tokenEndpoint, {
-      clientId,
-      code,
-      verifier,
-      redirectUri,
-      scopes: scopeParam,
-    });
-
-    const expiresAt = tokenResponse.expires_in
-      ? new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
-      : undefined;
-
-    const session: AuthSession = {
-      accessToken: tokenResponse.access_token,
-      refreshToken: tokenResponse.refresh_token,
-      tokenType: tokenResponse.token_type,
-      scope: tokenResponse.scope ?? scopeParam,
-      expiresAt,
-      obtainedAt: new Date().toISOString(),
-      metadata: {
-        tokenEndpoint: metadata.tokenEndpoint,
-        authorizationEndpoint: metadata.authorizationEndpoint,
-        clientId,
-        redirectUri,
-        provider: metadata.provider,
-      },
-    };
-
-    await saveAuthSession(session);
-
-    console.log();
-    console.log(chalk.green("Authentication successful."));
-    if (expiresAt) {
-      console.log(`Token expires at ${new Date(expiresAt).toLocaleString()}`);
-    }
-    console.log("You can now run Arbiter CLI commands that require authentication.");
-    console.log(chalk.dim(`Credentials stored at ${getAuthStorePath()}`));
-  } finally {
-    rl.close();
   }
+
+  if (!code) {
+    console.log();
+    console.log(chalk.cyan("To authenticate the Arbiter CLI:"));
+    console.log(
+      `  1. Open the following URL in your browser:\n     ${chalk.blue(authorizationUrl)}`,
+    );
+    console.log("  2. Complete the sign-in flow.");
+    console.log("  3. You will receive a verification code. Paste it below.");
+    console.log();
+
+    code = await promptAuthorizationCode();
+  }
+
+  const tokenResponse = await exchangeAuthorizationCode(metadata.tokenEndpoint, {
+    clientId,
+    code,
+    verifier,
+    redirectUri,
+    scopes: scopeParam,
+  });
+
+  const expiresAt = tokenResponse.expires_in
+    ? new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString()
+    : undefined;
+
+  const session: AuthSession = {
+    accessToken: tokenResponse.access_token,
+    refreshToken: tokenResponse.refresh_token,
+    tokenType: tokenResponse.token_type,
+    scope: tokenResponse.scope ?? scopeParam,
+    expiresAt,
+    obtainedAt: new Date().toISOString(),
+    metadata: {
+      tokenEndpoint: metadata.tokenEndpoint,
+      authorizationEndpoint: metadata.authorizationEndpoint,
+      clientId,
+      redirectUri,
+      provider: metadata.provider,
+    },
+  };
+
+  await saveAuthSession(session);
+
+  console.log();
+  console.log(chalk.green("Authentication successful."));
+  if (expiresAt) {
+    console.log(`Token expires at ${new Date(expiresAt).toLocaleString()}`);
+  }
+  console.log("You can now run Arbiter CLI commands that require authentication.");
+  console.log(chalk.dim(`Credentials stored at ${getAuthStorePath()}`));
 }

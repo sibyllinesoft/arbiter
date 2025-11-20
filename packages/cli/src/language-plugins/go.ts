@@ -5,7 +5,6 @@
 
 import type {
   BuildConfig,
-  ComponentConfig,
   GeneratedFile,
   GenerationResult,
   LanguagePlugin,
@@ -30,15 +29,11 @@ export class GoPlugin implements LanguagePlugin {
     "grpc",
   ];
   readonly capabilities = {
+    components: false,
     services: true,
     api: true,
     testing: true,
   };
-
-  // Go doesn't have UI components like frontend frameworks
-  async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
-    throw new Error("Component generation not supported for Go. Use generateService instead.");
-  }
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];

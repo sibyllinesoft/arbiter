@@ -15,7 +15,8 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-import { useResolvedSpec } from "@/hooks/api-hooks";
+import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
+import { useResolvedSpec, useUiOptionCatalog } from "@/hooks/api-hooks";
 import { useProjectEntityPersistence } from "@/hooks/useProjectEntityPersistence";
 import { apiService } from "@/services/api";
 import { type EnvironmentMap, mergeEnvironmentSources } from "@/utils/environment";
@@ -36,6 +37,7 @@ import {
   isServiceDetected,
   shouldTreatAsInternalService,
 } from "./services/internal-service-classifier";
+import { EntityCatalog } from "./templates/EntityCatalog";
 
 interface ServicesReportProps {
   projectId: string;
@@ -1029,8 +1031,11 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   const queryClient = useQueryClient();
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
   const [isCreatingService, setIsCreatingService] = useState(false);
-  const [uiOptionCatalog, setUiOptionCatalog] =
-    useState<UiOptionCatalog>(DEFAULT_UI_OPTION_CATALOG);
+  const { data: uiOptionCatalogData } = useUiOptionCatalog();
+  const uiOptionCatalog = useMemo<UiOptionCatalog>(
+    () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
+    [uiOptionCatalogData],
+  );
   const [addEndpointState, setAddEndpointState] = useState<{
     open: boolean;
     service: NormalizedService | null;
@@ -1230,23 +1235,6 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     [serviceDetailState, persistEntity, handleCloseServiceModal],
   );
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const catalog = await apiService.getUiOptionCatalog();
-        if (!mounted) return;
-        setUiOptionCatalog((prev) => ({ ...DEFAULT_UI_OPTION_CATALOG, ...prev, ...catalog }));
-      } catch (catalogError) {
-        console.warn("[ServicesReport] Failed to load UI option catalog", catalogError);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   const { internalServices, externalCards } = useMemo(() => {
     const resolved = data?.resolved as Record<string, any> | undefined;
     const spec = resolved?.spec ?? resolved;
@@ -1303,6 +1291,36 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
     };
   }, [data?.resolved]);
 
+  const tabBadgeUpdater = useTabBadgeUpdater();
+  const resolvedProject = (data?.resolved as { project?: { entities?: Record<string, unknown> } })
+    ?.project;
+  const resolvedEntities = resolvedProject?.entities as Record<string, unknown> | undefined;
+  const resolvedServiceCount =
+    typeof resolvedEntities?.["services"] === "number"
+      ? (resolvedEntities["services"] as number)
+      : null;
+  const serviceCount =
+    isLoading || isError ? null : (resolvedServiceCount ?? internalServices.length);
+
+  useEffect(() => {
+    if (!projectId) {
+      tabBadgeUpdater("services", null);
+      return () => {
+        tabBadgeUpdater("services", null);
+      };
+    }
+    if (serviceCount == null) {
+      tabBadgeUpdater("services", null);
+      return () => {
+        tabBadgeUpdater("services", null);
+      };
+    }
+    tabBadgeUpdater("services", serviceCount);
+    return () => {
+      tabBadgeUpdater("services", null);
+    };
+  }, [projectId, serviceCount, tabBadgeUpdater]);
+
   const handleOpenAddService = useCallback(() => {
     setIsAddServiceOpen(true);
   }, []);
@@ -1343,7 +1361,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
   );
 
   return (
-    <div className={clsx("h-full min-h-0", className)}>
+    <div className={clsx("flex h-full min-h-0 flex-col overflow-hidden", className)}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-gray-50 dark:bg-graphite-950">
         {isLoading ? (
           <div className="flex flex-1 items-center justify-center text-gray-600 dark:text-graphite-300">
@@ -1354,82 +1372,58 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
             {error instanceof Error ? error.message : "Unable to load services for this project."}
           </div>
         ) : (
-          <div className="flex-1 overflow-hidden min-h-0">
-            <div className="border-b border-graphite-200/60 bg-gray-100 px-6 py-6 dark:border-graphite-700/60 dark:bg-graphite-900/70">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25">
-                    Catalog
-                  </h2>
-                  <p className="text-sm text-gray-600 dark:text-graphite-300">
-                    Manage detected application services and external runtimes powering this
-                    project.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleOpenAddService}
-                  disabled={!projectId || isCreatingService}
-                  className={clsx(
-                    "inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors",
-                    "hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-                    "disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-blue-100",
-                  )}
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Service
-                </button>
-              </div>
-            </div>
+          <div className="flex-1 overflow-hidden min-h-0 flex flex-col">
+            <EntityCatalog
+              title="Catalog"
+              description="Manage detected application services and external runtimes powering this project."
+              icon={Network}
+              items={internalServices}
+              isLoading={isLoading}
+              emptyMessage="No code-backed services detected yet. Use the Add Service button to document new services or ingest additional repositories."
+              addAction={{
+                label: "Add Service",
+                onAdd: handleOpenAddService,
+                disabled: !projectId || isCreatingService,
+                loading: isCreatingService,
+              }}
+              renderCard={(service) => (
+                <ServiceCard
+                  key={service.key}
+                  service={service}
+                  onAddEndpoint={handleOpenAddEndpointModal}
+                  onEditEndpoint={handleOpenEditEndpointModal}
+                  onEditService={handleOpenServiceModal}
+                />
+              )}
+            />
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 scrollbar-transparent">
-              <div className="space-y-6">
-                {internalServices.length > 0 ? (
-                  internalServices.map((service) => (
-                    <ServiceCard
-                      key={service.key}
-                      service={service}
-                      onAddEndpoint={handleOpenAddEndpointModal}
-                      onEditEndpoint={handleOpenEditEndpointModal}
-                      onEditService={handleOpenServiceModal}
-                    />
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-500 dark:text-graphite-300">
-                    No code-backed services detected yet. Use the Add Service button to document new
-                    services or ingest additional repositories.
-                  </p>
-                )}
-
-                {externalCards.length > 0 ? (
-                  <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-                    <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
-                          <Network className="h-4 w-4" />
-                          <span>External Services</span>
-                        </div>
-                        <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
-                          {externalCards.length}
-                        </span>
-                      </div>
+            {externalCards.length > 0 ? (
+              <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium px-6")}>
+                <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
+                      <Network className="h-4 w-4" />
+                      <span>External Services</span>
                     </div>
-                    <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
-                      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {externalCards.map((card) => (
-                          <ArtifactCard
-                            key={card.key}
-                            name={card.name}
-                            data={card.data}
-                            onClick={() => handleOpenExternalServiceModal(card)}
-                          />
-                        ))}
-                      </div>
-                    </div>
+                    <span className="text-xs text-gray-500/70 dark:text-graphite-300/70">
+                      {externalCards.length}
+                    </span>
                   </div>
-                ) : null}
+                </div>
+                <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {externalCards.map((card) => (
+                      <ArtifactCard
+                        key={card.key}
+                        name={card.name}
+                        data={card.data}
+                        onClick={() => handleOpenExternalServiceModal(card)}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         )}
       </div>

@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
+import { safeFileOperation } from "../../constraints/index.js";
 import { GoPlugin } from "../go.js";
 import {
   type BuildConfig,
@@ -245,14 +246,16 @@ describe("Language Plugin System", () => {
     });
 
     it("should load component templates from override directory", async () => {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ts-plugin-"));
+      const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "ts-plugin-"));
       const overrideDir = path.join(tmpDir, "typescript");
-      fs.ensureDirSync(overrideDir);
+      await fs.ensureDir(overrideDir);
       const overridePath = path.join(overrideDir, "component.tsx.tpl");
-      fs.writeFileSync(
-        overridePath,
-        "/* override */\nexport const {{componentName}} = () => null;\n",
-      );
+      await safeFileOperation("write", overridePath, async (validatedPath) => {
+        await fs.writeFile(
+          validatedPath,
+          "/* override */\nexport const {{componentName}} = () => null;\n",
+        );
+      });
 
       const configuredPlugin = new TypeScriptPlugin();
       configuredPlugin.configure({ templateOverrides: [overrideDir] });
@@ -267,7 +270,7 @@ describe("Language Plugin System", () => {
       );
       expect(componentFile?.content).toContain("/* override */");
 
-      fs.removeSync(tmpDir);
+      await fs.remove(tmpDir);
     });
   });
 
@@ -460,7 +463,7 @@ describe("Language Plugin System", () => {
 
       // Python doesn't support component generation
       expect(generateComponent("python", config)).rejects.toThrow(
-        "Component generation not supported for Python",
+        "Component generation not supported for language: python",
       );
     });
 

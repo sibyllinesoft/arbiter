@@ -100,16 +100,16 @@ interface ServiceGenerationContext {
 
 ### Template System Interfaces
 
-#### TemplateEngine
+#### TemplateImplementor
 
-Interface for template engine implementations.
+Interface for template implementor implementations.
 
 ```typescript
-interface TemplateEngine {
-  /** Engine name identifier */
+interface TemplateImplementor {
+  /** Implementor name identifier */
   name: string;
   
-  /** Command to execute the engine */
+  /** Command to execute the implementor */
   command: string;
   
   /** Default command-line arguments */
@@ -133,28 +133,28 @@ Configuration structure for template system.
 
 ```typescript
 interface TemplateConfig {
-  /** Template engine configurations */
-  engines: Record<string, TemplateEngineConfig>;
+  /** Template implementor configurations */
+  implementors: Record<string, TemplateImplementorConfig>;
   
   /** Template aliases for common patterns */
   aliases: Record<string, TemplateAlias>;
   
   /** Global template settings */
   settings?: {
-    defaultEngine?: string;
+    defaultImplementor?: string;
     cacheDir?: string;
     timeout?: number;
   };
 }
 
-interface TemplateEngineConfig {
+interface TemplateImplementorConfig {
   command: string;
   defaultArgs: string[];
   timeout?: number;
 }
 
 interface TemplateAlias {
-  engine: string;
+  implementor: string;
   source: string;
   description: string;
   variables?: Record<string, any>;
@@ -372,7 +372,7 @@ const result = await resolver.renderTemplate(
 );
 ```
 
-### Template Manager
+### Template Orchestrator
 
 ```typescript
 /**
@@ -450,9 +450,9 @@ export async function generateComponent(
 
 ```typescript
 /**
- * Configure language plugin runtime settings
+ * Configure the template orchestrator for a given language
  */
-export function configureLanguagePluginRuntime(
+export function configureTemplateOrchestrator(
   language: string, 
   cliConfig: CLIConfig
 ): void
@@ -460,7 +460,7 @@ export function configureLanguagePluginRuntime(
 /**
  * Get language plugin instance
  */
-export function getLanguagePlugin(
+export function getConfiguredLanguagePlugin(
   language: string
 ): LanguagePlugin
 ```
@@ -587,11 +587,16 @@ interface GeneratorConfig {
 interface ProjectStructureConfig {
   clientsDirectory: string;     // "clients"
   servicesDirectory: string;    // "services"
-  modulesDirectory: string;     // "modules"
+  packagesDirectory: string;    // "packages"
   toolsDirectory: string;       // "tools"
   docsDirectory: string;        // "docs"
   testsDirectory: string;       // "tests"
   infraDirectory: string;       // "infrastructure"
+  packageRelative?: {
+    docsDirectory?: boolean;
+    testsDirectory?: boolean;
+    infraDirectory?: boolean;
+  };
 }
 ```
 

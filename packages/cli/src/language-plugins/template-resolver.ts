@@ -1,19 +1,22 @@
 import path from "node:path";
-import fs from "fs-extra";
+import { TemplateOrchestrator, templateOrchestrator } from "../templates/index.js";
 
 export interface TemplateResolverOptions {
   language: string;
   overrideDirectories?: string[];
   defaultDirectories?: string[];
+  orchestrator?: TemplateOrchestrator;
 }
 
 export class TemplateResolver {
   private readonly language: string;
   private overrideDirectories: string[] = [];
   private defaultDirectories: string[] = [];
+  private orchestrator: TemplateOrchestrator;
 
   constructor(options: TemplateResolverOptions) {
     this.language = options.language;
+    this.orchestrator = options.orchestrator ?? templateOrchestrator;
     if (options.overrideDirectories) {
       this.setOverrideDirectories(options.overrideDirectories);
     }
@@ -54,16 +57,11 @@ export class TemplateResolver {
   }
 
   private async readTemplate(templatePath: string): Promise<string | undefined> {
-    const searchPaths = [...this.overrideDirectories, ...this.defaultDirectories];
-
-    for (const baseDir of searchPaths) {
-      const candidatePath = path.join(baseDir, templatePath);
-      if (await fs.pathExists(candidatePath)) {
-        return fs.readFile(candidatePath, "utf-8");
-      }
-    }
-
-    return undefined;
+    const asset = await this.orchestrator.resolveTemplateAsset(templatePath, {
+      overrideDirectories: this.overrideDirectories,
+      defaultDirectories: this.defaultDirectories,
+    });
+    return asset?.content;
   }
 
   private applyTemplate(content: string, context: Record<string, unknown>): string {

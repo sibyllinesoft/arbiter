@@ -19,7 +19,7 @@ import type {
   DockerTemplateConfig,
   GeneratorConfig,
   GeneratorTestingConfig,
-  LanguageTestingConfig,
+  LanguagePluginConfig,
   MasterTestRunnerConfig,
   ProjectStructureConfig,
 } from "./types.js";
@@ -75,7 +75,7 @@ export const DEFAULT_PROJECT_STRUCTURE: ProjectStructureConfig = {
  */
 export const DEFAULT_CONFIG: CLIConfig = {
   apiUrl: "http://localhost:5050", // Standardized to match server default
-  timeout: 750, // Enforce spec maximum (≤750ms)
+  timeout: 10_000, // Allow slower hops while keeping a hard cap
   format: "table",
   color: true,
   localMode: false,
@@ -239,25 +239,35 @@ const gitHubTemplatesConfigSchema = z.object({
   repositoryConfig: gitHubRepoConfigSchema.optional(),
 });
 
+const gitHubPrefixesSchema = z
+  .object({
+    epic: z.string().optional(),
+    task: z.string().optional(),
+  })
+  .optional();
+
+const gitHubLabelsSchema = z
+  .object({
+    default: z.array(z.string()).optional(),
+    epics: z.record(z.array(z.string())).optional(),
+    tasks: z.record(z.array(z.string())).optional(),
+  })
+  .optional();
+
+const gitHubAutomationSchema = z
+  .object({
+    createMilestones: z.boolean().optional(),
+    autoClose: z.boolean().optional(),
+    syncAcceptanceCriteria: z.boolean().optional(),
+    syncAssignees: z.boolean().optional(),
+  })
+  .optional();
+
 const gitHubSyncSchema = z.object({
   repository: gitHubRepoSchema,
-  mapping: z
-    .object({
-      epicLabels: z.record(z.array(z.string())).optional(),
-      taskLabels: z.record(z.array(z.string())).optional(),
-      defaultLabels: z.array(z.string()).optional(),
-      epicPrefix: z.string().optional(),
-      taskPrefix: z.string().optional(),
-    })
-    .optional(),
-  behavior: z
-    .object({
-      createMilestones: z.boolean().optional(),
-      autoClose: z.boolean().optional(),
-      syncAcceptanceCriteria: z.boolean().optional(),
-      syncAssignees: z.boolean().optional(),
-    })
-    .optional(),
+  prefixes: gitHubPrefixesSchema,
+  labels: gitHubLabelsSchema,
+  automation: gitHubAutomationSchema,
   templates: gitHubTemplatesConfigSchema.optional(),
 });
 
@@ -325,7 +335,6 @@ const generatorTestingSchema = z
       })
       .optional(),
   })
-  .catchall(testingLanguageSchema)
   .optional();
 
 const dockerTemplateSchema = z
@@ -348,10 +357,16 @@ const dockerGeneratorSchema = z
   })
   .optional();
 
+const languagePluginSchema = z
+  .object({
+    testing: testingLanguageSchema.optional(),
+  })
+  .catchall(z.unknown());
+
 const generatorSchema = z
   .object({
-    templateOverrides: z.record(z.string(), z.string()).optional(),
-    plugins: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+    templateOverrides: z.record(z.string(), z.union([z.string(), z.array(z.string())])).optional(),
+    plugins: z.record(z.string(), languagePluginSchema).optional(),
     hooks: generatorHooksSchema,
     testing: generatorTestingSchema,
     docker: dockerGeneratorSchema,
@@ -360,7 +375,7 @@ const generatorSchema = z
 
 const configSchema = z.object({
   apiUrl: z.string().url().optional(),
-  timeout: z.number().min(100).max(750).optional(), // Enforce spec maximum (≤750ms)
+  timeout: z.number().min(100).max(10_000).optional(), // Generous ceiling while preventing hangs
   format: z.enum(["table", "json", "yaml"]).optional(),
   color: z.boolean().optional(),
   projectDir: z.string().optional(),
@@ -447,7 +462,9 @@ function cloneGeneratorConfig(config?: GeneratorConfig): GeneratorConfig | undef
   if (!config) return undefined;
 
   return {
-    templateOverrides: config.templateOverrides ? { ...config.templateOverrides } : undefined,
+    templateOverrides: config.templateOverrides
+      ? (deepClone(config.templateOverrides) as Record<string, string | string[]>)
+      : undefined,
     plugins: config.plugins
       ? Object.fromEntries(
           Object.entries(config.plugins).map(([language, options]) => [
@@ -470,20 +487,10 @@ function cloneDockerConfig(config?: DockerGeneratorConfig): DockerGeneratorConfi
 }
 
 function cloneTestingConfig(testing?: GeneratorTestingConfig): GeneratorTestingConfig | undefined {
-  if (!testing) return undefined;
-  const cloned: GeneratorTestingConfig = {} as GeneratorTestingConfig;
-  for (const [key, value] of Object.entries(testing)) {
-    if (key === "master") {
-      if (value) {
-        (cloned as GeneratorTestingConfig).master = { ...(value as MasterTestRunnerConfig) };
-      }
-    } else if (value) {
-      (cloned as Record<string, LanguageTestingConfig>)[key] = deepClone(
-        value as LanguageTestingConfig,
-      );
-    }
-  }
-  return Object.keys(cloned).length > 0 ? cloned : undefined;
+  if (!testing?.master) return undefined;
+  return {
+    master: { ...testing.master },
+  };
 }
 
 function mergeDockerTemplateEntry(
@@ -554,42 +561,12 @@ function mergeTestingConfig(
   base: GeneratorTestingConfig | undefined,
   overrides: GeneratorTestingConfig | undefined,
 ): GeneratorTestingConfig | undefined {
-  if (!base && !overrides) return undefined;
+  const mergedMaster = {
+    ...(base?.master ?? {}),
+    ...(overrides?.master ?? {}),
+  };
 
-  const merged: GeneratorTestingConfig = {} as GeneratorTestingConfig;
-
-  if (base) {
-    for (const [key, value] of Object.entries(base)) {
-      if (key === "master") {
-        if (value) {
-          (merged as GeneratorTestingConfig).master = { ...(value as MasterTestRunnerConfig) };
-        }
-      } else if (value) {
-        (merged as Record<string, LanguageTestingConfig>)[key] = deepClone(
-          value as LanguageTestingConfig,
-        );
-      }
-    }
-  }
-
-  if (overrides) {
-    for (const [key, value] of Object.entries(overrides)) {
-      if (!value) continue;
-      if (key === "master") {
-        (merged as GeneratorTestingConfig).master = {
-          ...(merged.master ?? {}),
-          ...(value as MasterTestRunnerConfig),
-        };
-      } else {
-        const existing = (merged as Record<string, LanguageTestingConfig>)[key];
-        (merged as Record<string, LanguageTestingConfig>)[key] = existing
-          ? { ...existing, ...deepClone(value as LanguageTestingConfig) }
-          : deepClone(value as LanguageTestingConfig);
-      }
-    }
-  }
-
-  return Object.keys(merged).length > 0 ? merged : undefined;
+  return Object.keys(mergedMaster).length > 0 ? { master: mergedMaster } : undefined;
 }
 
 /**
@@ -618,8 +595,9 @@ function cloneConfig(config: CLIConfig): CLIConfig {
       ? {
           ...config.github,
           repository: config.github.repository ? { ...config.github.repository } : undefined,
-          mapping: config.github.mapping ? { ...config.github.mapping } : undefined,
-          behavior: config.github.behavior ? { ...config.github.behavior } : undefined,
+          prefixes: config.github.prefixes ? { ...config.github.prefixes } : undefined,
+          labels: config.github.labels ? { ...config.github.labels } : undefined,
+          automation: config.github.automation ? { ...config.github.automation } : undefined,
           templates: config.github.templates ? { ...config.github.templates } : undefined,
         }
       : undefined,
@@ -697,12 +675,12 @@ function mergeGeneratorConfig(
 ): GeneratorConfig | undefined {
   if (!base && !overrides) return undefined;
 
-  const templateOverrides = {
+  const templateOverrides = deepClone({
     ...(base?.templateOverrides ?? {}),
     ...(overrides?.templateOverrides ?? {}),
-  } as Record<string, string>;
+  }) as Record<string, string | string[]>;
 
-  const pluginConfig: Record<string, Record<string, unknown>> = {};
+  const pluginConfig: Record<string, LanguagePluginConfig> = {};
   if (base?.plugins) {
     for (const [language, options] of Object.entries(base.plugins)) {
       pluginConfig[language] = deepClone(options);
@@ -751,12 +729,15 @@ function mergeConfigs(base: CLIConfig, overrides: Partial<CLIConfig>): CLIConfig
         repository: overrides.github.repository
           ? { ...base.github?.repository, ...overrides.github.repository }
           : base.github?.repository,
-        mapping: overrides.github.mapping
-          ? { ...base.github?.mapping, ...overrides.github.mapping }
-          : base.github?.mapping,
-        behavior: overrides.github.behavior
-          ? { ...base.github?.behavior, ...overrides.github.behavior }
-          : base.github?.behavior,
+        prefixes: overrides.github.prefixes
+          ? { ...base.github?.prefixes, ...overrides.github.prefixes }
+          : base.github?.prefixes,
+        labels: overrides.github.labels
+          ? { ...base.github?.labels, ...overrides.github.labels }
+          : base.github?.labels,
+        automation: overrides.github.automation
+          ? { ...base.github?.automation, ...overrides.github.automation }
+          : base.github?.automation,
         templates: overrides.github.templates
           ? { ...base.github?.templates, ...overrides.github.templates }
           : base.github?.templates,

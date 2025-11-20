@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { ApiClient } from "../api-client";
+import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
 import type { CLIConfig } from "../types";
 
 // Mock fetch globally
@@ -30,6 +31,7 @@ describe("ApiClient", () => {
       format: "json",
       color: true,
       projectDir: "/test",
+      projectStructure: { ...DEFAULT_PROJECT_STRUCTURE },
     };
     apiClient = new ApiClient(config);
     mockFetch.mockReset();
@@ -46,10 +48,10 @@ describe("ApiClient", () => {
       expect(client).toBeDefined();
     });
 
-    it("should enforce timeout compliance with spec (≤750ms)", () => {
-      const configWithLongTimeout = { ...config, timeout: 1000 };
+    it("caps timeout at 10 seconds", () => {
+      const configWithLongTimeout = { ...config, timeout: 20_000 };
       const client = new ApiClient(configWithLongTimeout);
-      expect(client).toBeDefined();
+      expect((client as any).timeout).toBe(10_000);
     });
 
     it("should handle different timeout values", () => {
@@ -143,7 +145,7 @@ describe("ApiClient", () => {
     });
 
     it("should validate payload size", async () => {
-      const largeContent = "x".repeat(70 * 1024); // 70KB
+      const largeContent = "x".repeat(6 * 1024 * 1024); // >5MB
 
       const result = await apiClient.validate(largeContent);
 
@@ -199,7 +201,7 @@ describe("ApiClient", () => {
     });
   });
 
-  describe("fetchProjectStructureConfig", () => {
+  describe("getProjectStructureConfig", () => {
     it("returns structure data when server responds successfully", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -213,7 +215,7 @@ describe("ApiClient", () => {
         }),
       } as Response);
 
-      const result = await apiClient.fetchProjectStructureConfig();
+      const result = await apiClient.getProjectStructureConfig();
       expect(result.success).toBe(true);
       expect(result.projectStructure).toEqual(
         expect.objectContaining({ servicesDirectory: "services" }),
@@ -229,7 +231,7 @@ describe("ApiClient", () => {
         }),
       } as Response);
 
-      const result = await apiClient.fetchProjectStructureConfig();
+      const result = await apiClient.getProjectStructureConfig();
       expect(result.success).toBe(false);
       expect(result.error).toContain("projectStructure");
     });
@@ -629,7 +631,7 @@ describe("ApiClient", () => {
   });
 
   describe("rate limiting", () => {
-    it("should enforce rate limiting between requests", async () => {
+    it("does not throttle requests client-side", async () => {
       const mockResponse = {
         ok: true,
         status: 200,
@@ -640,14 +642,12 @@ describe("ApiClient", () => {
 
       const start = Date.now();
 
-      // Make two consecutive requests
       await apiClient.health();
       await apiClient.health();
 
       const duration = Date.now() - start;
 
-      // Should take roughly 1 second due to rate limiting (allow minor scheduling jitter)
-      expect(duration).toBeGreaterThanOrEqual(950);
+      expect(duration).toBeLessThan(200);
     }, 3000);
   });
 

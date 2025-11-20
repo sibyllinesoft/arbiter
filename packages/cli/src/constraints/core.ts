@@ -20,11 +20,11 @@ export class ConstraintViolationError extends Error {
  * Core constraint types that must be enforced across all operations
  */
 export interface Constraints {
-  /** Maximum payload size in bytes (≤64 KB) */
+  /** Maximum payload size in bytes (default 5 MB) */
   maxPayloadSize: number;
-  /** Maximum operation duration in milliseconds (≤750 ms) */
+  /** Maximum operation duration in milliseconds (default 10s) */
   maxOperationTime: number;
-  /** Rate limit in requests per second (~1 rps) */
+  /** Rate limit in requests per second (set to Infinity to disable) */
   rateLimit: {
     requests: number;
     windowMs: number;
@@ -39,11 +39,11 @@ export interface Constraints {
  * Default constraint values from TODO.md section 13
  */
 export const DEFAULT_CONSTRAINTS: Constraints = {
-  maxPayloadSize: 64 * 1024, // 64 KB
-  maxOperationTime: 750, // 750 ms
+  maxPayloadSize: 5 * 1024 * 1024, // 5 MB
+  maxOperationTime: 10_000, // 10 seconds
   rateLimit: {
-    requests: 1,
-    windowMs: 1000, // 1 second window for ~1 rps
+    requests: Number.POSITIVE_INFINITY,
+    windowMs: 1000, // Window length is ignored when requests is Infinity
   },
   apiVersion: "2024-12-26", // Latest as of implementation
   maxSymlinkDepth: 0, // No symlinks allowed
@@ -322,6 +322,14 @@ export class ConstraintEnforcer extends EventEmitter {
    * Enforce rate limiting constraint
    */
   private enforceRateLimit(): void {
+    if (!Number.isFinite(this.constraints.rateLimit.requests)) {
+      return;
+    }
+
+    if (this.constraints.rateLimit.requests <= 0) {
+      return;
+    }
+
     const now = Date.now();
 
     // Reset window if expired

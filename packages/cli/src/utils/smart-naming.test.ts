@@ -3,8 +3,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 import {
   FILE_PATTERNS,
   detectProjectContext,
@@ -16,18 +17,26 @@ import {
 describe("Smart Naming", () => {
   const testDir = join(process.cwd(), ".test-smart-naming");
 
-  beforeEach(() => {
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true });
+  beforeEach(async () => {
+    if (await fs.pathExists(testDir)) {
+      await fs.remove(testDir);
     }
-    mkdirSync(testDir, { recursive: true });
+    await fs.ensureDir(testDir);
   });
 
-  afterEach(() => {
-    if (existsSync(testDir)) {
-      rmSync(testDir, { recursive: true });
+  afterEach(async () => {
+    if (await fs.pathExists(testDir)) {
+      await fs.remove(testDir);
     }
   });
+
+  async function writeTestFile(relativePath: string, content: string): Promise<void> {
+    const fullPath = join(testDir, relativePath);
+    await fs.ensureDir(dirname(fullPath));
+    await safeFileOperation("write", fullPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, content, "utf-8");
+    });
+  }
 
   describe("Project Context Detection", () => {
     it("should detect project name from package.json", async () => {
@@ -35,7 +44,7 @@ describe("Smart Naming", () => {
         name: "my-test-project",
         version: "1.0.0",
       };
-      writeFileSync(join(testDir, "package.json"), JSON.stringify(packageJson, null, 2));
+      await writeTestFile("package.json", JSON.stringify(packageJson, null, 2));
 
       const context = await detectProjectContext(testDir);
       expect(context.name).toBe("my-test-project");
@@ -50,7 +59,7 @@ metadata: {
   version: "1.0.0"
 }
 `;
-      writeFileSync(join(testDir, "test.assembly.cue"), assemblyContent);
+      await writeTestFile("test.assembly.cue", assemblyContent);
 
       const context = await detectProjectContext(testDir);
       expect(context.name).toBe("assembly-project");
@@ -62,7 +71,7 @@ metadata: {
 name = "rust-project"
 version = "0.1.0"
 `;
-      writeFileSync(join(testDir, "Cargo.toml"), cargoContent);
+      await writeTestFile("Cargo.toml", cargoContent);
 
       const context = await detectProjectContext(testDir);
       expect(context.name).toBe("rust-project");
@@ -149,9 +158,9 @@ version = "0.1.0"
       expect(path).toBe(join(testDir, "myproject-surface.json"));
     });
 
-    it("should use custom output directory", () => {
+    it("should use custom output directory", async () => {
       const outputDir = join(testDir, "output");
-      mkdirSync(outputDir);
+      await fs.ensureDir(outputDir);
 
       const path = generateOutputPath("assembly", {
         outputDir,
@@ -169,7 +178,7 @@ version = "0.1.0"
         name: "full-test-project",
         version: "1.0.0",
       };
-      writeFileSync(join(testDir, "package.json"), JSON.stringify(packageJson, null, 2));
+      await writeTestFile("package.json", JSON.stringify(packageJson, null, 2));
 
       const result = await resolveSmartNaming("surface", {
         outputDir: testDir,
@@ -184,7 +193,7 @@ version = "0.1.0"
 
     it("should detect generic naming preference", async () => {
       // Create existing generic file
-      writeFileSync(join(testDir, "surface.json"), "{}");
+      await writeTestFile("surface.json", "{}");
 
       const result = await resolveSmartNaming("surface", {
         outputDir: testDir,

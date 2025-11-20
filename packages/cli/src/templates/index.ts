@@ -42,9 +42,9 @@ async function execCommand(
 }
 
 /**
- * Template engine interface
+ * Template implementor interface
  */
-export interface TemplateEngine {
+export interface TemplateImplementor {
   name: string;
   command: string;
   defaultArgs: string[];
@@ -56,30 +56,33 @@ export interface TemplateEngine {
  * Template alias configuration
  */
 export interface TemplateAlias {
-  engine: string;
+  implementor: string;
   source: string;
   description: string;
   variables?: Record<string, any>;
   prerequisites?: string[];
+  /** @deprecated legacy config field */
+  engine?: string;
 }
 
 /**
  * Template configuration file structure
  */
 export interface TemplateConfig {
-  engines: Record<string, TemplateEngineConfig>;
+  implementors: Record<string, TemplateImplementorConfig>;
   aliases: Record<string, TemplateAlias>;
   settings?: {
-    defaultEngine?: string;
+    defaultImplementor?: string;
+    defaultEngine?: string; // legacy
     cacheDir?: string;
     timeout?: number;
   };
 }
 
 /**
- * Engine configuration in the template config
+ * Implementor configuration in the template config
  */
-export interface TemplateEngineConfig {
+export interface TemplateImplementorConfig {
   command: string;
   defaultArgs: string[];
   timeout?: number;
@@ -100,28 +103,28 @@ export interface TemplateContextSeed {
 }
 
 /**
- * Template manager for handling aliases and execution
+ * Template orchestrator for handling aliases and execution
  */
-export class TemplateManager {
+export class TemplateOrchestrator {
   private config: TemplateConfig | null = null;
-  private engines: Map<string, TemplateEngine> = new Map();
+  private implementors: Map<string, TemplateImplementor> = new Map();
 
   constructor() {
-    this.loadDefaultEngines();
+    this.loadDefaultImplementors();
   }
 
   /**
-   * Load default template engines
+   * Load default template implementors
    */
-  private loadDefaultEngines(): void {
-    // Cookiecutter engine
-    this.engines.set("cookiecutter", new CookiecutterEngine());
+  private loadDefaultImplementors(): void {
+    // Cookiecutter implementor
+    this.implementors.set("cookiecutter", new CookiecutterImplementor());
 
-    // Yeoman engine (future implementation)
-    // this.engines.set('yeoman', new YeomanEngine());
+    // Yeoman implementor (future implementation)
+    // this.implementors.set('yeoman', new YeomanImplementor());
 
-    // Custom script engine for simple templates
-    this.engines.set("script", new ScriptEngine());
+    // Custom script implementor for simple templates
+    this.implementors.set("script", new ScriptImplementor());
   }
 
   /**
@@ -133,8 +136,15 @@ export class TemplateManager {
 
     try {
       if (await fs.pathExists(targetPath)) {
-        const content = await fs.readJson(targetPath);
+        const content = (await fs.readJson(targetPath)) as TemplateConfig & {
+          engines?: Record<string, TemplateImplementorConfig>;
+        };
+        if (!content.implementors && content.engines) {
+          content.implementors = content.engines;
+          delete (content as any).engines;
+        }
         this.config = content;
+        this.normalizeLegacyAliasFields();
       } else {
         // Create default config
         this.config = this.getDefaultConfig();
@@ -143,6 +153,7 @@ export class TemplateManager {
     } catch (error) {
       console.warn(chalk.yellow(`Warning: Failed to load template config: ${error}`));
       this.config = this.getDefaultConfig();
+      this.normalizeLegacyAliasFields();
     }
   }
 
@@ -165,7 +176,7 @@ export class TemplateManager {
    */
   private getDefaultConfig(): TemplateConfig {
     return {
-      engines: {
+      implementors: {
         cookiecutter: {
           command: "cookiecutter",
           defaultArgs: ["--no-input"],
@@ -179,28 +190,28 @@ export class TemplateManager {
       },
       aliases: {
         "bun-hono": {
-          engine: "cookiecutter",
+          implementor: "cookiecutter",
           source: "https://github.com/arbiter-templates/bun-hono.git",
           description: "Bun + Hono API service with Drizzle ORM",
         },
         "rust-axum": {
-          engine: "cookiecutter",
+          implementor: "cookiecutter",
           source: "gh:arbiter-templates/rust-axum",
           description: "Rust + Axum service with SQLx",
         },
         "react-vite": {
-          engine: "cookiecutter",
+          implementor: "cookiecutter",
           source: "/local/path/to/react-template",
           description: "React + Vite frontend with Tailwind",
         },
         "python-fastapi": {
-          engine: "cookiecutter",
+          implementor: "cookiecutter",
           source: "https://github.com/fastapi-users/fastapi-users-cookiecutter.git",
           description: "FastAPI service with async SQLAlchemy",
         },
       },
       settings: {
-        defaultEngine: "cookiecutter",
+        defaultImplementor: "cookiecutter",
         cacheDir: path.join(os.homedir(), ".arbiter", "template-cache"),
         timeout: 300000,
       },
@@ -248,9 +259,9 @@ export class TemplateManager {
       throw new Error("Configuration not loaded. Call loadConfig() first.");
     }
 
-    // Validate engine exists
-    if (!this.engines.has(alias.engine)) {
-      throw new Error(`Unknown engine: ${alias.engine}`);
+    // Validate implementor exists
+    if (!this.implementors.has(alias.implementor)) {
+      throw new Error(`Unknown implementor: ${alias.implementor}`);
     }
 
     this.config.aliases[name] = alias;
@@ -269,6 +280,37 @@ export class TemplateManager {
     await this.saveConfig();
   }
 
+  async resolveTemplateAsset(
+    relativePath: string,
+    options: { overrideDirectories?: string[]; defaultDirectories?: string[] } = {},
+  ): Promise<{ content: string; resolvedPath: string } | undefined> {
+    const searchPaths = [
+      ...this.normalizeAssetDirectories(options.overrideDirectories),
+      ...this.normalizeAssetDirectories(options.defaultDirectories),
+    ];
+
+    for (const baseDir of searchPaths) {
+      const candidatePath = path.resolve(baseDir, relativePath);
+      try {
+        if (await fs.pathExists(candidatePath)) {
+          const content = await fs.readFile(candidatePath, "utf-8");
+          return { content, resolvedPath: candidatePath };
+        }
+      } catch {}
+    }
+
+    return undefined;
+  }
+
+  private normalizeAssetDirectories(directories?: string[]): string[] {
+    if (!Array.isArray(directories)) return [];
+    const normalized = directories
+      .map((dir) => (typeof dir === "string" ? dir.trim() : ""))
+      .filter((dir): dir is string => dir.length > 0)
+      .map((dir) => path.resolve(dir));
+    return Array.from(new Set(normalized));
+  }
+
   /**
    * Execute template with variables
    */
@@ -282,9 +324,9 @@ export class TemplateManager {
       throw new Error(`Template alias '${aliasName}' not found`);
     }
 
-    const engine = this.engines.get(alias.engine);
-    if (!engine) {
-      throw new Error(`Engine '${alias.engine}' not found`);
+    const implementor = this.implementors.get(alias.implementor);
+    if (!implementor) {
+      throw new Error(`Implementor '${alias.implementor}' not found`);
     }
 
     const mergedImpl = {
@@ -304,7 +346,7 @@ export class TemplateManager {
     }
 
     // Execute template
-    await engine.execute(alias.source, destination, finalContext);
+    await implementor.execute(alias.source, destination, finalContext);
   }
 
   /**
@@ -322,24 +364,41 @@ export class TemplateManager {
   }
 
   /**
-   * List available engines
+   * List available implementors
    */
-  getEngines(): string[] {
-    return Array.from(this.engines.keys());
+  getImplementors(): string[] {
+    return Array.from(this.implementors.keys());
   }
 
   /**
-   * Add custom engine
+   * Add custom implementor
    */
-  addEngine(engine: TemplateEngine): void {
-    this.engines.set(engine.name, engine);
+  addImplementor(implementor: TemplateImplementor): void {
+    this.implementors.set(implementor.name, implementor);
+  }
+
+  private normalizeLegacyAliasFields(): void {
+    if (!this.config) return;
+    Object.values(this.config.aliases).forEach((alias) => {
+      if (!alias.implementor && (alias as any).engine) {
+        alias.implementor = (alias as any).engine;
+        delete (alias as any).engine;
+      }
+    });
+
+    if (this.config.settings) {
+      const settings = this.config.settings;
+      if (!settings.defaultImplementor && settings.defaultEngine) {
+        settings.defaultImplementor = settings.defaultEngine;
+      }
+    }
   }
 }
 
 /**
- * Cookiecutter template engine implementation
+ * Cookiecutter template implementor implementation
  */
-export class CookiecutterEngine implements TemplateEngine {
+export class CookiecutterImplementor implements TemplateImplementor {
   name = "cookiecutter";
   command = "cookiecutter";
   defaultArgs = ["--no-input"];
@@ -376,9 +435,9 @@ export class CookiecutterEngine implements TemplateEngine {
 }
 
 /**
- * Simple script-based template engine
+ * Simple script-based template implementor
  */
-export class ScriptEngine implements TemplateEngine {
+export class ScriptImplementor implements TemplateImplementor {
   name = "script";
   command = "sh";
   defaultArgs = [];
@@ -475,6 +534,6 @@ function findArtifactByName(
 }
 
 /**
- * Default template manager instance
+ * Default template orchestrator instance
  */
-export const templateManager = new TemplateManager();
+export const templateOrchestrator = new TemplateOrchestrator();

@@ -5,7 +5,6 @@
 
 import type {
   BuildConfig,
-  ComponentConfig,
   GeneratedFile,
   GenerationResult,
   LanguagePlugin,
@@ -30,15 +29,11 @@ export class PythonPlugin implements LanguagePlugin {
     "websockets",
   ];
   readonly capabilities = {
+    components: false,
     services: true,
     api: true,
     testing: true,
   };
-
-  // Python doesn't have UI components like frontend frameworks
-  async generateComponent(config: ComponentConfig): Promise<GenerationResult> {
-    throw new Error("Component generation not supported for Python. Use generateService instead.");
-  }
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];

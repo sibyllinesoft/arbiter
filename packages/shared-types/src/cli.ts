@@ -225,7 +225,11 @@ export type ServiceSourceConfig =
 
 export interface MiddlewareReference {
   name?: Human;
-  module: string;
+  /**
+   * Optional file path for brownfield/spec-sync scenarios. When omitted the generator derives paths
+   * from the project structure instead of hard-coding directories in the spec itself.
+   */
+  module?: string;
   function?: string;
   phase?: "request" | "response" | "both";
   config?: Record<string, unknown>;
@@ -233,7 +237,8 @@ export interface MiddlewareReference {
 
 export interface ModuleHandlerReference {
   type: "module";
-  module: string;
+  /** Optional override for the concrete module location when linking to pre-existing code. */
+  module?: string;
   function?: string;
 }
 

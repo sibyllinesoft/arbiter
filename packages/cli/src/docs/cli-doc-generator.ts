@@ -8,6 +8,7 @@
 import * as path from "path";
 import type { Command, Option } from "commander";
 import * as fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 import type { CommandMetadata, DocGenerationOptions, ParsedCommandInfo } from "./types.js";
 
 export class CLIDocumentationGenerator {
@@ -303,7 +304,7 @@ export class CLIDocumentationGenerator {
 
     const outputFile = path.join(options.outputDir, "cli-reference.md");
     await fs.ensureDir(options.outputDir);
-    await fs.writeFile(outputFile, content, "utf8");
+    await this.writeOutputFile(outputFile, content);
 
     console.log(`✅ Generated markdown documentation: ${outputFile}`);
   }
@@ -326,7 +327,7 @@ export class CLIDocumentationGenerator {
 
     const outputFile = path.join(options.outputDir, "cli-reference.json");
     await fs.ensureDir(options.outputDir);
-    await fs.writeFile(outputFile, JSON.stringify(data, null, 2), "utf8");
+    await this.writeOutputFile(outputFile, JSON.stringify(data, null, 2));
 
     console.log(`✅ Generated JSON documentation: ${outputFile}`);
   }
@@ -343,9 +344,15 @@ export class CLIDocumentationGenerator {
 
     const outputFile = path.join(options.outputDir, "cli-reference.html");
     await fs.ensureDir(options.outputDir);
-    await fs.writeFile(outputFile, content, "utf8");
+    await this.writeOutputFile(outputFile, content);
 
     console.log(`✅ Generated HTML documentation: ${outputFile}`);
+  }
+
+  private async writeOutputFile(filePath: string, content: string): Promise<void> {
+    await safeFileOperation("write", filePath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, content, "utf8");
+    });
   }
 
   /**

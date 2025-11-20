@@ -2,12 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
 import { getDefaultConfigPath, saveConfig } from "../config.js";
-import type { CLIConfig, TemplateManagementOptions } from "../types.js";
-import { FileBasedTemplateManager } from "../utils/file-based-template-manager.js";
+import { safeFileOperation } from "../constraints/index.js";
+import type { CLIConfig, GitHubTemplatesConfig, TemplateManagementOptions } from "../types.js";
 import {
-  ConfigurableTemplateManager,
   DEFAULT_TEMPLATES_CONFIG,
-} from "../utils/github-template-config.js";
+  UnifiedGitHubTemplateManager,
+} from "../utils/unified-github-template-manager.js";
 
 /**
  * GitHub Template management command - list, add, remove, and validate GitHub templates
@@ -18,20 +18,20 @@ export async function githubTemplatesCommand(
 ): Promise<number> {
   try {
     const currentConfig = config;
-    const templateManager = new ConfigurableTemplateManager(currentConfig.github?.templates);
-    const fileBasedTemplateManager = new FileBasedTemplateManager(
-      currentConfig.github?.templates || {},
+    const templatesConfig = currentConfig.github?.templates;
+    const templateManager = new UnifiedGitHubTemplateManager(
+      templatesConfig || {},
       config.projectDir,
     );
 
     // List templates
     if (options.list) {
-      return await listTemplates(templateManager, options.format || "table");
+      return await listTemplates(templatesConfig, options.format || "table");
     }
 
     // Show specific template
     if (options.show && options.name) {
-      return await showTemplate(templateManager, options.name, options.format || "table");
+      return await showTemplate(templatesConfig, options.name, options.format || "table");
     }
 
     // Validate template configuration
@@ -41,12 +41,12 @@ export async function githubTemplatesCommand(
 
     // Initialize/scaffold templates
     if (options.init || options.scaffold) {
-      return await scaffoldTemplates(options, config, fileBasedTemplateManager);
+      return await scaffoldTemplates(options, config);
     }
 
     // Generate template example
     if (options.generate) {
-      return await generateTemplateExample(options.generate, fileBasedTemplateManager);
+      return await generateTemplateExample(options.generate, templateManager);
     }
 
     // Add template (interactive or from config)
@@ -103,10 +103,10 @@ export async function githubTemplatesCommand(
  * List available templates
  */
 async function listTemplates(
-  templateManager: ConfigurableTemplateManager,
+  templatesConfig: GitHubTemplatesConfig | undefined,
   format: "table" | "json" | "yaml",
 ): Promise<number> {
-  const templates = templateManager.getAvailableTemplates() as Array<any>;
+  const templates = collectTemplateSummaries(templatesConfig);
 
   if (format === "json") {
     console.log(JSON.stringify(templates, null, 2));
@@ -155,65 +155,48 @@ async function listTemplates(
  * Show specific template details
  */
 async function showTemplate(
-  templateManager: ConfigurableTemplateManager,
+  templatesConfig: GitHubTemplatesConfig | undefined,
   templateName: string,
   format: "table" | "json" | "yaml",
 ): Promise<number> {
-  const templates = templateManager.getAvailableTemplates();
-  const template = templates.find((t) => t.name === templateName || t.type === templateName);
-
-  if (!template) {
+  const entry = findTemplateConfig(templatesConfig, templateName);
+  if (!entry) {
     console.error(chalk.red(`❌ Template "${templateName}" not found`));
     console.log(chalk.dim("Available templates:"));
-    templates.forEach((t) => {
+    collectTemplateSummaries(templatesConfig).forEach((t) => {
       console.log(chalk.dim(`  • ${t.name} (${t.type})`));
     });
     return 1;
   }
 
+  const { type, config } = entry;
+
   if (format === "json") {
-    console.log(JSON.stringify(template, null, 2));
+    console.log(JSON.stringify(config, null, 2));
     return 0;
   }
 
   if (format === "yaml") {
     const YAML = await import("yaml");
-    console.log(YAML.stringify(template));
+    console.log(YAML.stringify(config));
     return 0;
   }
 
-  // Table format - show detailed template information
-  console.log(chalk.blue(`📝 Template: ${template.name}`));
-  console.log("");
-  console.log(`${chalk.bold("Name:")}        ${template.name}`);
-  console.log(`${chalk.bold("Type:")}        ${template.type}`);
-  console.log(`${chalk.bold("Description:")} ${template.description || "No description"}`);
+  console.log(chalk.blue(`📝 Template: ${type}`));
   console.log("");
 
-  // Show template files that would be generated
-  try {
-    const allFiles = templateManager.generateRepositoryTemplates();
-    const templateFile = Object.entries(allFiles).find(
-      ([path]) => path.includes(template.type) || path.includes(template.name.toLowerCase()),
-    );
+  const name = (config as any)?.name ?? type;
+  const description = (config as any)?.description ?? "No description";
+  console.log(`${chalk.bold("Name:")}        ${name}`);
+  console.log(`${chalk.bold("Type:")}        ${type}`);
+  console.log(`${chalk.bold("Description:")} ${description}`);
 
-    if (templateFile) {
-      console.log(chalk.bold("Template File:"));
-      console.log(chalk.dim(templateFile[0]));
-      console.log("");
-
-      // Show first few lines of template
-      const lines = templateFile[1].split("\n").slice(0, 10);
-      lines.forEach((line) => {
-        console.log(chalk.dim(`  ${line}`));
-      });
-
-      if (templateFile[1].split("\n").length > 10) {
-        console.log(chalk.dim("  ... (truncated)"));
-      }
-    }
-  } catch (error) {
-    console.log(chalk.yellow("⚠️  Could not generate template preview"));
+  if ((config as any)?.sections) {
+    console.log("");
+    console.log(chalk.bold("Sections:"));
+    Object.keys((config as any).sections).forEach((section) => {
+      console.log(chalk.dim(`  • ${section}`));
+    });
   }
 
   return 0;
@@ -222,10 +205,10 @@ async function showTemplate(
 /**
  * Validate template configuration
  */
-async function validateTemplates(templateManager: ConfigurableTemplateManager): Promise<number> {
+async function validateTemplates(templateManager: UnifiedGitHubTemplateManager): Promise<number> {
   console.log(chalk.blue("🔍 Validating template configuration..."));
 
-  const errors = templateManager.validateTemplateConfig();
+  const errors = await templateManager.validateTemplateConfig();
 
   if (errors.length === 0) {
     console.log(chalk.green("✅ Template configuration is valid"));
@@ -310,6 +293,62 @@ async function removeTemplate(templateName: string, currentConfig: CLIConfig): P
   }
 }
 
+type TemplateSummary = {
+  type: string;
+  name: string;
+  description?: string;
+};
+
+const TEMPLATE_KEYS = ["epic", "task", "bugReport", "featureRequest"] as const;
+
+function collectTemplateSummaries(config?: GitHubTemplatesConfig): TemplateSummary[] {
+  return TEMPLATE_KEYS.reduce<TemplateSummary[]>((acc, key) => {
+    const ref = config?.[key] ?? DEFAULT_TEMPLATES_CONFIG[key];
+    if (!ref) return acc;
+    const name =
+      typeof ref === "object" && "name" in ref && typeof (ref as any).name === "string"
+        ? (ref as any).name
+        : key;
+    const description =
+      typeof ref === "object" &&
+      "description" in ref &&
+      typeof (ref as any).description === "string"
+        ? (ref as any).description
+        : undefined;
+    acc.push({ type: key, name, description });
+    return acc;
+  }, []);
+}
+
+function findTemplateConfig(
+  config: GitHubTemplatesConfig | undefined,
+  templateName: string,
+): { type: string; config: any } | undefined {
+  const normalized = templateName.toLowerCase();
+  for (const key of TEMPLATE_KEYS) {
+    const ref = config?.[key] ?? DEFAULT_TEMPLATES_CONFIG[key];
+    if (!ref) continue;
+    const name =
+      typeof ref === "object" && "name" in ref && typeof (ref as any).name === "string"
+        ? (ref as any).name.toLowerCase()
+        : key.toLowerCase();
+    if (key.toLowerCase() === normalized || name === normalized) {
+      return { type: key, config: ref };
+    }
+  }
+  return undefined;
+}
+
+async function writeFileSafe(
+  filePath: string,
+  content: string,
+  encoding: BufferEncoding = "utf-8",
+): Promise<void> {
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, encoding);
+  });
+}
+
 /**
  * Generate templates for a project
  */
@@ -317,8 +356,11 @@ export async function generateProjectTemplates(
   outputDir = ".github",
   config?: CLIConfig,
 ): Promise<void> {
-  const templateManager = new ConfigurableTemplateManager(config?.github?.templates);
-  const templateFiles = templateManager.generateRepositoryTemplates();
+  const templateManager = new UnifiedGitHubTemplateManager(
+    config?.github?.templates || {},
+    config?.projectDir || process.cwd(),
+  );
+  const templateFiles = await templateManager.generateRepositoryTemplateFiles();
 
   console.log(chalk.blue("📝 Generating GitHub templates..."));
 
@@ -330,7 +372,7 @@ export async function generateProjectTemplates(
     await fs.mkdir(path.dirname(fullPath), { recursive: true });
 
     // Write template file
-    await fs.writeFile(fullPath, content);
+    await writeFileSafe(fullPath, content);
     console.log(chalk.green(`✅ Generated ${filePath}`));
     generated++;
   }
@@ -349,7 +391,6 @@ export async function generateProjectTemplates(
 async function scaffoldTemplates(
   options: TemplateManagementOptions,
   config: CLIConfig,
-  fileBasedTemplateManager: FileBasedTemplateManager,
 ): Promise<number> {
   try {
     const outputDir =
@@ -398,7 +439,7 @@ async function scaffoldTemplates(
             .catch(() => false)
         ) {
           const content = await fs.readFile(sourcePath, "utf-8");
-          await fs.writeFile(targetPath, content);
+          await writeFileSafe(targetPath, content);
           console.log(chalk.green(`✅ Created ${template.name}`));
           created++;
         } else {
@@ -446,7 +487,7 @@ async function scaffoldTemplates(
  */
 async function generateTemplateExample(
   templateType: string,
-  fileBasedTemplateManager: FileBasedTemplateManager,
+  templateManager: UnifiedGitHubTemplateManager,
 ): Promise<number> {
   try {
     console.log(chalk.blue(`🎯 Generating ${templateType} template example...\n`));
@@ -457,21 +498,18 @@ async function generateTemplateExample(
 
     switch (templateType.toLowerCase()) {
       case "epic":
-        result = await fileBasedTemplateManager.generateEpicTemplate(sampleData);
+        result = await templateManager.generateEpicTemplate(sampleData);
         break;
       case "task":
-        result = await fileBasedTemplateManager.generateTaskTemplate(
-          sampleData.task,
-          sampleData.epic,
-        );
+        result = await templateManager.generateTaskTemplate(sampleData.task, sampleData.epic);
         break;
       case "bug-report":
       case "bug":
-        result = await fileBasedTemplateManager.generateBugReportTemplate(sampleData);
+        result = await templateManager.generateBugReportTemplate(sampleData);
         break;
       case "feature-request":
       case "feature":
-        result = await fileBasedTemplateManager.generateFeatureRequestTemplate(sampleData);
+        result = await templateManager.generateFeatureRequestTemplate(sampleData);
         break;
       default:
         console.error(chalk.red(`Unknown template type: ${templateType}`));
@@ -578,7 +616,7 @@ async function updateConfigForTemplates(config: CLIConfig, templatesDir: string)
   };
 
   // Write updated config
-  await fs.writeFile(configPath, JSON.stringify(existingConfig, null, 2));
+  await writeFileSafe(configPath, JSON.stringify(existingConfig, null, 2));
   console.log(chalk.dim("📝 Updated .arbiter/config.json with template references"));
 }
 

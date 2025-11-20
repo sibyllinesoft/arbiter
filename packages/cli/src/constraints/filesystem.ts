@@ -40,6 +40,7 @@ export class FileSystemConstraints {
     ".yml",
     ".md",
     ".txt",
+    ".xml",
     ".ts",
     ".js",
     ".py",

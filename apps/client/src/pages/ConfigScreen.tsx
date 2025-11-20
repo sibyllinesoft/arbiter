@@ -7,7 +7,7 @@ import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TunnelManager } from "../components/TunnelManager";
-import { useApp, useAppSettings } from "../contexts/AppContext";
+import { type AppSettings, useAppSettings, useThemeControls } from "../contexts/AppContext";
 import { Button, Card, Checkbox, Input } from "../design-system";
 import { apiService } from "../services/api";
 
@@ -25,8 +25,20 @@ export function ConfigScreen({
 }) {
   const navigate = useNavigate();
   const { settings, updateSettings } = useAppSettings();
-  const { isDark, toggleTheme } = useApp();
+  const { isDark, toggleTheme } = useThemeControls();
   const [environment, setEnvironment] = useState<"unknown" | "cloudflare" | "node">("unknown");
+
+  const setPackageRelative = (
+    field: keyof AppSettings["packageRelative"],
+    value: boolean,
+  ): void => {
+    updateSettings({
+      packageRelative: {
+        ...settings.packageRelative,
+        [field]: value,
+      },
+    });
+  };
 
   void _onClose;
 
@@ -166,7 +178,7 @@ export function ConfigScreen({
                 placeholder="packages"
                 value={settings.packagesDirectory}
                 onChange={(event) => updateSettings({ packagesDirectory: event.target.value })}
-                helperText="Primary workspace for shared libraries and reusable modules."
+                helperText="Primary workspace for shared libraries and reusable packages."
               />
               <Input
                 label="Services directory"
@@ -174,6 +186,13 @@ export function ConfigScreen({
                 value={settings.servicesDirectory}
                 onChange={(event) => updateSettings({ servicesDirectory: event.target.value })}
                 helperText="Default location for backend or API services."
+              />
+              <Input
+                label="Docs directory"
+                placeholder="docs"
+                value={settings.docsDirectory}
+                onChange={(event) => updateSettings({ docsDirectory: event.target.value })}
+                helperText="Where generated documentation (overview, specs) should live."
               />
               <Input
                 label="Tests directory"
@@ -189,13 +208,36 @@ export function ConfigScreen({
                 onChange={(event) => updateSettings({ infraDirectory: event.target.value })}
                 helperText="Folder containing Terraform, Pulumi, or other infrastructure code."
               />
-              <Input
-                label="Default endpoint folder"
-                placeholder="apps/api/src/endpoints"
-                value={settings.endpointDirectory ?? ""}
-                onChange={(event) => updateSettings({ endpointDirectory: event.target.value })}
-                helperText="Base folder where generated API endpoint fragments should be written."
-              />
+            </div>
+
+            <div className="mt-6 border-t border-gray-200 pt-6 dark:border-graphite-700">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Package-relative storage
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Control whether Arbiter writes docs, tests, or infra assets next to the owning
+                service/client or into global folders.
+              </p>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Checkbox
+                  label="Docs stay with package"
+                  description="Place docs inside each package directory."
+                  checked={settings.packageRelative.docsDirectory}
+                  onChange={(event) => setPackageRelative("docsDirectory", event.target.checked)}
+                />
+                <Checkbox
+                  label="Package-relative tests"
+                  description="Group generated tests with the owning service or client."
+                  checked={settings.packageRelative.testsDirectory}
+                  onChange={(event) => setPackageRelative("testsDirectory", event.target.checked)}
+                />
+                <Checkbox
+                  label="Package-relative infra"
+                  description="Write infra artifacts next to each package when possible."
+                  checked={settings.packageRelative.infraDirectory}
+                  onChange={(event) => setPackageRelative("infraDirectory", event.target.checked)}
+                />
+              </div>
             </div>
           </Card>
 

@@ -1,5 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -30,33 +31,49 @@ interface RunCliOptions {
   env?: Record<string, string | undefined>;
 }
 
-function runCli(args: string[], cwd: string, options: RunCliOptions = {}): CliResult {
+async function runCli(
+  args: string[],
+  cwd: string,
+  options: RunCliOptions = {},
+): Promise<CliResult> {
   const expectSuccess = options.expectSuccess ?? true;
-  const result = spawnSync(BUN_EXECUTABLE, [CLI_ENTRY, ...args], {
-    cwd,
-    env: {
-      ...process.env,
-      ARBITER_SKIP_REMOTE_SPEC: "1",
-      ...options.env,
-    },
-    encoding: "utf-8",
+
+  return await new Promise<CliResult>((resolve, reject) => {
+    const child = spawn(BUN_EXECUTABLE, [CLI_ENTRY, ...args], {
+      cwd,
+      env: {
+        ...process.env,
+        ARBITER_SKIP_REMOTE_SPEC: "1",
+        ...options.env,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout?.on("data", (chunk) => (stdout += chunk.toString()));
+    child.stderr?.on("data", (chunk) => (stderr += chunk.toString()));
+
+    child.on("error", (error) => reject(error));
+    child.on("close", (code) => {
+      const result: CliResult = {
+        status: code ?? 0,
+        stdout,
+        stderr,
+      };
+
+      if (expectSuccess && result.status !== 0) {
+        return reject(
+          new Error(
+            `CLI command failed (exit ${result.status}): bun ${[CLI_ENTRY, ...args].join(" ")}\nstdout:\n${stdout}\nstderr:\n${stderr}`,
+          ),
+        );
+      }
+
+      resolve(result);
+    });
   });
-
-  if (result.error) {
-    throw result.error;
-  }
-
-  if (expectSuccess && result.status !== 0) {
-    throw new Error(
-      `CLI command failed (exit ${result.status}): bun ${[CLI_ENTRY, ...args].join(" ")}\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-    );
-  }
-
-  return {
-    status: result.status ?? 0,
-    stdout: result.stdout ?? "",
-    stderr: result.stderr ?? "",
-  };
 }
 
 const tempRoots: string[] = [];
@@ -64,12 +81,12 @@ const tempRoots: string[] = [];
 async function scaffoldDemoProject(projectDir: string): Promise<void> {
   const add = (...args: string[]) => runCli(["--local", "add", ...args], projectDir);
 
-  add("service", "web", "--language", "typescript", "--port", "3000");
-  add("service", "worker", "--service-type", "vercel_function");
-  add("endpoint", "/api/health", "--service", "web", "--method", "GET");
-  add("schema", "HealthResponse");
-  add("route", "/dashboard", "--component", "Dashboard");
-  add(
+  await add("service", "web", "--language", "typescript", "--port", "3000");
+  await add("service", "worker", "--service-type", "vercel_function");
+  await add("endpoint", "/api/health", "--service", "web", "--method", "GET");
+  await add("schema", "HealthResponse");
+  await add("route", "/dashboard", "--component", "Dashboard");
+  await add(
     "flow",
     "checkout",
     "--steps",
@@ -79,12 +96,12 @@ async function scaffoldDemoProject(projectDir: string): Promise<void> {
       { expect: { locator: "page:/dashboard", state: "visible" } },
     ]),
   );
-  add("database", "analytics");
-  add("cache", "session");
-  add("locator", "header", "--selector", "#app-header");
-  add("package", "shared-lib");
-  add("component", "hero-banner", "--framework", "react");
-  add("module", "payments");
+  await add("database", "analytics");
+  await add("cache", "session");
+  await add("locator", "header", "--selector", "#app-header");
+  await add("package", "shared-lib");
+  await add("component", "hero-banner", "--framework", "react");
+  await add("module", "payments");
 }
 
 interface ApiStub {
@@ -138,7 +155,7 @@ async function createApiStub(): Promise<ApiStub> {
     res.end();
   });
 
-  await new Promise<void>((resolve) => server.listen(0, resolve));
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address() as AddressInfo;
   const url = `http://127.0.0.1:${address.port}`;
 
@@ -188,20 +205,28 @@ if (!shouldRunE2E) {
 
       await scaffoldDemoProject(projectDir);
 
-      runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
+      await runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
 
-      runCli(["--local", "check"], projectDir);
+      await runCli(["--local", "check"], projectDir);
 
-      const serviceList = runCli(["--local", "list", "service", "--format", "json"], projectDir);
+      const serviceList = await runCli(
+        ["--local", "list", "service", "--format", "json"],
+        projectDir,
+      );
       const services = parseJsonFromCli(serviceList.stdout);
       const serviceNames = services.map((s: any) => s.name);
       expect(serviceNames).toEqual(expect.arrayContaining(["web", "worker"]));
 
-      const endpointList = runCli(["--local", "list", "endpoint", "--format", "json"], projectDir);
+      const endpointList = await runCli(
+        ["--local", "list", "endpoint", "--format", "json"],
+        projectDir,
+      );
       const endpoints = parseJsonFromCli(endpointList.stdout);
-      expect(endpoints.some((e: any) => (e.name || "").includes("/api/health"))).toBe(true);
+      expect(endpoints.some((e: any) => (e.name || "").toLowerCase().includes("/api/health"))).toBe(
+        true,
+      );
 
-      const statusResult = runCli(["--local", "status", "--format", "json"], projectDir);
+      const statusResult = await runCli(["--local", "status", "--format", "json"], projectDir);
       const projectStatus = parseJsonFromCli(statusResult.stdout);
       expect(projectStatus.health).toBe("healthy");
 
@@ -240,7 +265,7 @@ if (!shouldRunE2E) {
       const api = await createApiStub();
 
       try {
-        runCli(
+        await runCli(
           [
             "spec-import",
             "--skip-validate",
@@ -272,7 +297,7 @@ if (!shouldRunE2E) {
       const pkgPath = path.join(projectDir, "package.json");
       await writeFile(pkgPath, JSON.stringify({ name: "sync-demo", version: "0.1.0" }, null, 2));
 
-      runCli(["sync", "--force"], projectDir);
+      await runCli(["sync", "--force"], projectDir);
 
       const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
       expect(pkg.scripts["arbiter:check"]).toBe("arbiter check");
@@ -291,11 +316,11 @@ if (!shouldRunE2E) {
       await mkdir(projectDir, { recursive: true });
 
       await scaffoldDemoProject(projectDir);
-      runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
+      await runCli(["--local", "generate", "--project-dir", ".", "--force"], projectDir);
 
       const pkgPath = path.join(projectDir, "package.json");
       await writeFile(pkgPath, JSON.stringify({ name: "remote-flow", version: "0.0.1" }, null, 2));
-      runCli(["sync", "--force"], projectDir);
+      await runCli(["sync", "--force"], projectDir);
 
       const pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
       expect(pkg.scripts["arbiter:check"]).toBeDefined();
@@ -303,7 +328,7 @@ if (!shouldRunE2E) {
       const api = await createApiStub();
       try {
         const specPath = path.join(projectDir, ".arbiter", "assembly.cue");
-        runCli(
+        await runCli(
           [
             "spec-import",
             "--skip-validate",

@@ -21,7 +21,7 @@ Arbiter's code generation system follows a modular, extensible architecture desi
 
 1. **Specification-Driven**: All generation is driven by CUE specifications that define complete application architecture
 2. **Multi-Language Support**: Pluggable language system supporting TypeScript, Python, Rust, Go, and more
-3. **Template-Based**: Flexible template engine with override capabilities
+3. **Template-Based**: Flexible template implementor with override capabilities
 4. **Hook-Based Extension**: Comprehensive hook system for custom generation logic
 5. **Context-Aware**: Rich context providers that extract meaningful data from specifications
 
@@ -37,6 +37,9 @@ flowchart LR
     style assets fill:#fffbe6,stroke:#c48a06,stroke-width:2px
     style helpers fill:#ffecef,stroke:#d6456a,stroke-width:2px
 ```
+
+> **Project structure quick reference**  
+> Generators never guess paths. They all consume `ProjectStructureConfig`, which lists `clientsDirectory`, `servicesDirectory`, `packagesDirectory`, `toolsDirectory`, `docsDirectory`, `testsDirectory`, `infraDirectory`, and optional `packageRelative` toggles. See [Project Structure Schema](#project-structure-schema) for the full TypeScript interface and defaults.
 
 ## Generation Pipeline
 
@@ -84,7 +87,7 @@ function createServiceContext(
 ### 3. Template Resolution and Processing
 
 - Resolves templates from override directories and defaults
-- Streams the full context payload into the declared engine command (any executable)
+- Streams the full context payload into the declared implementor command (any executable)
 - Built-in helpers call the same interface directly for performance but remain opt-in
 - Applies template inheritance/composition before execution
 
@@ -144,7 +147,7 @@ export async function ensureDirectory(
 ): Promise<void>
 ```
 
-### Template Runner (`packages/cli/src/services/generate/template-runner.ts`)
+### Template Orchestrator (`packages/cli/src/services/generate/template-orchestrator.ts`)
 
 Bridges the generation system with language-specific plugins.
 
@@ -154,49 +157,49 @@ Bridges the generation system with language-specific plugins.
 - Testing configuration management
 - Workspace root configuration
 
-> **Template Runner vs. Template Engines**
+> **Template Orchestrator vs. Template Implementors**
 >
-> The template runner never renders source files itself. Its job is to locate the correct language plugin, configure overrides, and hand the plugin a `TemplateContext`. Plugins can then:
-> 1. Call the pluggable **Template Engine** interface to execute external templates (cookiecutter, scripts, etc.), or
+> The template orchestrator never renders source files itself. Its job is to locate the correct language plugin, configure overrides, and hand the plugin a `TemplateContext`. Plugins can then:
+> 1. Call the pluggable **Template Implementor** interface to execute external templates (cookiecutter, scripts, etc.), or
 > 2. Render programmatically (e.g., write TypeScript ASTs) while still using the same `TemplateContext`.
 >
-> This separation keeps the CLI deterministic: the runner orchestrates *what* should be generated, the engines decide *how* the bytes are produced.
+> This separation keeps the CLI deterministic: the orchestrator decides *what* should be generated, the implementors decide *how* the bytes are produced.
 
 ## Template System
 
 This section focuses on how the generation pipeline invokes templates. For step‑by‑step authoring guidance, see the [Template Development Guide](./template-development-guide.md).
 
-### Template Runner Responsibilities
+### Template Orchestrator Responsibilities
 
-The runner (inside `services/generate/template-runner.ts`) decides _when_ templates execute:
+The orchestrator (inside `services/generate/template-orchestrator.ts`) decides _when_ templates execute:
 
 - Resolves language plugins and template overrides from CLI config (including remote configs)
 - Builds the canonical `TemplateContext { project, parent, artifact, impl }`
-- Hands that context to either internal renderers or external engines
+- Hands that context to either internal renderers or external implementors
 
-> `arbiter add service --template ts-fastify` only records template metadata inside the spec. **`arbiter generate`** is the command that resolves aliases, loads engines, streams the JSON context, and writes files.
+> `arbiter add service --template ts-fastify` only records template metadata inside the spec. **`arbiter generate`** is the command that resolves aliases, loads implementors, streams the JSON context, and writes files.
 
 Plugins can still emit code programmatically, but they ingest the same context object to keep behavior deterministic.
 
-### Internal Template Engine (Handlebars default)
+### Internal Template Implementor (Handlebars default)
 
-Arbiter ships with embedded [Handlebars](https://handlebarsjs.com/) templates for the built-in service/client scaffolds. When `arbiter generate` runs, the engine loads the Handlebars bundle, binds the template context, and writes files in-place. The repository bootstrap templates documented in the Template Development Guide reuse the exact same interface.
+Arbiter ships with embedded [Handlebars](https://handlebarsjs.com/) templates for the built-in service/client scaffolds. When `arbiter generate` runs, the implementor loads the Handlebars bundle, binds the template context, and writes files in-place. The repository bootstrap templates documented in the Template Development Guide reuse the exact same interface.
 
 - **Pros:** Fast, bundled with the CLI, supports partials/inheritance/helpers, zero external runtime.
 - **Cons:** Logic must remain declarative; advanced branching often moves into helpers.
 
-### External Template Engines
+### External Template Implementors
 
 Prefer Liquid, Mustache, your own Python renderer, or a bespoke binary? Declare an alias in `.arbiter/templates.json`. When referenced, Arbiter shells out to the command you specified and streams the entire context via `stdin`/environment variables. Whatever the process writes to `stdout` becomes the generated artifact, so you can adopt any templating stack without forking the CLI.
 
-Built-in helpers (like the cookiecutter shortcut behind `arbiter add service --template ...`) follow the same contract. They call the library directly for performance but still receive `{ command, args, context }`, so swapping engines is as simple as editing your template config.
+Built-in helpers (like the cookiecutter shortcut behind `arbiter add service --template ...`) follow the same contract. They call the library directly for performance but still receive `{ command, args, context }`, so swapping implementors is as simple as editing your template config.
 
-### Template Engine Interface
+### Template Implementor Interface
 
 The template system provides a pluggable architecture for different template processors:
 
 ```typescript
-export interface TemplateEngine {
+export interface TemplateImplementor {
   name: string;
   command: string;
   defaultArgs: string[];
@@ -211,13 +214,19 @@ Templates are configured through a hierarchical system:
 
 ```typescript
 export interface TemplateConfig {
-  engines: Record<string, TemplateEngineConfig>;
+  implementors: Record<string, TemplateImplementorConfig>;
   aliases: Record<string, TemplateAlias>;
   settings?: {
-    defaultEngine?: string;
+    defaultImplementor?: string;
     cacheDir?: string;
     timeout?: number;
   };
+}
+
+export interface TemplateImplementorConfig {
+  command: string;
+  defaultArgs: string[];
+  timeout?: number;
 }
 ```
 
@@ -251,7 +260,7 @@ Templates support two types of variable interpolation:
 export interface TemplateContext {
   /**
    * Entire application spec (already normalized/augmented).
-   * Template engines can reach any part of the project without re-querying.
+   * Template implementors can reach any part of the project without re-querying.
    */
   project: Record<string, unknown>;
 
@@ -299,7 +308,7 @@ export interface GenerateOptions {
 The generation system integrates with the broader CLI configuration:
 
 ```typescript
-export function configureLanguagePluginRuntime(
+export function configureTemplateOrchestrator(
   language: string, 
   cliConfig: CLIConfig
 ): void {
@@ -308,6 +317,40 @@ export function configureLanguagePluginRuntime(
   // ... configure language-specific settings
 }
 ```
+
+### Project Structure Schema
+
+`ProjectStructureConfig` tells the generator where to place each artifact family
+within the host repository. Every context builder receives it so templates never
+hard-code paths.
+
+```typescript
+export interface ProjectStructureConfig {
+  clientsDirectory: string;   // e.g. "clients"
+  servicesDirectory: string;  // e.g. "services"
+  packagesDirectory: string;  // shared domain libraries
+  toolsDirectory: string;     // CLIs/automation utilities
+  docsDirectory: string;      // generated docs landing zone
+  testsDirectory: string;     // shared test harnesses/fixtures
+  infraDirectory: string;     // IaC / compose / helm output
+  packageRelative?: {
+    docsDirectory?: boolean;
+    testsDirectory?: boolean;
+    infraDirectory?: boolean;
+  };
+}
+```
+
+Defaults come from the CLI config (`arbiter init` seeds them), but projects can
+override directories in `.arbiter/config.json`. When generators need to emit
+shared modules, docs, or infrastructure beyond a single service directory, they
+resolve the target via this schema to stay consistent across greenfield and
+brownfield repos.
+
+Set `packageRelative.docsDirectory/testsDirectory/infraDirectory` to `true` when
+you want those artifacts written inside each service/client/tool package rather
+than in global folders. When a package context doesn’t exist (for example, a
+cross-cutting doc), Arbiter falls back to the shared directory.
 
 ## Language Plugins
 
@@ -357,6 +400,12 @@ languageRegistry.configure(language, {
   workspaceRoot: cliConfig.projectDir,
   testing: getLanguageTestingConfig(generatorConfig?.testing, language),
 });
+
+// `appSpec` is the fully expanded Arbiter specification (domain + contracts + services)
+// that the generator derives from CUE before handing data to plugins. Each artifact
+// gets a normalized target derived from this object so every plugin reads the same
+// ground truth regardless of language.
+type AppSpec = ResolvedAssembly;
 ```
 
 ## Context Providers
@@ -404,9 +453,55 @@ const serviceContext = createServiceContext(
 );
 ```
 
+Both helpers feed into generation “targets” that bundle the context with spec
+metadata:
+
+```typescript
+export interface ClientGenerationTarget {
+  key: string;              // Spec identifier (service/route key)
+  slug: string;             // Stable slug derived from key
+  relativeRoot: string;     // Path relative to repo root
+  config?: ClientConfig;    // Raw spec block for the client
+  context: ClientGenerationContext; // Filesystem locations (root/routes/tests)
+}
+
+export interface ServiceGenerationTarget {
+  key: string;
+  slug: string;
+  relativeRoot: string;
+  language: string;         // Normalized from service config
+  config: ServiceConfig;    // Spec payload (contracts, env, etc.)
+  context: ServiceGenerationContext;
+}
+```
+
+By keeping contexts focused on filesystem concerns and moving spec-derived data
+into the targets, every artifact type (clients, services, tools, packages) reads
+the same structure. Plugins that need additional metadata simply reference the
+target’s `config` (the exact spec block) while using `context` for IO paths.
+
 > **Context vs. Target**
 >
 > Context objects intentionally contain only filesystem locations. Spec-derived metadata (slug, language, relationships) now lives in `ClientGenerationTarget` and `ServiceGenerationTarget`, ensuring templates always read canonical data from the spec rather than ad‑hoc context bags.
+
+#### Template Implementor Context
+
+When the orchestrator executes a template implementor (cookiecutter, script, custom binary, etc.) it serializes a `TemplateContext` defined in `packages/cli/src/templates/index.ts`:
+
+```typescript
+export interface TemplateContext {
+  project: Record<string, unknown>; // resolved spec (services, clients, structure)
+  parent?: Record<string, unknown>; // owning service/client metadata
+  artifact: Record<string, unknown>; // the concrete thing being generated
+  impl?: Record<string, unknown>;    // orchestrator-provided hints (e.g., alias vars)
+}
+```
+
+That `{ project, parent?, artifact, impl? }` shape is the same one user-supplied implementors receive, so in-repo templates and external engines observe identical inputs.
+
+> **Filesystem helpers vs. file writes**
+>
+> Functions exported from `services/generate/shared.ts` (`joinRelativePath`, `resolvePackageDirectory`, etc.) only compute suggested paths from `ProjectStructureConfig`. Implementors still choose where (and whether) to write files; the orchestrator never stages or copies bytes on their behalf. The helpers keep the “where should this live?” math consistent while leaving the actual IO to the template layer.
 
 ## Hooks and Customization
 
@@ -472,6 +567,13 @@ The system implements graceful error recovery:
 - **Partial Generation** - Continue on non-critical errors
 - **Rollback Support** - Undo incomplete generations
 - **Detailed Logging** - Comprehensive error reporting
+
+## CLI Deep Dive (authoritative paths)
+
+Formerly duplicated in the CLI reference, this section is the single place to find file-level pointers:
+- **Template aliases & implementors** — `.arbiter/templates.json` drives the `TemplateOrchestrator` in `packages/cli/src/templates/index.ts`. Implementors receive `{ project, parent, artifact, impl }` as JSON over stdin and may be external commands or built-ins.
+- **GitHub issue templates** — `UnifiedGitHubTemplateManager` (`packages/cli/src/utils/unified-github-template-manager.ts`) merges on-disk `.github/ISSUE_TEMPLATE` files with the config-driven templates under `github.templates` in `.arbiter/config.json`.
+- **Language plugins** — Registered in `packages/cli/src/language-plugins/index.ts` (TypeScript, Python, Go, Rust today). Each plugin owns its `pluginConfig` and `testing` block under `generator.plugins.<language>` in the CLI config.
 
 ## Integration Points
 

@@ -30,6 +30,7 @@ import fs from "fs-extra";
 import * as YAML from "yaml";
 import { ApiClient } from "../../api-client.js";
 import { DEFAULT_PROJECT_STRUCTURE } from "../../config.js";
+import { safeFileOperation } from "../../constraints/index.js";
 import type {
   EndpointAssertionDefinition,
   EndpointTestCaseDefinition,
@@ -40,6 +41,7 @@ import type {
 import type {
   CLIConfig,
   CapabilitySpec,
+  GeneratorConfig,
   GeneratorTestingConfig,
   LanguageTestingConfig,
   MasterTestRunnerConfig,
@@ -52,6 +54,11 @@ import {
   validateRepositoryConfig,
 } from "../../utils/git-detection.js";
 import { GitHubSyncClient } from "../../utils/github-sync.js";
+import {
+  type PackageManagerCommandSet,
+  detectPackageManager,
+  getPackageManagerCommands,
+} from "../../utils/package-manager.js";
 import {
   resolveServiceArtifactType,
   resolveServiceWorkload,
@@ -68,12 +75,12 @@ import type {
 import { ensureDirectory, setActiveHookManager, writeFileWithHooks } from "./hook-executor.js";
 import { joinRelativePath, slugify, toPathSegments } from "./shared.js";
 import {
-  configureLanguagePluginRuntime,
+  configureTemplateOrchestrator,
   generateComponent,
   generateService,
-  getLanguagePlugin,
+  getConfiguredLanguagePlugin,
   initializeProject,
-} from "./template-runner.js";
+} from "./template-orchestrator.js";
 import type { GenerateOptions } from "./types.js";
 export type { GenerateOptions } from "./types.js";
 
@@ -119,6 +126,22 @@ function collectClientTargets(
   );
 }
 
+const PACKAGE_RELATIVE_KEYS = ["docsDirectory", "testsDirectory", "infraDirectory"] as const;
+type PackageRelativeKey = (typeof PACKAGE_RELATIVE_KEYS)[number];
+
+function isPackageRelative(structure: ProjectStructureConfig, key: PackageRelativeKey): boolean {
+  return Boolean(structure.packageRelative?.[key]);
+}
+
+function toRelativePath(from: string, to: string): string | null {
+  const relative = path.relative(from, to);
+  if (!relative || relative.trim().length === 0 || relative === ".") {
+    return null;
+  }
+  const segments = toPathSegments(relative);
+  return segments.length > 0 ? joinRelativePath(...segments) : null;
+}
+
 function createClientTarget(
   identifier: string,
   clientConfig: ClientConfig | undefined,
@@ -135,8 +158,10 @@ function createClientTarget(
   const relativeFromRoot = path.relative(outputDir, absoluteRoot) || targetDir;
   const relativeRoot = joinRelativePath(relativeFromRoot);
   const routesDir = path.join(absoluteRoot, "src", "routes");
-  const testsDirSegments = [...toPathSegments(structure.testsDirectory || "tests"), slug];
-  const testsDir = path.join(outputDir, ...testsDirSegments);
+  const testsDirBase = toPathSegments(structure.testsDirectory || "tests");
+  const testsDir = isPackageRelative(structure, "testsDirectory")
+    ? path.join(absoluteRoot, ...testsDirBase)
+    : path.join(outputDir, ...testsDirBase, slug);
   const context: ClientGenerationContext = {
     root: absoluteRoot,
     routesDir,
@@ -155,8 +180,10 @@ function createServiceContext(
   const slug = slugify(serviceName, serviceName);
   const root = path.join(outputDir, structure.servicesDirectory, slug);
   const routesDir = path.join(root, "src", "routes");
-  const testsDirSegments = [...toPathSegments(structure.testsDirectory || "tests"), slug];
-  const testsDir = path.join(outputDir, ...testsDirSegments);
+  const testsDirBase = toPathSegments(structure.testsDirectory || "tests");
+  const testsDir = isPackageRelative(structure, "testsDirectory")
+    ? path.join(root, ...testsDirBase)
+    : path.join(outputDir, ...testsDirBase, slug);
 
   return { root, routesDir, testsDir };
 }
@@ -190,7 +217,7 @@ async function ensureBaseStructure(
   const baseDirs = [
     structure.clientsDirectory,
     structure.servicesDirectory,
-    structure.modulesDirectory,
+    structure.packagesDirectory,
     structure.toolsDirectory,
     structure.docsDirectory,
     structure.testsDirectory,
@@ -488,12 +515,14 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
       "owner": "your-org",
       "repo": "your-repo"
     },
-    "mapping": {
-      "epicPrefix": "[Epic]",
-      "taskPrefix": "[Task]",
-      "defaultLabels": ["arbiter-generated"]
+    "prefixes": {
+      "epic": "[Epic]",
+      "task": "[Task]"
     },
-    "behavior": {
+    "labels": {
+      "default": ["arbiter-generated"]
+    },
+    "automation": {
       "createMilestones": true,
       "autoClose": true,
       "syncAcceptanceCriteria": true,
@@ -539,17 +568,20 @@ async function handleGitHubSync(options: GenerateOptions, config: CLIConfig): Pr
     // Create GitHub configuration with the resolved repository info
     const githubConfig = {
       repository: finalRepo,
-      mapping: config.github?.mapping || {
-        epicPrefix: "[Epic]",
-        taskPrefix: "[Task]",
-        defaultLabels: ["arbiter-generated"],
+      prefixes: config.github?.prefixes || {
+        epic: "[Epic]",
+        task: "[Task]",
       },
-      behavior: config.github?.behavior || {
+      labels: config.github?.labels || {
+        default: ["arbiter-generated"],
+      },
+      automation: config.github?.automation || {
         createMilestones: true,
         autoClose: true,
         syncAcceptanceCriteria: true,
         syncAssignees: false,
       },
+      templates: config.github?.templates,
     };
 
     // Display repository info
@@ -921,6 +953,12 @@ export async function generateCommand(
     // Keep config.projectDir in sync so downstream helpers remain accurate
     config.projectDir = outputDir;
 
+    const detectedPackageManager = detectPackageManager(undefined, outputDir);
+    const packageManagerCommands = getPackageManagerCommands(detectedPackageManager);
+    if (options.verbose) {
+      console.log(chalk.dim(`🧺 Detected ${detectedPackageManager} for workspace instructions`));
+    }
+
     const hookManager = config.generator?.hooks
       ? new GenerationHookManager({
           hooks: config.generator.hooks,
@@ -943,6 +981,10 @@ export async function generateCommand(
       const projectStructure: ProjectStructureConfig = {
         ...DEFAULT_PROJECT_STRUCTURE,
         ...config.projectStructure,
+        packageRelative: {
+          ...DEFAULT_PROJECT_STRUCTURE.packageRelative,
+          ...(config.projectStructure?.packageRelative ?? {}),
+        },
       };
 
       const appResults = await generateAppArtifacts(
@@ -951,6 +993,7 @@ export async function generateCommand(
         options,
         projectStructure,
         config,
+        packageManagerCommands,
       );
       results.push(...appResults);
 
@@ -1112,6 +1155,7 @@ async function generateAppArtifacts(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   cliConfig: CLIConfig,
+  packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
   const appSpec = configWithVersion.app;
@@ -1159,6 +1203,7 @@ async function generateAppArtifacts(
       structure,
       target,
       cliConfig,
+      packageManager,
     );
     files.push(...projectFiles);
   }
@@ -1194,6 +1239,7 @@ async function generateAppArtifacts(
       options,
       structure,
       cliConfig,
+      packageManager,
     );
     files.push(...serviceFiles);
   }
@@ -1215,6 +1261,7 @@ async function generateAppArtifacts(
     appSpec,
     primaryClientTarget,
     cliConfig,
+    packageManager,
   );
   files.push(...infraFiles);
 
@@ -1229,6 +1276,7 @@ async function generateAppArtifacts(
     cliConfig,
     testsWorkspaceRelative,
     clientTargets,
+    packageManager,
   );
   files.push(...testRunnerFiles);
 
@@ -1239,6 +1287,7 @@ async function generateAppArtifacts(
     structure,
     clientTargets,
     testsWorkspaceRelative,
+    packageManager,
   );
   files.push(...workspaceManifestFiles);
 
@@ -1836,7 +1885,7 @@ async function generateFlowBasedTests(
 
   // Determine language for test generation
   const language = clientTarget?.config?.language || appSpec.config?.language || "typescript";
-  const plugin = getLanguagePlugin(language);
+  const plugin = getConfiguredLanguagePlugin(language);
 
   if (!plugin) {
     console.log(
@@ -2173,9 +2222,9 @@ async function generateEndpointAssertionTests(
   console.log(chalk.blue("🧪 Generating endpoint assertion tests..."));
 
   const language = (appSpec.config?.language || "typescript").toLowerCase();
-  const testingConfig = cliConfig.generator?.testing?.[language];
+  const testingConfig = cliConfig.generator?.plugins?.[language]?.testing;
   const framework = resolveTestingFramework(language, testingConfig?.framework);
-  const plugin = getLanguagePlugin(language);
+  const plugin = getConfiguredLanguagePlugin(language);
 
   const defaultDirSegments = [...toPathSegments(structure.testsDirectory), "api", "assertions"];
   const configuredSegments = testingConfig?.outputDir
@@ -2671,37 +2720,29 @@ function escapeGoString(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
 }
 
-const DEFAULT_TEST_COMMANDS: Record<string, string> = {
-  typescript: "npm test",
-  javascript: "npm test",
-  python: "pytest",
-  rust: "cargo test",
-  go: "go test ./...",
-};
+function buildDefaultTestCommands(
+  packageManager: PackageManagerCommandSet,
+): Record<string, string> {
+  return {
+    typescript: packageManager.run("test"),
+    javascript: packageManager.run("test"),
+    python: "pytest",
+    rust: "cargo test",
+    go: "go test ./...",
+  };
+}
 
 type TestTask = {
   name: string;
   command: string;
   cwd: string;
-  workspace?: string;
 };
 
-function getLanguageTestingConfig(
-  testing: GeneratorTestingConfig | undefined,
+function getPluginTestingConfig(
+  generatorConfig: GeneratorConfig | undefined,
   language: string,
 ): LanguageTestingConfig | undefined {
-  if (!testing) return undefined;
-  if (language === "master") return undefined;
-  const base = testing as Record<
-    string,
-    LanguageTestingConfig | MasterTestRunnerConfig | undefined
-  >;
-  const value = base[language];
-  if (!value) return undefined;
-  if (typeof value === "object" && "type" in (value as MasterTestRunnerConfig)) {
-    return undefined;
-  }
-  return value as LanguageTestingConfig;
+  return generatorConfig?.plugins?.[language]?.testing;
 }
 
 function getMasterRunnerConfig(
@@ -2718,11 +2759,16 @@ async function generateMasterTestRunner(
   cliConfig: CLIConfig,
   testsWorkspace?: string,
   clientTargets: ClientGenerationTarget[] = [],
+  packageManager?: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
-  const testingConfig = cliConfig.generator?.testing;
-  const masterConfig = getMasterRunnerConfig(testingConfig);
+  const generatorConfig = cliConfig.generator;
+  const masterConfig = getMasterRunnerConfig(generatorConfig?.testing);
   const runnerType = masterConfig?.type ?? "make";
+
+  const pm =
+    packageManager ?? getPackageManagerCommands(detectPackageManager(undefined, outputDir));
+  const defaultTestCommands = buildDefaultTestCommands(pm);
 
   const tasks: TestTask[] = [];
 
@@ -2732,8 +2778,8 @@ async function generateMasterTestRunner(
     const slug = slugify(serviceName, serviceName);
     const context = createServiceContext(serviceName, serviceConfig, structure, outputDir);
     const language = (serviceConfig.language as string | undefined)?.toLowerCase() ?? "typescript";
-    const languageConfig = getLanguageTestingConfig(testingConfig, language);
-    const testCommand = resolveTestingCommand(language, languageConfig);
+    const languageConfig = getPluginTestingConfig(generatorConfig, language);
+    const testCommand = resolveTestingCommand(language, languageConfig, defaultTestCommands);
     if (!testCommand) continue;
 
     const serviceDir = joinRelativePath(structure.servicesDirectory, slug);
@@ -2741,18 +2787,22 @@ async function generateMasterTestRunner(
       name: `test-service-${slug}`,
       command: testCommand,
       cwd: serviceDir,
-      workspace: isWorkspaceFriendlyLanguage(language) ? serviceDir : undefined,
     });
   }
 
-  const clientTasks = await buildClientTestTasks(clientTargets, testingConfig);
+  const clientTasks = await buildClientTestTasks(
+    clientTargets,
+    generatorConfig,
+    defaultTestCommands,
+  );
   tasks.push(...clientTasks);
 
   const assertionTask = await buildEndpointAssertionTask(
     appSpec,
     outputDir,
     structure,
-    testingConfig,
+    generatorConfig,
+    pm,
   );
   if (assertionTask) {
     tasks.push(assertionTask);
@@ -2781,19 +2831,18 @@ async function generateMasterTestRunner(
   const shouldIncludeE2E = Boolean(testsWorkspace);
   const taskTargets = tasks.map((task) => task.name);
   let makefile = `.PHONY: ${[...aggregatorTargets, ...taskTargets].join(" ")}\n\n`;
-  makefile += "test:\n\tnpm run test\n\n";
-  makefile += "lint:\n\tnpm run lint\n\n";
-  makefile += "build:\n\tnpm run build\n\n";
+  makefile += `test:\n\t${pm.run("test")}\n\n`;
+  makefile += `lint:\n\t${pm.run("lint")}\n\n`;
+  makefile += `build:\n\t${pm.run("build")}\n\n`;
   if (testsWorkspace) {
-    makefile += "test-e2e:\n\tnpm run test:e2e\n\n";
+    makefile += `test-e2e:\n\t${pm.run("test:e2e")}\n\n`;
   } else {
     makefile += 'test-e2e:\n\t@echo "No end-to-end tests configured yet."\n\n';
   }
   if (tasks.length > 0) {
     for (const task of tasks) {
-      const command = task.workspace
-        ? `npm run test --workspace ${task.workspace}`
-        : `cd ${task.cwd || "."} && ${task.command}`;
+      const cwd = task.cwd || ".";
+      const command = cwd === "." ? task.command : `(cd ${cwd} && ${task.command})`;
       makefile += `${task.name}:\n\t${command}\n\n`;
     }
   }
@@ -2815,9 +2864,12 @@ async function generateWorkspaceManifest(
   structure: ProjectStructureConfig,
   clientTargets: ClientGenerationTarget[],
   testsWorkspace?: string,
+  packageManager?: PackageManagerCommandSet,
 ): Promise<string[]> {
   const workspaceSet = new Set<string>();
   const unitWorkspaceSet = new Set<string>();
+  const pm =
+    packageManager ?? getPackageManagerCommands(detectPackageManager(undefined, outputDir));
 
   const addUnitWorkspace = (workspace: string) => {
     workspaceSet.add(workspace);
@@ -2844,20 +2896,41 @@ async function generateWorkspaceManifest(
 
   const workspaces = Array.from(workspaceSet).sort();
   const unitWorkspaces = Array.from(unitWorkspaceSet).sort();
-  const unitTestCommand =
-    unitWorkspaces.length > 0
-      ? unitWorkspaces.map((workspace) => `npm run test --workspace ${workspace}`).join(" && ")
-      : 'echo "No unit test workspaces defined yet."';
+  const runAcrossAllWorkspaces = (script: string): string => {
+    switch (pm.name) {
+      case "npm":
+        return `${pm.run(script)} --workspaces --if-present`;
+      case "pnpm":
+        return `pnpm run -r --if-present ${script}`;
+      case "yarn":
+        return `yarn workspaces run ${script}`;
+      default:
+        return workspaces.map((workspace) => `(cd ${workspace} && ${pm.run(script)})`).join(" && ");
+    }
+  };
+
+  const runInWorkspaces = (targets: string[], script: string, fallback: string): string => {
+    if (targets.length === 0) {
+      return fallback;
+    }
+    return targets.map((workspace) => `(cd ${workspace} && ${pm.run(script)})`).join(" && ");
+  };
+
+  const unitTestCommand = runInWorkspaces(
+    unitWorkspaces,
+    "test",
+    'echo "No unit test workspaces defined yet."',
+  );
 
   const scripts: Record<string, string> = {
-    lint: "npm run lint --workspaces --if-present",
-    build: "npm run build --workspaces --if-present",
+    lint: runAcrossAllWorkspaces("lint"),
+    build: runAcrossAllWorkspaces("build"),
     test: unitTestCommand,
-    format: "npm run format --workspaces --if-present",
+    format: runAcrossAllWorkspaces("format"),
   };
 
   if (testsWorkspace) {
-    scripts["test:e2e"] = `npm run test --workspace ${testsWorkspace}`;
+    scripts["test:e2e"] = `(cd ${testsWorkspace} && ${pm.run("test")})`;
   }
 
   const workspaceName = `${slugify(appSpec.product?.name, "app")}-workspace`;
@@ -2883,17 +2956,19 @@ function isWorkspaceFriendlyLanguage(language?: string): boolean {
 
 function resolveTestingCommand(
   language: string,
-  config?: LanguageTestingConfig,
+  config: LanguageTestingConfig | undefined,
+  defaults: Record<string, string>,
 ): string | undefined {
   if (config?.command && config.command.trim().length > 0) {
     return config.command.trim();
   }
-  return DEFAULT_TEST_COMMANDS[language];
+  return defaults[language];
 }
 
 async function buildClientTestTasks(
   clientTargets: ClientGenerationTarget[],
-  testingConfig: GeneratorTestingConfig | undefined,
+  generatorConfig: GeneratorConfig | undefined,
+  defaultTestCommands: Record<string, string>,
 ): Promise<TestTask[]> {
   const tasks: TestTask[] = [];
   for (const target of clientTargets) {
@@ -2902,15 +2977,14 @@ async function buildClientTestTasks(
       continue;
     }
 
-    const languageConfig = getLanguageTestingConfig(testingConfig, clientLanguage);
-    const command = resolveTestingCommand(clientLanguage, languageConfig);
+    const languageConfig = getPluginTestingConfig(generatorConfig, clientLanguage);
+    const command = resolveTestingCommand(clientLanguage, languageConfig, defaultTestCommands);
     if (!command) continue;
 
     tasks.push({
       name: `test-client-${target.slug}`,
       command,
       cwd: target.relativeRoot,
-      workspace: target.relativeRoot,
     });
   }
   return tasks;
@@ -2920,7 +2994,8 @@ async function buildEndpointAssertionTask(
   appSpec: AppSpec,
   outputDir: string,
   structure: ProjectStructureConfig,
-  testingConfig: GeneratorTestingConfig | undefined,
+  generatorConfig: GeneratorConfig | undefined,
+  packageManager: PackageManagerCommandSet,
 ): Promise<TestTask | null> {
   const tsServices = Object.entries(appSpec.services ?? {}).filter(
     ([, svc]) => (svc?.language as string | undefined)?.toLowerCase() === "typescript",
@@ -2930,7 +3005,7 @@ async function buildEndpointAssertionTask(
     return null;
   }
 
-  const tsConfig = getLanguageTestingConfig(testingConfig, "typescript");
+  const tsConfig = getPluginTestingConfig(generatorConfig, "typescript");
   const assertionsDir = tsConfig?.outputDir ?? "tests/assertions/ts";
   const assertionsPath = path.join(outputDir, assertionsDir);
   const exists = await fs.pathExists(assertionsPath);
@@ -2944,7 +3019,7 @@ async function buildEndpointAssertionTask(
   const relativeAssertions = path.relative(path.join(outputDir, serviceDir), assertionsPath) || ".";
   const command = tsConfig?.command
     ? tsConfig.command
-    : `npm exec vitest -- run ${relativeAssertions} --run`;
+    : packageManager.exec("vitest", `run ${relativeAssertions} --run`);
 
   return {
     name: "test-endpoint-assertions",
@@ -3215,7 +3290,7 @@ async function generateAPISpecifications(
 
   // Determine language for API generation
   const language = appSpec.config?.language || "typescript";
-  const plugin = getLanguagePlugin(language);
+  const plugin = getConfiguredLanguagePlugin(language);
 
   const apiDir = path.join(outputDir, structure.docsDirectory, "api");
   if (!fs.existsSync(apiDir) && !options.dryRun) {
@@ -3528,32 +3603,32 @@ async function generateModuleArtifacts(
     return files;
   }
 
-  const modulesRoot = path.join(outputDir, structure.modulesDirectory);
-  await ensureDirectory(modulesRoot, options);
+  const packagesRoot = path.join(outputDir, structure.packagesDirectory);
+  await ensureDirectory(packagesRoot, options);
 
   if (appSpec.components) {
     for (const [componentName, componentSpec] of Object.entries(appSpec.components)) {
       const fileName = `${componentName}.json`;
-      const filePath = path.join(modulesRoot, fileName);
+      const filePath = path.join(packagesRoot, fileName);
       await writeFileWithHooks(filePath, JSON.stringify(componentSpec, null, 2), options);
-      files.push(joinRelativePath(structure.modulesDirectory, fileName));
+      files.push(joinRelativePath(structure.packagesDirectory, fileName));
     }
   }
 
   if (appSpec.domain) {
-    const domainPath = path.join(modulesRoot, "domain.json");
+    const domainPath = path.join(packagesRoot, "domain.json");
     await writeFileWithHooks(domainPath, JSON.stringify(appSpec.domain, null, 2), options);
-    files.push(joinRelativePath(structure.modulesDirectory, "domain.json"));
+    files.push(joinRelativePath(structure.packagesDirectory, "domain.json"));
   }
 
   if (appSpec.stateModels) {
-    const stateModelsPath = path.join(modulesRoot, "state-models.json");
+    const stateModelsPath = path.join(packagesRoot, "state-models.json");
     await writeFileWithHooks(
       stateModelsPath,
       JSON.stringify(appSpec.stateModels, null, 2),
       options,
     );
-    files.push(joinRelativePath(structure.modulesDirectory, "state-models.json"));
+    files.push(joinRelativePath(structure.packagesDirectory, "state-models.json"));
   }
 
   return files;
@@ -3672,6 +3747,7 @@ async function generateInfrastructureArtifacts(
   appSpec: AppSpec,
   clientTarget?: ClientGenerationTarget,
   _cliConfig?: CLIConfig,
+  packageManager?: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
   const cueData = (configWithVersion as any)._fullCueData;
@@ -3702,6 +3778,8 @@ async function generateInfrastructureArtifacts(
     options,
     structure,
     clientTarget?.context,
+    undefined,
+    packageManager,
   );
   files.push(...composeFiles);
 
@@ -3763,6 +3841,7 @@ async function generateProjectStructure(
   structure: ProjectStructureConfig,
   clientTarget: ClientGenerationTarget,
   cliConfig: CLIConfig,
+  packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
   const context = clientTarget.context;
@@ -3770,12 +3849,12 @@ async function generateProjectStructure(
 
   // Determine language from app spec config
   const language = appSpec.config?.language || "typescript";
-  const plugin = getLanguagePlugin(language);
+  const plugin = getConfiguredLanguagePlugin(language);
 
   if (plugin) {
     console.log(chalk.blue(`📦 Initializing ${language} project using ${plugin.name}...`));
 
-    configureLanguagePluginRuntime(language, cliConfig);
+    configureTemplateOrchestrator(language, cliConfig);
 
     // Create project configuration for the language plugin
     const projectConfig: LanguageProjectConfig = {
@@ -3826,7 +3905,7 @@ async function generateProjectStructure(
       arbiter: {
         projectStructure: {
           services: structure.servicesDirectory,
-          modules: structure.modulesDirectory,
+          packages: structure.packagesDirectory,
           tools: structure.toolsDirectory,
           docs: structure.docsDirectory,
           tests: structure.testsDirectory,
@@ -3842,6 +3921,18 @@ async function generateProjectStructure(
   }
 
   // Generate README
+  const workflowCommands = [
+    packageManager.install,
+    `${packageManager.exec("playwright", "install --with-deps")}   # one-time Playwright browser install`,
+    packageManager.run("lint"),
+    packageManager.run("build"),
+    packageManager.run("test"),
+    packageManager.run("test:e2e"),
+  ].join("\n");
+
+  const makeTestEquivalent = packageManager.run("test");
+  const makeE2eEquivalent = packageManager.run("test:e2e");
+
   const readmeContent = `# ${appSpec.product.name}
 
 Generated by Arbiter from app specification.
@@ -3871,18 +3962,13 @@ ${appSpec.flows.map((flow) => `- **${flow.id}**: ${flow.steps.length} steps`).jo
 ## Development Workflow
 
 \`\`\`bash
-npm install
-npx playwright install --with-deps   # one-time Playwright browser install
-npm run lint
-npm run build
-npm run test
-npm run test:e2e
+${workflowCommands}
 \`\`\`
 
 ### Make Targets
 \`\`\`bash
-make test       # equivalent to npm run test
-make test-e2e   # equivalent to npm run test:e2e
+make test       # equivalent to ${makeTestEquivalent}
+make test-e2e   # equivalent to ${makeE2eEquivalent}
 \`\`\`
 `;
 
@@ -3895,6 +3981,7 @@ make test-e2e   # equivalent to npm run test:e2e
     appSpec,
     options,
     cliConfig,
+    packageManager,
   );
 
   files.push(...dockerArtifacts.map((artifact) => joinRelativePath(relativeRoot, artifact)));
@@ -3913,6 +4000,7 @@ async function generateServiceStructures(
   options: GenerateOptions,
   structure: ProjectStructureConfig,
   cliConfig: CLIConfig,
+  packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
   const pathOwnership = determinePathOwnership(appSpec);
@@ -4018,6 +4106,7 @@ async function generateServiceStructures(
         options,
         cliConfig,
         structure,
+        packageManager,
       );
 
       files.push(
@@ -4051,12 +4140,18 @@ async function generateServiceDockerArtifacts(
   options: GenerateOptions,
   cliConfig: CLIConfig,
   _structure: ProjectStructureConfig,
+  packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
   const language = serviceTarget.language;
   const context = serviceTarget.context;
   const override = resolveDockerTemplateSelection(cliConfig, "service", language);
 
-  const defaults = buildDefaultServiceDockerArtifacts(language, serviceTarget, serviceSpec);
+  const defaults = buildDefaultServiceDockerArtifacts(
+    language,
+    serviceTarget,
+    serviceSpec,
+    packageManager,
+  );
 
   if (!override && !defaults) {
     return [];
@@ -4092,10 +4187,16 @@ async function generateClientDockerArtifacts(
   appSpec: AppSpec,
   options: GenerateOptions,
   cliConfig: CLIConfig,
+  packageManager: PackageManagerCommandSet,
 ): Promise<string[]> {
   const language = appSpec.config?.language?.toLowerCase() || "typescript";
   const override = resolveDockerTemplateSelection(cliConfig, "client", language);
-  const defaults = buildDefaultClientDockerArtifacts(language, clientTarget, appSpec);
+  const defaults = buildDefaultClientDockerArtifacts(
+    language,
+    clientTarget,
+    appSpec,
+    packageManager,
+  );
 
   if (!override && !defaults) {
     return [];
@@ -4497,11 +4598,12 @@ function buildDefaultServiceDockerArtifacts(
   language: string,
   target: ServiceGenerationTarget,
   serviceSpec: any,
+  packageManager: PackageManagerCommandSet,
 ): DockerTemplateSelection | null {
   switch (language) {
     case "typescript":
     case "javascript":
-      return buildTypeScriptServiceDockerArtifacts(serviceSpec);
+      return buildTypeScriptServiceDockerArtifacts(serviceSpec, packageManager);
     case "python":
       return buildPythonServiceDockerArtifacts(serviceSpec);
     case "go":
@@ -4522,11 +4624,12 @@ function buildDefaultClientDockerArtifacts(
   language: string,
   _target: ClientGenerationTarget,
   _appSpec: AppSpec,
+  packageManager: PackageManagerCommandSet,
 ): DockerTemplateSelection | null {
   switch (language) {
     case "typescript":
     case "javascript":
-      return buildTypeScriptClientDockerArtifacts();
+      return buildTypeScriptClientDockerArtifacts(packageManager);
     default:
       console.log(
         chalk.dim(
@@ -4548,26 +4651,72 @@ function getPrimaryServicePort(serviceSpec: any, fallback: number): number {
   return Number.isFinite(candidate) && candidate > 0 ? candidate : fallback;
 }
 
-function buildTypeScriptServiceDockerArtifacts(serviceSpec: any): DockerTemplateSelection {
+function buildTypeScriptServiceDockerArtifacts(
+  serviceSpec: any,
+  packageManager: PackageManagerCommandSet,
+): DockerTemplateSelection {
   const port = getPrimaryServicePort(serviceSpec, 3000);
+  const setupLines: string[] = [];
+  switch (packageManager.name) {
+    case "pnpm":
+      setupLines.push("RUN corepack enable pnpm");
+      break;
+    case "yarn":
+      setupLines.push("RUN corepack enable yarn");
+      break;
+    case "bun":
+      setupLines.push("RUN curl -fsSL https://bun.sh/install | bash");
+      setupLines.push("ENV BUN_INSTALL=/root/.bun");
+      setupLines.push("ENV PATH=$BUN_INSTALL/bin:$PATH");
+      break;
+    default:
+      break;
+  }
 
-  const dockerfile = `# syntax=docker/dockerfile:1
-FROM node:20-bullseye AS base
-WORKDIR /usr/src/app
+  const installCommand = (() => {
+    switch (packageManager.name) {
+      case "pnpm":
+        return "pnpm install --frozen-lockfile";
+      case "yarn":
+        return "yarn install --frozen-lockfile";
+      case "bun":
+        return "bun install";
+      default:
+        return "npm install";
+    }
+  })();
 
-COPY package*.json ./
-RUN npm install
+  const pruneCommand = (() => {
+    switch (packageManager.name) {
+      case "npm":
+        return "npm prune --production";
+      case "pnpm":
+        return "pnpm prune --prod";
+      default:
+        return undefined;
+    }
+  })();
 
-COPY . .
-RUN npm run build
-RUN npm prune --production
-
-ENV NODE_ENV=production
-ENV PORT=${port}
-EXPOSE ${port}
-
-CMD ["node", "dist/index.js"]
-`;
+  const dockerfile = [
+    "# syntax=docker/dockerfile:1",
+    "FROM node:20-bullseye AS base",
+    "WORKDIR /usr/src/app",
+    ...setupLines,
+    "COPY package*.json ./",
+    `RUN ${installCommand}`,
+    "",
+    "COPY . .",
+    `RUN ${packageManager.run("build")}`,
+    pruneCommand ? `RUN ${pruneCommand}` : "",
+    "",
+    "ENV NODE_ENV=production",
+    `ENV PORT=${port}`,
+    `EXPOSE ${port}`,
+    "",
+    'CMD ["node", "dist/index.js"]',
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 
   const dockerignore = `node_modules
 dist
@@ -4704,25 +4853,72 @@ Dockerfile
   return { dockerfile, dockerignore };
 }
 
-function buildTypeScriptClientDockerArtifacts(): DockerTemplateSelection {
+function buildTypeScriptClientDockerArtifacts(
+  packageManager: PackageManagerCommandSet,
+): DockerTemplateSelection {
   const port = 4173;
+  const setupLines: string[] = [];
+  switch (packageManager.name) {
+    case "pnpm":
+      setupLines.push("RUN corepack enable pnpm");
+      break;
+    case "yarn":
+      setupLines.push("RUN corepack enable yarn");
+      break;
+    case "bun":
+      setupLines.push("RUN curl -fsSL https://bun.sh/install | bash");
+      setupLines.push("ENV BUN_INSTALL=/root/.bun");
+      setupLines.push("ENV PATH=$BUN_INSTALL/bin:$PATH");
+      break;
+    default:
+      break;
+  }
 
-  const dockerfile = `# syntax=docker/dockerfile:1
-FROM node:20-bullseye
-WORKDIR /usr/src/app
+  const installCommand = (() => {
+    switch (packageManager.name) {
+      case "pnpm":
+        return "pnpm install --frozen-lockfile";
+      case "yarn":
+        return "yarn install --frozen-lockfile";
+      case "bun":
+        return "bun install";
+      default:
+        return "npm install";
+    }
+  })();
 
-COPY package*.json ./
-RUN npm install
+  const previewArgs = (() => {
+    switch (packageManager.name) {
+      case "pnpm":
+        return ["pnpm", "run", "preview", "--", "--host", "0.0.0.0", "--port", String(port)];
+      case "yarn":
+        return ["yarn", "preview", "--host", "0.0.0.0", "--port", String(port)];
+      case "bun":
+        return ["bun", "run", "preview", "--", "--host", "0.0.0.0", "--port", String(port)];
+      default:
+        return ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", String(port)];
+    }
+  })();
 
-COPY . .
-RUN npm run build
-
-ENV NODE_ENV=production
-ENV PORT=${port}
-EXPOSE ${port}
-
-CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0", "--port", "${port}"]
-`;
+  const dockerfile = [
+    "# syntax=docker/dockerfile:1",
+    "FROM node:20-bullseye",
+    "WORKDIR /usr/src/app",
+    ...setupLines,
+    "COPY package*.json ./",
+    `RUN ${installCommand}`,
+    "",
+    "COPY . .",
+    `RUN ${packageManager.run("build")}`,
+    "",
+    "ENV NODE_ENV=production",
+    `ENV PORT=${port}`,
+    `EXPOSE ${port}`,
+    "",
+    `CMD [${previewArgs.map((token) => `"${token}"`).join(", ")}]`,
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
 
   const dockerignore = `node_modules
 dist
@@ -4754,13 +4950,13 @@ async function generateLanguageFiles(
 
   // Use language plugin system for code generation
   const language = config.language || "typescript";
-  const plugin = getLanguagePlugin(language);
+  const plugin = getConfiguredLanguagePlugin(language);
 
   if (plugin) {
     console.log(chalk.blue(`📦 Generating ${language} project using ${plugin.name}...`));
 
     if (cliConfig) {
-      configureLanguagePluginRuntime(language, cliConfig);
+      configureTemplateOrchestrator(language, cliConfig);
     }
 
     // Initialize project using the language plugin
@@ -5056,13 +5252,21 @@ export const routes = routeDefinitions;
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
   const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
-  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
-  const testsDir = path.join(outputDir, ...effectiveTestSegments);
-  if (!fs.existsSync(testsDir) && !options.dryRun) {
-    fs.mkdirSync(testsDir, { recursive: true });
+  const resolvedTestsDir =
+    serviceTarget?.context?.testsDir || path.join(outputDir, ...effectiveTestSegments);
+  if (!fs.existsSync(resolvedTestsDir) && !options.dryRun) {
+    fs.mkdirSync(resolvedTestsDir, { recursive: true });
   }
-  if (testsDirRelative) {
-    files.push(`${testsDirRelative}/`);
+  if (serviceTarget?.context) {
+    const relative = toRelativePath(serviceTarget.context.root, resolvedTestsDir);
+    if (relative) {
+      files.push(relative.endsWith("/") ? relative : `${relative}/`);
+    }
+  } else {
+    const testsDirRelative = joinRelativePath(...effectiveTestSegments);
+    if (testsDirRelative) {
+      files.push(`${testsDirRelative}/`);
+    }
   }
 
   return files;
@@ -5076,7 +5280,7 @@ async function generatePythonFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  _serviceTarget?: ServiceGenerationTarget,
+  serviceTarget?: ServiceGenerationTarget,
 ): Promise<string[]> {
   const files: string[] = [];
   const serviceSpec = config.service ?? {};
@@ -5170,13 +5374,21 @@ async function generatePythonFiles(
 
   const testsDirSegments = toPathSegments(structure.testsDirectory);
   const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
-  const testsDir = path.join(outputDir, ...effectiveTestSegments);
-  if (!fs.existsSync(testsDir) && !options.dryRun) {
-    fs.mkdirSync(testsDir, { recursive: true });
+  const resolvedTestsDir =
+    serviceTarget?.context?.testsDir || path.join(outputDir, ...effectiveTestSegments);
+  if (!fs.existsSync(resolvedTestsDir) && !options.dryRun) {
+    fs.mkdirSync(resolvedTestsDir, { recursive: true });
   }
-  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
-  if (testsDirRelative) {
-    files.push(`${testsDirRelative}/`);
+  if (serviceTarget?.context) {
+    const relative = toRelativePath(serviceTarget.context.root, resolvedTestsDir);
+    if (relative) {
+      files.push(relative.endsWith("/") ? relative : `${relative}/`);
+    }
+  } else {
+    const testsDirRelative = joinRelativePath(...effectiveTestSegments);
+    if (testsDirRelative) {
+      files.push(`${testsDirRelative}/`);
+    }
   }
 
   return files;
@@ -5190,12 +5402,27 @@ async function generateRustFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  _serviceTarget?: ServiceGenerationTarget,
+  serviceTarget?: ServiceGenerationTarget,
 ): Promise<string[]> {
   const files: string[] = [];
   const testsDirSegments = toPathSegments(structure.testsDirectory);
   const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
-  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
+  const resolvedTestsDir =
+    serviceTarget?.context?.testsDir || path.join(outputDir, ...effectiveTestSegments);
+  if (!fs.existsSync(resolvedTestsDir) && !options.dryRun) {
+    fs.mkdirSync(resolvedTestsDir, { recursive: true });
+  }
+  if (serviceTarget?.context) {
+    const relative = toRelativePath(serviceTarget.context.root, resolvedTestsDir);
+    if (relative) {
+      files.push(relative.endsWith("/") ? relative : `${relative}/`);
+    }
+  } else {
+    const testsDirRelative = joinRelativePath(...effectiveTestSegments);
+    if (testsDirRelative) {
+      files.push(`${testsDirRelative}/`);
+    }
+  }
 
   const cargoToml = `[package]
 name = "${config.name}"
@@ -5278,14 +5505,6 @@ mod tests {
   await writeFileWithHooks(path.join(srcDir, "main.rs"), mainContent, options);
   files.push("src/main.rs");
 
-  const testsDir = path.join(outputDir, ...effectiveTestSegments);
-  if (!fs.existsSync(testsDir) && !options.dryRun) {
-    fs.mkdirSync(testsDir, { recursive: true });
-  }
-  if (testsDirRelative) {
-    files.push(`${testsDirRelative}/`);
-  }
-
   return files;
 }
 
@@ -5294,12 +5513,24 @@ async function generateGoFiles(
   outputDir: string,
   options: GenerateOptions,
   structure: ProjectStructureConfig,
-  _serviceTarget?: ServiceGenerationTarget,
+  serviceTarget?: ServiceGenerationTarget,
 ): Promise<string[]> {
   const files: string[] = [];
-  const testsDirSegments = toPathSegments(structure.testsDirectory);
-  const effectiveTestSegments = testsDirSegments.length > 0 ? testsDirSegments : ["tests"];
-  const testsDirRelative = joinRelativePath(...effectiveTestSegments);
+  const testsDirSegments = toPathSegments(structure.testsDirectory || "tests");
+  const resolvedTestsDir =
+    serviceTarget?.context?.testsDir || path.join(outputDir, ...testsDirSegments);
+  if (!fs.existsSync(resolvedTestsDir) && !options.dryRun) {
+    fs.mkdirSync(resolvedTestsDir, { recursive: true });
+  }
+  if (serviceTarget?.context) {
+    const relative = toRelativePath(serviceTarget.context.root, resolvedTestsDir);
+    if (relative) {
+      files.push(relative.endsWith("/") ? relative : `${relative}/`);
+    }
+  } else if (testsDirSegments.length > 0) {
+    const testsDirRelative = joinRelativePath(...testsDirSegments);
+    files.push(`${testsDirRelative}/`);
+  }
 
   // go.mod
   const goMod = `module ${config.name}
@@ -5329,12 +5560,11 @@ func main() {
   await writeFileWithHooks(mainGoPath, mainGo, options);
   files.push("main.go");
 
-  // Create test directory
-  const testDir = path.join(outputDir, "test");
+  // Create test directory placeholder
+  const testDir = path.join(resolvedTestsDir, "api");
   if (!fs.existsSync(testDir) && !options.dryRun) {
     fs.mkdirSync(testDir, { recursive: true });
   }
-  files.push("test/");
 
   return files;
 }
@@ -7331,7 +7561,9 @@ async function emitSpecificationFromService(config: CLIConfig): Promise<void> {
 
     if (storedSpec.success && storedSpec.data && storedSpec.data.content) {
       // Emit the main assembly CUE file to .arbiter directory
-      await fs.writeFile(assemblyPath, storedSpec.data.content, "utf-8");
+      await safeFileOperation("write", assemblyPath, async (validatedPath) => {
+        await fs.writeFile(validatedPath, storedSpec.data.content, "utf-8");
+      });
       console.log(
         chalk.green("📄 Emitted CUE specification from service to .arbiter/assembly.cue"),
       );
@@ -7360,7 +7592,9 @@ async function emitShardedSpecifications(apiClient: ApiClient): Promise<void> {
       const shardSpec = await apiClient.getSpecification(shardType, shardPath);
 
       if (shardSpec.success && shardSpec.data && shardSpec.data.content) {
-        await fs.writeFile(shardPath, shardSpec.data.content, "utf-8");
+        await safeFileOperation("write", shardPath, async (validatedPath) => {
+          await fs.writeFile(validatedPath, shardSpec.data.content, "utf-8");
+        });
         console.log(chalk.dim(`  📄 Emitted ${shardType} shard to .arbiter/${shardType}.cue`));
       }
     }

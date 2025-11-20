@@ -11,6 +11,7 @@ import type {
   GenerationResult,
   LanguagePlugin,
   LanguagePluginConfigureOptions,
+  LanguageTestingConfig,
   ProjectConfig,
   ServiceConfig,
 } from "./index.js";
@@ -148,10 +149,14 @@ export class TypeScriptPlugin implements LanguagePlugin {
     this.runtime.templateResolver.setOverrideDirectories(overrides);
 
     const pluginConfig = (options.pluginConfig ?? {}) as Record<string, unknown>;
+    const rawTesting = (pluginConfig as any)?.testing as LanguageTestingConfig | undefined;
+    const testingConfig = options.testing ?? rawTesting;
     this.runtime.framework = this.normalizeFramework(pluginConfig);
     this.runtime.styling = this.normalizeStyling(pluginConfig);
     this.runtime.stateManagement = this.normalizeStateManagement(pluginConfig);
-    this.runtime.testRunner = this.normalizeTestRunner(pluginConfig);
+    this.runtime.testRunner = testingConfig?.framework
+      ? this.normalizeTestRunner({ testRunner: testingConfig.framework })
+      : this.normalizeTestRunner(pluginConfig);
   }
 
   async generateComponent(config: ComponentConfig): Promise<GenerationResult> {

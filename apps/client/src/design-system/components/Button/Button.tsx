@@ -101,19 +101,27 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {/* Left icon */}
         {!loading && resolvedLeftIcon && (
           <span
-            className={cn("flex-shrink-0", sizeVariants.icon[size], isIconOnly && "text-inherit")}
+            className={cn(
+              "flex items-center justify-center flex-shrink-0",
+              sizeVariants.icon[size],
+              isIconOnly && "text-inherit",
+            )}
           >
             {resolvedLeftIcon}
           </span>
         )}
 
         {/* Button text */}
-        {children && <span>{children}</span>}
+        {children && <span className="leading-none inline-flex items-center">{children}</span>}
 
         {/* Right icon */}
         {!loading && resolvedRightIcon && (
           <span
-            className={cn("flex-shrink-0", sizeVariants.icon[size], isIconOnly && "text-inherit")}
+            className={cn(
+              "flex items-center justify-center flex-shrink-0",
+              sizeVariants.icon[size],
+              isIconOnly && "text-inherit",
+            )}
           >
             {resolvedRightIcon}
           </span>

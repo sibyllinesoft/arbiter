@@ -268,7 +268,7 @@ Register the Vue alias once (globally in `~/.arbiter/templates.json` or inside `
 {
   "aliases": {
     "vue-vite": {
-      "engine": "cookiecutter",
+      "implementor": "cookiecutter",
       "source": "gh:arbiter-templates/vue-vite",
       "description": "Vue 3 + Vite starter with Pinia + Vitest"
     }
@@ -340,6 +340,8 @@ clients: {
 }
 ```
 
+> Those explicit `handler.module` entries are optional overrides intended for brownfield projects or specs synchronized with existing repositories. When Arbiter controls the directory layout, leave them undefined and the generator will derive handler paths from the service metadata.
+
 ### Layer 4 — Execution: Generate and run
 
 The final layer turns the specification into runnable assets. Because the earlier layers stayed clean, one command now orchestrates every artifact:
@@ -388,7 +390,7 @@ Generate code for multiple languages and frameworks from a single specification:
 
 Arbiter uses a flexible template system that supports:
 
-- **Multiple Template Engines** - Handlebars, Liquid, and custom engines
+- **Multiple Template Implementors** - Handlebars, Liquid, and custom implementors
 - **Template Inheritance** - Compose templates from reusable components
 - **Override Hierarchies** - Customize generation without modifying core templates
 - **Rich Context Data** - Comprehensive data extracted from CUE specifications
@@ -473,7 +475,7 @@ Complete programmatic interface documentation:
 
 - **Core Interfaces** - GenerateOptions, contexts, configurations
 - **Generation Service API** - Main generation functions
-- **Template System API** - TemplateResolver and engines
+- **Template System API** - TemplateResolver and implementors
 - **Language Plugin API** - Plugin development interfaces
 - **Hook System API** - Custom generation hooks
 - **Utility Functions** - Helper functions and utilities

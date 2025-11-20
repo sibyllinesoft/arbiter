@@ -11,7 +11,7 @@
  */
 
 import chalk from "chalk";
-import { buildTemplateContext, templateManager } from "./templates/index.js";
+import { buildTemplateContext, templateOrchestrator } from "./templates/index.js";
 
 async function testTemplateSystem() {
   console.log(chalk.cyan("🧪 Testing Template System"));
@@ -35,18 +35,18 @@ async function testTemplateSystem() {
  */
 async function runConfigurationTest(): Promise<void> {
   console.log(chalk.blue("1. Loading template configuration..."));
-  await templateManager.loadConfig();
+  await templateOrchestrator.loadConfig();
   console.log(chalk.green("✅ Configuration loaded"));
   console.log();
 }
 
 /**
- * Test available template engines
+ * Test available template implementors
  */
 async function runEngineTest(): Promise<void> {
-  console.log(chalk.blue("2. Available engines:"));
-  const engines = templateManager.getEngines();
-  engines.forEach((engine) => console.log(`  • ${engine}`));
+  console.log(chalk.blue("2. Available implementors:"));
+  const implementors = templateOrchestrator.getImplementors();
+  implementors.forEach((implementor) => console.log(`  • ${implementor}`));
   console.log();
 }
 
@@ -55,7 +55,7 @@ async function runEngineTest(): Promise<void> {
  */
 async function runTemplateListingTest(): Promise<void> {
   console.log(chalk.blue("3. Available template aliases:"));
-  const aliases = templateManager.getAliases();
+  const aliases = templateOrchestrator.getAliases();
 
   if (Object.keys(aliases).length === 0) {
     console.log(chalk.yellow("  No template aliases configured"));
@@ -70,7 +70,7 @@ async function runTemplateListingTest(): Promise<void> {
  */
 function displayTemplateAliases(aliases: any): void {
   Object.entries(aliases).forEach(([name, alias]: [string, any]) => {
-    console.log(`  • ${chalk.green(name)}: ${alias.description} (${alias.engine})`);
+    console.log(`  • ${chalk.green(name)}: ${alias.description} (${alias.implementor})`);
     console.log(`    Source: ${alias.source}`);
   });
 }
@@ -79,7 +79,7 @@ function displayTemplateAliases(aliases: any): void {
  * Test template details display
  */
 async function runTemplateDetailsTest(): Promise<void> {
-  const aliases = templateManager.getAliases();
+  const aliases = templateOrchestrator.getAliases();
   const firstTemplate = Object.keys(aliases)[0];
 
   if (firstTemplate) {
@@ -93,9 +93,9 @@ async function runTemplateDetailsTest(): Promise<void> {
  * Display details for a specific template
  */
 function displayTemplateDetails(templateName: string): void {
-  const alias = templateManager.getAlias(templateName);
+  const alias = templateOrchestrator.getAlias(templateName);
   if (alias) {
-    console.log(`  Engine: ${alias.engine}`);
+    console.log(`  Implementor: ${alias.implementor}`);
     console.log(`  Source: ${alias.source}`);
     console.log(`  Description: ${alias.description}`);
     if (alias.prerequisites) {

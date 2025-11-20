@@ -3,7 +3,9 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
 import packageJson from "../../../package.json" with { type: "json" };
+import { copyStandalone, safeFileOperation } from "../../constraints/index.js";
 import type { CLIConfig, SyncOptions } from "../../types.js";
+import { detectPackageManager, getPackageManagerCommands } from "../../utils/package-manager.js";
 
 interface ManifestFile {
   path: string;
@@ -75,8 +77,14 @@ function calculateChecksum(content: string): string {
 async function createBackup(filePath: string): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupPath = `${filePath}.backup.${timestamp}`;
-  await fs.copyFile(filePath, backupPath);
+  await copyStandalone(filePath, backupPath);
   return backupPath;
+}
+
+async function writeFileSafely(filePath: string, content: string): Promise<void> {
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, "utf-8");
+  });
 }
 
 /**
@@ -298,7 +306,7 @@ async function applyPackageChanges(
     console.log(chalk.dim(`  📦 Created backup: ${path.basename(backupPath)}`));
   }
 
-  await fs.writeFile(filePath, newContent);
+  await writeFileSafely(filePath, newContent);
 
   // Validate idempotency
   const isIdempotent = await validateIdempotency(filePath, newChecksum);
@@ -448,7 +456,7 @@ sync = "arbiter sync --language python"
         console.log(chalk.dim(`📦 Created backup: ${backupPath}`));
       }
 
-      await fs.writeFile(filePath, newContent);
+      await writeFileSafely(filePath, newContent);
     }
 
     if (modified && force && hasArbiterSection) {
@@ -577,7 +585,7 @@ sync = "arbiter sync --language rust"
         console.log(chalk.dim(`📦 Created backup: ${backupPath}`));
       }
 
-      await fs.writeFile(filePath, newContent);
+      await writeFileSafely(filePath, newContent);
     }
 
     return {
@@ -694,7 +702,7 @@ arbiter-sync:
         console.log(chalk.dim(`📦 Created backup: ${backupPath}`));
       }
 
-      await fs.writeFile(filePath, newContent);
+      await writeFileSafely(filePath, newContent);
     }
 
     return {
@@ -898,7 +906,7 @@ function displayNextStepsGuidance(context: SyncContext, syncResults: SyncResult[
 
   if (totalModified > 0 && !context.dryRun) {
     console.log(chalk.cyan("\nNext steps:"));
-    displayLanguageSpecificGuidance(context.targetManifests);
+    displayLanguageSpecificGuidance(context.targetManifests, context.projectPath);
   }
 
   if (context.dryRun && totalModified > 0) {
@@ -906,11 +914,13 @@ function displayNextStepsGuidance(context: SyncContext, syncResults: SyncResult[
   }
 }
 
-function displayLanguageSpecificGuidance(manifests: ManifestFile[]): void {
+function displayLanguageSpecificGuidance(manifests: ManifestFile[], projectPath: string): void {
+  const packageManager = detectPackageManager(undefined, projectPath);
+  const pm = getPackageManagerCommands(packageManager);
   const guidanceMap = {
     "package.json": [
-      '  • Run "npm install" to install new dev dependencies',
-      '  • Use "npm run arbiter:check" to validate CUE files',
+      `  • Run "${pm.install}" to install new dev dependencies`,
+      `  • Use "${pm.run("arbiter:check")}" to validate CUE files`,
     ],
     "pyproject.toml": ['  • Run "pip install -e ." to install in development mode'],
     "Cargo.toml": ['  • Run "cargo build" to update dependencies'],

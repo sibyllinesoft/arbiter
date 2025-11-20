@@ -5,6 +5,7 @@ import { z } from "zod";
  */
 export const ComponentTypeSchema = z.enum([
   "service",
+  "package",
   "module",
   "tool",
   "frontend",
@@ -23,7 +24,7 @@ export type ComponentType = z.infer<typeof ComponentTypeSchema>;
  */
 export const ProjectEntityCountsSchema = z.object({
   services: z.number().int().min(0),
-  modules: z.number().int().min(0),
+  packages: z.number().int().min(0),
   tools: z.number().int().min(0),
   frontends: z.number().int().min(0),
   views: z.number().int().min(0),
@@ -92,7 +93,7 @@ export type Project = z.infer<typeof ProjectSchema>;
 export function countComponentsByType(components: Component[]): ProjectEntityCounts {
   const counts: ProjectEntityCounts = {
     services: 0,
-    modules: 0,
+    packages: 0,
     tools: 0,
     frontends: 0,
     views: 0,
@@ -108,8 +109,9 @@ export function countComponentsByType(components: Component[]): ProjectEntityCou
       case "service":
         counts.services++;
         break;
+      case "package":
       case "module":
-        counts.modules++;
+        counts.packages++;
         break;
       case "tool":
         counts.tools++;

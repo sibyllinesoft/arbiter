@@ -19,7 +19,7 @@ describe("generateDockerComposeArtifacts", () => {
     const structure: ProjectStructureConfig = {
       clientsDirectory: "apps",
       servicesDirectory: "services",
-      modulesDirectory: "modules",
+      packagesDirectory: "packages",
       toolsDirectory: "tools",
       docsDirectory: "docs",
       testsDirectory: "tests",

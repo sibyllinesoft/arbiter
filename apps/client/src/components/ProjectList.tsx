@@ -116,16 +116,16 @@ export function ProjectList({
                     </Badge>
                   )}
 
-                  {projectStatus.entities.modules > 0 && (
+                  {projectStatus.entities.packages > 0 && (
                     <Badge
                       variant="default"
                       className="bg-purple-500 dark:bg-purple-600 text-white/70 dark:text-white/70 border-purple-700 dark:border-purple-800"
                     >
                       <Component className="w-3.5 h-3.5 mr-1 text-white/70 dark:text-white/70" />
                       <span className="text-xs font-medium text-white/70 dark:text-white/70">
-                        Modules:{" "}
+                        Packages:{" "}
                         <span className="text-white dark:text-white">
-                          {projectStatus.entities.modules}
+                          {projectStatus.entities.packages}
                         </span>
                       </span>
                     </Badge>

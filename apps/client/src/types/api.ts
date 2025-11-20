@@ -21,7 +21,8 @@ export interface Project {
   entities?: {
     services: number;
     databases: number;
-    modules: number;
+    packages: number;
+    modules?: number;
     tools: number;
     frontends: number;
     views: number;

@@ -108,6 +108,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: CLI Biome check
+        working-directory: packages/cli
+        run: bunx @biomejs/biome check src
+
+      - name: CLI TypeScript check
+        working-directory: packages/cli
+        run: bunx tsc --noEmit --project tsconfig.json
+
       - name: Type checking
         run: bun run typecheck
 

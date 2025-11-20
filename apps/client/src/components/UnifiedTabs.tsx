@@ -28,9 +28,15 @@ function DiagramPlaceholder({ type }: DiagramPlaceholderProps) {
 
 interface UnifiedTabsProps {
   project: Project | null;
+  tabBadges?: Record<string, number>;
 }
 
-export function useUnifiedTabs({ project }: UnifiedTabsProps) {
+export function useUnifiedTabs({ project, tabBadges }: UnifiedTabsProps) {
+  const serviceCount = tabBadges?.services ?? project?.entities?.services;
+  const clientCount = tabBadges?.clients ?? project?.entities?.frontends;
+  const taskCount = tabBadges?.tasks;
+  const eventCount = tabBadges?.events;
+
   const allTabs = [
     {
       id: "architecture",
@@ -44,6 +50,7 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
     {
       id: "services",
       label: "Services",
+      ...(typeof serviceCount === "number" ? { badge: serviceCount } : {}),
       content: project ? (
         <ServicesReport projectId={project.id} />
       ) : (
@@ -53,6 +60,7 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
     {
       id: "clients",
       label: "Clients",
+      ...(typeof clientCount === "number" ? { badge: clientCount } : {}),
       content: project ? (
         <ClientsReport projectId={project.id} />
       ) : (
@@ -62,6 +70,7 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
     {
       id: "tasks",
       label: "Tasks",
+      ...(typeof taskCount === "number" ? { badge: taskCount } : {}),
       content: project ? (
         <TasksReport projectId={project.id} />
       ) : (
@@ -71,6 +80,7 @@ export function useUnifiedTabs({ project }: UnifiedTabsProps) {
     {
       id: "events",
       label: "Events",
+      ...(typeof eventCount === "number" ? { badge: eventCount } : {}),
       content: project ? (
         <EventsReport projectId={project.id} />
       ) : (

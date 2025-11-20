@@ -10,7 +10,7 @@ map of all CLI docs, see the [CLI documentation hub](./index.md).
 
 1. **Discovery** – Each language plugin declares a default template root. The
    CLI optionally augments this list with override directories defined in
-   `.arbiter/config.*` under `generator.templateOverrides`.
+   `.arbiter/config.json` under `generator.templateOverrides`.
 2. **Resolution** – The `TemplateResolver` composes the template stack,
    respecting override order (user paths take precedence, then fall back to
    stock templates).
@@ -24,7 +24,7 @@ map of all CLI docs, see the [CLI documentation hub](./index.md).
 
 ## Configuring Overrides
 
-`arbiter.config.json` (or `.arbiter/config.cue`) can specify overrides:
+`.arbiter/config.json` can specify overrides:
 
 ```jsonc
 {
@@ -96,14 +96,15 @@ Add them via `generator.hooks` in config:
 | Template not picked up | Verify override path in config, ensure files share the same relative path as the template they replace. |
 | Hook throws `Cannot find module` | Hooks are resolved relative to the config file; use absolute paths when unsure. |
 | Generated files overwrite local edits | Use hooks to merge instead of replace, or run in `--dry-run` mode to inspect diffs first. |
-| CI differences between OSes | Avoid OS-specific path logic; rely on the normalized helpers in `templateManager` and `services/generate/shared.ts`. |
+| CI differences between OSes | Avoid OS-specific path logic; rely on the normalized helpers in `template-orchestrator` and `services/generate/shared.ts`. |
 
 ## Further Reading
 
 - `packages/cli/src/language-plugins/typescript.ts` – reference implementation
   showing how template overrides are injected.
-- `packages/cli/src/services/generate/template-runner.ts` – centralises
-  registry configuration, testing knobs, and override ordering.
+- `packages/cli/src/services/generate/template-orchestrator.ts` – the template
+  orchestrator that centralises registry configuration, testing knobs, and
+  override ordering.
 - `packages/cli/src/services/generate/hook-executor.ts` – the file writer that
   orchestrates before/after hooks and honours `--dry-run`.
 - `packages/cli/src/services/generate/compose.ts` – example of how template

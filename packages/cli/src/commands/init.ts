@@ -2,6 +2,7 @@ import path from "node:path";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { DEFAULT_CONFIG } from "../config.js";
+import { safeFileOperation } from "../constraints/index.js";
 import type { InitOptions, ProjectTemplate } from "../types.js";
 import { withProgress } from "../utils/progress.js";
 
@@ -282,7 +283,9 @@ async function createProject(
       .replace(/{{PROJECT_NAME}}/g, projectName)
       .replace(/{{DESCRIPTION}}/g, template.description);
 
-    await fs.writeFile(fullPath, processedContent, "utf-8");
+    await safeFileOperation("write", fullPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, processedContent, "utf-8");
+    });
   }
 
   // Create .arbiter/config.json config file
@@ -295,11 +298,9 @@ async function createProject(
 
   const arbiterDir = path.join(targetDir, ".arbiter");
   await fs.ensureDir(arbiterDir);
-  await fs.writeFile(
-    path.join(arbiterDir, "config.json"),
-    JSON.stringify(configContent, null, 2),
-    "utf-8",
-  );
+  await safeFileOperation("write", path.join(arbiterDir, "config.json"), async (validatedPath) => {
+    await fs.writeFile(validatedPath, JSON.stringify(configContent, null, 2), "utf-8");
+  });
 }
 
 /**

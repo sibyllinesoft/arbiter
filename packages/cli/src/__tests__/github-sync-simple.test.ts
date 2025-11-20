@@ -9,12 +9,14 @@ describe("GitHub Sync Configuration", () => {
         owner: "test-org",
         repo: "test-repo",
       },
-      mapping: {
-        epicPrefix: "[Epic]",
-        taskPrefix: "[Task]",
-        defaultLabels: ["arbiter-generated"],
+      prefixes: {
+        epic: "[Epic]",
+        task: "[Task]",
       },
-      behavior: {
+      labels: {
+        default: ["arbiter-generated"],
+      },
+      automation: {
         createMilestones: true,
         autoClose: true,
         syncAcceptanceCriteria: true,
@@ -25,9 +27,9 @@ describe("GitHub Sync Configuration", () => {
     // Configuration should have all required fields
     expect(validConfig.repository.owner).toBe("test-org");
     expect(validConfig.repository.repo).toBe("test-repo");
-    expect(validConfig.mapping?.epicPrefix).toBe("[Epic]");
-    expect(validConfig.mapping?.taskPrefix).toBe("[Task]");
-    expect(validConfig.behavior?.createMilestones).toBe(true);
+    expect(validConfig.prefixes?.epic).toBe("[Epic]");
+    expect(validConfig.prefixes?.task).toBe("[Task]");
+    expect(validConfig.automation?.createMilestones).toBe(true);
   });
 
   test("should allow minimal configuration", () => {
@@ -36,8 +38,9 @@ describe("GitHub Sync Configuration", () => {
         owner: "test-org",
         repo: "test-repo",
       },
-      mapping: {},
-      behavior: {},
+      labels: {},
+      prefixes: {},
+      automation: {},
     };
 
     expect(minimalConfig.repository.owner).toBe("test-org");
@@ -52,8 +55,9 @@ describe("GitHub Sync Configuration", () => {
         repo: "enterprise-repo",
         baseUrl: "https://github.enterprise.com/api/v3",
       },
-      mapping: {},
-      behavior: {},
+      labels: {},
+      prefixes: {},
+      automation: {},
     };
 
     expect(enterpriseConfig.repository.baseUrl).toBe("https://github.enterprise.com/api/v3");
@@ -139,14 +143,14 @@ describe("GitHub Sync Label Generation", () => {
   test("should generate correct epic labels", () => {
     const config: GitHubSyncConfig = {
       repository: { owner: "test", repo: "test" },
-      mapping: {
-        defaultLabels: ["arbiter-generated"],
-        epicLabels: {
+      labels: {
+        default: ["arbiter-generated"],
+        epics: {
           high: ["priority-high"],
           critical: ["priority-critical"],
         },
       },
-      behavior: {},
+      automation: {},
     };
 
     const epic: Epic = {
@@ -162,13 +166,13 @@ describe("GitHub Sync Label Generation", () => {
     const labels: string[] = [];
 
     // Add default labels
-    if (config.mapping?.defaultLabels) {
-      labels.push(...config.mapping.defaultLabels);
+    if (config.labels?.default) {
+      labels.push(...config.labels.default);
     }
 
     // Add priority-specific labels
-    if (config.mapping?.epicLabels?.[epic.priority]) {
-      labels.push(...config.mapping.epicLabels[epic.priority]);
+    if (config.labels?.epics?.[epic.priority]) {
+      labels.push(...config.labels.epics[epic.priority]);
     }
 
     // Add status and type labels
@@ -194,14 +198,14 @@ describe("GitHub Sync Label Generation", () => {
   test("should generate correct task labels", () => {
     const config: GitHubSyncConfig = {
       repository: { owner: "test", repo: "test" },
-      mapping: {
-        defaultLabels: ["arbiter-generated"],
-        taskLabels: {
+      labels: {
+        default: ["arbiter-generated"],
+        tasks: {
           feature: ["type-feature"],
           bug: ["type-bug"],
         },
       },
-      behavior: {},
+      automation: {},
     };
 
     const task: Task = {
@@ -217,13 +221,13 @@ describe("GitHub Sync Label Generation", () => {
     const labels: string[] = [];
 
     // Add default labels
-    if (config.mapping?.defaultLabels) {
-      labels.push(...config.mapping.defaultLabels);
+    if (config.labels?.default) {
+      labels.push(...config.labels.default);
     }
 
     // Add type-specific labels
-    if (config.mapping?.taskLabels?.[task.type]) {
-      labels.push(...config.mapping.taskLabels[task.type]);
+    if (config.labels?.tasks?.[task.type]) {
+      labels.push(...config.labels.tasks[task.type]);
     }
 
     // Add status and type labels
@@ -247,10 +251,10 @@ describe("GitHub Sync Title Generation", () => {
   test("should generate correct epic titles", () => {
     const config: GitHubSyncConfig = {
       repository: { owner: "test", repo: "test" },
-      mapping: {
-        epicPrefix: "[Epic]",
+      prefixes: {
+        epic: "[Epic]",
       },
-      behavior: {},
+      automation: {},
     };
 
     const epic: Epic = {
@@ -261,17 +265,17 @@ describe("GitHub Sync Title Generation", () => {
       tasks: [],
     };
 
-    const title = `${config.mapping?.epicPrefix || "[Epic]"} ${epic.name}`;
+    const title = `${config.prefixes?.epic || "[Epic]"} ${epic.name}`;
     expect(title).toBe("[Epic] User Authentication System");
   });
 
   test("should generate correct task titles", () => {
     const config: GitHubSyncConfig = {
       repository: { owner: "test", repo: "test" },
-      mapping: {
-        taskPrefix: "[Task]",
+      prefixes: {
+        task: "[Task]",
       },
-      behavior: {},
+      automation: {},
     };
 
     const task: Task = {
@@ -283,7 +287,7 @@ describe("GitHub Sync Title Generation", () => {
       status: "todo",
     };
 
-    const title = `${config.mapping?.taskPrefix || "[Task]"} ${task.name}`;
+    const title = `${config.prefixes?.task || "[Task]"} ${task.name}`;
     expect(title).toBe("[Task] Implement user login");
   });
 

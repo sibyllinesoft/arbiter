@@ -164,7 +164,7 @@ export function LandingPage({ onNavigateToConfig }: LandingPageProps) {
         <div className="w-72 flex-shrink-0 bg-white dark:bg-graphite-900 border-r border-gray-200 dark:border-graphite-700 overflow-hidden">
           <div className="p-4 border-b border-gray-200 dark:border-graphite-700">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-graphite-25 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-graphite-25 flex items center gap-2">
                 <GitBranch className="w-5 h-5" />
                 Projects
               </h2>

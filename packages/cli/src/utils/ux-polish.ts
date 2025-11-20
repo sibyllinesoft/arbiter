@@ -183,10 +183,12 @@ function showPermissionHelp(): void {
 function showConnectionHelp(): void {
   console.log();
   console.log(chalk.yellow.bold("💡 Connection solutions:"));
-  console.log(chalk.dim("   • Start the Arbiter server: bun run dev"));
-  console.log(chalk.dim("   • Check server is running on correct port"));
-  console.log(chalk.dim("   • Verify API URL in configuration"));
-  console.log(chalk.dim("   • Test connection: arbiter health"));
+  console.log(
+    chalk.dim("   • Start the Arbiter dev stack via 'bun run dev:full' (see the root README)."),
+  );
+  console.log(chalk.dim("   • If you use Docker, run 'docker compose up api' per docs/deploy."));
+  console.log(chalk.dim("   • Ensure ARBITER_URL/--api-url matches the server you started."));
+  console.log(chalk.dim("   • Once ready, test connectivity with 'arbiter health'."));
 }
 
 /**

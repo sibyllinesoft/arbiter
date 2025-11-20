@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, mock } from "bun:test";
 import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
+import { safeFileOperation } from "../../constraints/index.js";
 import type { CLIConfig } from "../../types.js";
 import { type SpecImportDependencies, importSpec } from "../spec-import/index.js";
 
@@ -22,7 +23,7 @@ function createConfig(projectDir: string): CLIConfig {
     projectStructure: {
       clientsDirectory: "apps",
       servicesDirectory: "services",
-      modulesDirectory: "modules",
+      packagesDirectory: "packages",
       toolsDirectory: "tools",
       docsDirectory: "docs",
       testsDirectory: "tests",
@@ -37,7 +38,9 @@ describe("importSpec service", () => {
     tempDirs.push(projectDir);
 
     const specPath = path.join(projectDir, "assembly.cue");
-    await fs.writeFile(specPath, "spec: {}\n", "utf-8");
+    await safeFileOperation("write", specPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, "spec: {}\n", "utf-8");
+    });
 
     const updateMock = mock(async () => ({ success: true }));
     const ensureMock = mock(async () => "proj_123");
@@ -71,7 +74,9 @@ describe("importSpec service", () => {
     const projectDir = await fs.mkdtemp(path.join(os.tmpdir(), "arbiter-spec-"));
     tempDirs.push(projectDir);
     const specPath = path.join(projectDir, "invalid.cue");
-    await fs.writeFile(specPath, "bad spec", "utf-8");
+    await safeFileOperation("write", specPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, "bad spec", "utf-8");
+    });
 
     const updateMock = mock(async () => ({ success: true }));
     const deps: SpecImportDependencies = {

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 export type PackageManager = "bun" | "pnpm" | "yarn" | "npm";
+const PKG_PLACEHOLDER = "__PKG__";
 
 export interface PackageManagerCommandSet {
   name: PackageManager;
@@ -17,7 +18,7 @@ export function detectPackageManager(
   rootDir: string = process.cwd(),
 ): PackageManager {
   const detected =
-    detectFromUserAgent(userAgent) ?? detectFromLockfiles(rootDir) ?? detectFromPath(rootDir);
+    detectFromLockfiles(rootDir) ?? detectFromUserAgent(userAgent) ?? detectFromPath(rootDir);
   return detected ?? "npm";
 }
 
@@ -84,10 +85,16 @@ export function getPackageManagerCommands(pm: PackageManager): PackageManagerCom
         exec: (binary, args) => withArgs(`yarn ${binary}`, args),
       };
     default:
+      const homePrefix =
+        process.platform === "win32" ? undefined : `"${process.env.HOME || "~"}/.local"`;
+      const globalInstall = homePrefix
+        ? `npm install -g ${PKG_PLACEHOLDER} --prefix ${homePrefix}`
+        : `npm install -g ${PKG_PLACEHOLDER}`;
+
       return {
         name: pm,
         install: "npm install",
-        installGlobal: (pkg) => `npm install -g ${pkg}`,
+        installGlobal: (pkg) => globalInstall.replace(PKG_PLACEHOLDER, pkg),
         run: (script) => `npm run ${script}`,
         exec: (binary, args) => withArgs(`npm exec -- ${binary}`, args),
       };

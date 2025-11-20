@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useState } from "react";
-import ProjectBrowser, { type Project } from "./ProjectBrowser";
+import type { Project } from "../../types/api";
+import ProjectBrowser from "./ProjectBrowser";
 
 const meta: Meta<typeof ProjectBrowser> = {
   title: "Layout/ProjectBrowser",

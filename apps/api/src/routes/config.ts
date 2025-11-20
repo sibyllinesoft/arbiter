@@ -23,29 +23,29 @@ type ProjectStructureSettings = {
   servicesDirectory: string;
   testsDirectory: string;
   infraDirectory: string;
-  endpointDirectory: string;
+  docsDirectory: string;
+  packageRelative?: {
+    docsDirectory?: boolean;
+    testsDirectory?: boolean;
+    infraDirectory?: boolean;
+  };
 };
 
 const PROJECT_ROOT = path.resolve(__dirname, "../../../..");
-const CONFIG_SEARCH_PATHS = [
-  ".arbiter/config.json",
-  ".arbiter/config.yaml",
-  ".arbiter/config.yml",
-  ".arbiter.json",
-  ".arbiter.yaml",
-  ".arbiter.yml",
-  "arbiter.json",
-  "arbiter.yaml",
-  "arbiter.yml",
-] as const;
+const CONFIG_SEARCH_PATHS = [".arbiter/config.json"] as const;
 
 const DEFAULT_PROJECT_STRUCTURE: ProjectStructureSettings = {
   appsDirectory: "apps",
   packagesDirectory: "packages",
   servicesDirectory: "services",
+  docsDirectory: "docs",
   testsDirectory: "tests",
   infraDirectory: "infra",
-  endpointDirectory: "apps/api/src/endpoints",
+  packageRelative: {
+    docsDirectory: false,
+    testsDirectory: false,
+    infraDirectory: false,
+  },
 };
 
 function coerceStringArray(value: unknown): string[] | undefined {
@@ -151,14 +151,35 @@ function sanitizeStructureCandidate(value: unknown): Partial<ProjectStructureSet
   const result: Partial<ProjectStructureSettings> = {};
   const record = value as Record<string, unknown>;
 
-  (Object.keys(DEFAULT_PROJECT_STRUCTURE) as Array<keyof ProjectStructureSettings>).forEach(
-    (key) => {
-      const candidate = record[key];
-      if (typeof candidate === "string" && candidate.trim().length > 0) {
-        result[key] = candidate;
+  const stringKeys: Array<keyof ProjectStructureSettings> = [
+    "appsDirectory",
+    "packagesDirectory",
+    "servicesDirectory",
+    "docsDirectory",
+    "testsDirectory",
+    "infraDirectory",
+  ];
+
+  stringKeys.forEach((key) => {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      result[key] = candidate.trim();
+    }
+  });
+
+  const packageRelative = record.packageRelative;
+  if (packageRelative && typeof packageRelative === "object") {
+    const clean: Record<string, boolean> = {};
+    for (const key of ["docsDirectory", "testsDirectory", "infraDirectory"] as const) {
+      const raw = (packageRelative as Record<string, unknown>)[key];
+      if (typeof raw === "boolean") {
+        clean[key] = raw;
       }
-    },
-  );
+    }
+    if (Object.keys(clean).length > 0) {
+      result.packageRelative = clean as ProjectStructureSettings["packageRelative"];
+    }
+  }
 
   return result;
 }
@@ -178,6 +199,10 @@ async function loadProjectStructureConfig(): Promise<
       structure: {
         ...DEFAULT_PROJECT_STRUCTURE,
         ...existingStructure,
+        packageRelative: {
+          ...DEFAULT_PROJECT_STRUCTURE.packageRelative,
+          ...(existingStructure.packageRelative ?? {}),
+        },
       },
     };
   }
@@ -203,6 +228,11 @@ async function persistProjectStructure(
     ...DEFAULT_PROJECT_STRUCTURE,
     ...existingStructure,
     ...sanitizedUpdates,
+    packageRelative: {
+      ...DEFAULT_PROJECT_STRUCTURE.packageRelative,
+      ...(existingStructure.packageRelative ?? {}),
+      ...(sanitizedUpdates.packageRelative ?? {}),
+    },
   };
 
   const configToWrite: Record<string, unknown> = {

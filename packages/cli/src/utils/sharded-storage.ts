@@ -6,7 +6,9 @@
 import path from "node:path";
 import chalk from "chalk";
 import fs from "fs-extra";
-import { createCUEManipulator, formatCUE, validateCUE } from "../cue/index.js";
+import { getCueManipulator } from "../constraints/cli-integration.js";
+import { safeFileOperation } from "../constraints/index.js";
+import { formatCUE, validateCUE } from "../cue/index.js";
 
 // Types for sharded storage management
 /**
@@ -140,7 +142,7 @@ export class ShardedCUEStorage {
       ...config,
     };
 
-    this.cueManipulator = createCUEManipulator();
+    this.cueManipulator = getCueManipulator();
   }
 
   private ensureEpicTaskContext(epic: Epic): Epic {
@@ -195,7 +197,7 @@ config: {
 }`;
 
     const formatted = await formatCUE(initialManifest);
-    await fs.writeFile(this.config.manifestFile, formatted);
+    await this.writeFileSafely(this.config.manifestFile, formatted);
   }
 
   /**
@@ -232,7 +234,7 @@ config: {
       );
 
       const formatted = await formatCUE(updatedContent);
-      await fs.writeFile(this.config.manifestFile, formatted);
+      await this.writeFileSafely(this.config.manifestFile, formatted);
     } catch (error) {
       throw new Error(`Failed to save shard manifests: ${error}`);
     }
@@ -273,7 +275,7 @@ epics: {
 }`;
 
     const formatted = await formatCUE(shardContent);
-    await fs.writeFile(filePath, formatted);
+    await this.writeFileSafely(filePath, formatted);
 
     // Create manifest entry
     const manifest: ShardManifest = {
@@ -354,7 +356,7 @@ epics: {
     }
 
     const formatted = await formatCUE(updatedContent);
-    await fs.writeFile(shardPath, formatted);
+    await this.writeFileSafely(shardPath, formatted);
 
     // Update manifest
     manifest.epics.push({
@@ -449,7 +451,7 @@ epics: {
     }
 
     const formatted = await formatCUE(updatedContent);
-    await fs.writeFile(shardPath, formatted);
+    await this.writeFileSafely(shardPath, formatted);
 
     // Update manifest
     const epicManifest = manifest.epics.find((e) => e.id === epic.id);
@@ -749,6 +751,12 @@ epics: {
         const depTask = tasks.find((t) => t.id === depId);
         return depTask?.status !== "completed";
       });
+    });
+  }
+
+  private async writeFileSafely(filePath: string, content: string): Promise<void> {
+    await safeFileOperation("write", filePath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, content, "utf-8");
     });
   }
 

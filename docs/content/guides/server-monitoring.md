@@ -41,7 +41,7 @@ identify and prevent issues before they cause server crashes.
 - **Header Validation**: Validates WebSocket upgrade headers
 - **Authentication Timeout**: 5-second timeout for auth requests
 - **Connection Tracking**: Better connection ID generation and tracking
-- **Message Validation**: Size limits (64KB), JSON parsing, structure validation
+- **Message Validation**: Size limits (5MB), JSON parsing, structure validation
 - **Timeout Handling**: 10-second timeout for message processing
 - **Error Responses**: Sends structured error messages to clients
 - **Connection Cleanup**: Enhanced disconnection handling with timeouts

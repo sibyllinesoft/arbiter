@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
+import { safeFileOperation } from "../constraints/index.js";
 
 export interface DiffOptions {
   migration?: boolean;
@@ -527,6 +528,7 @@ export async function diffCommand(
   newFile: string,
   options: DiffOptions = {},
 ): Promise<number> {
+  const structuredOutput = options.format === "json";
   try {
     // Check if files exist
     try {
@@ -540,8 +542,10 @@ export async function diffCommand(
       return 1;
     }
 
-    console.log(chalk.dim(`Comparing ${oldFile} → ${newFile}`));
-    console.log();
+    if (!structuredOutput) {
+      console.log(chalk.dim(`Comparing ${oldFile} → ${newFile}`));
+      console.log();
+    }
 
     // Parse both schemas
     const oldStructure = await parseCueStructure(oldFile);
@@ -561,7 +565,7 @@ export async function diffCommand(
     };
 
     // Output results
-    if (options.format === "json") {
+    if (structuredOutput) {
       console.log(JSON.stringify(diff, null, 2));
     } else {
       console.log(formatDiffText(diff, options));
@@ -571,9 +575,13 @@ export async function diffCommand(
     if (options.migration && diff.migration_needed) {
       const migrationScript = generateMigrationScript(diff);
       const migrationPath = `${path.basename(newFile, ".cue")}-migration.md`;
-      await fs.writeFile(migrationPath, migrationScript, "utf-8");
+      await safeFileOperation("write", migrationPath, async (validatedPath) => {
+        await fs.writeFile(validatedPath, migrationScript, "utf-8");
+      });
 
-      console.log(chalk.green(`✓ Migration guide created: ${migrationPath}`));
+      if (!structuredOutput) {
+        console.log(chalk.green(`✓ Migration guide created: ${migrationPath}`));
+      }
     }
 
     return diff.migration_needed ? 1 : 0;

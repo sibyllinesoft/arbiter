@@ -1,8 +1,10 @@
+import type { PackageManagerCommandSet } from "../../utils/package-manager.js";
 import type { BuildMatrix, ProjectLanguage } from "./types.js";
 
 export function createGitHubPullRequestWorkflow(
   languages: ProjectLanguage[],
-  matrix?: BuildMatrix,
+  matrix: BuildMatrix | undefined,
+  pm: PackageManagerCommandSet,
 ): Record<string, unknown> {
   const workflow: Record<string, any> = {
     name: "PR Validation",
@@ -21,7 +23,7 @@ export function createGitHubPullRequestWorkflow(
         "runs-on": "ubuntu-latest",
         steps: [
           { name: "Checkout code", uses: "actions/checkout@v4" },
-          { name: "Setup Arbiter CLI", run: "npm install -g @arbiter/cli" },
+          { name: "Setup Arbiter CLI", run: pm.installGlobal("@arbiter/cli") },
           { name: "Validate CUE files", run: "arbiter check --format json" },
           {
             name: "Generate API surface",
@@ -35,7 +37,7 @@ export function createGitHubPullRequestWorkflow(
   for (const lang of languages) {
     switch (lang.name) {
       case "typescript":
-        workflow.jobs[`test-${lang.name}`] = createNodeJob(matrix);
+        workflow.jobs[`test-${lang.name}`] = createNodeJob(matrix, pm);
         break;
       case "python":
         workflow.jobs[`test-${lang.name}`] = createPythonJob(matrix);
@@ -55,7 +57,8 @@ export function createGitHubPullRequestWorkflow(
 
 export function createGitHubMainWorkflow(
   languages: ProjectLanguage[],
-  _matrix?: BuildMatrix,
+  _matrix: BuildMatrix | undefined,
+  pm: PackageManagerCommandSet,
 ): Record<string, unknown> {
   const workflow: Record<string, any> = {
     name: "Main Branch",
@@ -75,8 +78,8 @@ export function createGitHubMainWorkflow(
             id: "version",
             run: 'echo "version=1.0.${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT',
           },
-          { name: "Install deps", run: "npm install" },
-          { name: "Test", run: "npm test" },
+          { name: "Install deps", run: pm.install },
+          { name: "Test", run: pm.run("test") },
         ],
       },
       release: {
@@ -86,7 +89,7 @@ export function createGitHubMainWorkflow(
         steps: [
           { name: "Checkout", uses: "actions/checkout@v4" },
           { name: "Setup Node.js", uses: "actions/setup-node@v4", with: { "node-version": "20" } },
-          { name: "Publish", run: "npm publish" },
+          { name: "Publish", run: publishCommand(pm) },
         ],
       },
     },
@@ -102,7 +105,7 @@ export function createGitHubMainWorkflow(
   return workflow;
 }
 
-function createNodeJob(matrix?: BuildMatrix) {
+function createNodeJob(matrix: BuildMatrix | undefined, pm: PackageManagerCommandSet) {
   return {
     name: "Test typescript",
     "runs-on": "${{ matrix.os }}",
@@ -117,12 +120,12 @@ function createNodeJob(matrix?: BuildMatrix) {
       {
         name: "Setup Node.js",
         uses: "actions/setup-node@v4",
-        with: { "node-version": "${{ matrix.node-version }}", cache: "npm" },
+        with: { "node-version": "${{ matrix.node-version }}", cache: getNodeCacheKey(pm) },
       },
-      { name: "Install dependencies", run: "npm ci" },
-      { name: "Run type checking", run: "npm run type-check" },
-      { name: "Run linting", run: "npm run lint" },
-      { name: "Run tests", run: "npm test" },
+      { name: "Install dependencies", run: installCommand(pm) },
+      { name: "Run type checking", run: pm.run("type-check") },
+      { name: "Run linting", run: pm.run("lint") },
+      { name: "Run tests", run: pm.run("test") },
       { name: "Generate test coverage", run: "arbiter tests cover --junit coverage.xml" },
       {
         name: "Upload coverage reports",
@@ -213,6 +216,36 @@ function createGoJob(matrix?: BuildMatrix) {
       { name: "Generate test coverage", run: "arbiter tests cover --junit coverage.xml" },
     ],
   };
+}
+
+function installCommand(pm: PackageManagerCommandSet): string {
+  switch (pm.name) {
+    case "npm":
+      return "npm ci";
+    case "pnpm":
+      return "pnpm install --frozen-lockfile";
+    case "yarn":
+      return "yarn install --frozen-lockfile";
+    default:
+      return pm.install;
+  }
+}
+
+function publishCommand(pm: PackageManagerCommandSet): string {
+  return pm.name === "npm" ? "npm publish" : `${pm.name} publish`;
+}
+
+function getNodeCacheKey(pm: PackageManagerCommandSet): "npm" | "pnpm" | "yarn" | undefined {
+  switch (pm.name) {
+    case "pnpm":
+      return "pnpm";
+    case "yarn":
+      return "yarn";
+    case "npm":
+      return "npm";
+    default:
+      return undefined;
+  }
 }
 
 function createSecurityJob() {

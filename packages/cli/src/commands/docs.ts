@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
+import { safeFileOperation } from "../constraints/index.js";
 import type { CLIConfig } from "../types.js";
 
 /**
@@ -128,7 +129,9 @@ async function generateSchemaDocumentation(
   }
 
   // Write documentation file
-  await fs.writeFile(outputPath, documentationContent, "utf-8");
+  await safeFileOperation("write", outputPath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, documentationContent, "utf-8");
+  });
   console.log(chalk.green(`✅ Generated documentation: ${outputPath}`));
 
   // Generate examples if requested
@@ -178,7 +181,9 @@ async function generateApiDocumentation(options: DocsOptions, _config: CLIConfig
 
   const apiDocs = generateApiDocs(surfaceData, format);
 
-  await fs.writeFile(outputPath, apiDocs, "utf-8");
+  await safeFileOperation("write", outputPath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, apiDocs, "utf-8");
+  });
   console.log(chalk.green(`✅ Generated API documentation: ${outputPath}`));
 
   // Show next steps
@@ -834,7 +839,9 @@ Profile: profiles.#library & {
 }
 `;
 
-  await fs.writeFile(path.join(examplesDir, "library.cue"), libraryExample);
+  await safeFileOperation("write", path.join(examplesDir, "library.cue"), async (validatedPath) => {
+    await fs.writeFile(validatedPath, libraryExample);
+  });
 
   // Generate CLI example
   const cliExample = `// Example: CLI Tool Configuration
@@ -879,7 +886,9 @@ Profile: profiles.#cli & {
 }
 `;
 
-  await fs.writeFile(path.join(examplesDir, "cli.cue"), cliExample);
+  await safeFileOperation("write", path.join(examplesDir, "cli.cue"), async (validatedPath) => {
+    await fs.writeFile(validatedPath, cliExample);
+  });
 
   console.log(chalk.green(`✅ Generated example files in ${examplesDir}`));
 }

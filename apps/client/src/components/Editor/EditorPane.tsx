@@ -5,7 +5,13 @@
 import { clsx } from "clsx";
 import { CheckCircle2, Circle, Code2, FileText, Save } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
-import { useActiveFragment, useApp, useEditorContent } from "../../contexts/AppContext";
+import {
+  useActiveFragment,
+  useEditorActions,
+  useEditorContent,
+  useEditorState,
+  useStatus,
+} from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
 import { apiService } from "../../services/api";
 import SplitPane from "../Layout/SplitPane";
@@ -17,7 +23,9 @@ export interface EditorPaneProps {
 }
 
 export function EditorPane({ className }: EditorPaneProps) {
-  const { state, updateEditorContent, markUnsaved, markSaved, setError, dispatch } = useApp();
+  const editorState = useEditorState();
+  const { updateEditorContent, markUnsaved, markSaved, setFragments } = useEditorActions();
+  const { setError } = useStatus();
 
   const currentProject = useCurrentProject();
   const activeFragment = useActiveFragment();
@@ -75,7 +83,7 @@ export function EditorPane({ className }: EditorPaneProps) {
       return;
     }
 
-    const content = state.editorContent[activeFragment.id];
+    const content = editorState.editorContent[activeFragment.id];
     if (content === undefined || content === activeFragment.content) {
       return; // No changes to save
     }
@@ -88,7 +96,9 @@ export function EditorPane({ className }: EditorPaneProps) {
       );
 
       // Update fragment in state
-      dispatch({ type: "UPDATE_FRAGMENT", payload: updatedFragment });
+      setFragments(
+        editorState.fragments.map((f) => (f.id === updatedFragment.id ? updatedFragment : f)),
+      );
 
       // Mark as saved
       markSaved(activeFragment.id);
@@ -96,24 +106,32 @@ export function EditorPane({ className }: EditorPaneProps) {
       const message = error instanceof Error ? error.message : "Failed to save fragment";
       setError(message);
     }
-  }, [currentProject, activeFragment, state.editorContent, dispatch, markSaved, setError]);
+  }, [
+    currentProject,
+    activeFragment,
+    editorState.editorContent,
+    editorState.fragments,
+    setFragments,
+    markSaved,
+    setError,
+  ]);
 
   // Handle editor ready
   const handleEditorReady = useCallback(
     (editor: any) => {
       // Configure editor for auto-save on blur
       editor.onDidBlurEditorText(() => {
-        if (activeFragment && state.unsavedChanges.has(activeFragment.id)) {
+        if (activeFragment && editorState.unsavedChanges.has(activeFragment.id)) {
           // Auto-save after short delay when editor loses focus
           setTimeout(() => {
-            if (state.unsavedChanges.has(activeFragment.id)) {
+            if (editorState.unsavedChanges.has(activeFragment.id)) {
               handleSave();
             }
           }, 250);
         }
       });
     },
-    [activeFragment, state.unsavedChanges, handleSave],
+    [activeFragment, editorState.unsavedChanges, handleSave],
   );
 
   if (!currentProject) {
@@ -169,7 +187,7 @@ export function EditorPane({ className }: EditorPaneProps) {
                   <span className="font-medium text-sm text-graphite-800 dark:text-graphite-100 tracking-wide">
                     {activeFragment.path}
                   </span>
-                  {state.unsavedChanges.has(activeFragment.id) ? (
+                  {editorState.unsavedChanges.has(activeFragment.id) ? (
                     <div className="flex items-center gap-1.5 px-2 py-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full">
                       <Circle className="w-2 h-2 fill-amber-500 dark:fill-amber-400 text-amber-500 dark:text-amber-400" />
                       <span className="text-amber-700 dark:text-amber-300 text-xs font-medium">
@@ -201,11 +219,11 @@ export function EditorPane({ className }: EditorPaneProps) {
                     onClick={handleSave}
                     className={clsx(
                       "p-1.5 rounded-lg transition-all duration-200",
-                      state.unsavedChanges.has(activeFragment.id)
+                      editorState.unsavedChanges.has(activeFragment.id)
                         ? "bg-blue-100 dark:bg-blue-900/20 hover:bg-blue-200 dark:hover:bg-blue-800 text-blue-600 dark:text-blue-400"
                         : "bg-graphite-100 dark:bg-graphite-800 text-graphite-400 dark:text-graphite-500 cursor-default",
                     )}
-                    disabled={!state.unsavedChanges.has(activeFragment.id)}
+                    disabled={!editorState.unsavedChanges.has(activeFragment.id)}
                   >
                     <Save className="w-4 h-4" />
                   </button>
@@ -255,7 +273,7 @@ export function EditorPane({ className }: EditorPaneProps) {
                 <p className="text-graphite-600 dark:text-graphite-300 leading-relaxed mb-2">
                   Select a fragment from the file tree to start editing your CUE specification
                 </p>
-                {state.fragments.length === 0 && (
+                {editorState.fragments.length === 0 && (
                   <p className="text-sm text-graphite-500 dark:text-graphite-400 bg-graphite-50 dark:bg-graphite-800 px-4 py-2 rounded-lg border border-graphite-100 dark:border-graphite-700 mt-6 inline-block">
                     💡 Create your first fragment using the + button in the file tree
                   </p>

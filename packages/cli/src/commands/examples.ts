@@ -4,6 +4,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
 import type { Config } from "../config.js";
+import { safeFileOperation } from "../constraints/index.js";
+import {
+  type PackageManagerCommandSet,
+  detectPackageManager,
+  getPackageManagerCommands,
+} from "../utils/package-manager.js";
 
 /**
  * Options for examples command
@@ -25,8 +31,14 @@ interface ExampleTemplate {
   description: string;
   type: "profile" | "language";
   tags: string[];
-  files: Record<string, string>;
+  files: Record<string, ExampleTemplateFile>;
   structure: string[];
+}
+
+type ExampleTemplateFile = string | ((context: ExampleTemplateContext) => string);
+
+interface ExampleTemplateContext {
+  packageManager: PackageManagerCommandSet;
 }
 
 /**
@@ -52,6 +64,10 @@ export async function examplesCommand(
     // Create output directory
     await fs.mkdir(outputDir, { recursive: true });
     console.log(chalk.green(`✅ Created output directory: ${outputDir}`));
+
+    const packageManager = detectPackageManager();
+    const pmCommands = getPackageManagerCommands(packageManager);
+    console.log(chalk.dim(`Using ${packageManager} commands for install/run instructions`));
 
     // Get available templates
     const templates = getExampleTemplates();
@@ -86,7 +102,7 @@ export async function examplesCommand(
 
     // Generate each example
     for (const template of templatesToGenerate) {
-      await generateExampleProject(template, outputDir, options);
+      await generateExampleProject(template, outputDir, options, pmCommands);
     }
 
     // Show next steps
@@ -133,7 +149,7 @@ function getExampleTemplates(): ExampleTemplate[] {
         "src/types.ts": getTypescriptLibraryTypes(),
         "test/index.test.ts": getTypescriptLibraryTests(),
         "arbiter.assembly.cue": getLibraryAssemblyCue(),
-        "README.md": getTypescriptLibraryReadme(),
+        "README.md": (ctx) => getTypescriptLibraryReadme(ctx.packageManager),
       },
     },
 
@@ -158,7 +174,7 @@ function getExampleTemplates(): ExampleTemplate[] {
         "bin/cli.js": getCliBin(),
         "test/cli.test.ts": getCliTests(),
         "arbiter.assembly.cue": getCliAssemblyCue(),
-        "README.md": getCliReadme(),
+        "README.md": (ctx) => getCliReadme(ctx.packageManager),
       },
     },
 
@@ -249,6 +265,7 @@ async function generateExampleProject(
   template: ExampleTemplate,
   outputDir: string,
   options: ExamplesOptions,
+  packageManager: PackageManagerCommandSet,
 ): Promise<void> {
   const projectDir = path.join(outputDir, template.name);
 
@@ -265,6 +282,7 @@ async function generateExampleProject(
   }
 
   // Generate files
+  const fileContext: ExampleTemplateContext = { packageManager };
   for (const [filePath, content] of Object.entries(template.files)) {
     const fullPath = path.join(projectDir, filePath);
 
@@ -273,14 +291,16 @@ async function generateExampleProject(
     await fs.mkdir(parentDir, { recursive: true });
 
     // Customize content based on options
-    let finalContent = content;
+    let finalContent = typeof content === "function" ? content(fileContext) : (content as string);
     if (options.minimal) {
-      finalContent = minimizeContent(content);
+      finalContent = minimizeContent(finalContent);
     } else if (options.complete) {
-      finalContent = expandContent(content, template);
+      finalContent = expandContent(finalContent, template);
     }
 
-    await fs.writeFile(fullPath, finalContent, "utf-8");
+    await safeFileOperation("write", fullPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, finalContent, "utf-8");
+    });
   }
 
   console.log(chalk.green(`   ✅ Generated at: ${projectDir}`));
@@ -621,7 +641,8 @@ Profile: profiles.#library & {
 }`;
 }
 
-function getTypescriptLibraryReadme(): string {
+function getTypescriptLibraryReadme(pm: PackageManagerCommandSet): string {
+  const run = (script: string) => pm.run(script);
   return `# Example TypeScript Library
 
 A comprehensive TypeScript library example with Arbiter integration, demonstrating best practices for modern TypeScript development.
@@ -630,14 +651,14 @@ A comprehensive TypeScript library example with Arbiter integration, demonstrati
 
 - 🏗️ **Modern TypeScript**: Latest language features and strict configuration
 - 🧪 **Comprehensive Testing**: Vitest with property-based testing
-- 📦 **Smart Packaging**: Optimized for npm distribution
+- 📦 **Smart Packaging**: Optimized for ${pm.name} distribution
 - 🔍 **API Surface Tracking**: Automated semver compliance
 - 🤖 **Arbiter Integration**: Spec-first development workflow
 
 ## Installation
 
 \`\`\`bash
-npm install @my-org/example-library
+${pm.install} @my-org/example-library
 \`\`\`
 
 ## Usage
@@ -664,7 +685,7 @@ console.log(result); // "Processed: input data"
 ### Setup
 
 \`\`\`bash
-npm install
+${pm.install}
 \`\`\`
 
 ### Arbiter Workflow
@@ -690,14 +711,14 @@ arbiter tests cover --threshold 0.9
 
 \`\`\`bash
 # Build
-npm run build
+${run("build")}
 
 # Test
-npm test
-npm run test:coverage
+${run("test")}
+${run("test:coverage")}
 
 # Lint
-npm run lint
+${run("lint")}
 \`\`\`
 
 ## API Documentation
@@ -911,7 +932,7 @@ Profile: profiles.#cli & {
 }`;
 }
 
-function getCliReadme(): string {
+function getCliReadme(pm: PackageManagerCommandSet): string {
   return `# Example CLI
 
 A TypeScript CLI tool example with Arbiter integration, demonstrating command-line interface best practices.
@@ -919,7 +940,7 @@ A TypeScript CLI tool example with Arbiter integration, demonstrating command-li
 ## Installation
 
 \`\`\`bash
-npm install -g example-cli
+${pm.installGlobal("example-cli")}
 \`\`\`
 
 ## Usage
@@ -941,8 +962,8 @@ example-cli hello Charlie --count 3
 ## Development
 
 \`\`\`bash
-npm install
-npm run dev hello Alice
+${pm.install}
+${pm.run("dev")} hello Alice
 \`\`\`
 
 ## Arbiter Integration

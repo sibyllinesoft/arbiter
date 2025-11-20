@@ -3,7 +3,9 @@ import chalk from "chalk";
 import { diffLines } from "diff";
 import fs from "fs-extra";
 import { ApiClient } from "../api-client.js";
-import { createCUEManipulator, validateCUE } from "../cue/index.js";
+import { getCueManipulator } from "../constraints/cli-integration.js";
+import { safeFileOperation } from "../constraints/index.js";
+import { validateCUE } from "../cue/index.js";
 import type { CLIConfig } from "../types.js";
 
 export interface RemoveOptions {
@@ -21,7 +23,7 @@ export async function removeCommand(
   options: RemoveOptions & Record<string, any>,
   config: CLIConfig,
 ): Promise<number> {
-  const manipulator = createCUEManipulator();
+  const manipulator = getCueManipulator();
 
   try {
     console.log(chalk.blue(`🧹 Removing ${subcommand}${target ? `: ${target}` : ""}`));
@@ -221,26 +223,26 @@ export async function removeCommand(
   }
 }
 
-function persistLocalAssembly(
+async function persistLocalAssembly(
   assemblyDir: string,
   assemblyPath: string,
   previousContent: string,
   updatedContent: string,
   options: { verbose?: boolean; reason?: string },
 ): Promise<void> {
-  return fs
-    .ensureDir(assemblyDir)
-    .then(() => fs.writeFile(assemblyPath, updatedContent, "utf-8"))
-    .then(() => {
-      const relativePath = path.relative(process.cwd(), assemblyPath) || assemblyPath;
-      const suffix = options.reason ? ` (${options.reason})` : "";
-      console.log(chalk.green(`✅ Updated ${relativePath}${suffix}`));
+  await fs.ensureDir(assemblyDir);
+  await safeFileOperation("write", assemblyPath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, updatedContent, "utf-8");
+  });
 
-      if (options.verbose) {
-        console.log(chalk.dim("Changes applied:"));
-        console.log(chalk.dim(showDiff(previousContent, updatedContent)));
-      }
-    });
+  const relativePath = path.relative(process.cwd(), assemblyPath) || assemblyPath;
+  const suffix = options.reason ? ` (${options.reason})` : "";
+  console.log(chalk.green(`✅ Updated ${relativePath}${suffix}`));
+
+  if (options.verbose) {
+    console.log(chalk.dim("Changes applied:"));
+    console.log(chalk.dim(showDiff(previousContent, updatedContent)));
+  }
 }
 
 function normalizeIdentifier(value: string): string {

@@ -10,12 +10,12 @@ type ProjectStructureApiResponse = {
 
 /**
  * @packageDocumentation
- * Provides a thin, rate-limited HTTP client used by the Arbiter CLI to
- * communicate with the Spec Workbench API.
+ * Provides a thin HTTP client used by the Arbiter CLI to
+ * communicate with the Spec Workbench API while honoring payload and timeout safeguards.
  */
 /**
- * Rate-limited HTTP client for the Arbiter API that enforces the specification
- * constraints around payload size, request cadence, and request timeout.
+ * HTTP client for the Arbiter API that enforces the specification
+ * constraints around payload size and request timeout (rate limiting is left to the server).
  *
  * @public
  */
@@ -28,20 +28,23 @@ export class ApiClient {
   private authSession?: AuthSession;
   private warnedAboutExpiredToken = false;
   private readonly debugFetchLogs: boolean;
-  private readonly MAX_PAYLOAD_SIZE = 64 * 1024; // 64KB
-  private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second (1 RPS)
-  private readonly MAX_TIMEOUT = 750; // 750ms per spec
+  private readonly MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5MB
+  private readonly MIN_REQUEST_INTERVAL = 0; // client-side rate limit disabled
+  private readonly MAX_TIMEOUT = 10_000; // 10s ceiling
 
   constructor(config: CLIConfig) {
     this.baseUrl = config.apiUrl.replace(/\/$/, ""); // Remove trailing slash
-    // Ensure timeout compliance with spec (≤750ms)
+    // Cap timeout to a sane upper bound to avoid runaway requests
     this.timeout = Math.min(config.timeout, this.MAX_TIMEOUT);
     this.projectId = config.projectId || "cli-project"; // Use configured project ID or fallback
     this.authSession = config.authSession;
     const fetchDebugFlag = process.env.ARBITER_FETCH_DEBUG?.toLowerCase?.() ?? "";
     const debugNamespace = process.env.DEBUG ?? "";
     this.debugFetchLogs =
-      fetchDebugFlag === "1" || fetchDebugFlag === "true" || /arbiter:fetch/.test(debugNamespace);
+      config.verbose === true ||
+      fetchDebugFlag === "1" ||
+      fetchDebugFlag === "true" ||
+      /arbiter:fetch/.test(debugNamespace);
   }
 
   /**
@@ -107,13 +110,12 @@ export class ApiClient {
     return this.discoveredUrl || this.baseUrl;
   }
 
-  /**
-   * Ensures the client respects the one-request-per-second service constraint.
-   *
-   * @remarks
-   * The implementation waits until the minimum interval between requests has elapsed before resolving.
-   */
   private async enforceRateLimit(): Promise<void> {
+    if (this.MIN_REQUEST_INTERVAL <= 0) {
+      this.lastRequestTime = Date.now();
+      return;
+    }
+
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
 
@@ -129,13 +131,13 @@ export class ApiClient {
    * Validates that a JSON payload does not exceed the service's size limits.
    *
    * @param payload - Serialized payload that will be transmitted to the API.
-   * @throws Error if the payload exceeds the 64KB cap mandated by the service.
+   * @throws Error if the payload exceeds the 5MB safety cap.
    */
   private validatePayloadSize(payload: string): void {
     const size = new TextEncoder().encode(payload).length;
     if (size > this.MAX_PAYLOAD_SIZE) {
       throw new Error(
-        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (64KB)`,
+        `Payload size ${size} bytes exceeds maximum allowed ${this.MAX_PAYLOAD_SIZE} bytes (5MB)`,
       );
     }
   }
@@ -260,9 +262,9 @@ export class ApiClient {
   }
 
   /**
-   * Fetches shared project structure configuration from the Arbiter server.
+   * Gets shared project structure configuration from the Arbiter server.
    */
-  async fetchProjectStructureConfig(): Promise<ProjectStructureApiResponse> {
+  async getProjectStructureConfig(): Promise<ProjectStructureApiResponse> {
     try {
       await this.enforceRateLimit();
 

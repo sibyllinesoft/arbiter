@@ -6,9 +6,9 @@ Comprehensive enforcement of the "Don'ts" from TODO.md section 13, ensuring all 
 
 The constraint system implements fail-fast behavior with real-time monitoring across all Arbiter Agent operations:
 
-- **≤64 KB payloads** - Strict size limits on all data transfers
-- **≤750 ms per job** - Performance constraints for all operations  
-- **~1 rps rate limiting** - Client-side request throttling
+- **≤5 MB payloads** - Generous but bounded size limits on data transfers
+- **≤10 s per job** - Relaxed performance constraints for networked operations  
+- **Server-enforced throttling** - Client no longer introduces artificial delays
 - **Sandbox compliance** - All analyze/validate operations use server endpoints
 - **Latest schema only** - Enforce current apiVersion in all outputs
 - **No symlinks** - Standalone file copies only
@@ -58,9 +58,9 @@ const result = await constrainedOperation('validate', async () => {
 ```
 
 **Key Features:**
-- Real-time payload size validation (≤64 KB)
-- Operation duration tracking (≤750 ms)
-- Rate limiting enforcement (~1 rps)
+- Real-time payload size validation (≤5 MB)
+- Operation duration tracking (≤10 s)
+- Server-friendly throttling (no client-imposed delays)
 - Event-driven violation reporting
 
 ### 2. Sandbox Validation (`sandbox.ts`)
@@ -226,9 +226,9 @@ Overall Status: HEALTHY
 Compliance Rate: 98.5%
 
 Constraint Limits:
-  Max Payload Size: 64 KB
-  Max Operation Time: 750ms
-  Rate Limit: 1 req/1000ms
+  Max Payload Size: 5 MB
+  Max Operation Time: 10s
+  Rate Limit: disabled (server enforced)
   API Version: 2024-12-26
   Symlink Depth: 0 (symlinks forbidden)
 
@@ -262,9 +262,9 @@ try {
 
 | Constraint | Description | Exit Code |
 |------------|-------------|-----------|
-| `maxPayloadSize` | Data exceeds 64 KB limit | 2 |
-| `maxOperationTime` | Operation exceeds 750 ms | 2 |
-| `rateLimit` | Request frequency > 1 rps | 2 |
+| `maxPayloadSize` | Data exceeds 5 MB limit | 2 |
+| `maxOperationTime` | Operation exceeds 10 s | 2 |
+| `rateLimit` | Request frequency exceeds server allowance | 2 |
 | `sandboxCompliance` | Direct tool execution | 2 |
 | `apiVersion` | Wrong schema version | 2 |
 | `symlinkPrevention` | Symlink detected | 2 |
@@ -276,11 +276,11 @@ try {
 
 ```typescript
 const DEFAULT_CONSTRAINTS = {
-  maxPayloadSize: 64 * 1024, // 64 KB
-  maxOperationTime: 750, // 750 ms
+  maxPayloadSize: 5 * 1024 * 1024, // 5 MB
+  maxOperationTime: 10_000, // 10 seconds
   rateLimit: {
-    requests: 1,
-    windowMs: 1000, // ~1 rps
+    requests: Number.POSITIVE_INFINITY,
+    windowMs: 1000, // server-driven
   },
   apiVersion: '2024-12-26',
   maxSymlinkDepth: 0, // No symlinks
@@ -292,8 +292,8 @@ const DEFAULT_CONSTRAINTS = {
 ```typescript
 initializeCLIConstraints(config, {
   constraints: {
-    maxPayloadSize: 32 * 1024, // Stricter limit
-    maxOperationTime: 500, // Stricter timing
+    maxPayloadSize: 1 * 1024 * 1024, // Stricter limit
+    maxOperationTime: 5_000, // Stricter timing
   },
   monitoring: {
     enableMetrics: true,
@@ -314,7 +314,7 @@ import { ConstraintViolationError } from './constraints/index.js';
 
 describe('Constraint Enforcement', () => {
   it('should reject oversized payloads', async () => {
-    const largeData = 'x'.repeat(65 * 1024); // > 64 KB
+    const largeData = 'x'.repeat(6 * 1024 * 1024); // > 5 MB
     
     await expect(constrainedOperation('test', async () => {
       validatePayloadSize(largeData);
@@ -323,7 +323,7 @@ describe('Constraint Enforcement', () => {
 
   it('should enforce operation time limits', async () => {
     await expect(constrainedOperation('slow', async () => {
-      await new Promise(resolve => setTimeout(resolve, 800)); // > 750ms
+      await new Promise(resolve => setTimeout(resolve, 11_000)); // > 10s
     })).rejects.toThrow(ConstraintViolationError);
   });
 });
@@ -360,7 +360,7 @@ describe('Command Integration', () => {
 
 - **Lazy validation**: Only active during operations
 - **Caching**: Idempotency cache reduces repeated work  
-- **Parallel processing**: Respects rate limits efficiently
+- **Parallel processing**: Avoids unnecessary client-side throttling
 - **Memory efficiency**: Streaming for large operations
 - **Background cleanup**: Automatic old data removal
 
@@ -370,7 +370,7 @@ describe('Command Integration', () => {
 
 1. **High violation rates**
    - Check payload sizes and operation complexity
-   - Review rate limiting configuration
+   - Review server-side throttling responses
    - Optimize slow operations
 
 2. **Sandbox violations**

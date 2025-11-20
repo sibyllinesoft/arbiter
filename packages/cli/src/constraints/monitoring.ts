@@ -53,7 +53,7 @@ export const DEFAULT_MONITORING_CONFIG: MonitoringConfig = {
   metricsRetentionDays: 7,
   alertThresholds: {
     maxViolationsPerHour: 10,
-    maxAverageResponseTime: 500, // 500ms
+    maxAverageResponseTime: 5_000, // 5s
     minSuccessRate: 95, // 95%
   },
 };
@@ -257,10 +257,12 @@ export class ConstraintMonitor extends EventEmitter {
             : metrics.successRate >= 80
               ? chalk.yellow
               : chalk.red;
+        const warningThreshold = this.config.alertThresholds.maxAverageResponseTime;
+        const dangerThreshold = warningThreshold * 1.5;
         const avgColor =
-          metrics.averageDuration <= 500
+          metrics.averageDuration <= warningThreshold
             ? chalk.green
-            : metrics.averageDuration <= 750
+            : metrics.averageDuration <= dangerThreshold
               ? chalk.yellow
               : chalk.red;
 

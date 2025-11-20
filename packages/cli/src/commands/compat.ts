@@ -16,6 +16,7 @@ import {
   validateVersionSet,
 } from "@arbiter/shared";
 import { z } from "zod";
+import { LATEST_API_VERSION, VERSION_COMPATIBILITY } from "../constraints/schema.js";
 
 // =============================================================================
 // COMMAND SCHEMAS
@@ -85,6 +86,7 @@ export async function runCompatCheck(options: CompatCheckOptions): Promise<void>
 
     // Perform compatibility check
     const result = await checkCompatibility(versionsToCheck, options.allowCompat);
+    augmentWithApiVersionCheck(versionsToCheck, result, options.allowCompat);
 
     // Output results
     await outputCompatibilityResult(result, options);
@@ -102,13 +104,91 @@ export async function runCompatCheck(options: CompatCheckOptions): Promise<void>
   }
 }
 
+function normalizeVersionPayload(payload: Partial<VersionSet>): Partial<VersionSet> {
+  if (payload.api_version) return payload;
+  return { ...payload, api_version: LATEST_API_VERSION };
+}
+
+function augmentWithApiVersionCheck(
+  versions: Partial<VersionSet>,
+  result: CompatibilityResult,
+  allowCompat: boolean,
+): void {
+  const apiVersion = versions.api_version;
+  if (!apiVersion) return;
+  const status = evaluateApiVersion(apiVersion);
+  if (!status) return;
+
+  result.issues.push({
+    component: "api_version",
+    currentVersion: apiVersion,
+    requiredVersion: status.expected,
+    severity: status.severity,
+    message: status.message,
+  });
+
+  result.version_mismatches = result.version_mismatches ?? [];
+  result.version_mismatches.push({
+    component: "api_version",
+    expected: status.expected,
+    actual: apiVersion,
+    severity: status.severity,
+  });
+
+  if (status.severity === "error" || (!allowCompat && status.severity === "warning")) {
+    result.compatible = false;
+  }
+}
+
+export function evaluateApiVersion(version: string):
+  | {
+      severity: "warning" | "error";
+      expected: string;
+      message: string;
+    }
+  | undefined {
+  if (version === LATEST_API_VERSION) {
+    return undefined;
+  }
+
+  if (VERSION_COMPATIBILITY.supported.includes(version)) {
+    return {
+      severity: "warning",
+      expected: LATEST_API_VERSION,
+      message: `API version ${version} is supported but not current. Update to ${LATEST_API_VERSION}.`,
+    };
+  }
+
+  if (VERSION_COMPATIBILITY.deprecated.includes(version)) {
+    return {
+      severity: "warning",
+      expected: LATEST_API_VERSION,
+      message: `API version ${version} is deprecated. Update to ${LATEST_API_VERSION} to stay supported.`,
+    };
+  }
+
+  if (VERSION_COMPATIBILITY.unsupported.includes(version)) {
+    return {
+      severity: "error",
+      expected: LATEST_API_VERSION,
+      message: `API version ${version} is unsupported. Required version is ${LATEST_API_VERSION}.`,
+    };
+  }
+
+  return {
+    severity: "error",
+    expected: LATEST_API_VERSION,
+    message: `Unknown API version ${version}. Required version is ${LATEST_API_VERSION}.`,
+  };
+}
+
 /**
  * Load versions to check from input source
  */
-async function loadVersionsToCheck(input?: string): Promise<Partial<VersionSet>> {
+export async function loadVersionsToCheck(input?: string): Promise<Partial<VersionSet>> {
   if (!input) {
     // Use current versions as baseline
-    return CURRENT_VERSIONS;
+    return { ...CURRENT_VERSIONS, api_version: LATEST_API_VERSION };
   }
 
   try {
@@ -120,10 +200,10 @@ async function loadVersionsToCheck(input?: string): Promise<Partial<VersionSet>>
     // Validate structure
     if (data.versions) {
       validateVersionSet(data.versions);
-      return data.versions;
+      return normalizeVersionPayload(data.versions);
     }
     validateVersionSet(data);
-    return data;
+    return normalizeVersionPayload(data);
   } catch (_error) {
     // Try to parse as direct JSON
     try {
@@ -219,6 +299,7 @@ async function showMigrationPaths(
   console.log("🚀 Available Migration Paths:\n");
 
   for (const [component, sourceVersion] of Object.entries(versionsToCheck)) {
+    if (component === "api_version") continue;
     const key = component as keyof VersionSet;
     const componentName = String(key);
     const targetVersion = CURRENT_VERSIONS[key];

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import type { SurfaceOutput } from "../utils/standardized-output.js";
+import type { SurfaceOutput } from "../types/output.js";
 import type { APISurface } from "./types.js";
 
 export async function calculateSurfaceDelta(

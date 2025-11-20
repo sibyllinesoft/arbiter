@@ -4,8 +4,9 @@
  * Generates comprehensive documentation from parsed CUE schemas in multiple formats.
  */
 
-import { mkdirSync, writeFileSync } from "fs";
 import path from "path";
+import fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 import { ParsedField, ParsedSchema, ParsedType } from "./schema-parser.js";
 
 export interface GeneratorOptions {
@@ -47,7 +48,7 @@ export class DocumentationGenerator {
    */
   async generate(schema: ParsedSchema): Promise<void> {
     // Ensure output directory exists
-    mkdirSync(this.options.outputDir, { recursive: true });
+    await fs.ensureDir(this.options.outputDir);
 
     for (const format of this.options.formats) {
       switch (format) {
@@ -86,7 +87,13 @@ export class DocumentationGenerator {
       content += this.generateMarkdownRelationships(schema);
     }
 
-    writeFileSync(path.join(this.options.outputDir, "schema.md"), content);
+    await safeFileOperation(
+      "write",
+      path.join(this.options.outputDir, "schema.md"),
+      async (validatedPath) => {
+        await fs.writeFile(validatedPath, content, "utf8");
+      },
+    );
   }
 
   private async generateHTML(schema: ParsedSchema): Promise<void> {
@@ -117,14 +124,23 @@ export class DocumentationGenerator {
     content += "</main>";
     content += this.templates.htmlFooter();
 
-    writeFileSync(path.join(this.options.outputDir, "schema.html"), content);
+    await safeFileOperation(
+      "write",
+      path.join(this.options.outputDir, "schema.html"),
+      async (validatedPath) => {
+        await fs.writeFile(validatedPath, content, "utf8");
+      },
+    );
   }
 
   private async generateJSON(schema: ParsedSchema): Promise<void> {
     const jsonSchema = this.convertToJSONSchema(schema);
-    writeFileSync(
+    await safeFileOperation(
+      "write",
       path.join(this.options.outputDir, "schema.json"),
-      JSON.stringify(jsonSchema, null, 2),
+      async (validatedPath) => {
+        await fs.writeFile(validatedPath, JSON.stringify(jsonSchema, null, 2), "utf8");
+      },
     );
   }
 

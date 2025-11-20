@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "fs-extra";
+import { safeFileOperation } from "./constraints/index.js";
 import { CLIBenchmark, PERFORMANCE_TARGETS } from "./utils/performance.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,15 +26,21 @@ async function generateTestFiles(): Promise<void> {
 
   // 1KB file
   const small = generateCueContent(1024);
-  await fs.writeFile(path.join(TEST_DATA_DIR, "1kb.cue"), small);
+  await safeFileOperation("write", path.join(TEST_DATA_DIR, "1kb.cue"), async (validatedPath) => {
+    await fs.writeFile(validatedPath, small);
+  });
 
   // 10KB file (our target size)
   const medium = generateCueContent(10 * 1024);
-  await fs.writeFile(path.join(TEST_DATA_DIR, "10kb.cue"), medium);
+  await safeFileOperation("write", path.join(TEST_DATA_DIR, "10kb.cue"), async (validatedPath) => {
+    await fs.writeFile(validatedPath, medium);
+  });
 
   // 100KB file
   const large = generateCueContent(100 * 1024);
-  await fs.writeFile(path.join(TEST_DATA_DIR, "100kb.cue"), large);
+  await safeFileOperation("write", path.join(TEST_DATA_DIR, "100kb.cue"), async (validatedPath) => {
+    await fs.writeFile(validatedPath, large);
+  });
 
   console.log("Generated test files:");
   console.log(`  1KB:  ${path.join(TEST_DATA_DIR, "1kb.cue")}`);

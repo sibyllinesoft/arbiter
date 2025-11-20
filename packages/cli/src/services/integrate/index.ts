@@ -2,14 +2,16 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
 import * as YAML from "yaml";
+import { safeFileOperation } from "../../constraints/index.js";
 import type { CLIConfig, GitHubTemplatesConfig, IntegrateOptions } from "../../types.js";
-import { ConfigurableTemplateManager } from "../../utils/github-template-config.js";
+import { detectPackageManager, getPackageManagerCommands } from "../../utils/package-manager.js";
+import { UnifiedGitHubTemplateManager } from "../../utils/unified-github-template-manager.js";
 import { readAssemblyConfig } from "./assembly.js";
 import { detectProjectLanguages } from "./language-detector.js";
 import { createGitHubMainWorkflow, createGitHubPullRequestWorkflow } from "./workflow-builder.js";
 
 type FsModule = typeof fs;
-type TemplateManagerFactory = (config?: GitHubTemplatesConfig) => ConfigurableTemplateManager;
+type TemplateManagerFactory = (config?: GitHubTemplatesConfig) => UnifiedGitHubTemplateManager;
 
 interface IntegrateDependencies {
   detectLanguages: typeof detectProjectLanguages;
@@ -33,7 +35,7 @@ const defaultDeps: IntegrateDependencies = {
       lineWidth: 0,
     }),
   templateManagerFactory: (config?: GitHubTemplatesConfig) =>
-    new ConfigurableTemplateManager(config),
+    new UnifiedGitHubTemplateManager(config || {}, process.cwd()),
 };
 
 type WriteStatus = "written" | "skipped" | "dry-run";
@@ -90,8 +92,15 @@ export class IntegrateService {
     const type = options.type ?? "all";
     const summary = { written: 0, skipped: 0, dryRun: 0 };
 
+    const packageManager = detectPackageManager(undefined, projectPath);
+    const pmCommands = getPackageManagerCommands(packageManager);
+
     if (type === "all" || type === "pr") {
-      const prWorkflow = this.deps.createPullRequestWorkflow(languages, assembly?.buildMatrix);
+      const prWorkflow = this.deps.createPullRequestWorkflow(
+        languages,
+        assembly?.buildMatrix,
+        pmCommands,
+      );
       const prPath = path.join(workflowDir, "pr.yml");
       const status = await this.writeYaml(prPath, prWorkflow, { force, dryRun });
       this.logWriteResult(projectPath, prPath, status);
@@ -99,7 +108,11 @@ export class IntegrateService {
     }
 
     if (type === "all" || type === "main" || type === "release") {
-      const mainWorkflow = this.deps.createMainWorkflow(languages, assembly?.buildMatrix);
+      const mainWorkflow = this.deps.createMainWorkflow(
+        languages,
+        assembly?.buildMatrix,
+        pmCommands,
+      );
       const mainPath = path.join(workflowDir, "main.yml");
       const status = await this.writeYaml(mainPath, mainWorkflow, { force, dryRun });
       this.logWriteResult(projectPath, mainPath, status);
@@ -109,7 +122,7 @@ export class IntegrateService {
     if (options.templates && provider === "github") {
       console.log(chalk.blue("\n🎯 Generating GitHub issue templates..."));
       const templateManager = this.deps.templateManagerFactory(this.config.github?.templates);
-      const templates = templateManager.generateRepositoryTemplates();
+      const templates = await templateManager.generateRepositoryTemplateFiles();
       for (const [relativePath, content] of Object.entries(templates)) {
         const targetPath = path.join(projectPath, relativePath);
         const status = await this.writeText(targetPath, content, { force, dryRun });
@@ -169,7 +182,9 @@ export class IntegrateService {
     }
 
     await this.deps.fs.mkdir(path.dirname(filePath), { recursive: true });
-    await this.deps.fs.writeFile(filePath, contents, "utf-8");
+    await safeFileOperation("write", filePath, async (validatedPath) => {
+      await this.deps.fs.writeFile(validatedPath, contents, "utf-8");
+    });
     return "written";
   }
 

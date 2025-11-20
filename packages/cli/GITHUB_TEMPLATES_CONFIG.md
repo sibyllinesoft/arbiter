@@ -149,6 +149,10 @@ Task templates are used for individual work items:
 
 Templates are composed of sections that define the structure and content:
 
+### Template Assets & Overrides
+
+GitHub issue and PR templates now reuse the same asset discovery flow as the CLI's file-system templates. Drop Markdown/Handlebars files under `.arbiter/templates/github/` (or any path listed in `github.templates.discoveryPaths`) and the template orchestrator will resolve them automatically before falling back to the built-in config. This keeps overrides predictable without requiring the heavier file-writer stack used by code-generation templates.
+
 ### Core Sections
 
 - **description**: Main description section with dynamic content

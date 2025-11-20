@@ -2,7 +2,7 @@ import path from "node:path";
 import chalk from "chalk";
 import fs from "fs-extra";
 import { ApiClient } from "../api-client.js";
-import { createCUEManipulator } from "../cue/index.js";
+import { getCueManipulator } from "../constraints/cli-integration.js";
 import type { CLIConfig } from "../types.js";
 import { formatComponentTable, formatJson, formatYaml } from "../utils/formatting.js";
 import { withProgress } from "../utils/progress.js";
@@ -160,7 +160,7 @@ async function loadLocalAssemblySpec(config: CLIConfig): Promise<any | null> {
   }
 
   const content = await fs.readFile(assemblyPath, "utf-8");
-  const manipulator = createCUEManipulator();
+  const manipulator = getCueManipulator();
 
   try {
     return await manipulator.parse(content);

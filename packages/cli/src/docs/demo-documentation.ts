@@ -8,9 +8,10 @@
  * and generates a preview of the documentation.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -320,7 +321,7 @@ async function runDemo() {
     const outputDir = path.join(__dirname, "demo-output");
 
     // Create output directory
-    mkdirSync(outputDir, { recursive: true });
+    await fs.ensureDir(outputDir);
 
     console.log(`📁 Project root: ${projectRoot}`);
     console.log(`📁 Schema dir: ${schemaDir}`);
@@ -341,7 +342,7 @@ async function runDemo() {
 
       try {
         console.log(`📄 Parsing ${fileName}...`);
-        const content = readFileSync(filePath, "utf-8");
+        const content = await fs.readFile(filePath, "utf-8");
 
         // Extract package name from first file
         if (fileName === "core_types.cue") {
@@ -384,8 +385,12 @@ async function runDemo() {
     const markdownPath = path.join(outputDir, "demo-schema.md");
     const htmlPath = path.join(outputDir, "demo-schema.html");
 
-    writeFileSync(markdownPath, markdownContent);
-    writeFileSync(htmlPath, htmlContent);
+    await safeFileOperation("write", markdownPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, markdownContent, "utf8");
+    });
+    await safeFileOperation("write", htmlPath, async (validatedPath) => {
+      await fs.writeFile(validatedPath, htmlContent, "utf8");
+    });
 
     console.log("✅ Demo documentation generated successfully!\n");
     console.log("📄 Generated files:");

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import chalk from "chalk";
+import { safeFileOperation } from "../constraints/index.js";
 
 export interface ImportOptions {
   global?: boolean;
@@ -83,7 +84,9 @@ async function saveImportRegistry(registry: ImportRegistry, global = false): Pro
   registry.last_updated = new Date().toISOString();
 
   // Save registry
-  await fs.writeFile(registryPath, JSON.stringify(registry, null, 2), "utf-8");
+  await safeFileOperation("write", registryPath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, JSON.stringify(registry, null, 2), "utf-8");
+  });
 }
 
 /**

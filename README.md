@@ -49,6 +49,34 @@ sources for IDE discovery.
    ./arbiter-cli --help
    ```
 
+## Prerequisites
+
+The CLI, importer, and API all shell out to the official [CUE](https://cuelang.org/)
+binary for formatting, validation, and AST exports. Make sure a recent `cue`
+executable (v0.9.x or newer) is available on your `PATH` **before** running
+`arbiter` commands. Without it, operations such as `arbiter add`, `arbiter
+generate`, and `arbiter check` will fail fast with "cue binary not found".
+
+Recommended installation options:
+
+- **macOS** – `brew install cue-lang/tap/cue`
+- **Linux** – download the latest release tarball from
+  `https://github.com/cue-lang/cue/releases`, or install via Go:
+  `go install cuelang.org/go/cmd/cue@latest`
+- **Windows** – `winget install cue-lang.cue` or `choco install cue`
+
+Verify the toolchain with:
+
+```bash
+cue version
+# cue version 0.9.x (or newer)
+```
+
+If you maintain a custom install location, ensure `cue` is discoverable on the
+`PATH` used by the CLI or export a wrapper script that forwards to your desired
+binary. The API server exposes a `cue_binary_path` setting for the same
+purpose.
+
 ## Documentation
 
 - Hand-authored markdown lives under `docs/content/` and feeds the MkDocs site
@@ -93,13 +121,15 @@ Environment overrides:
 
 The CLI resolves the API URL in the following order: `ARBITER_URL` env var,
 `--arbiter-url/--api-url` flag, `arbiter_url` (or `apiUrl`) in
-`.arbiter/config.*`.
+`.arbiter/config.json`.
 
-Example YAML config:
+Example JSON config:
 
-```yaml
-arbiter_url: http://localhost:5050
-timeout: 750
+```json
+{
+  "arbiter_url": "http://localhost:5050",
+  "timeout": 750
+}
 ```
 
 ### 3. Authenticate the CLI

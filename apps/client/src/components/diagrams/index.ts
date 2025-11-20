@@ -12,6 +12,7 @@ export { default as SourceDiagram } from "./SourceDiagram";
 export { MermaidRenderer } from "./MermaidRenderer";
 export { NetworkDiagram } from "./NetworkDiagram";
 export { default as TasksDiagram } from "./TasksDiagram";
+export type { TasksDiagramHandle } from "./TasksDiagram";
 
 // Split View Components
 export { SplitViewShowcase } from "./SplitViewShowcase";

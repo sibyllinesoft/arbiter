@@ -17,6 +17,10 @@ import {
 } from "../utils/formatting.js";
 import { withProgress } from "../utils/progress.js";
 
+const MAX_OPERATION_TIME_MS = 10_000;
+const MAX_PAYLOAD_BYTES = 5 * 1024 * 1024;
+const REQUEST_DELAY_MS = 0;
+
 /**
  * Enhanced check command with comprehensive constraint enforcement
  * Implements all "Don'ts" from TODO.md section 13
@@ -26,6 +30,7 @@ export async function checkCommandConstrained(
   options: CheckOptions,
   config: CLIConfig,
 ): Promise<number> {
+  const structuredOutput = options.format === "json";
   const constraintSystem = getGlobalConstraintSystem();
 
   try {
@@ -49,17 +54,23 @@ export async function checkCommandConstrained(
         });
 
         if (files.length === 0) {
-          console.log(chalk.yellow("No CUE files found"));
+          if (structuredOutput) {
+            console.log(formatJson([], config.color));
+          } else {
+            console.log(chalk.yellow("No CUE files found"));
+          }
           return 0;
         }
 
-        console.log(chalk.dim(`Found ${files.length} CUE files`));
+        if (!structuredOutput) {
+          console.log(chalk.dim(`Found ${files.length} CUE files`));
+        }
 
         // Validate files with full constraint enforcement
-        const results = await validateFilesConstrained(files, config, options);
+        const results = await validateFilesConstrained(files, config, options, structuredOutput);
 
         // Format and display results
-        if (options.format === "json") {
+        if (structuredOutput) {
           const output = formatJson(results, config.color);
           // Validate JSON output payload size
           constraintSystem.validateApiResponse(output);
@@ -69,7 +80,7 @@ export async function checkCommandConstrained(
         }
 
         // Generate constraint compliance report if verbose
-        if (options.verbose) {
+        if (options.verbose && !structuredOutput) {
           console.log(`\n${constraintSystem.generateComplianceReport()}`);
         }
 
@@ -139,6 +150,7 @@ async function validateFilesConstrained(
   files: string[],
   config: CLIConfig,
   options: CheckOptions,
+  suppressInteractiveOutput = false,
 ): Promise<ValidationResult[]> {
   const constraintSystem = getGlobalConstraintSystem();
   const useLocalOnly = config.localMode === true;
@@ -155,8 +167,8 @@ async function validateFilesConstrained(
   let _processedCount = 0;
   const progressText = `Validating ${files.length} files${useLocalOnly ? " locally" : ""}...`;
 
-  return withProgress({ text: progressText, color: "blue" }, async () => {
-    // Process files with constrained concurrency (respects rate limiting)
+  const runner = async (): Promise<ValidationResult[]> => {
+    // Process files with constrained concurrency for deterministic output
     const concurrency = 1; // Keep sequential processing for deterministic output
     const chunks = chunkArray(files, concurrency);
 
@@ -172,7 +184,7 @@ async function validateFilesConstrained(
           chunkResults.push(result);
           _processedCount++;
 
-          if (options.verbose) {
+          if (options.verbose && !suppressInteractiveOutput) {
             const status =
               result.status === "valid"
                 ? chalk.green("✓")
@@ -184,7 +196,9 @@ async function validateFilesConstrained(
 
           if (!useLocalOnly) {
             // Enforce rate limiting between requests
-            await new Promise((resolve) => setTimeout(resolve, 1100));
+            if (REQUEST_DELAY_MS > 0) {
+              await new Promise((resolve) => setTimeout(resolve, REQUEST_DELAY_MS));
+            }
           }
         } catch (error) {
           if (error instanceof ConstraintViolationError) {
@@ -224,7 +238,13 @@ async function validateFilesConstrained(
     }
 
     return results;
-  });
+  };
+
+  if (suppressInteractiveOutput) {
+    return await runner();
+  }
+
+  return await withProgress({ text: progressText, color: "blue" }, runner);
 }
 
 /**
@@ -262,9 +282,8 @@ async function validateFileConstrained(
       };
     }
 
-    // Enforce payload size limit (64 KB)
-    const maxSize = 64 * 1024; // 64 KB constraint
-    if (stats.size > maxSize) {
+    // Enforce payload size limit
+    if (stats.size > MAX_PAYLOAD_BYTES) {
       return {
         file: path.basename(filePath),
         status: "error",
@@ -272,7 +291,7 @@ async function validateFileConstrained(
           {
             line: 0,
             column: 0,
-            message: `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(maxSize)}`,
+            message: `File too large (${formatFileSize(stats.size)}), maximum allowed: ${formatFileSize(MAX_PAYLOAD_BYTES)}`,
             severity: "error" as const,
             category: "constraint",
           },
@@ -339,11 +358,11 @@ async function validateFileConstrained(
     const status = data.success ? "valid" : "invalid";
     const processingTime = Date.now() - startTime;
 
-    // Enforce operation time constraint (≤750 ms)
-    if (processingTime > 750) {
+    // Enforce operation time constraint
+    if (processingTime > MAX_OPERATION_TIME_MS) {
       console.warn(
         chalk.yellow(
-          `Warning: ${path.basename(filePath)} took ${processingTime}ms (>750ms constraint)`,
+          `Warning: ${path.basename(filePath)} took ${processingTime}ms (>${MAX_OPERATION_TIME_MS}ms budget)`,
         ),
       );
     }
@@ -517,8 +536,10 @@ function displayResultsConstrained(
     ),
   );
 
-  if (maxTime > 750) {
-    console.log(chalk.yellow("Warning: Some operations exceeded 750ms constraint"));
+  if (maxTime > MAX_OPERATION_TIME_MS) {
+    console.log(
+      chalk.yellow(`Warning: Some operations exceeded ${MAX_OPERATION_TIME_MS}ms constraint`),
+    );
   }
 }
 

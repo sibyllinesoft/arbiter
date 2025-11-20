@@ -194,7 +194,7 @@ export async function generateComponent(
     throw new Error(`No plugin found for language: ${language}`);
   }
 
-  if (!plugin.generateComponent) {
+  if (!plugin.capabilities?.components || !plugin.generateComponent) {
     throw new Error(`Component generation not supported for language: ${language}`);
   }
 

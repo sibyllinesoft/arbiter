@@ -307,7 +307,7 @@ export async function exampleCommand(
 #### 2. **Configuration Management**
 
 - **File**: `src/config.ts`
-- **Format**: JSON (`.arbiter.json`)
+- **Format**: JSON (`.arbiter/config.json`)
 - **Pattern**: Global config with command-line overrides
 - **Schema**: Zod validation for type safety
 

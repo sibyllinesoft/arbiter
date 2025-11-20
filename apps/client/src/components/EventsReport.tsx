@@ -1,3 +1,4 @@
+import { useTabBadgeUpdater } from "@/contexts/TabBadgeContext";
 import { useProjectEvents } from "@/hooks/api-hooks";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { apiService } from "@/services/api";
@@ -1280,6 +1281,27 @@ export function EventsReport({ projectId }: EventsReportProps) {
   }, [eventLog]);
 
   const lookupEvent = useCallback((eventId: string) => eventById.get(eventId), [eventById]);
+  const tabBadgeUpdater = useTabBadgeUpdater();
+  const eventCount = isLoading || isError ? null : eventLog.length;
+
+  useEffect(() => {
+    if (!projectId) {
+      tabBadgeUpdater("events", null);
+      return () => {
+        tabBadgeUpdater("events", null);
+      };
+    }
+    if (eventCount == null) {
+      tabBadgeUpdater("events", null);
+      return () => {
+        tabBadgeUpdater("events", null);
+      };
+    }
+    tabBadgeUpdater("events", eventCount);
+    return () => {
+      tabBadgeUpdater("events", null);
+    };
+  }, [eventCount, projectId, tabBadgeUpdater]);
 
   useEffect(() => {
     if (!Array.isArray(data?.events)) return;

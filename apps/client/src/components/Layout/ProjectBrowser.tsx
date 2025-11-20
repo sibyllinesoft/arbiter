@@ -28,19 +28,7 @@ import {
 } from "lucide-react";
 import React, { useState, useCallback } from "react";
 import { Button, Card, Input, StatusBadge, cn } from "../../design-system";
-
-export interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  status: "active" | "draft" | "archived" | "error";
-  lastModified: string;
-  fragmentCount: number;
-  collaborators: string[];
-  starred: boolean;
-  validationStatus: "valid" | "warnings" | "errors" | "pending";
-  tags: string[];
-}
+import type { Project } from "../../types/api";
 
 export interface ProjectBrowserProps {
   className?: string;

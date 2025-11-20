@@ -1,12 +1,10 @@
 # GitHub Synchronization
 
-The Arbiter CLI now supports synchronizing epics and tasks to GitHub issues and
-milestones. This feature enables you to keep your project management in sync
-between Arbiter and GitHub.
+The Arbiter CLI can synchronize epics and tasks to GitHub issues (and optional milestones). This page reflects the simplified config shape—`prefixes`, `labels`, and `automation`—used by `GitHubSyncConfig`.
 
 ## Configuration
 
-Add GitHub sync configuration to your `.arbiter/config.json`:
+Add a `github` block to `.arbiter/config.json`:
 
 ```json
 {
@@ -14,23 +12,24 @@ Add GitHub sync configuration to your `.arbiter/config.json`:
     "repository": {
       "owner": "your-org",
       "repo": "your-repo",
-      "token": "your-github-token",
       "tokenEnv": "GITHUB_TOKEN"
     },
-    "mapping": {
-      "epicPrefix": "[Epic]",
-      "taskPrefix": "[Task]",
-      "defaultLabels": ["arbiter-generated"],
-      "epicLabels": {
-        "high": ["priority-high"],
-        "critical": ["priority-critical"]
+    "prefixes": {
+      "epic": "[Epic]",
+      "task": "[Task]"
+    },
+    "labels": {
+      "default": ["arbiter-generated"],
+      "epics": {
+        "critical": ["priority:critical"],
+        "high": ["priority:high"]
       },
-      "taskLabels": {
-        "feature": ["type-feature"],
-        "bug": ["type-bug"]
+      "tasks": {
+        "bug": ["type:bug"],
+        "feature": ["type:feature"]
       }
     },
-    "behavior": {
+    "automation": {
       "createMilestones": true,
       "autoClose": true,
       "syncAcceptanceCriteria": true,
@@ -40,173 +39,62 @@ Add GitHub sync configuration to your `.arbiter/config.json`:
 }
 ```
 
+## Configuration Options
+
+### Repository
+- `owner` / `repo`: GitHub repository coordinates.
+- `tokenEnv`: Environment variable name for the token (defaults to `GITHUB_TOKEN`).
+- `baseUrl`: Custom GitHub API URL (GitHub Enterprise).
+
+### Prefixes
+- `epic`: Title prefix for epic issues (e.g., `[Epic]`).
+- `task`: Title prefix for task issues (e.g., `[Task]`).
+
+### Labels
+- `default`: Labels applied to every synced issue.
+- `epics`: Priority → labels map (`"critical": ["priority:critical"]`).
+- `tasks`: Type → labels map (`"bug": ["type:bug"]`).
+
+### Automation
+- `createMilestones`: Create/maintain milestones from epics.
+- `autoClose`: Close GitHub issues when epics/tasks complete.
+- `syncAcceptanceCriteria`: Include acceptance criteria in task bodies.
+- `syncAssignees`: Mirror assignees to GitHub.
+
 ## Usage
 
 ### Sync After Generation
-
-Sync epics and tasks to GitHub after generating project files:
-
 ```bash
 arbiter generate --sync-github
 ```
 
 ### Preview Sync Changes
-
-See what would be synced without making changes:
-
 ```bash
 arbiter generate --github-dry-run
 ```
 
 ### Combined with Dry Run
-
-Preview both file generation and GitHub sync:
-
 ```bash
 arbiter generate --dry-run --sync-github
 ```
 
-## Configuration Options
-
-### Repository
-
-- `owner`: GitHub repository owner/organization
-- `repo`: GitHub repository name
-- `token`: GitHub personal access token (can also use `GITHUB_TOKEN` environment
-  variable)
-- `tokenEnv`: Environment variable name for GitHub token (defaults to
-  `GITHUB_TOKEN`). Allows customization for different deployment environments.
-- `baseUrl`: Custom GitHub API URL (defaults to github.com)
-
-### Mapping
-
-- `epicPrefix`: Prefix for epic issues (default: "[Epic]")
-- `taskPrefix`: Prefix for task issues (default: "[Task]")
-- `defaultLabels`: Labels applied to all synced issues
-- `epicLabels`: Mapping of epic priorities to GitHub labels
-- `taskLabels`: Mapping of task types to GitHub labels
-
-### Behavior
-
-- `createMilestones`: Create GitHub milestones for epics (default: false)
-- `autoClose`: Automatically close issues when epics/tasks are completed
-  (default: false)
-- `syncAcceptanceCriteria`: Include acceptance criteria in task descriptions
-  (default: false)
-- `syncAssignees`: Sync assignees between systems (default: false)
-
 ## Authentication
 
-The GitHub sync feature requires a GitHub personal access token with the
-following permissions:
-
-- `repo` scope (for private repositories)
-- `public_repo` scope (for public repositories)
-- `issues:write` permission
-
-You can provide the token in three ways:
-
-1. In the configuration file: `"token": "your-github-token"`
-2. As an environment variable: `GITHUB_TOKEN=your-github-token`
-3. As a custom environment variable: Set `"tokenEnv": "CUSTOM_TOKEN_NAME"` in
-   config and use `CUSTOM_TOKEN_NAME=your-github-token`
-
-The tokenEnv option is useful for different deployment environments where you
-might need to use different environment variable names.
+Use a personal access token with `repo` scope (or `public_repo` for public repos). Provide it via:
+1. Environment variable (recommended): `GITHUB_TOKEN=...`
+2. Custom env var: set `tokenEnv` and export that variable
 
 ## Idempotent Operations
+- Issues are keyed by an embedded `arbiter-id` comment to avoid duplicates.
+- Updates only occur when content changes.
+- Re-running sync produces the same result.
 
-The GitHub sync is designed to be idempotent:
-
-- Existing issues are updated only when content changes
-- Issues are tracked by Arbiter ID embedded in the issue body
-- Running sync multiple times produces the same result
-- No duplicate issues are created
-
-## Issue Mapping
-
-### Epics → GitHub Issues
-
-- **Title**: `[Epic] Epic Name`
-- **Body**: Epic description with metadata (status, priority, owner, etc.)
-- **Labels**: Based on priority and custom epic label mappings
-- **Milestone**: Created if `createMilestones` is enabled
-- **Assignee**: Synced if `syncAssignees` is enabled
-
-### Tasks → GitHub Issues
-
-- **Title**: `[Task] Task Name`
-- **Body**: Task description with epic context and acceptance criteria
-- **Epic Mapping**: `epicId` links each task back to its parent epic for
-  GitHub/GitLab sync
-- **Labels**: Based on type and custom task label mappings
-- **Milestone**: Linked to epic milestone if available
-- **Assignee**: Synced if `syncAssignees` is enabled
-
-### Epics → GitHub Milestones
-
-When `createMilestones` is enabled:
-
-- **Title**: `Epic: Epic Name`
-- **Description**: Epic details with task count and estimated hours
-- **Due Date**: From epic due date if set
-
-## Example Workflow
-
-1. Create epics and tasks in Arbiter:
-
-   ```bash
-   arbiter epic create "User Authentication"
-   arbiter epic task add "User Authentication" "Create login form" --type feature
-   arbiter epic task add "User Authentication" "Add password validation" --type feature
-   ```
-
-2. Preview what would be synced:
-
-   ```bash
-   arbiter generate --github-dry-run
-   ```
-
-3. Generate files and sync to GitHub:
-
-   ```bash
-   arbiter generate --sync-github
-   ```
-
-4. Check your GitHub repository for the new issues and milestone.
+## Title & Label Logic (conceptual)
+- Titles use `prefixes.epic` / `prefixes.task` plus the epic/task name.
+- Labels combine `labels.default`, mapped priority/type labels, status/priority tags, and any labels already present on the epic/task in Arbiter.
 
 ## Troubleshooting
-
-### Common Issues
-
-1. **No GitHub configuration found**
-   - Add the `github` section to your `.arbiter/config.json`
-   - Ensure the file is in the correct location
-
-2. **Authentication failed**
-   - Verify your GitHub token has the correct permissions
-   - Check that the token hasn't expired
-   - Ensure the repository owner/name is correct
-
-3. **No epics found to sync**
-   - Create epics using `arbiter epic create <name>`
-   - Ensure epics are stored in `.arbiter/epics/` directory
-
-4. **API rate limit exceeded**
-   - GitHub has rate limits for API requests
-   - Use `--github-dry-run` to preview changes without making API calls
-   - Consider using a GitHub App token for higher rate limits
-
-### Debug Mode
-
-Use `--verbose` flag for detailed sync information:
-
-```bash
-arbiter generate --sync-github --verbose
-```
-
-This will show:
-
-- Number of epics and tasks loaded
-- Detailed sync results for each item
-- Full error messages if sync fails
+- **Missing config**: ensure `.arbiter/config.json` contains a `github` block.
+- **Auth failures**: verify the token and scopes; check `tokenEnv` name.
+- **Rate limits**: use `--github-dry-run` for previews; GitHub App tokens can raise limits.
+- **Verbose output**: add `--verbose` to see every API call and decision.

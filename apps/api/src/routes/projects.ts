@@ -14,7 +14,7 @@ type Dependencies = Record<string, unknown>;
 const DEFAULT_STRUCTURE = {
   servicesDirectory: "services",
   clientsDirectory: "clients",
-  modulesDirectory: "modules",
+  packagesDirectory: "packages",
   toolsDirectory: "tools",
   docsDirectory: "docs",
   testsDirectory: "tests",
@@ -1692,7 +1692,10 @@ export function createProjectsRouter(deps: Dependencies) {
           entities: {
             services: Object.keys(services).length,
             databases: Object.keys(databases).length,
-            modules: Object.keys(components).filter((k) => components[k].type === "module").length,
+            packages: Object.keys(components).filter((k) => {
+              const componentType = components[k].type;
+              return componentType === "package" || componentType === "module";
+            }).length,
             tools: Object.keys(components).filter(
               (k) => components[k].type === "tool" || components[k].type === "binary",
             ).length,
@@ -1928,7 +1931,7 @@ export function createProjectsRouter(deps: Dependencies) {
           let entities: ProjectEntities = {
             services: 0,
             databases: 0,
-            modules: 0,
+            packages: 0,
             tools: 0,
             frontends: 0,
             views: 0,
@@ -2036,7 +2039,7 @@ export function createProjectsRouter(deps: Dependencies) {
             }
             console.log(`[DEBUG] Artifact types for project ${project.name}:`, typeGroups);
 
-            let moduleCount = 0;
+            let packageCount = 0;
             let toolCount = 0;
             let frontendCount = 0;
             let infrastructureCount = 0;
@@ -2051,8 +2054,9 @@ export function createProjectsRouter(deps: Dependencies) {
               if (type === "binary") type = "tool";
 
               switch (type) {
+                case "package":
                 case "module":
-                  moduleCount++;
+                  packageCount++;
                   break;
                 case "tool":
                   toolCount++;
@@ -2172,7 +2176,7 @@ export function createProjectsRouter(deps: Dependencies) {
             entities = {
               services: Object.keys(services).length,
               databases: Object.keys(databases).length,
-              modules: moduleCount,
+              packages: packageCount,
               tools: toolCount,
               frontends: frontendCount,
               infrastructure: infrastructureCount,
@@ -2188,7 +2192,7 @@ export function createProjectsRouter(deps: Dependencies) {
             entities = {
               services: project.service_count || 0,
               databases: project.database_count || 0,
-              modules: 0,
+              packages: 0,
               tools: 0,
               frontends: 0,
               infrastructure: 0,

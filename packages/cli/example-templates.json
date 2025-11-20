@@ -1,5 +1,5 @@
 {
-  "engines": {
+  "implementors": {
     "cookiecutter": {
       "command": "cookiecutter",
       "defaultArgs": ["--no-input"],
@@ -13,7 +13,7 @@
   },
   "aliases": {
     "bun-hono": {
-      "engine": "cookiecutter",
+      "implementor": "cookiecutter",
       "source": "https://github.com/arbiter-templates/bun-hono.git",
       "description": "Bun + Hono API service with Drizzle ORM",
       "variables": {
@@ -24,7 +24,7 @@
       "prerequisites": ["bun", "git"]
     },
     "rust-axum": {
-      "engine": "cookiecutter", 
+      "implementor": "cookiecutter", 
       "source": "gh:arbiter-templates/rust-axum",
       "description": "Rust + Axum service with SQLx",
       "variables": {
@@ -35,7 +35,7 @@
       "prerequisites": ["cargo", "git"]
     },
     "react-vite": {
-      "engine": "cookiecutter",
+      "implementor": "cookiecutter",
       "source": "/local/path/to/react-template",
       "description": "React + Vite frontend with Tailwind",
       "variables": {
@@ -46,7 +46,7 @@
       "prerequisites": ["node", "npm"]
     },
     "python-fastapi": {
-      "engine": "cookiecutter",
+      "implementor": "cookiecutter",
       "source": "https://github.com/fastapi-users/fastapi-users-cookiecutter.git",
       "description": "FastAPI service with async SQLAlchemy",
       "variables": {
@@ -57,7 +57,7 @@
       "prerequisites": ["python3", "pip"]
     },
     "postgres-setup": {
-      "engine": "script",
+      "implementor": "script",
       "source": "./scripts/setup-postgres.sh",
       "description": "PostgreSQL database setup with migrations",
       "variables": {
@@ -68,7 +68,7 @@
     }
   },
   "settings": {
-    "defaultEngine": "cookiecutter",
+    "defaultImplementor": "cookiecutter",
     "cacheDir": "~/.arbiter/template-cache",
     "timeout": 300000
   }

@@ -43,21 +43,24 @@ export interface GitHubRepo {
 export interface GitHubSyncConfig {
   /** GitHub repository configuration */
   repository?: GitHubRepo;
-  /** Mapping configuration for syncing */
-  mapping?: {
-    /** Epic to GitHub issue label mappings */
-    epicLabels?: Record<string, string[]>;
-    /** Task to GitHub issue label mappings */
-    taskLabels?: Record<string, string[]>;
-    /** Default labels to apply to all synced issues */
-    defaultLabels?: string[];
-    /** Prefix for epic issues */
-    epicPrefix?: string;
-    /** Prefix for task issues */
-    taskPrefix?: string;
+  /** Issue title prefixes */
+  prefixes?: {
+    /** Prefix applied to epic issues */
+    epic?: string;
+    /** Prefix applied to task issues */
+    task?: string;
   };
-  /** Sync behavior configuration */
-  behavior?: {
+  /** Label configuration */
+  labels?: {
+    /** Labels applied to all synced issues */
+    default?: string[];
+    /** Epic priority → labels */
+    epics?: Record<string, string[]>;
+    /** Task type → labels */
+    tasks?: Record<string, string[]>;
+  };
+  /** Sync automation behavior */
+  automation?: {
     /** Create GitHub milestones for epics */
     createMilestones?: boolean;
     /** Close GitHub issues when tasks/epics are completed */
@@ -168,11 +171,18 @@ export interface DockerGeneratorConfig {
   clients?: Record<string, DockerTemplateConfig>;
 }
 
+export interface LanguagePluginConfig {
+  /** Optional testing configuration owned by the language plugin */
+  testing?: LanguageTestingConfig;
+  /** Arbitrary plugin-specific options */
+  [key: string]: unknown;
+}
+
 export interface GeneratorConfig {
   /** Mapping of language identifiers to template override directories */
-  templateOverrides?: Record<string, string>;
+  templateOverrides?: Record<string, string | string[]>;
   /** Language-specific plugin configuration objects */
-  plugins?: Record<string, Record<string, unknown>>;
+  plugins?: Record<string, LanguagePluginConfig>;
   /** Lifecycle hook commands executed around generation */
   hooks?: GeneratorHookMap;
   /** Testing configuration (frameworks, output paths, master runner, etc.) */
@@ -204,9 +214,10 @@ export interface MasterTestRunnerConfig {
   output?: string;
 }
 
-export type GeneratorTestingConfig = {
+export interface GeneratorTestingConfig {
+  /** Optional master test runner settings */
   master?: MasterTestRunnerConfig;
-} & Record<string, LanguageTestingConfig>;
+}
 
 /**
  * Directory layout hints used by the CLI when scaffolding or resolving files.
@@ -218,8 +229,8 @@ export interface ProjectStructureConfig {
   clientsDirectory: string;
   /** Primary location for backend and API services */
   servicesDirectory: string;
-  /** Shared modules and domain libraries */
-  modulesDirectory: string;
+  /** Shared packages and domain libraries */
+  packagesDirectory: string;
   /** Developer tooling, CLIs, and automation scripts */
   toolsDirectory: string;
   /** Project documentation output */
@@ -228,8 +239,12 @@ export interface ProjectStructureConfig {
   testsDirectory: string;
   /** Infrastructure as code and deployment assets */
   infraDirectory: string;
-  /** Optional legacy endpoint directory support */
-  endpointDirectory?: string;
+  /** Flags that force certain artifact directories to live inside their owning package */
+  packageRelative?: {
+    docsDirectory?: boolean;
+    testsDirectory?: boolean;
+    infraDirectory?: boolean;
+  };
 }
 
 /**

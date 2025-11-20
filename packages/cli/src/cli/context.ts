@@ -151,7 +151,7 @@ async function hydrateRemoteProjectStructure(config: CLIConfig): Promise<void> {
 
   try {
     const client = new ApiClient(config);
-    const response = await client.fetchProjectStructureConfig();
+    const response = await client.getProjectStructureConfig();
 
     if (response.success && response.projectStructure) {
       const normalized = normalizeRemoteStructure(response.projectStructure);

@@ -11,7 +11,7 @@ The Arbiter template system provides:
    specifications
 2. **External Configuration** - Template details stored in
    `.arbiter/templates.json`
-3. **Pluggable Engines** - Support for cookiecutter, custom scripts, and more
+3. **Pluggable Implementors** - Support for cookiecutter, custom scripts, and more
 4. **Variable Extraction** - Automatic mapping of CUE data to template variables
 5. **Template Management** - Full CLI for managing template aliases
 
@@ -31,13 +31,13 @@ arbiter templates list
 arbiter templates add bun-hono \
   --source "https://github.com/arbiter-templates/bun-hono.git" \
   --description "Bun + Hono API service with Drizzle ORM" \
-  --engine cookiecutter
+  --implementor cookiecutter
 
 # Add a script-based template
 arbiter templates add simple-service \
   --source "./scripts/simple-service-template.sh" \
   --description "Simple TypeScript service template" \
-  --engine script
+  --implementor script
 ```
 
 ### 3. Use Templates in Your Specifications
@@ -70,7 +70,7 @@ The template configuration is stored in `.arbiter/templates.json`:
 
 ```json
 {
-  "engines": {
+  "implementors": {
     "cookiecutter": {
       "command": "cookiecutter",
       "defaultArgs": ["--no-input"],
@@ -84,7 +84,7 @@ The template configuration is stored in `.arbiter/templates.json`:
   },
   "aliases": {
     "bun-hono": {
-      "engine": "cookiecutter",
+      "implementor": "cookiecutter",
       "source": "https://github.com/arbiter-templates/bun-hono.git",
       "description": "Bun + Hono API service with Drizzle ORM",
       "variables": {
@@ -95,18 +95,18 @@ The template configuration is stored in `.arbiter/templates.json`:
     }
   },
   "settings": {
-    "defaultEngine": "cookiecutter",
+    "defaultImplementor": "cookiecutter",
     "cacheDir": "~/.arbiter/template-cache",
     "timeout": 300000
   }
 }
 ```
 
-## Template Engines
+## Template Implementors
 
-### Cookiecutter Engine
+### Cookiecutter Implementor
 
-The default engine for most templates. Supports:
+The default implementor for most templates. Supports:
 
 - Git repositories (GitHub, GitLab, etc.)
 - Local directories
@@ -118,10 +118,10 @@ The default engine for most templates. Supports:
 ```bash
 arbiter templates add react-app \
   --source "gh:cookiecutter/cookiecutter-react-component" \
-  --engine cookiecutter
+  --implementor cookiecutter
 ```
 
-### Script Engine
+### Script Implementor
 
 For simple shell-based templates:
 
@@ -130,7 +130,7 @@ For simple shell-based templates:
 ```bash
 arbiter templates add custom-service \
   --source "./scripts/create-service.sh" \
-  --engine script
+  --implementor script
 ```
 
 Script templates receive variables as environment variables:
@@ -140,14 +140,14 @@ Script templates receive variables as environment variables:
 - `TEMPLATE_PROJECTNAME` - Project name
 - `TEMPLATE_*` - Other variables prefixed with `TEMPLATE_`
 
-### Custom Engines
+### Custom Implementors
 
-You can create custom engines by implementing the `TemplateEngine` interface:
+You can create custom implementors by implementing the `TemplateImplementor` interface:
 
 ```typescript
-import { TemplateEngine } from './templates/index.js';
+import { TemplateImplementor } from './templates/index.js';
 
-class MyCustomEngine implements TemplateEngine {
+class MyCustomImplementor implements TemplateImplementor {
   name = 'custom';
   command = 'my-generator';
   defaultArgs = ['--quiet'];
@@ -161,8 +161,8 @@ class MyCustomEngine implements TemplateEngine {
   }
 }
 
-// Register the engine
-templateManager.addEngine(new MyCustomEngine());
+// Register the implementor
+templateOrchestrator.addImplementor(new MyCustomImplementor());
 ```
 
 ## Variable Extraction
@@ -209,7 +209,7 @@ arbiter templates show bun-hono
 arbiter templates add my-template \
   --source "https://github.com/user/template.git" \
   --description "My custom template" \
-  --engine cookiecutter \
+  --implementor cookiecutter \
   --prerequisites "node,npm"
 
 # Remove template alias
@@ -285,7 +285,7 @@ mkdir -p "$TEMPLATE_DESTINATION/src"
 ```bash
 arbiter templates add my-script \
   --source "./scripts/my-template.sh" \
-  --engine script
+  --implementor script
 ```
 
 ## Language Plugin Templates & Overrides
@@ -430,13 +430,13 @@ arbiter templates update
 ### Engine Errors
 
 ```bash
-# Check if engine command is available
+# Check if implementor command is available
 which cookiecutter
 
 # Install missing prerequisites
 npm install -g cookiecutter
 
-# Check engine configuration
+# Check implementor configuration
 arbiter templates show template-name
 ```
 
@@ -451,8 +451,12 @@ arbiter add service api --template my-template --verbose
 
 ## Examples
 
-See the `example-templates.json` and `example-script-template.sh` files for
-working examples.
+See the `example-templates.json` sample config and the
+`src/templates/assets/example-script-template.sh` helper script for working
+examples. The JSON file lives at the root of `packages/cli/` and is **only** a
+reference snippet for docs and tests—it is not loaded automatically by the CLI.
+Copy the sections you need into `.arbiter/config.json` when experimenting with
+custom GitHub template sets.
 
 ## Integration with Arbiter Workflows
 

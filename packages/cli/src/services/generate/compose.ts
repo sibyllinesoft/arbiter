@@ -6,6 +6,7 @@ import type {
 } from "@arbiter/shared";
 import fs from "fs-extra";
 import type { ProjectStructureConfig } from "../../types.js";
+import type { PackageManagerCommandSet } from "../../utils/package-manager.js";
 import {
   resolveServiceArtifactType,
   resolveServiceWorkload,
@@ -145,6 +146,7 @@ export async function generateDockerComposeArtifacts(
   structure: ProjectStructureConfig,
   clientContext?: ClientGenerationContext,
   deploymentContext?: ComposeDeploymentContext,
+  packageManager?: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
   const composeSegments = [...toPathSegments(structure.infraDirectory), "compose"];
@@ -186,6 +188,7 @@ export async function generateDockerComposeArtifacts(
     composeRoot,
     options,
     composeRelativeRoot,
+    packageManager,
   );
   files.push(...buildFiles);
 
@@ -369,6 +372,7 @@ async function generateBuildContexts(
   composeRoot: string,
   options: GenerateOptions,
   relativeRoot: string[],
+  packageManager?: PackageManagerCommandSet,
 ): Promise<string[]> {
   const files: string[] = [];
 
@@ -378,7 +382,7 @@ async function generateBuildContexts(
       await ensureDirectory(buildDir, options);
 
       if (service.language && shouldIncludeComposeBuild(service)) {
-        await writeServiceDockerfile(service, buildDir, options);
+        await writeServiceDockerfile(service, buildDir, options, packageManager);
         files.push(joinRelativePath(...relativeRoot, "build", service.name, "Dockerfile"));
       }
 
@@ -407,8 +411,9 @@ async function writeServiceDockerfile(
   service: ComposeServiceConfig,
   buildDir: string,
   options: GenerateOptions,
+  packageManager?: PackageManagerCommandSet,
 ): Promise<void> {
-  const dockerfileContent = generateServiceDockerfile(service);
+  const dockerfileContent = generateServiceDockerfile(service, packageManager);
   const dockerfilePath = path.join(buildDir, "Dockerfile");
   await writeFileWithHooks(dockerfilePath, ensureTrailingNewline(dockerfileContent), options);
 
@@ -429,16 +434,14 @@ function ensureTrailingNewline(value: string): string {
   return value.endsWith("\n") ? value : `${value}\n`;
 }
 
-function generateServiceDockerfile(service: ComposeServiceConfig): string {
+function generateServiceDockerfile(
+  service: ComposeServiceConfig,
+  packageManager?: PackageManagerCommandSet,
+): string {
   switch (service.language) {
     case "typescript":
     case "javascript":
-      return `FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install --production
-COPY . .
-CMD ["npm", "start"]`;
+      return buildComposeNodeDockerfile(packageManager);
     case "python":
       return `FROM python:3.11-slim
 WORKDIR /app
@@ -474,6 +477,63 @@ ENTRYPOINT ["/usr/local/bin/${service.name}"]`;
       return `FROM ${service.image || "alpine:3.19"}
 CMD ["./start.sh"]`;
   }
+}
+
+function buildComposeNodeDockerfile(pm?: PackageManagerCommandSet): string {
+  const setupLines: string[] = [];
+  switch (pm?.name) {
+    case "pnpm":
+      setupLines.push("RUN corepack enable pnpm");
+      break;
+    case "yarn":
+      setupLines.push("RUN corepack enable yarn");
+      break;
+    case "bun":
+      setupLines.push("RUN curl -fsSL https://bun.sh/install | bash");
+      setupLines.push("ENV BUN_INSTALL=/root/.bun");
+      setupLines.push("ENV PATH=$BUN_INSTALL/bin:$PATH");
+      break;
+    default:
+      break;
+  }
+
+  const installCommand = (() => {
+    switch (pm?.name) {
+      case "pnpm":
+        return "pnpm install --prod --frozen-lockfile";
+      case "yarn":
+        return "yarn install --production --frozen-lockfile";
+      case "bun":
+        return "bun install --production";
+      default:
+        return "npm install --production";
+    }
+  })();
+
+  const startArgs = (() => {
+    switch (pm?.name) {
+      case "pnpm":
+        return ['"pnpm"', '"run"', '"start"'];
+      case "yarn":
+        return ['"yarn"', '"start"'];
+      case "bun":
+        return ['"bun"', '"run"', '"start"'];
+      default:
+        return ['"npm"', '"run"', '"start"'];
+    }
+  })();
+
+  return [
+    "FROM node:20-alpine",
+    "WORKDIR /app",
+    ...setupLines,
+    "COPY package*.json ./",
+    `RUN ${installCommand}`,
+    "COPY . .",
+    `CMD [${startArgs.join(", ")}]`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function generateComposeEnvTemplate(

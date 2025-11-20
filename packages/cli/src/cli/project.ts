@@ -275,7 +275,7 @@ export function createProjectCommands(program: Command): void {
 
         console.log(chalk.blue("🏥 Comprehensive health check..."));
         console.log(chalk.dim(`Server: ${config.apiUrl}`));
-        console.log(chalk.dim(`Timeout: ${timeout}ms (API client enforces ≤750ms per spec)`));
+        console.log(chalk.dim(`Timeout: ${timeout}ms (client caps requests at 10s)`));
 
         if (options.verbose) {
           console.log(chalk.cyan("\n🔍 Detailed validation:"));

@@ -156,7 +156,7 @@ public launch.
 
 - ✅ Finish migrating `integrate` (and related GitHub template commands) into
   `src/services/`, mirroring the pattern established for `generate` and `sync`.
-- ✅ Split `services/generate` into submodules (compose parser, template runner,
+- ✅ Split `services/generate` into submodules (compose parser, template orchestrator,
   hook executor) with unit tests covering each piece.
 - ✅ Add service-level tests for `spec-import`, `sync`, and `integrate` to guard
   their behaviour before the repo opens up.

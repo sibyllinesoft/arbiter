@@ -116,3 +116,11 @@ export function useHealthCheck() {
     retry: 3,
   });
 }
+
+export function useUiOptionCatalog() {
+  return useQuery({
+    queryKey: ["ui-options"],
+    queryFn: () => apiService.getUiOptionCatalog(),
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+}

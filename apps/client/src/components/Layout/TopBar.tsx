@@ -2,6 +2,7 @@
  * Top navigation bar with project controls - Enhanced with Graphite Design System
  */
 
+import { useProjects } from "@/hooks/api-hooks";
 import {
   AlertCircle,
   CheckCircle,
@@ -18,7 +19,15 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useApp, useCueFileState, useValidationState } from "../../contexts/AppContext";
+import {
+  useCueFileState,
+  useEditorActions,
+  useEditorState,
+  useStatus,
+  useThemeControls,
+  useValidationActions,
+  useValidationState,
+} from "../../contexts/AppContext";
 import { useCurrentProject } from "../../contexts/ProjectContext";
 import { Button, StatusBadge, cn } from "../../design-system";
 import { apiService } from "../../services/api";
@@ -32,8 +41,19 @@ export interface TopBarProps {
 
 export function TopBar({ className }: TopBarProps) {
   const navigate = useNavigate();
-  const { state, setLoading, setError, dispatch, setSelectedCueFile, isDark, toggleTheme } =
-    useApp();
+  const { isDark, toggleTheme } = useThemeControls();
+  const { loading, setLoading, setError } = useStatus();
+  const editorState = useEditorState();
+  const {
+    updateEditorContent,
+    markUnsaved,
+    markSaved,
+    setActiveFragment,
+    setSelectedCueFile,
+    setAvailableCueFiles,
+  } = useEditorActions();
+  const { setValidationState } = useValidationActions();
+  const { data: projectsData } = useProjects();
 
   const currentProject = useCurrentProject();
   const { isValidating, errors, warnings, specHash } = useValidationState();
@@ -71,17 +91,17 @@ export function TopBar({ className }: TopBarProps) {
 
   // Save all unsaved fragments
   const handleSave = useCallback(async () => {
-    if (!currentProject || state.unsavedChanges.size === 0) {
+    if (!currentProject || editorState.unsavedChanges.size === 0) {
       return;
     }
 
     setIsSaving(true);
     try {
-      const savePromises = Array.from(state.unsavedChanges).map(async (fragmentId) => {
-        const content = state.editorContent[fragmentId];
+      const savePromises = Array.from(editorState.unsavedChanges).map(async (fragmentId) => {
+        const content = editorState.editorContent[fragmentId];
         if (content !== undefined) {
           await apiService.updateFragment(currentProject.id, fragmentId, content);
-          dispatch({ type: "MARK_SAVED", payload: fragmentId });
+          markSaved(fragmentId);
         }
       });
 
@@ -101,36 +121,30 @@ export function TopBar({ className }: TopBarProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [currentProject, state.unsavedChanges, state.editorContent, dispatch, setError]);
+  }, [currentProject, editorState.unsavedChanges, editorState.editorContent, markSaved, setError]);
 
   // Validate project
   const handleValidate = useCallback(async () => {
     if (!currentProject) return;
 
     setLoading(true);
-    dispatch({
-      type: "SET_VALIDATION_STATE",
-      payload: {
-        errors: [],
-        warnings: [],
-        isValidating: true,
-        lastValidation: null,
-        specHash: specHash,
-      },
+    setValidationState({
+      errors: [],
+      warnings: [],
+      isValidating: true,
+      lastValidation: null,
+      specHash: specHash,
     });
 
     try {
       const result = await apiService.validateProject(currentProject.id, { force: true });
 
-      dispatch({
-        type: "SET_VALIDATION_STATE",
-        payload: {
-          errors: result.errors,
-          warnings: result.warnings,
-          isValidating: false,
-          lastValidation: new Date().toISOString(),
-          specHash: result.spec_hash,
-        },
+      setValidationState({
+        errors: result.errors,
+        warnings: result.warnings,
+        isValidating: false,
+        lastValidation: new Date().toISOString(),
+        specHash: result.spec_hash,
       });
 
       if (result.success) {
@@ -151,15 +165,12 @@ export function TopBar({ className }: TopBarProps) {
       const message = error instanceof Error ? error.message : "Validation failed";
       setError(message);
 
-      dispatch({
-        type: "SET_VALIDATION_STATE",
-        payload: {
-          errors: [],
-          warnings: [],
-          isValidating: false,
-          lastValidation: null,
-          specHash: specHash,
-        },
+      setValidationState({
+        errors: [],
+        warnings: [],
+        isValidating: false,
+        lastValidation: null,
+        specHash: specHash,
       });
 
       toast.error(message, {
@@ -169,7 +180,7 @@ export function TopBar({ className }: TopBarProps) {
     } finally {
       setLoading(false);
     }
-  }, [currentProject, setLoading, setError, dispatch, specHash]);
+  }, [currentProject, setLoading, setError, setValidationState, specHash]);
 
   // Freeze current version
   const handleFreeze = useCallback(async () => {
@@ -264,7 +275,7 @@ export function TopBar({ className }: TopBarProps) {
   };
 
   const validationStatus = getValidationStatus();
-  const hasUnsavedChanges = state.unsavedChanges.size > 0;
+  const hasUnsavedChanges = editorState.unsavedChanges.size > 0;
 
   return (
     <div
@@ -315,10 +326,10 @@ export function TopBar({ className }: TopBarProps) {
               <div className="absolute left-0 top-full mt-2 w-64 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50 animate-in fade-in-0 zoom-in-95 duration-100">
                 <div className="p-1">
                   <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                    Available Projects ({state.projects.length})
+                    Available Projects ({projectsData?.length ?? 0})
                   </div>
-                  {state.projects.length > 0 ? (
-                    state.projects.map((project) => (
+                  {projectsData && projectsData.length > 0 ? (
+                    projectsData.map((project) => (
                       <button
                         key={project.id}
                         onClick={() => {
@@ -437,7 +448,7 @@ export function TopBar({ className }: TopBarProps) {
             Save{" "}
             {hasUnsavedChanges && (
               <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded text-xs">
-                {state.unsavedChanges.size}
+                {editorState.unsavedChanges.size}
               </span>
             )}
           </Button>

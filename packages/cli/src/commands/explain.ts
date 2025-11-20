@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import chalk from "chalk";
 import type { Config } from "../config.js";
+import { safeFileOperation } from "../constraints/index.js";
 
 /**
  * Options for explain command
@@ -13,6 +14,12 @@ export interface ExplainOptions {
   output?: string;
   verbose?: boolean;
   hints?: boolean;
+}
+
+async function writeExplanationFile(filePath: string, content: string): Promise<void> {
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, "utf-8");
+  });
 }
 
 /**
@@ -56,19 +63,32 @@ interface AssemblyExplanation {
  */
 export async function explainCommand(options: ExplainOptions, _config: Config): Promise<number> {
   try {
-    console.log(chalk.blue("🔍 Analyzing specification..."));
+    const format = options.format || "text";
+    const structuredOutput = format === "json";
+
+    if (!structuredOutput) {
+      console.log(chalk.blue("🔍 Analyzing specification..."));
+    }
 
     const assemblyPath = await resolveAssemblyPath();
     if (!assemblyPath) {
-      console.log(chalk.red("❌ No assembly specification found"));
-      console.log(chalk.dim("To get started:"));
-      console.log(chalk.dim("  1. Run: arbiter init --template <type>"));
-      console.log(chalk.dim("  2. Or: arbiter add service <name>"));
-      console.log(chalk.dim("  3. Then: arbiter explain"));
+      if (structuredOutput) {
+        console.log(
+          JSON.stringify({ error: "No assembly specification found", suggestion: "arbiter init" }),
+        );
+      } else {
+        console.log(chalk.red("❌ No assembly specification found"));
+        console.log(chalk.dim("To get started:"));
+        console.log(chalk.dim("  1. Run: arbiter init --template <type>"));
+        console.log(chalk.dim("  2. Or: arbiter add service <name>"));
+        console.log(chalk.dim("  3. Then: arbiter explain"));
+      }
       return 1;
     }
 
-    console.log(chalk.green(`✅ Found ${path.relative(process.cwd(), assemblyPath)}`));
+    if (!structuredOutput) {
+      console.log(chalk.green(`✅ Found ${path.relative(process.cwd(), assemblyPath)}`));
+    }
 
     // Read and parse assembly file
     const assemblyContent = await fs.readFile(assemblyPath, "utf-8");
@@ -77,8 +97,6 @@ export async function explainCommand(options: ExplainOptions, _config: Config): 
     const explanation = await parseAssemblyForExplanation(assemblyContent);
 
     // Generate explanation based on format
-    const format = options.format || "text";
-
     if (format === "json") {
       return await generateJsonExplanation(explanation, options);
     }
@@ -560,8 +578,6 @@ async function generateJsonExplanation(
   explanation: AssemblyExplanation,
   options: ExplainOptions,
 ): Promise<number> {
-  console.log(chalk.blue("📄 Generating JSON explanation..."));
-
   const output = {
     timestamp: new Date().toISOString(),
     summary: explanation.summary,
@@ -580,10 +596,9 @@ async function generateJsonExplanation(
   const jsonContent = JSON.stringify(output, null, 2);
 
   if (options.output) {
-    await fs.writeFile(options.output, jsonContent, "utf-8");
-    console.log(chalk.green(`✅ JSON explanation saved to: ${options.output}`));
+    await writeExplanationFile(options.output, jsonContent);
   } else {
-    console.log(`\n${jsonContent}`);
+    console.log(jsonContent);
   }
 
   return 0;
@@ -698,7 +713,7 @@ async function generateTextExplanation(
   // Save to file if requested
   if (options.output) {
     const textContent = generateMarkdownExplanation(explanation);
-    await fs.writeFile(options.output, textContent, "utf-8");
+    await writeExplanationFile(options.output, textContent);
     console.log(chalk.green(`✅ Explanation saved to: ${options.output}`));
   }
 

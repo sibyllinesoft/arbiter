@@ -33,6 +33,7 @@ program
   .option("--arbiter-url <url>", "Arbiter server URL (alias for --api-url)")
   .option("--timeout <ms>", "request timeout in milliseconds")
   .option("--local", "operate in offline mode using local CUE files only")
+  .option("-v, --verbose", "enable verbose logging globally")
   .hook("preAction", async (thisCommand, actionCommand) => {
     try {
       await hydrateCliContext(thisCommand, actionCommand);

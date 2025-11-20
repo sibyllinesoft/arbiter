@@ -64,9 +64,14 @@ export interface ProjectStructureSettings {
   appsDirectory: string;
   packagesDirectory: string;
   servicesDirectory: string;
+  docsDirectory: string;
   testsDirectory: string;
   infraDirectory: string;
-  endpointDirectory: string;
+  packageRelative?: {
+    docsDirectory?: boolean;
+    testsDirectory?: boolean;
+    infraDirectory?: boolean;
+  };
 }
 
 interface UiOptionsResponse {

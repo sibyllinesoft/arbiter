@@ -60,6 +60,7 @@ nav:
       - Generation Architecture: guides/code-generation-architecture.md
       - Generation Configuration: guides/code-generation-configuration.md
       - Template Development: guides/template-development-guide.md
+      - CUE Authoring: guides/arbiter-cue-authoring.md
       - Generation Best Practices: guides/generation-best-practices.md
       - GitHub Sync: guides/github-sync.md
       - Server Monitoring: guides/server-monitoring.md
@@ -71,10 +72,6 @@ nav:
   - Tutorials:
       - Getting Started Lab: tutorials/basics/Readme.md
       - Kubernetes Playbooks: tutorials/kubernetes/README.md
-  - Notes:
-      - Cleanup Plan: notes/cleanup-plan.md
-  - Internal:
-      - Legacy Documentation Pipeline: internal/doc-pipeline.md
 extra:
   social:
     - icon: fontawesome/brands/github

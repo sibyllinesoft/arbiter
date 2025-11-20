@@ -39,9 +39,14 @@ export function createCliRouter(deps: Dependencies) {
           appsDirectory: "apps",
           packagesDirectory: "packages",
           servicesDirectory: "services",
+          docsDirectory: "docs",
           testsDirectory: "tests",
           infraDirectory: "infra",
-          endpointDirectory: "apps/api/src/endpoints",
+          packageRelative: {
+            docsDirectory: false,
+            testsDirectory: false,
+            infraDirectory: false,
+          },
         },
       };
 
@@ -194,9 +199,14 @@ export function createCliRouter(deps: Dependencies) {
           appsDirectory: "apps",
           packagesDirectory: "packages",
           servicesDirectory: "services",
+          docsDirectory: "docs",
           testsDirectory: "tests",
           infraDirectory: "infra",
-          endpointDirectory: "apps/api/src/endpoints",
+          packageRelative: {
+            docsDirectory: false,
+            testsDirectory: false,
+            infraDirectory: false,
+          },
         },
       };
 

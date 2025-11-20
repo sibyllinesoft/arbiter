@@ -9,7 +9,7 @@ human developers and AI automation.
 Need the internal architecture, template lifecycle, or DI notes?
 - High-level architecture: [`CLI Architecture`](./cli/architecture.md)
 - Template engines, GitHub templates, language plugins:
-  [`Generation Architecture`](./cli/generation-architecture.md)
+  [`Generation Architecture`](../guides/code-generation-architecture.md)
 
 ## Installation
 
@@ -24,6 +24,21 @@ bun install -g @arbiter/cli
 curl -L https://github.com/arbiter-framework/arbiter/releases/latest/download/arbiter-cli > arbiter
 chmod +x arbiter
 ```
+
+### CUE dependency
+
+Arbiter shells out to the official [`cue`](https://cuelang.org/docs/install/)
+binary for every command that reads or writes `.cue` files. Install CUE v0.9 or
+newer and keep it on your `PATH`:
+
+- macOS: `brew install cue-lang/tap/cue`
+- Linux: download the release tarball from GitHub or
+  `go install cuelang.org/go/cmd/cue@latest`
+- Windows: `winget install cue-lang.cue` or `choco install cue`
+
+Confirm your environment with `cue version`. When the binary lives outside the
+default `PATH`, expose it via a wrapper script before running `arbiter`
+commands.
 
 ## Global Options
 
@@ -161,20 +176,20 @@ arbiter generate --target typescript,docker
 
 ##### Configuring endpoint assertion generation
 
-Endpoint assertion tests honour per-language settings in `.arbiter/config`. Add
-your preferences under `generator.testing` to choose frameworks or override
-output directories:
+Endpoint assertion tests honour per-language settings in `.arbiter/config.json`.
+Set frameworks/output paths under `generator.plugins.<language>.testing` and keep the
+cross-language runner under `generator.testing.master`:
 
 ```json
 {
   "generator": {
     "testing": {
-      "master": { "type": "make", "output": "Makefile" },
-      "typescript": { "framework": "jest" },
-      "javascript": { "framework": "vitest" },
-      "python": { "framework": "pytest", "outputDir": "tests/api/assertions" },
-      "rust": { "outputDir": "tests/api/assertions" },
-      "go": { "outputDir": "tests/api/assertions" }
+      "master": { "type": "make", "output": "Makefile" }
+    },
+    "plugins": {
+      "typescript": { "testing": { "framework": "jest" } },
+      "python": { "testing": { "framework": "pytest", "outputDir": "tests/api/assertions" } },
+      "go": { "testing": { "outputDir": "tests/api/assertions" } }
     }
   }
 }
@@ -803,7 +818,7 @@ arbiter generate && arbiter check && arbiter tests run
 
 ### Configuration File
 
-Create `.arbiter.json` in your project root:
+Create `.arbiter/config.json` in your project root:
 
 ```json
 {

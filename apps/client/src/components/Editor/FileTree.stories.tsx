@@ -5,7 +5,7 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect } from "react";
-import { AppProvider, useApp } from "../../contexts/AppContext";
+import { AppProvider, useEditorActions, useStatus } from "../../contexts/AppContext";
 import type { Fragment, Project } from "../../types/api";
 import FileTree from "./FileTree";
 
@@ -88,20 +88,16 @@ const StoryContextInitializer = ({
   isLoading = false,
   error = null,
 }: StoryContextInitializerProps) => {
-  const { dispatch, updateEditorContent, markUnsaved, markSaved, setError, setLoading } = useApp();
+  const { setFragments, setActiveFragment, updateEditorContent, markUnsaved, markSaved } =
+    useEditorActions();
+  const { setError, setLoading } = useStatus();
 
   useEffect(() => {
-    // Initialize the context with story data
-    if (project) {
-      dispatch({ type: "SET_PROJECT", payload: project });
-    }
-
     if (fragments) {
-      dispatch({ type: "SET_FRAGMENTS", payload: fragments });
+      setFragments(fragments);
     }
-
     if (activeFragmentId) {
-      dispatch({ type: "SET_ACTIVE_FRAGMENT", payload: activeFragmentId });
+      setActiveFragment(activeFragmentId);
     }
 
     if (error) {
@@ -129,7 +125,8 @@ const StoryContextInitializer = ({
     unsavedChanges,
     isLoading,
     error,
-    dispatch,
+    setFragments,
+    setActiveFragment,
     updateEditorContent,
     markUnsaved,
     setError,

@@ -15,6 +15,7 @@ import * as os from "node:os";
 import path from "node:path";
 import { CueRunner } from "@arbiter/cue-runner";
 import fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 
 /**
  * Platform-specific service types for popular cloud providers
@@ -150,7 +151,9 @@ export class CUEManipulator {
    */
   async parse(content: string): Promise<any> {
     const tempFile = path.join(this.tempDir, "input.cue");
-    await fs.writeFile(tempFile, content);
+    await safeFileOperation("write", tempFile, async (validatedPath) => {
+      await fs.writeFile(validatedPath, content);
+    });
 
     try {
       const runner = this.createRunner();
@@ -187,8 +190,9 @@ export class CUEManipulator {
       // Convert back to CUE and format
       return await this.serialize(ast, content);
     } catch (error) {
-      // Fallback to direct manipulation if parsing fails (for incomplete CUE)
-      return this.directServiceAdd(content, serviceName, config);
+      throw new Error(
+        `Failed to add service "${serviceName}" using CUE tooling: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -289,7 +293,9 @@ export class CUEManipulator {
 
       return await this.serialize(ast, content);
     } catch (error) {
-      return this.directDatabaseAdd(content, dbName, config);
+      throw new Error(
+        `Failed to add database "${dbName}" using CUE tooling: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -313,7 +319,9 @@ export class CUEManipulator {
 
       return await this.serialize(ast, content);
     } catch (error) {
-      return this.directRouteAdd(content, route);
+      throw new Error(
+        `Failed to add route "${route.id || route.path}" via CUE tooling: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -334,7 +342,9 @@ export class CUEManipulator {
 
       return await this.serialize(ast, content);
     } catch (error) {
-      return this.directFlowAdd(content, flow);
+      throw new Error(
+        `Failed to add flow "${flow.id}" via CUE tooling: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -361,7 +371,9 @@ export class CUEManipulator {
 
       return await this.serialize(ast, content);
     } catch (error) {
-      return this.directSectionAdd(content, section, key, value);
+      throw new Error(
+        `Failed to add key "${key}" to section "${section}": ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -603,7 +615,9 @@ export class CUEManipulator {
    */
   async format(content: string): Promise<string> {
     const tempFile = path.join(this.tempDir, "format.cue");
-    await fs.writeFile(tempFile, content);
+    await safeFileOperation("write", tempFile, async (validatedPath) => {
+      await fs.writeFile(validatedPath, content);
+    });
 
     try {
       const runner = this.createRunner();
@@ -623,7 +637,9 @@ export class CUEManipulator {
    */
   async validate(content: string): Promise<ValidationResult> {
     const tempFile = path.join(this.tempDir, "validate.cue");
-    await fs.writeFile(tempFile, content);
+    await safeFileOperation("write", tempFile, async (validatedPath) => {
+      await fs.writeFile(validatedPath, content);
+    });
 
     try {
       const runner = this.createRunner();
@@ -646,132 +662,6 @@ export class CUEManipulator {
 
   private createRunner(): CueRunner {
     return new CueRunner({ cwd: this.tempDir });
-  }
-
-  /**
-   * Direct service addition fallback for when parsing fails
-   */
-  private directServiceAdd(content: string, serviceName: string, config: ServiceConfig): string {
-    const serviceBlock = this.formatCueObject(config);
-
-    const servicesRegex = /(services:\s*{)([^}]*)(})/s;
-    const match = content.match(servicesRegex);
-
-    if (match) {
-      const existing = match[2];
-      const newEntry = `\n\t${serviceName}: ${serviceBlock}`;
-      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
-      return content.replace(servicesRegex, `$1${updated}\n$3`);
-    }
-    return `${content}\n\nservices: {\n\t${serviceName}: ${serviceBlock}\n}`;
-  }
-
-  /**
-   * Direct database addition fallback
-   */
-  private directDatabaseAdd(content: string, dbName: string, config: DatabaseConfig): string {
-    let result = this.directServiceAdd(content, dbName, config);
-
-    // Add connection string to attached service if specified
-    if (config.attachTo) {
-      if (config.image) {
-        // Container-based database
-        const connectionString = this.generateDbConnectionString(
-          config.image,
-          dbName,
-          config.ports?.[0]?.port || 5432,
-        );
-        result = this.addEnvironmentVariable(
-          result,
-          config.attachTo,
-          "DATABASE_URL",
-          connectionString,
-        );
-      } else if (config.serviceType && config.serviceType !== "prebuilt") {
-        // Platform-managed database - add multiple env vars
-        const envVars = this.generatePlatformDbEnvVars(config.serviceType, dbName);
-        for (const [key, value] of Object.entries(envVars)) {
-          result = this.addEnvironmentVariable(result, config.attachTo, key, value);
-        }
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Direct route addition fallback
-   */
-  private directRouteAdd(content: string, route: RouteConfig): string {
-    const routeBlock = this.formatCueObject(route);
-
-    const routesRegex = /(ui:\s*routes:\s*\[)([^\]]*)]]/s;
-    const match = content.match(routesRegex);
-
-    if (match) {
-      const existing = match[2];
-      const separator = existing.trim() ? ",\n\t" : "\n\t";
-      return content.replace(routesRegex, `$1${existing}${separator}${routeBlock}\n]`);
-    }
-    return content.replace(/ui:\s*routes:\s*\[\]/, `ui: routes: [\n\t${routeBlock}\n]`);
-  }
-
-  /**
-   * Direct flow addition fallback
-   */
-  private directFlowAdd(content: string, flow: FlowConfig): string {
-    const flowBlock = this.formatCueObject(flow);
-
-    const flowsRegex = /(flows:\s*\[)([^\]]*)]]/s;
-    const match = content.match(flowsRegex);
-
-    if (match) {
-      const existing = match[2];
-      const separator = existing.trim() ? ",\n\t" : "\n\t";
-      return content.replace(flowsRegex, `$1${existing}${separator}${flowBlock}\n]`);
-    }
-    return content.replace(/flows:\s*\[\]/, `flows: [\n\t${flowBlock}\n]`);
-  }
-
-  /**
-   * Direct section addition fallback
-   */
-  private directSectionAdd(content: string, section: string, key: string, value: any): string {
-    const valueStr = this.formatCueObject(value);
-
-    const sectionRegex = new RegExp(`(${section.replace(".", ":\\s+")}:\\s*{)([^}]*)(})`, "s");
-    const match = content.match(sectionRegex);
-
-    if (match) {
-      const existing = match[2];
-      const newEntry = `\n\t${key}: ${valueStr}`;
-      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
-      return content.replace(sectionRegex, `$1${updated}\n$3`);
-    }
-    return `${content}\n\n${section}: {\n\t${key}: ${valueStr}\n}`;
-  }
-
-  /**
-   * Add environment variable to a service
-   */
-  private addEnvironmentVariable(
-    content: string,
-    serviceName: string,
-    key: string,
-    value: string,
-  ): string {
-    const envRegex = new RegExp(`(${serviceName}:\\s*{[^}]*env:\\s*{)([^}]*)(})`, "s");
-    const match = content.match(envRegex);
-
-    if (match) {
-      const existing = match[2];
-      const newEntry = `\n\t\t${key}: "${value}"`;
-      const updated = existing.trim() ? `${existing}${newEntry}` : newEntry;
-      return content.replace(envRegex, `$1${updated}\n\t$3`);
-    }
-    // Add env section to service
-    const serviceRegex = new RegExp(`(${serviceName}:\\s*{[^}]*)(})`, "s");
-    return content.replace(serviceRegex, `$1\tenv: {\n\t\t${key}: "${value}"\n\t}\n$2`);
   }
 
   /**

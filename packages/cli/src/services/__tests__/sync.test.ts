@@ -22,7 +22,7 @@ function baseConfig(projectDir: string): CLIConfig {
     projectStructure: {
       clientsDirectory: "apps",
       servicesDirectory: "services",
-      modulesDirectory: "modules",
+      packagesDirectory: "packages",
       toolsDirectory: "tools",
       docsDirectory: "docs",
       testsDirectory: "tests",

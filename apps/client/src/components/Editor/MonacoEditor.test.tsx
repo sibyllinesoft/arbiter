@@ -7,29 +7,37 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import MonacoEditor from "./MonacoEditor";
 
 const hoisted = vi.hoisted(() => {
-  const editorMock = {
+  const mockEditor = {
     addCommand: vi.fn(),
     getModel: vi.fn(() => ({
       onDidChangeContent: vi.fn(),
+      getValue: vi.fn(() => ""),
+      setValue: vi.fn(),
     })),
     focus: vi.fn(),
   };
 
-  const monacoMock = {
+  const mockMonaco = {
     KeyMod: { CtrlCmd: 1 },
     KeyCode: { KeyS: 2 },
+    languages: {
+      getLanguages: () => [{ id: "cue" }],
+      register: vi.fn(),
+      setLanguageConfiguration: vi.fn(),
+      setMonarchTokensProvider: vi.fn(),
+    },
+    editor: { defineTheme: vi.fn() },
   };
 
-  return { editorMock, monacoMock };
+  return { mockEditor, mockMonaco };
 });
 
-const mockEditor = hoisted.editorMock;
-const mockMonaco = hoisted.monacoMock;
+const { mockEditor, mockMonaco } = hoisted;
 
 vi.mock("monaco-editor", () => ({
   editor: {},
-  KeyMod: hoisted.monacoMock.KeyMod,
-  KeyCode: hoisted.monacoMock.KeyCode,
+  KeyMod: { CtrlCmd: 1 },
+  KeyCode: { KeyS: 2 },
 }));
 
 vi.mock("@monaco-editor/react", () => ({

@@ -8,9 +8,14 @@ import { DiagramPlaceholder } from "./DiagramPlaceholder";
 
 interface DiagramTabsProps {
   project: Project | null;
+  tabBadges?: Record<string, number>;
 }
 
-export function useDiagramTabs({ project }: DiagramTabsProps) {
+export function useDiagramTabs({ project, tabBadges }: DiagramTabsProps) {
+  const serviceCount = tabBadges?.services ?? project?.entities?.services;
+  const taskCount = tabBadges?.tasks;
+  const eventCount = tabBadges?.events;
+
   const diagramTabs = [
     {
       id: "architecture",
@@ -24,6 +29,7 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
     {
       id: "services",
       label: "Services",
+      ...(typeof serviceCount === "number" ? { badge: serviceCount } : {}),
       content: project ? (
         <ServicesReport projectId={project.id} />
       ) : (
@@ -33,6 +39,7 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
     {
       id: "tasks",
       label: "Tasks",
+      ...(typeof taskCount === "number" ? { badge: taskCount } : {}),
       content: project ? (
         <TasksReport projectId={project.id} />
       ) : (
@@ -42,6 +49,7 @@ export function useDiagramTabs({ project }: DiagramTabsProps) {
     {
       id: "events",
       label: "Events",
+      ...(typeof eventCount === "number" ? { badge: eventCount } : {}),
       content: project ? (
         <EventsReport projectId={project.id} />
       ) : (

@@ -7,8 +7,9 @@
 import * as path from "path";
 import chalk from "chalk";
 import * as fs from "fs-extra";
+import { safeFileOperation } from "../constraints/index.js";
 import { CLIDocumentationGenerator } from "../docs/cli-doc-generator.js";
-import { TemplateEngine } from "../docs/template-engine.js";
+import { DocsTemplateImplementor } from "../docs/template-implementor.js";
 import type {
   AnalysisResult,
   DocGenerationOptions,
@@ -16,6 +17,12 @@ import type {
   TemplateData,
 } from "../docs/types.js";
 import type { CLIConfig } from "../types.js";
+
+async function writeDocsFile(filePath: string, content: string): Promise<void> {
+  await safeFileOperation("write", filePath, async (validatedPath) => {
+    await fs.writeFile(validatedPath, content, "utf8");
+  });
+}
 
 /**
  * Command options for documentation generation
@@ -72,7 +79,7 @@ export async function docsGenerateCommand(
 
     // Generate documentation
     const generator = new CLIDocumentationGenerator(program);
-    const templateEngine = new TemplateEngine();
+    const templateEngine = new DocsTemplateImplementor();
 
     // Parse commands
     console.log(chalk.blue("🔍 Analyzing CLI structure..."));
@@ -157,7 +164,7 @@ export async function docsGenerateCommand(
 async function generateDocumentationFormat(
   format: "markdown" | "json" | "html",
   data: TemplateData,
-  templateEngine: TemplateEngine,
+  templateEngine: DocsTemplateImplementor,
   outputDir: string,
   options: DocsGenerateOptions,
 ): Promise<void> {
@@ -174,7 +181,7 @@ async function generateDocumentationFormat(
       schema: "https://arbiter.dev/schemas/cli-docs/v1.json",
     };
 
-    await fs.writeFile(outputFile, JSON.stringify(jsonData, null, 2), "utf8");
+    await writeDocsFile(outputFile, JSON.stringify(jsonData, null, 2));
   } else {
     // Use template engine for markdown and HTML
     const templateConfig = {
@@ -191,7 +198,7 @@ async function generateDocumentationFormat(
     const template = await templateEngine.loadTemplate(templateConfig);
     const content = templateEngine.render(template, data);
 
-    await fs.writeFile(outputFile, content, "utf8");
+    await writeDocsFile(outputFile, content);
   }
 
   console.log(chalk.green(`  ✅ ${filename}`));
@@ -207,7 +214,7 @@ async function generateAssets(outputDir: string): Promise<void> {
     <text x="50" y="65" font-family="monospace" font-size="60" text-anchor="middle" fill="white">A</text>
   </svg>`;
 
-  await fs.writeFile(path.join(outputDir, "favicon.svg"), faviconSvg, "utf8");
+  await writeDocsFile(path.join(outputDir, "favicon.svg"), faviconSvg);
 
   // Create a manifest.json for PWA capabilities
   const manifest = {
@@ -227,11 +234,7 @@ async function generateAssets(outputDir: string): Promise<void> {
     ],
   };
 
-  await fs.writeFile(
-    path.join(outputDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2),
-    "utf8",
-  );
+  await writeDocsFile(path.join(outputDir, "manifest.json"), JSON.stringify(manifest, null, 2));
 }
 
 /**

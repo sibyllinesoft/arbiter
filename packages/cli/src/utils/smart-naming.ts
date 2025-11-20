@@ -95,9 +95,6 @@ export async function detectProjectContext(
     "go.mod",
     "composer.json",
     ".arbiter/config.json",
-    ".arbiter/config.yaml",
-    ".arbiter.json",
-    ".arbiter.yaml",
   ];
 
   for (const pattern of configPatterns) {

@@ -5,7 +5,7 @@ import {
   initializeProject,
   registry as languageRegistry,
 } from "../../language-plugins/index.js";
-import type { CLIConfig, GeneratorTestingConfig } from "../../types.js";
+import type { CLIConfig } from "../../types.js";
 
 export { generateComponent, generateService, initializeProject };
 
@@ -23,30 +23,16 @@ export function configureTemplateOrchestrator(language: string, cliConfig: CLICo
     path.isAbsolute(dir) ? dir : path.resolve(baseDir, dir),
   );
 
+  const pluginConfig = generatorConfig?.plugins?.[language];
+
   languageRegistry.configure(language, {
     templateOverrides: resolvedOverrides,
-    pluginConfig: generatorConfig?.plugins?.[language],
+    pluginConfig,
     workspaceRoot: cliConfig.projectDir,
-    testing: getLanguageTestingConfig(generatorConfig?.testing, language),
+    testing: pluginConfig?.testing,
   });
 }
 
 export function getConfiguredLanguagePlugin(language: string) {
   return languageRegistry.get(language);
-}
-
-function getLanguageTestingConfig(
-  testingConfig: GeneratorTestingConfig | undefined,
-  language: string,
-) {
-  if (!testingConfig) {
-    return undefined;
-  }
-
-  const languageConfig = testingConfig[language];
-  if (!languageConfig) {
-    return undefined;
-  }
-
-  return languageConfig;
 }

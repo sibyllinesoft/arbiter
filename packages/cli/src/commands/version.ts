@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import chalk from "chalk";
+import { safeFileOperation } from "../constraints/index.js";
 import type { CLIConfig } from "../types.js";
 import { resolveSmartNaming } from "../utils/smart-naming.js";
 import type { APISurface } from "./surface.js";
@@ -196,7 +197,9 @@ export async function versionPlanCommand(
     const plan = await generateVersionPlan(changes, options);
 
     // Write plan to file
-    await writeFile(planNaming.fullPath, JSON.stringify(plan, null, 2));
+    await safeFileOperation("write", planNaming.fullPath, async (validatedPath) => {
+      await writeFile(validatedPath, JSON.stringify(plan, null, 2));
+    });
 
     // Display results
     console.log(chalk.green(`✅ Version plan generated: ${planNaming.filename}`));
@@ -1455,7 +1458,9 @@ async function updateManifest(
     }
 
     if (!isDryRun) {
-      await writeFile(manifest.path, newContent);
+      await safeFileOperation("write", manifest.path, async (validatedPath) => {
+        await writeFile(validatedPath, newContent);
+      });
       console.log(chalk.green(`    ✅ ${manifest.path} updated`));
     } else {
       console.log(chalk.yellow(`    📋 Would update ${manifest.path}`));
@@ -1578,6 +1583,8 @@ async function generateChangelog(
       lines.unshift(changelogEntry.trim(), "");
     }
 
-    await writeFile(path, lines.join("\n"));
+    await safeFileOperation("write", path, async (validatedPath) => {
+      await writeFile(validatedPath, lines.join("\n"));
+    });
   }
 }

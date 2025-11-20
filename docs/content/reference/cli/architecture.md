@@ -30,7 +30,7 @@ packages/cli/src/
 
 | Service | Responsibilities | Supporting Modules |
 | --- | --- | --- |
-| `services/generate` | Compose parsing, template overrides, hook orchestration, file emission. | `generate/compose.ts`, `generate/template-runner.ts`, `generate/hook-executor.ts`, `generate/shared.ts` |
+| `services/generate` | Compose parsing, template overrides, hook orchestration, file emission. | `generate/compose.ts`, `generate/template-orchestrator.ts`, `generate/hook-executor.ts`, `generate/shared.ts` |
 | `services/integrate` | CI/CD workflow generation, GitHub template emission, build matrix inference. | `integrate/assembly.ts`, `integrate/language-detector.ts`, `integrate/workflow-builder.ts` |
 | `services/spec-import` | Validates CUE, ensures remote projects exist, uploads fragments via API. | Dependency injection for `ApiClient`, CUE validator, project helper |
 | `services/sync` | Reconciles manifests (`package.json`, `pyproject`, `Cargo.toml`, `Makefile`) with Arbiter defaults. | Deep-merge helpers, intelligent conflict tracking, backup utilities |
@@ -53,9 +53,11 @@ making them reusable in scripts, tests, or future GUI integrations.
 
 ## Template & Hook Lifecycle
 
-1. **Configure plugins** via `generator.templateOverrides` /
-   `generator.testing` in `.arbiter/config.*`. `generate/template-runner.ts`
-   registers overrides and testing knobs with the language registry.
+1. **Configure plugins** via `generator.templateOverrides` and
+   `generator.plugins.<language>.testing` (with the optional master runner in
+   `generator.testing.master`) in `.arbiter/config.json`.
+   `generate/template-orchestrator.ts` registers overrides and testing knobs
+   with the language registry.
 2. **Render templates** inside plugins (React, API service, etc.) using the
    curated context derived from specs + UI options.
 3. **Hook executor** (`generate/hook-executor.ts`) wraps `GenerationHookManager`
