@@ -1068,28 +1068,36 @@ func HealthCheck(c *gin.Context) {
 `;
   }
 
-  private generateEnvExample(config: ProjectConfig): string {
-    return `# Application Configuration
+  private async generateEnvExample(config: ProjectConfig): Promise<string> {
+    const module = config.name.toLowerCase();
+    const databaseBlock =
+      config.database === "postgres"
+        ? `# Database Configuration
+DATABASE_URL=postgres://user:password@localhost:5432/${module}?sslmode=disable
+`
+        : "";
+    const authBlock =
+      config.auth === "jwt"
+        ? `# Authentication
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+`
+        : "";
+
+    const fallback = `# Application Configuration
 ADDRESS=:8080
 ENVIRONMENT=development
 LOG_LEVEL=info
 
-${
-  config.database
-    ? `# Database Configuration
-DATABASE_URL=postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable`
-    : ""
-}
-
-${
-  config.auth
-    ? `# Authentication
-JWT_SECRET=your-super-secret-jwt-key-change-in-production`
-    : ""
-}
-
+${databaseBlock}
+${authBlock}
 # Additional configuration as needed
 `;
+
+    return await this.templateResolver.renderTemplate(
+      ".env.example.tpl",
+      { moduleName: module, databaseBlock, authBlock },
+      fallback,
+    );
   }
 
   private generateTestUtils(config: ProjectConfig): string {
