@@ -11,8 +11,8 @@ import (
 )
 
 // New configures and returns an HTTP server
-func New(cfg *config.Config, {{#hasDatabase}}db any, {{/hasDatabase}}logger *zap.Logger) *http.Server { // db left as any to allow user replacement
-	router := gin.New()
+func New(cfg *config.Config, {{serverDbParam}}logger *zap.Logger) *http.Server { // db left as any to allow user replacement
+{{serverDbGuard}}	router := gin.New()
 	router.Use(gin.Recovery())
 
 	router.GET("/health", func(c *gin.Context) {

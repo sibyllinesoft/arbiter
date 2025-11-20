@@ -12,8 +12,7 @@ import (
 	"go.uber.org/zap"
 
 	"{{moduleName}}/internal/config"
-	{{#hasDatabase}}"{{moduleName}}/internal/database"
-	{{/hasDatabase}}"{{moduleName}}/internal/logger"
+{{databaseImport}}"{{moduleName}}/internal/logger"
 	"{{moduleName}}/internal/server"
 )
 
@@ -31,21 +30,10 @@ func main() {
 		zapLogger.Fatal("Failed to load configuration", zap.Error(err))
 	}
 
-	{{#hasDatabase}}
-	// Initialize database
-	db, err := database.Connect(cfg.DatabaseURL)
-	if err != nil {
-		zapLogger.Fatal("Failed to connect to database", zap.Error(err))
-	}
-
-	// Auto-migrate database schemas
-	if err := database.Migrate(db); err != nil {
-		zapLogger.Fatal("Failed to migrate database", zap.Error(err))
-	}
-	{{/hasDatabase}}
+{{databaseInit}}
 
 	// Initialize server
-	srv := server.New(cfg, {{#hasDatabase}}db, {{/hasDatabase}}zapLogger)
+	srv := server.New(cfg, {{serverDbArg}}zapLogger)
 
 	// Start server
 	go func() {

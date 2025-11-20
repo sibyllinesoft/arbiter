@@ -654,8 +654,26 @@ require (
     );
   }
 
-  private generateMainApp(config: ProjectConfig): string {
-    return `package main
+  private async generateMainApp(config: ProjectConfig): Promise<string> {
+    const module = config.name.toLowerCase();
+    const databaseImport = config.database ? `\t"${module}/internal/database"\n` : "";
+    const databaseInit = config.database
+      ? `\t// Initialize database
+\tdb, err := database.Connect(cfg.DatabaseURL)
+\tif err != nil {
+\t\tzapLogger.Fatal("Failed to connect to database", zap.Error(err))
+\t}
+
+\t// Auto-migrate database schemas
+\tif err := database.Migrate(db); err != nil {
+\t\tzapLogger.Fatal("Failed to migrate database", zap.Error(err))
+\t}
+
+`
+      : "";
+    const serverDbArg = config.database ? "db, " : "";
+
+    const fallback = `package main
 
 import (
 	"context"
@@ -668,10 +686,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"${config.name.toLowerCase()}/internal/config"
-	${config.database ? `"${config.name.toLowerCase()}/internal/database"` : ""}
-	"${config.name.toLowerCase()}/internal/logger"
-	"${config.name.toLowerCase()}/internal/server"
+	"${module}/internal/config"
+	${config.database ? `"${module}/internal/database"` : ""}
+	"${module}/internal/logger"
+	"${module}/internal/server"
 )
 
 func main() {
@@ -688,20 +706,7 @@ func main() {
 		zapLogger.Fatal("Failed to load configuration", zap.Error(err))
 	}
 
-	${
-    config.database
-      ? `// Initialize database
-	db, err := database.Connect(cfg.DatabaseURL)
-	if err != nil {
-		zapLogger.Fatal("Failed to connect to database", zap.Error(err))
-	}
-
-	// Auto-migrate database schemas
-	if err := database.Migrate(db); err != nil {
-		zapLogger.Fatal("Failed to migrate database", zap.Error(err))
-	}`
-      : ""
-  }
+${databaseInit}
 
 	// Initialize server
 	srv := server.New(cfg, ${config.database ? "db, " : ""}zapLogger)
@@ -733,10 +738,21 @@ func main() {
 	zapLogger.Info("Server exited")
 }
 `;
+    return await this.templateResolver.renderTemplate(
+      "cmd/main.go.tpl",
+      {
+        moduleName: module,
+        databaseImport,
+        databaseInit,
+        serverDbArg,
+      },
+      fallback,
+    );
   }
 
-  private generateConfig(config: ProjectConfig): string {
-    return `package config
+  private async generateConfig(config: ProjectConfig): Promise<string> {
+    const module = config.name.toLowerCase();
+    const fallback = `package config
 
 import (
 	"os"
@@ -749,7 +765,7 @@ import (
 type Config struct {
 	Address     string
 	Environment string
-	${config.database ? "DatabaseURL string" : ""}
+	DatabaseURL string
 	${config.auth ? "JWTSecret   string" : ""}
 	LogLevel    string
 }
@@ -762,7 +778,7 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Address:     getEnv("ADDRESS", ":8080"),
 		Environment: getEnv("ENVIRONMENT", "development"),
-		${config.database ? `DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/${config.name.toLowerCase()}?sslmode=disable"),` : ""}
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://user:password@localhost:5432/${module}?sslmode=disable"),
 		${config.auth ? 'JWTSecret:   getEnv("JWT_SECRET", "your-secret-key"),' : ""}
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 	}
@@ -798,10 +814,20 @@ func getEnvAsBool(key string, fallback bool) bool {
 	return fallback
 }
 `;
+    return await this.templateResolver.renderTemplate(
+      "internal/config/config.go.tpl",
+      {
+        moduleName: module,
+        databaseField: 'DatabaseURL string        `json:"database_url" yaml:"database_url"`',
+        databaseAssign: `DatabaseURL:  getEnv("DATABASE_URL", "postgres://postgres:password@localhost:5432/${module}?sslmode=disable"),`,
+      },
+      fallback,
+    );
   }
 
-  private generateDatabase(config: ProjectConfig): string {
-    return `package database
+  private async generateDatabase(config: ProjectConfig): Promise<string> {
+    const module = config.name.toLowerCase();
+    const fallback = `package database
 
 import (
 	"fmt"
@@ -850,6 +876,11 @@ func Migrate(db *gorm.DB) error {
 	)
 }
 `;
+    return await this.templateResolver.renderTemplate(
+      "internal/database/database.go.tpl",
+      { moduleName: module },
+      fallback,
+    );
   }
 
   private generateLogger(): string {
@@ -892,8 +923,9 @@ func NewDevelopmentLogger() (*zap.Logger, error) {
 `;
   }
 
-  private generateServer(config: ProjectConfig): string {
-    return `package server
+  private async generateServer(config: ProjectConfig): Promise<string> {
+    const module = config.name.toLowerCase();
+    const fallback = `package server
 
 import (
 	"net/http"
@@ -902,9 +934,9 @@ import (
 	"go.uber.org/zap"
 	${config.database ? `"gorm.io/gorm"` : ""}
 
-	"${config.name.toLowerCase()}/internal/config"
-	"${config.name.toLowerCase()}/internal/handlers"
-	"${config.name.toLowerCase()}/internal/middleware"
+	"${module}/internal/config"
+	"${module}/internal/handlers"
+	"${module}/internal/middleware"
 )
 
 // Server represents the HTTP server
@@ -949,6 +981,15 @@ func New(cfg *config.Config, ${config.database ? "db *gorm.DB, " : ""}logger *za
 	}
 }
 `;
+    return await this.templateResolver.renderTemplate(
+      "internal/server/server.go.tpl",
+      {
+        moduleName: module,
+        serverDbParam: config.database ? "db *gorm.DB, " : "",
+        serverDbGuard: config.database ? "" : "\t_ = logger\n",
+      },
+      fallback,
+    );
   }
 
   private generateCORSMiddleware(): string {
@@ -1276,28 +1317,41 @@ CMD ["./main"]
     return await this.templateResolver.renderTemplate("Dockerfile.tpl", {}, fallback);
   }
 
-  private generateDockerCompose(config: ProjectConfig): string {
+  private async generateDockerCompose(config: ProjectConfig): Promise<string> {
+    const module = config.name.toLowerCase();
+    const dbEnv =
+      config.database === "postgres"
+        ? `      - DATABASE_URL=postgres://${module}:password@database:5432/${module}?sslmode=disable\n`
+        : "";
     const dbService =
       config.database === "postgres"
-        ? `
-  database:
+        ? `  database:
     image: postgres:15-alpine
     environment:
-      POSTGRES_USER: ${config.name.toLowerCase()}
+      POSTGRES_USER: ${module}
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: ${config.name.toLowerCase()}
+      POSTGRES_DB: ${module}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${config.name.toLowerCase()}"]
+      test: ["CMD-SHELL", "pg_isready -U ${module}"]
       interval: 10s
       timeout: 5s
-      retries: 5`
+      retries: 5
+`
         : "";
+    const dbVolume = config.database === "postgres" ? "volumes:\n  postgres_data:\n" : "";
 
-    return `version: '3.8'
+    return await this.templateResolver.renderTemplate(
+      "docker-compose.yml.tpl",
+      {
+        databaseEnv: dbEnv,
+        databaseService: dbService,
+        databaseVolume: dbVolume,
+      },
+      `version: '3.8'
 
 services:
   app:
@@ -1306,24 +1360,11 @@ services:
       - "8080:8080"
     environment:
       - ENVIRONMENT=development
-      ${config.database ? `- DATABASE_URL=postgres://${config.name.toLowerCase()}:password@database:5432/${config.name.toLowerCase()}?sslmode=disable` : ""}
-    ${
-      config.database
-        ? `depends_on:
-      database:
-        condition: service_healthy`
-        : ""
-    }
-    restart: unless-stopped
+${dbEnv}    restart: unless-stopped
 ${dbService}
 
-${
-  config.database === "postgres"
-    ? `volumes:
-  postgres_data:`
-    : ""
-}
-`;
+${dbVolume}`,
+    );
   }
 
   private async generateProductionDockerfile(_config: BuildConfig): Promise<string> {

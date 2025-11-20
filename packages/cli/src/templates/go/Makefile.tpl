@@ -24,15 +24,4 @@ format: ## Format code
 docker: ## Build docker image
 	@docker build -t {{moduleName}}:latest .
 
-{{#hasDatabase}}db-up: ## Start database container
-	@echo "Starting database..."
-	@docker-compose up -d database
-
-db-down: ## Stop database container
-	@echo "Stopping database..."
-	@docker-compose down database
-
-db-migrate: ## Run database migrations
-	@echo "Running migrations..."
-	@go run cmd/migrate.go
-{{/hasDatabase}}
+{{dbTargets}}
