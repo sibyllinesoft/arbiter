@@ -3,6 +3,8 @@
  * Supports: Go 1.21+, Gin Web Framework, GORM v2, Go modules, structured logging
  */
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
   BuildConfig,
   GeneratedFile,
@@ -11,6 +13,7 @@ import type {
   ProjectConfig,
   ServiceConfig,
 } from "./index.js";
+import { TemplateResolver } from "./template-resolver.js";
 
 export class GoPlugin implements LanguagePlugin {
   readonly name = "Go Plugin";
@@ -34,6 +37,23 @@ export class GoPlugin implements LanguagePlugin {
     api: true,
     testing: true,
   };
+
+  private templateResolver: TemplateResolver;
+
+  constructor() {
+    this.templateResolver = new TemplateResolver({
+      language: "go",
+      defaultDirectories: GoPlugin.resolveDefaultTemplateDirectories(),
+    });
+  }
+
+  private static resolveDefaultTemplateDirectories(): string[] {
+    const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+    return [
+      path.resolve(moduleDir, "../templates/go"),
+      path.resolve(moduleDir, "../../templates/go"),
+    ];
+  }
 
   async generateService(config: ServiceConfig): Promise<GenerationResult> {
     const files: GeneratedFile[] = [];
@@ -94,7 +114,7 @@ export class GoPlugin implements LanguagePlugin {
     // Go module file
     files.push({
       path: "go.mod",
-      content: this.generateGoMod(config),
+      content: await this.generateGoMod(config),
     });
 
     // Main application
@@ -165,7 +185,7 @@ export class GoPlugin implements LanguagePlugin {
     if (config.docker) {
       files.push({
         path: "Dockerfile",
-        content: this.generateDockerfile(config),
+        content: await this.generateDockerfile(config),
       });
       files.push({
         path: "docker-compose.yml",
@@ -202,7 +222,7 @@ export class GoPlugin implements LanguagePlugin {
     if (config.target === "production") {
       files.push({
         path: "Dockerfile.prod",
-        content: this.generateProductionDockerfile(config),
+        content: await this.generateProductionDockerfile(config),
       });
     }
 
@@ -616,8 +636,8 @@ func ${middlewareName}(logger *zap.Logger) gin.HandlerFunc {
 `;
   }
 
-  private generateGoMod(config: ProjectConfig): string {
-    return `module ${config.name.toLowerCase()}
+  private async generateGoMod(config: ProjectConfig): Promise<string> {
+    const fallback = `module ${config.name.toLowerCase()}
 
 go 1.21
 
@@ -627,6 +647,11 @@ require (
 	go.uber.org/zap v1.26.0
 )
 `;
+    return await this.templateResolver.renderTemplate(
+      "go.mod.tpl",
+      { moduleName: config.name.toLowerCase() },
+      fallback,
+    );
   }
 
   private generateMainApp(config: ProjectConfig): string {
@@ -1193,8 +1218,8 @@ db-migrate: ## Run database migrations
 `;
   }
 
-  private generateDockerfile(config: ProjectConfig): string {
-    return `# Multi-stage build for Go application
+  private async generateDockerfile(config: ProjectConfig): Promise<string> {
+    const fallback = `# Multi-stage build for Go application
 FROM golang:1.21-alpine AS builder
 
 # Install git and ca-certificates (needed for private repos and HTTPS)
@@ -1247,6 +1272,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \\
 # Run the application
 CMD ["./main"]
 `;
+
+    return await this.templateResolver.renderTemplate("Dockerfile.tpl", {}, fallback);
   }
 
   private generateDockerCompose(config: ProjectConfig): string {
@@ -1299,8 +1326,8 @@ ${
 `;
   }
 
-  private generateProductionDockerfile(config: BuildConfig): string {
-    return `# Production multi-stage build
+  private async generateProductionDockerfile(_config: BuildConfig): Promise<string> {
+    const fallback = `# Production multi-stage build
 FROM golang:1.21-alpine AS builder
 
 # Install build dependencies
@@ -1336,6 +1363,7 @@ EXPOSE 8080
 # Run the application
 ENTRYPOINT ["/main"]
 `;
+    return await this.templateResolver.renderTemplate("Dockerfile.prod.tpl", {}, fallback);
   }
 
   private generateGitHubActions(config: BuildConfig): string {
