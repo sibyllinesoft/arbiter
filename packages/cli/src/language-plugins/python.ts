@@ -837,7 +837,8 @@ async def get_current_active_user(
   }
 
   private generateDevRequirements(config: ProjectConfig): string {
-    const devDeps = [
+    const testingDeps = config.testing ? "pytest-cov>=4.0.0\nfactory-boy>=3.2.0\n" : "";
+    const baseDeps = [
       "pytest>=7.0.0",
       "pytest-asyncio>=0.21.0",
       "httpx>=0.24.0",
@@ -847,11 +848,18 @@ async def get_current_active_user(
       "mypy>=1.0.0",
     ];
 
-    if (config.testing) {
-      devDeps.push("pytest-cov>=4.0.0", "factory-boy>=3.2.0");
-    }
+    const fallback = [
+      ...baseDeps,
+      ...(config.testing ? ["pytest-cov>=4.0.0", "factory-boy>=3.2.0"] : []),
+    ]
+      .sort()
+      .join("\n");
 
-    return devDeps.sort().join("\n");
+    return pythonTemplateResolver.renderTemplate(
+      "requirements-dev.txt.tpl",
+      { testing_deps: testingDeps },
+      fallback,
+    );
   }
 
   private async generateTestConfig(config: ProjectConfig): Promise<string> {
