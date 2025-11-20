@@ -11,6 +11,15 @@ import type {
   ProjectConfig,
   ServiceConfig,
 } from "./index.js";
+import { TemplateResolver } from "./template-resolver.js";
+
+const rustTemplateResolver = new TemplateResolver({
+  language: "rust",
+  defaultDirectories: [
+    new URL("./templates/rust", import.meta.url).pathname,
+    new URL("../templates/rust", import.meta.url).pathname,
+  ],
+});
 
 export class RustPlugin implements LanguagePlugin {
   readonly name = "Rust Plugin";
@@ -99,7 +108,7 @@ export class RustPlugin implements LanguagePlugin {
     // Cargo.toml
     files.push({
       path: "Cargo.toml",
-      content: this.generateCargoToml(config),
+      content: await this.generateCargoToml(config),
     });
 
     // Main application
@@ -785,7 +794,7 @@ pub async fn ${config.name.toLowerCase()}_middleware(
 `;
   }
 
-  private generateCargoToml(config: ProjectConfig): string {
+  private async generateCargoToml(config: ProjectConfig): Promise<string> {
     type CargoDependency = string | { version: string; features?: string[] };
 
     const dependencies: Record<string, CargoDependency> = {
@@ -819,34 +828,41 @@ pub async fn ${config.name.toLowerCase()}_middleware(
       dependencies["tokio-test"] = "0.4";
     }
 
-    return `[package]
-name = "${config.name.toLowerCase().replace(/[^a-z0-9-_]/g, "-")}"
+    const dependenciesBlock = Object.entries(dependencies)
+      .map(([name, version]) => {
+        if (typeof version === "string") {
+          return `${name} = "${version}"`;
+        }
+        const versionStr = version.version ? `version = "${version.version}"` : "";
+        const featuresStr = version.features
+          ? `features = [${version.features.map((f: string) => `"${f}"`).join(", ")}]`
+          : "";
+        const parts = [versionStr, featuresStr].filter(Boolean);
+        return `${name} = { ${parts.join(", ")} }`;
+      })
+      .join("\n");
+
+    const packageName = config.name.toLowerCase().replace(/[^a-z0-9-_]/g, "-");
+    const binName = config.name.toLowerCase();
+    const tokioTest = config.testing ? `tokio-test = "0.4"` : "";
+    const description = config.description || `Modern Rust application: ${config.name}`;
+
+    const fallback = `[package]
+name = "${packageName}"
 version = "0.1.0"
 edition = "2021"
-description = "${config.description || `Modern Rust application: ${config.name}`}"
+description = "${description}"
 
 [dependencies]
-${Object.entries(dependencies)
-  .map(([name, version]) => {
-    if (typeof version === "string") {
-      return `${name} = "${version}"`;
-    }
-    const versionStr = version.version ? `version = "${version.version}"` : "";
-    const featuresStr = version.features
-      ? `features = [${version.features.map((f: string) => `"${f}"`).join(", ")}]`
-      : "";
-    const parts = [versionStr, featuresStr].filter(Boolean);
-    return `${name} = { ${parts.join(", ")} }`;
-  })
-  .join("\n")}
+${dependenciesBlock}
 
 [dev-dependencies]
 tower-test = "0.4"
 hyper = { version = "1.0", features = ["full"] }
-${config.testing ? `tokio-test = "0.4"` : ""}
+${tokioTest}
 
 [[bin]]
-name = "${config.name.toLowerCase()}"
+name = "${binName}"
 path = "src/main.rs"
 
 [profile.release]
@@ -855,6 +871,18 @@ codegen-units = 1
 panic = "abort"
 strip = true
 `;
+
+    return rustTemplateResolver.renderTemplate(
+      "Cargo.toml.tpl",
+      {
+        package_name: packageName,
+        description,
+        dependencies: dependenciesBlock,
+        tokio_test: tokioTest,
+        bin_name: binName,
+      },
+      fallback,
+    );
   }
 
   private generateMainApp(config: ProjectConfig): string {
