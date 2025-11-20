@@ -7,11 +7,11 @@ import { Command } from "commander";
 import { diffCommand } from "../commands/diff.js";
 import { initCommand, listTemplates } from "../commands/init.js";
 import { listCommand } from "../commands/list.js";
-import { importSpecCommand } from "../commands/spec-import.js";
 import { statusCommand } from "../commands/status.js";
 import { surfaceCommand } from "../commands/surface.js";
 import { watchCommand } from "../commands/watch.js";
 import { runCheckCommand } from "../services/check/index.js";
+import { importSpec } from "../services/spec-import/index.js";
 import type { SurfaceLanguage } from "../surface-extraction/types.js";
 import type {
   CheckOptions,
@@ -134,7 +134,7 @@ export function createProjectCommands(program: Command): void {
       try {
         const config = requireCommandConfig(command);
 
-        const exitCode = await importSpecCommand(
+        const exitCode = await importSpec(
           cueFile,
           {
             project: options.project,

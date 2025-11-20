@@ -5,8 +5,8 @@
 import chalk from "chalk";
 import { Command } from "commander";
 import { githubTemplatesCommand } from "../commands/github-templates.js";
-import { integrateCommand } from "../commands/integrate.js";
-import { syncCommand } from "../commands/sync.js";
+import { integrateProject } from "../services/integrate/index.js";
+import { syncProject } from "../services/sync/index.js";
 import type { IntegrateOptions, SyncOptions } from "../types.js";
 import { requireCommandConfig } from "./context.js";
 
@@ -21,7 +21,7 @@ export function createIntegrationCommands(program: Command): void {
     .action(async (options: SyncOptions, command) => {
       try {
         const config = requireCommandConfig(command);
-        const exitCode = await syncCommand(options, config);
+        const exitCode = await syncProject(options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
@@ -46,7 +46,7 @@ export function createIntegrationCommands(program: Command): void {
     .action(async (options: IntegrateOptions, command) => {
       try {
         const config = requireCommandConfig(command);
-        const exitCode = await integrateCommand(options, config);
+        const exitCode = await integrateProject(options, config);
         process.exit(exitCode);
       } catch (error) {
         console.error(
