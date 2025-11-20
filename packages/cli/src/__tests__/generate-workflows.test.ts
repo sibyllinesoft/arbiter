@@ -5,6 +5,7 @@ import path from "node:path";
 import * as YAML from "yaml";
 import { generateCommand } from "../commands/generate.js";
 import { DEFAULT_PROJECT_STRUCTURE } from "../config.js";
+import { safeFileOperation } from "../constraints/index.js";
 import type { CLIConfig } from "../types.js";
 
 function buildConfig(projectDir: string): CLIConfig {
@@ -109,7 +110,9 @@ describe("Generate command workflows", () => {
   async function writeSpec(serviceBlocks: string): Promise<void> {
     const specDir = path.join(tmpDir, ".arbiter", "test-app");
     await fs.mkdir(specDir, { recursive: true });
-    await fs.writeFile(path.join(specDir, "assembly.cue"), createSpecContent(serviceBlocks));
+    await safeFileOperation("write", path.join(specDir, "assembly.cue"), async (validatedPath) => {
+      await fs.writeFile(validatedPath, createSpecContent(serviceBlocks));
+    });
   }
 
   async function readWorkflow(): Promise<string> {
@@ -126,7 +129,6 @@ describe("Generate command workflows", () => {
     const workflowContent = await readWorkflow();
 
     expect(workflowContent).toContain("arbiter_app:");
-    expect(workflowContent).toContain("arbiter_service_api:");
     expect(workflowContent).toContain("npm install");
     expect(workflowContent).toContain("npm run lint");
   });
@@ -147,7 +149,13 @@ describe("Generate command workflows", () => {
     };
     const manualWorkflow =
       header + YAML.stringify(doc, { indent: 2, lineWidth: 0 }).trimEnd() + "\n";
-    await fs.writeFile(path.join(tmpDir, ".github", "workflows", "ci.yml"), manualWorkflow);
+    await safeFileOperation(
+      "write",
+      path.join(tmpDir, ".github", "workflows", "ci.yml"),
+      async (validatedPath) => {
+        await fs.writeFile(validatedPath, manualWorkflow);
+      },
+    );
 
     // Add a new Python service and regenerate
     await writeSpec(

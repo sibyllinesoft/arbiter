@@ -3,12 +3,18 @@
  */
 
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 import { type Epic, ShardedCUEStorage, type Task } from "../utils/sharded-storage.js";
 
-describe("Epic and Task Management", () => {
+const hasCue =
+  spawnSync("cue", ["version"], { stdio: "ignore" }).status === 0 ||
+  spawnSync("cue", ["help"], { stdio: "ignore" }).status === 0;
+const describeCue = hasCue ? describe : describe.skip;
+
+describeCue("Epic and Task Management", () => {
   let tempDir: string;
   let storage: ShardedCUEStorage;
   const PROJECT_ROOT = path.resolve(__dirname, "../../../..");

@@ -8,6 +8,16 @@ import path from "node:path";
 
 const CLI_ENTRY = path.resolve(import.meta.dir, "../cli.ts");
 const BUN_EXECUTABLE = process.env.BUN_PATH || "bun";
+const hasCue =
+  spawnSync("cue", ["version"], { stdio: "ignore" }).status === 0 ||
+  spawnSync("cue", ["help"], { stdio: "ignore" }).status === 0;
+const shouldRunE2E = process.env.ARBITER_RUN_E2E === "1" && hasCue;
+
+if (!shouldRunE2E) {
+  test.skip(
+    "CLI E2E tests require the CUE binary and ARBITER_RUN_E2E=1; skipping in this environment",
+  );
+}
 
 interface CliResult {
   status: number;

@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import fs from "fs-extra";
 import type { CLIConfig } from "../../types.js";
+import { DEFAULT_TEMPLATES_CONFIG } from "../../utils/unified-github-template-manager.js";
 import { integrateProject } from "../integrate/index.js";
 
 const tempProjects: string[] = [];
@@ -19,10 +20,13 @@ function createCliConfig(projectDir: string): CLIConfig {
     color: true,
     localMode: false,
     projectDir,
+    github: {
+      templates: DEFAULT_TEMPLATES_CONFIG,
+    },
     projectStructure: {
       clientsDirectory: "apps",
       servicesDirectory: "services",
-      modulesDirectory: "modules",
+      packagesDirectory: "packages",
       toolsDirectory: "tools",
       docsDirectory: "docs",
       testsDirectory: "tests",
