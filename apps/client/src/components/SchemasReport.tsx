@@ -26,6 +26,11 @@ export const SchemasReport: React.FC<SchemasReportProps> = ({ projectId, classNa
   const queryClient = useQueryClient();
   const [isAddSchemaOpen, setIsAddSchemaOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editSchemaState, setEditSchemaState] = useState<{
+    open: boolean;
+    item: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, item: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -79,6 +84,43 @@ export const SchemasReport: React.FC<SchemasReportProps> = ({ projectId, classNa
       if (success) {
         toast.success("Schema added successfully");
         setIsAddSchemaOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditSchema = useCallback((item: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: item.name,
+      ...(item.data?.description ? { description: item.data.description } : {}),
+    };
+    setEditSchemaState({
+      open: true,
+      item,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditSchema = useCallback(() => {
+    setEditSchemaState({ open: false, item: null });
+  }, []);
+
+  const handleSubmitEditSchema = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Schema updated successfully");
+        setEditSchemaState({ open: false, item: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -158,7 +200,7 @@ export const SchemasReport: React.FC<SchemasReportProps> = ({ projectId, classNa
                     key={schema.key}
                     name={schema.name}
                     data={schema.data}
-                    onClick={() => {}}
+                    onClick={() => handleOpenEditSchema(schema)}
                   />
                 )}
               />
@@ -176,6 +218,22 @@ export const SchemasReport: React.FC<SchemasReportProps> = ({ projectId, classNa
         mode="create"
         onSubmit={handleSubmitAddSchema}
       />
+
+      {editSchemaState.open && (
+        <AddEntityModal
+          open={editSchemaState.open}
+          entityType="schema"
+          groupLabel="Schemas"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditSchema}
+          mode="edit"
+          initialValues={editSchemaState.initialValues}
+          titleOverride={
+            editSchemaState.item ? `Update ${editSchemaState.item.name}` : "Update Schema"
+          }
+          onSubmit={handleSubmitEditSchema}
+        />
+      )}
     </>
   );
 };

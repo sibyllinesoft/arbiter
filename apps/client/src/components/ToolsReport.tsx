@@ -26,6 +26,11 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
   const queryClient = useQueryClient();
   const [isAddToolOpen, setIsAddToolOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editToolState, setEditToolState] = useState<{
+    open: boolean;
+    tool: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, tool: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -79,6 +84,45 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
       if (success) {
         toast.success("Tool added successfully");
         setIsAddToolOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditTool = useCallback((tool: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: tool.name,
+      ...(tool.data?.description ? { description: tool.data.description } : {}),
+      ...(tool.data?.version ? { version: tool.data.version } : {}),
+      ...(tool.data?.type ? { type: tool.data.type } : {}),
+    };
+    setEditToolState({
+      open: true,
+      tool,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditTool = useCallback(() => {
+    setEditToolState({ open: false, tool: null });
+  }, []);
+
+  const handleSubmitEditTool = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Tool updated successfully");
+        setEditToolState({ open: false, tool: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -171,7 +215,7 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
                     key={tool.key}
                     name={tool.name}
                     data={tool.data}
-                    onClick={() => {}}
+                    onClick={() => handleOpenEditTool(tool)}
                   />
                 )}
               />
@@ -189,6 +233,20 @@ export const ToolsReport: React.FC<ToolsReportProps> = ({ projectId, className }
         mode="create"
         onSubmit={handleSubmitAddTool}
       />
+
+      {editToolState.open && (
+        <AddEntityModal
+          open={editToolState.open}
+          entityType="tool"
+          groupLabel="Tools"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditTool}
+          mode="edit"
+          initialValues={editToolState.initialValues}
+          titleOverride={editToolState.tool ? `Update ${editToolState.tool.name}` : "Update Tool"}
+          onSubmit={handleSubmitEditTool}
+        />
+      )}
     </>
   );
 };

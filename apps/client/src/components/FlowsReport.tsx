@@ -26,6 +26,11 @@ export const FlowsReport: React.FC<FlowsReportProps> = ({ projectId, className }
   const queryClient = useQueryClient();
   const [isAddFlowOpen, setIsAddFlowOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editFlowState, setEditFlowState] = useState<{
+    open: boolean;
+    item: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, item: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -79,6 +84,43 @@ export const FlowsReport: React.FC<FlowsReportProps> = ({ projectId, className }
       if (success) {
         toast.success("Flow added successfully");
         setIsAddFlowOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditFlow = useCallback((item: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: item.name,
+      ...(item.data?.description ? { description: item.data.description } : {}),
+    };
+    setEditFlowState({
+      open: true,
+      item,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditFlow = useCallback(() => {
+    setEditFlowState({ open: false, item: null });
+  }, []);
+
+  const handleSubmitEditFlow = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Flow updated successfully");
+        setEditFlowState({ open: false, item: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -156,7 +198,7 @@ export const FlowsReport: React.FC<FlowsReportProps> = ({ projectId, className }
                     key={flow.key}
                     name={flow.name}
                     data={flow.data}
-                    onClick={() => {}}
+                    onClick={() => handleOpenEditFlow(flow)}
                   />
                 )}
               />
@@ -174,6 +216,20 @@ export const FlowsReport: React.FC<FlowsReportProps> = ({ projectId, className }
         mode="create"
         onSubmit={handleSubmitAddFlow}
       />
+
+      {editFlowState.open && (
+        <AddEntityModal
+          open={editFlowState.open}
+          entityType="flow"
+          groupLabel="Flows"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditFlow}
+          mode="edit"
+          initialValues={editFlowState.initialValues}
+          titleOverride={editFlowState.item ? `Update ${editFlowState.item.name}` : "Update Flow"}
+          onSubmit={handleSubmitEditFlow}
+        />
+      )}
     </>
   );
 };

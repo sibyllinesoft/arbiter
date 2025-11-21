@@ -26,6 +26,11 @@ export const ContractsReport: React.FC<ContractsReportProps> = ({ projectId, cla
   const queryClient = useQueryClient();
   const [isAddContractOpen, setIsAddContractOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editContractState, setEditContractState] = useState<{
+    open: boolean;
+    item: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, item: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -79,6 +84,43 @@ export const ContractsReport: React.FC<ContractsReportProps> = ({ projectId, cla
       if (success) {
         toast.success("Contract added successfully");
         setIsAddContractOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditContract = useCallback((item: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: item.name,
+      ...(item.data?.description ? { description: item.data.description } : {}),
+    };
+    setEditContractState({
+      open: true,
+      item,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditContract = useCallback(() => {
+    setEditContractState({ open: false, item: null });
+  }, []);
+
+  const handleSubmitEditContract = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Contract updated successfully");
+        setEditContractState({ open: false, item: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -160,7 +202,7 @@ export const ContractsReport: React.FC<ContractsReportProps> = ({ projectId, cla
                     key={contract.key}
                     name={contract.name}
                     data={contract.data}
-                    onClick={() => {}}
+                    onClick={() => handleOpenEditContract(contract)}
                   />
                 )}
               />
@@ -178,6 +220,22 @@ export const ContractsReport: React.FC<ContractsReportProps> = ({ projectId, cla
         mode="create"
         onSubmit={handleSubmitAddContract}
       />
+
+      {editContractState.open && (
+        <AddEntityModal
+          open={editContractState.open}
+          entityType="contract"
+          groupLabel="Contracts"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditContract}
+          mode="edit"
+          initialValues={editContractState.initialValues}
+          titleOverride={
+            editContractState.item ? `Update ${editContractState.item.name}` : "Update Contract"
+          }
+          onSubmit={handleSubmitEditContract}
+        />
+      )}
     </>
   );
 };

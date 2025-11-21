@@ -29,6 +29,11 @@ export const InfrastructureReport: React.FC<InfrastructureReportProps> = ({
   const queryClient = useQueryClient();
   const [isAddInfraOpen, setIsAddInfraOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editInfraState, setEditInfraState] = useState<{
+    open: boolean;
+    infra: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, infra: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -82,6 +87,44 @@ export const InfrastructureReport: React.FC<InfrastructureReportProps> = ({
       if (success) {
         toast.success("Infrastructure added successfully");
         setIsAddInfraOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditInfra = useCallback((infra: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: infra.name,
+      ...(infra.data?.description ? { description: infra.data.description } : {}),
+      ...(infra.data?.type ? { type: infra.data.type } : {}),
+    };
+    setEditInfraState({
+      open: true,
+      infra,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditInfra = useCallback(() => {
+    setEditInfraState({ open: false, infra: null });
+  }, []);
+
+  const handleSubmitEditInfra = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Infrastructure updated successfully");
+        setEditInfraState({ open: false, infra: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -164,7 +207,7 @@ export const InfrastructureReport: React.FC<InfrastructureReportProps> = ({
                     key={infra.key}
                     name={infra.name}
                     data={infra.data}
-                    onClick={() => {}}
+                    onClick={() => handleOpenEditInfra(infra)}
                   />
                 )}
               />
@@ -182,6 +225,22 @@ export const InfrastructureReport: React.FC<InfrastructureReportProps> = ({
         mode="create"
         onSubmit={handleSubmitAddInfra}
       />
+
+      {editInfraState.open && (
+        <AddEntityModal
+          open={editInfraState.open}
+          entityType="infrastructure"
+          groupLabel="Infrastructure"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditInfra}
+          mode="edit"
+          initialValues={editInfraState.initialValues}
+          titleOverride={
+            editInfraState.infra ? `Update ${editInfraState.infra.name}` : "Update Infrastructure"
+          }
+          onSubmit={handleSubmitEditInfra}
+        />
+      )}
     </>
   );
 };

@@ -26,6 +26,11 @@ export const CapabilitiesReport: React.FC<CapabilitiesReportProps> = ({ projectI
   const queryClient = useQueryClient();
   const [isAddCapabilityOpen, setIsAddCapabilityOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editCapabilityState, setEditCapabilityState] = useState<{
+    open: boolean;
+    item: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, item: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -79,6 +84,43 @@ export const CapabilitiesReport: React.FC<CapabilitiesReportProps> = ({ projectI
       if (success) {
         toast.success("Capability added successfully");
         setIsAddCapabilityOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditCapability = useCallback((item: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: item.name,
+      ...(item.data?.description ? { description: item.data.description } : {}),
+    };
+    setEditCapabilityState({
+      open: true,
+      item,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditCapability = useCallback(() => {
+    setEditCapabilityState({ open: false, item: null });
+  }, []);
+
+  const handleSubmitEditCapability = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Capability updated successfully");
+        setEditCapabilityState({ open: false, item: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -160,7 +202,7 @@ export const CapabilitiesReport: React.FC<CapabilitiesReportProps> = ({ projectI
                     key={capability.key}
                     name={capability.name}
                     data={capability.data}
-                    onClick={() => {}}
+                    onClick={() => handleOpenEditCapability(capability)}
                   />
                 )}
               />
@@ -178,6 +220,24 @@ export const CapabilitiesReport: React.FC<CapabilitiesReportProps> = ({ projectI
         mode="create"
         onSubmit={handleSubmitAddCapability}
       />
+
+      {editCapabilityState.open && (
+        <AddEntityModal
+          open={editCapabilityState.open}
+          entityType="capability"
+          groupLabel="Capabilities"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditCapability}
+          mode="edit"
+          initialValues={editCapabilityState.initialValues}
+          titleOverride={
+            editCapabilityState.item
+              ? `Update ${editCapabilityState.item.name}`
+              : "Update Capability"
+          }
+          onSubmit={handleSubmitEditCapability}
+        />
+      )}
     </>
   );
 };

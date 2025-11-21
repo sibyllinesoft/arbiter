@@ -26,6 +26,11 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
   const queryClient = useQueryClient();
   const [isAddPackageOpen, setIsAddPackageOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [editPackageState, setEditPackageState] = useState<{
+    open: boolean;
+    package: { key: string; name: string; data: any } | null;
+    initialValues?: Record<string, FieldValue>;
+  }>({ open: false, package: null });
   const { data: uiOptionCatalogData } = useUiOptionCatalog();
   const uiOptionCatalog = useMemo<UiOptionCatalog>(
     () => ({ ...DEFAULT_UI_OPTION_CATALOG, ...(uiOptionCatalogData ?? {}) }),
@@ -79,6 +84,45 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
       if (success) {
         toast.success("Package added successfully");
         setIsAddPackageOpen(false);
+      }
+    },
+    [projectId, isCreating, persistEntity],
+  );
+
+  const handleOpenEditPackage = useCallback((pkg: { key: string; name: string; data: any }) => {
+    const initialValues: Record<string, FieldValue> = {
+      name: pkg.name,
+      ...(pkg.data?.description ? { description: pkg.data.description } : {}),
+      ...(pkg.data?.version ? { version: pkg.data.version } : {}),
+      ...(pkg.data?.type ? { type: pkg.data.type } : {}),
+    };
+    setEditPackageState({
+      open: true,
+      package: pkg,
+      initialValues,
+    });
+  }, []);
+
+  const handleCloseEditPackage = useCallback(() => {
+    setEditPackageState({ open: false, package: null });
+  }, []);
+
+  const handleSubmitEditPackage = useCallback(
+    async (payload: { entityType: string; values: Record<string, FieldValue> }) => {
+      if (!projectId || isCreating) {
+        return;
+      }
+
+      setIsCreating(true);
+      const success = await persistEntity({
+        entityType: payload.entityType,
+        values: payload.values,
+      });
+
+      setIsCreating(false);
+      if (success) {
+        toast.success("Package updated successfully");
+        setEditPackageState({ open: false, package: null });
       }
     },
     [projectId, isCreating, persistEntity],
@@ -155,7 +199,12 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
                   loading: isCreating,
                 }}
                 renderCard={(pkg) => (
-                  <ArtifactCard key={pkg.key} name={pkg.name} data={pkg.data} onClick={() => {}} />
+                  <ArtifactCard
+                    key={pkg.key}
+                    name={pkg.name}
+                    data={pkg.data}
+                    onClick={() => handleOpenEditPackage(pkg)}
+                  />
                 )}
               />
             </div>
@@ -172,6 +221,22 @@ export const PackagesReport: React.FC<PackagesReportProps> = ({ projectId, class
         mode="create"
         onSubmit={handleSubmitAddPackage}
       />
+
+      {editPackageState.open && (
+        <AddEntityModal
+          open={editPackageState.open}
+          entityType="module"
+          groupLabel="Packages"
+          optionCatalog={uiOptionCatalog}
+          onClose={handleCloseEditPackage}
+          mode="edit"
+          initialValues={editPackageState.initialValues}
+          titleOverride={
+            editPackageState.package ? `Update ${editPackageState.package.name}` : "Update Package"
+          }
+          onSubmit={handleSubmitEditPackage}
+        />
+      )}
     </>
   );
 };
