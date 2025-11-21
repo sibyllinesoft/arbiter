@@ -72,11 +72,9 @@ arbiterSpec: {
     invariants?:    [...#Invariant]
   }
 
-  // ----- Interface contracts (sync + async) -----
+  // ----- Interface contracts (transport-agnostic) -----
   contracts?: {
-    http?:  {[Api=string]: #HTTPContract}
-    rpc?:   {[Svc=string]: #RPCContract}
-    events?:{[Bus=string]: #EventBus}
+    workflows?: {[Name=string]: #WorkflowContract}
     // Shared schema library for reuse across contracts
     schemas?: {[Name=string]: #SchemaDef}
     compat?: #CompatPolicy
@@ -87,7 +85,6 @@ arbiterSpec: {
 
   // ----- Execution (environment-scoped deployments) -----
   deployments?: {[Env=string]: #Deployment}
-  deployment?: #Deployment   // deprecated alias (still accepted), prefer deployments.<env>
 
   volumes?:  {[VolumeName=string]: #Volume}
   networks?: {[NetworkName=string]: #Network}
@@ -198,7 +195,7 @@ arbiterSpec: {
 }
 ```
 
-### 3.3 Contracts (HTTP/RPC/Events)
+### 3.3 Contracts (transport-agnostic)
 
 ```cue
 #CompatPolicy: {
@@ -218,68 +215,29 @@ arbiterSpec: {
   description?: string
 }
 
-#HTTPContract: {
+#WorkflowContract: {
   version: string
-  basePath?: string | *"/"
-  endpoints: {
-    [Path=string]: {
-      [Method=("get"|"post"|"put"|"patch"|"delete")]: #HTTPEndpoint
-    }
-  }
-}
-
-#HTTPEndpoint: {
   summary?: string
-  tags?:    [...string]
-  request?: {
-    pathParams?:  #SchemaDef | string
-    query?:       #SchemaDef | string
-    headers?:     #SchemaDef | string
-    body?:        #SchemaDef | string
-  }
-  responses: {
-    [Status=string]: { // "200", "201", "400", ...
-      description?: string
-      body?:        #SchemaDef | string
-      headers?:     #SchemaDef | string
+  description?: string
+  operations: {
+    [Operation=string]: {
+      summary?: string
+      input?:  #SchemaDef | string
+      output?: #SchemaDef | string
+      errors?: {[Name=string]: #SchemaDef | string}
+      idempotent?: bool | *false
+      notes?: string
     }
   }
-  assertions?: #EndpointAssertions
-  auth?: {
-    required?: bool | *false
-    scopes?:   [...string]
+  messages?: {
+    publishes?: {[Channel=string]: #Message}
+    subscribes?:{[Channel=string]: #Message}
   }
 }
 
-#EndpointAssertions: {
-  [AssertionName=string]: #CueAssertion
-}
-
-#CueAssertion: bool | {
-  assert:   bool
-  message?: string
-  severity?: "error" | "warn" | "info"
-  tags?:    [...string]
-}
-
-#RPCContract: {
-  version: string
-  methods: {[Name=string]: {
-    request:  #SchemaDef | string
-    response: #SchemaDef | string
-  }}
-}
-
-#EventBus: {
-  version: string
-  protocol: "kafka" | "rabbitmq" | "gcp-pubsub" | "aws-sns-sqs"
-  topics: {[Topic=string]: {
-    eventTypes: {[Event=string]: {
-      payload: #SchemaDef | string
-      description?: string
-    }}
-    orderingKey?: string
-  }}
+#Message: {
+  payload: #SchemaDef | string
+  description?: string
 }
 ```
 
@@ -299,10 +257,10 @@ arbiterSpec: {
 
   // What this service *does* (binds to contracts & domain)
   implements?: {
-	  apis?:      [...string]    // keys of contracts.workflows.<Interface>
+    apis?:      [...string]    // keys of contracts.workflows.<Interface>
     models?:    [...string]    // domain entities/valueObjects primarily owned here
-    publishes?: [...{ topic: string, event: string, retries?: int & >=0 | *0 }]
-    subscribes?:[...{ topic: string, event?: string, consumerGroup?: string }]
+    publishes?: [...{ channel: string, message: string, retries?: int & >=0 | *0 }]
+    subscribes?:[...{ channel: string, message?: string, group?: string }]
   }
 
   capabilities?: [...#Capability]
@@ -314,7 +272,15 @@ arbiterSpec: {
   config?:      #ServiceConfig
   volumes?:     [...#VolumeMount]
   resources?:   #ResourceRequirements
-  dependencies?: {[Alias=string]: #ServiceDependency}
+  // Group dependencies by type (services, databases, caches, queues, etc.)
+  dependencies?: {
+    services?:  [...#ServiceDependency]
+    databases?: [...#ServiceDependency]
+    caches?:    [...#ServiceDependency]
+    queues?:    [...#ServiceDependency]
+    external?:  [...#ServiceDependency]
+    [Type=string]: [...#ServiceDependency] // custom buckets
+  }
 
   labels?:      {[string]: string}
   annotations?: {[string]: string}
@@ -347,7 +313,9 @@ arbiterSpec: {
 > middleware without duplicating routes or losing referential integrity.
 
 #ServiceDependency: {
-  service: string               // canonical service name to satisfy the dependency
+  name?: string                 // identifier within this artifact (optional for legacy specs)
+  type?: string                 // bucket/type (service, database, cache, queue, external, etc.)
+  target?: string               // referenced service/resource name
   version?: string              // semver or constraint e.g., ">=15"
   kind?: string                 // "postgres", "redis", "envoy"
   optional?: bool | *false
@@ -373,6 +341,8 @@ arbiterSpec: {
   // for cron
   schedule?: string  // cron expr
 }
+
+> Contracts stay transport-agnostic; capabilities decide how they surface (HTTP, gRPC, queue, etc.). Bind `contractRef` here to expose a contract over a specific transport.
 
 #CapabilitySpec: {
   name?: string
@@ -578,8 +548,8 @@ arbiterSpec: {
 
 1. **Binding completeness:** Every `capability.contractRef` must resolve to an
    existing contract; every `implements.apis` must point to a
-   `contracts.workflows.<Interface>` key; every `publishes/subscribes` topic
-   must exist in `contracts.events`.
+   `contracts.workflows.<Interface>` key; every `publishes/subscribes` channel
+   must exist in that contract’s `messages` section.
 2. **Domain referential integrity:** Schema refs used in contracts (`string`
    names) must resolve to `domain.entities|valueObjects` or `contracts.schemas`.
 3. **Ownership clarity:** Entities listed in `implements.models` may appear in
@@ -601,7 +571,7 @@ arbiterSpec: {
 ## 5) IR & Pipeline (for the Agent)
 
 **IR graph nodes:**
-`Service, Capability, Contract(HTTP/RPC/Event), Model(Entity/VO), InfraResource, Ingress`.
+`Service, Capability, Contract(workflow/messages), Model(Entity/VO), InfraResource, Ingress`.
 
 **Pass order (must be stable):**
 
@@ -849,7 +819,6 @@ arbiterSpec: {
     }
   }
 
-  deployment: deployments.production
   codegen: { profile:"ts-fastify-postgres-k8s@1", generator:"arbiter/gen@1.6.2", templateHash:"sha256:..." }
 }
 ```

@@ -33,8 +33,10 @@ package demoproject
 		name:    "demo-project"
 		version: "1.0.0"
 	}
-	deployment: {
-		target: "kubernetes"
+	deployments: {
+		production: {
+			target: "kubernetes"
+		}
 	}
 	services: {
 		plotService: {

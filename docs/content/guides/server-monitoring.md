@@ -1,216 +1,55 @@
 # Server Monitoring & Error Handling
 
-This document describes the enhanced monitoring and error handling system
-implemented for the Arbiter API server.
+This page explains how Arbiter’s API server looks after itself in production and what you can do to keep it healthy. It’s written for operators and integrators—no internal class names required.
 
-## Overview
+## What you get out of the box
+- **Automatic health logging** (every ~30s): uptime, memory, CPU, and error counts are written to the server log so you can spot trends.
+- **Protective guards**: timeouts around WebSocket auth and message handling, payload size limits, and safe JSON parsing to prevent noisy clients from taking the service down.
+- **Failure hygiene**: uncaught exceptions and unhandled promise rejections are logged and trigger a graceful shutdown if they pile up, so you restart clean instead of limping along.
+- **Startup resilience**: a few retry attempts with backoff when the server boots, to ride out transient issues like slow dependencies.
 
-The API server was experiencing frequent crashes/deaths. To address this, we've
-implemented comprehensive monitoring, error handling, and diagnostics to help
-identify and prevent issues before they cause server crashes.
-
-## Enhanced Error Handling Features
-
-### 1. Process Monitor (`ProcessMonitor` class)
-
-**Location**: `apps/api/src/server.ts`
-
-**Features**:
-
-- **Health Logging**: Logs process health every 30 seconds with:
-  - Uptime, PID, Node.js version, platform
-  - Memory usage (RSS, heap used/total, external)
-  - CPU usage (user/system time)
-  - Error count tracking
-- **Memory Monitoring**: Checks memory usage every 10 seconds
-  - Warns when heap usage exceeds 500MB
-  - Triggers garbage collection if available
-- **Uncaught Exception Handling**: Catches and logs all uncaught exceptions
-  - Tracks error count and initiates shutdown after 5 exceptions
-- **Unhandled Rejection Handling**: Catches promise rejections
-  - Initiates shutdown after 10 unhandled rejections
-- **Process Events**: Monitors warnings, beforeExit, and exit events
-- **Graceful Shutdown**: 10-second timeout for clean shutdown
-
-### 2. Enhanced WebSocket Error Handling
-
-**Location**: `apps/api/src/websocket/index.ts`
-
-**Improvements**:
-
-- **Header Validation**: Validates WebSocket upgrade headers
-- **Authentication Timeout**: 5-second timeout for auth requests
-- **Connection Tracking**: Better connection ID generation and tracking
-- **Message Validation**: Size limits (5MB), JSON parsing, structure validation
-- **Timeout Handling**: 10-second timeout for message processing
-- **Error Responses**: Sends structured error messages to clients
-- **Connection Cleanup**: Enhanced disconnection handling with timeouts
-
-### 3. Startup Retry Logic
-
-**Features**:
-
-- **Retry on Failure**: Up to 3 startup attempts with progressive delays
-- **Startup Logging**: Clear startup attempt tracking
-- **Configuration Validation**: Early configuration error detection
-
-## Monitoring Tools
-
-### 1. Server Monitoring Script
-
-**Location**: `scripts/monitor-server.sh`
-
-**Usage**:
-
-```bash
-# Monitor with default 30-second intervals
-./scripts/monitor-server.sh
-
-# Monitor with custom interval (e.g., every 5 seconds)
-./scripts/monitor-server.sh 5
-```
-
-**Features**:
-
-- **Health Checks**: Tests `/health` endpoint
-- **WebSocket Monitoring**: Validates WebSocket upgrade capability
-- **Process Monitoring**: Tracks server processes, memory, and CPU usage
-- **Failure Tracking**: Counts consecutive failures and alerts
-- **Logging**: Writes detailed logs to `/tmp/arbiter-monitor.log`
-- **Real-time Status**: Visual status indicators for API, WebSocket, and
-  processes
-
-### 2. Built-in Process Health Logs
-
-**What it logs**:
-
-```json
-{
-  "level": "info",
-  "message": "📊 Process Health Check",
-  "timestamp": "2025-09-20T15:07:51.453Z",
-  "uptime": 211,
-  "pid": 430772,
-  "nodeVersion": "v24.3.0",
-  "platform": "linux",
-  "errorCount": 0,
-  "memory": {
-    "rss": "124MB",
-    "heapUsed": "20MB",
-    "heapTotal": "16MB",
-    "external": "5MB"
-  },
-  "cpu": {
-    "user": 888416,
-    "system": 432171
-  }
-}
-```
-
-## Error Detection & Alerting
-
-### Automatic Triggers
-
-1. **Memory Warnings**: When heap usage > 500MB
-2. **Error Accumulation**: After 5 uncaught exceptions or 10 unhandled
-   rejections
-3. **Timeout Issues**: Authentication, message handling, or shutdown timeouts
-4. **Connection Problems**: WebSocket upgrade failures or connection issues
-
-### Manual Monitoring
-
-1. **External Script**: Use `monitor-server.sh` for continuous monitoring
-2. **Log Analysis**: Filter server logs for error patterns:
+## How to monitor it
+1) **Built-in logs (always on)**  
+   Tail your server log to see periodic health entries and any structured error reports:
    ```bash
-   # Filter for errors and warnings
-   tail -f logs/server.log | grep -E "(❌|⚠️|🚨|ERROR|WARN)"
+   tail -f logs/server.log | grep -E "📊|ERROR|WARN"
    ```
 
-## Debugging Server Deaths
-
-### When the server dies, check:
-
-1. **Process Health Logs**: Look for memory warnings or error accumulation
-
+2) **Lightweight watchdog script**  
+   If you want an outside-in check, run the bundled script:
    ```bash
-   grep "📊\|❌\|⚠️\|🚨" /path/to/server/logs
+   ./scripts/monitor-server.sh        # defaults to 30s intervals
+   ./scripts/monitor-server.sh 5      # faster checks
    ```
+   It pings `/health`, exercises the WebSocket upgrade path, tracks process CPU/memory, and writes status to `/tmp/arbiter-monitor.log`.
 
-2. **Memory Usage**: Check if memory was growing before crash
+3) **Hook into your observability stack**  
+   - Ship the server log to your log pipeline (CloudWatch, ELK, Datadog, etc.).  
+   - Add metric scrapes for process RSS/heap and restart counts if you run under a supervisor (systemd/PM2/Kubernetes).  
+   - Alert on consecutive health check failures, rising heap usage, or repeated restarts.
 
-   ```bash
-   grep "Process Health Check" /path/to/server/logs | tail -10
-   ```
+## Default thresholds (you can adapt to your environment)
+- Heap warning around 500 MB.
+- Graceful shutdown after several uncaught errors/rejections (to avoid corrupt state).
+- WebSocket timeouts: ~5s for auth, ~10s for message handling.
 
-3. **Error Patterns**: Look for uncaught exceptions or unhandled rejections
+If your workloads are larger, raise the memory alert in your monitoring layer; the server behavior is safe but conservative.
 
-   ```bash
-   grep "UNCAUGHT EXCEPTION\|UNHANDLED PROMISE REJECTION" /path/to/server/logs
-   ```
+## What to do when something looks off
+1) Check the recent health entries for rising memory or error counts.  
+2) Look for bursts of uncaught exceptions/unhandled rejections—these are logged with stack traces.  
+3) Review `/tmp/arbiter-monitor.log` if you’re running the watchdog; it records failed health checks and WebSocket probes.  
+4) Restart the process once you’ve captured logs; the guards are designed to make restarts predictable and fast.
 
-4. **External Monitoring**: Check monitoring script logs
-   ```bash
-   tail -f /tmp/arbiter-monitor.log
-   ```
+## Running in different environments
+- **Kubernetes**: point your probes at `/health`; expose logs to your aggregator; let your pod restart policy handle clean restarts.
+- **VM/container with a supervisor**: use systemd/PM2/Nodemon with restart-on-failure; keep the watchdog script running as a sidecar/cron if you want external verification.
+- **Local/dev**: the same safeguards are active; you’ll just see them in your terminal logs.
 
-## Prevention Strategies
+## Quick start checklist
+- Keep `logs/server.log` (or your redirected equivalent) shipping to your log system.
+- Optional: enable `scripts/monitor-server.sh` on hosts where the API runs.
+- Add alerts for: repeated health check failures, sustained heap growth, frequent restarts, or spikes in uncaught errors.
+- Document how to restart the service in your runbook; Arbiter’s shutdown path is already graceful.
 
-### Memory Management
-
-- Automatic garbage collection when memory is high
-- Memory usage alerts at 500MB threshold
-- Process restart after consistent high memory usage
-
-### Error Recovery
-
-- Graceful degradation with structured error responses
-- Connection cleanup on WebSocket errors
-- Retry logic for startup failures
-
-### Monitoring
-
-- Continuous health checks every 30 seconds
-- External monitoring script for independent oversight
-- Detailed error logging with context
-
-## Usage Examples
-
-### Start with Enhanced Monitoring
-
-```bash
-# Start the server (already includes built-in monitoring)
-bun run dev
-
-# Start external monitoring in another terminal
-./scripts/monitor-server.sh
-```
-
-### Monitor Process Health
-
-```bash
-# Watch health check logs in real-time
-tail -f logs/server.log | grep "📊 Process Health Check"
-
-# Check memory usage trends
-grep "📊 Process Health Check" logs/server.log | jq '.memory.heapUsed'
-```
-
-### Debug Issues
-
-```bash
-# Look for error patterns
-grep -E "(❌|⚠️|🚨)" logs/server.log | tail -20
-
-# Check error count progression
-grep "errorCount" logs/server.log | tail -10
-```
-
-## Alert Thresholds
-
-- **Memory Warning**: Heap usage > 500MB
-- **Error Shutdown**: 5 uncaught exceptions OR 10 unhandled rejections
-- **Monitoring Alert**: 5 consecutive health check failures
-- **Timeout Limits**: 5s auth, 10s message handling, 10s shutdown
-
-This system should help identify what's causing the server to die and provide
-early warnings before crashes occur.
+With these defaults, you get sensible protection out of the box, and a minimal set of steps to plug Arbiter into your existing monitoring and incident response flow.***

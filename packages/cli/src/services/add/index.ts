@@ -289,11 +289,34 @@ product: {
   goals: ["Application goals will be defined here"]
 }
 
-ui: routes: []
+ui: {
+  routes: [
+    {
+      id:   "app:home"
+      path: "/"
+      capabilities: ["view"]
+      components: ["HomePage"]
+    },
+  ]
+}
 
-locators: {}
+locators: {
+  "page:home":  "[data-testid=\\"home-page\\"]"
+  "btn:start":  "[data-testid=\\"start-button\\"]"
+  "toast:ok":   "[data-testid=\\"toast-ok\\"]"
+}
 
-flows: []
+flows: [
+  {
+    id: "baseline_e2e"
+    steps: [
+      { visit: "/" }
+      { expect: { locator: "page:home",  state: "visible" } }
+      { click:  "btn:start" }
+      { expect: { locator: "toast:ok", text: { contains: "ready" } } }
+    ]
+  },
+]
 
 // V1 compatibility structure
 config: {

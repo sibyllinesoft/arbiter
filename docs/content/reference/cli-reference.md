@@ -40,6 +40,41 @@ Confirm your environment with `cue version`. When the binary lives outside the
 default `PATH`, expose it via a wrapper script before running `arbiter`
 commands.
 
+## Table of Contents
+
+- [arbiter init](#arbiter-init-display-name)
+- [arbiter onboard](#arbiter-onboard-project-path)
+- [arbiter add](#arbiter-add)
+- [arbiter generate](#arbiter-generate-spec-name)
+- [arbiter check](#arbiter-check-patterns)
+- [arbiter validate](#arbiter-validate-files)
+- [arbiter surface](#arbiter-surface-language)
+- [arbiter watch](#arbiter-watch-path)
+- [arbiter diff](#arbiter-diff-old-file-new-file)
+- [arbiter migrate](#arbiter-migrate-patterns)
+- [arbiter sync](#arbiter-sync)
+- [arbiter integrate](#arbiter-integrate)
+- [arbiter version](#arbiter-version)
+- [arbiter epic](#arbiter-epic)
+- [arbiter task](#arbiter-task)
+- [arbiter execute](#arbiter-execute-epic)
+- [arbiter export](#arbiter-export-files)
+- [arbiter template](#arbiter-template)
+- [arbiter templates](#arbiter-templates)
+- [arbiter create](#arbiter-create-type)
+- [arbiter docs](#arbiter-docs)
+- [arbiter explain](#arbiter-explain)
+- [arbiter preview](#arbiter-preview)
+- [arbiter tests](#arbiter-tests)
+- [arbiter health](#arbiter-health)
+- [arbiter server](#arbiter-server-options)
+- [arbiter config](#arbiter-config)
+- [arbiter import](#arbiter-import)
+- [arbiter examples](#arbiter-examples-type)
+- [arbiter rename](#arbiter-rename)
+- [arbiter spec-import](#arbiter-spec-import-file)
+- [arbiter github-templates](#arbiter-github-templates)
+
 ## Global Options
 
 All commands support these global options:

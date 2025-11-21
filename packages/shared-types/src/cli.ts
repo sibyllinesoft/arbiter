@@ -103,14 +103,33 @@ export type ServiceArtifactType = "internal" | "external";
 export type ServiceWorkload = "deployment" | "statefulset" | "daemonset" | "job" | "cronjob";
 export type DeploymentTarget = "kubernetes" | "compose" | "both";
 
+export type DependencyKind =
+  | "service"
+  | "database"
+  | "cache"
+  | "queue"
+  | "search"
+  | "message-bus"
+  | "external"
+  | string;
+
 export interface ServiceDependencySpec {
-  service: string;
+  /** Unique name of the dependency within this artifact */
+  name?: string; // optional for backward compatibility
+  /** Optional bucket/type so dependencies can be grouped */
+  type?: DependencyKind;
+  /** Target identifier (service key, resource name, external handle) */
+  target?: string;
+  /** Legacy field kept for compatibility with older specs */
+  service?: string;
   version?: string;
-  kind?: string;
+  kind?: string; // e.g., "postgres", "redis"
   optional?: boolean;
   contractRef?: string;
   description?: string;
 }
+
+export type DependencyGroups = Record<string, ServiceDependencySpec[]>;
 
 export interface ExternalResourceSpec {
   kind: string; // e.g., "database", "cache", "queue"
@@ -198,7 +217,10 @@ export interface ServiceConfig {
   annotations?: Record<string, string>;
   endpoints?: Record<Slug, ServiceEndpointSpec>;
   resource?: ExternalResourceSpec;
-  dependencies?: Record<string, ServiceDependencySpec> | string[];
+  /**
+   * Grouped dependencies by type/bucket (preferred). Legacy shapes are still accepted for backwards compatibility.
+   */
+  dependencies?: DependencyGroups | Record<string, ServiceDependencySpec> | string[];
 }
 
 export interface ServiceDeploymentOverride {
@@ -295,7 +317,7 @@ export interface AssemblyConfig {
     description?: string;
     version: string;
   };
-  deployment: DeploymentConfig;
+  deployments?: Record<string, DeploymentConfig>;
   services: Record<string, ServiceConfig>;
 }
 

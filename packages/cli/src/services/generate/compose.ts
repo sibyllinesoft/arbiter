@@ -83,14 +83,9 @@ function selectComposeDeployment(cueData: any): ComposeDeploymentSelection {
     }
   }
 
-  const fallback = cueData?.deployment;
-  const overrides =
-    fallback?.services && typeof fallback.services === "object"
-      ? (fallback.services as Record<string, ServiceDeploymentOverride>)
-      : {};
   return {
-    deployment: fallback ?? null,
-    overrides,
+    deployment: null,
+    overrides: {},
   };
 }
 

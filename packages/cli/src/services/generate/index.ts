@@ -3752,7 +3752,7 @@ async function generateInfrastructureArtifacts(
   const files: string[] = [];
   const cueData = (configWithVersion as any)._fullCueData;
 
-  if (!cueData?.deployment && !cueData?.services) {
+  if (!cueData?.deployments && !cueData?.services) {
     return files;
   }
 
@@ -6178,15 +6178,25 @@ function parseDeploymentServices(assemblyConfig: any): {
   // Use the full CUE data if available
   const cueData = assemblyConfig._fullCueData || assemblyConfig;
 
-  // Extract cluster configuration
-  if (cueData?.deployment?.cluster) {
-    cluster = {
-      name: cueData.deployment.cluster.name || "default",
-      provider: cueData.deployment.cluster.provider || "kubernetes",
-      context: cueData.deployment.cluster.context,
-      namespace: cueData.deployment.cluster.namespace || "default",
-      config: cueData.deployment.cluster.config || {},
-    };
+  // Extract cluster configuration from environment-scoped deployments
+  const deployments = cueData?.deployments;
+  if (deployments && typeof deployments === "object") {
+    const entries = Object.entries(deployments as Record<string, DeploymentConfig>);
+    const match =
+      entries.find(([, cfg]) => cfg?.target === "kubernetes") ||
+      entries.find(([, cfg]) => cfg?.target === "both") ||
+      entries[0];
+
+    const deploymentConfig = match?.[1];
+    if (deploymentConfig?.cluster) {
+      cluster = {
+        name: deploymentConfig.cluster.name || "default",
+        provider: deploymentConfig.cluster.provider || "kubernetes",
+        context: deploymentConfig.cluster.context,
+        namespace: deploymentConfig.cluster.namespace || "default",
+        config: deploymentConfig.cluster.config || {},
+      };
+    }
   }
 
   // Extract services from properly parsed CUE configuration

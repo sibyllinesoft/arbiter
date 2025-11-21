@@ -1,7 +1,8 @@
-// @ts-nocheck
 import { useQueryClient } from "@tanstack/react-query";
 import { clsx } from "clsx";
-import { ChevronUp, Layout, Trash2 } from "lucide-react";
+import { ChevronUp, Layout, Plus, Trash2 } from "lucide-react";
+// @ts-nocheck
+import React from "react";
 import { type FC, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -548,7 +549,7 @@ const ClientCard: FC<{
             {client.description && (
               <p className="text-gray-600/80 dark:text-graphite-200/80">{client.description}</p>
             )}
-            <div className="flex flex-wrap justify-around gap-4 text-sm">
+            <div className="flex flex-wrap justify-around gap-4 text-sm bg-white dark:bg-graphite-950">
               {client.metadataItems.map((item) => (
                 <div
                   key={`${client.identifier}-${item.label}`}
@@ -572,31 +573,33 @@ const ClientCard: FC<{
         )}
         aria-hidden={!expanded}
       >
-        <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4 font-medium")}>
-          <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500/70 dark:text-graphite-300/70">
-            Views · {client.views.length} {client.views.length === 1 ? "view" : "views"}
-          </div>
+        <div className="px-5 py-4 font-medium bg-white dark:bg-graphite-950">
           {client.views.length > 0 ? (
-            <div className="space-y-2">
-              {client.views.map((view) => (
-                <div key={view.key} className="space-y-1 rounded-md px-1 py-1 text-sm">
-                  <span className="block font-semibold text-blue-600 dark:text-blue-400">
-                    {view.path}
-                  </span>
-                  {view.component && (
-                    <div className="text-xs text-gray-600/80 dark:text-graphite-200/80">
-                      Component:{" "}
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {view.component}
-                      </span>
-                    </div>
-                  )}
-                  {view.filePath && (
-                    <div className="text-xs text-gray-500/80 dark:text-graphite-300/80">
-                      {view.filePath}
-                    </div>
-                  )}
-                </div>
+            <div className="space-y-3">
+              {client.views.map((view, idx) => (
+                <React.Fragment key={view.key}>
+                  <div className="space-y-1 rounded-md px-1 py-1 text-sm">
+                    <span className="block font-semibold text-blue-600 dark:text-blue-400">
+                      {view.path}
+                    </span>
+                    {view.component && (
+                      <div className="text-xs text-gray-600/80 dark:text-graphite-200/80">
+                        Component:{" "}
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {view.component}
+                        </span>
+                      </div>
+                    )}
+                    {view.filePath && (
+                      <div className="text-xs text-gray-500/80 dark:text-graphite-300/80">
+                        {view.filePath}
+                      </div>
+                    )}
+                  </div>
+                  {idx < client.views.length - 1 ? (
+                    <hr className="border-graphite-200/40 dark:border-graphite-700/40" />
+                  ) : null}
+                </React.Fragment>
               ))}
             </div>
           ) : (
@@ -1049,8 +1052,8 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
               />
 
               {externalClients.length > 0 && (
-                <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
-                  <div className="border-b border-graphite-200/60 bg-gray-100 px-4 py-3 dark:border-graphite-700/60 dark:bg-graphite-900/70">
+                <div className="overflow-hidden font-medium">
+                  <div className="bg-gray-100 px-5 py-4 dark:bg-graphite-900/70">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-sm font-medium text-gray-900/70 dark:text-graphite-50/70">
                         <Layout className="h-4 w-4" />
@@ -1061,15 +1064,15 @@ export const ClientsReport: FC<ClientsReportProps> = ({ projectId, className }) 
                       </span>
                     </div>
                   </div>
-                  <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {externalClients.map((card) => (
-                        <ArtifactCard
-                          key={card.key}
-                          name={card.name}
-                          data={card.data}
-                          onClick={noop}
-                        />
+                  <div className="px-5 py-4">
+                    <div className="grid gap-3 grid-cols-1">
+                      {externalClients.map((card, idx) => (
+                        <React.Fragment key={card.key}>
+                          <ArtifactCard name={card.name} data={card.data} onClick={noop} />
+                          {idx < externalClients.length - 1 ? (
+                            <hr className="border-graphite-200/40 dark:border-graphite-700/40" />
+                          ) : null}
+                        </React.Fragment>
                       ))}
                     </div>
                   </div>

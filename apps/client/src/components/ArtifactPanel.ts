@@ -1,3 +1,4 @@
+// Card container styling (keep borders/padding for individual cards)
 export const ARTIFACT_PANEL_CLASS =
   "rounded-lg border border-graphite-200 dark:border-graphite-700 bg-white dark:bg-graphite-950 shadow-sm transition-colors";
 

@@ -545,7 +545,7 @@ const ServiceCard: React.FC<{
           </div>
 
           {service.endpoints.length > 0 ? (
-            <div className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-2 grid gap-3 grid-cols-1">
               {service.endpoints.map((endpoint) => (
                 <ArtifactCard
                   key={endpoint.key}
@@ -1411,7 +1411,7 @@ export const ServicesReport: React.FC<ServicesReportProps> = ({ projectId, class
                   </div>
                 </div>
                 <div className={clsx(ARTIFACT_PANEL_BODY_CLASS, "px-3 py-3 md:px-4 md:py-4")}>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid gap-3 grid-cols-1">
                     {externalCards.map((card) => (
                       <ArtifactCard
                         key={card.key}
