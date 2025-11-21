@@ -688,7 +688,7 @@ describe("ApiClient", () => {
 
   describe("payload size validation", () => {
     it("should validate payload size in validate method", async () => {
-      const largeContent = "x".repeat(70 * 1024); // 70KB
+      const largeContent = "x".repeat(6 * 1024 * 1024); // 6MB (exceeds 5MB limit)
 
       const result = await apiClient.validate(largeContent);
 
@@ -698,7 +698,7 @@ describe("ApiClient", () => {
     });
 
     it("should validate payload size in getIR method", async () => {
-      const largeContent = "x".repeat(70 * 1024); // 70KB
+      const largeContent = "x".repeat(6 * 1024 * 1024); // 6MB (exceeds 5MB limit)
 
       const result = await apiClient.getIR(largeContent);
 
@@ -707,7 +707,7 @@ describe("ApiClient", () => {
     });
 
     it("should validate payload size in updateFragment method", async () => {
-      const largeContent = "x".repeat(70 * 1024); // 70KB
+      const largeContent = "x".repeat(6 * 1024 * 1024); // 6MB (exceeds 5MB limit)
 
       const result = await apiClient.updateFragment("project", "path", largeContent);
 

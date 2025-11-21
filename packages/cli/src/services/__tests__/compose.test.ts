@@ -44,14 +44,16 @@ describe("generateDockerComposeArtifacts", () => {
             ports: [{ name: "tcp", port: 6379 }],
           },
         },
-        deployment: {
-          target: "compose",
-          compose: {
-            networks: {
-              default: { driver: "bridge" },
-            },
-            environment: {
-              NODE_ENV: "development",
+        deployments: {
+          development: {
+            target: "compose",
+            compose: {
+              networks: {
+                default: { driver: "bridge" },
+              },
+              environment: {
+                NODE_ENV: "development",
+              },
             },
           },
         },

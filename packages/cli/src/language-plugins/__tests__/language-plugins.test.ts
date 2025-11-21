@@ -304,7 +304,10 @@ describe("Language Plugin System", () => {
         (f) => f.path.includes("UserAPI") || f.path.includes("user") || f.path.includes("main"),
       );
       expect(serviceFile).toBeDefined();
-      expect(serviceFile!.content).toContain("FastAPI");
+      // Check for FastAPI imports or APIRouter which is the modern pattern
+      expect(
+        serviceFile!.content.includes("FastAPI") || serviceFile!.content.includes("APIRouter"),
+      ).toBe(true);
     });
 
     it("should initialize projects", async () => {

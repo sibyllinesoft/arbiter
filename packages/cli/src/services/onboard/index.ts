@@ -13,7 +13,7 @@ import inquirer from "inquirer";
 import { safeFileOperation } from "../../constraints/index.js";
 import type { CLIConfig } from "../../types.js";
 import { withProgress } from "../../utils/progress.js";
-import { syncCommand } from "../sync/index.js";
+import { syncProject } from "../sync/index.js";
 
 interface OnboardOptions {
   projectPath?: string;
@@ -86,9 +86,9 @@ export async function onboardCommand(options: OnboardOptions, config: CLIConfig)
   });
   progress.increment();
 
-  // Optionally sync
+  // Optionally sync manifests
   if (!options.dryRun && !config.localMode) {
-    await syncCommand("push", { verbose: options.verbose }, config);
+    await syncProject({ verbose: options.verbose }, config);
   }
   progress.increment();
 
