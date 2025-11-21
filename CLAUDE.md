@@ -97,6 +97,9 @@ arbiter/
 
 ### **IMPORTANT: CLI Simplification Status**
 
+**NOTE**: This section may be out of date. Always check the actual code in
+`packages/cli/src/cli/` for the authoritative list of available commands.
+
 The CLI has been simplified for agent-friendliness. Many interactive commands
 have been removed or simplified:
 
@@ -128,8 +131,10 @@ commands above and direct API calls instead.
 - `spec` - Complex spec fragment management
 - `config` - Interactive configuration
 - `ide` - IDE recommendations and setup
-- `validate` - Redundant with check
 - `create` - Redundant with init
+
+**Note**: `validate` is still available - it validates specific files with explicit schema,
+while `check` validates CUE files by pattern.
 
 ### Command Design Principles
 

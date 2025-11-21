@@ -43,47 +43,42 @@ commands.
 ## Table of Contents
 
 - [arbiter init](#arbiter-init-display-name)
-- [arbiter onboard](#arbiter-onboard-project-path)
-- [arbiter add](#arbiter-add)
-- [arbiter generate](#arbiter-generate-spec-name)
-- [arbiter check](#arbiter-check-patterns)
-- [arbiter validate](#arbiter-validate-files)
-- [arbiter surface](#arbiter-surface-language)
 - [arbiter watch](#arbiter-watch-path)
+- [arbiter surface](#arbiter-surface-language)
+- [arbiter spec-import](#arbiter-spec-import-cue-file)
+- [arbiter check](#arbiter-check-patterns)
+- [arbiter list](#arbiter-list-type)
+- [arbiter status](#arbiter-status)
 - [arbiter diff](#arbiter-diff-old-file-new-file)
-- [arbiter migrate](#arbiter-migrate-patterns)
+- [arbiter health](#arbiter-health)
+- [arbiter add](#arbiter-add)
+- [arbiter remove](#arbiter-remove)
+- [arbiter version](#arbiter-version)
+- [arbiter generate](#arbiter-generate-spec-name)
+- [arbiter docs](#arbiter-docs)
+- [arbiter examples](#arbiter-examples-type)
+- [arbiter execute](#arbiter-execute-epic)
+- [arbiter explain](#arbiter-explain)
+- [arbiter rename](#arbiter-rename)
 - [arbiter sync](#arbiter-sync)
 - [arbiter integrate](#arbiter-integrate)
-- [arbiter version](#arbiter-version)
-- [arbiter epic](#arbiter-epic)
-- [arbiter task](#arbiter-task)
-- [arbiter execute](#arbiter-execute-epic)
-- [arbiter export](#arbiter-export-files)
-- [arbiter template](#arbiter-template)
-- [arbiter templates](#arbiter-templates)
-- [arbiter create](#arbiter-create-type)
-- [arbiter docs](#arbiter-docs)
-- [arbiter explain](#arbiter-explain)
-- [arbiter preview](#arbiter-preview)
-- [arbiter tests](#arbiter-tests)
-- [arbiter health](#arbiter-health)
-- [arbiter server](#arbiter-server-options)
-- [arbiter config](#arbiter-config)
-- [arbiter import](#arbiter-import)
-- [arbiter examples](#arbiter-examples-type)
-- [arbiter rename](#arbiter-rename)
-- [arbiter spec-import](#arbiter-spec-import-file)
 - [arbiter github-templates](#arbiter-github-templates)
+- [arbiter import](#arbiter-import)
+- [arbiter tests](#arbiter-tests)
+- [arbiter auth](#arbiter-auth)
 
 ## Global Options
 
 All commands support these global options:
 
-- `-v, --version` - Display version number
+- `-V, --version` - Display version number
 - `-c, --config <path>` - Path to configuration file
 - `--no-color` - Disable colored output
 - `--api-url <url>` - API server URL (default: http://localhost:5050)
+- `--arbiter-url <url>` - Arbiter server URL (alias for --api-url)
 - `--timeout <ms>` - Request timeout in milliseconds
+- `--local` - Operate in offline mode using local CUE files only
+- `-v, --verbose` - Enable verbose logging globally
 - `-h, --help` - Display help for command
 
 ## Core Commands
@@ -130,22 +125,173 @@ arbiter init "User API" --template api
 arbiter init --list-templates
 ```
 
-#### `arbiter onboard [project-path]`
+#### `arbiter watch [path]`
 
-Intelligently onboard existing projects to Arbiter by analyzing the codebase and
-generating appropriate specifications.
+Cross-platform file watcher with live validation and planning.
 
 **Usage:**
 
 ```bash
-# Onboard current directory
-arbiter onboard
+# Watch current directory
+arbiter watch
 
-# Onboard specific project
-arbiter onboard /path/to/project
+# Watch specific directory
+arbiter watch ./src
 
-# Dry run to see what would be generated
-arbiter onboard --dry-run
+# Watch with custom patterns
+arbiter watch --pattern "**/*.cue"
+
+# Auto-generate on changes
+arbiter watch --auto-generate
+```
+
+**Options:**
+
+- `--pattern <glob>` - File patterns to watch
+- `--auto-generate` - Automatically run generate on changes
+- `--debounce <ms>` - Debounce delay for file changes
+
+#### `arbiter surface <language>`
+
+Extract API surface from source code and generate project-specific surface
+files.
+
+**Usage:**
+
+```bash
+# Extract TypeScript API surface
+arbiter surface typescript
+
+# Extract from specific directory
+arbiter surface python --source ./src
+
+# Generate surface documentation
+arbiter surface go --docs
+```
+
+**Supported Languages:** typescript, javascript, python, go, rust, java
+
+#### `arbiter spec-import [cue-file]`
+
+Import a local CUE specification fragment into the Arbiter service.
+
+**Usage:**
+
+```bash
+# Import the default .arbiter/assembly.cue for the configured project
+arbiter spec-import
+
+# Import a custom file and store it at an explicit fragment path
+arbiter spec-import specs/catalog.cue --remote-path assembly.cue
+
+# Import into a specific project without running local validation
+arbiter spec-import --project proj_123 --skip-validate
+```
+
+**Options:**
+
+- `--project <id>` – Target project id (defaults to the configured projectId or `cli-project`)
+- `--remote-path <path>` – Logical fragment path stored in Arbiter (defaults to the file's relative path)
+- `--skip-validate` – Skip local `cue` validation before upload
+- `--author <name>` – Revision author metadata
+- `--message <message>` – Revision message metadata
+
+---
+
+### Validation & Analysis
+
+#### `arbiter check [patterns...]`
+
+Validate CUE files in the current directory.
+
+**Usage:**
+
+```bash
+# Check all CUE files
+arbiter check
+
+# Check specific files
+arbiter check user.cue order.cue
+
+# Check with pattern
+arbiter check "**/*.cue"
+
+# Output as JSON
+arbiter check --format json
+```
+
+**Options:**
+
+- `--format <format>` - Output format (table, json, yaml)
+- `--strict` - Enable strict validation mode
+- `--schema <path>` - Validate against specific schema
+
+#### `arbiter list <type>`
+
+List components of a specific type in the project.
+
+**Usage:**
+
+```bash
+# List all services
+arbiter list services
+
+# List all flows
+arbiter list flows
+
+# List with JSON output
+arbiter list services --format json
+```
+
+#### `arbiter status`
+
+Show project status overview.
+
+**Usage:**
+
+```bash
+# Show status
+arbiter status
+
+# JSON output
+arbiter status --format json
+```
+
+#### `arbiter diff <old-file> <new-file>`
+
+Compare two CUE schemas and analyze changes.
+
+**Usage:**
+
+```bash
+# Compare schema definitions
+arbiter diff schema-old.cue schema-new.cue
+
+# Output in different formats
+arbiter diff --format json old.cue new.cue
+
+# Show only breaking changes
+arbiter diff --breaking-only old.cue new.cue
+```
+
+#### `arbiter health`
+
+Comprehensive Arbiter server health check.
+
+**Usage:**
+
+```bash
+# Basic health check
+arbiter health
+
+# Detailed health report
+arbiter health --detailed
+
+# Check specific components
+arbiter health --components api,database
+
+# JSON output for monitoring
+arbiter health --format json
 ```
 
 ---
@@ -164,23 +310,74 @@ primary way to build complex systems piece by piece.
 arbiter add service user-service
 
 # Add an API endpoint
-arbiter add endpoint POST /users
+arbiter add endpoint /api/users
 
 # Add a database model
-arbiter add model User
+arbiter add schema User
 
 # Add a background job
-arbiter add job cleanup-users --schedule "0 2 * * *"
+arbiter add flow cleanup-users
 ```
 
 **Subcommands:**
 
-- `arbiter add service <name>` - Add a new service
-- `arbiter add endpoint <method> <path>` - Add API endpoint
-- `arbiter add model <name>` - Add domain model
-- `arbiter add job <name>` - Add scheduled job
-- `arbiter add event <name>` - Add domain event
-- `arbiter add flow <name>` - Add business process flow
+- `arbiter add service <name>` - Add a service to the specification
+- `arbiter add client <name>` - Add a client application
+- `arbiter add contract <name>` - Add or update a contract workflow/event definition
+- `arbiter add contract-operation <contract> <operation>` - Add operation to contract
+- `arbiter add endpoint <path>` - Add API endpoint to a service
+- `arbiter add route <path>` - Add UI route for frontend applications
+- `arbiter add flow <id>` - Add user flow for testing and validation
+- `arbiter add load-balancer` - Add load balancer with health check invariants
+- `arbiter add database <name>` - Add database with automatic service attachment
+- `arbiter add cache <name>` - Add cache service with automatic attachment
+- `arbiter add locator <key>` - Add UI locator for testing
+- `arbiter add schema <name>` - Add schema for API documentation
+- `arbiter add package <name>` - Add reusable package/library
+- `arbiter add component <name>` - Add UI component
+- `arbiter add module <name>` - Add standalone module
+- `arbiter add epic` - Manage epics using sharded CUE storage
+- `arbiter add task` - Manage tasks within epics
+
+#### `arbiter remove`
+
+Remove components from the project specification.
+
+**Usage:**
+
+```bash
+# Remove a service
+arbiter remove service user-service
+
+# Remove an endpoint
+arbiter remove endpoint /api/users
+
+# Remove a database
+arbiter remove database postgres
+```
+
+**Subcommands:** Mirrors the `add` subcommands for removing components.
+
+#### `arbiter version`
+
+Semver-aware version planning and release management.
+
+**Usage:**
+
+```bash
+# Show current version info
+arbiter version
+
+# Plan next version
+arbiter version plan --type minor
+
+# Create version bump
+arbiter version bump --to 2.1.0
+```
+
+---
+
+### Code Generation
 
 #### `arbiter generate [spec-name]`
 
@@ -234,135 +431,95 @@ When omitted, Arbiter falls back to sensible defaults: Vitest for TypeScript,
 Jest for JavaScript, Pytest for Python, Rust's built-in test harness, and Go's
 standard `testing` package.
 
----
+#### `arbiter docs`
 
-### Validation & Analysis
-
-#### `arbiter check [patterns...]`
-
-Validate CUE files in the current directory.
+Generate documentation from CUE schemas and API surfaces.
 
 **Usage:**
 
 ```bash
-# Check all CUE files
-arbiter check
+# Generate all documentation
+arbiter docs
 
-# Check specific files
-arbiter check user.cue order.cue
+# Generate API docs only
+arbiter docs --type api
 
-# Check with pattern
-arbiter check "**/*.cue"
+# Generate in specific format
+arbiter docs --format markdown
 
-# Output as JSON
-arbiter check --format json
+# Output to directory
+arbiter docs --output ./docs
 ```
 
-**Options:**
+#### `arbiter examples <type>`
 
-- `--format <format>` - Output format (table, json, yaml)
-- `--strict` - Enable strict validation mode
-- `--schema <path>` - Validate against specific schema
-
-#### `arbiter validate <files...>`
-
-Validate CUE files with explicit schema and configuration.
+Generate example projects by profile or language type.
 
 **Usage:**
 
 ```bash
-# Validate against default schema
-arbiter validate spec.cue
+# List available examples
+arbiter examples list
 
-# Validate against custom schema
-arbiter validate --schema ./schemas/app.cue spec.cue
+# Generate basic web app example
+arbiter examples basic-web-app
 
-# Validate multiple files
-arbiter validate user.cue order.cue product.cue
+# Generate microservice example
+arbiter examples microservice --language typescript
 ```
 
-#### `arbiter surface <language>`
+#### `arbiter execute <epic>`
 
-Extract API surface from source code and generate project-specific surface
-files.
+Execute Arbiter epics for deterministic, agent-first code generation.
 
 **Usage:**
 
 ```bash
-# Extract TypeScript API surface
-arbiter surface typescript
+# Execute entire epic
+arbiter execute user-auth-epic
 
-# Extract from specific directory
-arbiter surface python --source ./src
+# Execute with specific profile
+arbiter execute user-auth-epic --profile production
 
-# Generate surface documentation
-arbiter surface go --docs
+# Execute single task
+arbiter execute user-auth-epic --task auth-001
 ```
 
-**Supported Languages:** typescript, javascript, python, go, rust, java
+#### `arbiter explain`
 
----
-
-### Development Workflow
-
-#### `arbiter watch [path]`
-
-Cross-platform file watcher with live validation and planning.
+Generate plain-English summary of project specifications.
 
 **Usage:**
 
 ```bash
-# Watch current directory
-arbiter watch
+# Explain current specification
+arbiter explain
 
-# Watch specific directory
-arbiter watch ./src
+# Explain specific component
+arbiter explain user-service
 
-# Watch with custom patterns
-arbiter watch --pattern "**/*.cue"
+# Generate detailed explanation
+arbiter explain --detailed
 
-# Auto-generate on changes
-arbiter watch --auto-generate
+# Output as markdown
+arbiter explain --format markdown
 ```
 
-**Options:**
+#### `arbiter rename`
 
-- `--pattern <glob>` - File patterns to watch
-- `--auto-generate` - Automatically run generate on changes
-- `--debounce <ms>` - Debounce delay for file changes
-
-#### `arbiter diff <old-file> <new-file>`
-
-Compare two CUE schemas and analyze changes.
+Migrate existing files to project-specific naming conventions.
 
 **Usage:**
 
 ```bash
-# Compare schema definitions
-arbiter diff schema-old.cue schema-new.cue
+# Rename all files to match conventions
+arbiter rename
 
-# Output in different formats
-arbiter diff --format json old.cue new.cue
+# Preview rename operations
+arbiter rename --dry-run
 
-# Show only breaking changes
-arbiter diff --breaking-only old.cue new.cue
-```
-
-#### `arbiter migrate [patterns...]`
-
-Automatically migrate CUE schemas to latest format.
-
-**Usage:**
-
-```bash
-# Migrate all CUE files
-arbiter migrate
-
-# Migrate specific files
-arbiter migrate user.cue order.cue
-
-# Dry run migration
-arbiter migrate --dry-run
+# Rename specific file types
+arbiter rename --types cue,typescript
 ```
 
 ---
@@ -406,305 +563,26 @@ arbiter integrate --platform jenkins
 
 **Supported Platforms:** github, gitlab, jenkins, circleci, azure-devops
 
-#### `arbiter version`
+#### `arbiter github-templates`
 
-Semver-aware version planning and release management.
-
-**Usage:**
-
-```bash
-# Show current version info
-arbiter version
-
-# Plan next version
-arbiter version plan --type minor
-
-# Create version bump
-arbiter version bump --to 2.1.0
-```
-
----
-
-### Epic & Task Management
-
-#### `arbiter epic`
-
-Manage epics and their tasks using sharded CUE storage.
+Manage GitHub issue templates configuration.
 
 **Usage:**
 
 ```bash
-# List all epics
-arbiter epic list
+# Generate GitHub templates
+arbiter github-templates generate
 
-# Create new epic
-arbiter epic create "User Authentication"
+# Update existing templates
+arbiter github-templates update
 
-# Show epic status
-arbiter epic status auth-epic
-
-# Execute epic
-arbiter epic run auth-epic
-```
-
-#### `arbiter task`
-
-Manage tasks within epics.
-
-**Usage:**
-
-```bash
-# List tasks in current epic
-arbiter task list
-
-# Add task to epic
-arbiter task add "Implement login endpoint" --epic auth
-
-# Mark task complete
-arbiter task complete auth-001
-
-# Show task details
-arbiter task show auth-001
-```
-
-#### `arbiter execute <epic>`
-
-Execute Arbiter epics for deterministic, agent-first code generation.
-
-**Usage:**
-
-```bash
-# Execute entire epic
-arbiter execute user-auth-epic
-
-# Execute with specific profile
-arbiter execute user-auth-epic --profile production
-
-# Execute single task
-arbiter execute user-auth-epic --task auth-001
-```
-
----
-
-### Code Generation & Templates
-
-#### `arbiter export <files...>`
-
-Export CUE configurations to various formats.
-
-**Usage:**
-
-```bash
-# Export to JSON
-arbiter export spec.cue --format json
-
-# Export to YAML
-arbiter export spec.cue --format yaml
-
-# Export to multiple formats
-arbiter export spec.cue --format json,yaml,toml
-```
-
-#### `arbiter template`
-
-Manage and use CUE schema templates.
-
-**Usage:**
-
-```bash
 # List available templates
-arbiter template list
-
-# Apply template
-arbiter template apply microservice
-
-# Create custom template
-arbiter template create my-template --from ./template-dir
-```
-
-#### `arbiter templates`
-
-Manage template aliases for code generation.
-
-**Usage:**
-
-```bash
-# List template aliases
-arbiter templates list
-
-# Add template alias
-arbiter templates add api-service ./templates/api
-
-# Remove template alias
-arbiter templates remove api-service
-```
-
-#### `arbiter create <type>`
-
-Create new schemas and configurations interactively.
-
-**Usage:**
-
-```bash
-# Create new service schema
-arbiter create service
-
-# Create API specification
-arbiter create api
-
-# Create deployment configuration
-arbiter create deployment
+arbiter github-templates list
 ```
 
 ---
 
-### Documentation & Analysis
-
-#### `arbiter docs`
-
-Generate documentation from CUE schemas and API surfaces.
-
-**Usage:**
-
-```bash
-# Generate all documentation
-arbiter docs
-
-# Generate API docs only
-arbiter docs --type api
-
-# Generate in specific format
-arbiter docs --format markdown
-
-# Output to directory
-arbiter docs --output ./docs
-```
-
-#### `arbiter explain`
-
-Generate plain-English summary of project specifications.
-
-**Usage:**
-
-```bash
-# Explain current specification
-arbiter explain
-
-# Explain specific component
-arbiter explain user-service
-
-# Generate detailed explanation
-arbiter explain --detailed
-
-# Output as markdown
-arbiter explain --format markdown
-```
-
-#### `arbiter preview`
-
-Show what would be generated without creating files (deterministic output).
-
-**Usage:**
-
-```bash
-# Preview all generation
-arbiter preview
-
-# Preview specific targets
-arbiter preview --target typescript,docker
-
-# Preview with detailed output
-arbiter preview --detailed
-```
-
----
-
-### Testing & Quality
-
-#### `arbiter tests`
-
-Test management, scaffolding, and coverage analysis.
-
-**Usage:**
-
-```bash
-# Generate test scaffolds
-arbiter tests scaffold
-
-# Run specification tests
-arbiter tests run
-
-# Analyze test coverage
-arbiter tests coverage
-
-# Generate test reports
-arbiter tests report --format html
-```
-
----
-
-### System Management
-
-#### `arbiter health`
-
-Comprehensive Arbiter server health check.
-
-**Usage:**
-
-```bash
-# Basic health check
-arbiter health
-
-# Detailed health report
-arbiter health --detailed
-
-# Check specific components
-arbiter health --components api,database
-
-# JSON output for monitoring
-arbiter health --format json
-```
-
-#### `arbiter server [options]`
-
-Start local Arbiter server (development).
-
-**Usage:**
-
-```bash
-# Start development server
-arbiter server
-
-# Start on specific port
-arbiter server --port 8080
-
-# Start with debug mode
-arbiter server --debug
-
-# Start in production mode
-arbiter server --prod
-```
-
-#### `arbiter config`
-
-Manage CLI configuration.
-
-**Usage:**
-
-```bash
-# Show current configuration
-arbiter config show
-
-# Set configuration value
-arbiter config set api.url http://localhost:3000
-
-# Reset to defaults
-arbiter config reset
-```
-
----
-
-### Import & Package Management
+### Import & Testing
 
 #### `arbiter import`
 
@@ -724,86 +602,60 @@ arbiter import list
 
 # Update imports
 arbiter import update
+
+# Validate imports in CUE files
+arbiter import validate <files...>
 ```
+
+**Subcommands:**
+
+- `arbiter import validate <files...>` - Validate imports in CUE files against registry
+  - Options: `-g, --global` - Use global registry
+
+#### `arbiter tests`
+
+Test management, scaffolding, and coverage analysis.
+
+**Usage:**
+
+```bash
+# Generate test scaffolds
+arbiter tests scaffold
+
+# Run specification tests
+arbiter tests run
+
+# Analyze test coverage
+arbiter tests cover
+
+# Generate test reports
+arbiter tests report --format html
+```
+
+**Subcommands:**
+
+- `arbiter tests scaffold` - Generate test scaffolds
+- `arbiter tests cover` - Analyze test coverage
 
 ---
 
-### Utility Commands
+### Authentication
 
-#### `arbiter examples <type>`
+#### `arbiter auth`
 
-Generate example projects by profile or language type.
-
-**Usage:**
-
-```bash
-# List available examples
-arbiter examples list
-
-# Generate basic web app example
-arbiter examples basic-web-app
-
-# Generate microservice example
-arbiter examples microservice --language typescript
-```
-
-#### `arbiter rename`
-
-Migrate existing files to project-specific naming conventions.
+Authenticate the Arbiter CLI using OAuth.
 
 **Usage:**
 
 ```bash
-# Rename all files to match conventions
-arbiter rename
+# Start OAuth authentication flow
+arbiter auth
 
-# Preview rename operations
-arbiter rename --dry-run
+# Check authentication status
+arbiter auth status
 
-# Rename specific file types
-arbiter rename --types cue,typescript
-```
-
-#### `arbiter spec-import [file]`
-
-Import a local CUE specification fragment into the Arbiter service.
-
-**Usage:**
-
-```bash
-# Import the default .arbiter/assembly.cue for the configured project
-arbiter spec-import
-
-# Import a custom file and store it at an explicit fragment path
-arbiter spec-import specs/catalog.cue --remote-path assembly.cue
-
-# Import into a specific project without running local validation
-arbiter spec-import --project proj_123 --skip-validate
-```
-
-**Options:**
-
-- `--project <id>` – Target project id (defaults to the configured projectId or `cli-project`)
-- `--remote-path <path>` – Logical fragment path stored in Arbiter (defaults to the file’s relative path)
-- `--skip-validate` – Skip local `cue` validation before upload
-- `--author <name>` – Revision author metadata
-- `--message <message>` – Revision message metadata
-
-#### `arbiter github-templates`
-
-Manage GitHub issue templates configuration.
-
-**Usage:**
-
-```bash
-# Generate GitHub templates
-arbiter github-templates generate
-
-# Update existing templates
-arbiter github-templates update
-
-# List available templates
-arbiter github-templates list
+# Logout
+arbiter auth logout
 ```
 
 ---
@@ -841,7 +693,7 @@ All commands work without user prompts and support:
 ```bash
 # Process multiple files
 arbiter check *.cue
-arbiter validate user.cue order.cue product.cue
+arbiter import validate user.cue order.cue product.cue
 
 # Chain commands
 arbiter generate && arbiter check && arbiter tests run

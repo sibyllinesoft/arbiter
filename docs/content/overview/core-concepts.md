@@ -18,7 +18,7 @@ the core concepts that make this transformation possible.
 | Domain | What does the business care about? | `arbiter add schema`, `arbiter add state-machine` | [Code Generation Overview §1](./code-generation-overview.md#layer-1-%E2%80%94-domain-describe-the-schema) |
 | Contracts | How do systems communicate? | `arbiter add contract`, `arbiter add event` | [Section §2](./code-generation-overview.md#layer-2-%E2%80%94-contracts-bind-the-operations) |
 | Capabilities | Which services fulfill those contracts? | `arbiter add service`, `arbiter add endpoint` | [Section §3](./code-generation-overview.md#layer-3-%E2%80%94-capabilities-define-the-service) |
-| Execution | Where does everything run? | `arbiter add deployment`, `arbiter configure env` | [Section §4](./code-generation-overview.md#layer-4-%E2%80%94-execution-pin-the-runtime) |
+| Execution | Where does everything run? | `arbiter add database`, `arbiter add cache` | [Section §4](./code-generation-overview.md#layer-4-%E2%80%94-execution-pin-the-runtime) |
 
 > Already read the CLI walk-through? Treat that overview as the play-by-play. This page keeps the definitions, guardrails, and mental models in one place so you can quickly remind yourself *why* each layer exists.
 
@@ -214,8 +214,8 @@ The **Execution** layer specifies where and how your services run in production.
 - **Keep overrides co-located**: scaling hints, feature flags, and ingress traits
   belong beside the service entry so generated Terraform/Helm/Docker assets stay
   in sync.
-- **Use the CLI**: `arbiter add deployment`, `arbiter add dependency`, and
-  `arbiter sync infrastructure` manage the structure without manual YAML edits.
+- **Use the CLI**: `arbiter add database`, `arbiter add cache`, and
+  `arbiter sync` manage the structure without manual YAML edits.
 
 > For a full manifest example, see
 > [Layer 4 in the Code Generation Overview](./code-generation-overview.md#layer-4-%E2%80%94-execution-generate-and-run).
@@ -228,7 +228,7 @@ The **Execution** layer specifies where and how your services run in production.
    metadata so dependencies remain explicit.
 3. **Attach overrides per environment** (replicas, env vars, annotations) in
    `deployments.<env>.services` instead of scattering them through manifests.
-4. **Promote the plan** using `arbiter generate infrastructure` to emit
+4. **Promote the plan** using `arbiter generate` to emit
    Terraform/Helm/Compose manifests that inherit those exact constraints.
 
 ## Guided Walkthrough: From Idea to Running Service
