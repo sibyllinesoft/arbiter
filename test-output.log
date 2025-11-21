@@ -1,0 +1,1032 @@
+$ PORT=0 bun test packages/ apps/api --recursive && bun run --cwd apps/client test
+bun test v1.3.2 (b131639c)
+
+apps/api/src/server.test.ts:
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:36:54.039Z","tokenEpoch":"d6361b38-91da-4701-b18b-cc8e91e0a59e"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:36:54.039Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:36:54.039Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"info","message":"NATS integration disabled - no NATS_URL configured","timestamp":"2025-11-21T14:36:54.039Z"}
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:36:54.048Z","tokenEpoch":"2c299a26-3035-41f7-abdc-6d0b8f7fe23b"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:36:54.048Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:36:54.048Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"info","message":"NATS integration disabled - no NATS_URL configured","timestamp":"2025-11-21T14:36:54.048Z"}
+{"level":"info","message":"Shutting down server...","timestamp":"2025-11-21T14:36:54.049Z"}
+{"level":"info","message":"Server shutdown complete","timestamp":"2025-11-21T14:36:54.049Z"}
+
+apps/api/src/__tests__/db-coverage.test.ts:
+{"level":"error","message":"Database health check failed","error":"Failed to run the query 'SELECT 1'","stack":"DrizzleError: Failed to run the query 'SELECT 1'\n    at run (/home/nathan/Projects/arbiter/node_modules/.bun/drizzle-orm@0.44.5+44a2fedc9d4873aa/node_modules/drizzle-orm/sqlite-core/session.js:156:17)\n    at healthCheck (/home/nathan/Projects/arbiter/apps/api/src/db.ts:1456:26)\n    at healthCheck (/home/nathan/Projects/arbiter/apps/api/src/db.ts:1454:41)\n    at <anonymous> (/home/nathan/Projects/arbiter/apps/api/src/__tests__/db-coverage.test.ts:350:41)\n    at processTicksAndRejections (native:7:39)","timestamp":"2025-11-21T14:36:58.328Z"}
+
+apps/api/src/__tests__/project-analysis.test.ts:
+[project-analysis] parsed package manifest {
+  path: "apps/api/package.json",
+  originalType: "service",
+}
+[project-analysis] classified package {
+  path: "apps/api/package.json",
+  name: "api-service",
+  type: "service",
+  detectedType: "web_service",
+  reason: "web-framework",
+}
+
+apps/api/src/routes/specs.test.ts:
+[specs.resolved] aggregated components {
+  total: 0,
+  types: {},
+}
+[specs.resolved] No TSOA analysis for service {
+  service: "billing-service",
+}
+
+packages/cli/src/__tests__/epic.test.ts:
+✅ Created new shard: epic-shard-1
+✅ Added epic "Test Epic" to shard epic-shard-1
+✅ Created new shard: epic-shard-1
+✅ Added epic "Epic One" to shard epic-shard-1
+✅ Added epic "Epic Two" to shard epic-shard-1
+✅ Created new shard: epic-shard-1
+✅ Added epic "Epic 0" to shard epic-shard-1
+✅ Added epic "Epic 1" to shard epic-shard-1
+✅ Added epic "Epic 2" to shard epic-shard-1
+✅ Created new shard: epic-shard-2
+✅ Added epic "Epic 3" to shard epic-shard-2
+✅ Added epic "Epic 4" to shard epic-shard-2
+✅ Created new shard: epic-shard-1
+✅ Added epic "Task Test Epic" to shard epic-shard-1
+✅ Updated epic "Task Test Epic" in shard epic-shard-1
+✅ Created new shard: epic-shard-1
+✅ Added epic "Epic Alpha" to shard epic-shard-1
+✅ Added epic "Epic Beta" to shard epic-shard-1
+✅ Created new shard: epic-shard-1
+✅ Added epic "Stats Epic 1" to shard epic-shard-1
+✅ Added epic "Stats Epic 2" to shard epic-shard-1
+✅ Created new shard: epic-shard-1
+✅ Added epic "CUE Validation Epic" to shard epic-shard-1
+
+packages/cli/src/__tests__/generate-workflows.test.ts:
+🏗️  Generating project artifacts from assembly.cue...
+✅ Auto-detected spec: test-app
+🔍 Validating specification completeness...
+
+⚠️  Specification validation warnings found:
+
+⚠️  WARNINGS (recommend fixing):
+  • Testing: No test suites defined
+    Add comprehensive test coverage with unit, integration, and e2e tests
+    Path: tests
+  • Project Management: Source services found but no epics defined
+    Add epics to track implementation of custom services: api
+    Path: epics
+  • Project Management: Source services found but no implementation tasks defined
+    Add detailed tasks with dependencies for implementing: api
+    Path: epics[].tasks
+  • Project Management: Source service 'api' has no corresponding epic
+    Add epic for implementing api service with detailed tasks
+    Path: services.api
+  • Service Definition: Service 'api' has no port definitions
+    Define exposed ports with protocol and target port
+    Path: services.api.ports
+  • Service Definition: Source service 'api' missing health check configuration
+    Add health check endpoint and configuration for monitoring
+    Path: services.api.healthCheck
+  • Service Definition: Service 'api' missing resource specifications
+    Define CPU and memory limits for proper resource management
+    Path: services.api.resources
+  • Service Definition: Source service 'api' missing environment configuration
+    Define environment variables for configuration management
+    Path: services.api.env
+  • Documentation: Missing product goals and objectives
+    Define clear product goals to guide development decisions
+    Path: product.goals
+  • Documentation: Missing project description
+    Add comprehensive project description in metadata
+    Path: metadata.description
+  • Security: Missing security configuration
+    Define authentication, authorization, and security policies
+    Path: security
+  • Performance: Missing performance specifications
+    Define SLAs, response time targets, and throughput requirements
+    Path: performance
+  • Performance: Service 'api' missing resource limits
+    Define CPU and memory limits for performance predictability
+    Path: services.api.resources.limits
+  • Observability: Services defined but no observability configuration
+    Add logging, monitoring, and alerting configuration
+    Path: observability
+  • Observability: Missing logging configuration
+    Define log levels, formats, and aggregation strategy
+    Path: observability.logging
+  • Observability: Missing monitoring configuration
+    Define metrics collection and health monitoring
+    Path: observability.monitoring
+  • Environment Config: Missing environment configurations
+    Define development, staging, and production environments
+    Path: environments
+
+💡 Use --force to generate anyway
+
+🚨 IMPORTANT FOR AI AGENTS:
+IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.
+YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force`.
+
+⚠️  Generating despite warnings (--force used)
+
+🚨 REMINDER FOR AI AGENTS:
+You should have requested user approval before using --force with incomplete specifications.
+This may result in production issues that require additional work later.
+🎨 Generating application artifacts...
+📱 Generating artifacts for: Test Application
+📦 Initializing typescript project using TypeScript Plugin...
+🔧 Generating service structures...
+  • api (typescript) -> services/api
+✅ Generated 39 files:
+  ✓ clients/test-application/src/routes/types.ts
+  ✓ clients/test-application/src/routes/index.tsx
+  ✓ clients/test-application/src/routes/AppRoutes.tsx
+  ✓ clients/test-application/package.json
+  ✓ clients/test-application/vite.config.ts
+  ✓ clients/test-application/tsconfig.json
+  ✓ clients/test-application/tsconfig.build.json
+  ✓ clients/test-application/tsconfig.node.json
+  ✓ clients/test-application/.eslintrc.cjs
+  ✓ clients/test-application/src/App.tsx
+  ✓ clients/test-application/src/main.tsx
+  ✓ clients/test-application/index.html
+  ✓ clients/test-application/src/vite-env.d.ts
+  ✓ clients/test-application/src/test-setup.ts
+  ✓ clients/test-application/src/App.css
+  ✓ clients/test-application/src/index.css
+  ✓ clients/test-application/README.md
+  ✓ clients/test-application/Dockerfile
+  ✓ clients/test-application/.dockerignore
+  ✓ services/api/package.json
+  ✓ services/api/tsconfig.json
+  ✓ services/api/.eslintrc.cjs
+  ✓ services/api/src/index.ts
+  ✓ services/api/src/routes/index.ts
+  ✓ services/api/../../tests/api
+  ✓ services/api/Dockerfile
+  ✓ services/api/.dockerignore
+  ✓ services/api/README.md
+  ✓ services/api/manifests/deployment.yaml
+  ✓ tools/README.md
+  ✓ docs/overview.md
+  ✓ infra/main.tf
+  ✓ infra/variables.tf
+  ✓ infra/services.tf
+  ✓ infra/outputs.tf
+  ✓ infra/README.md
+  ✓ .github/workflows/ci.yml
+  ✓ Makefile
+  ✓ package.json
+🏗️  Generating project artifacts from assembly.cue...
+✅ Auto-detected spec: test-app
+🔍 Validating specification completeness...
+
+⚠️  Specification validation warnings found:
+
+⚠️  WARNINGS (recommend fixing):
+  • Testing: No test suites defined
+    Add comprehensive test coverage with unit, integration, and e2e tests
+    Path: tests
+  • Project Management: Source services found but no epics defined
+    Add epics to track implementation of custom services: api
+    Path: epics
+  • Project Management: Source services found but no implementation tasks defined
+    Add detailed tasks with dependencies for implementing: api
+    Path: epics[].tasks
+  • Project Management: Source service 'api' has no corresponding epic
+    Add epic for implementing api service with detailed tasks
+    Path: services.api
+  • Service Definition: Service 'api' has no port definitions
+    Define exposed ports with protocol and target port
+    Path: services.api.ports
+  • Service Definition: Source service 'api' missing health check configuration
+    Add health check endpoint and configuration for monitoring
+    Path: services.api.healthCheck
+  • Service Definition: Service 'api' missing resource specifications
+    Define CPU and memory limits for proper resource management
+    Path: services.api.resources
+  • Service Definition: Source service 'api' missing environment configuration
+    Define environment variables for configuration management
+    Path: services.api.env
+  • Documentation: Missing product goals and objectives
+    Define clear product goals to guide development decisions
+    Path: product.goals
+  • Documentation: Missing project description
+    Add comprehensive project description in metadata
+    Path: metadata.description
+  • Security: Missing security configuration
+    Define authentication, authorization, and security policies
+    Path: security
+  • Performance: Missing performance specifications
+    Define SLAs, response time targets, and throughput requirements
+    Path: performance
+  • Performance: Service 'api' missing resource limits
+    Define CPU and memory limits for performance predictability
+    Path: services.api.resources.limits
+  • Observability: Services defined but no observability configuration
+    Add logging, monitoring, and alerting configuration
+    Path: observability
+  • Observability: Missing logging configuration
+    Define log levels, formats, and aggregation strategy
+    Path: observability.logging
+  • Observability: Missing monitoring configuration
+    Define metrics collection and health monitoring
+    Path: observability.monitoring
+  • Environment Config: Missing environment configurations
+    Define development, staging, and production environments
+    Path: environments
+
+💡 Use --force to generate anyway
+
+🚨 IMPORTANT FOR AI AGENTS:
+IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.
+YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force`.
+
+⚠️  Generating despite warnings (--force used)
+
+🚨 REMINDER FOR AI AGENTS:
+You should have requested user approval before using --force with incomplete specifications.
+This may result in production issues that require additional work later.
+🎨 Generating application artifacts...
+📱 Generating artifacts for: Test Application
+📦 Initializing typescript project using TypeScript Plugin...
+🔧 Generating service structures...
+  • api (typescript) -> services/api
+✅ Generated 39 files:
+  ✓ clients/test-application/src/routes/types.ts
+  ✓ clients/test-application/src/routes/index.tsx
+  ✓ clients/test-application/src/routes/AppRoutes.tsx
+  ✓ clients/test-application/package.json
+  ✓ clients/test-application/vite.config.ts
+  ✓ clients/test-application/tsconfig.json
+  ✓ clients/test-application/tsconfig.build.json
+  ✓ clients/test-application/tsconfig.node.json
+  ✓ clients/test-application/.eslintrc.cjs
+  ✓ clients/test-application/src/App.tsx
+  ✓ clients/test-application/src/main.tsx
+  ✓ clients/test-application/index.html
+  ✓ clients/test-application/src/vite-env.d.ts
+  ✓ clients/test-application/src/test-setup.ts
+  ✓ clients/test-application/src/App.css
+  ✓ clients/test-application/src/index.css
+  ✓ clients/test-application/README.md
+  ✓ clients/test-application/Dockerfile
+  ✓ clients/test-application/.dockerignore
+  ✓ services/api/package.json
+  ✓ services/api/tsconfig.json
+  ✓ services/api/.eslintrc.cjs
+  ✓ services/api/src/index.ts
+  ✓ services/api/src/routes/index.ts
+  ✓ services/api/../../tests/api
+  ✓ services/api/Dockerfile
+  ✓ services/api/.dockerignore
+  ✓ services/api/README.md
+  ✓ services/api/manifests/deployment.yaml
+  ✓ tools/README.md
+  ✓ docs/overview.md
+  ✓ infra/main.tf
+  ✓ infra/variables.tf
+  ✓ infra/services.tf
+  ✓ infra/outputs.tf
+  ✓ infra/README.md
+  ✓ .github/workflows/ci.yml
+  ✓ Makefile
+  ✓ package.json
+🏗️  Generating project artifacts from assembly.cue...
+✅ Auto-detected spec: test-app
+🔍 Validating specification completeness...
+
+⚠️  Specification validation warnings found:
+
+⚠️  WARNINGS (recommend fixing):
+  • Testing: No test suites defined
+    Add comprehensive test coverage with unit, integration, and e2e tests
+    Path: tests
+  • Project Management: Source services found but no epics defined
+    Add epics to track implementation of custom services: api, reporting
+    Path: epics
+  • Project Management: Source services found but no implementation tasks defined
+    Add detailed tasks with dependencies for implementing: api, reporting
+    Path: epics[].tasks
+  • Project Management: Source service 'api' has no corresponding epic
+    Add epic for implementing api service with detailed tasks
+    Path: services.api
+  • Project Management: Source service 'reporting' has no corresponding epic
+    Add epic for implementing reporting service with detailed tasks
+    Path: services.reporting
+  • Service Definition: Service 'api' has no port definitions
+    Define exposed ports with protocol and target port
+    Path: services.api.ports
+  • Service Definition: Source service 'api' missing health check configuration
+    Add health check endpoint and configuration for monitoring
+    Path: services.api.healthCheck
+  • Service Definition: Service 'api' missing resource specifications
+    Define CPU and memory limits for proper resource management
+    Path: services.api.resources
+  • Service Definition: Source service 'api' missing environment configuration
+    Define environment variables for configuration management
+    Path: services.api.env
+  • Service Definition: Service 'reporting' has no port definitions
+    Define exposed ports with protocol and target port
+    Path: services.reporting.ports
+  • Service Definition: Source service 'reporting' missing health check configuration
+    Add health check endpoint and configuration for monitoring
+    Path: services.reporting.healthCheck
+  • Service Definition: Service 'reporting' missing resource specifications
+    Define CPU and memory limits for proper resource management
+    Path: services.reporting.resources
+  • Service Definition: Source service 'reporting' missing environment configuration
+    Define environment variables for configuration management
+    Path: services.reporting.env
+  • Documentation: Missing product goals and objectives
+    Define clear product goals to guide development decisions
+    Path: product.goals
+  • Documentation: Missing project description
+    Add comprehensive project description in metadata
+    Path: metadata.description
+  • Security: Missing security configuration
+    Define authentication, authorization, and security policies
+    Path: security
+  • Performance: Missing performance specifications
+    Define SLAs, response time targets, and throughput requirements
+    Path: performance
+  • Performance: Service 'api' missing resource limits
+    Define CPU and memory limits for performance predictability
+    Path: services.api.resources.limits
+  • Performance: Service 'reporting' missing resource limits
+    Define CPU and memory limits for performance predictability
+    Path: services.reporting.resources.limits
+  • Observability: Services defined but no observability configuration
+    Add logging, monitoring, and alerting configuration
+    Path: observability
+  • Observability: Missing logging configuration
+    Define log levels, formats, and aggregation strategy
+    Path: observability.logging
+  • Observability: Missing monitoring configuration
+    Define metrics collection and health monitoring
+    Path: observability.monitoring
+  • Environment Config: Missing environment configurations
+    Define development, staging, and production environments
+    Path: environments
+
+💡 Use --force to generate anyway
+
+🚨 IMPORTANT FOR AI AGENTS:
+IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.
+YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force`.
+
+⚠️  Generating despite warnings (--force used)
+
+🚨 REMINDER FOR AI AGENTS:
+You should have requested user approval before using --force with incomplete specifications.
+This may result in production issues that require additional work later.
+🎨 Generating application artifacts...
+📱 Generating artifacts for: Test Application
+📦 Initializing typescript project using TypeScript Plugin...
+🔧 Generating service structures...
+  • api (typescript) -> services/api
+  • reporting (python) -> services/reporting
+✅ Generated 49 files:
+  ✓ clients/test-application/src/routes/types.ts
+  ✓ clients/test-application/src/routes/index.tsx
+  ✓ clients/test-application/src/routes/AppRoutes.tsx
+  ✓ clients/test-application/package.json
+  ✓ clients/test-application/vite.config.ts
+  ✓ clients/test-application/tsconfig.json
+  ✓ clients/test-application/tsconfig.build.json
+  ✓ clients/test-application/tsconfig.node.json
+  ✓ clients/test-application/.eslintrc.cjs
+  ✓ clients/test-application/src/App.tsx
+  ✓ clients/test-application/src/main.tsx
+  ✓ clients/test-application/index.html
+  ✓ clients/test-application/src/vite-env.d.ts
+  ✓ clients/test-application/src/test-setup.ts
+  ✓ clients/test-application/src/App.css
+  ✓ clients/test-application/src/index.css
+  ✓ clients/test-application/README.md
+  ✓ clients/test-application/Dockerfile
+  ✓ clients/test-application/.dockerignore
+  ✓ services/api/package.json
+  ✓ services/api/tsconfig.json
+  ✓ services/api/.eslintrc.cjs
+  ✓ services/api/src/index.ts
+  ✓ services/api/src/routes/index.ts
+  ✓ services/api/../../tests/api
+  ✓ services/api/Dockerfile
+  ✓ services/api/.dockerignore
+  ✓ services/api/README.md
+  ✓ services/api/manifests/deployment.yaml
+  ✓ services/reporting/pyproject.toml
+  ✓ services/reporting/requirements.txt
+  ✓ services/reporting/app/main.py
+  ✓ services/reporting/app/routes/__init__.py
+  ✓ services/reporting/app/__init__.py
+  ✓ services/reporting/../../tests/reporting
+  ✓ services/reporting/Dockerfile
+  ✓ services/reporting/.dockerignore
+  ✓ services/reporting/README.md
+  ✓ services/reporting/manifests/deployment.yaml
+  ✓ tools/README.md
+  ✓ docs/overview.md
+  ✓ infra/main.tf
+  ✓ infra/variables.tf
+  ✓ infra/services.tf
+  ✓ infra/outputs.tf
+  ✓ infra/README.md
+  ✓ .github/workflows/ci.yml
+  ✓ Makefile
+  ✓ package.json
+🏗️  Generating project artifacts from assembly.cue...
+✅ Auto-detected spec: test-app
+🔍 Validating specification completeness...
+
+⚠️  Specification validation warnings found:
+
+⚠️  WARNINGS (recommend fixing):
+  • Testing: No test suites defined
+    Add comprehensive test coverage with unit, integration, and e2e tests
+    Path: tests
+  • Project Management: Source services found but no epics defined
+    Add epics to track implementation of custom services: reporting
+    Path: epics
+  • Project Management: Source services found but no implementation tasks defined
+    Add detailed tasks with dependencies for implementing: reporting
+    Path: epics[].tasks
+  • Project Management: Source service 'reporting' has no corresponding epic
+    Add epic for implementing reporting service with detailed tasks
+    Path: services.reporting
+  • Service Definition: Service 'reporting' has no port definitions
+    Define exposed ports with protocol and target port
+    Path: services.reporting.ports
+  • Service Definition: Source service 'reporting' missing health check configuration
+    Add health check endpoint and configuration for monitoring
+    Path: services.reporting.healthCheck
+  • Service Definition: Service 'reporting' missing resource specifications
+    Define CPU and memory limits for proper resource management
+    Path: services.reporting.resources
+  • Service Definition: Source service 'reporting' missing environment configuration
+    Define environment variables for configuration management
+    Path: services.reporting.env
+  • Documentation: Missing product goals and objectives
+    Define clear product goals to guide development decisions
+    Path: product.goals
+  • Documentation: Missing project description
+    Add comprehensive project description in metadata
+    Path: metadata.description
+  • Security: Missing security configuration
+    Define authentication, authorization, and security policies
+    Path: security
+  • Performance: Missing performance specifications
+    Define SLAs, response time targets, and throughput requirements
+    Path: performance
+  • Performance: Service 'reporting' missing resource limits
+    Define CPU and memory limits for performance predictability
+    Path: services.reporting.resources.limits
+  • Observability: Services defined but no observability configuration
+    Add logging, monitoring, and alerting configuration
+    Path: observability
+  • Observability: Missing logging configuration
+    Define log levels, formats, and aggregation strategy
+    Path: observability.logging
+  • Observability: Missing monitoring configuration
+    Define metrics collection and health monitoring
+    Path: observability.monitoring
+  • Environment Config: Missing environment configurations
+    Define development, staging, and production environments
+    Path: environments
+
+💡 Use --force to generate anyway
+
+🚨 IMPORTANT FOR AI AGENTS:
+IF YOU NEED INFORMATION TO COMPLETE THE SPEC, ASK THE PRODUCT OWNER (USER) FOR IT.
+YOU MUST REQUEST APPROVAL FROM THE USER BEFORE USING `--force`.
+
+⚠️  Generating despite warnings (--force used)
+
+🚨 REMINDER FOR AI AGENTS:
+You should have requested user approval before using --force with incomplete specifications.
+This may result in production issues that require additional work later.
+🎨 Generating application artifacts...
+📱 Generating artifacts for: Test Application
+📦 Initializing typescript project using TypeScript Plugin...
+🔧 Generating service structures...
+  • reporting (python) -> services/reporting
+✅ Generated 39 files:
+  ✓ clients/test-application/src/routes/types.ts
+  ✓ clients/test-application/src/routes/index.tsx
+  ✓ clients/test-application/src/routes/AppRoutes.tsx
+  ✓ clients/test-application/package.json
+  ✓ clients/test-application/vite.config.ts
+  ✓ clients/test-application/tsconfig.json
+  ✓ clients/test-application/tsconfig.build.json
+  ✓ clients/test-application/tsconfig.node.json
+  ✓ clients/test-application/.eslintrc.cjs
+  ✓ clients/test-application/src/App.tsx
+  ✓ clients/test-application/src/main.tsx
+  ✓ clients/test-application/index.html
+  ✓ clients/test-application/src/vite-env.d.ts
+  ✓ clients/test-application/src/test-setup.ts
+  ✓ clients/test-application/src/App.css
+  ✓ clients/test-application/src/index.css
+  ✓ clients/test-application/README.md
+  ✓ clients/test-application/Dockerfile
+  ✓ clients/test-application/.dockerignore
+  ✓ services/reporting/pyproject.toml
+  ✓ services/reporting/requirements.txt
+  ✓ services/reporting/app/main.py
+  ✓ services/reporting/app/routes/__init__.py
+  ✓ services/reporting/app/__init__.py
+  ✓ services/reporting/../../tests/reporting
+  ✓ services/reporting/Dockerfile
+  ✓ services/reporting/.dockerignore
+  ✓ services/reporting/README.md
+  ✓ services/reporting/manifests/deployment.yaml
+  ✓ tools/README.md
+  ✓ docs/overview.md
+  ✓ infra/main.tf
+  ✓ infra/variables.tf
+  ✓ infra/services.tf
+  ✓ infra/outputs.tf
+  ✓ infra/README.md
+  ✓ .github/workflows/ci.yml
+  ✓ Makefile
+  ✓ package.json
+
+packages/importer/src/__tests__/docker-metadata.integration.test.ts:
+[nodejs-plugin] inferred package {
+  name: "test-service",
+  type: "service",
+  detectedType: "web_service",
+  source: "manifest",
+  reason: "web-framework",
+}
+
+apps/api/src/tests/concurrency/raceConditions.test.ts:
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:37:02.346Z","tokenEpoch":"cf3377df-d5cd-4639-9812-34f7e3c752bb"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:37:02.346Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:37:02.346Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"info","message":"NATS integration disabled - no NATS_URL configured","timestamp":"2025-11-21T14:37:02.346Z"}
+{"level":"info","message":"OAuth service disabled, skipping startup","timestamp":"2025-11-21T14:37:02.347Z"}
+{"level":"info","message":"🚀 Arbiter API server started","timestamp":"2025-11-21T14:37:02.349Z","port":45628,"host":"127.0.0.1","environment":"development"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.352Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.352Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.352Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.352Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.352Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.358Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.358Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.358Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.358Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.358Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.360Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.360Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.360Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.360Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.360Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.362Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.362Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.362Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.362Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.362Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.364Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.364Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.364Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.364Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.364Z"}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.367Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":1}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.368Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":2}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.370Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":3}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.371Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":4}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.373Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":5}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.390Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":20}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.391Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":20}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.391Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":23}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.392Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":25}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.395Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":22}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.417Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":25}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.419Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":24}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.427Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":63}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.428Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"base_3.cue","durationMs":65}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.428Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":36}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.429Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":38}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.430Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":65}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.431Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"base_4.cue","durationMs":67}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.431Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":41}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.434Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":74}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.434Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"base_1.cue","durationMs":75}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.434Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":76}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.435Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"base_0.cue","durationMs":79}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.435Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":73}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.435Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"base_2.cue","durationMs":74}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.435Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.435Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.435Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.435Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.435Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.436Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.436Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.436Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.436Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.436Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.436Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.436Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.436Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.436Z"}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.446Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":6}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.463Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.479Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":16}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.483Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":46}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.483Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"concurrent_0.cue","durationMs":47}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.486Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.486Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.486Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.486Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.486Z"}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.495Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":7}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.513Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":18}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.531Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":18}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.535Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":47}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.535Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"concurrent_1.cue","durationMs":49}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.536Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.536Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.536Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.536Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.536Z"}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.545Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentCount":8}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.562Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.579Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","duration":17}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.582Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":45}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.583Z","projectId":"5e8bb10e-d051-4383-8f31-d569777bd8c6","fragmentPath":"concurrent_2.cue","durationMs":47}
+✅ No partial states detected during concurrent validation
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.584Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.584Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.584Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.584Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.584Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.586Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.586Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.586Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.586Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.586Z"}
+[FETCH] Request received: GET http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.586Z","method":"GET","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.586Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.586Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.586Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.586Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.587Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.587Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.587Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.587Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.587Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.589Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.589Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.589Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.589Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.589Z"}
+[FETCH] Request received: GET http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.589Z","method":"GET","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.589Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.589Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.589Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.589Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.590Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.590Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.590Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.590Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.590Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.591Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.591Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.591Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.591Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.591Z"}
+[FETCH] Request received: GET http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.591Z","method":"GET","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.592Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.592Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.592Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.592Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.592Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.592Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.592Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.592Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.592Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.593Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.593Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.593Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.593Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.593Z"}
+[FETCH] Request received: GET http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.593Z","method":"GET","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.593Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.593Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.593Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.593Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/fragments
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.594Z","method":"POST","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.594Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.594Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.594Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.594Z"}
+[FETCH] Request received: POST http://127.0.0.1:45628/api/validate
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.595Z","method":"POST","pathname":"/api/validate","url":"http://127.0.0.1:45628/api/validate","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.595Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.595Z","pathname":"/api/validate","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.595Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.595Z"}
+[FETCH] Request received: GET http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c
+{"level":"info","message":"[SERVER] Request received","timestamp":"2025-11-21T14:37:03.595Z","method":"GET","pathname":"/api/fragments","url":"http://127.0.0.1:45628/api/fragments?project_id=26a9f6e9-2606-41f7-a58f-28388ef5795c","requestHeaders":{"upgrade":null,"connection":"keep-alive","origin":null,"userAgent":"Bun/1.3.2"}}
+{"level":"info","message":"[SERVER] Checking if WebSocket upgrade...","timestamp":"2025-11-21T14:37:03.595Z"}
+{"level":"info","message":"[WS] isWebSocketUpgrade called","timestamp":"2025-11-21T14:37:03.595Z","pathname":"/api/fragments","upgradeHeader":null,"connectionHeader":"keep-alive","userAgent":"Bun/1.3.2","origin":null,"result":false}
+{"level":"info","message":"[SERVER] Not a WebSocket upgrade - proceeding to app routing","timestamp":"2025-11-21T14:37:03.595Z"}
+{"level":"info","message":"[SERVER] Passing to httpApp.fetch","timestamp":"2025-11-21T14:37:03.595Z"}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.596Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentCount":1}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.601Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentCount":2}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.603Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentCount":3}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.606Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentCount":4}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:03.608Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentCount":5}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.617Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":true,"errorCount":0,"duration":21}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.625Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.626Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":true,"errorCount":0,"duration":25}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.629Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":true,"errorCount":0,"duration":26}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:03.630Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":true,"errorCount":0,"duration":24}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.640Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","duration":23}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.644Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":58}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.645Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentPath":"db_test_0.cue","durationMs":61}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.650Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","duration":25}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.652Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","duration":22}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.653Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","duration":27}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.654Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":59}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.654Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentPath":"db_test_12.cue","durationMs":60}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:03.654Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","duration":24}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.655Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":67}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.655Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentPath":"db_test_3.cue","durationMs":68}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.656Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":65}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.656Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentPath":"db_test_6.cue","durationMs":66}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:03.657Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":64}
+{"level":"info","message":"Fragment imported","timestamp":"2025-11-21T14:37:03.657Z","projectId":"26a9f6e9-2606-41f7-a58f-28388ef5795c","fragmentPath":"db_test_9.cue","durationMs":65}
+✅ Database concurrency test: 15 operations in 73ms
+{"level":"info","message":"Shutting down server...","timestamp":"2025-11-21T14:37:03.658Z"}
+{"level":"info","message":"Server shutdown complete","timestamp":"2025-11-21T14:37:03.658Z"}
+
+apps/api/src/tests/integration/nats.test.ts:
+NATS server not available, skipping NATS tests
+{"level":"info","message":"NATS integration disabled - no NATS_URL configured","timestamp":"2025-11-21T14:37:03.672Z"}
+{"level":"info","message":"NATS integration disabled - no NATS_URL configured","timestamp":"2025-11-21T14:37:03.673Z"}
+
+apps/api/src/tests/unit/auth.oauth.test.ts:
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:37:03.741Z","tokenEpoch":"92508167-d998-4350-9f27-9263cf6da125"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:37:03.741Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:37:03.741Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"debug","message":"Loaded SuperTokens OIDC metadata","timestamp":"2025-11-21T14:37:03.742Z","issuer":"https://auth.example.com","jwksUri":"https://auth.example.com/jwks.json","tokenEndpoint":"https://auth.example.com/oauth/token"}
+{"level":"info","message":"OAuth Authorization Server started","timestamp":"2025-11-21T14:37:03.742Z","provider":"supertokens","url":"https://auth.example.com","port":443}
+{"level":"info","message":"OAuth service started","timestamp":"2025-11-21T14:37:03.743Z","provider":"supertokens","issuer":"https://auth.example.com","authorizationEndpoint":"https://auth.example.com/oauth/authorize","tokenEndpoint":"https://auth.example.com/oauth/token","authServerEnabled":true,"requiredScopes":["read"]}
+{"level":"info","message":"OAuth service stopped successfully","timestamp":"2025-11-21T14:37:03.750Z"}
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:37:03.750Z","tokenEpoch":"e29a1c8a-ae84-48b8-ab2f-6a5e4c13bb51"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:37:03.750Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:37:03.750Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"debug","message":"Loaded SuperTokens OIDC metadata","timestamp":"2025-11-21T14:37:03.750Z","issuer":"https://auth.example.com","jwksUri":"https://auth.example.com/jwks.json","tokenEndpoint":"https://auth.example.com/oauth/token"}
+{"level":"info","message":"OAuth Authorization Server started","timestamp":"2025-11-21T14:37:03.750Z","provider":"supertokens","url":"https://auth.example.com","port":443}
+{"level":"info","message":"OAuth service started","timestamp":"2025-11-21T14:37:03.750Z","provider":"supertokens","issuer":"https://auth.example.com","authorizationEndpoint":"https://auth.example.com/oauth/authorize","tokenEndpoint":"https://auth.example.com/oauth/token","authServerEnabled":true,"requiredScopes":["read"]}
+{"level":"info","message":"OAuth service stopped successfully","timestamp":"2025-11-21T14:37:03.750Z"}
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:37:03.750Z","tokenEpoch":"7414a1b3-0b59-4ad6-99c8-c5f26dc74e36"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:37:03.750Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:37:03.750Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"debug","message":"Loaded SuperTokens OIDC metadata","timestamp":"2025-11-21T14:37:03.750Z","issuer":"https://auth.example.com","jwksUri":"https://auth.example.com/jwks.json","tokenEndpoint":"https://auth.example.com/oauth/token"}
+{"level":"info","message":"OAuth Authorization Server started","timestamp":"2025-11-21T14:37:03.750Z","provider":"supertokens","url":"https://auth.example.com","port":443}
+{"level":"info","message":"OAuth service started","timestamp":"2025-11-21T14:37:03.750Z","provider":"supertokens","issuer":"https://auth.example.com","authorizationEndpoint":"https://auth.example.com/oauth/authorize","tokenEndpoint":"https://auth.example.com/oauth/token","authServerEnabled":true,"requiredScopes":["read"]}
+{"level":"warn","message":"SuperTokens OAuth token verification failed","timestamp":"2025-11-21T14:37:03.750Z","reason":"Invalid Compact JWS","tokenPrefix":"not-a-to"}
+{"level":"info","message":"OAuth service stopped successfully","timestamp":"2025-11-21T14:37:03.750Z"}
+{"level":"debug","message":"Development token epoch initialized","timestamp":"2025-11-21T14:37:03.750Z","tokenEpoch":"f2fb9dc8-6cfa-4101-92e2-868e74d68400"}
+{"level":"info","message":"Token added for user","timestamp":"2025-11-21T14:37:03.750Z","userId":"dev-user","projectCount":1}
+{"level":"warn","message":"DEVELOPMENT MODE: Authentication tokens configured!","timestamp":"2025-11-21T14:37:03.750Z","devToken":"dev-...","devUser":"dev-user","warning":"This should NEVER be enabled in production!"}
+{"level":"debug","message":"Loaded SuperTokens OIDC metadata","timestamp":"2025-11-21T14:37:03.750Z","issuer":"https://auth.example.com","jwksUri":"https://auth.example.com/jwks.json","tokenEndpoint":"https://auth.example.com/oauth/token"}
+{"level":"info","message":"OAuth Authorization Server started","timestamp":"2025-11-21T14:37:03.750Z","provider":"supertokens","url":"https://auth.example.com","port":443}
+{"level":"info","message":"OAuth service started","timestamp":"2025-11-21T14:37:03.750Z","provider":"supertokens","issuer":"https://auth.example.com","authorizationEndpoint":"https://auth.example.com/oauth/authorize","tokenEndpoint":"https://auth.example.com/oauth/token","authServerEnabled":true,"requiredScopes":["read"]}
+{"level":"info","message":"OAuth service stopped successfully","timestamp":"2025-11-21T14:37:03.752Z"}
+
+apps/api/src/tests/unit/db.test.ts:
+{"level":"info","message":"📊 Process Health Check","timestamp":"2025-11-21T14:37:04.041Z","uptime":10,"pid":49156,"nodeVersion":"v24.3.0","platform":"linux","errorCount":0,"memory":{"rss":"277MB","heapUsed":"57MB","heapTotal":"23MB","external":"38MB"},"cpu":{"user":2163068,"system":602814}}
+
+apps/api/src/tests/unit/handlers.manager.test.ts:
+
+# Unhandled error between tests
+-------------------------------
+error: Cannot find module '../../handlers/manager.ts' from '/home/nathan/Projects/arbiter/apps/api/src/tests/unit/handlers.manager.test.ts'
+-------------------------------
+
+
+apps/api/src/tests/unit/ir.test.ts:
+{"level":"error","message":"IR generation failed","error":"Unknown IR kind: unknown","stack":"Error: Unknown IR kind: unknown\n    at generateIR (/home/nathan/Projects/arbiter/apps/api/src/ir.ts:43:21)\n    at generateIR (/home/nathan/Projects/arbiter/apps/api/src/ir.ts:11:20)\n    at <anonymous> (/home/nathan/Projects/arbiter/apps/api/src/tests/unit/ir.test.ts:497:30)\n    at <anonymous> (/home/nathan/Projects/arbiter/apps/api/src/tests/unit/ir.test.ts:494:50)","timestamp":"2025-11-21T14:37:04.176Z","kind":"unknown"}
+
+apps/api/src/tests/unit/specEngine.test.ts:
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.233Z","projectId":"b26be3b1-5fb6-413c-88ba-c675bf800403","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.250Z","projectId":"b26be3b1-5fb6-413c-88ba-c675bf800403","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.265Z","projectId":"b26be3b1-5fb6-413c-88ba-c675bf800403","duration":15}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.274Z","projectId":"623bdbb5-5256-4d54-970f-da6e4db4bab4","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.291Z","projectId":"623bdbb5-5256-4d54-970f-da6e4db4bab4","success":false,"errorCount":1,"duration":17}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:04.307Z","projectId":"623bdbb5-5256-4d54-970f-da6e4db4bab4","success":false,"specHash":"","errorCount":3,"warningCount":0,"duration":39}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.310Z","projectId":"288e4a00-be97-414d-8739-617ceda3aa8c","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.326Z","projectId":"288e4a00-be97-414d-8739-617ceda3aa8c","success":false,"errorCount":1,"duration":16}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:04.341Z","projectId":"288e4a00-be97-414d-8739-617ceda3aa8c","success":false,"specHash":"","errorCount":3,"warningCount":0,"duration":34}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.345Z","projectId":"bc3b22e9-5cc0-4890-b1cc-258280edd8ad","fragmentCount":2}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.361Z","projectId":"bc3b22e9-5cc0-4890-b1cc-258280edd8ad","success":true,"errorCount":0,"duration":16}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.375Z","projectId":"bc3b22e9-5cc0-4890-b1cc-258280edd8ad","duration":14}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.380Z","projectId":"4d0d86b7-7383-47ea-a590-27f73fe41f5c","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.395Z","projectId":"4d0d86b7-7383-47ea-a590-27f73fe41f5c","success":true,"errorCount":0,"duration":15}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.415Z","projectId":"4d0d86b7-7383-47ea-a590-27f73fe41f5c","duration":20}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.420Z","projectId":"4d0d86b7-7383-47ea-a590-27f73fe41f5c","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.438Z","projectId":"4d0d86b7-7383-47ea-a590-27f73fe41f5c","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.453Z","projectId":"4d0d86b7-7383-47ea-a590-27f73fe41f5c","duration":15}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.460Z","projectId":"bbc093cb-1369-4430-90c9-60b5933e1942","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.475Z","projectId":"bbc093cb-1369-4430-90c9-60b5933e1942","success":true,"errorCount":0,"duration":15}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.488Z","projectId":"bbc093cb-1369-4430-90c9-60b5933e1942","duration":13}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.497Z","projectId":"bbc093cb-1369-4430-90c9-60b5933e1942","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.514Z","projectId":"bbc093cb-1369-4430-90c9-60b5933e1942","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.529Z","projectId":"bbc093cb-1369-4430-90c9-60b5933e1942","duration":15}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.535Z","projectId":"995aa63f-c337-48a1-9e52-ba369c2a4dd4","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.554Z","projectId":"995aa63f-c337-48a1-9e52-ba369c2a4dd4","success":true,"errorCount":0,"duration":19}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.572Z","projectId":"995aa63f-c337-48a1-9e52-ba369c2a4dd4","duration":18}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.580Z","projectId":"0d292de3-6e96-45a7-9c75-f157560c365a","fragmentCount":4}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.597Z","projectId":"0d292de3-6e96-45a7-9c75-f157560c365a","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.616Z","projectId":"0d292de3-6e96-45a7-9c75-f157560c365a","duration":18}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.623Z","projectId":"d3a22a1d-343e-4955-83e7-27cf6f9037c5","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.640Z","projectId":"d3a22a1d-343e-4955-83e7-27cf6f9037c5","success":false,"errorCount":1,"duration":17}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:04.655Z","projectId":"d3a22a1d-343e-4955-83e7-27cf6f9037c5","success":false,"specHash":"","errorCount":3,"warningCount":0,"duration":35}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.659Z","projectId":"2fbf330f-70a1-440b-86c6-d1f35dbbe6b0","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.676Z","projectId":"2fbf330f-70a1-440b-86c6-d1f35dbbe6b0","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.691Z","projectId":"2fbf330f-70a1-440b-86c6-d1f35dbbe6b0","duration":15}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:04.695Z","projectId":"2fbf330f-70a1-440b-86c6-d1f35dbbe6b0","success":false,"specHash":"","errorCount":1,"warningCount":0,"duration":40}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.698Z","projectId":"8f529df0-0586-4b36-897a-e7390c06ba00","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.716Z","projectId":"8f529df0-0586-4b36-897a-e7390c06ba00","success":true,"errorCount":0,"duration":18}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.733Z","projectId":"8f529df0-0586-4b36-897a-e7390c06ba00","duration":17}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.740Z","projectId":"2b6a6b1b-6eb4-45aa-a9f6-e30345516831","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.757Z","projectId":"2b6a6b1b-6eb4-45aa-a9f6-e30345516831","success":true,"errorCount":0,"duration":17}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.773Z","projectId":"2b6a6b1b-6eb4-45aa-a9f6-e30345516831","duration":16}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.780Z","projectId":"30b46b2a-4d8c-4b12-abb3-24f6ceb1966a","fragmentCount":1}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.784Z","projectId":"30b46b2a-4d8c-4b12-abb3-24f6ceb1966a","success":false,"errorCount":0,"duration":4}
+{"level":"info","message":"Validation completed","timestamp":"2025-11-21T14:37:04.786Z","projectId":"30b46b2a-4d8c-4b12-abb3-24f6ceb1966a","success":false,"specHash":"","errorCount":2,"warningCount":0,"duration":8}
+mkdir: cannot create directory ‘/invalid’: Permission denied
+mkdir: cannot create directory ‘/invalid’: Permission denied
+{"level":"error","message":"Validation pipeline error","error":"ENOENT: no such file or directory, open '/invalid/readonly/path/49634223-2288-4eb2-93bc-f7d812d545fd/fragments/test.cue'","timestamp":"2025-11-21T14:37:04.789Z","projectId":"49634223-2288-4eb2-93bc-f7d812d545fd","duration":2}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.808Z","projectId":"e6ad6f0d-14f5-47f5-90c4-464b2c800b5c","fragmentCount":21}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.835Z","projectId":"e6ad6f0d-14f5-47f5-90c4-464b2c800b5c","success":true,"errorCount":0,"duration":27}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.858Z","projectId":"e6ad6f0d-14f5-47f5-90c4-464b2c800b5c","duration":23}
+{"level":"debug","message":"Wrote fragments to filesystem","timestamp":"2025-11-21T14:37:04.866Z","projectId":"53413c1f-a759-4a9f-92dd-710628961e5a","fragmentCount":2}
+{"level":"debug","message":"CUE validation completed","timestamp":"2025-11-21T14:37:04.881Z","projectId":"53413c1f-a759-4a9f-92dd-710628961e5a","success":true,"errorCount":0,"duration":15}
+{"level":"debug","message":"CUE export completed","timestamp":"2025-11-21T14:37:04.898Z","projectId":"53413c1f-a759-4a9f-92dd-710628961e5a","duration":17}
+{"level":"debug","message":"Cleaned up project workspace","timestamp":"2025-11-21T14:37:04.903Z","projectId":"53413c1f-a759-4a9f-92dd-710628961e5a"}
+{"level":"debug","message":"Cleaned up project workspace","timestamp":"2025-11-21T14:37:04.905Z","projectId":"non-existent-project"}
+
+packages/cli/src/services/__tests__/integrate.test.ts:
+🔗 Arbiter CI/CD integration
+Project: /tmp/arbiter-integrate-UjEQwI
+✅ Detected 1 language(s):
+  • typescript (node)
+✅ Generated .github/workflows/pr.yml
+✅ Generated .github/workflows/main.yml
+
+🎯 Generating GitHub issue templates...
+✅ Generated .github/ISSUE_TEMPLATE/epic.yml
+✅ Generated .github/ISSUE_TEMPLATE/task.yml
+✅ Generated .github/ISSUE_TEMPLATE/bug-report.yml
+✅ Generated .github/ISSUE_TEMPLATE/feature-request.yml
+✅ Generated .github/ISSUE_TEMPLATE/config.yml
+
+🎉 CI/CD integration complete!
+📊 Files — written: 7, skipped: 0, dry-run: 0
+
+Next steps:
+  1. Commit and push the workflow files
+  2. Configure repository secrets for package publishing
+     • NPM_TOKEN
+  3. Open a PR to exercise the validation workflow
+  4. Create a release to verify publish automation
+🔗 Arbiter CI/CD integration
+Project: /tmp/arbiter-integrate-9oDscv
+Simulating changes (dry run). Files will not be written.
+✅ Detected 1 language(s):
+  • typescript (node)
+📝 (dry-run) Would generate .github/workflows/pr.yml
+📝 (dry-run) Would generate .github/workflows/main.yml
+
+🎯 Generating GitHub issue templates...
+📝 (dry-run) Would generate .github/ISSUE_TEMPLATE/epic.yml
+📝 (dry-run) Would generate .github/ISSUE_TEMPLATE/task.yml
+📝 (dry-run) Would generate .github/ISSUE_TEMPLATE/bug-report.yml
+📝 (dry-run) Would generate .github/ISSUE_TEMPLATE/feature-request.yml
+📝 (dry-run) Would generate .github/ISSUE_TEMPLATE/config.yml
+
+🎉 CI/CD integration complete!
+📊 Files — written: 0, skipped: 0, dry-run: 7
+
+Next steps:
+  1. Commit and push the workflow files
+  2. Configure repository secrets for package publishing
+     • NPM_TOKEN
+  3. Open a PR to exercise the validation workflow
+  4. Create a release to verify publish automation
+
+packages/cli/src/services/__tests__/spec-import.test.ts:
+✅ Spec imported successfully (project: proj_123, path: assembly.cue)
+❌ Spec validation failed:
+  • missing field
+Use --skip-validate to bypass local validation if necessary.
+
+packages/cli/src/services/__tests__/sync.test.ts:
+🔄 Arbiter manifest synchronization
+Project: /tmp/arbiter-sync-0a0b5L
+🔍 Detecting manifest files...
+✅ Found 1 manifest file(s):
+  • package.json (typescript)
+
+🔄 Synchronizing manifests...
+
+📝 Processing package.json...
+  ✨ Would add:
+    scripts: {...
+    devDependencies: {...
+    arbiter: {...
+✅ Modified package.json
+
+🎉 Synchronization complete!
+📊 Summary: 1/1 files were modified
+
+Next steps:
+  • Run "bun install" to install new dev dependencies
+  • Use "bun run arbiter:check" to validate CUE files
+
+packages/cli/src/validation/__tests__/debug-spec.test.ts:
+Complete spec validation result:
+Has warnings: false
+Has errors: false
+Warning count: 0
+Warnings: []
+
+packages/cli/src/validation/__tests__/warnings.test.ts:
+Main test - completeValidSpec warnings: 0
+
+packages/importer/src/plugins/__tests__/nodejs-frontend.test.ts:
+[nodejs-plugin] inferred package {
+  name: "react-sample",
+  type: "frontend",
+  detectedType: "frontend",
+  source: "manifest",
+  reason: "frontend-framework",
+}
+[nodejs-plugin] inferred package {
+  name: "next-sample",
+  type: "frontend",
+  detectedType: "frontend",
+  source: "manifest",
+  reason: "frontend-framework",
+}
+[nodejs-plugin] inferred package {
+  name: "vue-sample",
+  type: "frontend",
+  detectedType: "frontend",
+  source: "manifest",
+  reason: "frontend-framework",
+}
+[nodejs-plugin] inferred package {
+  name: "cli-runner",
+  type: "tool",
+  detectedType: "tool",
+  source: "manifest",
+  reason: "manifest-bin",
+}
+
+ 479 pass
+ 88 skip
+ 1 fail
+ 1 error
+ 10122 expect() calls
+Ran 568 tests across 56 files. [12.07s]
+error: script "test" exited with code 1
