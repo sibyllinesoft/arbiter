@@ -120,23 +120,6 @@ export interface ResolvedSpecResponse {
   json: Record<string, unknown>;
 }
 
-// Gap analysis API types
-export interface GapAnalysisResponse {
-  gaps: Array<{
-    type: string;
-    description: string;
-    severity: "low" | "medium" | "high" | "critical";
-    location?: string;
-    suggestions?: string[];
-  }>;
-  coverage: {
-    percentage: number;
-    implemented: number;
-    total: number;
-  };
-  recommendations: string[];
-}
-
 // IR generation API types
 export interface IRGenerationRequest {
   projectId?: string;

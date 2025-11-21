@@ -36,31 +36,102 @@ export class ErrorBoundary extends React.Component<
     console.error("Error boundary caught an error:", error, errorInfo);
   }
 
+  handleReset = () => {
+    // Clear any corrupted state from localStorage
+    try {
+      localStorage.removeItem("arbiter:currentProject");
+      localStorage.removeItem("arbiter:editorState");
+    } catch (e) {
+      console.error("Failed to clear localStorage:", e);
+    }
+
+    // Reset component state
+    this.setState({ hasError: false, error: null });
+
+    // Reload the page to start fresh
+    window.location.href = "/";
+  };
+
   render() {
     if (this.state.hasError) {
+      const isSpecParsingError =
+        this.state.error?.message?.includes("CUE") ||
+        this.state.error?.message?.includes("spec") ||
+        this.state.error?.message?.includes("parse");
+
       return (
         <div className="min-h-screen bg-gray-50 dark:bg-graphite-950 flex items-center justify-center p-4">
-          <div className="max-w-md w-full bg-white dark:bg-graphite-900 rounded-lg shadow-lg p-6 text-center">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25 mb-4">
-              Something went wrong
-            </h2>
-            <p className="text-gray-600 dark:text-graphite-400 mb-4">
-              The application encountered an unexpected error.
-            </p>
-            <details className="text-left mb-4">
-              <summary className="cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-2">
+          <div className="max-w-md w-full bg-white dark:bg-graphite-900 rounded-lg shadow-lg p-6">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-red-600 dark:text-red-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-graphite-25 mb-2">
+                {isSpecParsingError ? "Specification Error" : "Something went wrong"}
+              </h2>
+              <p className="text-gray-600 dark:text-graphite-400 mb-4">
+                {isSpecParsingError
+                  ? "The application encountered an error parsing your CUE specification."
+                  : "The application encountered an unexpected error."}
+              </p>
+            </div>
+
+            <details className="text-left mb-6 bg-gray-50 dark:bg-graphite-800 rounded-lg p-4">
+              <summary className="cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 mb-2 font-medium">
                 Error Details
               </summary>
-              <pre className="text-xs bg-gray-100 dark:bg-graphite-800 p-3 rounded overflow-auto">
+              <pre className="text-xs bg-gray-100 dark:bg-graphite-800 p-3 rounded overflow-auto max-h-40 mt-2">
                 {this.state.error?.stack}
               </pre>
             </details>
-            <button
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-400"
-              onClick={() => window.location.reload()}
-            >
-              Reload Page
-            </button>
+
+            {isSpecParsingError && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-left">
+                <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">
+                  Troubleshooting Tips:
+                </h3>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+                  <li>Check your CUE syntax for errors</li>
+                  <li>Verify all field types match their constraints</li>
+                  <li>
+                    Run <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">cue vet</code>{" "}
+                    on your specification locally
+                  </li>
+                </ul>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-400 font-medium"
+                onClick={() => window.location.reload()}
+              >
+                Reload Page
+              </button>
+              <button
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors dark:bg-red-500 dark:hover:bg-red-400 font-medium"
+                onClick={this.handleReset}
+                title="Clear local state and return to home"
+              >
+                Reset Project
+              </button>
+            </div>
+
+            <p className="mt-4 text-xs text-gray-500 dark:text-graphite-500 text-center">
+              If the problem persists, try clearing your browser cache or contact support.
+            </p>
           </div>
         </div>
       );

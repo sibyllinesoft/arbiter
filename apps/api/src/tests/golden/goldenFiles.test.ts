@@ -207,34 +207,6 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
       expect(result1.specHash.length).toBeGreaterThan(10); // Should be a proper hash
     });
 
-    it("should detect expected gap patterns", async () => {
-      if (skipIfNoGolden()) return;
-      const fragments = await loadGoldenFragments();
-      const _expected = await loadExpectedFile("gapset.json");
-
-      const result = await engine.validateProject("golden-test", fragments);
-      expect(result.success).toBe(true);
-
-      const gapSet = await engine.generateGapSet(result.resolved!);
-
-      // Verify gap analysis structure
-      expect(gapSet.missing_capabilities).toBeDefined();
-      expect(gapSet.orphaned_tokens).toBeDefined();
-      expect(gapSet.coverage_gaps).toBeDefined();
-      expect(gapSet.duplicates).toBeDefined();
-
-      // Check that we detect some expected gaps
-      expect(gapSet.missing_capabilities.length).toBeGreaterThan(0);
-      expect(gapSet.coverage_gaps.length).toBeGreaterThan(0);
-
-      // Verify specific patterns exist
-      const hasAuthGap = gapSet.coverage_gaps.some((g) => g.capability.includes("auth"));
-      const hasProjectGap = gapSet.coverage_gaps.some((g) => g.capability.includes("project"));
-      expect(hasAuthGap || hasProjectGap).toBe(true);
-
-      console.log("✅ Gap analysis detects expected patterns");
-    });
-
     it("should maintain validation performance targets", async () => {
       const fragments = await loadGoldenFragments();
 
@@ -358,7 +330,7 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
   });
 
   (goldenAvailable ? describe : describe.skip)("End-to-End Pipeline Consistency", () => {
-    it("should complete full validation→gaps→IR pipeline deterministically", async () => {
+    it("should complete full validation→IR pipeline deterministically", async () => {
       const fragments = await loadGoldenFragments();
 
       // Full pipeline
@@ -368,11 +340,7 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
       const validationResult = await engine.validateProject("golden-e2e", fragments);
       expect(validationResult.success).toBe(true);
 
-      // Step 2: Gap analysis
-      const gapSet = await engine.generateGapSet(validationResult.resolved!);
-      expect(gapSet).toBeDefined();
-
-      // Step 3: All IR generation
+      // Step 2: All IR generation
       const irTypes = ["capabilities", "flows", "dependencies", "coverage"] as const;
       const irResults = [];
 
@@ -385,7 +353,6 @@ const GOLDEN_AVAILABLE = existsSync(join(GOLDEN_PROJECT_PATH, "ui.routes.cue"));
 
       // Verify all components
       expect(validationResult.specHash.length).toBeGreaterThan(10);
-      expect(gapSet.coverage_gaps.length).toBeGreaterThan(0);
       expect(irResults.length).toBe(4);
 
       // Performance target

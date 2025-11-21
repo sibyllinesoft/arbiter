@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck - Complex D3 chart with many type assertions needed
 import * as d3 from "d3";
 import React, { useEffect, useRef } from "react";
 
@@ -18,9 +18,9 @@ export interface ChartData {
   };
   options?: {
     responsive?: boolean;
-    scales?: any;
-    plugins?: any;
-    interaction?: any;
+    scales?: Record<string, unknown>;
+    plugins?: Record<string, unknown>;
+    interaction?: Record<string, unknown>;
   };
 }
 
@@ -306,9 +306,9 @@ export const Chart: React.FC<ChartProps> = ({
       // Create area generator
       const area = d3
         .area<number>()
-        .x((d, i) => xScale(i))
+        .x((_d: number, i: number) => xScale(i))
         .y0(innerHeight)
-        .y1((d) => yScale(d))
+        .y1((d: number) => yScale(d))
         .curve(d3.curveMonotoneX);
 
       // Add axes
@@ -317,11 +317,13 @@ export const Chart: React.FC<ChartProps> = ({
       g.append("g").call(d3.axisLeft(yScale));
 
       // Add area
-      g.append("path")
-        .datum(values)
-        .attr("fill", dataset.backgroundColor || "#3b82f6")
-        .attr("opacity", 0.7)
-        .attr("d", area);
+      if (dataset) {
+        g.append("path")
+          .datum(values)
+          .attr("fill", (dataset.backgroundColor as string) || "#3b82f6")
+          .attr("opacity", 0.7)
+          .attr("d", area);
+      }
     }
   }, [data, width, height]);
 

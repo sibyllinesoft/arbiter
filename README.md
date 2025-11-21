@@ -16,6 +16,106 @@ consistent project artefacts.
 - **Production Awareness** – Integrations with Git hosting, container
   ecosystems, and infrastructure manifests help span the full lifecycle.
 
+## Why CUE Over YAML/JSON?
+
+**"Why not just write Terraform or OpenAPI specs directly?"**
+
+Traditional formats like YAML and JSON are verbose, error-prone, and require separate validation tooling. CUE solves this:
+
+### 1. **Type Safety & Validation**
+
+**YAML/JSON:**
+```yaml
+# 1000 lines of Kubernetes manifests...
+replicas: "3"  # String instead of number - runtime error!
+memory: 512    # Missing unit - deployment fails
+```
+
+**CUE:**
+```cue
+#Service: {
+    replicas: int & >0  // Type-checked at authoring time
+    memory: =~"^[0-9]+[MGT]i$"  // Regex validation built-in
+}
+
+// Catches errors before deployment
+service: #Service & {
+    replicas: "3"  // Error: cannot use value "3" (type string) as int
+}
+```
+
+### 2. **DRY (Don't Repeat Yourself)**
+
+**Before (YAML):**
+```yaml
+# k8s-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+# ... 50 lines ...
+
+# openapi.yaml
+openapi: 3.0.0
+info:
+  title: api-service
+# ... another 50 lines duplicating service info ...
+
+# terraform.tf
+resource "aws_ecs_service" "api" {
+  name = "api-service"
+# ... yet another 50 lines ...
+```
+
+**After (CUE):**
+```cue
+// Define once
+services: api: {
+    name: "api-service"
+    image: "myapp:v1.2.3"
+    port: 8080
+    replicas: 3
+}
+
+// Generate everything from one source of truth:
+// - Kubernetes manifests
+// - OpenAPI specs
+// - Terraform configs
+// - Architecture diagrams
+// All stay in perfect sync automatically
+```
+
+### 3. **Composition & Reusability**
+
+CUE's constraint-based approach means you can layer configurations without duplication:
+
+```cue
+// Base service definition
+#BaseService: {
+    replicas: int | *1
+    resources: {
+        cpu: string | *"100m"
+        memory: string | *"128Mi"
+    }
+}
+
+// Production overlay
+#ProdService: #BaseService & {
+    replicas: int & >=3
+    resources: memory: string & =~"[0-9]+Gi"
+}
+
+// Your actual services inherit these constraints
+services: {
+    api: #ProdService & {
+        replicas: 5
+        resources: memory: "2Gi"
+    }
+}
+```
+
+**The Result:** Type 1000 lines of YAML error-free, or use CUE to catch typos, type mismatches, and constraint violations before they reach production.
+
 ## Repository Layout
 
 ```

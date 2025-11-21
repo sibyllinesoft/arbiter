@@ -53,32 +53,36 @@ export function MonacoEditor({
     mouseWheelZoom: true,
   };
 
+  const handleBeforeMount = useCallback((monaco: typeof import("monaco-editor")) => {
+    if (!monaco || !monaco.languages) {
+      log.warn("Monaco instance not provided; skipping language registration");
+      return;
+    }
+
+    // Register CUE language configuration once before mount
+    if (!monaco.languages.getLanguages().some((lang) => lang.id === "cue")) {
+      monaco.languages.register({ id: "cue" });
+      monaco.languages.setLanguageConfiguration("cue", CUE_LANGUAGE_CONFIG);
+      monaco.languages.setMonarchTokensProvider("cue", CUE_TOKENIZER as any);
+      monaco.editor.defineTheme("cue-dark", {
+        base: "vs-dark",
+        inherit: true,
+        rules: [],
+        colors: {},
+      });
+    }
+  }, []);
+
   const handleEditorMount = useCallback(
     (monacoEditor: editor.IStandaloneCodeEditor, monaco?: typeof import("monaco-editor")) => {
       editorRef.current = monacoEditor;
       setIsEditorReady(true);
 
-      if (!monaco || !monaco.languages) {
-        log.warn("Monaco instance not provided; skipping language registration");
-        return;
-      }
-
-      // Register CUE language configuration once
-      if (!monaco.languages.getLanguages().some((lang) => lang.id === "cue")) {
-        monaco.languages.register({ id: "cue" });
-        monaco.languages.setLanguageConfiguration("cue", CUE_LANGUAGE_CONFIG);
-        monaco.languages.setMonarchTokensProvider("cue", CUE_TOKENIZER as any);
-        monaco.editor.defineTheme("cue-dark", {
-          base: "vs-dark",
-          inherit: true,
-          rules: [],
-          colors: {},
+      if (monaco) {
+        monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+          onSave?.();
         });
       }
-
-      monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-        onSave?.();
-      });
 
       onEditorReady?.(monacoEditor);
     },
@@ -113,6 +117,7 @@ export function MonacoEditor({
         value={value}
         theme={theme}
         options={{ ...defaultOptions, ...options }}
+        beforeMount={handleBeforeMount}
         onMount={handleEditorMount}
         onChange={(val) => onChange?.(val ?? "")}
       />

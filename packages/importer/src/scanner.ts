@@ -661,8 +661,13 @@ export class ScannerRunner {
 
     this.augmentArtifactsWithDockerMetadata(allArtifacts, evidence, inferenceContext.projectRoot);
 
-    this.debug(`Inferred ${allArtifacts.length} artifacts from ${evidence.length} evidence items`);
-    return allArtifacts;
+    // Consolidate duplicate services (e.g., Dockerfile + package.json representing same service)
+    const consolidated = this.consolidateDuplicateServices(allArtifacts);
+
+    this.debug(
+      `Inferred ${consolidated.length} artifacts from ${evidence.length} evidence items (${allArtifacts.length - consolidated.length} duplicates merged)`,
+    );
+    return consolidated;
   }
 
   /**
@@ -899,6 +904,156 @@ export class ScannerRunner {
         metadata.dockerfilePath = match.dockerfilePathRelative;
       }
     }
+  }
+
+  /**
+   * Consolidates duplicate services that represent the same application.
+   * This happens when both a Dockerfile and a package file (package.json, go.mod, etc.)
+   * exist in the same directory and create separate service artifacts.
+   */
+  private consolidateDuplicateServices(artifacts: InferredArtifact[]): InferredArtifact[] {
+    const serviceArtifacts = artifacts.filter((a) => a.artifact.type === "service");
+    const nonServiceArtifacts = artifacts.filter((a) => a.artifact.type !== "service");
+
+    if (serviceArtifacts.length <= 1) {
+      return artifacts;
+    }
+
+    // Group services by their root directory
+    const servicesByRoot = new Map<string, InferredArtifact[]>();
+
+    for (const artifact of serviceArtifacts) {
+      const metadata = artifact.artifact.metadata as Record<string, unknown>;
+      const root = this.normalizeServiceRoot(metadata.root);
+
+      if (!servicesByRoot.has(root)) {
+        servicesByRoot.set(root, []);
+      }
+      servicesByRoot.get(root)!.push(artifact);
+    }
+
+    // Consolidate services in the same root directory
+    const consolidated: InferredArtifact[] = [];
+
+    for (const [root, services] of servicesByRoot.entries()) {
+      if (services.length === 1) {
+        consolidated.push(services[0]);
+        continue;
+      }
+
+      // Check if we have both Docker and package-based services
+      const dockerService = services.find((s) => {
+        const evidence = s.provenance?.evidence || [];
+        return evidence.some((e) => e.toLowerCase().includes("dockerfile"));
+      });
+
+      const packageService = services.find((s) => {
+        const plugins = s.provenance?.plugins || [];
+        return (
+          plugins.includes("nodejs") ||
+          plugins.includes("python") ||
+          plugins.includes("go") ||
+          plugins.includes("rust")
+        );
+      });
+
+      if (dockerService && packageService) {
+        // Merge them, preferring the package service as the base
+        const merged = this.mergeServices(packageService, dockerService);
+        consolidated.push(merged);
+        this.debug(
+          `Consolidated services at root "${root}": ${packageService.artifact.name} + docker metadata`,
+        );
+      } else {
+        // No clear consolidation pattern, keep all services
+        consolidated.push(...services);
+      }
+    }
+
+    return [...consolidated, ...nonServiceArtifacts];
+  }
+
+  /**
+   * Merges two service artifacts, combining their metadata and provenance.
+   */
+  private mergeServices(primary: InferredArtifact, secondary: InferredArtifact): InferredArtifact {
+    const primaryMetadata = primary.artifact.metadata as Record<string, unknown>;
+    const secondaryMetadata = secondary.artifact.metadata as Record<string, unknown>;
+
+    // Merge metadata, preferring primary but adding missing fields from secondary
+    const mergedMetadata: Record<string, unknown> = { ...primaryMetadata };
+
+    // Copy over Docker-specific metadata if not already present
+    if (secondaryMetadata.dockerfileContent && !mergedMetadata.dockerfileContent) {
+      mergedMetadata.dockerfileContent = secondaryMetadata.dockerfileContent;
+    }
+    if (secondaryMetadata.dockerfile && !mergedMetadata.dockerfile) {
+      mergedMetadata.dockerfile = secondaryMetadata.dockerfile;
+    }
+
+    // Merge docker metadata object
+    if (secondaryMetadata.docker && typeof secondaryMetadata.docker === "object") {
+      if (!mergedMetadata.docker || typeof mergedMetadata.docker !== "object") {
+        mergedMetadata.docker = {};
+      }
+      const primaryDocker = mergedMetadata.docker as Record<string, unknown>;
+      const secondaryDocker = secondaryMetadata.docker as Record<string, unknown>;
+
+      Object.assign(primaryDocker, secondaryDocker);
+    }
+
+    // Merge tags
+    const primaryTags = new Set(primary.artifact.tags || []);
+    const secondaryTags = secondary.artifact.tags || [];
+    for (const tag of secondaryTags) {
+      primaryTags.add(tag);
+    }
+
+    // Merge provenance
+    const mergedEvidence = [
+      ...(primary.provenance?.evidence || []),
+      ...(secondary.provenance?.evidence || []),
+    ];
+    const mergedPlugins = Array.from(
+      new Set([...(primary.provenance?.plugins || []), ...(secondary.provenance?.plugins || [])]),
+    );
+    const mergedRules = Array.from(
+      new Set([
+        ...(primary.provenance?.rules || []),
+        ...(secondary.provenance?.rules || []),
+        "service-consolidation",
+      ]),
+    );
+
+    return {
+      artifact: {
+        ...primary.artifact,
+        tags: Array.from(primaryTags),
+        metadata: mergedMetadata,
+      },
+      provenance: {
+        evidence: mergedEvidence,
+        plugins: mergedPlugins,
+        rules: mergedRules,
+        timestamp: Date.now(),
+        pipelineVersion: primary.provenance?.pipelineVersion || "1.0.0",
+      },
+      relationships: [...(primary.relationships || []), ...(secondary.relationships || [])],
+    };
+  }
+
+  /**
+   * Normalizes a service root path for comparison.
+   */
+  private normalizeServiceRoot(root: unknown): string {
+    if (typeof root !== "string") {
+      return "";
+    }
+    const normalized = root.replace(/\\/g, "/");
+    if (normalized === "." || normalized === "./") {
+      return "";
+    }
+    return normalized.replace(/^\.\//, "").replace(/\/$/, "");
   }
 
   /**

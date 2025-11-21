@@ -11,7 +11,6 @@ import type {
   Fragment,
   FreezeRequest,
   FreezeResponse,
-  GapSet,
   IRKind,
   IRResponse,
   ProblemDetails,
@@ -470,11 +469,6 @@ export class ApiService {
       resolved: response.resolved,
       last_updated: new Date().toISOString(),
     };
-  }
-
-  // Gap analysis endpoints
-  async getGaps(projectId: string): Promise<GapSet> {
-    return this.request<GapSet>(`/api/gaps?projectId=${projectId}`);
   }
 
   // IR (Intermediate Representation) endpoints

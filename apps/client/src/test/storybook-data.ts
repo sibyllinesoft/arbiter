@@ -4,17 +4,13 @@
  */
 
 import type {
-  CoverageGap,
-  Duplicate,
   FlowEdge,
   FlowIR,
   FlowNode,
   Fragment,
   FsmIR,
-  GapSet,
   Project,
   SiteIR,
-  TokenReference,
   ValidationError,
   ValidationWarning,
   ViewConnection,
@@ -246,67 +242,6 @@ export const generateValidationResults = () => ({
       location: "/specs/api-endpoints.yml:line 18",
     },
   ] as ValidationWarning[],
-});
-
-/**
- * Generate comprehensive gap analysis data
- */
-export const generateGapAnalysis = (): GapSet => ({
-  missing_capabilities: [
-    "Password reset functionality",
-    "Account deletion process",
-    "Data export compliance",
-    "Rate limiting implementation",
-  ],
-
-  orphaned_tokens: [
-    {
-      token: "REQ2.4",
-      defined_in: ["/specs/authentication.yml"],
-      referenced_in: [],
-    },
-    {
-      token: "T6",
-      defined_in: ["/specs/api-endpoints.yml"],
-      referenced_in: [],
-    },
-  ] as TokenReference[],
-
-  coverage_gaps: [
-    {
-      capability: "User Authentication",
-      expected_coverage: 95,
-      actual_coverage: 78,
-      missing_scenarios: [
-        "Edge case: Concurrent login attempts",
-        "Performance: Login under high load",
-        "Security: SQL injection prevention",
-      ],
-    },
-    {
-      capability: "API Rate Limiting",
-      expected_coverage: 90,
-      actual_coverage: 45,
-      missing_scenarios: [
-        "Rate limit exceeded handling",
-        "Distributed rate limiting",
-        "Rate limit configuration",
-      ],
-    },
-  ] as CoverageGap[],
-
-  duplicates: [
-    {
-      type: "requirement" as const,
-      name: "Email validation",
-      locations: ["/specs/authentication.yml:REQ1.1", "/specs/api-endpoints.yml:REQ3.2"],
-    },
-    {
-      type: "test_case" as const,
-      name: "User creation test",
-      locations: ["/specs/authentication.yml:T1", "/specs/api-endpoints.yml:T7"],
-    },
-  ] as Duplicate[],
 });
 
 /**
@@ -933,7 +868,6 @@ export const storybookData = {
   projects: generateProjects(),
   fragments: generateFragments("project-ecommerce-api"),
   validation: generateValidationResults(),
-  gaps: generateGapAnalysis(),
   fileTree: generateFileTree(),
   code: generateCodeContent(),
   workflow: generateWorkflowStates(),
@@ -949,7 +883,6 @@ export const {
   projects,
   fragments,
   validation,
-  gaps,
   fileTree,
   code,
   workflow,

@@ -8,138 +8,29 @@ import Modal from "@/design-system/components/Modal";
 import Select, { type SelectOption } from "@/design-system/components/Select";
 import { ChevronDown } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { FieldValue } from "./entityTypes";
 
-type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-type ParameterLocation = "path" | "query" | "header" | "cookie";
-
-interface EndpointModalProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (payload: {
-    entityType: string;
-    values: Record<string, FieldValue>;
-  }) => Promise<void> | void;
-  groupLabel?: string;
-  mode?: "create" | "edit";
-  initialValues?: Record<string, FieldValue> | null;
-}
-
-interface ParameterFormState {
-  id: string;
-  name: string;
-  location: ParameterLocation;
-  description: string;
-  required: boolean;
-  schemaType: string;
-  schemaRef: string;
-  example: string;
-}
-
-interface ResponseFormState {
-  id: string;
-  status: string;
-  description: string;
-  contentType: string;
-  schemaRef: string;
-  example: string;
-}
-
-interface RequestBodyState {
-  description: string;
-  required: boolean;
-  contentType: string;
-  schemaRef: string;
-  example: string;
-}
-
-interface EndpointFormState {
-  path: string;
-  method: HttpMethod;
-  summary: string;
-  description: string;
-  operationId: string;
-  tags: string;
-  requestBody: RequestBodyState;
-  parameters: ParameterFormState[];
-  responses: ResponseFormState[];
-}
-
-const HTTP_METHOD_VALUES: HttpMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"];
-const HTTP_METHOD_OPTIONS: SelectOption[] = HTTP_METHOD_VALUES.map((method) => ({
-  value: method,
-  label: method,
-}));
-
-const PARAM_LOCATION_VALUES: ParameterLocation[] = ["path", "query", "header", "cookie"];
-const PARAM_LOCATION_OPTIONS: SelectOption[] = PARAM_LOCATION_VALUES.map((location) => ({
-  value: location,
-  label: location,
-}));
-
-const DEFAULT_REQUEST_BODY: RequestBodyState = {
-  description: "",
-  required: false,
-  contentType: "application/json",
-  schemaRef: "",
-  example: "",
-};
-
-const INPUT_SURFACE_CLASSES =
-  "bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700";
-const CHECKBOX_SURFACE_CLASSES =
-  "bg-graphite-200 border-graphite-500 dark:bg-graphite-950 dark:border-graphite-700";
-const JSON_EDITOR_CONTAINER_CLASSES =
-  "h-40 rounded-md border border-graphite-500 bg-graphite-200 dark:border-graphite-700 dark:bg-graphite-950 overflow-hidden shadow-inner";
-
-const PARAMETER_NEW_OPTION_VALUE = "__new-parameter__";
-const PARAMETER_DIVIDER_VALUE = "__parameter-divider__";
-const RESPONSE_NEW_OPTION_VALUE = "__new-response__";
-const RESPONSE_DIVIDER_VALUE = "__response-divider__";
-
-const createId = (prefix: string) => `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
-
-const createParameter = (overrides: Partial<ParameterFormState> = {}): ParameterFormState => ({
-  id: createId("param"),
-  name: "",
-  location: "path",
-  description: "",
-  required: true,
-  schemaType: "string",
-  schemaRef: "",
-  example: "",
-  ...overrides,
-});
-
-const createResponse = (overrides: Partial<ResponseFormState> = {}): ResponseFormState => ({
-  id: createId("response"),
-  status: "200",
-  description: "Successful response",
-  contentType: "application/json",
-  schemaRef: "",
-  example: "",
-  ...overrides,
-});
-
-function toTagArray(tags: string): string[] {
-  return tags
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag.length > 0);
-}
-
-function buildSchemaObject(schemaType: string, schemaRef: string, example?: string) {
-  const schema: Record<string, unknown> = {};
-  if (schemaRef.trim()) {
-    schema.$ref = schemaRef.trim();
-  } else if (schemaType.trim()) {
-    schema.type = schemaType.trim();
-  }
-  if (example && example.trim()) {
-    schema.example = example.trim();
-  }
-  return Object.keys(schema).length > 0 ? schema : undefined;
-}
+import {
+  CHECKBOX_SURFACE_CLASSES,
+  DEFAULT_REQUEST_BODY,
+  HTTP_METHOD_OPTIONS,
+  HTTP_METHOD_VALUES,
+  INPUT_SURFACE_CLASSES,
+  JSON_EDITOR_CONTAINER_CLASSES,
+  PARAMETER_DIVIDER_VALUE,
+  PARAMETER_NEW_OPTION_VALUE,
+  PARAM_LOCATION_OPTIONS,
+  RESPONSE_DIVIDER_VALUE,
+  RESPONSE_NEW_OPTION_VALUE,
+} from "./constants";
+import type {
+  EndpointFormState,
+  EndpointModalProps,
+  HttpMethod,
+  ParameterFormState,
+  ParameterLocation,
+  ResponseFormState,
+} from "./types";
+import { buildSchemaObject, createParameter, createResponse, toTagArray } from "./utils";
 
 export function EndpointModal({
   open,
@@ -869,7 +760,7 @@ export function EndpointModal({
 
                 {form.parameters.length === 0 ? (
                   <p className="text-xs text-graphite-500 dark:text-graphite-300">
-                    Choose “Add new parameter” above to define path, query, header, or cookie
+                    Choose "Add new parameter" above to define path, query, header, or cookie
                     inputs.
                   </p>
                 ) : selectedParameter ? (

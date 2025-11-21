@@ -165,8 +165,13 @@ export class NodeJSPlugin implements ImporterPlugin {
       );
       const logicalFilePath = path.join(logicalRelativeDir, "package.json");
 
+      // Strip scope prefix from package name (@org/name -> name)
+      const packageName = pkg.name || path.basename(path.dirname(filePath));
+      const nameWithoutScope =
+        typeof packageName === "string" ? packageName.replace(/^@[^/]+\//, "") : packageName;
+
       const packageData = {
-        name: pkg.name || path.basename(path.dirname(filePath)),
+        name: nameWithoutScope,
         description: pkg.description || "",
         fullPackage: pkg,
         filePath: logicalFilePath,

@@ -25,9 +25,13 @@ export class GitScanner implements GitScannerAdapter {
   private readonly maxConcurrentWorkers: number;
   private scans: Map<string, StoredScan> = new Map();
 
-  constructor(maxWorkers?: number) {
+  private readonly cloneTimeout: number;
+
+  constructor(maxWorkers?: number, cloneTimeout?: number) {
     this.maxConcurrentWorkers = maxWorkers || Math.max(2, Math.min(8, require("os").cpus().length));
     this.workerPool = new FileWorkerPool(this.maxConcurrentWorkers);
+    // Default to 30 seconds for demo environments, configurable for production
+    this.cloneTimeout = cloneTimeout || parseInt(process.env.GIT_CLONE_TIMEOUT || "30000", 10);
   }
 
   /**
@@ -367,10 +371,22 @@ export class GitScanner implements GitScannerAdapter {
   private async cloneRepository(gitUrl: string, targetPath: string): Promise<void> {
     try {
       // Use shallow clone for faster downloads
+      // Timeout is configurable for demo environments vs production
       await execFileAsync("git", ["clone", "--depth", "1", "--single-branch", gitUrl, targetPath], {
-        timeout: 60000, // 60 second timeout
+        timeout: this.cloneTimeout,
+        maxBuffer: 10 * 1024 * 1024, // 10MB max buffer for large repos
       });
     } catch (error) {
+      const isTimeout = error instanceof Error && error.message.includes("ETIMEDOUT");
+      const isKilled = error instanceof Error && (error as any).killed;
+
+      if (isTimeout || isKilled) {
+        throw new Error(
+          `Repository clone timed out after ${this.cloneTimeout / 1000}s. The repository may be too large. ` +
+            `Try cloning a smaller repository or increase GIT_CLONE_TIMEOUT environment variable.`,
+        );
+      }
+
       throw new Error(
         `Failed to clone repository: ${error instanceof Error ? error.message : "Unknown error"}`,
       );

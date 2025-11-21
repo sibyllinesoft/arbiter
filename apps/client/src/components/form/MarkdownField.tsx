@@ -76,7 +76,7 @@ export const MarkdownField: React.FC<MarkdownFieldProps> = ({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
         <label
           htmlFor={id}
@@ -126,7 +126,7 @@ export const MarkdownField: React.FC<MarkdownFieldProps> = ({
         <div
           id={id}
           className={clsx(
-            "rounded-md border border-gray-200 bg-white shadow-sm transition-colors",
+            "!mt-0 rounded-md border border-gray-200 bg-white shadow-sm transition-colors",
             "dark:border-graphite-600 dark:bg-graphite-900",
           )}
         >
@@ -148,14 +148,14 @@ export const MarkdownField: React.FC<MarkdownFieldProps> = ({
         <div
           data-color-mode={colorMode}
           className={clsx(
-            "rounded-md border border-gray-200 shadow-sm transition-colors",
+            "!mt-0 rounded-md border border-gray-200 shadow-sm transition-colors",
             "dark:border-graphite-600",
           )}
         >
           <MDEditor
             value={displayValue}
             onChange={handleChange}
-            height={240}
+            height={200}
             preview="edit"
             commands={MINIMAL_COMMANDS}
             extraCommands={[commands.codePreview, commands.fullscreen]}

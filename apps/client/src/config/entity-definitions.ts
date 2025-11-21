@@ -240,10 +240,22 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
       { name: "path", label: "Route Path", required: true, placeholder: "/checkout" },
       { name: "methods", label: "HTTP Methods", placeholder: "GET, POST" },
       {
+        name: "implementsContract",
+        label: "Implements Contract",
+        placeholder: "Payment API",
+        description: "Which contract does this route implement?",
+      },
+      {
+        name: "operationId",
+        label: "Operation ID",
+        placeholder: "createPayment",
+        description: "Specific operation from the contract",
+      },
+      {
         name: "description",
         label: "Description",
         type: "textarea",
-        placeholder: "User experience or API contract details",
+        placeholder: "Implementation details for this route",
       },
     ],
     view: [
@@ -425,6 +437,196 @@ export const ENTITY_DEFINITIONS = (catalog: UiOptionCatalog): Record<string, Fie
         label: "Description",
         type: "textarea",
         placeholder: "Detail the work, dependencies, and definition of done for this task.",
+      },
+    ],
+    contract: [
+      { name: "name", label: "Contract Name", required: true, placeholder: "Payment API" },
+      {
+        name: "sla",
+        label: "SLA / Performance",
+        placeholder: "p95 < 200ms, uptime 99.9%",
+        description: "Service level agreements for this contract",
+      },
+      {
+        name: "version",
+        label: "Version",
+        placeholder: "1.0.0",
+        description: "Semantic version for this contract",
+      },
+      {
+        name: "operations",
+        label: "Operations",
+        component: "monaco",
+        language: "cue",
+        placeholder:
+          "POST /payments - Create payment\nGET /payments/{id} - Get payment details\nPOST /refunds - Process refund",
+        description:
+          "Define operations using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+      },
+      {
+        name: "requestSchema",
+        label: "Request Schema",
+        component: "monaco",
+        language: "cue",
+        placeholder: "amount: number\ncurrency: string\ncustomer_id: string",
+        description:
+          "Common request fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+      },
+      {
+        name: "responseSchema",
+        label: "Response Schema",
+        component: "monaco",
+        language: "cue",
+        placeholder: "id: string\nstatus: string\ncreated_at: timestamp",
+        description:
+          "Common response fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "API contract for payment processing between services",
+      },
+    ],
+    schema: [
+      { name: "name", label: "Schema Name", required: true, placeholder: "PaymentRequest" },
+      {
+        name: "schemaType",
+        label: "Schema Type",
+        type: "select",
+        options: ["Request", "Response", "Entity", "Value", "Event"],
+        placeholder: "Select type",
+      },
+      {
+        name: "version",
+        label: "Version",
+        placeholder: "1.0.0",
+        description: "Schema version for compatibility tracking",
+      },
+      {
+        name: "fields",
+        label: "Fields",
+        component: "monaco",
+        language: "cue",
+        required: true,
+        placeholder: "amount: number\ncurrency: string\ncustomer_id: string\nmetadata?: {...}",
+        description:
+          "Define fields using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+      },
+      {
+        name: "constraints",
+        label: "Validation Rules",
+        component: "monaco",
+        language: "cue",
+        placeholder:
+          'amount > 0\ncurrency: "USD" | "EUR" | "GBP"\ncustomer_id: =~"^[0-9a-f]{8}-[0-9a-f]{4}-"',
+        description:
+          "Define validation constraints using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+      },
+      {
+        name: "relationships",
+        label: "Relationships",
+        component: "monaco",
+        language: "cue",
+        placeholder: "customer: #Customer\nitems: [...#LineItem]",
+        description:
+          "Define relationships to other schemas using CUE syntax. [Learn more](https://arbiter.sibylline.dev/reference/arbiter-cue-schema/)",
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "Data structure for payment requests",
+      },
+    ],
+    flow: [
+      { name: "name", label: "Flow Name", required: true, placeholder: "Invoice Lifecycle" },
+      {
+        name: "flowType",
+        label: "Flow Type",
+        type: "select",
+        options: ["State Machine", "Business Process", "User Flow", "Integration Flow"],
+        placeholder: "Select type",
+      },
+      {
+        name: "states",
+        label: "States",
+        type: "textarea",
+        required: true,
+        placeholder: "draft\nsent\npaid\noverdue\ncancelled",
+        description: "List all states, one per line",
+      },
+      {
+        name: "initialState",
+        label: "Initial State",
+        placeholder: "draft",
+        description: "Starting state for new instances",
+      },
+      {
+        name: "transitions",
+        label: "Transitions",
+        type: "textarea",
+        placeholder:
+          "draft -> sent: on send()\nsent -> paid: on payment_received()\nsent -> overdue: after 30 days",
+        description: "State transitions (from -> to: trigger)",
+      },
+      {
+        name: "guards",
+        label: "Guards / Conditions",
+        type: "textarea",
+        placeholder:
+          "can_send: total > 0 && customer exists\ncan_pay: invoice.sent && payment.valid",
+        description: "Conditions that must be met for transitions",
+      },
+      {
+        name: "actions",
+        label: "Actions / Side Effects",
+        type: "textarea",
+        placeholder:
+          "on_sent: send_email(customer)\non_paid: update_accounting()\non_overdue: notify_collections()",
+        description: "Actions triggered during transitions",
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "State machine governing invoice lifecycle from draft to completion",
+      },
+    ],
+    capability: [
+      { name: "name", label: "Capability Name", required: true, placeholder: "Payment Processing" },
+      {
+        name: "businessValue",
+        label: "Business Value",
+        type: "textarea",
+        placeholder: "Enable customers to pay invoices via multiple payment methods",
+        description: "Why this capability matters to the business",
+      },
+      {
+        name: "supportingServices",
+        label: "Supporting Services",
+        placeholder: "payment-api, billing-service, notification-service",
+        description: "Comma-separated list of services that provide this capability",
+      },
+      {
+        name: "consumers",
+        label: "Consumers",
+        placeholder: "web-app, mobile-app, admin-portal",
+        description: "Who uses this capability",
+      },
+      {
+        name: "kpis",
+        label: "KPIs / Success Metrics",
+        type: "textarea",
+        placeholder:
+          "Payment success rate > 98%\nAverage processing time < 2s\nCheckout abandonment < 15%",
+        description: "Key metrics for this capability",
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "User-facing capability that enables...",
       },
     ],
     other: buildDefaultFields("other"),

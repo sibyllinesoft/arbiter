@@ -56,7 +56,8 @@ export interface FieldConfig {
   ) => boolean;
   onChangeClear?: string[];
   markdown?: boolean;
-  component?: "key-value";
+  component?: "key-value" | "monaco";
+  language?: string;
   defaultValue?: FieldValue;
   keyPlaceholder?: string;
   valuePlaceholder?: string;

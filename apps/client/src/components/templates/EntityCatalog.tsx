@@ -1,9 +1,8 @@
-// @ts-nocheck
 import { Button } from "@/design-system";
 import clsx from "clsx";
 import type { LucideIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 import React from "react";
-import { ARTIFACT_PANEL_BODY_CLASS, ARTIFACT_PANEL_CLASS } from "../ArtifactPanel";
 
 interface EntityCatalogProps<T> {
   title: string;
@@ -51,13 +50,14 @@ export function EntityCatalog<T>({
               type="button"
               onClick={addAction.onAdd}
               disabled={addAction.disabled || isLoading}
-              loading={addAction.loading}
+              loading={addAction.loading ?? false}
               className={clsx(
                 "inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors",
                 "hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
                 "disabled:cursor-not-allowed disabled:bg-blue-400 disabled:text-blue-100",
               )}
             >
+              <Plus className="h-4 w-4" />
               {addAction.label}
             </Button>
           ) : null}
@@ -69,7 +69,7 @@ export function EntityCatalog<T>({
           {isLoading ? (
             <p className="text-sm text-gray-500 dark:text-graphite-300">Loading...</p>
           ) : items.length > 0 ? (
-            <div className={clsx(ARTIFACT_PANEL_CLASS, "overflow-hidden font-medium")}>
+            <div className="overflow-hidden font-medium">
               <div className="grid gap-3 grid-cols-1">{items.map(renderCard)}</div>
             </div>
           ) : (

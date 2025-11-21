@@ -8,7 +8,7 @@ export function Tabs({ activeTab, onTabChange, tabs, className }: TabsProps) {
 
   return (
     <div className={clsx("flex flex-col h-full min-h-0", className)}>
-      <div className="flex items-end gap-1 bg-white/95 px-6 border-b border-graphite-200/80 dark:bg-graphite-950/95 dark:border-graphite-700/70">
+      <div className="flex flex-wrap items-end gap-1 bg-white/95 px-6 border-b border-graphite-200/80 dark:bg-graphite-950/95 dark:border-graphite-700/70">
         {tabs.map((tab) => (
           <TabHeader
             key={tab.id}

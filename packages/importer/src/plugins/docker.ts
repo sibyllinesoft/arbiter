@@ -1,4 +1,5 @@
 import * as path from "path";
+import * as fs from "fs-extra";
 import * as yaml from "yaml";
 import type {
   ConfidenceScore,
@@ -56,7 +57,7 @@ export class DockerPlugin implements ImporterPlugin {
 
       if (basename === "dockerfile") {
         // Parse Dockerfile
-        const dockerfileEvidence = this.parseDockerfile(
+        const dockerfileEvidence = await this.parseDockerfile(
           fileContent,
           filePath,
           context?.projectRoot || "/",
@@ -81,10 +82,17 @@ export class DockerPlugin implements ImporterPlugin {
     }
   }
 
-  private parseDockerfile(content: string, filePath: string, projectRoot: string): Evidence[] {
+  private async parseDockerfile(
+    content: string,
+    filePath: string,
+    projectRoot: string,
+  ): Promise<Evidence[]> {
     const evidence: Evidence[] = [];
 
-    const name = path.basename(path.dirname(filePath)) || "docker-build";
+    // Try to find a better name from adjacent package files
+    const dockerfileDir = path.dirname(filePath);
+    const name = await this.inferServiceNameFromDirectory(dockerfileDir);
+
     const data: DockerData = {
       name,
       description: "Docker build configuration",
@@ -107,6 +115,82 @@ export class DockerPlugin implements ImporterPlugin {
     });
 
     return evidence;
+  }
+
+  /**
+   * Attempts to infer a service name from package files in the directory.
+   * Checks for package.json, go.mod, Cargo.toml, pyproject.toml, etc.
+   */
+  private async inferServiceNameFromDirectory(dirPath: string): Promise<string> {
+    // Package file priority order
+    const packageFiles = [
+      { file: "package.json", extractor: this.extractNameFromPackageJson },
+      { file: "go.mod", extractor: this.extractNameFromGoMod },
+      { file: "Cargo.toml", extractor: this.extractNameFromCargoToml },
+      { file: "pyproject.toml", extractor: this.extractNameFromPyprojectToml },
+      { file: "pom.xml", extractor: this.extractNameFromPomXml },
+    ];
+
+    for (const { file, extractor } of packageFiles) {
+      const packagePath = path.join(dirPath, file);
+      try {
+        if (await fs.pathExists(packagePath)) {
+          const content = await fs.readFile(packagePath, "utf-8");
+          const name = extractor.call(this, content);
+          if (name) {
+            return name;
+          }
+        }
+      } catch (error) {
+        // Continue to next package file
+        continue;
+      }
+    }
+
+    // Fallback to directory name
+    return path.basename(dirPath) || "docker-build";
+  }
+
+  private extractNameFromPackageJson(content: string): string | null {
+    try {
+      const pkg = JSON.parse(content);
+      if (pkg.name && typeof pkg.name === "string") {
+        // Remove scope prefix if present (@org/name -> name)
+        return pkg.name.replace(/^@[^/]+\//, "");
+      }
+    } catch {
+      // Invalid JSON
+    }
+    return null;
+  }
+
+  private extractNameFromGoMod(content: string): string | null {
+    const match = content.match(/^module\s+([^\s\n]+)/m);
+    if (match && match[1]) {
+      // Extract last segment (github.com/user/repo -> repo)
+      const segments = match[1].split("/");
+      return segments[segments.length - 1];
+    }
+    return null;
+  }
+
+  private extractNameFromCargoToml(content: string): string | null {
+    const match = content.match(/^\[package\][^[]*name\s*=\s*"([^"]+)"/ms);
+    return match ? match[1] : null;
+  }
+
+  private extractNameFromPyprojectToml(content: string): string | null {
+    const match = content.match(/^\[project\][^[]*name\s*=\s*"([^"]+)"/ms);
+    if (match) return match[1];
+
+    // Try poetry format
+    const poetryMatch = content.match(/^\[tool\.poetry\][^[]*name\s*=\s*"([^"]+)"/ms);
+    return poetryMatch ? poetryMatch[1] : null;
+  }
+
+  private extractNameFromPomXml(content: string): string | null {
+    const match = content.match(/<artifactId>([^<]+)<\/artifactId>/);
+    return match ? match[1] : null;
   }
 
   private parseDockerCompose(parsed: any, filePath: string, projectRoot: string): Evidence[] {
@@ -162,7 +246,14 @@ export class DockerPlugin implements ImporterPlugin {
       if (data.type !== "service" && (hasCompose || data.type !== "dockerfile")) continue;
 
       const artifactType = data.type === "dockerfile" ? "service" : data.type;
-      const root = hasCompose ? path.basename(data.filePath) : path.dirname(data.filePath);
+
+      // Calculate relative path for root to match nodejs plugin behavior
+      const projectRoot = context.projectRoot || "";
+      const relativeFilePath = projectRoot
+        ? path.relative(projectRoot, data.filePath)
+        : data.filePath;
+      const root = hasCompose ? path.basename(relativeFilePath) : path.dirname(relativeFilePath);
+
       const dockerMetadata: Record<string, unknown> = {};
       if (data.composeServiceConfig) {
         dockerMetadata.composeService = data.composeServiceConfig;
@@ -171,7 +262,7 @@ export class DockerPlugin implements ImporterPlugin {
         dockerMetadata.composeServiceYaml = data.composeServiceYaml;
       }
       const metadata: Record<string, unknown> = {
-        sourceFile: data.filePath,
+        sourceFile: relativeFilePath,
         root,
       };
 
@@ -194,8 +285,8 @@ export class DockerPlugin implements ImporterPlugin {
         metadata.dockerfileContent = data.dockerfileContent;
       }
 
-      if (data.filePath) {
-        metadata.dockerfile = data.filePath;
+      if (relativeFilePath) {
+        metadata.dockerfile = relativeFilePath;
       }
 
       const artifact = {

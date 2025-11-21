@@ -123,33 +123,6 @@ export interface ValidationWarning {
   location?: string;
 }
 
-// Gap analysis types
-export interface GapSet {
-  missing_capabilities: string[];
-  orphaned_tokens: TokenReference[];
-  coverage_gaps: CoverageGap[];
-  duplicates: Duplicate[];
-}
-
-export interface TokenReference {
-  token: string;
-  defined_in: string[];
-  referenced_in: string[];
-}
-
-export interface CoverageGap {
-  capability: string;
-  expected_coverage: number;
-  actual_coverage: number;
-  missing_scenarios: string[];
-}
-
-export interface Duplicate {
-  type: "capability" | "requirement" | "test_case";
-  name: string;
-  locations: string[];
-}
-
 // IR (Intermediate Representation) types for diagrams
 export type IRKind = "flow" | "fsm" | "view" | "site";
 
@@ -274,12 +247,7 @@ export interface WebSocketMessage {
 
 // WebSocket events for real-time collaboration
 export interface WsEvent {
-  type:
-    | "connection_established"
-    | "fragment_updated"
-    | "resolved_updated"
-    | "gaps_updated"
-    | "ir_updated";
+  type: "connection_established" | "fragment_updated" | "resolved_updated" | "ir_updated";
   project_id?: string;
   data: WsEventData | { connection_id: string; user_id?: string };
   timestamp: string;
@@ -290,7 +258,6 @@ export type WsEventData =
   | { connection_id: string; user_id?: string }
   | WsFragmentUpdatedData
   | WsResolvedUpdatedData
-  | WsGapsUpdatedData
   | WsIrUpdatedData;
 
 export interface WsFragmentUpdatedData {
@@ -301,11 +268,6 @@ export interface WsFragmentUpdatedData {
 export interface WsResolvedUpdatedData {
   spec_hash: string;
   resolved: Record<string, unknown>;
-}
-
-export interface WsGapsUpdatedData {
-  gaps: GapSet;
-  spec_hash: string;
 }
 
 export interface WsIrUpdatedData {

@@ -43,7 +43,6 @@ export type {
   ValidationError,
   ValidationWarning,
   ResolvedSpecResponse,
-  GapAnalysisResponse,
   IRGenerationRequest,
   IRGenerationResponse,
   FreezeRequest,

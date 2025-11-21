@@ -1,200 +1,38 @@
-/* eslint-disable react-refresh/only-export-components */
+import { MonacoEditor } from "@/components/Editor/MonacoEditor";
 import { MarkdownField, type MarkdownFieldProps } from "@/components/form/MarkdownField";
 import Button from "@/design-system/components/Button";
 import Input from "@/design-system/components/Input";
 import Modal from "@/design-system/components/Modal";
 import Select, { type SelectOption } from "@/design-system/components/Select";
-import { parseEnvironmentText } from "@/utils/environment";
+import { useTheme } from "@/stores/ui-store";
+import type { FieldValue } from "@/types/forms";
 import KeyValueEditor, { type KeyValueEntry } from "@amalto/key-value-editor";
 import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 
-import { buildFieldConfig } from "@/config/entity-definitions";
+// Helper to convert markdown links to HTML
+const markdownLinkToHtml = (text: string): string => {
+  return text.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 dark:text-blue-400 hover:underline">$1</a>',
+  );
+};
+
+import { INPUT_SURFACE_CLASSES, SELECT_DROPDOWN_CLASSES } from "./constants";
+import type { AddEntityModalProps } from "./types";
 import {
-  DEFAULT_UI_OPTION_CATALOG,
-  type FieldConfig,
-  type FieldValue,
-  type UiOptionCatalog,
-} from "@/types/forms";
+  cloneFieldValue,
+  coerceFieldValueToArray,
+  coerceFieldValueToString,
+  extractListFromValue,
+  getDefaultValue,
+  getFieldConfig,
+  keyValuePairsToMap,
+  toKeyValuePairs,
+  toSingularLabel,
+} from "./utils";
 
-const FIELD_RECORD_KEYS = ["value", "id", "name", "label", "slug", "key"] as const;
-
-const INPUT_SURFACE_CLASSES =
-  "bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-300 dark:border-graphite-700 hover:border-graphite-400 dark:hover:border-graphite-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500";
-const SELECT_DROPDOWN_CLASSES =
-  "bg-white dark:bg-graphite-950 text-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700";
-
-const extractRecordString = (record: Record<string, unknown> | undefined | null): string => {
-  if (!record) return "";
-  for (const key of FIELD_RECORD_KEYS) {
-    const candidate = record[key];
-    if (typeof candidate === "string" && candidate.trim().length > 0) {
-      return candidate;
-    }
-  }
-  return "";
-};
-
-export const coerceFieldValueToString = (input: FieldValue | undefined): string => {
-  if (input === null || input === undefined) {
-    return "";
-  }
-
-  if (typeof input === "string") {
-    return input;
-  }
-
-  if (typeof input === "number" || typeof input === "boolean") {
-    return String(input);
-  }
-
-  if (Array.isArray(input)) {
-    for (const entry of input as unknown[]) {
-      const normalized = coerceFieldValueToString(entry as FieldValue);
-      if (normalized.trim().length > 0) {
-        return normalized;
-      }
-    }
-    return "";
-  }
-
-  if (typeof input === "object") {
-    return extractRecordString(input as Record<string, unknown>);
-  }
-
-  return "";
-};
-
-const coerceFieldValueToArrayInternal = (input: FieldValue | undefined): string[] => {
-  if (input === null || input === undefined) {
-    return [];
-  }
-
-  if (Array.isArray(input)) {
-    return input
-      .map((entry) => coerceFieldValueToString(entry as FieldValue).trim())
-      .filter((value): value is string => value.length > 0);
-  }
-
-  const normalized = coerceFieldValueToString(input).trim();
-  return normalized.length > 0 ? [normalized] : [];
-};
-
-export const coerceFieldValueToArray = (input: FieldValue | undefined): string[] =>
-  coerceFieldValueToArrayInternal(input);
-
-const extractListFromValue = (input: FieldValue | undefined): string[] => {
-  if (input === null || input === undefined) {
-    return [];
-  }
-
-  if (Array.isArray(input)) {
-    return input
-      .map((entry) =>
-        typeof entry === "string" ? entry : coerceFieldValueToString(entry as FieldValue),
-      )
-      .flatMap((entry) => entry.split(/\r?\n/))
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0);
-  }
-
-  return coerceFieldValueToString(input)
-    .split(/\r?\n/)
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-};
-
-const cloneFieldValue = (value: FieldValue): FieldValue => {
-  if (Array.isArray(value)) {
-    return value.map((entry) =>
-      typeof entry === "object" && entry !== null
-        ? { ...(entry as Record<string, unknown>) }
-        : entry,
-    ) as FieldValue;
-  }
-  if (value && typeof value === "object") {
-    return { ...(value as Record<string, unknown>) };
-  }
-  return value;
-};
-
-const getDefaultValue = (field?: FieldConfig): FieldValue => {
-  if (!field) {
-    return "";
-  }
-  if (field.defaultValue !== undefined) {
-    return cloneFieldValue(field.defaultValue);
-  }
-  return field.multiple ? [] : "";
-};
-
-const toKeyValuePairs = (input: FieldValue | undefined): KeyValueEntry[] => {
-  if (!input) return [];
-  if (Array.isArray(input)) {
-    return input.map((entry) => ({
-      key: typeof (entry as any)?.key === "string" ? (entry as any).key : "",
-      value: typeof (entry as any)?.value === "string" ? (entry as any).value : "",
-    }));
-  }
-  if (typeof input === "object") {
-    return Object.entries(input as Record<string, unknown>).map(([key, value]) => ({
-      key,
-      value:
-        typeof value === "string"
-          ? value
-          : value === undefined || value === null
-            ? ""
-            : String(value),
-    }));
-  }
-  if (typeof input === "string" && input.trim().length > 0) {
-    const parsed = parseEnvironmentText(input);
-    return Object.entries(parsed).map(([key, value]) => ({ key, value }));
-  }
-  return [];
-};
-
-const keyValuePairsToMap = (pairs: KeyValueEntry[]): Record<string, string> => {
-  const map: Record<string, string> = {};
-  pairs.forEach((pair) => {
-    const key = typeof pair?.key === "string" ? pair.key.trim() : "";
-    if (!key) return;
-    map[key] = typeof pair?.value === "string" ? pair.value : "";
-  });
-  return map;
-};
-
-interface AddEntityModalProps {
-  open: boolean;
-  entityType: string;
-  groupLabel: string;
-  optionCatalog: UiOptionCatalog;
-  onClose: () => void;
-  onSubmit?: (payload: { entityType: string; values: Record<string, FieldValue> }) => void;
-  initialValues?: Record<string, FieldValue> | undefined;
-  titleOverride?: string | undefined;
-  descriptionOverride?: string | undefined;
-  mode?: "create" | "edit";
-}
-
-function getFieldConfig(entityType: string, catalog: UiOptionCatalog): FieldConfig[] {
-  return buildFieldConfig(entityType, catalog);
-}
-
-function toSingularLabel(label: string, fallback: string): string {
-  if (!label && !fallback) return "item";
-  const base = (label || fallback).trim();
-  if (base.toLowerCase() === "infrastructure") return "infrastructure component";
-  if (base.toLowerCase() === "tools") return "tool";
-  if (base.toLowerCase() === "services") return "service";
-  if (base.toLowerCase() === "databases") return "database";
-  if (base.toLowerCase().endsWith("ies")) {
-    return base.slice(0, -3) + "y";
-  }
-  if (base.toLowerCase().endsWith("s")) {
-    return base.slice(0, -1);
-  }
-  return base;
-}
+// Re-export utility functions that are used by other components
+export { coerceFieldValueToString, coerceFieldValueToArray } from "./utils";
 
 export function AddEntityModal({
   open,
@@ -208,13 +46,14 @@ export function AddEntityModal({
   descriptionOverride,
   mode = "create",
 }: AddEntityModalProps) {
+  const { isDark } = useTheme();
   const fields = useMemo(
     () => getFieldConfig(entityType, optionCatalog),
     [entityType, optionCatalog],
   );
 
   const fieldByName = useMemo(() => {
-    const map = new Map<string, FieldConfig>();
+    const map = new Map();
     for (const field of fields) {
       map.set(field.name, field);
     }
@@ -261,7 +100,7 @@ export function AddEntityModal({
       setValues(nextValues);
       setErrors({});
     }
-  }, [defaultValues, open, fieldByName, initialValues]);
+  }, [defaultValues, open, fieldByName, initialValues, fields]);
 
   const singularLabel = useMemo(
     () => toSingularLabel(groupLabel, entityType).toLowerCase(),
@@ -278,10 +117,7 @@ export function AddEntityModal({
     return a.every((value, index) => value === b[index]);
   };
 
-  const normalizeForComparison = (
-    targetField: FieldConfig | undefined,
-    value: FieldValue | undefined,
-  ): string => {
+  const normalizeForComparison = (targetField: any, value: FieldValue | undefined): string => {
     if (targetField?.component === "key-value") {
       return JSON.stringify(toKeyValuePairs(value));
     }
@@ -291,10 +127,7 @@ export function AddEntityModal({
     return coerceFieldValueToString(value);
   };
 
-  const prepareValueForStorage = (
-    field: FieldConfig | undefined,
-    value: FieldValue,
-  ): FieldValue => {
+  const prepareValueForStorage = (field: any, value: FieldValue): FieldValue => {
     if (field?.component === "key-value") {
       return toKeyValuePairs(value);
     }
@@ -456,13 +289,17 @@ export function AddEntityModal({
       onClose={onClose}
       title={modalTitle}
       description={modalDescription}
-      size="lg"
+      size="3xl"
       showDefaultFooter={false}
-      className="bg-white text-graphite-900 dark:bg-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700 shadow-2xl dark:[&_label]:text-graphite-100 dark:[&_p]:text-graphite-300 dark:[&_h2]:text-graphite-50"
+      className="!max-w-[960px] bg-white text-graphite-900 dark:bg-graphite-900 dark:text-graphite-50 border border-gray-200 dark:border-graphite-700 shadow-2xl dark:[&_label]:text-graphite-100 dark:[&_p]:text-graphite-300 dark:[&_h2]:text-graphite-50"
       containerClassName="px-4 py-6 sm:px-6"
       {...(firstField ? { initialFocus: `#${formId}-${firstField}` } : {})}
     >
-      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+      <form
+        id={formId}
+        onSubmit={handleSubmit}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4"
+      >
         {fields.map((field) => {
           const fieldId = `${formId}-${field.name}`;
           const rawValue = values[field.name];
@@ -484,7 +321,7 @@ export function AddEntityModal({
           if (field.component === "key-value") {
             const pairs = toKeyValuePairs(rawValue);
             return (
-              <div key={field.name} className="space-y-1">
+              <div key={field.name} className="col-span-full space-y-1">
                 <label
                   className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
                   htmlFor={fieldId}
@@ -493,7 +330,7 @@ export function AddEntityModal({
                 </label>
                 <KeyValueEditor
                   pairs={pairs}
-                  onChange={(nextPairs) => handleChange(field.name, nextPairs)}
+                  onChange={(nextPairs: KeyValueEntry[]) => handleChange(field.name, nextPairs)}
                   {...(field.keyPlaceholder !== undefined
                     ? { keyPlaceholder: field.keyPlaceholder }
                     : {})}
@@ -503,9 +340,53 @@ export function AddEntityModal({
                   {...(field.addLabel !== undefined ? { addLabel: field.addLabel } : {})}
                 />
                 {field.description && (
-                  <p className="text-xs text-graphite-500 dark:text-graphite-300">
-                    {field.description}
-                  </p>
+                  <p
+                    className="text-xs text-graphite-500 dark:text-graphite-300"
+                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                  />
+                )}
+                {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+              </div>
+            );
+          }
+
+          if (field.component === "monaco") {
+            const currentValue = toStringValue(rawValue);
+            return (
+              <div key={field.name} className="col-span-1 md:col-span-2 lg:col-span-3 space-y-1">
+                <label
+                  className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
+                  htmlFor={fieldId}
+                >
+                  {field.label}
+                  {field.required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <div className="h-[200px] border border-gray-300 dark:border-graphite-700 rounded-md overflow-hidden">
+                  <MonacoEditor
+                    value={currentValue || ""}
+                    onChange={(value) => handleChange(field.name, value)}
+                    language={field.language || "cue"}
+                    theme={isDark ? "vs-dark" : "vs"}
+                    options={{
+                      minimap: { enabled: false },
+                      lineNumbers: "off",
+                      lineNumbersMinChars: 0,
+                      glyphMargin: false,
+                      folding: false,
+                      lineDecorationsWidth: 0,
+                      lineNumbersWidth: 0,
+                      scrollBeyondLastLine: false,
+                      fontSize: 13,
+                      wordWrap: "on",
+                      readOnly: false,
+                    }}
+                  />
+                </div>
+                {field.description && (
+                  <p
+                    className="text-xs text-graphite-500 dark:text-graphite-300"
+                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                  />
                 )}
                 {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
               </div>
@@ -533,12 +414,16 @@ export function AddEntityModal({
               markdownProps.error = errorMessage;
             }
 
-            return <MarkdownField key={field.name} {...markdownProps} />;
+            return (
+              <div key={field.name} className="col-span-1 md:col-span-2 lg:col-span-3">
+                <MarkdownField {...markdownProps} />
+              </div>
+            );
           }
 
           if (field.type === "textarea") {
             return (
-              <div key={field.name} className="space-y-1">
+              <div key={field.name} className="col-span-1 md:col-span-2 lg:col-span-3 space-y-1">
                 <label
                   htmlFor={fieldId}
                   className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
@@ -555,9 +440,10 @@ export function AddEntityModal({
                   className="block w-full rounded-md border border-gray-300 dark:border-graphite-700 bg-white dark:bg-graphite-950 text-sm text-graphite-900 dark:text-graphite-50 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:border-blue-400 dark:focus:ring-blue-500/40 min-h-[120px] resize-vertical"
                 />
                 {field.description && (
-                  <p className="text-xs text-graphite-500 dark:text-graphite-300">
-                    {field.description}
-                  </p>
+                  <p
+                    className="text-xs text-graphite-500 dark:text-graphite-300"
+                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                  />
                 )}
                 {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
               </div>
@@ -607,7 +493,7 @@ export function AddEntityModal({
             const selectValue = isMultiple ? toArray(rawValue) : toStringValue(rawValue).trim();
 
             return (
-              <div key={field.name} className="space-y-1">
+              <div key={field.name} className="col-span-1 lg:col-span-2 space-y-1">
                 <label
                   htmlFor={fieldId}
                   className="block text-sm font-medium text-graphite-700 dark:text-graphite-50"
@@ -653,9 +539,10 @@ export function AddEntityModal({
                   {...(errorMessage ? { error: errorMessage } : {})}
                 />
                 {field.description && (
-                  <p className="text-xs text-graphite-500 dark:text-graphite-300">
-                    {field.description}
-                  </p>
+                  <p
+                    className="text-xs text-graphite-500 dark:text-graphite-300"
+                    dangerouslySetInnerHTML={{ __html: markdownLinkToHtml(field.description) }}
+                  />
                 )}
               </div>
             );
@@ -673,15 +560,13 @@ export function AddEntityModal({
           };
 
           return (
-            <Input
-              key={field.name}
-              {...inputProps}
-              {...(errorMessage ? { error: errorMessage } : {})}
-            />
+            <div key={field.name} className="col-span-1 lg:col-span-2">
+              <Input {...inputProps} {...(errorMessage ? { error: errorMessage } : {})} />
+            </div>
           );
         })}
 
-        <div className="flex items-center justify-end pt-2">
+        <div className="col-span-full flex items-center justify-end pt-2">
           <Button type="submit">
             {submitVerb} {toSingularLabel(groupLabel, entityType)}
           </Button>

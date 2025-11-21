@@ -82,8 +82,8 @@ arbiter generate
 
 The specification defines:
 
-- A route at `/plotService` with viewing capabilities
-- A `PlotservicePage` component to handle the route
+- Application routes with viewing capabilities
+- React page components to handle each route
 - TypeScript as the target language
 - Vite as the build tool
 
@@ -102,10 +102,10 @@ ui: {
     routes: [
         // Existing route
         {
-            id:   "plotService:main"
-            path: "/plotService"
+            id:   "home:main"
+            path: "/"
             capabilities: ["view"]
-            components: ["PlotservicePage"]
+            components: ["HomePage"]
         },
         // Add this new route
         {

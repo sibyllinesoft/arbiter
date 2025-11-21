@@ -119,33 +119,6 @@ export interface ValidationWarning {
   location?: string;
 }
 
-// Gap analysis types
-export interface GapSet {
-  missing_capabilities: string[];
-  orphaned_tokens: TokenReference[];
-  coverage_gaps: CoverageGap[];
-  duplicates: Duplicate[];
-}
-
-export interface TokenReference {
-  token: string;
-  defined_in: string[];
-  referenced_in: string[];
-}
-
-export interface CoverageGap {
-  capability: string;
-  expected_coverage: number;
-  actual_coverage: number;
-  missing_scenarios: string[];
-}
-
-export interface Duplicate {
-  type: "capability" | "requirement" | "test_case";
-  name: string;
-  locations: string[];
-}
-
 // IR (Intermediate Representation) types for diagrams
 export type IRKind =
   | "flow"

@@ -5,6 +5,13 @@
 import React from "react";
 import type { Project } from "../types/api";
 import { ArchitectureReport, ClientsReport, EventsReport, ServicesReport, TasksReport } from "./";
+import CapabilitiesReport from "./CapabilitiesReport";
+import ContractsReport from "./ContractsReport";
+import FlowsReport from "./FlowsReport";
+import InfrastructureReport from "./InfrastructureReport";
+import PackagesReport from "./PackagesReport";
+import SchemasReport from "./SchemasReport";
+import ToolsReport from "./ToolsReport";
 
 interface DiagramPlaceholderProps {
   type: string;
@@ -36,6 +43,13 @@ export function useUnifiedTabs({ project, tabBadges }: UnifiedTabsProps) {
   const clientCount = tabBadges?.clients ?? project?.entities?.frontends;
   const taskCount = tabBadges?.tasks;
   const eventCount = tabBadges?.events;
+  const schemaCount = tabBadges?.schemas;
+  const contractCount = tabBadges?.contracts;
+  const packageCount = tabBadges?.packages ?? project?.entities?.modules;
+  const toolCount = tabBadges?.tools ?? project?.entities?.tools;
+  const infrastructureCount = tabBadges?.infrastructure ?? project?.entities?.infrastructure;
+  const flowCount = tabBadges?.flows ?? project?.entities?.flows;
+  const capabilityCount = tabBadges?.capabilities ?? project?.entities?.capabilities;
 
   const allTabs = [
     {
@@ -45,6 +59,26 @@ export function useUnifiedTabs({ project, tabBadges }: UnifiedTabsProps) {
         <ArchitectureReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="System Architecture" />
+      ),
+    },
+    {
+      id: "schemas",
+      label: "Schemas",
+      ...(typeof schemaCount === "number" ? { badge: schemaCount } : {}),
+      content: project ? (
+        <SchemasReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Data Schemas" />
+      ),
+    },
+    {
+      id: "contracts",
+      label: "Contracts",
+      ...(typeof contractCount === "number" ? { badge: contractCount } : {}),
+      content: project ? (
+        <ContractsReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="API Contracts" />
       ),
     },
     {
@@ -65,6 +99,56 @@ export function useUnifiedTabs({ project, tabBadges }: UnifiedTabsProps) {
         <ClientsReport projectId={project.id} />
       ) : (
         <DiagramPlaceholder type="Client Catalog" />
+      ),
+    },
+    {
+      id: "packages",
+      label: "Packages",
+      ...(typeof packageCount === "number" ? { badge: packageCount } : {}),
+      content: project ? (
+        <PackagesReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Packages" />
+      ),
+    },
+    {
+      id: "tools",
+      label: "Tools",
+      ...(typeof toolCount === "number" ? { badge: toolCount } : {}),
+      content: project ? (
+        <ToolsReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Tools" />
+      ),
+    },
+    {
+      id: "infrastructure",
+      label: "Infrastructure",
+      ...(typeof infrastructureCount === "number" ? { badge: infrastructureCount } : {}),
+      content: project ? (
+        <InfrastructureReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Infrastructure" />
+      ),
+    },
+    {
+      id: "flows",
+      label: "Flows",
+      ...(typeof flowCount === "number" ? { badge: flowCount } : {}),
+      content: project ? (
+        <FlowsReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Flows" />
+      ),
+    },
+    {
+      id: "capabilities",
+      label: "Capabilities",
+      ...(typeof capabilityCount === "number" ? { badge: capabilityCount } : {}),
+      content: project ? (
+        <CapabilitiesReport projectId={project.id} />
+      ) : (
+        <DiagramPlaceholder type="Capabilities" />
       ),
     },
     {

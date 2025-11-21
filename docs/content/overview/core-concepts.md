@@ -54,10 +54,11 @@ system embodies.
 
 ### What Goes Here?
 
-- **Entities**: Core business objects with identity (Invoice, Customer, PaymentPlan)
-- **Value Objects**: Immutable data structures (Address, Money, TaxConfig)
-- **Domain Events**: Things that happen in your business (InvoiceCreated,
-  PaymentCaptured)
+- **Schemas**: Core data structures with types (Entity, Value, Request, Response, Event)
+  - **Entity schemas**: Business objects with identity (Invoice, Customer, PaymentPlan)
+  - **Value schemas**: Immutable data structures (Address, Money, TaxConfig)
+  - **Request/Response schemas**: API input/output structures
+  - **Event schemas**: Things that happen in your business (InvoiceCreated, PaymentCaptured)
 - **State Machines**: Business process flows (InvoiceLifecycle, CollectionsEscalation)
 - **Business Rules**: Invariants and constraints that must always hold
 
@@ -65,9 +66,11 @@ system embodies.
 
 - **Capture vocabulary collaboratively**: run short interviews/whiteboard
   sessions, then encode the nouns and verbs exactly once in the spec.
-- **Let the CLI do the formatting**: `arbiter add schema`,
-  `arbiter add state-machine`, and related commands emit valid CUE and keep the
-  structure normalized.
+- **Let the CLI do the formatting**: `arbiter add schema` (with type selection:
+  Entity, Value, Request, Response, Event) and `arbiter add state-machine` emit
+  valid CUE and keep the structure normalized.
+- **Define schemas with CUE syntax**: All schema fields (fields, validation rules,
+  relationships) use CUE syntax for type-safe, expressive definitions.
 - **Share the output**: `arbiter doc domain` produces a human-friendly glossary
   that product, design, and engineering can reference together.
 
@@ -98,6 +101,15 @@ concerns. Model two complementary shapes:
 
 Author them with the CLI (`arbiter add contract`, `arbiter add contract-operation`,
 `arbiter add event`) so identifiers and compatibility metadata stay consistent.
+
+**Contract Definition**: When defining contracts, you specify:
+- **Name and SLA/Performance requirements** (upfront for visibility)
+- **Version** for compatibility tracking
+- **Operations, Request/Response schemas** using CUE syntax in Monaco editors
+- **Description** in markdown format
+
+All schema-related fields (operations, requestSchema, responseSchema) use CUE
+syntax for type-safe, expressive definitions.
 
 > For the full CLI walkthrough, see the
 > [Layer 2 section of the Code Generation Overview](./code-generation-overview.md#layer-2-%E2%80%94-contracts-bind-the-operations).
@@ -333,11 +345,14 @@ codegen: {
 ### Model the Spec In Layers
 
 - **Domain First**: capture vocabulary, invariants, and workflows before worrying
-  about runtime. If it isn’t in the domain layer, downstream automation can’t
-  reuse it.
+  about runtime. Use the unified Schema concept with appropriate types (Entity,
+  Value, Request, Response, Event) rather than treating entities and value objects
+  as separate constructs. If it isn't in the domain layer, downstream automation
+  can't reuse it.
 - **Contracts Next**: describe how work flows across the system (operations,
   events, assertions) while staying transport-agnostic. Version the contract and
-  document intent inline so future PRs have context.
+  document intent inline so future PRs have context. Prioritize SLA/Performance
+  requirements upfront for visibility.
 - **Capabilities & Services**: bind domain + contracts to implementation details
   (languages, frameworks, endpoints). Keep the spec honest by referencing real
   modules/paths rather than prose.

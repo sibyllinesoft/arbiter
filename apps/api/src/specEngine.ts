@@ -4,13 +4,9 @@
 import { join } from "node:path";
 import { type CueDiagnostic, CueRunner } from "@arbiter/cue-runner";
 import type {
-  CoverageGap,
-  Duplicate,
   ExternalToolResult,
   Fragment,
-  GapSet,
   ServerConfig,
-  TokenReference,
   ValidationError,
   ValidationWarning,
 } from "./types";
@@ -616,16 +612,6 @@ export class SpecEngine {
     const warnings: ValidationWarning[] = [];
 
     try {
-      // Validate duplicates
-      const duplicateCheck = this.findDuplicates(resolved);
-      duplicateCheck.forEach((duplicate) => {
-        warnings.push({
-          type: "duplicate",
-          message: `Duplicate ${duplicate.type}: ${duplicate.name}`,
-          location: duplicate.locations.join(", "),
-        });
-      });
-
       // Check for undefined capabilities
       if (typeof resolved === "object" && resolved !== null) {
         const capabilities = (resolved as any).capabilities;
@@ -647,48 +633,6 @@ export class SpecEngine {
     }
 
     return { errors, warnings };
-  }
-
-  /**
-   * Find duplicates in the resolved specification
-   */
-  private findDuplicates(resolved: Record<string, unknown>): Duplicate[] {
-    const duplicates: Duplicate[] = [];
-
-    try {
-      // This is a simplified implementation
-      // In a real system, you'd want more sophisticated duplicate detection
-
-      if (typeof resolved === "object" && resolved !== null) {
-        const capabilities = (resolved as any).capabilities || {};
-        const capabilityNames = Object.keys(capabilities);
-        const nameCount: Record<string, string[]> = {};
-
-        // Count occurrences of capability names
-        capabilityNames.forEach((name) => {
-          const parts = name.split(".");
-          parts.forEach((part) => {
-            if (!nameCount[part]) nameCount[part] = [];
-            nameCount[part].push(name);
-          });
-        });
-
-        // Find duplicates
-        Object.entries(nameCount).forEach(([name, locations]) => {
-          if (locations.length > 1) {
-            duplicates.push({
-              type: "capability",
-              name,
-              locations,
-            });
-          }
-        });
-      }
-    } catch (error) {
-      logger.error("Error finding duplicates", error instanceof Error ? error : undefined);
-    }
-
-    return duplicates;
   }
 
   /**
@@ -877,110 +821,6 @@ export class SpecEngine {
         },
       ],
       warnings: [],
-    };
-  }
-
-  /**
-   * Generate gap analysis
-   */
-  async generateGapSet(resolved: Record<string, unknown>): Promise<GapSet> {
-    try {
-      const gapData = this.initializeGapData(resolved);
-      const orphanedTokens = this.findOrphanedTokens(resolved);
-      const coverageGaps = this.analyzeCoverageGaps(resolved);
-
-      return this.buildGapSet(gapData.duplicates, orphanedTokens, coverageGaps);
-    } catch (error) {
-      logger.error("Gap analysis error", error instanceof Error ? error : undefined);
-      return this.createEmptyGapSet();
-    }
-  }
-
-  /**
-   * Initialize gap data with duplicates
-   */
-  private initializeGapData(resolved: Record<string, unknown>): {
-    duplicates: Duplicate[];
-  } {
-    return {
-      duplicates: this.findDuplicates(resolved),
-    };
-  }
-
-  /**
-   * Find orphaned tokens in resolved specification
-   */
-  private findOrphanedTokens(resolved: Record<string, unknown>): TokenReference[] {
-    const jsonStr = JSON.stringify(resolved);
-    const tokenMatches = jsonStr.match(/\$\{[^}]+\}/g) || [];
-
-    return tokenMatches.map((token) => ({
-      token,
-      defined_in: [],
-      referenced_in: ["resolved.json"],
-    }));
-  }
-
-  /**
-   * Analyze coverage gaps between capabilities and tests
-   */
-  private analyzeCoverageGaps(resolved: Record<string, unknown>): CoverageGap[] {
-    if (typeof resolved !== "object" || resolved === null) {
-      return [];
-    }
-
-    const capabilities = (resolved as any).capabilities || {};
-    const tests = (resolved as any).tests || {};
-    const coverageGaps: CoverageGap[] = [];
-
-    Object.keys(capabilities).forEach((capability) => {
-      if (!this.hasTestCoverage(capability, tests)) {
-        coverageGaps.push({
-          capability,
-          expected_coverage: 100,
-          actual_coverage: 0,
-          missing_scenarios: ["basic", "error_handling", "edge_cases"],
-        });
-      }
-    });
-
-    return coverageGaps;
-  }
-
-  /**
-   * Check if a capability has test coverage
-   */
-  private hasTestCoverage(capability: string, tests: Record<string, any>): boolean {
-    return Object.keys(tests).some(
-      (test) => test.includes(capability) || tests[test]?.covers?.includes(capability),
-    );
-  }
-
-  /**
-   * Build the final gap set result
-   */
-  private buildGapSet(
-    duplicates: Duplicate[],
-    orphanedTokens: TokenReference[],
-    coverageGaps: CoverageGap[],
-  ): GapSet {
-    return {
-      missing_capabilities: [], // Simplified implementation
-      orphaned_tokens: orphanedTokens,
-      coverage_gaps: coverageGaps,
-      duplicates,
-    };
-  }
-
-  /**
-   * Create empty gap set for error cases
-   */
-  private createEmptyGapSet(): GapSet {
-    return {
-      missing_capabilities: [],
-      orphaned_tokens: [],
-      coverage_gaps: [],
-      duplicates: [],
     };
   }
 

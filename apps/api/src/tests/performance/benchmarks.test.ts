@@ -570,10 +570,6 @@ routes: {
             );
             expect(resolvedResponse.status).toBe(200);
 
-            // Step 4: Generate gap analysis
-            const gapResponse = await fetch(`${baseUrl}/api/gaps?project_id=${testProjectId}`);
-            expect(gapResponse.status).toBe(200);
-
             const totalDuration = performance.now() - start;
             return { totalDuration };
           },

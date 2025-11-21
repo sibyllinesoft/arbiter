@@ -2,14 +2,7 @@
  * UI-specific types for frontend state management
  */
 
-import type {
-  Fragment,
-  GapSet,
-  IRResponse,
-  Project,
-  ValidationError,
-  ValidationWarning,
-} from "./api";
+import type { Fragment, IRResponse, Project, ValidationError, ValidationWarning } from "./api";
 
 // Application state
 export interface AppState {
@@ -18,7 +11,6 @@ export interface AppState {
   projects: Project[];
   fragments: Fragment[];
   resolved: Record<string, unknown> | null;
-  gaps: GapSet | null;
   irs: Record<string, IRResponse>;
 
   // UI state
@@ -49,7 +41,22 @@ export interface AppState {
 
 // Tab types - separate left and right tab groups
 export type LeftTab = "source";
-export type RightTab = "flow" | "site" | "view" | "architecture" | "services" | "tasks" | "events";
+export type RightTab =
+  | "flow"
+  | "site"
+  | "view"
+  | "architecture"
+  | "services"
+  | "clients"
+  | "tasks"
+  | "events"
+  | "schemas"
+  | "contracts"
+  | "packages"
+  | "tools"
+  | "infrastructure"
+  | "flows"
+  | "capabilities";
 
 // Legacy type for backwards compatibility
 export type DiagramTab = LeftTab | RightTab;
@@ -63,7 +70,6 @@ export type AppAction =
   | { type: "UPDATE_FRAGMENT"; payload: Fragment }
   | { type: "DELETE_FRAGMENT"; payload: string }
   | { type: "SET_RESOLVED"; payload: { resolved: Record<string, unknown>; specHash: string } }
-  | { type: "SET_GAPS"; payload: GapSet }
   | { type: "SET_IR"; payload: { kind: string; data: IRResponse } }
   | { type: "SET_ACTIVE_FRAGMENT"; payload: string | null }
   | { type: "SET_LOADING"; payload: boolean }

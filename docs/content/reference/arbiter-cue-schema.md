@@ -64,6 +64,11 @@ arbiterSpec: {
   kind?: "library" | "application" | "service" | "tool"
 
   // ----- Domain model (source of truth for business types) -----
+  // NOTE: While the CUE schema maintains separate entities/valueObjects for
+  // backwards compatibility, the Arbiter UI unifies these under a single
+  // "Schema" concept with types: Entity, Value, Request, Response, Event.
+  // When authoring via CLI or UI, use `arbiter add schema` and select the
+  // appropriate type rather than treating entities/valueObjects separately.
   domain?: {
     entities?:      {[Name=string]: #Entity}
     valueObjects?:  {[Name=string]: #ValueObject}
@@ -139,6 +144,16 @@ arbiterSpec: {
 
 ### 3.2 Domain Modeling
 
+**Schema Type System**: Arbiter uses a unified Schema concept with five types:
+- **Entity**: Business objects with identity and lifecycle (Invoice, Customer, PaymentPlan)
+- **Value**: Immutable data structures without identity (Address, Money, TaxConfig)
+- **Request**: API request payloads
+- **Response**: API response payloads
+- **Event**: Domain events representing business state changes
+
+When defining schemas in the UI or CLI, all schema fields (fields, validation
+rules, relationships) use **CUE syntax** for type-safe, expressive definitions.
+
 ```cue
 #ScalarType: "string" | "text" | "int" | "float" | "bool" | "uuid" | "timestamp" | "json" | "decimal"
 
@@ -196,6 +211,19 @@ arbiterSpec: {
 ```
 
 ### 3.3 Contracts (transport-agnostic)
+
+**Contract Structure**: When defining contracts via UI or CLI, fields are ordered
+for clarity:
+1. **Name** - Contract identifier
+2. **SLA/Performance** - Service level agreements (e.g., "p95 < 200ms, uptime 99.9%")
+3. **Version** - Semantic version for compatibility tracking
+4. **Operations** - Contract operations defined in CUE syntax
+5. **Request Schema** - Common request fields in CUE syntax
+6. **Response Schema** - Common response fields in CUE syntax
+7. **Description** - Human-readable description in markdown
+
+All schema-related contract fields (operations, requestSchema, responseSchema)
+use **CUE syntax** in Monaco editors for expressive, type-safe definitions.
 
 ```cue
 #CompatPolicy: {

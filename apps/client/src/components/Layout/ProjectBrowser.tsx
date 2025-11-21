@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Project browser with elegant card-based layout - Enhanced with Graphite Design System
  */
@@ -64,7 +63,8 @@ export function ProjectBrowser({
       !searchQuery ||
       project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       project.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      project.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      false;
 
     const matchesStatus = filterStatus === "all" || project.status === filterStatus;
 
@@ -260,7 +260,7 @@ export function ProjectBrowser({
                           <GitBranch className="w-4 h-4 text-white" />
                         </div>
                         <div className="flex items-center gap-1">
-                          {getValidationIcon(project.validationStatus)}
+                          {getValidationIcon(project.validationStatus ?? "pending")}
                         </div>
                       </div>
 
@@ -307,11 +307,11 @@ export function ProjectBrowser({
                     {/* Status and stats */}
                     <div className="flex items-center justify-between">
                       <StatusBadge
-                        variant={getStatusVariant(project.status)}
+                        variant={getStatusVariant(project.status ?? "draft")}
                         size="sm"
                         className="font-medium"
                       >
-                        {project.status}
+                        {project.status ?? "draft"}
                       </StatusBadge>
 
                       <div className="flex items-center gap-3 text-xs text-graphite-500">
@@ -319,19 +319,19 @@ export function ProjectBrowser({
                           <FileText className="w-3 h-3" />
                           {project.fragmentCount}
                         </span>
-                        {project.collaborators.length > 0 && (
+                        {(project.collaborators?.length ?? 0) > 0 && (
                           <span className="flex items-center gap-1">
                             <Users className="w-3 h-3" />
-                            {project.collaborators.length}
+                            {project.collaborators?.length}
                           </span>
                         )}
                       </div>
                     </div>
 
                     {/* Tags */}
-                    {project.tags.length > 0 && (
+                    {(project.tags?.length ?? 0) > 0 && (
                       <div className="flex flex-wrap gap-1">
-                        {project.tags.slice(0, 3).map((tag, index) => (
+                        {project.tags?.slice(0, 3).map((tag, index) => (
                           <span
                             key={index}
                             className="px-2 py-1 bg-graphite-100 text-graphite-700 text-xs rounded-md font-medium"
@@ -339,9 +339,9 @@ export function ProjectBrowser({
                             {tag}
                           </span>
                         ))}
-                        {project.tags.length > 3 && (
+                        {(project.tags?.length ?? 0) > 3 && (
                           <span className="px-2 py-1 bg-graphite-100 text-graphite-500 text-xs rounded-md">
-                            +{project.tags.length - 3}
+                            +{(project.tags?.length ?? 0) - 3}
                           </span>
                         )}
                       </div>
@@ -351,7 +351,7 @@ export function ProjectBrowser({
                     <div className="flex items-center justify-between pt-2 border-t border-graphite-100">
                       <div className="flex items-center gap-1.5 text-xs text-graphite-500">
                         <Clock className="w-3 h-3" />
-                        <span>{formatDate(project.lastModified)}</span>
+                        <span>{formatDate(project.lastModified ?? new Date().toISOString())}</span>
                       </div>
 
                       <ChevronRight className="w-4 h-4 text-graphite-400 group-hover:text-graphite-600 transition-colors" />
